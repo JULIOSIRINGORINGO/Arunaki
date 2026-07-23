@@ -1,0 +1,14 @@
+# ponytail: first-pass ignores, tighten later
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+coverage/
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
