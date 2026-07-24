@@ -295,8 +295,43 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 4. **AI Engine never touches Storage/DB directly** — Always through Service layer.
 5. **API response format** — Always `{ data, error, meta }`.
 6. **API key security** — AI keys stay in backend `.env`, never exposed to frontend.
-7. **Test every module** — Manual curl/PowerShell test before moving on.
-8. **Commit after each module** — Small, focused commits.
+7. **Commit after each module** — Small, focused commits.
+
+---
+
+## Testing Rules (MANDATORY)
+
+**Every phase MUST pass all testing steps before moving to next phase.**
+
+### Testing Checklist Per Phase
+
+```
+□ Build succeeds (npm run build — 0 errors)
+□ All endpoints tested manually (curl/PowerShell)
+□ Response format correct ({ data, error, meta })
+□ Error handling works (invalid input, missing data)
+□ Database operations work (create, read, update, delete)
+□ No regressions (existing modules still work)
+```
+
+### Testing Process
+
+1. **Build test** — `npm run build` must pass with 0 errors.
+2. **Unit test per endpoint** — Test each endpoint individually.
+3. **Integration test** — Test endpoints together (e.g., create workspace → create source → get by workspace).
+4. **Error test** — Test with invalid data, missing fields, non-existent IDs.
+5. **Regression test** — Run all previous module tests to ensure nothing broke.
+6. **Document results** — Write test results in completion report.
+
+### Phase Completion Criteria
+
+A phase is ONLY marked ✅ when:
+- All tasks in the phase are completed
+- All testing steps pass
+- No known bugs or issues remain
+- Code is committed
+
+**Do NOT mark phase as ✅ if any test fails. Fix first, then mark.**
 
 ---
 
