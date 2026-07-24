@@ -21,7 +21,7 @@ export class XlsxParser implements ParserProvider {
     }
 
     const content = allText.join('\n\n');
-    const words = content.split(/\s+/).filter(w => w.length > 0);
+    const words = content.split(/\s+/).filter((w) => w.length > 0);
 
     return {
       content,

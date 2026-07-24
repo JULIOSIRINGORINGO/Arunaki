@@ -1,4 +1,5 @@
-import { User, Copy, RefreshCw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { User, Copy, Check } from "lucide-react";
 import Markdown from "react-markdown";
 
 interface Message {
@@ -14,6 +15,13 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
+
+  async function copyMessage() {
+    await navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }
 
   const time = message.createdAt
     ? new Date(message.createdAt).toLocaleTimeString("id-ID", {
@@ -55,14 +63,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           <span className="text-xs text-gray-400">{time}</span>
         )}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-            <Copy size={14} />
-          </button>
-          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-            <RefreshCw size={14} />
-          </button>
-          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-            <Trash2 size={14} />
+          <button
+            type="button"
+            aria-label={copied ? "Copied" : "Copy message"}
+            onClick={copyMessage}
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
           </button>
         </div>
       </div>

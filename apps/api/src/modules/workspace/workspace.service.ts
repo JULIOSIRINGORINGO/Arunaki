@@ -9,7 +9,10 @@ export class WorkspaceService extends BaseService<Workspace> {
     super(repository);
   }
 
-  async create(data: { name: string; description?: string }): Promise<Workspace> {
+  async create(data: {
+    name: string;
+    description?: string;
+  }): Promise<Workspace> {
     return this.repository.create({
       name: data.name,
       description: data.description,

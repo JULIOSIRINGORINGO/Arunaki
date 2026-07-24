@@ -9,7 +9,10 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
     super(repository);
   }
 
-  async createChat(mode: 'chat' | 'workspace', workspaceId?: string): Promise<ChatHistory> {
+  async createChat(
+    mode: 'chat' | 'workspace',
+    workspaceId?: string,
+  ): Promise<ChatHistory> {
     return this.repository.create({
       mode,
       workspaceId: workspaceId || null,
@@ -34,6 +37,6 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
   }
 
   async updateTitle(id: string, title: string): Promise<ChatHistory> {
-    return this.repository.update(id, { title } as any);
+    return this.repository.update(id, { title });
   }
 }

@@ -66,7 +66,10 @@ export class FileService extends BaseService<File> {
       const filePath = path.join(uploadDir, file.originalname);
       await this.storageService.writeBuffer(filePath, file.buffer);
 
-      const ext = path.extname(file.originalname).toLowerCase().replace('.', '');
+      const ext = path
+        .extname(file.originalname)
+        .toLowerCase()
+        .replace('.', '');
 
       const fileRecord = await this.createFile({
         sourceId: source.id,
@@ -80,8 +83,14 @@ export class FileService extends BaseService<File> {
       createdFiles.push(fileRecord);
     }
 
-    await this.sourceService.updateStatus(source.id, 'ready', createdFiles.length);
-    this.logger.log(`Uploaded ${createdFiles.length} files to workspace ${workspaceId}`);
+    await this.sourceService.updateStatus(
+      source.id,
+      'ready',
+      createdFiles.length,
+    );
+    this.logger.log(
+      `Uploaded ${createdFiles.length} files to workspace ${workspaceId}`,
+    );
 
     return createdFiles;
   }

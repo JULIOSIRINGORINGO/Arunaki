@@ -20,7 +20,10 @@ export class ArtifactRepository extends PrismaBaseRepository<Artifact> {
     });
   }
 
-  async findByWorkspaceAndType(workspaceId: string, type: string): Promise<Artifact[]> {
+  async findByWorkspaceAndType(
+    workspaceId: string,
+    type: string,
+  ): Promise<Artifact[]> {
     return this.model.findMany({
       where: { workspaceId, type },
       orderBy: { createdAt: 'desc' },

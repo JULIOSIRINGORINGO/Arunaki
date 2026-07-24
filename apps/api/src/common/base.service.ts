@@ -1,4 +1,7 @@
-import { IBaseRepository, FindManyOptions } from './interfaces/base-repository.interface.js';
+import {
+  IBaseRepository,
+  FindManyOptions,
+} from './interfaces/base-repository.interface.js';
 
 export abstract class BaseService<T> {
   constructor(protected readonly repository: IBaseRepository<T>) {}

@@ -9,7 +9,11 @@ export class MessageService extends BaseService<Message> {
     super(repository);
   }
 
-  async createMessage(chatHistoryId: string, role: 'user' | 'assistant' | 'system', content: string): Promise<Message> {
+  async createMessage(
+    chatHistoryId: string,
+    role: 'user' | 'assistant' | 'system',
+    content: string,
+  ): Promise<Message> {
     return this.repository.create({
       chatHistoryId,
       role,

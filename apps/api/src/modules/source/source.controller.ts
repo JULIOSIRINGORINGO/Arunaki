@@ -1,7 +1,20 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { SourceService } from './source.service.js';
 import { CreateSourceDto, UpdateSourceDto } from './dtos/source.dto.js';
-import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
+import {
+  successResponse,
+  errorResponse,
+} from '../../common/dtos/api-response.dto.js';
 
 @Controller('sources')
 export class SourceController {
@@ -48,9 +61,16 @@ export class SourceController {
   }
 
   @Put(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: { status: string; fileCount?: number }) {
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string; fileCount?: number },
+  ) {
     try {
-      const source = await this.sourceService.updateStatus(id, body.status, body.fileCount);
+      const source = await this.sourceService.updateStatus(
+        id,
+        body.status,
+        body.fileCount,
+      );
       return successResponse(source);
     } catch (error) {
       return errorResponse('UPDATE_FAILED', error.message);

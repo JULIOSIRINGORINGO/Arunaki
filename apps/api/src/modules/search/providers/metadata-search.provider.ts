@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../common/providers/prisma.service';
-import { SearchProvider, SearchOptions, SearchResult } from './search-provider.interface';
+import {
+  SearchProvider,
+  SearchOptions,
+  SearchResult,
+} from './search-provider.interface';
 
 @Injectable()
 export class MetadataSearchProvider implements SearchProvider {

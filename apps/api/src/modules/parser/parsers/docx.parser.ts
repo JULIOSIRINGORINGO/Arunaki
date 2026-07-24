@@ -8,7 +8,7 @@ export class DocxParser implements ParserProvider {
     const result = await mammoth.extractRawText({ buffer });
     const content = result.value;
 
-    const words = content.split(/\s+/).filter(w => w.length > 0);
+    const words = content.split(/\s+/).filter((w) => w.length > 0);
     const lines = content.split('\n');
 
     return {

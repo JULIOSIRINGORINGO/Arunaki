@@ -1,8 +1,24 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { WorkspaceService } from './workspace.service.js';
 import { WorkspaceInitService } from './workspace-init.service.js';
-import { CreateWorkspaceDto, UpdateWorkspaceDto } from './dtos/workspace.dto.js';
-import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
+import {
+  CreateWorkspaceDto,
+  UpdateWorkspaceDto,
+} from './dtos/workspace.dto.js';
+import {
+  successResponse,
+  errorResponse,
+} from '../../common/dtos/api-response.dto.js';
 
 @Controller('workspaces')
 export class WorkspaceController {

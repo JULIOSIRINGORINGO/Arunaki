@@ -6,7 +6,14 @@ import { Artifact } from '@prisma/client';
 export class ArtifactService {
   constructor(private readonly artifactRepo: ArtifactRepository) {}
 
-  async create(data: { workspaceId: string; name: string; type: string; format?: string; path?: string; metadata?: any }): Promise<Artifact> {
+  async create(data: {
+    workspaceId: string;
+    name: string;
+    type: string;
+    format?: string;
+    path?: string;
+    metadata?: any;
+  }): Promise<Artifact> {
     return this.artifactRepo.create({
       workspaceId: data.workspaceId,
       name: data.name,
@@ -30,11 +37,17 @@ export class ArtifactService {
     return this.artifactRepo.findByWorkspaceId(workspaceId);
   }
 
-  async findByWorkspaceAndType(workspaceId: string, type: string): Promise<Artifact[]> {
+  async findByWorkspaceAndType(
+    workspaceId: string,
+    type: string,
+  ): Promise<Artifact[]> {
     return this.artifactRepo.findByWorkspaceAndType(workspaceId, type);
   }
 
-  async update(id: string, data: { name?: string; metadata?: any }): Promise<Artifact> {
+  async update(
+    id: string,
+    data: { name?: string; metadata?: any },
+  ): Promise<Artifact> {
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.metadata) updateData.metadata = JSON.stringify(data.metadata);

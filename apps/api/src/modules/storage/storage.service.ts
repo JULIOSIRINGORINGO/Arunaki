@@ -22,8 +22,10 @@ export class StorageService {
     '.md': 'text/markdown',
     '.csv': 'text/csv',
     '.pdf': 'application/pdf',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.docx':
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xlsx':
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     '.xls': 'application/vnd.ms-excel',
     '.json': 'application/json',
     '.html': 'text/html',
@@ -40,7 +42,9 @@ export class StorageService {
     const resolvedWorkspace = path.resolve(workspacePath);
 
     if (!resolved.startsWith(resolvedWorkspace)) {
-      throw new Error(`Path traversal detected: ${filePath} is outside workspace`);
+      throw new Error(
+        `Path traversal detected: ${filePath} is outside workspace`,
+      );
     }
   }
 

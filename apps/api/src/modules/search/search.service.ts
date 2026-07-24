@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SearchProvider, SearchOptions, SearchResult } from './providers/search-provider.interface';
+import {
+  SearchProvider,
+  SearchOptions,
+  SearchResult,
+} from './providers/search-provider.interface';
 import { MetadataSearchProvider } from './providers/metadata-search.provider';
 import { FtsSearchProvider } from './providers/fts-search.provider';
 
@@ -19,7 +23,9 @@ export class SearchService {
   async searchFiles(options: SearchOptions): Promise<SearchResult[]> {
     const { query, limit = 10 } = options;
 
-    this.logger.log(`Searching: query="${query}", workspace=${options.workspaceId}`);
+    this.logger.log(
+      `Searching: query="${query}", workspace=${options.workspaceId}`,
+    );
 
     // Run all providers in parallel
     const results = await Promise.all(

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../common/providers/prisma.service';
-import { SearchProvider, SearchOptions, SearchResult } from './search-provider.interface';
+import {
+  SearchProvider,
+  SearchOptions,
+  SearchResult,
+} from './search-provider.interface';
 
 @Injectable()
 export class FtsSearchProvider implements SearchProvider {
@@ -47,6 +51,10 @@ export class FtsSearchProvider implements SearchProvider {
 
     const start = Math.max(0, index - 40);
     const end = Math.min(content.length, index + query.length + 40);
-    return (start > 0 ? '...' : '') + content.substring(start, end) + (end < content.length ? '...' : '');
+    return (
+      (start > 0 ? '...' : '') +
+      content.substring(start, end) +
+      (end < content.length ? '...' : '')
+    );
   }
 }

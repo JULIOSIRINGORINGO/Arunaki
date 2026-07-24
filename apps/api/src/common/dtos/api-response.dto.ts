@@ -25,7 +25,11 @@ export function successResponse<T>(data: T, meta?: ApiMeta): ApiResponse<T> {
   };
 }
 
-export function errorResponse(code: string, message: string, details?: Record<string, unknown>): ApiResponse<null> {
+export function errorResponse(
+  code: string,
+  message: string,
+  details?: Record<string, unknown>,
+): ApiResponse<null> {
   return {
     data: null,
     error: {

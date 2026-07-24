@@ -25,14 +25,16 @@ export class AiService {
 
   constructor(private readonly config: ConfigService) {
     this.apiKey = this.config.get<string>('AI_API_KEY') || '';
-    this.model = this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
+    this.model =
+      this.config.get<string>('AI_MODEL') ||
+      'nvidia/nemotron-3-ultra-550b-a55b:free';
   }
 
   async chat(messages: ChatMessage[]): Promise<AiResponse> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://arunaki.app',
         'X-Title': 'Arunaki AI Assistant',
@@ -69,7 +71,10 @@ export class AiService {
     };
   }
 
-  getSystemPrompt(mode: 'chat' | 'workspace', workspaceContext?: string): string {
+  getSystemPrompt(
+    mode: 'chat' | 'workspace',
+    workspaceContext?: string,
+  ): string {
     const basePrompt = `You are Arunaki AI Assistant. You help users with their work.
 Be helpful, professional, and concise.
 Respond in the same language as the user's message.`;

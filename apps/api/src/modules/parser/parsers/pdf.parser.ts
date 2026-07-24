@@ -13,7 +13,8 @@ export class PdfParser implements ParserProvider {
         title: data.info?.Title,
         author: data.info?.Author,
         pageCount: data.numpages,
-        wordCount: data.text.split(/\s+/).filter((w: string) => w.length > 0).length,
+        wordCount: data.text.split(/\s+/).filter((w: string) => w.length > 0)
+          .length,
         characterCount: data.text.length,
         producer: data.info?.Producer,
         creator: data.info?.Creator,

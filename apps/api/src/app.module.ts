@@ -14,7 +14,20 @@ import { SearchModule } from './modules/search/search.module.js';
 import { ArtifactModule } from './modules/artifact/artifact.module.js';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, LoggerModule, WorkspaceModule, SourceModule, ChatModule, AiModule, FileModule, ParserModule, StorageModule, SearchModule, ArtifactModule],
+  imports: [
+    ConfigModule,
+    PrismaModule,
+    LoggerModule,
+    WorkspaceModule,
+    SourceModule,
+    ChatModule,
+    AiModule,
+    FileModule,
+    ParserModule,
+    StorageModule,
+    SearchModule,
+    ArtifactModule,
+  ],
   controllers: [AppController],
   providers: [],
 })

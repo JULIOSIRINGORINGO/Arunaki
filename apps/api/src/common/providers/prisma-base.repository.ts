@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { IBaseRepository, FindManyOptions } from '../interfaces/base-repository.interface.js';
+import {
+  IBaseRepository,
+  FindManyOptions,
+} from '../interfaces/base-repository.interface.js';
 import { PrismaService } from './prisma.service.js';
 
 @Injectable()

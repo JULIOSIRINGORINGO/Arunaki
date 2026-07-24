@@ -1,14 +1,41 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus, UseInterceptors, UploadedFile, UploadedFiles, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  HttpCode,
+  HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
+  BadRequestException,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { FileService } from './file.service.js';
-import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
+import {
+  successResponse,
+  errorResponse,
+} from '../../common/dtos/api-response.dto.js';
 
 @Controller('files')
 export class FileController {
   constructor(private readonly fileService: FileService) {}
 
   @Post()
-  async create(@Body() body: { sourceId: string; name: string; path: string; type: string; size: number; mimeType?: string }) {
+  async create(
+    @Body()
+    body: {
+      sourceId: string;
+      name: string;
+      path: string;
+      type: string;
+      size: number;
+      mimeType?: string;
+    },
+  ) {
     try {
       const file = await this.fileService.createFile(body);
       return successResponse(file);
@@ -32,7 +59,11 @@ export class FileController {
         throw new BadRequestException('workspaceId is required');
       }
 
-      const createdFiles = await this.fileService.uploadFiles(workspaceId, sourceName || 'Uploads', files);
+      const createdFiles = await this.fileService.uploadFiles(
+        workspaceId,
+        sourceName || 'Uploads',
+        files,
+      );
       return successResponse(createdFiles);
     } catch (error) {
       return errorResponse('UPLOAD_FAILED', error.message);
@@ -70,7 +101,10 @@ export class FileController {
   }
 
   @Put(':id/content')
-  async updateContent(@Param('id') id: string, @Body() body: { content: string }) {
+  async updateContent(
+    @Param('id') id: string,
+    @Body() body: { content: string },
+  ) {
     try {
       const file = await this.fileService.updateContent(id, body.content);
       return successResponse(file);
@@ -80,7 +114,10 @@ export class FileController {
   }
 
   @Put(':id/status')
-  async updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() body: { status: string },
+  ) {
     try {
       const file = await this.fileService.updateStatus(id, body.status);
       return successResponse(file);

@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ParserProvider, ParseResult } from './parsers/parser-provider.interface';
+import {
+  ParserProvider,
+  ParseResult,
+} from './parsers/parser-provider.interface';
 import { TxtParser } from './parsers/txt.parser';
 import { MdParser } from './parsers/md.parser';
 import { CsvParser } from './parsers/csv.parser';
@@ -22,7 +25,9 @@ export class ParserService {
     this.parsers.set('xlsx', new XlsxParser());
     this.parsers.set('xls', new XlsxParser());
 
-    this.logger.log(`Initialized parsers: ${Array.from(this.parsers.keys()).join(', ')}`);
+    this.logger.log(
+      `Initialized parsers: ${Array.from(this.parsers.keys()).join(', ')}`,
+    );
   }
 
   async parse(filePath: string, fileType: string): Promise<ParseResult> {

@@ -110,7 +110,9 @@ export class WorkspaceInitService {
   }
 
   private async stageMetadata(workspaceId: string): Promise<InitProgress> {
-    this.logger.log(`Stage 3: Extracting metadata for workspace ${workspaceId}`);
+    this.logger.log(
+      `Stage 3: Extracting metadata for workspace ${workspaceId}`,
+    );
 
     const files = await this.prisma.file.findMany({
       where: { source: { workspaceId } },
@@ -152,15 +154,19 @@ export class WorkspaceInitService {
       where: { workspaceId },
     });
 
-    const fileTypes = files.reduce((acc, file) => {
-      acc[file.type] = (acc[file.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const fileTypes = files.reduce(
+      (acc, file) => {
+        acc[file.type] = (acc[file.type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Create or update workspace profile
     const profileData = {
       totalFiles: files.length,
-      totalSizeMb: files.reduce((sum, f) => sum + (f.size || 0), 0) / (1024 * 1024),
+      totalSizeMb:
+        files.reduce((sum, f) => sum + (f.size || 0), 0) / (1024 * 1024),
       fileTypes: JSON.stringify(fileTypes),
     };
 
