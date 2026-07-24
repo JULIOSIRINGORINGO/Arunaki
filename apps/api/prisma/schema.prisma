@@ -1,0 +1,228 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Workspace - Ruang kerja terisolasi
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("pending") // pending, processing, ready, failed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  sources     Source[]
+  chatHistory ChatHistory[]
+  artifacts   Artifact[]
+  activityLog ActivityLog[]
+  profile     WorkspaceProfile?
+
+  @@map("workspaces")
+}
+
+// Workspace Profile - Summary & metadata workspace
+model WorkspaceProfile {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // File Statistics
+  totalFiles      Int      @default(0)
+  totalSizeMb     Float    @default(0)
+  fileTypes       String   @default("{}") // JSON string of file type counts
+  oldestFile      String?
+  newestFile      String?
+
+  // Content Analysis
+  primaryLanguage   String?
+  secondaryLanguages String @default("[]") // JSON array
+  topics            String @default("[]") // JSON array
+  documentTypes     String @default("[]") // JSON array
+
+  // Key Entities
+  departments   String @default("[]") // JSON array
+  timeRange     String?
+  dataSources   String @default("[]") // JSON array
+
+  // Relationships
+  fileLinks       Int @default(0)
+  crossReferences Int @default(0)
+  dataDependencies Int @default(0)
+
+  // Recommendations
+  recommendations String @default("[]") // JSON array
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workspace_profiles")
+}
+
+// Source - Sumber data yang terhubung ke workspace
+model Source {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        String   // folder, file, upload, gdrive, onedrive
+  path        String?
+  status      String   @default("pending") // pending, scanning, indexing, ready, failed
+  fileCount   Int      @default(0)
+  metadata    String   @default("{}") // JSON string
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  files File[]
+
+  @@map("sources")
+}
+
+// File - File individual dalam workspace
+model File {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  name      String
+  path      String
+  type      String   // pdf, docx, xlsx, csv, txt, md, etc.
+  size      Int      // bytes
+  mimeType  String?
+  status    String   @default("pending") // pending, parsing, indexed, failed
+
+  // Metadata
+  metadata  String   @default("{}") // JSON string - extracted metadata
+
+  // Content for search
+  content   String?  // Extracted text content
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  fileMetadata FileMetadata?
+
+  @@map("files")
+}
+
+// File Metadata - Metadata terekstrak dari file
+model FileMetadata {
+  id       String @id @default(cuid())
+  fileId   String @unique
+  file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Document-specific metadata
+  title       String?
+  author      String?
+  subject     String?
+  keywords    String?  // Comma-separated
+  language    String?
+  pageCount   Int?
+  wordCount   Int?
+  charCount   Int?
+
+  // Excel-specific
+  sheetCount  Int?
+  sheetNames  String?  // JSON array
+
+  // Image-specific
+  width       Int?
+  height      Int?
+  exifData    String?  // JSON
+
+  // Processing info
+  parsedAt    DateTime?
+  indexedAt   DateTime?
+  parseErrors String?  // JSON array of errors
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("file_metadata")
+}
+
+// Chat History - Riwayat percakapan
+model ChatHistory {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  title       String?
+  mode        String   @default("chat") // chat, workspace
+  status      String   @default("active") // active, archived
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  messages Message[]
+
+  @@map("chat_histories")
+}
+
+// Message - Pesan dalam percakapan
+model Message {
+  id           String      @id @default(cuid())
+  chatHistoryId String
+  chatHistory  ChatHistory @relation(fields: [chatHistoryId], references: [id], onDelete: Cascade)
+
+  role         String     // user, assistant, system
+  content      String
+  metadata     String     @default("{}") // JSON - tool calls, artifacts, etc.
+
+  createdAt    DateTime   @default(now())
+
+  @@map("messages")
+}
+
+// Artifact - Output hasil kerja agent
+model Artifact {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        String   // report, dashboard, summary, sop, presentation, export, timeline, diagram, comparison, visualization
+  format      String   // md, pdf, html, xlsx, csv, json, pptx
+  path        String   // Storage path
+  size        Int?     // bytes
+
+  // Metadata
+  metadata    String   @default("{}") // JSON - generation info, source files, etc.
+  preview     String?  // Text preview or base64 thumbnail
+
+  // Source tracking
+  sourceFiles String   @default("[]") // JSON array of file IDs used
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("artifacts")
+}
+
+// Activity Log - Log aktivitas workspace
+model ActivityLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  action      String   // created, scanned, parsed, indexed, generated, deleted, etc.
+  description String?
+  metadata    String   @default("{}") // JSON - additional info
+  status      String   @default("success") // success, failed, pending
+
+  createdAt   DateTime @default(now())
+
+  @@map("activity_logs")
+}
