@@ -114,25 +114,17 @@ export function ChatMessages({ messages, isLoading, onSelectPrompt }: ChatMessag
 
       {isLoading && (
         <div className="w-full px-6 py-8 max-w-4xl mx-auto">
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <div className="w-3 h-3 rounded-full bg-gray-400" />
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200">
+              <img src="/logo.svg" alt="Arunaki" className="w-5 h-5 object-contain" />
             </div>
-            <div className="pt-2">
-              <div className="flex gap-1.5">
-                <div
-                  className="w-2 h-2 rounded-full bg-gray-400"
-                  style={{ animation: "pulse-dot 1.4s ease-in-out infinite" }}
-                />
-                <div
-                  className="w-2 h-2 rounded-full bg-gray-400"
-                  style={{ animation: "pulse-dot 1.4s ease-in-out 0.2s infinite" }}
-                />
-                <div
-                  className="w-2 h-2 rounded-full bg-gray-400"
-                  style={{ animation: "pulse-dot 1.4s ease-in-out 0.4s infinite" }}
-                />
+            <div className="flex items-center gap-1.5 bg-gray-50 rounded-2xl rounded-tl-md px-4 py-3 border border-gray-100">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }} />
               </div>
+              <span className="text-sm text-gray-500 ml-1">Arunaki sedang berpikir...</span>
             </div>
           </div>
         </div>

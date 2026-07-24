@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChatMessages } from "../components/chat/ChatMessages";
@@ -16,6 +17,7 @@ export function ChatPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const chatId = searchParams.get("chat");
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
   const createChat = useMutation({
     mutationFn: async () => {
@@ -58,6 +60,16 @@ export function ChatPage() {
       if (!currentChatId) {
         currentChatId = await createChat.mutateAsync();
       }
+
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: tempId,
+        role: "user",
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
+
       try {
         const res = await fetch(`${API_BASE}/chat/${currentChatId}/send`, {
           method: "POST",
@@ -70,18 +82,21 @@ export function ChatPage() {
       }
     },
     onSuccess: () => {
+      setOptimisticMessages([]);
       queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
   });
 
-  const messages: Message[] =
+  const serverMessages: Message[] =
     messagesData?.map((msg: any) => ({
       id: msg.id,
       role: msg.role,
       content: msg.content,
       createdAt: msg.createdAt,
     })) || [];
+
+  const messages = [...serverMessages, ...optimisticMessages];
 
   const handleSend = (content: string) => {
     sendMessage.mutate(content);

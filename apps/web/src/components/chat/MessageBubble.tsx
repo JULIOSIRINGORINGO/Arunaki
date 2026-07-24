@@ -1,5 +1,5 @@
-import { Bot, User, Copy, RefreshCw, Trash2 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { User, Copy, RefreshCw, Trash2 } from "lucide-react";
+import Markdown from "react-markdown";
 
 interface Message {
   id: string;
@@ -15,58 +15,56 @@ interface MessageBubbleProps {
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
-  return (
-    <div className="flex gap-4 group animate-fade-in">
-      {/* Avatar */}
-      <div
-        className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-          isUser
-            ? "bg-gray-200"
-            : "bg-gray-100"
-        )}
-      >
-        {isUser ? (
-          <User size={16} className="text-gray-600" />
-        ) : (
-          <Bot size={16} className="text-gray-500" />
+  const time = message.createdAt
+    ? new Date(message.createdAt).toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
+
+  if (isUser) {
+    return (
+      <div className="flex flex-col items-end group animate-fade-in">
+        <div className="flex items-start gap-3 max-w-[75%]">
+          <div className="bg-gray-100 rounded-2xl rounded-br-md px-4 py-3 text-base text-gray-800 leading-relaxed">
+            <Markdown>{message.content}</Markdown>
+          </div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-200">
+            <User size={16} className="text-gray-600" />
+          </div>
+        </div>
+        {time && (
+          <span className="text-xs text-gray-400 mr-11">{time}</span>
         )}
       </div>
+    );
+  }
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 mb-1.5">
-          <span className="text-sm font-medium text-gray-900">
-            {isUser ? "You" : "Arunaki"}
-          </span>
-          {message.createdAt && (
-            <span className="text-xs text-gray-400">
-              {new Date(message.createdAt).toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          )}
+  return (
+    <div className="flex flex-col items-start group animate-fade-in">
+      <div className="flex items-start gap-3 max-w-[75%]">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200">
+          <img src="/logo.svg" alt="Arunaki" className="w-5 h-5 object-contain" />
         </div>
-
-        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-          {message.content}
+        <div className="text-base text-gray-700 leading-relaxed">
+          <Markdown>{message.content}</Markdown>
         </div>
-
-        {/* Actions - only for assistant messages */}
-        {!isUser && (
-          <div className="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-            <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-              <Copy size={14} />
-            </button>
-            <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-              <RefreshCw size={14} />
-            </button>
-            <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-              <Trash2 size={14} />
-            </button>
-          </div>
+      </div>
+      <div className="flex items-center gap-2 ml-11">
+        {time && (
+          <span className="text-xs text-gray-400">{time}</span>
         )}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <Copy size={14} />
+          </button>
+          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <RefreshCw size={14} />
+          </button>
+          <button className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );
