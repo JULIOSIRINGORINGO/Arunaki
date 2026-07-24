@@ -60,8 +60,33 @@ export class AiService {
       throw new Error('No response from AI');
     }
 
+    let content = choice.message?.content || '';
+
+    // Strip <think>...</think> tags if model includes reasoning tags
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // Strip internal chain-of-thought paragraphs if model leaked reasoning
+    if (
+      /^\s*(The user|Let's|Let me|I need|Parsing|Looking at|First,|It seems|We need|In the input|Tokens:)/i.test(
+        content,
+      )
+    ) {
+      if (content.includes('```')) {
+        content = content.substring(content.indexOf('```')).trim();
+      } else {
+        const paragraphs = content.split(/\n\s*\n/);
+        const cleanParagraphs = paragraphs.filter(
+          (p: string) =>
+            !/^\s*(The user|Let's|Let me|I need|Parsing|Looking at|First,|It seems|We need|In the input|Tokens:|Sizes set:|List of)/i.test(
+              p.trim(),
+            ),
+        );
+        content = cleanParagraphs.join('\n\n').trim();
+      }
+    }
+
     return {
-      content: choice.message.content,
+      content,
       model: data.model,
       usage: {
         promptTokens: data.usage?.prompt_tokens || 0,
@@ -74,22 +99,28 @@ export class AiService {
   getSystemPrompt(
     mode: 'chat' | 'workspace',
     workspaceContext?: string,
+    knowledgeContext?: string,
   ): string {
-    const basePrompt = `You are Arunaki AI Assistant. You help users with their work.
-Be helpful, professional, and concise.
-Respond in the same language as the user's message.`;
+    const basePrompt = `Anda adalah Arunaki AI Assistant, asisten AI profesional yang membantu pengguna menyelesaikan pekerjaan mereka secara cerdas dan akurat.
+ATURAN MULTI-BAHASA: Anda WAJIB SELALU merespons dan menjawab menggunakan BAHASA YANG SAMA DENGAN PESAN PENGGUNA (Auto-Detect Language). Jika pengguna bertanya dalam Bahasa Indonesia, jawab dalam Bahasa Indonesia. Jika pengguna bertanya dalam Bahasa Inggris atau bahasa lain, jawab dalam bahasa tersebut.
+DILARANG KERAS mencetak draf pemikiran internal atau proses berpikir (seperti "The user wants me to..."). Berikan langsung jawaban akhir Anda secara rapi.`;
 
     if (mode === 'workspace' && workspaceContext) {
       return `${basePrompt}
 
-WORKSPACE CONTEXT:
+KONTEKS WORKSPACE:
 ${workspaceContext}
 
-You are currently in Workspace mode. You can help analyze documents, create reports, and perform tasks related to this workspace.`;
+Anda saat ini berada dalam mode Workspace Agent.`;
     }
 
     return `${basePrompt}
 
-You are in Chat mode. Help users with general questions, writing, brainstorming, and analysis.`;
+Anda saat ini berada dalam mode AI Assistant (Chat Mode) yang terhubung dengan dokumen rujukan Knowledge Base.
+${
+  knowledgeContext
+    ? `\n\n=== DOKUMEN ACUAN KNOWLEDGE BASE ===\n${knowledgeContext}\n=== AKHIR DOKUMEN ACUAN ===\nPatuhi dan gunakan seluruh aturan dari dokumen Knowledge Base di atas saat merespons permintaan pengguna.`
+    : ''
+}`;
   }
 }

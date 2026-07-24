@@ -107,6 +107,8 @@ Sidebar adalah **persistent navigation hub** yang selalu tersedia:
 │                     │
 │  📁 Workspace       │  → Access all workspaces
 │                     │
+│  📚 Knowledge       │  → Manage Domain Knowledge Base
+│                     │
 │  🕘 Riwayat Chat    │  → Conversation history
 │                     │
 │  ⚙️  Settings       │  → App settings

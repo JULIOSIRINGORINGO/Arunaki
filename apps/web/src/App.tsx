@@ -6,6 +6,7 @@ import { WorkspacePage } from "./pages/WorkspacePage";
 import { WorkspaceDetailPage } from "./pages/WorkspaceDetailPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { KnowledgePage } from "./pages/KnowledgePage";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<ChatPage />} />
             <Route path="/workspace" element={<WorkspacePage />} />
             <Route path="/workspace/:id" element={<WorkspaceDetailPage />} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

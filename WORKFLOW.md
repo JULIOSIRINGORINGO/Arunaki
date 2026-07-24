@@ -199,6 +199,7 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `/` → Chat Mode (default)
 - [x] `/workspace` → Workspace List
 - [x] `/workspace/:id` → Workspace Detail
+- [x] `/knowledge` → Knowledge (Domain Knowledge Base)
 - [x] `/settings` → Settings
 - [x] `/history` → Chat History
 
@@ -337,10 +338,28 @@ A phase is ONLY marked ✅ when:
 
 ---
 
+## Phase 15: Enterprise Document Tools Suite & Canvas Panel ✅ DONE
+
+**Goal:** Enterprise document tools suite, dynamic Knowledge Base injection, and Canvas Panel exports.
+
+### 15.1 Enterprise Tools Suite (Backend)
+- [x] `ToolsModule` & `ToolRegistryService` — Central tool registry and execution engine
+- [x] `TextExtractorTool` — 100% generic open-source `compromise` NLP & `lodash` data aggregator
+- [x] `EnterpriseCalculatorTool` — Financial & quantity subtotal, tax, and discount calculator
+- [x] `DocumentGeneratorTool` — Spreadsheet & document export engine (Excel `.xlsx`, `.csv`, `.html`)
+
+### 15.2 Canvas Panel & Knowledge Base Integration
+- [x] Knowledge Base dynamic injection into system prompt (`garment.md`)
+- [x] Plain text card rendering with `max-h-[75%]`, padding, and inside top-right copy button
+- [x] Header export buttons for Download CSV (`.csv`) and Download TXT (`.txt`)
+- [x] Leaked reasoning sanitizer filtering in `AiService` and `ChatPage`
+
+---
+
 ## Current Status
 
-**Phase:** 4 - File Module  
-**Next:** Build FileModule for file metadata and content storage
+**Phase:** Phase 15 Complete — Enterprise Document Tools Suite & Canvas Panel ✅  
+**Next:** Production readiness & workspace agent enhancements
 
 ---
 
@@ -348,34 +367,28 @@ A phase is ONLY marked ✅ when:
 
 ```
 apps/api/src/
-├── common/
-│   ├── base.service.ts
-│   ├── dtos/api-response.dto.ts
-│   ├── interfaces/base-repository.interface.ts
-│   └── providers/
-│       ├── prisma.module.ts
-│       ├── prisma.service.ts
-│       └── prisma-base.repository.ts
-├── config/config.module.ts
-├── logger/logger.module.ts
+├── common/            ✅
+├── config/            ✅
+├── logger/            ✅
 ├── modules/
 │   ├── workspace/     ✅
 │   ├── source/        ✅
 │   ├── chat/          ✅
 │   ├── ai/            ✅
-│   ├── file/          🔲 NEXT
-│   ├── parser/        🔲
-│   ├── storage/       🔲
-│   ├── search/        🔲
-│   └── artifact/      🔲
+│   ├── file/          ✅
+│   ├── parser/        ✅
+│   ├── storage/       ✅
+│   ├── search/        ✅
+│   ├── artifact/      ✅
+│   └── tools/         ✅ (Enterprise Tools Suite)
 ├── app.module.ts
 └── main.ts
 
 apps/web/src/
-├── components/        🔲
-├── pages/             🔲
-├── providers/         🔲
-├── hooks/             🔲
+├── components/
+│   ├── chat/          ✅ (ChatMessages, ChatInput, CanvasPanel)
+│   └── layout/        ✅ (Sidebar, AppLayout)
+├── pages/             ✅ (ChatPage, WorkspacePage, KnowledgePage, SettingsPage)
 ├── App.tsx
 └── main.tsx
 ```

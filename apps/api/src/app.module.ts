@@ -12,6 +12,7 @@ import { ParserModule } from './modules/parser/parser.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { ArtifactModule } from './modules/artifact/artifact.module.js';
+import { ToolsModule } from './modules/tools/tools.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ArtifactModule } from './modules/artifact/artifact.module.js';
     StorageModule,
     SearchModule,
     ArtifactModule,
+    ToolsModule,
   ],
   controllers: [AppController],
   providers: [],

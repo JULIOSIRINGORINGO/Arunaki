@@ -176,13 +176,13 @@ Workspace diperlakukan sebagai satu kesatuan pengetahuan.
 
 ---
 
-# 10. Domain Knowledge
+# 10. Domain Knowledge (AI Assistant Knowledge Base)
 
-Domain Knowledge digunakan untuk meningkatkan kualitas analisis.
+Domain Knowledge dikhususkan untuk AI Assistant Mode guna memberikan konteks acuan referensi dan meningkatkan kualitas konsultasi/percakapan.
 
-Domain Knowledge bukan pengganti Workspace.
+Domain Knowledge terpisah dari Workspace Agent dan tidak menggantikan konteks Workspace.
 
-Jika terjadi konflik antara Domain Knowledge dan isi Workspace, AI harus mengutamakan data Workspace.
+Jika AI Assistant digunakan bersama konteks Workspace, data Workspace tetap menjadi prioritas utama.
 
 ---
 

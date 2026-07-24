@@ -224,7 +224,7 @@ Contoh Domain Knowledge Garment:
 * Proses produksi.
 * Sistem costing.
 
-Domain Knowledge bersifat terpisah dari Workspace dan dapat digunakan pada setiap percakapan sesuai pengaturan pengguna.
+Domain Knowledge bersifat terpisah dari Workspace dan diakses/dikelola melalui menu Knowledge pada sidebar utama untuk digunakan pada setiap percakapan sesuai pengaturan pengguna.
 
 ---
 

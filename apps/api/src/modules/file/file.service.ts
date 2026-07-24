@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { File } from '@prisma/client';
 import * as path from 'path';
 import { BaseService } from '../../common/base.service.js';
+import 'multer';
 import { FileRepository } from './file.repository.js';
 import { StorageService } from '../storage/storage.service.js';
 import { SourceService } from '../source/source.service.js';

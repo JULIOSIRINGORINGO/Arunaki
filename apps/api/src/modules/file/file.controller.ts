@@ -14,6 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import 'multer';
 import { FileService } from './file.service.js';
 import {
   successResponse,

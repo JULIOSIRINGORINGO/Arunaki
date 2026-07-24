@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Pin,
   Trash2,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -150,7 +151,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="px-5 pt-6 pb-5 flex items-center gap-3">
+        <div className="px-5 pt-6 pb-4 flex items-center gap-3">
           <img
             src="/logo.svg"
             alt="Arunaki Logo"
@@ -160,17 +161,16 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           <span className="text-lg font-bold text-gray-900 tracking-tight">Arunaki</span>
         </div>
 
-        <div className="px-3.5 space-y-2">
+        <div className="px-3.5 space-y-1 mt-2">
           <button
             onClick={() => createChat.mutate()}
             disabled={createChat.isPending}
             className={cn(
-              "flex items-center justify-center gap-2.5 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer shadow-xs",
-              "bg-black text-white hover:bg-gray-800 active:scale-[0.99]",
+              "flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer border border-transparent text-gray-700 hover:bg-gray-200/50 active:scale-[0.99]",
               createChat.isPending && "opacity-60 cursor-not-allowed"
             )}
           >
-            <Plus className="w-4 h-4 text-white shrink-0" />
+            <Plus className="w-4 h-4 text-gray-700 shrink-0" />
             <span>Chat Baru</span>
           </button>
 
@@ -188,6 +188,22 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
           >
             <Folder className="w-4 h-4 text-gray-700 shrink-0" />
             <span>Workspace</span>
+          </NavLink>
+
+          <NavLink
+            to="/knowledge"
+            onClick={onClose}
+            className={({ isActive }) =>
+              cn(
+                "flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer border",
+                isActive
+                  ? "bg-gray-200/80 border-gray-300/40 text-gray-900 font-semibold"
+                  : "border-transparent text-gray-700 hover:bg-gray-200/50"
+              )
+            }
+          >
+            <BookOpen className="w-4 h-4 text-gray-700 shrink-0" />
+            <span>Knowledge</span>
           </NavLink>
         </div>
 

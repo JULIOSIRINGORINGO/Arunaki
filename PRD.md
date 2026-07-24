@@ -15,7 +15,7 @@ Arunaki adalah **Autonomous Workspace AI** yang membantu pengguna menyelesaikan 
 **AI Assistant**
 - Untuk percakapan umum tanpa ketergantungan pada Workspace
 - Mode default ketika aplikasi dibuka
-- Dapat menggunakan Domain Knowledge
+- Menggunakan Knowledge Base (Domain Knowledge) khusus AI Assistant untuk konsultasi & acuan referensi
 
 **Workspace Agent**
 - Untuk pekerjaan yang membutuhkan konteks Workspace
@@ -88,6 +88,7 @@ Workspace dianalisis secara menyeluruh oleh AI sebelum pengguna mulai memberikan
 ├─────────────────────────────────┤
 │ ✨ Chat Baru                    │
 │ 📁 Workspace                    │
+│ 📚 Knowledge                    │
 │ 🕘 Riwayat Chat                │
 │ ⚙️  Settings                    │
 └─────────────────────────────────┘

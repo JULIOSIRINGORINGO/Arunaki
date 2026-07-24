@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   Controller,
   Get,
@@ -17,13 +19,34 @@ import {
   errorResponse,
 } from '../../common/dtos/api-response.dto.js';
 
+import { ToolRegistryService } from '../tools/tool-registry.service.js';
+
 @Controller('chat')
 export class ChatController {
   constructor(
     private readonly chatHistoryService: ChatHistoryService,
     private readonly messageService: MessageService,
     private readonly aiService: AiService,
+    private readonly toolRegistryService: ToolRegistryService,
   ) {}
+
+  private getActiveKnowledgeContext(): string {
+    try {
+      const pathsToTry = [
+        path.resolve(process.cwd(), '../../garment.md'),
+        path.resolve(process.cwd(), 'garment.md'),
+        path.resolve(process.cwd(), '../garment.md'),
+      ];
+      for (const p of pathsToTry) {
+        if (fs.existsSync(p)) {
+          return fs.readFileSync(p, 'utf-8');
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return '';
+  }
 
   @Post()
   async createChat(
@@ -139,9 +162,31 @@ export class ChatController {
         await this.chatHistoryService.updateTitle(id, title);
       }
 
+      // Check if message requires deterministic tool processing (e.g. garment / order extraction)
+      let toolOutput: any = null;
+      const lowerContent = body.content.toLowerCase();
+      if (
+        lowerContent.includes('kaos') ||
+        lowerContent.includes('ukuran') ||
+        lowerContent.includes('direkap') ||
+        lowerContent.includes('rekap')
+      ) {
+        try {
+          toolOutput = await this.toolRegistryService.executeTool(
+            'parse_garment_order',
+            { rawText: body.content },
+          );
+        } catch (e) {
+          // ignore
+        }
+      }
+
       const history = await this.messageService.findByChatHistoryId(id);
+      const knowledgeContext = this.getActiveKnowledgeContext();
       const systemPrompt = this.aiService.getSystemPrompt(
         chat.mode as 'chat' | 'workspace',
+        undefined,
+        knowledgeContext,
       );
 
       const messages = [
@@ -163,6 +208,7 @@ export class ChatController {
       return successResponse({
         message: assistantMessage,
         usage: aiResponse.usage,
+        toolOutput,
       });
     } catch (error) {
       return errorResponse('AI_FAILED', error.message);
