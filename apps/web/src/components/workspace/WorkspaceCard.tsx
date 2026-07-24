@@ -1,6 +1,8 @@
-import { FolderOpen, MoreVertical, Trash2 } from "lucide-react";
+/* Hallmark · component: workspace-card · genre: atmospheric · theme: Studio */
+import { FolderOpen, MoreVertical, Trash2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { cn } from "../../lib/utils";
 
 interface WorkspaceCardProps {
   id: string;
@@ -20,70 +22,95 @@ export function WorkspaceCard({
   onDelete,
 }: WorkspaceCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const statusColors: Record<string, string> = {
-    ready: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    processing: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-    pending: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
+    ready: { bg: "bg-success/10", text: "text-success", dot: "bg-success" },
+    processing: { bg: "bg-warning/10", text: "text-warning", dot: "bg-warning" },
+    pending: { bg: "bg-surface-200", text: "text-surface-500", dot: "bg-surface-400" },
   };
 
+  const s = statusConfig[status] || statusConfig.pending;
+
   return (
-    <div className="relative p-4 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <Link to={`/workspace/${id}`} className="flex-1">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <FolderOpen
-                className="text-purple-600 dark:text-purple-400"
-                size={20}
-              />
+    <div className="relative p-4 border border-surface-200 rounded-lg bg-surface-100 hover:bg-surface-200 hover:border-surface-300 transition-all duration-150 group">
+      <div className="flex items-start justify-between mb-3">
+        <Link to={`/workspace/${id}`} className="flex-1 min-w-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
+              <FolderOpen className="text-accent" size={16} />
             </div>
-            <div>
-              <h3 className="font-medium text-gray-900 dark:text-white">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-surface-800 truncate text-[13px]">
                 {name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[11px] text-surface-500">
                 {fileCount} files
               </p>
             </div>
           </div>
         </Link>
 
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="p-1 rounded text-surface-500 hover:text-surface-700 hover:bg-surface-300 transition-colors opacity-0 group-hover:opacity-100"
           >
-            <MoreVertical size={16} className="text-gray-500" />
+            <MoreVertical size={14} />
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 top-8 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+            <div className="absolute right-0 top-7 w-36 bg-surface-100 border border-surface-200 rounded-lg shadow-lg z-10 py-1 animate-fade-in">
+              <Link
+                to={`/workspace/${id}`}
+                className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[12px] text-surface-700 hover:bg-surface-200 transition-colors"
+                onClick={() => setShowMenu(false)}
+              >
+                <ExternalLink size={12} />
+                Buka
+              </Link>
               <button
                 onClick={() => {
                   onDelete?.(id);
                   setShowMenu(false);
                 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                className="flex items-center gap-2 w-full px-2.5 py-1.5 text-[12px] text-error hover:bg-surface-200 transition-colors"
               >
-                <Trash2 size={14} />
-                Delete
+                <Trash2 size={12} />
+                Hapus
               </button>
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-2">
+      <div className="flex items-center gap-2">
         <span
-          className={`px-2 py-0.5 text-xs rounded-full ${
-            statusColors[status] || statusColors.pending
-          }`}
+          className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded",
+            s.bg,
+            s.text
+          )}
         >
+          <span className={cn("w-1 h-1 rounded-full", s.dot)} />
           {status}
         </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          {new Date(createdAt).toLocaleDateString()}
+        <span className="text-[10px] text-surface-500">
+          {new Date(createdAt).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
         </span>
       </div>
     </div>

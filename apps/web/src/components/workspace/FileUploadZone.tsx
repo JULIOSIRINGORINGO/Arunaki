@@ -1,5 +1,6 @@
+/* Hallmark · component: file-upload-zone · genre: atmospheric · theme: Studio */
 import { useState, useCallback, useRef } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
 
 interface UploadedFile {
   id: string;
@@ -57,7 +58,7 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
         setUploadedFiles(data.data || []);
         onUploadComplete();
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.");
     } finally {
       setIsUploading(false);
@@ -74,13 +75,16 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files.length > 0) {
-      uploadFiles(e.dataTransfer.files);
-    }
-  }, [workspaceId]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      if (e.dataTransfer.files.length > 0) {
+        uploadFiles(e.dataTransfer.files);
+      }
+    },
+    [workspaceId]
+  );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -89,19 +93,20 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
         className={`
-          relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-          ${isDragging
-            ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
-            : "border-gray-300 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600"
+          relative border border-dashed rounded-lg p-3 text-center cursor-pointer transition-all duration-150
+          ${
+            isDragging
+              ? "border-accent/50 bg-accent/5"
+              : "border-surface-300 hover:border-surface-400 hover:bg-surface-200/50"
           }
-          ${isUploading ? "opacity-50 pointer-events-none" : ""}
+          ${isUploading ? "opacity-40 pointer-events-none" : ""}
         `}
       >
         <input
@@ -112,37 +117,45 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
           onChange={handleFileSelect}
         />
         <Upload
-          size={24}
-          className={`mx-auto mb-2 ${isDragging ? "text-purple-500" : "text-gray-400"}`}
+          size={16}
+          className={`mx-auto mb-1 ${isDragging ? "text-accent" : "text-surface-500"}`}
         />
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {isUploading ? "Uploading..." : "Drop files or click to upload"}
+        <p className="text-[11px] font-medium text-surface-600">
+          {isUploading ? "Uploading..." : "Drop files or click"}
         </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+        <p className="text-[9px] text-surface-500 mt-0.5">
           PDF, DOCX, XLSX, CSV, TXT, MD
         </p>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-          <AlertCircle size={14} />
-          {error}
+        <div className="flex items-center gap-1.5 text-[11px] text-error bg-error/10 rounded px-2.5 py-1.5">
+          <AlertCircle size={11} className="shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-error/60 hover:text-error"
+          >
+            <X size={11} />
+          </button>
         </div>
       )}
 
       {uploadedFiles.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-px">
           {uploadedFiles.map((file) => (
             <div
               key={file.id}
-              className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-success/10 rounded"
             >
-              <CheckCircle size={14} className="text-green-500 shrink-0" />
-              <FileText size={14} className="text-gray-400 shrink-0" />
-              <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+              <CheckCircle size={10} className="text-success shrink-0" />
+              <FileText size={10} className="text-surface-500 shrink-0" />
+              <span className="text-[10px] text-surface-700 truncate flex-1">
                 {file.name}
               </span>
-              <span className="text-xs text-gray-400">{formatSize(file.size)}</span>
+              <span className="text-[9px] text-surface-500">
+                {formatSize(file.size)}
+              </span>
             </div>
           ))}
         </div>

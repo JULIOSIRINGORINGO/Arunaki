@@ -5,23 +5,25 @@ interface SidebarItemProps {
   to: string;
   icon: React.ReactNode;
   label: string;
+  collapsed?: boolean;
 }
 
-export function SidebarItem({ to, icon, label }: SidebarItemProps) {
+export function SidebarItem({ to, icon, label, collapsed }: SidebarItemProps) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+          "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+          collapsed && "justify-center px-0",
           isActive
-            ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-            : "text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+            ? "bg-surface-800 text-white shadow-sm"
+            : "text-surface-400 hover:text-white hover:bg-surface-800/60"
         )
       }
     >
       {icon}
-      <span>{label}</span>
+      {!collapsed && <span>{label}</span>}
     </NavLink>
   );
 }
