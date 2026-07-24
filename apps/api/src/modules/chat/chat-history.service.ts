@@ -13,7 +13,7 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
     return this.repository.create({
       mode,
       workspaceId: workspaceId || null,
-      title: 'Chat Baru',
+      title: null,
     });
   }
 
@@ -21,7 +21,19 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
     return this.repository.findByWorkspaceId(workspaceId);
   }
 
-  async findAllChats(): Promise<ChatHistory[]> {
+  async findAllChats(): Promise<any[]> {
     return this.repository.findAllChats();
+  }
+
+  async togglePin(id: string): Promise<ChatHistory> {
+    return this.repository.togglePin(id);
+  }
+
+  async deleteChat(id: string): Promise<void> {
+    return this.repository.delete(id);
+  }
+
+  async updateTitle(id: string, title: string): Promise<ChatHistory> {
+    return this.repository.update(id, { title } as any);
   }
 }

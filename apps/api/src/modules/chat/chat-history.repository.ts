@@ -19,10 +19,25 @@ export class ChatHistoryRepository extends PrismaBaseRepository<ChatHistory> {
     });
   }
 
-  async findAllChats(): Promise<ChatHistory[]> {
+  async findAllChats(): Promise<any[]> {
     return this.prisma.chatHistory.findMany({
       where: { mode: 'chat' },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
+      include: {
+        messages: {
+          where: { role: 'user' },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+        },
+      },
+    });
+  }
+
+  async togglePin(id: string): Promise<ChatHistory> {
+    const chat = await this.prisma.chatHistory.findUnique({ where: { id } });
+    return this.prisma.chatHistory.update({
+      where: { id },
+      data: { pinned: !chat?.pinned },
     });
   }
 }

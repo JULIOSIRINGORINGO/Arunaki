@@ -162,6 +162,7 @@ model ChatHistory {
   title       String?
   mode        String   @default("chat") // chat, workspace
   status      String   @default("active") // active, archived
+  pinned      Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

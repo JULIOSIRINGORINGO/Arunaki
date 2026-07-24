@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AiService } from '../ai/ai.service.js';
@@ -55,6 +55,26 @@ export class ChatController {
     }
   }
 
+  @Patch(':id/pin')
+  async togglePin(@Param('id') id: string) {
+    try {
+      const chat = await this.chatHistoryService.togglePin(id);
+      return successResponse(chat);
+    } catch (error) {
+      return errorResponse('UPDATE_FAILED', error.message);
+    }
+  }
+
+  @Delete(':id')
+  async deleteChat(@Param('id') id: string) {
+    try {
+      await this.chatHistoryService.deleteChat(id);
+      return successResponse({ deleted: true });
+    } catch (error) {
+      return errorResponse('DELETE_FAILED', error.message);
+    }
+  }
+
   @Get(':id/messages')
   async getMessages(@Param('id') id: string) {
     try {
@@ -84,6 +104,11 @@ export class ChatController {
       }
 
       await this.messageService.createMessage(id, 'user', body.content);
+
+      if (!chat.title) {
+        const title = body.content.length > 50 ? body.content.substring(0, 50) + '...' : body.content;
+        await this.chatHistoryService.updateTitle(id, title);
+      }
 
       const history = await this.messageService.findByChatHistoryId(id);
       const systemPrompt = this.aiService.getSystemPrompt(chat.mode as 'chat' | 'workspace');
