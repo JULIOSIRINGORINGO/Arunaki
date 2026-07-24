@@ -6,9 +6,10 @@ import { LoggerModule } from './logger/logger.module.js';
 import { WorkspaceModule } from './modules/workspace/workspace.module.js';
 import { SourceModule } from './modules/source/source.module.js';
 import { ChatModule } from './modules/chat/chat.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, LoggerModule, WorkspaceModule, SourceModule, ChatModule],
+  imports: [ConfigModule, PrismaModule, LoggerModule, WorkspaceModule, SourceModule, ChatModule, AiModule],
   controllers: [AppController],
   providers: [],
 })

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
+import { AiService } from '../ai/ai.service.js';
 import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
 
 @Controller('chat')
@@ -8,6 +9,7 @@ export class ChatController {
   constructor(
     private readonly chatHistoryService: ChatHistoryService,
     private readonly messageService: MessageService,
+    private readonly aiService: AiService,
   ) {}
 
   @Post()
@@ -70,6 +72,37 @@ export class ChatController {
       return successResponse(message);
     } catch (error) {
       return errorResponse('CREATE_FAILED', error.message);
+    }
+  }
+
+  @Post(':id/send')
+  async sendMessage(@Param('id') id: string, @Body() body: { content: string }) {
+    try {
+      const chat = await this.chatHistoryService.findById(id);
+      if (!chat) {
+        return errorResponse('NOT_FOUND', 'Chat not found');
+      }
+
+      await this.messageService.createMessage(id, 'user', body.content);
+
+      const history = await this.messageService.findByChatHistoryId(id);
+      const systemPrompt = this.aiService.getSystemPrompt(chat.mode as 'chat' | 'workspace');
+
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      ];
+
+      const aiResponse = await this.aiService.chat(messages);
+
+      const assistantMessage = await this.messageService.createMessage(id, 'assistant', aiResponse.content);
+
+      return successResponse({
+        message: assistantMessage,
+        usage: aiResponse.usage,
+      });
+    } catch (error) {
+      return errorResponse('AI_FAILED', error.message);
     }
   }
 }

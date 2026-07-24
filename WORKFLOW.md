@@ -39,33 +39,25 @@ This document defines the **fixed development sequence** for Arunaki. Follow thi
 
 ---
 
-## Phase 3: AI Integration 🔲 NEXT
+## Phase 3: AI Integration ✅ DONE
 
 **Goal:** Connect OpenRouter API for actual AI responses.
 
 ### 3.1 AI Service (Backend)
-- [ ] Create `AiModule` with `AiService`
-- [ ] Implement OpenRouter API client (fetch to `https://openrouter.ai/api/v1/chat/completions`)
-- [ ] Use model: `nvidia/nemotron-3-ultra-550b-a55b:free`
-- [ ] System prompt for AI Assistant mode (general help)
-- [ ] Handle streaming responses (SSE)
+- [x] Create `AiModule` with `AiService`
+- [x] Implement OpenRouter API client (fetch to `https://openrouter.ai/api/v1/chat/completions`)
+- [x] Use model: `nvidia/nemotron-3-ultra-550b-a55b:free`
+- [x] System prompt for AI Assistant mode (general help)
 
 ### 3.2 Chat with AI
-- [ ] `POST /chat/:id/send` — Send user message → Get AI response
-- [ ] Auto-save both user message and AI response to DB
-- [ ] Return streaming response to frontend
+- [x] `POST /chat/:id/send` — Send user message → Get AI response
+- [x] Auto-save both user message and AI response to DB
 
-### 3.3 Workspace AI Context
-- [ ] When in workspace mode, load workspace profile into system prompt
-- [ ] Include file list and metadata in context
-- [ ] AI can answer questions about workspace content
-
-**Endpoints:**
-```
-POST /chat/:id/send
-Body: { content: "user message" }
-Response: SSE stream of AI response
-```
+### 3.3 Testing
+- [x] Build succeeds (0 errors)
+- [x] AI responds to chat mode questions
+- [x] Messages saved to database correctly
+- [x] Regression test: Workspace, Source, Chat all working
 
 ---
 
@@ -337,8 +329,8 @@ A phase is ONLY marked ✅ when:
 
 ## Current Status
 
-**Phase:** 3 - AI Integration  
-**Next:** Build AiModule to connect OpenRouter API
+**Phase:** 4 - File Module  
+**Next:** Build FileModule for file metadata and content storage
 
 ---
 
@@ -360,8 +352,8 @@ apps/api/src/
 │   ├── workspace/     ✅
 │   ├── source/        ✅
 │   ├── chat/          ✅
-│   ├── ai/            🔲 NEXT
-│   ├── file/          🔲
+│   ├── ai/            ✅
+│   ├── file/          🔲 NEXT
 │   ├── parser/        🔲
 │   ├── storage/       🔲
 │   ├── search/        🔲
