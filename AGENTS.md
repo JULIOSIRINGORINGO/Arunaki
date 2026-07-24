@@ -17,8 +17,11 @@ Always follow these documents, in this priority order:
 3. UX_UI.md
 4. INTELLIGENCE.md
 5. ARCHITECTURE.md
+6. **WORKFLOW.md** — Development roadmap & checklist
 
 **Priority order means conflict resolution, not just reading order.** If two documents disagree, the higher-numbered-priority document wins (VISION > PRD > UX_UI > INTELLIGENCE > ARCHITECTURE). If ARCHITECTURE.md conflicts with PRD.md, PRD.md wins — but you must still flag the conflict (see "Handling Conflicts & Ambiguity" below) instead of silently picking one.
+
+WORKFLOW.md is the **execution guide** — it defines what to build and in what order. Always check WORKFLOW.md first before starting any task to know the current phase and what's been completed.
 
 If a task requires something not covered by any document, do not invent a convention. Stop and ask, or propose an option and wait for confirmation.
 
@@ -54,24 +57,28 @@ If a requested task appears to require violating any of the above, treat it as a
 
 ## Workflow
 
-1. Understand the task — identify the actual Goal, not just the literal wording.
-2. Review existing code and relevant documentation before writing anything new.
-3. Plan the implementation — identify which modules are affected and confirm this matches the module boundaries in ARCHITECTURE.md.
-4. Implement with minimal changes — do not refactor unrelated code as a side effect.
-5. Run relevant tests (Vitest for unit/integration, Playwright for E2E where applicable). Add tests for new behavior when none exist.
-6. Verify the result against the original Goal, not just against "no errors."
-7. Update documentation if the change affects behavior, architecture, or public interfaces described in existing docs.
+1. **Read WORKFLOW.md** — Check current phase and completed items.
+2. Understand the task — identify the actual Goal, not just the literal wording.
+3. Review existing code and relevant documentation before writing anything new.
+4. Plan the implementation — identify which modules are affected and confirm this matches the module boundaries in ARCHITECTURE.md.
+5. Implement with minimal changes — do not refactor unrelated code as a side effect.
+6. Run relevant tests (Vitest for unit/integration, Playwright for E2E where applicable). Add tests for new behavior when none exist.
+7. Verify the result against the original Goal, not just against "no errors."
+8. **Update WORKFLOW.md** — Mark completed items with ✅ and move to next phase.
+9. Update documentation if the change affects behavior, architecture, or public interfaces described in existing docs.
 
 ---
 
 ## Rules
 
+- **Check WORKFLOW.md first** — Before starting any task, read WORKFLOW.md to know the current phase. Mark completed items with ✅.
 - Do not violate the project architecture (see "Architecture & Intelligence Compliance").
 - Reuse existing implementations; search the codebase before writing something that may already exist.
 - Avoid duplicate code and duplicate abstractions.
 - Do not introduce new dependencies without explicit approval. If a new dependency seems necessary, stop and propose it (name, purpose, alternatives considered) instead of adding it directly.
 - Keep changes within the requested scope. If you notice unrelated issues, report them separately instead of fixing them inline.
 - Never delete or overwrite existing data-affecting code paths without the Approval Gate step above.
+- Do not skip phases in WORKFLOW.md. Complete current phase before moving to next.
 
 ---
 
@@ -79,6 +86,7 @@ If a requested task appears to require violating any of the above, treat it as a
 
 Verify that:
 
+- **WORKFLOW.md updated** — Current phase items marked with ✅ if completed.
 - The task is completed and matches the actual Goal (not just a literal reading of the request).
 - No existing functionality is broken — relevant tests pass.
 - The architecture and module boundaries are preserved (Section: Architecture & Intelligence Compliance).
