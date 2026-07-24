@@ -1,11 +1,15 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { WorkspaceService } from './workspace.service.js';
+import { WorkspaceInitService } from './workspace-init.service.js';
 import { CreateWorkspaceDto, UpdateWorkspaceDto } from './dtos/workspace.dto.js';
 import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
 
 @Controller('workspaces')
 export class WorkspaceController {
-  constructor(private readonly workspaceService: WorkspaceService) {}
+  constructor(
+    private readonly workspaceService: WorkspaceService,
+    private readonly workspaceInitService: WorkspaceInitService,
+  ) {}
 
   @Post()
   async create(@Body() dto: CreateWorkspaceDto) {
@@ -55,6 +59,16 @@ export class WorkspaceController {
       return successResponse(null);
     } catch (error) {
       return errorResponse('DELETE_FAILED', error.message);
+    }
+  }
+
+  @Post(':id/initialize')
+  async initialize(@Param('id') id: string) {
+    try {
+      const progress = await this.workspaceInitService.initialize(id);
+      return successResponse(progress);
+    } catch (error) {
+      return errorResponse('INIT_FAILED', error.message);
     }
   }
 }
