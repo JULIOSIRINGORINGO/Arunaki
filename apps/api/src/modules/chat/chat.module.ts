@@ -7,9 +7,10 @@ import { MessageRepository } from './message.repository.js';
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { AiModule } from '../ai/ai.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
+import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 
 @Module({
-  imports: [PrismaModule, AiModule, ToolsModule],
+  imports: [PrismaModule, AiModule, ToolsModule, KnowledgeModule],
   controllers: [ChatController],
   providers: [
     ChatHistoryService,

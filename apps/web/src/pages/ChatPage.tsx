@@ -138,9 +138,15 @@ export function ChatPage() {
 
         if (canvasContent) {
           const firstTool = toolOutputs[0];
-          const title = firstTool?.toolName
-            ? firstTool.toolName.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
-            : "Hasil";
+          let title = "Hasil";
+          if (firstTool?.toolName) {
+            const toolTitles: Record<string, string> = {
+              calculate: "Kalkulasi Harga",
+              extract_structured_data: "Ekstraksi Data",
+              generate_export: "Dokumen Export",
+            };
+            title = toolTitles[firstTool.toolName] || firstTool.toolName.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+          }
 
           setActiveCanvasData({
             id: `canvas-${Date.now()}`,

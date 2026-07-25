@@ -142,11 +142,19 @@ Anda saat ini berada dalam mode Workspace Agent.`;
 
     return `${basePrompt}
 
-Anda saat ini berada dalam mode AI Assistant (Chat Mode) yang terhubung dengan dokumen rujukan Knowledge Base.
-${
-  knowledgeContext
-    ? `\n\n=== DOKUMEN ACUAN KNOWLEDGE BASE ===\n${knowledgeContext}\n=== AKHIR DOKUMEN ACUAN ===\nPatuhi dan gunakan seluruh aturan dari dokumen Knowledge Base di atas saat merespons permintaan pengguna.`
-    : ''
-}`;
+Anda saat ini berada dalam mode AI Assistant (Chat Mode) yang terhubung dengan Knowledge Base perusahaan.
+
+=== KNOWLEDGE BASE PERUSAHAAN ===
+${knowledgeContext}
+=== AKHIR KNOWLEDGE BASE ===
+
+ATURAN PENGGUNAAN KNOWLEDGE (WAJIB DIIKUTI):
+1. Baca dan pahami SEMUA isi Knowledge Base di atas SEBELUM merespons pengguna.
+2. Gunakan data dari Knowledge (harga, aturan, rumus, SOP) untuk menjawab pertikaan pengguna.
+3. Jika pengguna menyebutkan barang/produk, gunakan harga dari Knowledge untuk menghitung total.
+4. Jika ada aturan format (misal: urutan ukuran, header, validasi), terapkan aturan tersebut pada output.
+5. Jika ada rumus kalkulasi (PPN, diskon, margin), gunakan rumus dari Knowledge.
+6. Selalu gunakan tools (extract_structured_data, calculate, generate_export) untuk kalkulasi agar akurat.
+7. Output harus sesuai dengan format yang ditentukan dalam Knowledge.`;
   }
 }

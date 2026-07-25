@@ -13,6 +13,7 @@ import { StorageModule } from './modules/storage/storage.module.js';
 import { SearchModule } from './modules/search/search.module.js';
 import { ArtifactModule } from './modules/artifact/artifact.module.js';
 import { ToolsModule } from './modules/tools/tools.module.js';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ToolsModule } from './modules/tools/tools.module.js';
     SearchModule,
     ArtifactModule,
     ToolsModule,
+    KnowledgeModule,
   ],
   controllers: [AppController],
   providers: [],

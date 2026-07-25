@@ -188,6 +188,19 @@ model Message {
   @@map("messages")
 }
 
+// Knowledge - Domain knowledge perusahaan (aturan, harga, data, SOP)
+model Knowledge {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   // isi knowledge (markdown/text)
+  type      String   @default("custom") // custom, pricing, rules, sop, data
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("knowledge")
+}
+
 // Artifact - Output hasil kerja agent
 model Artifact {
   id          String   @id @default(cuid())

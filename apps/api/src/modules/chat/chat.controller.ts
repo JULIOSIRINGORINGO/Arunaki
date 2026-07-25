@@ -1,10 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
+import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import {
   successResponse,
   errorResponse,
@@ -17,35 +16,13 @@ export class ChatController {
     private readonly messageService: MessageService,
     private readonly aiService: AiService,
     private readonly toolRegistryService: ToolRegistryService,
+    private readonly knowledgeService: KnowledgeService,
   ) {}
 
-  private getActiveKnowledgeContext(): string {
+  private async getActiveKnowledgeContext(): Promise<string> {
     try {
-      const searchDirs = [
-        path.resolve(process.cwd(), '../../'),
-        path.resolve(process.cwd()),
-        path.resolve(process.cwd(), '../'),
-      ];
-      const contextParts: string[] = [];
-
-      for (const dir of searchDirs) {
-        if (!fs.existsSync(dir)) continue;
-        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md');
-        for (const file of files) {
-          const filePath = path.join(dir, file);
-          try {
-            const content = fs.readFileSync(filePath, 'utf-8');
-            if (content.trim().length > 0) {
-              contextParts.push(`--- ${file} ---\n${content}`);
-            }
-          } catch {
-            // skip unreadable files
-          }
-        }
-      }
-
-      return contextParts.join('\n\n');
-    } catch (e) {
+      return await this.knowledgeService.getActiveContext();
+    } catch {
       return '';
     }
   }
@@ -165,7 +142,7 @@ export class ChatController {
       }
 
       const history = await this.messageService.findByChatHistoryId(id);
-      const knowledgeContext = this.getActiveKnowledgeContext();
+      const knowledgeContext = await this.getActiveKnowledgeContext();
       const systemPrompt = this.aiService.getSystemPrompt(
         chat.mode as 'chat' | 'workspace',
         undefined,

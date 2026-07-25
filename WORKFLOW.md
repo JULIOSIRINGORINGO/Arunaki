@@ -356,10 +356,40 @@ A phase is ONLY marked ✅ when:
 
 ---
 
+## Phase 16: Knowledge Base System (AI Assistant) ✅ DONE
+
+**Goal:** Domain Knowledge perusahaan (aturan, harga, data produk, SOP) terintegrasi dengan AI Assistant.
+
+### 16.1 Backend - Knowledge Module
+- [x] Prisma model `Knowledge` (id, title, content, type, active, timestamps)
+- [x] `KnowledgeRepository` — CRUD + findActive + toggleActive
+- [x] `KnowledgeService` — getActiveContext() gabungkan semua knowledge aktif
+- [x] `KnowledgeController` — GET/POST/PATCH/DELETE `/api/v1/knowledge`
+- [x] `KnowledgeModule` registered di `AppModule`
+
+### 16.2 Chat Controller Integration
+- [x] `ChatController` gunakan `KnowledgeService` bukan file system scanning
+- [x] `getActiveKnowledgeContext()` async, baca dari DB
+- [x] System prompt diperbarui: instruksi lengkap penggunaan knowledge (harga, aturan, rumus)
+
+### 16.3 Frontend - KnowledgePage (Real API)
+- [x] Fetch knowledge dari API (`/api/v1/knowledge`)
+- [x] Create knowledge via API (judul + isi teks)
+- [x] Toggle active/nonaktif via API
+- [x] Hapus knowledge via API
+- [x] Preview modal tampilkan isi knowledge
+- [x] Loading state, empty state, search & filter
+
+### 16.4 Canvas Panel Enhancements
+- [x] Canvas title dinamis berdasarkan tool (Kalkulasi Harga, Ekstraksi Data, Dokumen Export)
+- [x] CanvasPanel header tampilkan judul canvas
+
+---
+
 ## Current Status
 
-**Phase:** Phase 15 Complete — Enterprise Document Tools Suite & Canvas Panel ✅  
-**Next:** Production readiness & workspace agent enhancements
+**Phase:** Phase 16 Complete — Knowledge Base System (AI Assistant) ✅  
+**Next:** Knowledge integration test with pricing data
 
 ---
 

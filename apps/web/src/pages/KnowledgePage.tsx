@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BookOpen,
   Plus,
@@ -11,104 +11,93 @@ import {
   XCircle,
   Sparkles,
   X,
-  FileCode,
-  FileSpreadsheet,
-  FileCheck,
   Info,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
+const API_BASE = "http://localhost:3000/api/v1";
+
 interface KnowledgeDoc {
   id: string;
   title: string;
-  description: string;
-  fileName: string;
-  fileType: "pdf" | "docx" | "txt" | "md" | "csv";
-  fileSize: string;
+  content: string;
+  type: string;
   active: boolean;
-  uploadedAt: string;
-  contentSnippet: string;
+  createdAt: string;
 }
 
-const INITIAL_DOCS: KnowledgeDoc[] = [
-  {
-    id: "doc-garment",
-    title: "GARMENT ORDER KNOWLEDGE",
-    description: "Pedoman format otomatis penulisan pesanan garmen, urutan ukuran, header merek/warna, dan kalkulasi total PCS.",
-    fileName: "garment.md",
-    fileType: "md",
-    fileSize: "1.2 KB",
-    active: true,
-    uploadedAt: "Hari ini",
-    contentSnippet:
-      "# GARMENT ORDER KNOWLEDGE\n\n## Tujuan\nUbah pesanan garmen menjadi format yang rapi, konsisten, dan mudah dibaca.\n\n## HEADER\nSecara default gunakan: **<MEREK> <WARNA>**\n\n## FORMAT OUTPUT TABEL\n| UKURAN | PCS |\n|---------|----:|\n| M | 5 |\n| L | 3 |\n| XL | 2 |\n| **TOTAL PCS** | **10** |\n\n## ATURAN URUTAN UKURAN:\nUrutan ukuran harus selalu: S, M, L, XL, 2XL, 3XL, 4XL, 5XL.\nBaris terakhir wajib TOTAL PCS.",
-  },
-  {
-    id: "doc-1",
-    title: "SOP Layanan & Garansi Produk 2026",
-    description: "Prosedur standar penanganan garansi, syarat pengembalian barang, dan ketentuan klaim pelanggan.",
-    fileName: "SOP_Garansi_2026_v2.pdf",
-    fileType: "pdf",
-    fileSize: "1.4 MB",
-    active: true,
-    uploadedAt: "24 Juli 2026",
-    contentSnippet:
-      "1. Ketentuan Garansi Utama: Produk dilindungi garansi 12 bulan sejak tanggal pembelian. Klaim garansi memerlukan bukti pembelian sah (Invoice/Resi). 2. Prosedur Klaim: Pelanggan mengajukan klaim melalui customer service...",
-  },
-  {
-    id: "doc-2",
-    title: "Standar Perhitungan Costing & HPP Garment",
-    description: "Rumus kalkulasi penggunaan kain, biaya jahit, overhead pabrik, dan margin keuntungan bersih.",
-    fileName: "Garment_Costing_Standard.xlsx",
-    fileType: "csv",
-    fileSize: "680 KB",
-    active: true,
-    uploadedAt: "22 Juli 2026",
-    contentSnippet:
-      "Rumus HPP = (Konsumsi Kain x Harga per Meter) + Biaya CMT + Trimming + Accessories + Overhead (8%). Margin standar retail adalah 35% di atas HPP bersih.",
-  },
-  {
-    id: "doc-3",
-    title: "Panduan Gaya Bahasa & Tonality Brand",
-    description: "Pedoman komunikasi, aturan penulisan email resmi, dan tata bahasa profesional Arunaki.",
-    fileName: "Brand_Voice_Guide.md",
-    fileType: "md",
-    fileSize: "240 KB",
-    active: false,
-    uploadedAt: "20 Juli 2026",
-    contentSnippet:
-      "Gaya bahasa Arunaki harus: 1. Solutif dan empatik. 2. Menggunakan bahasa Indonesia yang baik tanpa istilah yang terlalu kaku. 3. Selalu memberikan struktur langkah yang jelas.",
-  },
-];
-
 export function KnowledgePage() {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>(INITIAL_DOCS);
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [previewDoc, setPreviewDoc] = useState<KnowledgeDoc | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  // File Upload Demo State
   const [newTitle, setNewTitle] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [newContent, setNewContent] = useState("");
 
-  const toggleActive = (id: string) => {
-    setDocs((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, active: !d.active } : d))
-    );
+  const fetchDocs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/knowledge`);
+      const data = await res.json();
+      setDocs(data.data || []);
+    } catch {
+      setDocs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const toggleActive = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/knowledge/${id}/toggle`, { method: "PATCH" });
+      const data = await res.json();
+      setDocs((prev) => prev.map((d) => (d.id === id ? data.data : d)));
+    } catch {
+      // ignore
+    }
   };
 
-  const deleteDoc = (id: string) => {
-    setDocs((prev) => prev.filter((d) => d.id !== id));
+  const deleteDoc = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/knowledge/${id}`, { method: "DELETE" });
+      setDocs((prev) => prev.filter((d) => d.id !== id));
+    } catch {
+      // ignore
+    }
+  };
+
+  const createDoc = async () => {
+    if (!newTitle.trim() || !newContent.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`${API_BASE}/knowledge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle, content: newContent, type: "custom" }),
+      });
+      const data = await res.json();
+      setDocs((prev) => [data.data, ...prev]);
+      setNewTitle("");
+      setNewContent("");
+      setUploadOpen(false);
+    } catch {
+      // ignore
+    } finally {
+      setCreating(false);
+    }
   };
 
   const filteredDocs = docs.filter((doc) => {
     const matchesSearch =
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.description.toLowerCase().includes(searchQuery.toLowerCase());
+      doc.content.toLowerCase().includes(searchQuery.toLowerCase());
     if (filterStatus === "active") return matchesSearch && doc.active;
     if (filterStatus === "inactive") return matchesSearch && !doc.active;
     return matchesSearch;
@@ -116,36 +105,12 @@ export function KnowledgePage() {
 
   const activeCount = docs.filter((d) => d.active).length;
 
-  const handleCreateMockDoc = () => {
-    if (!newTitle.trim()) return;
-    const newDoc: KnowledgeDoc = {
-      id: `doc-${Date.now()}`,
-      title: newTitle,
-      description: newDesc || "Dokumen acuan acuan AI Assistant.",
-      fileName: selectedFile ? selectedFile.name : `${newTitle.toLowerCase().replace(/\s+/g, "_")}.pdf`,
-      fileType: selectedFile?.name.endsWith(".md") ? "md" : selectedFile?.name.endsWith(".txt") ? "txt" : "pdf",
-      fileSize: selectedFile ? `${(selectedFile.size / 1024).toFixed(0)} KB` : "512 KB",
-      active: true,
-      uploadedAt: "Hari ini",
-      contentSnippet: `Konten acuan dari dokumen ${newTitle}. Dokumen ini digunakan oleh AI Assistant saat menjawab percakapan pengguna.`,
-    };
-    setDocs([newDoc, ...docs]);
-    setNewTitle("");
-    setNewDesc("");
-    setSelectedFile(null);
-    setUploadOpen(false);
-  };
-
-  const getFileIcon = (type: KnowledgeDoc["fileType"]) => {
-    switch (type) {
-      case "pdf":
-        return <FileText className="w-5 h-5 text-rose-500" />;
-      case "csv":
-        return <FileSpreadsheet className="w-5 h-5 text-emerald-500" />;
-      case "md":
-        return <FileCode className="w-5 h-5 text-sky-500" />;
-      default:
-        return <FileText className="w-5 h-5 text-gray-500" />;
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+    } catch {
+      return dateStr;
     }
   };
 
@@ -168,7 +133,7 @@ export function KnowledgePage() {
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Kelola basis dokumen acuan dan SOP khusus yang digunakan oleh <strong className="text-gray-700 font-medium">AI Assistant Mode</strong>.
+                Kelola basis pengetahuan perusahaan: aturan, harga, data produk, dan SOP yang digunakan oleh <strong className="text-gray-700 font-medium">AI Assistant Mode</strong>.
               </p>
             </div>
           </div>
@@ -179,7 +144,7 @@ export function KnowledgePage() {
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white hover:bg-gray-800 text-sm font-semibold transition-all duration-150 shadow-xs cursor-pointer active:scale-[0.98] shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Tambah Dokumen</span>
+          <span>Tambah Knowledge</span>
         </button>
       </div>
 
@@ -187,14 +152,14 @@ export function KnowledgePage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Dokumen</span>
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Knowledge</span>
             <div className="p-2 rounded-xl bg-gray-50 text-gray-600">
               <FileText className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-gray-900">{docs.length}</span>
-            <span className="text-xs text-gray-500 font-medium">file tersimpan</span>
+            <span className="text-xs text-gray-500 font-medium">entri tersimpan</span>
           </div>
         </div>
 
@@ -215,7 +180,7 @@ export function KnowledgePage() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Status Proteksi</span>
             <div className="p-2 rounded-xl bg-sky-50 text-sky-600">
-              <FileCheck className="w-4 h-4" />
+              <BookOpen className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -231,7 +196,7 @@ export function KnowledgePage() {
         <div>
           <span className="font-semibold text-sky-950">Bagaimana Knowledge ini bekerja?</span>
           <p className="text-sky-800 mt-0.5 leading-relaxed">
-            Dokumen yang berstatus <strong className="font-semibold text-emerald-700">"Aktif"</strong> akan dibaca dan dijadikan rujukan utama oleh <strong>AI Assistant Mode</strong> saat menjawab percakapan Anda di halaman Chat.
+            Knowledge berisi <strong>aturan format, harga barang, data produk, rumus kalkulasi, dan SOP</strong> perusahaan. Entri yang <strong className="font-semibold text-emerald-700">"Aktif"</strong> akan dibaca oleh AI Assistant saat menjawab percakapan Anda — sehingga AI bisa menghitung harga, menerapkan aturan format, dan merujuk data perusahaan secara otomatis.
           </p>
         </div>
       </div>
@@ -244,7 +209,7 @@ export function KnowledgePage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari dokumen acuan..."
+            placeholder="Cari knowledge..."
             className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-hidden focus:border-gray-400 transition-colors"
           />
           {searchQuery && (
@@ -276,16 +241,21 @@ export function KnowledgePage() {
       </div>
 
       {/* Document List */}
-      {filteredDocs.length === 0 ? (
+      {loading ? (
+        <div className="py-16 text-center rounded-2xl bg-white border border-gray-200/80">
+          <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Memuat knowledge...</p>
+        </div>
+      ) : filteredDocs.length === 0 ? (
         <div className="py-16 text-center rounded-2xl bg-white border border-dashed border-gray-200">
           <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <h3 className="text-base font-semibold text-gray-800">
-            {searchQuery ? "Tidak ada dokumen yang sesuai" : "Belum Ada Dokumen Knowledge"}
+            {searchQuery ? "Tidak ada knowledge yang sesuai" : "Belum Ada Knowledge"}
           </h3>
           <p className="text-xs md:text-sm text-gray-500 max-w-md mx-auto mt-1">
             {searchQuery
-              ? `Tidak ditemukan dokumen acuan dengan kata kunci "${searchQuery}".`
-              : "Unggah dokumen SOP, panduan, atau acuan internal agar AI Assistant dapat merujuknya."}
+              ? `Tidak ditemukan entri dengan kata kunci "${searchQuery}".`
+              : "Tambahkan aturan, harga, data produk, atau SOP agar AI Assistant dapat merujuknya saat bekerja."}
           </p>
           {!searchQuery && (
             <button
@@ -293,7 +263,7 @@ export function KnowledgePage() {
               className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Unggah Dokumen Pertama</span>
+              <span>Tambah Knowledge Pertama</span>
             </button>
           )}
         </div>
@@ -314,7 +284,7 @@ export function KnowledgePage() {
                     doc.active ? "bg-gray-50 border-gray-200/80" : "bg-gray-100 border-gray-200/50"
                   )}
                 >
-                  {getFileIcon(doc.fileType)}
+                  <BookOpen className={cn("w-5 h-5", doc.active ? "text-gray-700" : "text-gray-400")} />
                 </div>
 
                 <div className="space-y-1 min-w-0 flex-1">
@@ -332,7 +302,7 @@ export function KnowledgePage() {
                     >
                       {doc.active ? (
                         <>
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aktif di AI
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Aktif
                         </>
                       ) : (
                         <>
@@ -342,14 +312,14 @@ export function KnowledgePage() {
                     </span>
                   </div>
 
-                  <p className="text-xs text-gray-500 line-clamp-1">{doc.description}</p>
+                  <p className="text-xs text-gray-500 line-clamp-1">
+                    {doc.content.substring(0, 120)}...
+                  </p>
 
                   <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-0.5">
-                    <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-sm">{doc.fileName}</span>
+                    <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-sm">{doc.type}</span>
                     <span>•</span>
-                    <span>{doc.fileSize}</span>
-                    <span>•</span>
-                    <span>Diunggah {doc.uploadedAt}</span>
+                    <span>{formatDate(doc.createdAt)}</span>
                   </div>
                 </div>
               </div>
@@ -359,7 +329,7 @@ export function KnowledgePage() {
                 <button
                   onClick={() => setPreviewDoc(doc)}
                   className="p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer"
-                  title="Lihat teks hasil parsing"
+                  title="Lihat isi knowledge"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
@@ -379,7 +349,7 @@ export function KnowledgePage() {
                 <button
                   onClick={() => deleteDoc(doc.id)}
                   className="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                  title="Hapus dokumen"
+                  title="Hapus knowledge"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -389,7 +359,7 @@ export function KnowledgePage() {
         </div>
       )}
 
-      {/* Upload Modal */}
+      {/* Create Modal */}
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl space-y-5 border border-gray-100">
@@ -399,8 +369,8 @@ export function KnowledgePage() {
                   <UploadCloud className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Tambah Dokumen Knowledge</h3>
-                  <p className="text-xs text-gray-500">Khusus digunakan sebagai rujukan AI Assistant</p>
+                  <h3 className="text-lg font-bold text-gray-900">Tambah Knowledge</h3>
+                  <p className="text-xs text-gray-500">Aturan, harga, data produk, atau SOP</p>
                 </div>
               </div>
               <button
@@ -411,87 +381,26 @@ export function KnowledgePage() {
               </button>
             </div>
 
-            {/* Dropzone */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  setSelectedFile(e.dataTransfer.files[0]);
-                  if (!newTitle) setNewTitle(e.dataTransfer.files[0].name.split(".")[0]);
-                }
-              }}
-              className={cn(
-                "p-6 rounded-2xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2",
-                isDragging
-                  ? "border-gray-900 bg-gray-50"
-                  : selectedFile
-                  ? "border-emerald-300 bg-emerald-50/50"
-                  : "border-gray-200 hover:border-gray-400 bg-gray-50/30"
-              )}
-            >
-              <UploadCloud className={cn("w-8 h-8", selectedFile ? "text-emerald-600" : "text-gray-400")} />
-              {selectedFile ? (
-                <div>
-                  <p className="text-sm font-bold text-emerald-800">{selectedFile.name}</p>
-                  <p className="text-xs text-emerald-600 mt-0.5">
-                    {(selectedFile.size / 1024).toFixed(0)} KB • Siap diproses
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-sm font-semibold text-gray-700">
-                    Klik atau seret file dokumen ke sini
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Mendukung PDF, DOCX, TXT, Markdown, CSV
-                  </p>
-                </div>
-              )}
-              <input
-                type="file"
-                className="hidden"
-                id="file-upload-input"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setSelectedFile(e.target.files[0]);
-                    if (!newTitle) setNewTitle(e.target.files[0].name.split(".")[0]);
-                  }
-                }}
-              />
-              <label
-                htmlFor="file-upload-input"
-                className="mt-1 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer shadow-2xs"
-              >
-                Pilih File Dokumen
-              </label>
-            </div>
-
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Judul Acuan</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Judul</label>
                 <input
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Misal: SOP Garansi Pelanggan 2026"
+                  placeholder="Misal: Harga Produk Garment, SOP Garansi, dll"
                   className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-hidden focus:border-gray-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Deskripsi Singkat</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Isi Knowledge</label>
                 <textarea
-                  value={newDesc}
-                  onChange={(e) => setNewDesc(e.target.value)}
-                  placeholder="Penjelasan ringkas isi dokumen..."
-                  rows={2}
-                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-hidden focus:border-gray-400 resize-none"
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  placeholder={`Contoh format harga:\nBarang A Rp25.000/pc\nBarang B Rp30.000/pc\nPPN 11%\n\nContoh format aturan:\nUrutan ukuran: S, M, L, XL, 2XL, 3XL\nBaris terakhir wajib TOTAL PCS`}
+                  rows={8}
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 font-mono focus:outline-hidden focus:border-gray-400 resize-none"
                 />
               </div>
             </div>
@@ -504,14 +413,14 @@ export function KnowledgePage() {
                 Batal
               </button>
               <button
-                onClick={handleCreateMockDoc}
-                disabled={!newTitle.trim()}
+                onClick={createDoc}
+                disabled={!newTitle.trim() || !newContent.trim() || creating}
                 className={cn(
                   "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-2xs transition-all",
-                  !newTitle.trim() && "opacity-50 cursor-not-allowed"
+                  (!newTitle.trim() || !newContent.trim() || creating) && "opacity-50 cursor-not-allowed"
                 )}
               >
-                Simpan ke Knowledge Base
+                {creating ? "Menyimpan..." : "Simpan"}
               </button>
             </div>
           </div>
@@ -525,11 +434,11 @@ export function KnowledgePage() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-gray-100 text-gray-700">
-                  {getFileIcon(previewDoc.fileType)}
+                  <BookOpen className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-gray-900">{previewDoc.title}</h3>
-                  <p className="text-xs font-mono text-gray-400">{previewDoc.fileName}</p>
+                  <p className="text-xs font-mono text-gray-400">{previewDoc.type}</p>
                 </div>
               </div>
               <button
@@ -542,9 +451,9 @@ export function KnowledgePage() {
 
             <div className="flex-1 overflow-y-auto bg-gray-50/80 p-4 rounded-2xl border border-gray-200/80 text-xs md:text-sm font-mono text-gray-800 leading-relaxed space-y-2">
               <div className="text-[11px] font-sans text-gray-400 uppercase tracking-wider font-semibold border-b border-gray-200 pb-1">
-                Teks Hasil Ekstraksi Parser:
+                Isi Knowledge:
               </div>
-              <p className="whitespace-pre-wrap">{previewDoc.contentSnippet}</p>
+              <p className="whitespace-pre-wrap">{previewDoc.content}</p>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 shrink-0">
@@ -555,7 +464,7 @@ export function KnowledgePage() {
                 onClick={() => setPreviewDoc(null)}
                 className="px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-gray-800"
               >
-                Tutup Preview
+                Tutup
               </button>
             </div>
           </div>

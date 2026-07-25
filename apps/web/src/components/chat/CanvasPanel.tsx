@@ -66,7 +66,9 @@ export function CanvasPanel({ isOpen, onClose, canvasData }: CanvasPanelProps) {
           <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">
             <Sparkles className="w-4 h-4" />
           </div>
-          <h2 className="text-sm font-bold text-gray-900 tracking-tight truncate">Canvas</h2>
+          <h2 className="text-sm font-bold text-gray-900 tracking-tight truncate">
+            {canvasData?.title || "Canvas"}
+          </h2>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
