@@ -16,18 +16,41 @@ interface Message {
   createdAt?: string;
 }
 
+interface ToolOutput {
+  toolName: string;
+  args: Record<string, any>;
+  result: {
+    status: "success" | "error" | "partial";
+    data: Record<string, any>;
+    preview: string;
+    metadata: {
+      toolName: string;
+      displayName: string;
+      executionTime: number;
+      format?: string;
+      filename?: string;
+      mimeType?: string;
+      contentBase64?: string;
+    };
+    error?: {
+      code: string;
+      message: string;
+    };
+  };
+}
+
 function extractCanvasContentFromLLM(llmText: string): string {
   if (!llmText) return "";
 
-  // 1. Extract from code blocks (most reliable - universal)
   const codeBlockMatch = llmText.match(/```[\w]*\n([\s\S]*?)\n```/);
   if (codeBlockMatch?.[1]) {
     const content = codeBlockMatch[1].trim();
     if (content.length > 5) return content;
   }
 
-  // 2. Extract markdown tables
-  const tableLines = llmText.split("\n").filter((l) => l.includes("|") && l.trim().length > 3);
+  const tableLines = llmText
+    .split("\n")
+    .filter((l) => l.includes("|") && l.trim().length > 3);
   if (tableLines.length >= 3) {
     const cleaned = tableLines
       .filter((l) => !/^\s*\|[\s\-:|]+\|\s*$/.test(l))
@@ -35,8 +58,11 @@ function extractCanvasContentFromLLM(llmText: string): string {
     if (cleaned.length >= 2) return cleaned.join("\n");
   }
 
-  // 3. Extract structured lists (bullet/numbered) with 3+ items
-  const listLines = llmText.split("\n").filter((l) => /^\s*[-*•]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l));
+  const listLines = llmText
+    .split("\n")
+    .filter(
+      (l) => /^\s*[-*•]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l),
+    );
   if (listLines.length >= 3) {
     return listLines.map((l) => l.trim()).join("\n");
   }
@@ -50,7 +76,14 @@ export function ChatPage() {
   const chatId = searchParams.get("chat");
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [canvasOpen, setCanvasOpen] = useState<boolean>(true);
-  const [activeCanvasData, setActiveCanvasData] = useState<CanvasData | null>(null);
+  const [activeCanvasData, setActiveCanvasData] = useState<CanvasData | null>(
+    null,
+  );
+  const [pendingDownload, setPendingDownload] = useState<{
+    filename: string;
+    mimeType: string;
+    base64: string;
+  } | null>(null);
 
   const createChat = useMutation({
     mutationFn: async () => {
@@ -62,7 +95,7 @@ export function ChatPage() {
         });
         const data = await res.json();
         return data.data.id;
-      } catch (e) {
+      } catch {
         return `chat-${Date.now()}`;
       }
     },
@@ -80,7 +113,7 @@ export function ChatPage() {
         const res = await fetch(`${API_BASE}/chat/${chatId}/messages`);
         const data = await res.json();
         return data.data || [];
-      } catch (e) {
+      } catch {
         return [];
       }
     },
@@ -111,21 +144,42 @@ export function ChatPage() {
         });
         const responseData = await res.json();
 
-        const toolOutputs = responseData?.data?.toolOutputs || [];
-        let canvasContent = "";
+        const toolOutputs: ToolOutput[] =
+          responseData?.data?.toolOutputs || [];
 
-        const preferredTools = ["calculate", "generate_export", "extract_structured_data"];
-        for (const toolName of preferredTools) {
-          const toolOutput = toolOutputs.find((t: any) => t.toolName === toolName && t.result?.plainTextOutput);
+        let canvasContent = "";
+        let canvasTitle = "Hasil";
+        let downloadInfo: typeof pendingDownload = null;
+
+        const previewPriorities = [
+          "calculate",
+          "generate_export",
+          "extract_structured_data",
+        ];
+
+        for (const toolName of previewPriorities) {
+          const toolOutput = toolOutputs.find(
+            (t) => t.toolName === toolName && t.result?.preview,
+          );
           if (toolOutput) {
-            canvasContent = toolOutput.result.plainTextOutput;
+            canvasContent = toolOutput.result.preview;
+            canvasTitle =
+              toolOutput.result.metadata?.displayName ||
+              toolName.replace(/_/g, " ");
             break;
           }
         }
 
         if (!canvasContent) {
-          const fallback = toolOutputs.find((t: any) => t.result?.plainTextOutput);
-          if (fallback) canvasContent = fallback.result.plainTextOutput;
+          const anyWithPreview = toolOutputs.find(
+            (t) => t.result?.preview,
+          );
+          if (anyWithPreview) {
+            canvasContent = anyWithPreview.result.preview;
+            canvasTitle =
+              anyWithPreview.result.metadata?.displayName ||
+              anyWithPreview.toolName.replace(/_/g, " ");
+          }
         }
 
         if (!canvasContent) {
@@ -136,21 +190,23 @@ export function ChatPage() {
           canvasContent = extractCanvasContentFromLLM(assistantContent);
         }
 
-        if (canvasContent) {
-          const firstTool = toolOutputs[0];
-          let title = "Hasil";
-          if (firstTool?.toolName) {
-            const toolTitles: Record<string, string> = {
-              calculate: "Kalkulasi Harga",
-              extract_structured_data: "Ekstraksi Data",
-              generate_export: "Dokumen Export",
-            };
-            title = toolTitles[firstTool.toolName] || firstTool.toolName.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
-          }
+        const downloadable = toolOutputs.find(
+          (t) => t.result?.metadata?.contentBase64,
+        );
+        if (downloadable) {
+          downloadInfo = {
+            filename:
+              downloadable.result.metadata.filename || "export.file",
+            mimeType:
+              downloadable.result.metadata.mimeType || "application/octet-stream",
+            base64: downloadable.result.metadata.contentBase64!,
+          };
+        }
 
+        if (canvasContent) {
           setActiveCanvasData({
             id: `canvas-${Date.now()}`,
-            title,
+            title: canvasTitle,
             brandColorHeader: "",
             plainTextContent: canvasContent,
             createdAt: new Date().toLocaleTimeString(),
@@ -158,11 +214,15 @@ export function ChatPage() {
           setCanvasOpen(true);
         }
 
-        queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
+        setPendingDownload(downloadInfo);
+
+        queryClient.invalidateQueries({
+          queryKey: ["messages", activeId],
+        });
         queryClient.invalidateQueries({ queryKey: ["chats"] });
 
         return responseData;
-      } catch (e) {
+      } catch {
         return { success: true };
       } finally {
         setOptimisticMessages([]);
@@ -180,7 +240,7 @@ export function ChatPage() {
 
   const serverContentSet = new Set(serverMessages.map((m) => m.content));
   const filteredOptimistic = optimisticMessages.filter(
-    (m) => !serverContentSet.has(m.content)
+    (m) => !serverContentSet.has(m.content),
   );
   const messages = [...serverMessages, ...filteredOptimistic];
 
@@ -190,11 +250,11 @@ export function ChatPage() {
 
   return (
     <div className="flex h-full w-full bg-white min-w-0 overflow-hidden">
-      {/* Kolom 2: Chat Area Utama */}
       <div className="flex flex-col flex-1 h-full min-w-0 bg-white">
-        {/* Header Chat */}
         <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Chat</h1>
+          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+            Chat
+          </h1>
 
           <button
             onClick={() => setCanvasOpen(!canvasOpen)}
@@ -202,7 +262,7 @@ export function ChatPage() {
               "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs active:scale-[0.98]",
               canvasOpen
                 ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50",
             )}
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
@@ -210,7 +270,6 @@ export function ChatPage() {
           </button>
         </div>
 
-        {/* Messages Area */}
         <div className="flex-1 overflow-auto min-h-0 px-6">
           <ChatMessages
             messages={messages}
@@ -219,7 +278,6 @@ export function ChatPage() {
           />
         </div>
 
-        {/* Input Composer */}
         <div className="shrink-0">
           <ChatInput
             onSend={handleSend}
@@ -228,11 +286,11 @@ export function ChatPage() {
         </div>
       </div>
 
-      {/* Kolom 3: Canvas Panel Clean */}
       <CanvasPanel
         isOpen={canvasOpen}
         onClose={() => setCanvasOpen(false)}
         canvasData={activeCanvasData}
+        pendingDownload={pendingDownload}
       />
     </div>
   );

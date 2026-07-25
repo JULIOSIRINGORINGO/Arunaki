@@ -1,14 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-export interface CalculationResult {
-  operation: string;
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  finalTotal: number;
-  breakdown: string;
-  plainTextOutput: string;
-}
+import { ToolResult } from '../interfaces/tool-result.interface.js';
 
 @Injectable()
 export class EnterpriseCalculatorTool {
@@ -16,14 +7,17 @@ export class EnterpriseCalculatorTool {
     items: { name: string; qty: number; price: number }[],
     taxPercent: number = 0,
     discountPercent: number = 0,
-  ): CalculationResult {
+  ): ToolResult {
+    const startTime = Date.now();
     let subtotal = 0;
     const details: string[] = [];
 
     for (const item of items) {
       const itemTotal = item.qty * item.price;
       subtotal += itemTotal;
-      details.push(`${item.name}: ${item.qty} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}`);
+      details.push(
+        `${item.name}: ${item.qty} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}`,
+      );
     }
 
     const discountAmount = (subtotal * discountPercent) / 100;
@@ -31,16 +25,40 @@ export class EnterpriseCalculatorTool {
     const taxAmount = (taxableSubtotal * taxPercent) / 100;
     const finalTotal = taxableSubtotal + taxAmount;
 
-    const breakdown = `Subtotal: Rp ${subtotal.toLocaleString('id-ID')}\nDiskon (${discountPercent}%): Rp ${discountAmount.toLocaleString('id-ID')}\nPajak (${taxPercent}%): Rp ${taxAmount.toLocaleString('id-ID')}\nTotal Akhir: Rp ${finalTotal.toLocaleString('id-ID')}`;
+    const breakdown = [
+      `Subtotal: Rp ${subtotal.toLocaleString('id-ID')}`,
+      discountPercent > 0
+        ? `Diskon (${discountPercent}%): Rp ${discountAmount.toLocaleString('id-ID')}`
+        : null,
+      taxPercent > 0
+        ? `Pajak (${taxPercent}%): Rp ${taxAmount.toLocaleString('id-ID')}`
+        : null,
+      `Total Akhir: Rp ${finalTotal.toLocaleString('id-ID')}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     return {
-      operation: 'Financial Calculation',
-      subtotal,
-      discountAmount,
-      taxAmount,
-      finalTotal,
-      breakdown,
-      plainTextOutput: breakdown,
+      status: 'success',
+      data: {
+        items: items.map((item, i) => ({
+          ...item,
+          total: item.qty * item.price,
+          detail: details[i],
+        })),
+        subtotal,
+        discountPercent,
+        discountAmount,
+        taxPercent,
+        taxAmount,
+        finalTotal,
+      },
+      preview: breakdown,
+      metadata: {
+        toolName: 'calculate',
+        displayName: 'Kalkulasi Harga',
+        executionTime: Date.now() - startTime,
+      },
     };
   }
 }
