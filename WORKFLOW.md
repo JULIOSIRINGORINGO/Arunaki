@@ -1,7 +1,7 @@
 # WORKFLOW.md - Development Roadmap
 
-**Version:** 1.0  
-**Last Updated:** 2026-07-24
+**Version:** 1.1  
+**Last Updated:** 2026-07-25
 
 ---
 
@@ -290,54 +290,6 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-## Development Rules
-
-1. **Backend first, Frontend second** — Always complete backend API before building frontend.
-2. **Module isolation** — Each module has its own folder with repository, service, controller, DTOs.
-3. **Repository Pattern** — Never call Prisma directly from services.
-4. **AI Engine never touches Storage/DB directly** — Always through Service layer.
-5. **API response format** — Always `{ data, error, meta }`.
-6. **API key security** — AI keys stay in backend `.env`, never exposed to frontend.
-7. **Commit after each module** — Small, focused commits.
-
----
-
-## Testing Rules (MANDATORY)
-
-**Every phase MUST pass all testing steps before moving to next phase.**
-
-### Testing Checklist Per Phase
-
-```
-□ Build succeeds (npm run build — 0 errors)
-□ All endpoints tested manually (curl/PowerShell)
-□ Response format correct ({ data, error, meta })
-□ Error handling works (invalid input, missing data)
-□ Database operations work (create, read, update, delete)
-□ No regressions (existing modules still work)
-```
-
-### Testing Process
-
-1. **Build test** — `npm run build` must pass with 0 errors.
-2. **Unit test per endpoint** — Test each endpoint individually.
-3. **Integration test** — Test endpoints together (e.g., create workspace → create source → get by workspace).
-4. **Error test** — Test with invalid data, missing fields, non-existent IDs.
-5. **Regression test** — Run all previous module tests to ensure nothing broke.
-6. **Document results** — Write test results in completion report.
-
-### Phase Completion Criteria
-
-A phase is ONLY marked ✅ when:
-- All tasks in the phase are completed
-- All testing steps pass
-- No known bugs or issues remain
-- Code is committed
-
-**Do NOT mark phase as ✅ if any test fails. Fix first, then mark.**
-
----
-
 ## Phase 15: Enterprise Document Tools Suite & Canvas Panel ✅ DONE
 
 **Goal:** Enterprise document tools suite, dynamic Knowledge Base injection, and Canvas Panel exports.
@@ -362,7 +314,7 @@ A phase is ONLY marked ✅ when:
 
 ### 16.1 Backend - Knowledge Module
 - [x] Prisma model `Knowledge` (id, title, content, type, active, timestamps)
-- [x] `KnowledgeRepository` — CRUD + findActive + toggleActive
+- [x] `KnowledgeRepository` — CRUD + findActive + toggleActive + findByTitle
 - [x] `KnowledgeService` — getActiveContext() gabungkan semua knowledge aktif
 - [x] `KnowledgeController` — GET/POST/PATCH/DELETE `/api/v1/knowledge`
 - [x] `KnowledgeModule` registered di `AppModule`
@@ -386,10 +338,64 @@ A phase is ONLY marked ✅ when:
 
 ---
 
+## Phase 17: Knowledge Upload & Chat Polish ✅ DONE
+
+**Goal:** File-based knowledge upload, chat reliability fixes, UI/UX improvements, knowledge tuning from chat.
+
+### 17.1 Knowledge Upload (Backend)
+- [x] `POST /knowledge/upload` — Upload file (PDF/DOCX/TXT/MD/CSV), extract text, save to KB
+- [x] Multer middleware with file type validation and size limit (10MB)
+- [x] Auto-generate title from filename
+- [x] Text extraction: pdf2json (PDF), mammoth (DOCX), csv-parse (CSV), fs (TXT/MD)
+
+### 17.2 Knowledge Upload (Frontend)
+- [x] File upload modal with drag-and-drop
+- [x] Visual loading feedback (4 steps: Upload → Extract → Save → Done)
+- [x] Step indicator with progress dots and checkmarks
+- [x] Remove old text-only form (Judul Acuan, Deskripsi Singkat no longer needed)
+
+### 17.3 Chat Reliability Fixes
+- [x] Fix thinking indicator flicker (race condition with optimistic messages)
+- [x] `effectiveChatId` state — consistent query keys on new chat creation
+- [x] `await queryClient.invalidateQueries()` — messages refetched before mutation settles
+- [x] Error handling — remove optimistic message on API error
+- [x] Removed `waitingForResponse` state — use `sendMessage.isPending` directly
+
+### 17.4 AI Service Improvements
+- [x] Remove aggressive content stripping regex (The user, Let me, I need, etc.)
+- [x] Empty response fallback — return polite message instead of empty string
+- [x] Increase `max_tokens` from 2048 to 4096
+- [x] System prompt: knowledge base controls format output, modular rules
+
+### 17.5 Knowledge Tuning from Chat
+- [x] System prompt: "Knowledge Tuning" mode — LLM updates KB from user feedback
+- [x] User gives format feedback → LLM reads active KB → updates via `save_knowledge` tool
+- [x] Confirms update to user + shows new format example
+
+### 17.6 UI/UX Improvements
+- [x] Logo SVG fix — `fill:currentColor` replaced with `fill:#111827` for img tag compatibility
+- [x] CanvasPanel — markdown rendering for canvas content (was raw text)
+- [x] MessageBubble — custom markdown components (table, code, bold, lists, blockquote)
+- [x] ChatInput — slash command menu (`/knowledge`, `/search`, `/calculate`, `/export`)
+
+### 17.7 Knowledge Content Updates
+- [x] `garment.md` updated: chat format (sapaan + plain text + penutup)
+- [x] `garment.md` updated: canvas format (**BRAND COLOR** or **[BRAND] [WARNA]**)
+- [x] `garment.md` updated: header rules (brand/warna → use product name, kosong → use product name too)
+- [x] Knowledge base synced to database via API
+
+### 17.8 save_knowledge Tool
+- [x] `KnowledgeBuilderTool` created — `save_knowledge` tool for LLM
+- [x] Upsert logic via `KnowledgeRepository.findByTitle()` — update if exists, create if new
+- [x] Registered in `ToolRegistryService` with 5000ms timeout
+- [x] Exported via `ToolsModule`
+
+---
+
 ## Current Status
 
-**Phase:** Phase 16 Complete — Knowledge Base System (AI Assistant) ✅  
-**Next:** Knowledge integration test with pricing data
+**Phase:** Phase 17 Complete — Knowledge Upload & Chat Polish ✅  
+**Next:** Workspace Agent mode or additional AI Assistant features
 
 ---
 
@@ -410,15 +416,30 @@ apps/api/src/
 │   ├── storage/       ✅
 │   ├── search/        ✅
 │   ├── artifact/      ✅
-│   └── tools/         ✅ (Enterprise Tools Suite)
+│   ├── knowledge/     ✅
+│   └── tools/         ✅ (Enterprise Tools + save_knowledge)
 ├── app.module.ts
 └── main.ts
 
 apps/web/src/
 ├── components/
-│   ├── chat/          ✅ (ChatMessages, ChatInput, CanvasPanel)
+│   ├── chat/          ✅ (ChatMessages, ChatInput, MessageBubble, CanvasPanel)
 │   └── layout/        ✅ (Sidebar, AppLayout)
 ├── pages/             ✅ (ChatPage, WorkspacePage, KnowledgePage, SettingsPage)
 ├── App.tsx
 └── main.tsx
 ```
+
+---
+
+## Development Rules
+
+1. **Backend first, Frontend second** — Always complete backend API before building frontend.
+2. **Module isolation** — Each module has its own folder with repository, service, controller, DTOs.
+3. **Repository Pattern** — Never call Prisma directly from services.
+4. **AI Engine never touches Storage/DB directly** — Always through Service layer.
+5. **API response format** — Always `{ data, error, meta }`.
+6. **API key security** — AI keys stay in backend `.env`, never exposed to frontend.
+7. **Commit after each module** — Small, focused commits.
+8. **Knowledge Base is source of truth** — AI output format driven by KB, not hardcoded rules.
+9. **Modular system prompt** — No domain-specific rules in code; KB controls behavior.
