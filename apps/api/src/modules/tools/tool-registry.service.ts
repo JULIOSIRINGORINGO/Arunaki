@@ -78,15 +78,48 @@ export class ToolRegistryService {
         function: {
           name: 'generate_export',
           description:
-            'Mengonversi data terstruktur menjadi file siap download (Excel, CSV).',
+            'Mengonversi data terstruktur menjadi file siap download — Excel (xlsx), CSV, PDF, Word (docx), atau PowerPoint (pptx).',
           parameters: {
             type: 'object',
             properties: {
-              sheetName: { type: 'string' },
-              rows: { type: 'array' },
-              filename: { type: 'string' },
+              format: {
+                type: 'string',
+                enum: ['xlsx', 'csv', 'pdf', 'docx', 'pptx'],
+                description: 'Format output file',
+              },
+              title: {
+                type: 'string',
+                description: 'Judul dokumen',
+              },
+              content: {
+                type: 'string',
+                description: 'Isi dokumen dalam bentuk teks/markdown (untuk pdf, docx)',
+              },
+              sheetName: {
+                type: 'string',
+                description: 'Nama sheet (untuk xlsx/csv)',
+              },
+              rows: {
+                type: 'array',
+                description: 'Data baris (untuk xlsx/csv)',
+              },
+              slides: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    heading: { type: 'string' },
+                    content: { type: 'string' },
+                  },
+                },
+                description: 'Slide data (untuk pptx)',
+              },
+              filename: {
+                type: 'string',
+                description: 'Nama file output',
+              },
             },
-            required: ['rows'],
+            required: ['format'],
           },
         },
       },
@@ -110,12 +143,47 @@ export class ToolRegistryService {
           args.discountPercent || 0,
         );
 
-      case 'generate_export':
-        return this.documentGeneratorTool.generateExcel(
-          args.sheetName || 'Data',
-          args.rows || [],
-          args.filename || 'export.xlsx',
-        );
+      case 'generate_export': {
+        const format = args.format || 'xlsx';
+        const filename = args.filename || `export.${format}`;
+
+        switch (format) {
+          case 'csv':
+            return this.documentGeneratorTool.generateCsv(
+              args.rows || [],
+              filename,
+            );
+
+          case 'pdf':
+            return this.documentGeneratorTool.generatePdf(
+              args.title || 'Dokumen',
+              args.content || '',
+              filename,
+            );
+
+          case 'docx':
+            return this.documentGeneratorTool.generateDocx(
+              args.title || 'Dokumen',
+              args.content || '',
+              filename,
+            );
+
+          case 'pptx':
+            return this.documentGeneratorTool.generatePptx(
+              args.title || 'Presentasi',
+              args.slides || [{ content: args.content || '' }],
+              filename,
+            );
+
+          case 'xlsx':
+          default:
+            return this.documentGeneratorTool.generateExcel(
+              args.sheetName || 'Data',
+              args.rows || [],
+              filename,
+            );
+        }
+      }
 
       default:
         throw new Error(`Tool "${name}" not recognized`);

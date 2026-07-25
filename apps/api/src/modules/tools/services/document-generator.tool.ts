@@ -1,9 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as xlsx from 'xlsx';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  AlignmentType,
+  TableRow,
+  TableCell,
+  Table,
+  WidthType,
+} from 'docx';
+import PptxGenJS from 'pptxgenjs';
 
 export interface DocumentExportResult {
   filename: string;
-  format: 'pdf' | 'xlsx' | 'csv' | 'html';
+  format: 'pdf' | 'xlsx' | 'csv' | 'docx' | 'pptx';
   contentBase64: string;
   mimeType: string;
 }
@@ -48,36 +62,284 @@ export class DocumentGeneratorTool {
     };
   }
 
-  generateHtmlDocument(
+  async generatePdf(
     title: string,
-    textContent: string,
-    filename: string = 'document.html',
-  ): DocumentExportResult {
-    const html = `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <title>${title}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #111827; line-height: 1.6; }
-    h1 { color: #111827; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }
-    pre { background: #f9fafb; border: 1px solid #e5e7eb; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; }
-    .footer { margin-top: 40px; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; pt: 12px; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-  <pre>${textContent}</pre>
-  <div class="footer">Dibuat secara otomatis oleh Arunaki AI Assistant</div>
-</body>
-</html>`;
+    content: string,
+    filename: string = 'document.pdf',
+  ): Promise<DocumentExportResult> {
+    const pdfDoc = await PDFDocument.create();
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    const contentBase64 = Buffer.from(html, 'utf-8').toString('base64');
+    const page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
+    const margin = 50;
+    const maxWidth = width - margin * 2;
+
+    let y = height - margin;
+
+    page.drawText(title, {
+      x: margin,
+      y,
+      size: 20,
+      font: helveticaBold,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+    y -= 30;
+
+    page.drawText('Dibuat oleh Arunaki AI', {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: rgb(0.4, 0.4, 0.4),
+    });
+    y -= 20;
+
+    const lines = content.split('\n');
+
+    for (const line of lines) {
+      if (y < margin + 20) {
+        const newPage = pdfDoc.addPage();
+        y = newPage.getSize().height - margin;
+      }
+
+      const currentPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+
+      if (line.startsWith('## ')) {
+        y -= 10;
+        currentPage.drawText(line.replace(/^##\s*/, ''), {
+          x: margin,
+          y,
+          size: 14,
+          font: helveticaBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        y -= 20;
+      } else if (line.startsWith('# ')) {
+        y -= 15;
+        currentPage.drawText(line.replace(/^#\s*/, ''), {
+          x: margin,
+          y,
+          size: 16,
+          font: helveticaBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+        y -= 22;
+      } else if (line.trim().length === 0) {
+        y -= 10;
+      } else {
+        const text = line.replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, '• ');
+        const words = text.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const textWidth = helvetica.widthOfTextAtSize(testLine, 11);
+
+          if (textWidth > maxWidth) {
+            currentPage.drawText(currentLine, {
+              x: margin,
+              y,
+              size: 11,
+              font: helvetica,
+              color: rgb(0.2, 0.2, 0.2),
+            });
+            y -= 16;
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+
+        if (currentLine) {
+          currentPage.drawText(currentLine, {
+            x: margin,
+            y,
+            size: 11,
+            font: helvetica,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+          y -= 16;
+        }
+      }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const contentBase64 = Buffer.from(pdfBytes).toString('base64');
+
     return {
-      filename: filename.endsWith('.html') ? filename : `${filename}.html`,
-      format: 'html',
+      filename: filename.endsWith('.pdf') ? filename : `${filename}.pdf`,
+      format: 'pdf',
       contentBase64,
-      mimeType: 'text/html',
+      mimeType: 'application/pdf',
+    };
+  }
+
+  async generateDocx(
+    title: string,
+    content: string,
+    filename: string = 'document.docx',
+  ): Promise<DocumentExportResult> {
+    const lines = content.split('\n').filter((l) => l.trim().length > 0);
+    const children: any[] = [];
+
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: title, bold: true, size: 36 })],
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 300 },
+      }),
+    );
+
+    for (const line of lines) {
+      if (line.startsWith('# ')) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: line.replace(/^#\s*/, ''), bold: true, size: 32 }),
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 100 },
+          }),
+        );
+      } else if (line.startsWith('## ')) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: line.replace(/^##\s*/, ''), bold: true, size: 26 }),
+            ],
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 150, after: 80 },
+          }),
+        );
+      } else if (line.startsWith('|') && line.includes('|')) {
+        const cells = line
+          .split('|')
+          .filter((c) => c.trim().length > 0)
+          .map((c) => c.trim());
+        if (!cells.every((c) => /^[-:]+$/.test(c))) {
+          const tableRow = new TableRow({
+            children: cells.map(
+              (cell) =>
+                new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [new TextRun({ text: cell, size: 20 })],
+                    }),
+                  ],
+                  width: { size: Math.floor(100 / cells.length), type: WidthType.PERCENTAGE },
+                }),
+            ),
+          });
+          children.push(
+            new Table({
+              rows: [tableRow],
+              width: { size: 100, type: WidthType.PERCENTAGE },
+            }),
+          );
+        }
+      } else if (line.startsWith('- ') || line.startsWith('* ')) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `• ${line.replace(/^[-*]\s*/, '')}`, size: 22 }),
+            ],
+            spacing: { before: 40, after: 40 },
+          }),
+        );
+      } else {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: line, size: 22 })],
+            spacing: { before: 40, after: 40 },
+          }),
+        );
+      }
+    }
+
+    const doc = new Document({
+      sections: [{ children }],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+    const contentBase64 = buffer.toString('base64');
+
+    return {
+      filename: filename.endsWith('.docx') ? filename : `${filename}.docx`,
+      format: 'docx',
+      contentBase64,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+  }
+
+  async generatePptx(
+    title: string,
+    slides: Array<{ heading?: string; content: string }>,
+    filename: string = 'presentation.pptx',
+  ): Promise<DocumentExportResult> {
+    const pptx = new PptxGenJS();
+    pptx.author = 'Arunaki AI';
+    pptx.title = title;
+
+    const titleSlide = pptx.addSlide();
+    titleSlide.addText(title, {
+      x: '10%',
+      y: '40%',
+      w: '80%',
+      fontSize: 32,
+      bold: true,
+      align: 'center',
+      color: '111827',
+    });
+    titleSlide.addText('Dibuat oleh Arunaki AI', {
+      x: '10%',
+      y: '60%',
+      w: '80%',
+      fontSize: 14,
+      align: 'center',
+      color: '6B7280',
+    });
+
+    for (const slide of slides) {
+      const s = pptx.addSlide();
+
+      if (slide.heading) {
+        s.addText(slide.heading, {
+          x: '5%',
+          y: '5%',
+          w: '90%',
+          fontSize: 24,
+          bold: true,
+          color: '111827',
+        });
+      }
+
+      const lines = slide.content.split('\n').filter((l) => l.trim().length > 0);
+      const bulletItems = lines.map((line) => ({
+        text: line.replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, ''),
+        options: { fontSize: 16, color: '374151', bullet: true },
+      }));
+
+      s.addText(bulletItems, {
+        x: '5%',
+        y: slide.heading ? '25%' : '10%',
+        w: '90%',
+        h: '70%',
+        valign: 'top',
+        lineSpacing: 24,
+      });
+    }
+
+    const buffer = await pptx.write({ outputType: 'nodebuffer' });
+    const contentBase64 = (buffer as Buffer).toString('base64');
+
+    return {
+      filename: filename.endsWith('.pptx') ? filename : `${filename}.pptx`,
+      format: 'pptx',
+      contentBase64,
+      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
   }
 }
