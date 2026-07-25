@@ -27,15 +27,19 @@ export class ToolRegistryService {
       {
         type: 'function',
         function: {
-          name: 'parse_garment_order',
+          name: 'extract_structured_data',
           description:
-            'Mengekstrak data pesanan/rekap ukuran dari teks berantakan menjadi data terstruktur presisi (header, ukuran S-5XL, total pcs, dan daftar duplikat/anomali).',
+            'Mengekstrak data terstruktur dari teks mentah apapun — invoice, pesanan, rekap, laporan, inventaris, struk, dsb. Menghasilkan output terstruktur dengan judul, total per kategori, dan plain text output.',
           parameters: {
             type: 'object',
             properties: {
               rawText: {
                 type: 'string',
-                description: 'Teks acak pesanan dari pengguna',
+                description: 'Teks mentah dari pengguna (invoice, pesanan, laporan, dll)',
+              },
+              title: {
+                type: 'string',
+                description: 'Judul data (opsional)',
               },
             },
             required: ['rawText'],
@@ -45,9 +49,9 @@ export class ToolRegistryService {
       {
         type: 'function',
         function: {
-          name: 'calculate_financials',
+          name: 'calculate',
           description:
-            'Melakukan kalkulasi keuangan/stok presisi (subtotal, pajak, diskon, dan total akhir).',
+            'Melakukan kalkulasi numerik — subtotal, pajak, diskon, total, atau operasi matematika apapun.',
           parameters: {
             type: 'object',
             properties: {
@@ -72,9 +76,9 @@ export class ToolRegistryService {
       {
         type: 'function',
         function: {
-          name: 'generate_excel_export',
+          name: 'generate_export',
           description:
-            'Mengonversi tabel data menjadi file Excel (.xlsx) siap download.',
+            'Mengonversi data terstruktur menjadi file siap download (Excel, CSV).',
           parameters: {
             type: 'object',
             properties: {
@@ -90,24 +94,27 @@ export class ToolRegistryService {
   }
 
   async executeTool(name: string, args: Record<string, any>): Promise<any> {
-    this.logger.log(`Executing tool "${name}" with args: ${JSON.stringify(args)}`);
+    this.logger.log(`Executing tool "${name}"`);
 
     switch (name) {
-      case 'parse_garment_order':
-        return this.textExtractorTool.parseGarmentOrder(args.rawText);
+      case 'extract_structured_data':
+        return this.textExtractorTool.extractStructuredData(
+          args.rawText,
+          args.title || '',
+        );
 
-      case 'calculate_financials':
+      case 'calculate':
         return this.calculatorTool.calculateFinancials(
           args.items || [],
           args.taxPercent || 0,
           args.discountPercent || 0,
         );
 
-      case 'generate_excel_export':
+      case 'generate_export':
         return this.documentGeneratorTool.generateExcel(
           args.sheetName || 'Data',
           args.rows || [],
-          args.filename || 'rekap.xlsx',
+          args.filename || 'export.xlsx',
         );
 
       default:

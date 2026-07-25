@@ -2,17 +2,30 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: any[];
+  tool_call_id?: string;
+  name?: string;
 }
 
 interface AiResponse {
   content: string;
   model: string;
+  toolCalls: any[];
   usage: {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+  };
+}
+
+interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, any>;
   };
 }
 
@@ -30,7 +43,21 @@ export class AiService {
       'nvidia/nemotron-3-ultra-550b-a55b:free';
   }
 
-  async chat(messages: ChatMessage[]): Promise<AiResponse> {
+  async chat(
+    messages: ChatMessage[],
+    tools?: ToolDefinition[],
+  ): Promise<AiResponse> {
+    const body: Record<string, any> = {
+      model: this.model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+    };
+
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+    }
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -39,12 +66,7 @@ export class AiService {
         'HTTP-Referer': 'https://arunaki.app',
         'X-Title': 'Arunaki AI Assistant',
       },
-      body: JSON.stringify({
-        model: this.model,
-        messages,
-        temperature: 0.7,
-        max_tokens: 2048,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -61,11 +83,8 @@ export class AiService {
     }
 
     let content = choice.message?.content || '';
-
-    // Strip <think>...</think> tags if model includes reasoning tags
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
-    // Strip internal chain-of-thought paragraphs if model leaked reasoning
     if (
       /^\s*(The user|Let's|Let me|I need|Parsing|Looking at|First,|It seems|We need|In the input|Tokens:)/i.test(
         content,
@@ -88,6 +107,7 @@ export class AiService {
     return {
       content,
       model: data.model,
+      toolCalls: choice.message?.tool_calls || [],
       usage: {
         promptTokens: data.usage?.prompt_tokens || 0,
         completionTokens: data.usage?.completion_tokens || 0,
@@ -103,7 +123,13 @@ export class AiService {
   ): string {
     const basePrompt = `Anda adalah Arunaki AI Assistant, asisten AI profesional yang membantu pengguna menyelesaikan pekerjaan mereka secara cerdas dan akurat.
 ATURAN MULTI-BAHASA: Anda WAJIB SELALU merespons dan menjawab menggunakan BAHASA YANG SAMA DENGAN PESAN PENGGUNA (Auto-Detect Language). Jika pengguna bertanya dalam Bahasa Indonesia, jawab dalam Bahasa Indonesia. Jika pengguna bertanya dalam Bahasa Inggris atau bahasa lain, jawab dalam bahasa tersebut.
-DILARANG KERAS mencetak draf pemikiran internal atau proses berpikir (seperti "The user wants me to..."). Berikan langsung jawaban akhir Anda secara rapi.`;
+DILARANG KERAS mencetak draf pemikiran internal atau proses berpikir (seperti "The user wants me to..."). Berikan langsung jawaban akhir Anda secara rapi.
+
+ATURAN TOOL FIRST (PENTING):
+Anda memiliki akses ke tools. Gunakan tools apabila tersedia tool yang lebih tepat untuk menyelesaikan pekerjaan pengguna.
+JANGAN melakukan pekerjaan secara manual jika ada tool yang bisa melakukannya.
+Ketika pengguna meminta ekstraksi data, kalkulasi, rekapitulasi, atau pembuatan dokumen — gunakan tool yang sesuai.
+Setelah tool dijalankan, sampaikan hasilnya kepada pengguna secara jelas.`;
 
     if (mode === 'workspace' && workspaceContext) {
       return `${basePrompt}

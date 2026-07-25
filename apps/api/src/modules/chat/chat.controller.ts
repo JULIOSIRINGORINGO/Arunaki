@@ -1,25 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Body,
-  Param,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AiService } from '../ai/ai.service.js';
+import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import {
   successResponse,
   errorResponse,
 } from '../../common/dtos/api-response.dto.js';
-
-import { ToolRegistryService } from '../tools/tool-registry.service.js';
 
 @Controller('chat')
 export class ChatController {
@@ -32,20 +21,33 @@ export class ChatController {
 
   private getActiveKnowledgeContext(): string {
     try {
-      const pathsToTry = [
-        path.resolve(process.cwd(), '../../garment.md'),
-        path.resolve(process.cwd(), 'garment.md'),
-        path.resolve(process.cwd(), '../garment.md'),
+      const searchDirs = [
+        path.resolve(process.cwd(), '../../'),
+        path.resolve(process.cwd()),
+        path.resolve(process.cwd(), '../'),
       ];
-      for (const p of pathsToTry) {
-        if (fs.existsSync(p)) {
-          return fs.readFileSync(p, 'utf-8');
+      const contextParts: string[] = [];
+
+      for (const dir of searchDirs) {
+        if (!fs.existsSync(dir)) continue;
+        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md');
+        for (const file of files) {
+          const filePath = path.join(dir, file);
+          try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            if (content.trim().length > 0) {
+              contextParts.push(`--- ${file} ---\n${content}`);
+            }
+          } catch {
+            // skip unreadable files
+          }
         }
       }
+
+      return contextParts.join('\n\n');
     } catch (e) {
-      // ignore
+      return '';
     }
-    return '';
   }
 
   @Post()
@@ -162,25 +164,6 @@ export class ChatController {
         await this.chatHistoryService.updateTitle(id, title);
       }
 
-      // Check if message requires deterministic tool processing (e.g. garment / order extraction)
-      let toolOutput: any = null;
-      const lowerContent = body.content.toLowerCase();
-      if (
-        lowerContent.includes('kaos') ||
-        lowerContent.includes('ukuran') ||
-        lowerContent.includes('direkap') ||
-        lowerContent.includes('rekap')
-      ) {
-        try {
-          toolOutput = await this.toolRegistryService.executeTool(
-            'parse_garment_order',
-            { rawText: body.content },
-          );
-        } catch (e) {
-          // ignore
-        }
-      }
-
       const history = await this.messageService.findByChatHistoryId(id);
       const knowledgeContext = this.getActiveKnowledgeContext();
       const systemPrompt = this.aiService.getSystemPrompt(
@@ -189,7 +172,9 @@ export class ChatController {
         knowledgeContext,
       );
 
-      const messages = [
+      const tools = this.toolRegistryService.getToolDefinitions();
+
+      const messages: any[] = [
         { role: 'system' as const, content: systemPrompt },
         ...history.map((m) => ({
           role: m.role as 'user' | 'assistant',
@@ -197,18 +182,72 @@ export class ChatController {
         })),
       ];
 
-      const aiResponse = await this.aiService.chat(messages);
+      let toolOutputs: any[] = [];
+      let finalContent = '';
+      let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+
+      const MAX_TOOL_ROUNDS = 5;
+      for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        const aiResponse = await this.aiService.chat(messages, tools);
+
+        usage = aiResponse.usage;
+
+        if (aiResponse.toolCalls.length === 0) {
+          finalContent = aiResponse.content;
+          break;
+        }
+
+        messages.push({
+          role: 'assistant',
+          content: aiResponse.content || null,
+          tool_calls: aiResponse.toolCalls,
+        });
+
+        for (const toolCall of aiResponse.toolCalls) {
+          const funcName = toolCall.function.name;
+          let args: Record<string, any> = {};
+
+          try {
+            args = JSON.parse(toolCall.function.arguments || '{}');
+          } catch {
+            args = {};
+          }
+
+          let result: any;
+          try {
+            result = await this.toolRegistryService.executeTool(funcName, args);
+          } catch (e) {
+            result = { error: e.message };
+          }
+
+          toolOutputs.push({
+            toolName: funcName,
+            args,
+            result,
+          });
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result),
+          });
+        }
+      }
+
+      if (!finalContent) {
+        finalContent = 'Pekerjaan telah selesai.';
+      }
 
       const assistantMessage = await this.messageService.createMessage(
         id,
         'assistant',
-        aiResponse.content,
+        finalContent,
       );
 
       return successResponse({
         message: assistantMessage,
-        usage: aiResponse.usage,
-        toolOutput,
+        usage,
+        toolOutputs,
       });
     } catch (error) {
       return errorResponse('AI_FAILED', error.message);

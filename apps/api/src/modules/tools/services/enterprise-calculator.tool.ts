@@ -7,6 +7,7 @@ export interface CalculationResult {
   discountAmount: number;
   finalTotal: number;
   breakdown: string;
+  plainTextOutput: string;
 }
 
 @Injectable()
@@ -30,13 +31,16 @@ export class EnterpriseCalculatorTool {
     const taxAmount = (taxableSubtotal * taxPercent) / 100;
     const finalTotal = taxableSubtotal + taxAmount;
 
+    const breakdown = `Subtotal: Rp ${subtotal.toLocaleString('id-ID')}\nDiskon (${discountPercent}%): Rp ${discountAmount.toLocaleString('id-ID')}\nPajak (${taxPercent}%): Rp ${taxAmount.toLocaleString('id-ID')}\nTotal Akhir: Rp ${finalTotal.toLocaleString('id-ID')}`;
+
     return {
       operation: 'Financial Calculation',
       subtotal,
       discountAmount,
       taxAmount,
       finalTotal,
-      breakdown: `Subtotal: Rp ${subtotal.toLocaleString('id-ID')}\nDiskon (${discountPercent}%): Rp ${discountAmount.toLocaleString('id-ID')}\nPajak (${taxPercent}%): Rp ${taxAmount.toLocaleString('id-ID')}\nTotal Akhir: Rp ${finalTotal.toLocaleString('id-ID')}`,
+      breakdown,
+      plainTextOutput: breakdown,
     };
   }
 }

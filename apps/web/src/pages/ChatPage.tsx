@@ -19,33 +19,26 @@ interface Message {
 function extractCanvasContentFromLLM(llmText: string): string {
   if (!llmText) return "";
 
-  let textToParse = llmText;
-
-  // 1. If codeblock exists, extract inside
-  const codeBlockMatch = llmText.match(/```(?:text|plain|markdown)?\s*\n([\s\S]*?)\n```/i);
-  if (codeBlockMatch && codeBlockMatch[1]) {
-    textToParse = codeBlockMatch[1];
+  // 1. Extract from code blocks (most reliable - universal)
+  const codeBlockMatch = llmText.match(/```[\w]*\n([\s\S]*?)\n```/);
+  if (codeBlockMatch?.[1]) {
+    const content = codeBlockMatch[1].trim();
+    if (content.length > 5) return content;
   }
 
-  // 2. Filter lines to only include actual header or size recap lines
-  const lines = textToParse
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  // 2. Extract markdown tables
+  const tableLines = llmText.split("\n").filter((l) => l.includes("|") && l.trim().length > 3);
+  if (tableLines.length >= 3) {
+    const cleaned = tableLines
+      .filter((l) => !/^\s*\|[\s\-:|]+\|\s*$/.test(l))
+      .map((l) => l.replace(/^\|/, "").replace(/\|$/, "").trim());
+    if (cleaned.length >= 2) return cleaned.join("\n");
+  }
 
-  const cleanLines = lines.filter((l) => {
-    // Exclude any English reasoning/thinking lines
-    if (
-      /^\s*(The user|Let's|Let me|I need|Parsing|Looking at|First,|It seems|We need|In the input|Tokens:|Sizes set:|List of)/i.test(l)
-    ) {
-      return false;
-    }
-    // Only accept header (e.g. BRAND WARNA, KAOS JALAN2) or size lines (e.g. S 5, M 8, TOTAL 25 PCS)
-    return /^(BRAND|MEREK|[A-Z0-9\s]{3,}|S\s+\d+|M\s+\d+|L\s+\d+|XL\s+\d+|2XL\s+\d+|3XL\s+\d+|4XL\s+\d+|TOTAL)/i.test(l);
-  });
-
-  if (cleanLines.length >= 2) {
-    return cleanLines.join("\n").trim();
+  // 3. Extract structured lists (bullet/numbered) with 3+ items
+  const listLines = llmText.split("\n").filter((l) => /^\s*[-*•]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l));
+  if (listLines.length >= 3) {
+    return listLines.map((l) => l.trim()).join("\n");
   }
 
   return "";
@@ -118,12 +111,24 @@ export function ChatPage() {
         });
         const responseData = await res.json();
 
-        const toolOutput = responseData?.data?.toolOutput;
+        const toolOutputs = responseData?.data?.toolOutputs || [];
         let canvasContent = "";
 
-        if (toolOutput?.plainTextOutput) {
-          canvasContent = toolOutput.plainTextOutput;
-        } else {
+        const preferredTools = ["calculate", "generate_export", "extract_structured_data"];
+        for (const toolName of preferredTools) {
+          const toolOutput = toolOutputs.find((t: any) => t.toolName === toolName && t.result?.plainTextOutput);
+          if (toolOutput) {
+            canvasContent = toolOutput.result.plainTextOutput;
+            break;
+          }
+        }
+
+        if (!canvasContent) {
+          const fallback = toolOutputs.find((t: any) => t.result?.plainTextOutput);
+          if (fallback) canvasContent = fallback.result.plainTextOutput;
+        }
+
+        if (!canvasContent) {
           const assistantContent =
             responseData?.data?.message?.content ||
             responseData?.data?.content ||
@@ -132,9 +137,14 @@ export function ChatPage() {
         }
 
         if (canvasContent) {
+          const firstTool = toolOutputs[0];
+          const title = firstTool?.toolName
+            ? firstTool.toolName.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
+            : "Hasil";
+
           setActiveCanvasData({
             id: `canvas-${Date.now()}`,
-            title: `Canvas`,
+            title,
             brandColorHeader: "",
             plainTextContent: canvasContent,
             createdAt: new Date().toLocaleTimeString(),
@@ -162,7 +172,11 @@ export function ChatPage() {
       createdAt: msg.createdAt,
     })) || [];
 
-  const messages = [...serverMessages, ...optimisticMessages];
+  const serverContentSet = new Set(serverMessages.map((m) => m.content));
+  const filteredOptimistic = optimisticMessages.filter(
+    (m) => !serverContentSet.has(m.content)
+  );
+  const messages = [...serverMessages, ...filteredOptimistic];
 
   const handleSend = (content: string) => {
     sendMessage.mutate(content);
