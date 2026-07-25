@@ -3,6 +3,7 @@ import { TextExtractorTool } from './services/text-extractor.tool.js';
 import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
 import { DocumentReaderTool } from './services/document-reader.tool.js';
+import { DataQueryTool } from './services/data-query.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -31,6 +32,7 @@ export class ToolRegistryService {
     private readonly calculatorTool: EnterpriseCalculatorTool,
     private readonly documentGeneratorTool: DocumentGeneratorTool,
     private readonly documentReaderTool: DocumentReaderTool,
+    private readonly dataQueryTool: DataQueryTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -121,6 +123,54 @@ export class ToolRegistryService {
         description: 'Membaca file dokumen dan mengekstrak teks',
         tags: ['read', 'document', 'file', 'pdf', 'docx', 'excel', 'csv', 'text'],
         inputSchema: { filePath: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 10000,
+    });
+
+    this.register('data_query', {
+      handler: async (args) => {
+        if (args.action === 'list_tables') {
+          return this.dataQueryTool.listTables();
+        }
+        if (args.action === 'describe_table' && args.tableName) {
+          return this.dataQueryTool.describeTable(args.tableName);
+        }
+        return this.dataQueryTool.queryData(args.sql || '');
+      },
+      definition: {
+        type: 'function',
+        function: {
+          name: 'data_query',
+          description: 'Query database real-time. Hanya SELECT query.',
+          parameters: {
+            type: 'object',
+            properties: {
+              action: {
+                type: 'string',
+                enum: ['query', 'list_tables', 'describe_table'],
+                description: 'Aksi: query (jalankan SQL), list_tables, describe_table',
+              },
+              sql: {
+                type: 'string',
+                description: 'SQL SELECT query',
+              },
+              tableName: {
+                type: 'string',
+                description: 'Nama table (untuk describe_table)',
+              },
+            },
+            required: ['action'],
+          },
+        },
+      },
+      capability: {
+        name: 'data_query',
+        displayName: 'Query Database',
+        description: 'Query database real-time',
+        tags: ['database', 'query', 'sql', 'realtime'],
+        inputSchema: { action: 'string', sql: 'string' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },
