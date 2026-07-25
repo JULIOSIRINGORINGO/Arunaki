@@ -1,5 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { detectFormat } from './extractors/format-detector.js';
+import {
+  parseInvoice,
+  parseReceipt,
+  parsePurchaseOrder,
+  parseGeneric,
+  ParsedDocument,
+} from './extractors/rule-parsers.js';
+import {
+  normalizeDocument,
+  formatAsPreview,
+} from './extractors/validator-normalizer.js';
 
 @Injectable()
 export class TextExtractorTool {
@@ -23,45 +35,51 @@ export class TextExtractorTool {
     }
 
     try {
-      const lines = rawText.split('\n').filter((l) => l.trim().length > 0);
-      const extractedItems: Array<{
-        line: number;
-        text: string;
-        numbers: number[];
-      }> = [];
+      const inputText = title ? `${title}\n${rawText}` : rawText;
+      const detected = detectFormat(inputText);
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const numbers = this.extractNumbers(line);
-        if (numbers.length > 0 || line.length > 3) {
-          extractedItems.push({ line: i + 1, text: line, numbers });
-        }
-      }
-
-      const totalNumbers = extractedItems.reduce(
-        (sum, item) => sum + item.numbers.length,
-        0,
+      this.logger.log(
+        `Format detected: ${detected.type} (confidence: ${detected.confidence})`,
       );
 
-      const preview = extractedItems.length > 0
-        ? extractedItems
-            .map((item) => {
-              const nums =
-                item.numbers.length > 0
-                  ? ` [${item.numbers.join(', ')}]`
-                  : '';
-              return `${item.text}${nums}`;
-            })
-            .join('\n')
-        : `${title || 'Data'} — ${lines.length} baris teks ditemukan`;
+      let parsed: ParsedDocument;
+
+      switch (detected.type) {
+        case 'invoice':
+          parsed = parseInvoice(inputText);
+          break;
+        case 'receipt':
+          parsed = parseReceipt(inputText);
+          break;
+        case 'purchase_order':
+          parsed = parsePurchaseOrder(inputText);
+          break;
+        default:
+          parsed = parseGeneric(inputText);
+          break;
+      }
+
+      if (title && !parsed.title) {
+        parsed.title = title;
+      }
+
+      const normalized = normalizeDocument(parsed);
+      const preview = formatAsPreview(normalized);
 
       return {
-        status: 'success',
+        status: normalized.validation.valid ? 'success' : 'partial',
         data: {
-          title,
-          items: extractedItems,
-          totalLines: lines.length,
-          totalNumbers,
+          format: normalized.format,
+          title: normalized.title,
+          items: normalized.items,
+          summary: normalized.summary,
+          metadata: normalized.metadata,
+          detectedFormat: {
+            type: detected.type,
+            confidence: detected.confidence,
+            signals: detected.signals,
+          },
+          validation: normalized.validation,
         },
         preview,
         metadata: {
@@ -69,6 +87,14 @@ export class TextExtractorTool {
           displayName: 'Ekstraksi Data',
           executionTime: Date.now() - startTime,
         },
+        ...(normalized.validation.valid
+          ? {}
+          : {
+              error: {
+                code: 'VALIDATION_PARTIAL',
+                message: `Ekstraksi sebagian: ${normalized.validation.errors.join('; ')}`,
+              },
+            }),
       };
     } catch (e) {
       return {
@@ -83,20 +109,5 @@ export class TextExtractorTool {
         error: { code: 'EXTRACTION_FAILED', message: e.message },
       };
     }
-  }
-
-  private extractNumbers(text: string): number[] {
-    const matches = text.match(
-      /[\d.,]+(?:\.\d{3})*(?:,\d{1,2})?/g,
-    );
-    if (!matches) return [];
-
-    return matches
-      .map((m) => {
-        const cleaned = m.replace(/\./g, '').replace(',', '.');
-        const num = parseFloat(cleaned);
-        return isNaN(num) ? null : num;
-      })
-      .filter((n): n is number => n !== null);
   }
 }
