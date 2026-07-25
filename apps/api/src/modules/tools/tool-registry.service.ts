@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
 import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
+import { DocumentReaderTool } from './services/document-reader.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -29,6 +30,7 @@ export class ToolRegistryService {
     private readonly textExtractorTool: TextExtractorTool,
     private readonly calculatorTool: EnterpriseCalculatorTool,
     private readonly documentGeneratorTool: DocumentGeneratorTool,
+    private readonly documentReaderTool: DocumentReaderTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -36,42 +38,93 @@ export class ToolRegistryService {
   private registerBuiltinTools(): void {
     this.register('extract_structured_data', {
       handler: (args) =>
-        this.textExtractorTool.extractStructuredData(
-          args.rawText,
-          args.title || '',
-        ),
+        this.textExtractorTool.extractStructuredData({
+          documentType: args.documentType,
+          title: args.title,
+          items: args.items,
+          totals: args.totals,
+          metadata: args.metadata,
+        }),
       definition: {
         type: 'function',
         function: {
           name: 'extract_structured_data',
           description:
-            'Mengekstrak data terstruktur dari teks mentah — invoice, pesanan, rekap, laporan, inventaris, struk. Menghasilkan data terstruktur dengan item, angka, dan ringkasan.',
+            'Validasi dan normalisasi data terstruktur dari dokumen. Kirim data yang sudah diekstrak, bukan teks mentah.',
           parameters: {
             type: 'object',
             properties: {
-              rawText: {
-                type: 'string',
-                description: 'Teks mentah dari pengguna (invoice, pesanan, laporan, dll)',
+              documentType: { type: 'string', description: 'Jenis dokumen' },
+              title: { type: 'string', description: 'Judul atau nama sumber' },
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    qty: { type: 'number' },
+                    unitPrice: { type: 'number' },
+                    total: { type: 'number' },
+                    unit: { type: 'string' },
+                  },
+                },
               },
-              title: {
-                type: 'string',
-                description: 'Judul data (opsional)',
+              totals: {
+                type: 'object',
+                properties: {
+                  subtotal: { type: 'number' },
+                  tax: { type: 'number' },
+                  total: { type: 'number' },
+                },
               },
+              metadata: { type: 'object' },
             },
-            required: ['rawText'],
+            required: ['items'],
           },
         },
       },
       capability: {
         name: 'extract_structured_data',
         displayName: 'Ekstraksi Data',
-        description: 'Mengekstrak data terstruktur dari teks mentah',
-        tags: ['extract', 'data', 'invoice', 'order', 'text', 'nlp'],
-        inputSchema: { rawText: 'string', title: 'string' },
+        description: 'Validasi dan normalisasi data terstruktur',
+        tags: ['extract', 'data', 'validate'],
+        inputSchema: { documentType: 'string', title: 'string', items: 'array', totals: 'object' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },
       timeoutMs: 5000,
+    });
+
+    this.register('document_reader', {
+      handler: (args) =>
+        this.documentReaderTool.readDocument(args.filePath),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'document_reader',
+          description: 'Membaca file dokumen dan mengekstrak teks mentahnya.',
+          parameters: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Path ke file dokumen',
+              },
+            },
+            required: ['filePath'],
+          },
+        },
+      },
+      capability: {
+        name: 'document_reader',
+        displayName: 'Pembaca Dokumen',
+        description: 'Membaca file dokumen dan mengekstrak teks',
+        tags: ['read', 'document', 'file', 'pdf', 'docx', 'excel', 'csv', 'text'],
+        inputSchema: { filePath: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 10000,
     });
 
     this.register('calculate', {

@@ -1,9 +1,25 @@
-import { ParsedDocument, ExtractedItem } from './rule-parsers.js';
-
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+}
+
+export interface ExtractedDataInput {
+  documentType?: string;
+  title?: string;
+  items?: Array<{
+    name?: string;
+    qty?: number | null;
+    unitPrice?: number | null;
+    total?: number | null;
+    [key: string]: any;
+  }>;
+  totals?: {
+    subtotal?: number | null;
+    tax?: number | null;
+    total?: number | null;
+  };
+  metadata?: Record<string, any>;
 }
 
 export interface NormalizedDocument {
@@ -25,34 +41,45 @@ export interface NormalizedDocument {
   validation: ValidationResult;
 }
 
-export function validateDocument(doc: ParsedDocument): ValidationResult {
+const VALID_DOC_TYPES = [
+  'invoice', 'receipt', 'purchase_order', 'quotation',
+  'delivery_note', 'inventory', 'report', 'list', 'other',
+];
+
+export function validateExtractedData(input: ExtractedDataInput): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!doc.title || doc.title.trim().length === 0) {
-    warnings.push('Judul dokumen kosong');
-  }
-
-  if (doc.items.length === 0) {
-    warnings.push('Tidak ada item yang berhasil diekstrak');
-  }
-
-  for (let i = 0; i < doc.items.length; i++) {
-    const item = doc.items[i];
-    if (!item.name || item.name.trim().length === 0) {
-      errors.push(`Item ${i + 1}: nama kosong`);
-    }
-    if (item.qty !== null && item.qty <= 0) {
-      errors.push(`Item ${i + 1} (${item.name}): qty harus > 0`);
-    }
-    if (item.unitPrice !== null && item.unitPrice < 0) {
-      errors.push(`Item ${i + 1} (${item.name}): harga tidak boleh negatif`);
+  if (input.documentType) {
+    const normalized = input.documentType.toLowerCase().replace(/[\s-]/g, '_');
+    if (!VALID_DOC_TYPES.includes(normalized)) {
+      warnings.push(`documentType "${input.documentType}" tidak dikenali, gunakan: ${VALID_DOC_TYPES.join(', ')}`);
     }
   }
 
-  if (doc.totals.total !== null && doc.totals.subtotal !== null) {
-    if (doc.totals.total < doc.totals.subtotal) {
-      warnings.push('Total kurang dari subtotal — mungkin ada diskon yang tidak terdeteksi');
+  if (!input.items || input.items.length === 0) {
+    warnings.push('Tidak ada item yang diberikan');
+  } else {
+    for (let i = 0; i < input.items.length; i++) {
+      const item = input.items[i];
+      if (!item.name || item.name.trim().length === 0) {
+        errors.push(`Item ${i + 1}: nama kosong`);
+      }
+      if (item.qty !== null && item.qty !== undefined && item.qty <= 0) {
+        errors.push(`Item ${i + 1} (${item.name}): qty harus > 0`);
+      }
+      if (item.unitPrice !== null && item.unitPrice !== undefined && item.unitPrice < 0) {
+        errors.push(`Item ${i + 1} (${item.name}): harga tidak boleh negatif`);
+      }
+    }
+  }
+
+  if (input.totals) {
+    if (input.totals.total !== null && input.totals.total !== undefined &&
+        input.totals.subtotal !== null && input.totals.subtotal !== undefined) {
+      if (input.totals.total < input.totals.subtotal) {
+        warnings.push('Total kurang dari subtotal — mungkin ada diskon yang tidak terdeteksi');
+      }
     }
   }
 
@@ -63,16 +90,16 @@ export function validateDocument(doc: ParsedDocument): ValidationResult {
   };
 }
 
-export function normalizeDocument(doc: ParsedDocument): NormalizedDocument {
-  const validation = validateDocument(doc);
+export function normalizeExtractedData(input: ExtractedDataInput): NormalizedDocument {
+  const validation = validateExtractedData(input);
 
-  const normalizedItems = doc.items
+  const normalizedItems = (input.items || [])
     .filter((item) => item.name && item.name.trim().length > 0)
     .map((item) => ({
-      name: item.name.trim(),
-      qty: item.qty,
-      unitPrice: item.unitPrice,
-      total: item.total || (item.qty && item.unitPrice ? item.qty * item.unitPrice : null),
+      name: item.name!.trim(),
+      qty: item.qty ?? null,
+      unitPrice: item.unitPrice ?? null,
+      total: item.total ?? (item.qty && item.unitPrice ? item.qty * item.unitPrice : null),
     }));
 
   const calculatedSubtotal = normalizedItems.reduce(
@@ -80,17 +107,27 @@ export function normalizeDocument(doc: ParsedDocument): NormalizedDocument {
     0,
   );
 
+  const format = (input.documentType || 'other').toLowerCase().replace(/[\s-]/g, '_');
+  const title = input.title || 'Data';
+
+  const normalizedMetadata: Record<string, string> = {};
+  if (input.metadata) {
+    for (const [key, value] of Object.entries(input.metadata)) {
+      normalizedMetadata[key] = String(value);
+    }
+  }
+
   return {
-    format: doc.format,
-    title: doc.title || 'Data',
+    format,
+    title,
     items: normalizedItems,
     summary: {
       itemCount: normalizedItems.length,
-      subtotal: doc.totals.subtotal || (calculatedSubtotal > 0 ? calculatedSubtotal : null),
-      tax: doc.totals.tax,
-      total: doc.totals.total || (calculatedSubtotal > 0 && doc.totals.tax ? calculatedSubtotal + doc.totals.tax : null),
+      subtotal: input.totals?.subtotal ?? (calculatedSubtotal > 0 ? calculatedSubtotal : null),
+      tax: input.totals?.tax ?? null,
+      total: input.totals?.total ?? (calculatedSubtotal > 0 && input.totals?.tax ? calculatedSubtotal + input.totals.tax : null),
     },
-    metadata: doc.metadata,
+    metadata: normalizedMetadata,
     validation,
   };
 }

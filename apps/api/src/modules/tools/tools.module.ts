@@ -3,6 +3,7 @@ import { ToolRegistryService } from './tool-registry.service.js';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
 import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
+import { DocumentReaderTool } from './services/document-reader.tool.js';
 import { ArtifactStore } from './artifact-store.service.js';
 
 @Module({
@@ -11,6 +12,7 @@ import { ArtifactStore } from './artifact-store.service.js';
     TextExtractorTool,
     EnterpriseCalculatorTool,
     DocumentGeneratorTool,
+    DocumentReaderTool,
     ArtifactStore,
   ],
   exports: [
@@ -18,6 +20,7 @@ import { ArtifactStore } from './artifact-store.service.js';
     TextExtractorTool,
     EnterpriseCalculatorTool,
     DocumentGeneratorTool,
+    DocumentReaderTool,
     ArtifactStore,
   ],
 })

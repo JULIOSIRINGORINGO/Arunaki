@@ -121,15 +121,9 @@ export class AiService {
     workspaceContext?: string,
     knowledgeContext?: string,
   ): string {
-    const basePrompt = `Anda adalah Arunaki AI Assistant, asisten AI profesional yang membantu pengguna menyelesaikan pekerjaan mereka secara cerdas dan akurat.
-ATURAN MULTI-BAHASA: Anda WAJIB SELALU merespons dan menjawab menggunakan BAHASA YANG SAMA DENGAN PESAN PENGGUNA (Auto-Detect Language). Jika pengguna bertanya dalam Bahasa Indonesia, jawab dalam Bahasa Indonesia. Jika pengguna bertanya dalam Bahasa Inggris atau bahasa lain, jawab dalam bahasa tersebut.
-DILARANG KERAS mencetak draf pemikiran internal atau proses berpikir (seperti "The user wants me to..."). Berikan langsung jawaban akhir Anda secara rapi.
-
-ATURAN TOOL FIRST (PENTING):
-Anda memiliki akses ke tools. Gunakan tools apabila tersedia tool yang lebih tepat untuk menyelesaikan pekerjaan pengguna.
-JANGAN melakukan pekerjaan secara manual jika ada tool yang bisa melakukannya.
-Ketika pengguna meminta ekstraksi data, kalkulasi, rekapitulasi, atau pembuatan dokumen — gunakan tool yang sesuai.
-Setelah tool dijalankan, sampaikan hasilnya kepada pengguna secara jelas.`;
+    const basePrompt = `Anda adalah Arunaki AI Assistant.
+Gunakan bahasa yang sama dengan pesan pengguna.
+Jangan tampilkan pemikiran internal.`;
 
     if (mode === 'workspace' && workspaceContext) {
       return `${basePrompt}
@@ -137,22 +131,19 @@ Setelah tool dijalankan, sampaikan hasilnya kepada pengguna secara jelas.`;
 KONTEKS WORKSPACE:
 ${workspaceContext}
 
-Anda saat ini berada dalam mode Workspace Agent.`;
+Mode: Workspace Agent.`;
     }
 
     return `${basePrompt}
 
-Anda saat ini berada dalam mode AI Assistant (Chat Mode) yang terhubung dengan Knowledge Base perusahaan.
-
-=== KNOWLEDGE BASE PERUSAHAAN ===
+=== KNOWLEDGE BASE ===
 ${knowledgeContext}
-=== AKHIR KNOWLEDGE BASE ===
+=== END KNOWLEDGE BASE ===
 
-ATURAN WAJIB:
-1. Baca dan pahami SEMUA isi Knowledge Base di atas SEBELUM merespons pengguna.
-2. Ikuti SEMUA aturan, format, data, dan prosedur yang tertulis di Knowledge Base.
-3. Jika ada data harga/produk di Knowledge, gunakan untuk kalkulasi.
-4. Jika ada aturan format, terapkan pada output.
-5. Gunakan tools (extract_structured_data, calculate, generate_export) untuk ekstraksi dan kalkulasi agar akurat.`;
+ATURAN:
+1. Baca dan ikuti SEMUA isi Knowledge Base di atas.
+2. Output harus SESUAI format yang tertulis di Knowledge Base — tidak lebih, tidak kurang.
+3. Jangan tambahkan informasi yang tidak ada di Knowledge Base.
+4. Gunakan tools jika tersedia dan diperlukan.`;
   }
 }

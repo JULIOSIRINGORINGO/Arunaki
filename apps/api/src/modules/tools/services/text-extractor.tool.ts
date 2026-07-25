@@ -1,15 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
-import { detectFormat } from './extractors/format-detector.js';
 import {
-  parseInvoice,
-  parseReceipt,
-  parsePurchaseOrder,
-  parseGeneric,
-  ParsedDocument,
-} from './extractors/rule-parsers.js';
-import {
-  normalizeDocument,
+  ExtractedDataInput,
+  normalizeExtractedData,
   formatAsPreview,
 } from './extractors/validator-normalizer.js';
 
@@ -17,53 +10,29 @@ import {
 export class TextExtractorTool {
   private readonly logger = new Logger(TextExtractorTool.name);
 
-  extractStructuredData(rawText: string, title: string = ''): ToolResult {
+  extractStructuredData(input: ExtractedDataInput): ToolResult {
     const startTime = Date.now();
 
-    if (!rawText || !rawText.trim()) {
+    if (!input || (!input.items || input.items.length === 0) && !input.title) {
       return {
         status: 'error',
         data: {},
-        preview: title ? title : 'Teks kosong — tidak ada data yang bisa diekstrak',
+        preview: 'Tidak ada data yang diberikan untuk diekstrak',
         metadata: {
           toolName: 'extract_structured_data',
           displayName: 'Ekstraksi Data',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'EMPTY_INPUT', message: 'Input teks kosong' },
+        error: { code: 'EMPTY_INPUT', message: 'Input kosong — LLM harus mengisi minimal title atau items' },
       };
     }
 
     try {
-      const inputText = title ? `${title}\n${rawText}` : rawText;
-      const detected = detectFormat(inputText);
-
       this.logger.log(
-        `Format detected: ${detected.type} (confidence: ${detected.confidence})`,
+        `Processing extracted data: type=${input.documentType || 'unknown'}, items=${input.items?.length || 0}`,
       );
 
-      let parsed: ParsedDocument;
-
-      switch (detected.type) {
-        case 'invoice':
-          parsed = parseInvoice(inputText);
-          break;
-        case 'receipt':
-          parsed = parseReceipt(inputText);
-          break;
-        case 'purchase_order':
-          parsed = parsePurchaseOrder(inputText);
-          break;
-        default:
-          parsed = parseGeneric(inputText);
-          break;
-      }
-
-      if (title && !parsed.title) {
-        parsed.title = title;
-      }
-
-      const normalized = normalizeDocument(parsed);
+      const normalized = normalizeExtractedData(input);
       const preview = formatAsPreview(normalized);
 
       return {
@@ -74,11 +43,6 @@ export class TextExtractorTool {
           items: normalized.items,
           summary: normalized.summary,
           metadata: normalized.metadata,
-          detectedFormat: {
-            type: detected.type,
-            confidence: detected.confidence,
-            signals: detected.signals,
-          },
           validation: normalized.validation,
         },
         preview,
@@ -100,7 +64,7 @@ export class TextExtractorTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal mengekstrak data: ${e.message}`,
+        preview: `Gagal memproses data: ${e.message}`,
         metadata: {
           toolName: 'extract_structured_data',
           displayName: 'Ekstraksi Data',
