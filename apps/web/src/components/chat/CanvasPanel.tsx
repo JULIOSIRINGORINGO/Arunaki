@@ -9,6 +9,8 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  File,
+  History,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -26,11 +28,40 @@ interface PendingDownload {
   base64: string;
 }
 
+interface Artifact {
+  id: string;
+  type: string;
+  filename: string;
+  mimeType: string;
+  preview: string;
+  status: string;
+  createdAt: string;
+}
+
 interface CanvasPanelProps {
   isOpen: boolean;
   onClose: () => void;
   canvasData?: CanvasData | null;
   pendingDownload?: PendingDownload | null;
+  artifacts?: Artifact[];
+}
+
+const API_BASE = "http://localhost:3000/api/v1";
+
+function getFileLabel(mimeType: string): string {
+  if (mimeType.includes("pdf")) return "PDF";
+  if (mimeType.includes("wordprocessingml")) return "DOCX";
+  if (mimeType.includes("presentationml")) return "PPTX";
+  if (mimeType.includes("spreadsheetml")) return "XLSX";
+  if (mimeType.includes("csv")) return "CSV";
+  return "FILE";
+}
+
+function getFileIcon(mimeType: string) {
+  if (mimeType.includes("spreadsheetml") || mimeType.includes("csv"))
+    return FileSpreadsheet;
+  if (mimeType.includes("presentationml")) return File;
+  return FileText;
 }
 
 export function CanvasPanel({
@@ -38,9 +69,11 @@ export function CanvasPanel({
   onClose,
   canvasData,
   pendingDownload,
+  artifacts = [],
 }: CanvasPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showArtifacts, setShowArtifacts] = useState(false);
 
   if (!isOpen) return null;
 
@@ -70,9 +103,18 @@ export function CanvasPanel({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // fallback: copy base64 to clipboard
       navigator.clipboard.writeText(pendingDownload.base64);
     }
+  };
+
+  const handleDownloadArtifact = (artifact: Artifact) => {
+    const url = `${API_BASE}/chat/artifacts/${artifact.id}/download`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = artifact.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDownloadTxt = () => {
@@ -105,15 +147,6 @@ export function CanvasPanel({
     document.body.removeChild(element);
   };
 
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType.includes("pdf")) return "PDF";
-    if (mimeType.includes("wordprocessingml")) return "DOCX";
-    if (mimeType.includes("presentationml")) return "PPTX";
-    if (mimeType.includes("spreadsheetml")) return "XLSX";
-    if (mimeType.includes("csv")) return "CSV";
-    return "FILE";
-  };
-
   return (
     <aside
       className={cn(
@@ -128,18 +161,33 @@ export function CanvasPanel({
             <Sparkles className="w-4 h-4" />
           </div>
           <h2 className="text-sm font-bold text-gray-900 tracking-tight truncate">
-            {canvasData?.title || "Canvas"}
+            {showArtifacts ? "Riwayat File" : canvasData?.title || "Canvas"}
           </h2>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {canvasData && (
+          {artifacts.length > 0 && (
+            <button
+              onClick={() => setShowArtifacts(!showArtifacts)}
+              className={cn(
+                "p-1.5 rounded-lg transition-colors cursor-pointer",
+                showArtifacts
+                  ? "text-emerald-700 bg-emerald-50"
+                  : "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
+              )}
+              title="Riwayat File"
+            >
+              <History className="w-4 h-4" />
+            </button>
+          )}
+
+          {canvasData && !showArtifacts && (
             <>
               {pendingDownload && (
                 <button
                   onClick={handleDownloadFile}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
-                  title={`Download ${getFileIcon(pendingDownload.mimeType)}`}
+                  title={`Download ${getFileLabel(pendingDownload.mimeType)}`}
                 >
                   <FileText className="w-4 h-4" />
                 </button>
@@ -184,7 +232,52 @@ export function CanvasPanel({
 
       {/* Canvas Body */}
       <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center justify-center min-h-0">
-        {canvasData ? (
+        {showArtifacts ? (
+          <div className="w-full space-y-2">
+            {artifacts.length === 0 ? (
+              <div className="text-center space-y-2 text-gray-400 py-8">
+                <History className="w-5 h-5 text-gray-300 mx-auto" />
+                <p className="text-xs">Belum ada file yang di-generate</p>
+              </div>
+            ) : (
+              artifacts.map((artifact) => {
+                const Icon = getFileIcon(artifact.mimeType);
+                const time = new Date(artifact.createdAt).toLocaleTimeString(
+                  "id-ID",
+                  { hour: "2-digit", minute: "2-digit" },
+                );
+                return (
+                  <div
+                    key={artifact.id}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200/90 shadow-2xs hover:border-gray-300 transition-colors group"
+                  >
+                    <div className="p-2 rounded-lg bg-gray-50 text-gray-500 shrink-0">
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {artifact.filename}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {artifact.preview}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-gray-300">{time}</span>
+                      <button
+                        onClick={() => handleDownloadArtifact(artifact)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        title={`Download ${artifact.filename}`}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        ) : canvasData ? (
           <div className="relative w-full max-w-sm p-6 rounded-2xl bg-white border border-gray-200/90 shadow-2xs space-y-2 group my-auto max-h-[75%] overflow-y-auto">
             <button
               onClick={handleCopy}
@@ -209,7 +302,7 @@ export function CanvasPanel({
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download {getFileIcon(pendingDownload.mimeType)}</span>
+                  <span>Download {getFileLabel(pendingDownload.mimeType)}</span>
                   <span className="text-gray-400 text-xs">
                     ({pendingDownload.filename})
                   </span>

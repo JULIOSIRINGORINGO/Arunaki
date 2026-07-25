@@ -39,6 +39,16 @@ interface ToolOutput {
   };
 }
 
+interface Artifact {
+  id: string;
+  type: string;
+  filename: string;
+  mimeType: string;
+  preview: string;
+  status: string;
+  createdAt: string;
+}
+
 function extractCanvasContentFromLLM(llmText: string): string {
   if (!llmText) return "";
 
@@ -84,6 +94,7 @@ export function ChatPage() {
     mimeType: string;
     base64: string;
   } | null>(null);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
 
   const createChat = useMutation({
     mutationFn: async () => {
@@ -120,6 +131,21 @@ export function ChatPage() {
     enabled: !!chatId,
   });
 
+  const { data: artifactsData = [] } = useQuery({
+    queryKey: ["artifacts", chatId],
+    queryFn: async () => {
+      if (!chatId) return [];
+      try {
+        const res = await fetch(`${API_BASE}/chat/${chatId}/artifacts`);
+        const data = await res.json();
+        return data.data || [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!chatId,
+  });
+
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
       let activeId = chatId;
@@ -146,6 +172,8 @@ export function ChatPage() {
 
         const toolOutputs: ToolOutput[] =
           responseData?.data?.toolOutputs || [];
+        const responseArtifacts: Artifact[] =
+          responseData?.data?.artifacts || [];
 
         let canvasContent = "";
         let canvasTitle = "Hasil";
@@ -216,10 +244,17 @@ export function ChatPage() {
 
         setPendingDownload(downloadInfo);
 
+        if (responseArtifacts.length > 0) {
+          setArtifacts((prev) => [...responseArtifacts, ...prev]);
+        }
+
         queryClient.invalidateQueries({
           queryKey: ["messages", activeId],
         });
         queryClient.invalidateQueries({ queryKey: ["chats"] });
+        queryClient.invalidateQueries({
+          queryKey: ["artifacts", activeId],
+        });
 
         return responseData;
       } catch {
@@ -243,6 +278,13 @@ export function ChatPage() {
     (m) => !serverContentSet.has(m.content),
   );
   const messages = [...serverMessages, ...filteredOptimistic];
+
+  const allArtifacts = [
+    ...artifacts,
+    ...artifactsData.filter(
+      (a: Artifact) => !artifacts.some((pa) => pa.id === a.id),
+    ),
+  ];
 
   const handleSend = (content: string) => {
     sendMessage.mutate(content);
@@ -291,6 +333,7 @@ export function ChatPage() {
         onClose={() => setCanvasOpen(false)}
         canvasData={activeCanvasData}
         pendingDownload={pendingDownload}
+        artifacts={allArtifacts}
       />
     </div>
   );
