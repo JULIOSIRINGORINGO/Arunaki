@@ -6,6 +6,7 @@ import { DocumentReaderTool } from './services/document-reader.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
+import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -37,6 +38,7 @@ export class ToolRegistryService {
     private readonly dataQueryTool: DataQueryTool,
     private readonly imageOcrTool: ImageOcrTool,
     private readonly docSearchTool: DocSearchTool,
+    private readonly knowledgeBuilderTool: KnowledgeBuilderTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -364,6 +366,51 @@ export class ToolRegistryService {
         estimatedLatency: 'medium',
       },
       timeoutMs: 15000,
+    });
+
+    this.register('save_knowledge', {
+      handler: (args) =>
+        this.knowledgeBuilderTool.saveKnowledge(
+          args.title,
+          args.content,
+          args.type,
+        ),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'save_knowledge',
+          description:
+            'Menyimpan atau memperbarui Knowledge Base. Gunakan saat user ingin membuat atau mengupdate knowledge.',
+          parameters: {
+            type: 'object',
+            properties: {
+              title: {
+                type: 'string',
+                description: 'Judul knowledge (nama bisnis/perusahaan)',
+              },
+              content: {
+                type: 'string',
+                description: 'Isi knowledge dalam format markdown',
+              },
+              type: {
+                type: 'string',
+                description: 'Tipe knowledge (custom, garment, restaurant, finance, dll)',
+              },
+            },
+            required: ['title', 'content'],
+          },
+        },
+      },
+      capability: {
+        name: 'save_knowledge',
+        displayName: 'Simpan Knowledge',
+        description: 'Menyimpan atau memperbarui Knowledge Base',
+        tags: ['knowledge', 'save', 'create', 'update', 'base'],
+        inputSchema: { title: 'string', content: 'string', type: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
     });
   }
 

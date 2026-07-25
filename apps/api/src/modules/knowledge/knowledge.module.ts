@@ -8,6 +8,6 @@ import { PrismaModule } from '../../common/providers/prisma.module.js';
   imports: [PrismaModule],
   controllers: [KnowledgeController],
   providers: [KnowledgeService, KnowledgeRepository],
-  exports: [KnowledgeService],
+  exports: [KnowledgeService, KnowledgeRepository],
 })
 export class KnowledgeModule {}

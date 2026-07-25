@@ -19,6 +19,12 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> {
     });
   }
 
+  async findByTitle(title: string): Promise<Knowledge | null> {
+    return this.prisma.knowledge.findFirst({
+      where: { title },
+    });
+  }
+
   async toggleActive(id: string): Promise<Knowledge> {
     const item = await this.prisma.knowledge.findUnique({ where: { id } });
     return this.prisma.knowledge.update({

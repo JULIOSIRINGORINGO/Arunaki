@@ -7,9 +7,12 @@ import { DocumentReaderTool } from './services/document-reader.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
+import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
 import { ArtifactStore } from './artifact-store.service.js';
+import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 
 @Module({
+  imports: [KnowledgeModule],
   providers: [
     ToolRegistryService,
     TextExtractorTool,
@@ -19,6 +22,7 @@ import { ArtifactStore } from './artifact-store.service.js';
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
+    KnowledgeBuilderTool,
     ArtifactStore,
   ],
   exports: [
@@ -30,6 +34,7 @@ import { ArtifactStore } from './artifact-store.service.js';
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
+    KnowledgeBuilderTool,
     ArtifactStore,
   ],
 })

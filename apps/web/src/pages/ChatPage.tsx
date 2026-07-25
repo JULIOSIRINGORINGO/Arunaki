@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { ChatMessages } from "../components/chat/ChatMessages";
 import { ChatInput } from "../components/chat/ChatInput";
-import { CanvasPanel, CanvasData } from "../components/chat/CanvasPanel";
+import type { CanvasData } from "../components/chat/CanvasPanel";
+import { CanvasPanel } from "../components/chat/CanvasPanel";
 import { cn } from "../lib/utils";
 
 const API_BASE = "http://localhost:3000/api/v1";
@@ -95,6 +96,9 @@ export function ChatPage() {
     base64: string;
   } | null>(null);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [pendingChatId, setPendingChatId] = useState<string | null>(null);
+
+  const effectiveChatId = chatId || pendingChatId;
 
   const createChat = useMutation({
     mutationFn: async () => {
@@ -111,44 +115,45 @@ export function ChatPage() {
       }
     },
     onSuccess: (id) => {
+      setPendingChatId(id);
       setSearchParams({ chat: id });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
   });
 
   const { data: messagesData = [] } = useQuery({
-    queryKey: ["messages", chatId],
+    queryKey: ["messages", effectiveChatId],
     queryFn: async () => {
-      if (!chatId) return [];
+      if (!effectiveChatId) return [];
       try {
-        const res = await fetch(`${API_BASE}/chat/${chatId}/messages`);
+        const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/messages`);
         const data = await res.json();
         return data.data || [];
       } catch {
         return [];
       }
     },
-    enabled: !!chatId,
+    enabled: !!effectiveChatId,
   });
 
   const { data: artifactsData = [] } = useQuery({
-    queryKey: ["artifacts", chatId],
+    queryKey: ["artifacts", effectiveChatId],
     queryFn: async () => {
-      if (!chatId) return [];
+      if (!effectiveChatId) return [];
       try {
-        const res = await fetch(`${API_BASE}/chat/${chatId}/artifacts`);
+        const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/artifacts`);
         const data = await res.json();
         return data.data || [];
       } catch {
         return [];
       }
     },
-    enabled: !!chatId,
+    enabled: !!effectiveChatId,
   });
 
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
-      let activeId = chatId;
+      let activeId = effectiveChatId;
       if (!activeId) {
         activeId = await createChat.mutateAsync();
       }
@@ -169,6 +174,10 @@ export function ChatPage() {
           body: JSON.stringify({ content }),
         });
         const responseData = await res.json();
+
+        if (responseData?.error) {
+          throw new Error(responseData.error.message || "Gagal mengirim pesan");
+        }
 
         const toolOutputs: ToolOutput[] =
           responseData?.data?.toolOutputs || [];
@@ -248,7 +257,7 @@ export function ChatPage() {
           setArtifacts((prev) => [...responseArtifacts, ...prev]);
         }
 
-        queryClient.invalidateQueries({
+        await queryClient.invalidateQueries({
           queryKey: ["messages", activeId],
         });
         queryClient.invalidateQueries({ queryKey: ["chats"] });
@@ -257,10 +266,9 @@ export function ChatPage() {
         });
 
         return responseData;
-      } catch {
-        return { success: true };
-      } finally {
-        setOptimisticMessages([]);
+      } catch (e) {
+        setOptimisticMessages((prev) => prev.filter((m) => m.id !== tempId));
+        throw e;
       }
     },
   });

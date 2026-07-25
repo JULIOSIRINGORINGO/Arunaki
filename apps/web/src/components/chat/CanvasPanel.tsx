@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Markdown from "react-markdown";
 import {
   Sparkles,
   X,
@@ -291,8 +292,8 @@ export function CanvasPanel({
               )}
             </button>
 
-            <div className="font-mono text-sm text-gray-900 leading-relaxed whitespace-pre-wrap selection:bg-emerald-100 pr-8">
-              {canvasData.plainTextContent}
+            <div className="text-sm text-gray-900 leading-relaxed selection:bg-emerald-100 pr-8 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-gray-600 [&_td]:py-2 [&_td]:px-3 [&_td]:text-gray-800 [&_tr]:border-b [&_tr]:border-gray-100 [&_strong]:font-semibold [&_strong]:text-gray-900">
+              <Markdown>{canvasData.plainTextContent}</Markdown>
             </div>
 
             {pendingDownload && (

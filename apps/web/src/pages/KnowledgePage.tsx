@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   BookOpen,
   Plus,
@@ -34,9 +34,10 @@ export function KnowledgePage() {
   const [previewDoc, setPreviewDoc] = useState<KnowledgeDoc | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-
-  const [newTitle, setNewTitle] = useState("");
-  const [newContent, setNewContent] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [extractStep, setExtractStep] = useState<"idle" | "uploading" | "extracting" | "saving" | "done">("idle");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -74,24 +75,51 @@ export function KnowledgePage() {
   };
 
   const createDoc = async () => {
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (!selectedFile) return;
     setCreating(true);
+    setExtractStep("uploading");
     try {
-      const res = await fetch(`${API_BASE}/knowledge`, {
+      // Simulasi step upload
+      await new Promise((r) => setTimeout(r, 600));
+      setExtractStep("extracting");
+
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await fetch(`${API_BASE}/knowledge/upload`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle, content: newContent, type: "custom" }),
+        body: formData,
       });
       const data = await res.json();
-      setDocs((prev) => [data.data, ...prev]);
-      setNewTitle("");
-      setNewContent("");
+
+      setExtractStep("saving");
+      await new Promise((r) => setTimeout(r, 400));
+
+      if (data.data) {
+        setDocs((prev) => [data.data, ...prev]);
+      }
+      setExtractStep("done");
+      await new Promise((r) => setTimeout(r, 800));
+
+      setSelectedFile(null);
       setUploadOpen(false);
     } catch {
       // ignore
     } finally {
       setCreating(false);
+      setExtractStep("idle");
     }
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) setSelectedFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setSelectedFile(file);
   };
 
   const filteredDocs = docs.filter((doc) => {
@@ -363,66 +391,142 @@ export function KnowledgePage() {
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
           <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl space-y-5 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-gray-100 text-gray-700">
-                  <UploadCloud className="w-5 h-5" />
+            {creating ? (
+              /* Loading State */
+              <div className="py-10 space-y-6">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+                  <span className="text-sm font-semibold text-gray-900">
+                    {extractStep === "uploading" && "Mengunggah file..."}
+                    {extractStep === "extracting" && "Sedang mengekstraksi teks dari dokumen..."}
+                    {extractStep === "saving" && "Menyimpan ke Knowledge Base..."}
+                    {extractStep === "done" && "Berhasil disimpan!"}
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Tambah Knowledge</h3>
-                  <p className="text-xs text-gray-500">Aturan, harga, data produk, atau SOP</p>
+
+                <div className="space-y-2.5 px-4">
+                  {(["uploading", "extracting", "saving", "done"] as const).map((step, i) => {
+                    const steps = ["uploading", "extracting", "saving", "done"] as const;
+                    const currentIdx = steps.indexOf(extractStep as typeof steps[number]);
+                    const stepIdx = i;
+                    const isDone = stepIdx < currentIdx;
+                    const isCurrent = stepIdx === currentIdx;
+
+                    return (
+                      <div key={step} className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0",
+                          isDone
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : isCurrent
+                              ? "border-gray-900 text-gray-900 bg-gray-50"
+                              : "border-gray-200 text-gray-400 bg-gray-50"
+                        )}>
+                          {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+                        </div>
+                        <span className={cn(
+                          "text-xs font-medium",
+                          isDone ? "text-emerald-600" : isCurrent ? "text-gray-900" : "text-gray-400"
+                        )}>
+                          {step === "uploading" && "Upload file"}
+                          {step === "extracting" && "Ekstraksi teks"}
+                          {step === "saving" && "Simpan ke database"}
+                          {step === "done" && "Selesai"}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <button
-                onClick={() => setUploadOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            ) : (
+              /* Upload Form */
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-gray-100 text-gray-700">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Tambah Dokumen Knowledge</h3>
+                      <p className="text-xs text-gray-500">Khusus digunakan sebagai rujukan AI Assistant</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setUploadOpen(false); setSelectedFile(null); }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Judul</label>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Misal: Harga Produk Garment, SOP Garansi, dll"
-                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-hidden focus:border-gray-400"
-                />
-              </div>
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleFileDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all",
+                    dragOver
+                      ? "border-gray-900 bg-gray-50"
+                      : selectedFile
+                        ? "border-emerald-300 bg-emerald-50/50"
+                        : "border-gray-200 hover:border-gray-400 hover:bg-gray-50/50"
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt,.md,.csv"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  {selectedFile ? (
+                    <>
+                      <FileText className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-gray-900">{selectedFile.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(selectedFile.size / 1024).toFixed(1)} KB
+                      </p>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                        className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
+                      >
+                        Ganti file
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        Klik atau seret file dokumen ke sini
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Mendukung PDF, DOCX, TXT, Markdown, CSV
+                      </p>
+                    </>
+                  )}
+                </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Isi Knowledge</label>
-                <textarea
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  placeholder={`Contoh format harga:\nBarang A Rp25.000/pc\nBarang B Rp30.000/pc\nPPN 11%\n\nContoh format aturan:\nUrutan ukuran: S, M, L, XL, 2XL, 3XL\nBaris terakhir wajib TOTAL PCS`}
-                  rows={8}
-                  className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm text-gray-900 font-mono focus:outline-hidden focus:border-gray-400 resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-              <button
-                onClick={() => setUploadOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100"
-              >
-                Batal
-              </button>
-              <button
-                onClick={createDoc}
-                disabled={!newTitle.trim() || !newContent.trim() || creating}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-2xs transition-all",
-                  (!newTitle.trim() || !newContent.trim() || creating) && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                {creating ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => { setUploadOpen(false); setSelectedFile(null); }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={createDoc}
+                    disabled={!selectedFile}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-2xs transition-all",
+                      !selectedFile && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    Simpan ke Knowledge Base
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
