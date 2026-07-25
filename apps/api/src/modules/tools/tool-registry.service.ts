@@ -4,6 +4,8 @@ import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
 import { DocumentReaderTool } from './services/document-reader.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
+import { ImageOcrTool } from './services/image-ocr.tool.js';
+import { DocSearchTool } from './services/doc-search.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -33,6 +35,8 @@ export class ToolRegistryService {
     private readonly documentGeneratorTool: DocumentGeneratorTool,
     private readonly documentReaderTool: DocumentReaderTool,
     private readonly dataQueryTool: DataQueryTool,
+    private readonly imageOcrTool: ImageOcrTool,
+    private readonly docSearchTool: DocSearchTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -171,6 +175,78 @@ export class ToolRegistryService {
         description: 'Query database real-time',
         tags: ['database', 'query', 'sql', 'realtime'],
         inputSchema: { action: 'string', sql: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 10000,
+    });
+
+    this.register('image_ocr', {
+      handler: (args) =>
+        this.imageOcrTool.recognizeText(args.filePath, args.language),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'image_ocr',
+          description: 'Membaca teks dari gambar menggunakan OCR.',
+          parameters: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Path ke file gambar',
+              },
+              language: {
+                type: 'string',
+                description: 'Bahasa OCR (default: eng)',
+              },
+            },
+            required: ['filePath'],
+          },
+        },
+      },
+      capability: {
+        name: 'image_ocr',
+        displayName: 'OCR Gambar',
+        description: 'Membaca teks dari gambar',
+        tags: ['image', 'ocr', 'text', 'recognition'],
+        inputSchema: { filePath: 'string', language: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'medium',
+      },
+      timeoutMs: 30000,
+    });
+
+    this.register('doc_search', {
+      handler: (args) =>
+        this.docSearchTool.searchDocuments(args.query, args.limit),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'doc_search',
+          description: 'Mencari dokumen, knowledge, dan pesan berdasarkan kata kunci.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Kata kunci pencarian',
+              },
+              limit: {
+                type: 'number',
+                description: 'Batas hasil (default: 10)',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'doc_search',
+        displayName: 'Pencarian Dokumen',
+        description: 'Mencari dokumen dan knowledge',
+        tags: ['search', 'document', 'knowledge', 'find'],
+        inputSchema: { query: 'string', limit: 'number' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },
