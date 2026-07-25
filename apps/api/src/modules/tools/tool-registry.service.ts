@@ -12,6 +12,12 @@ interface RegisteredTool {
   handler: (args: Record<string, any>) => Promise<ToolResult> | ToolResult;
   definition: ToolDefinition;
   capability: ToolCapability;
+  timeoutMs: number;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
 }
 
 @Injectable()
@@ -65,6 +71,7 @@ export class ToolRegistryService {
         outputType: 'text',
         estimatedLatency: 'fast',
       },
+      timeoutMs: 5000,
     });
 
     this.register('calculate', {
@@ -110,6 +117,7 @@ export class ToolRegistryService {
         outputType: 'calculation',
         estimatedLatency: 'fast',
       },
+      timeoutMs: 3000,
     });
 
     this.register('generate_export', {
@@ -176,6 +184,7 @@ export class ToolRegistryService {
         outputType: 'document',
         estimatedLatency: 'medium',
       },
+      timeoutMs: 15000,
     });
   }
 
@@ -185,10 +194,14 @@ export class ToolRegistryService {
       handler: (args: Record<string, any>) => Promise<ToolResult> | ToolResult;
       definition: ToolDefinition;
       capability: ToolCapability;
+      timeoutMs?: number;
     },
   ): void {
-    this.tools.set(name, tool);
-    this.logger.log(`Tool registered: ${name}`);
+    this.tools.set(name, {
+      ...tool,
+      timeoutMs: tool.timeoutMs ?? 10000,
+    });
+    this.logger.log(`Tool registered: ${name} (timeout: ${tool.timeoutMs ?? 10000}ms)`);
   }
 
   getToolDefinitions(): ToolDefinition[] {
@@ -203,6 +216,46 @@ export class ToolRegistryService {
     return this.getToolCapabilities().filter((cap) =>
       tags.some((tag) => cap.tags.includes(tag)),
     );
+  }
+
+  validateArgs(
+    args: Record<string, any>,
+    parameters: Record<string, any>,
+  ): ValidationResult {
+    const errors: string[] = [];
+    const required: string[] = parameters.required || [];
+    const properties: Record<string, any> = parameters.properties || {};
+
+    for (const field of required) {
+      if (args[field] === undefined || args[field] === null) {
+        errors.push(`Field "${field}" wajib diisi`);
+      }
+    }
+
+    for (const [key, schema] of Object.entries(properties)) {
+      const value = args[key];
+      if (value === undefined || value === null) continue;
+
+      const expectedType = (schema as any).type;
+      if (expectedType === 'string' && typeof value !== 'string') {
+        errors.push(`Field "${key}" harus bertipe string`);
+      }
+      if (expectedType === 'number' && typeof value !== 'number') {
+        errors.push(`Field "${key}" harus bertipe number`);
+      }
+      if (expectedType === 'array' && !Array.isArray(value)) {
+        errors.push(`Field "${key}" harus berupa array`);
+      }
+
+      const enumValues = (schema as any).enum;
+      if (enumValues && Array.isArray(enumValues) && !enumValues.includes(value)) {
+        errors.push(
+          `Field "${key}" harus salah satu dari: ${enumValues.join(', ')}`,
+        );
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
   }
 
   async executeTool(
@@ -224,26 +277,75 @@ export class ToolRegistryService {
       };
     }
 
-    this.logger.log(`Executing tool "${name}"`);
+    const parameters = tool.definition.function.parameters;
+    const validation = this.validateArgs(args, parameters);
+    if (!validation.valid) {
+      return {
+        status: 'error',
+        data: { receivedArgs: args },
+        preview: `Input tidak valid: ${validation.errors.join('; ')}`,
+        metadata: {
+          toolName: name,
+          displayName: tool.capability.displayName,
+          executionTime: 0,
+        },
+        error: {
+          code: 'INVALID_ARGS',
+          message: validation.errors.join('; '),
+        },
+      };
+    }
+
+    this.logger.log(`Executing tool "${name}" (timeout: ${tool.timeoutMs}ms)`);
     const startTime = Date.now();
 
     try {
-      const result = await tool.handler(args);
+      const result = await this.executeWithTimeout(
+        () => Promise.resolve(tool.handler(args)),
+        tool.timeoutMs,
+      );
       result.metadata.executionTime = Date.now() - startTime;
       return result;
     } catch (e) {
+      const isTimeout = e.message?.includes('timeout');
       return {
         status: 'error',
         data: {},
-        preview: `Tool "${name}" gagal: ${e.message}`,
+        preview: isTimeout
+          ? `Tool "${name}" timeout setelah ${tool.timeoutMs}ms`
+          : `Tool "${name}" gagal: ${e.message}`,
         metadata: {
           toolName: name,
           displayName: tool.capability.displayName,
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'EXECUTION_FAILED', message: e.message },
+        error: {
+          code: isTimeout ? 'TOOL_TIMEOUT' : 'EXECUTION_FAILED',
+          message: e.message,
+        },
       };
     }
+  }
+
+  private async executeWithTimeout<T>(
+    fn: () => Promise<T>,
+    timeoutMs: number,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Tool execution timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      fn()
+        .then((result) => {
+          clearTimeout(timer);
+          resolve(result);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+    });
   }
 
   private async handleGenerateExport(
