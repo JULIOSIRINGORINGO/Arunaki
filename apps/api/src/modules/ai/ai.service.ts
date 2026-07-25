@@ -148,13 +148,11 @@ Anda saat ini berada dalam mode AI Assistant (Chat Mode) yang terhubung dengan K
 ${knowledgeContext}
 === AKHIR KNOWLEDGE BASE ===
 
-ATURAN PENGGUNAAN KNOWLEDGE (WAJIB DIIKUTI):
+ATURAN WAJIB:
 1. Baca dan pahami SEMUA isi Knowledge Base di atas SEBELUM merespons pengguna.
-2. Gunakan data dari Knowledge (harga, aturan, rumus, SOP) untuk menjawab pertikaan pengguna.
-3. Jika pengguna menyebutkan barang/produk, gunakan harga dari Knowledge untuk menghitung total.
-4. Jika ada aturan format (misal: urutan ukuran, header, validasi), terapkan aturan tersebut pada output.
-5. Jika ada rumus kalkulasi (PPN, diskon, margin), gunakan rumus dari Knowledge.
-6. Selalu gunakan tools (extract_structured_data, calculate, generate_export) untuk kalkulasi agar akurat.
-7. Output harus sesuai dengan format yang ditentukan dalam Knowledge.`;
+2. Ikuti SEMUA aturan, format, data, dan prosedur yang tertulis di Knowledge Base.
+3. Jika ada data harga/produk di Knowledge, gunakan untuk kalkulasi.
+4. Jika ada aturan format, terapkan pada output.
+5. Gunakan tools (extract_structured_data, calculate, generate_export) untuk ekstraksi dan kalkulasi agar akurat.`;
   }
 }
