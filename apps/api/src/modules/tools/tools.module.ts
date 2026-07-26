@@ -10,6 +10,8 @@ import { DocSearchTool } from './services/doc-search.tool.js';
 import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
 import { WebSearchTool } from './services/web-search.tool.js';
 import { VisionAiTool } from './services/vision-ai.tool.js';
+import { UnitConverterTool } from './services/unit-converter.tool.js';
+import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { ArtifactStore } from './artifact-store.service.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 
@@ -27,6 +29,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module.js';
     KnowledgeBuilderTool,
     WebSearchTool,
     VisionAiTool,
+    UnitConverterTool,
+    DraftCommunicationTool,
     ArtifactStore,
   ],
   exports: [
@@ -41,6 +45,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module.js';
     KnowledgeBuilderTool,
     WebSearchTool,
     VisionAiTool,
+    UnitConverterTool,
+    DraftCommunicationTool,
     ArtifactStore,
   ],
 })

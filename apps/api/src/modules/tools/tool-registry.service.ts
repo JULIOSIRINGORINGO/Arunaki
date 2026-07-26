@@ -9,6 +9,8 @@ import { DocSearchTool } from './services/doc-search.tool.js';
 import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
 import { WebSearchTool } from './services/web-search.tool.js';
 import { VisionAiTool } from './services/vision-ai.tool.js';
+import { UnitConverterTool } from './services/unit-converter.tool.js';
+import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -43,6 +45,8 @@ export class ToolRegistryService {
     private readonly knowledgeBuilderTool: KnowledgeBuilderTool,
     private readonly webSearchTool: WebSearchTool,
     private readonly visionAiTool: VisionAiTool,
+    private readonly unitConverterTool: UnitConverterTool,
+    private readonly draftCommunicationTool: DraftCommunicationTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -490,6 +494,88 @@ export class ToolRegistryService {
         estimatedLatency: 'medium',
       },
       timeoutMs: 25000,
+    });
+
+    this.register('unit_converter', {
+      handler: (args) =>
+        this.unitConverterTool.convert({
+          value: Number(args.value),
+          from: args.from,
+          to: args.to,
+        }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'unit_converter',
+          description:
+            'Mengonversi nilai antara berbagai satuan (yard, meter, cm, roll, kg, gram, lusin, kodi) atau mata uang (usd, idr, eur, sgd).',
+          parameters: {
+            type: 'object',
+            properties: {
+              value: { type: 'number', description: 'Nilai yang akan dikonversi' },
+              from: { type: 'string', description: 'Satuan asal (contoh: yard, meter, roll, usd, idr)' },
+              to: { type: 'string', description: 'Satuan tujuan (contoh: meter, yard, idr, usd)' },
+            },
+            required: ['value', 'from', 'to'],
+          },
+        },
+      },
+      capability: {
+        name: 'unit_converter',
+        displayName: 'Konverter Satuan & Mata Uang',
+        description: 'Mengonversi satuan bahan garment dan mata uang secara presisi',
+        tags: ['converter', 'unit', 'currency', 'garment', 'yard', 'meter', 'usd', 'idr'],
+        inputSchema: { value: 'number', from: 'string', to: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('draft_communication', {
+      handler: (args) =>
+        this.draftCommunicationTool.draft({
+          type: args.type,
+          recipientName: args.recipientName,
+          topic: args.topic,
+          keyPoints: args.keyPoints,
+        }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'draft_communication',
+          description:
+            'Membuat draf pesan profesional untuk WhatsApp, Email formal, Penawaran Harga (Quotation), atau Pengingat Tagihan (Invoice Reminder).',
+          parameters: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['whatsapp', 'email', 'quotation', 'invoice_reminder'],
+                description: 'Jenis draf komunikasi',
+              },
+              recipientName: { type: 'string', description: 'Nama penerima / klien' },
+              topic: { type: 'string', description: 'Topik atau perihal pesan' },
+              keyPoints: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Poin-poin penting yang ingin disampaikan',
+              },
+            },
+            required: ['type', 'recipientName', 'topic'],
+          },
+        },
+      },
+      capability: {
+        name: 'draft_communication',
+        displayName: 'Pembuat Draf Pesan & Email',
+        description: 'Membuat draf pesan WhatsApp, Email, dan Quotation secara profesional',
+        tags: ['draft', 'whatsapp', 'email', 'quotation', 'invoice', 'communication'],
+        inputSchema: { type: 'string', recipientName: 'string', topic: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
     });
   }
 
