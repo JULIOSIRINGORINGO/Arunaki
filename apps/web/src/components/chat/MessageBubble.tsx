@@ -124,19 +124,17 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
     );
   }
 
-  // Detect potential follow-up actions based on text content
-  const hasTableOrList =
-    message.content.includes("|") ||
-    message.content.includes("TOTAL") ||
-    message.content.includes("1.") ||
-    message.content.includes("Rekap") ||
-    message.content.includes("Pcs");
+  // Only show chips when there is ACTUAL structured data, table, or explicit tool recommendation
+  const hasStructuredTable =
+    message.content.includes("|---") ||
+    message.content.includes("| ---") ||
+    (message.content.includes("[CANVAS]") && message.content.includes("TOTAL"));
 
-  const hasPricesOrNumbers =
-    message.content.includes("Rp") ||
-    message.content.includes("Harga") ||
-    message.content.includes("kain") ||
-    message.content.includes("Bahan");
+  const isKnowledgeCommand =
+    message.content.toLowerCase().includes("/knowledge") ||
+    message.content.toLowerCase().includes("simpan ke knowledge base");
+
+  const hasChips = hasStructuredTable || isKnowledgeCommand;
 
   return (
     <div className="flex flex-col items-start group animate-fade-in space-y-2">
@@ -147,10 +145,10 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
         <div className="text-base text-gray-700 leading-relaxed bg-white border border-gray-100/80 rounded-2xl p-4 shadow-2xs">
           <MarkdownContent content={message.content} />
 
-          {/* Smart Action Chips */}
-          {onActionChipClick && (
+          {/* Smart Action Chips — Only rendered when genuinely relevant */}
+          {onActionChipClick && hasChips && (
             <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
-              {hasTableOrList && (
+              {hasStructuredTable && (
                 <>
                   <button
                     type="button"
@@ -178,31 +176,19 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
                 </>
               )}
 
-              {hasPricesOrNumbers && (
+              {isKnowledgeCommand && (
                 <button
                   type="button"
                   onClick={() =>
                     onActionChipClick(
-                      "Coba cari di internet informasi harga & pembanding terbaru untuk produk/bahan ini."
+                      "Simpan format dan aturan dari percakapan ini ke Knowledge Base saya."
                     )
                   }
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-medium border border-purple-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200 transition-colors cursor-pointer"
                 >
-                  <span>🌐 Cari di Web</span>
+                  <span>💾 Simpan ke Knowledge</span>
                 </button>
               )}
-
-              <button
-                type="button"
-                onClick={() =>
-                  onActionChipClick(
-                    "Simpan format dan aturan dari percakapan ini ke Knowledge Base saya."
-                  )
-                }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200 transition-colors cursor-pointer"
-              >
-                <span>💾 Simpan ke Knowledge</span>
-              </button>
             </div>
           )}
         </div>
