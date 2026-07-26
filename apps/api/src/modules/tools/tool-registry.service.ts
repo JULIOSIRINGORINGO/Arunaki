@@ -7,6 +7,8 @@ import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
 import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
+import { WebSearchTool } from './services/web-search.tool.js';
+import { VisionAiTool } from './services/vision-ai.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -39,6 +41,8 @@ export class ToolRegistryService {
     private readonly imageOcrTool: ImageOcrTool,
     private readonly docSearchTool: DocSearchTool,
     private readonly knowledgeBuilderTool: KnowledgeBuilderTool,
+    private readonly webSearchTool: WebSearchTool,
+    private readonly visionAiTool: VisionAiTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -411,6 +415,81 @@ export class ToolRegistryService {
         estimatedLatency: 'fast',
       },
       timeoutMs: 5000,
+    });
+
+    this.register('web_search', {
+      handler: (args) =>
+        this.webSearchTool.searchWeb(args.query, args.searchDepth),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'web_search',
+          description:
+            'Mencari informasi real-time di internet (harga bahan, berita pasar, kurs, kompetitor, dll).',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Kata kunci atau pertanyaan yang ingin dicari di internet',
+              },
+              searchDepth: {
+                type: 'string',
+                enum: ['basic', 'advanced'],
+                description: 'Kedalaman pencarian: basic (cepat) atau advanced (mendalam)',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'web_search',
+        displayName: 'Pencarian Web',
+        description: 'Mencari informasi real-time di internet',
+        tags: ['search', 'web', 'internet', 'realtime', 'google', 'tavily'],
+        inputSchema: { query: 'string', searchDepth: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'medium',
+      },
+      timeoutMs: 15000,
+    });
+
+    this.register('vision_ai', {
+      handler: (args) =>
+        this.visionAiTool.analyzeImage(args.imageSource, args.prompt),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'vision_ai',
+          description:
+            'Menganalisis gambar/foto (struk belanja, nota lecek, kwitansi, tulisan tangan, gambar produk) menggunakan Vision AI.',
+          parameters: {
+            type: 'object',
+            properties: {
+              imageSource: {
+                type: 'string',
+                description: 'Path file gambar lokal atau URL gambar',
+              },
+              prompt: {
+                type: 'string',
+                description: 'Instruksi spesifik apa yang ingin diekstrak dari gambar',
+              },
+            },
+            required: ['imageSource'],
+          },
+        },
+      },
+      capability: {
+        name: 'vision_ai',
+        displayName: 'Vision AI',
+        description: 'Menganalisis dan membaca foto nota/struk/dokumen fisik',
+        tags: ['vision', 'ocr', 'image', 'receipt', 'nota', 'foto', 'struk'],
+        inputSchema: { imageSource: 'string', prompt: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'medium',
+      },
+      timeoutMs: 25000,
     });
   }
 

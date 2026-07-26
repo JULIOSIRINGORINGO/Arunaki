@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { Sparkles } from "lucide-react";
 import { ChatMessages } from "../components/chat/ChatMessages";
 import { ChatInput } from "../components/chat/ChatInput";
@@ -15,29 +16,6 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt?: string;
-}
-
-interface ToolOutput {
-  toolName: string;
-  args: Record<string, any>;
-  result: {
-    status: "success" | "error" | "partial";
-    data: Record<string, any>;
-    preview: string;
-    metadata: {
-      toolName: string;
-      displayName: string;
-      executionTime: number;
-      format?: string;
-      filename?: string;
-      mimeType?: string;
-      contentBase64?: string;
-    };
-    error?: {
-      code: string;
-      message: string;
-    };
-  };
 }
 
 interface Artifact {
@@ -190,9 +168,10 @@ export function ChatPage() {
     enabled: !!effectiveChatId,
   });
 
-  // Automatically restore Canvas content from chat history when opening an existing chat
+  // Automatically restore Canvas content & reset optimistic messages when chat history arrives
   useEffect(() => {
     if (messagesData && messagesData.length > 0) {
+      setOptimisticMessages([]);
       const assistantMessages = messagesData.filter((m: any) => m.role === "assistant");
       for (let i = assistantMessages.length - 1; i >= 0; i--) {
         const msg = assistantMessages[i];
@@ -235,116 +214,78 @@ export function ChatPage() {
         activeId = await createChat.mutateAsync();
       }
 
-      const tempId = `temp-${Date.now()}`;
+      const tempUserMsgId = `temp-user-${Date.now()}`;
+      const tempAssistantMsgId = `temp-assistant-${Date.now()}`;
+
       const userMsg: Message = {
-        id: tempId,
+        id: tempUserMsgId,
         role: "user",
         content,
         createdAt: new Date().toISOString(),
       };
+
       setOptimisticMessages((prev) => [...prev, userMsg]);
 
       try {
-        const res = await fetch(`${API_BASE}/chat/${activeId}/send`, {
+        let fullStreamedContent = "";
+
+        await fetchEventSource(`${API_BASE}/chat/${activeId}/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
+          onmessage(msg) {
+            if (!msg.data) return;
+            try {
+              const event = JSON.parse(msg.data);
+              if (event.type === "text_delta" && typeof event.data === "string") {
+                fullStreamedContent += event.data;
+                setOptimisticMessages((prev) => {
+                  const filtered = prev.filter((m) => m.id !== tempAssistantMsgId);
+                  return [
+                    ...filtered,
+                    {
+                      id: tempAssistantMsgId,
+                      role: "assistant",
+                      content: fullStreamedContent,
+                      createdAt: new Date().toISOString(),
+                    },
+                  ];
+                });
+                const extracted = extractCanvasContentFromLLM(fullStreamedContent);
+                if (extracted) {
+                  setActiveCanvasData({
+                    id: `canvas-${Date.now()}`,
+                    title: "Hasil",
+                    brandColorHeader: "",
+                    plainTextContent: extracted,
+                    createdAt: new Date().toLocaleTimeString(),
+                  });
+                  setCanvasOpen(true);
+                }
+              } else if (event.type === "tool_done" && event.data?.result?.preview) {
+                setActiveCanvasData({
+                  id: `canvas-tool-${Date.now()}`,
+                  title: event.data.result.metadata?.displayName || event.data.toolName.replace(/_/g, " "),
+                  brandColorHeader: "",
+                  plainTextContent: event.data.result.preview,
+                  createdAt: new Date().toLocaleTimeString(),
+                });
+                setCanvasOpen(true);
+              }
+            } catch {
+              // ignore parse errors
+            }
+          },
+          onerror(err) {
+            console.error("SSE stream error:", err);
+          },
         });
-        const responseData = await res.json();
 
-        if (responseData?.error) {
-          throw new Error(responseData.error.message || "Gagal mengirim pesan");
-        }
-
-        const toolOutputs: ToolOutput[] =
-          responseData?.data?.toolOutputs || [];
-        const responseArtifacts: Artifact[] =
-          responseData?.data?.artifacts || [];
-
-        let canvasContent = "";
-        let canvasTitle = "Hasil";
-        let downloadInfo: typeof pendingDownload = null;
-
-        const previewPriorities = [
-          "calculate",
-          "generate_export",
-          "extract_structured_data",
-        ];
-
-        for (const toolName of previewPriorities) {
-          const toolOutput = toolOutputs.find(
-            (t) => t.toolName === toolName && t.result?.preview,
-          );
-          if (toolOutput) {
-            canvasContent = toolOutput.result.preview;
-            canvasTitle =
-              toolOutput.result.metadata?.displayName ||
-              toolName.replace(/_/g, " ");
-            break;
-          }
-        }
-
-        if (!canvasContent) {
-          const anyWithPreview = toolOutputs.find(
-            (t) => t.result?.preview,
-          );
-          if (anyWithPreview) {
-            canvasContent = anyWithPreview.result.preview;
-            canvasTitle =
-              anyWithPreview.result.metadata?.displayName ||
-              anyWithPreview.toolName.replace(/_/g, " ");
-          }
-        }
-
-        if (!canvasContent) {
-          const assistantContent =
-            responseData?.data?.message?.content ||
-            responseData?.data?.content ||
-            "";
-          canvasContent = extractCanvasContentFromLLM(assistantContent);
-        }
-
-        const downloadable = toolOutputs.find(
-          (t) => t.result?.metadata?.contentBase64,
-        );
-        if (downloadable) {
-          downloadInfo = {
-            filename:
-              downloadable.result.metadata.filename || "export.file",
-            mimeType:
-              downloadable.result.metadata.mimeType || "application/octet-stream",
-            base64: downloadable.result.metadata.contentBase64!,
-          };
-        }
-
-        if (canvasContent) {
-          setActiveCanvasData({
-            id: `canvas-${Date.now()}`,
-            title: canvasTitle,
-            brandColorHeader: "",
-            plainTextContent: canvasContent,
-            createdAt: new Date().toLocaleTimeString(),
-          });
-          setCanvasOpen(true);
-        }
-
-        setPendingDownload(downloadInfo);
-
-        if (responseArtifacts.length > 0) {
-          setArtifacts((prev) => [...responseArtifacts, ...prev]);
-        }
-
-        await queryClient.invalidateQueries({
-          queryKey: ["messages", activeId],
-        });
+        await queryClient.invalidateQueries({ queryKey: ["messages", activeId] });
         queryClient.invalidateQueries({ queryKey: ["chats"] });
-        queryClient.invalidateQueries({
-          queryKey: ["artifacts", activeId],
-        });
-
-        return responseData;
+        queryClient.invalidateQueries({ queryKey: ["artifacts", activeId] });
       } catch (e) {
-        setOptimisticMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setOptimisticMessages((prev) => prev.filter((m) => m.id !== tempUserMsgId && m.id !== tempAssistantMsgId));
         throw e;
       }
     },
@@ -402,6 +343,7 @@ export function ChatPage() {
             messages={messages}
             isLoading={sendMessage.isPending}
             onSelectPrompt={handleSend}
+            onActionChipClick={handleSend}
           />
         </div>
 
@@ -419,6 +361,13 @@ export function ChatPage() {
         canvasData={activeCanvasData}
         pendingDownload={pendingDownload}
         artifacts={allArtifacts}
+        onSaveAndSendToAi={(updatedContent) =>
+          handleSend(
+            "Saya telah mengedit data di Canvas secara manual menjadi sebagai berikut:\n\n" +
+              updatedContent +
+              "\n\nTolong hitung ulang & update rekapnya berdasarkan editan terbaru saya ini."
+          )
+        }
       />
     </div>
   );

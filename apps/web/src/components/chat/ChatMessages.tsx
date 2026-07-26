@@ -19,6 +19,7 @@ interface ChatMessagesProps {
   messages: Message[];
   isLoading?: boolean;
   onSelectPrompt?: (prompt: string) => void;
+  onActionChipClick?: (prompt: string) => void;
 }
 
 const STARTER_CARDS = [
@@ -44,7 +45,12 @@ const STARTER_CARDS = [
   },
 ];
 
-export function ChatMessages({ messages, isLoading, onSelectPrompt }: ChatMessagesProps) {
+export function ChatMessages({
+  messages,
+  isLoading,
+  onSelectPrompt,
+  onActionChipClick,
+}: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -107,7 +113,11 @@ export function ChatMessages({ messages, isLoading, onSelectPrompt }: ChatMessag
       ) : (
         <div className="w-full px-6 py-8 space-y-8 max-w-4xl mx-auto">
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              onActionChipClick={onActionChipClick}
+            />
           ))}
         </div>
       )}

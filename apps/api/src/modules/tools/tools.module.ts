@@ -8,6 +8,8 @@ import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
 import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
+import { WebSearchTool } from './services/web-search.tool.js';
+import { VisionAiTool } from './services/vision-ai.tool.js';
 import { ArtifactStore } from './artifact-store.service.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 
@@ -23,6 +25,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module.js';
     ImageOcrTool,
     DocSearchTool,
     KnowledgeBuilderTool,
+    WebSearchTool,
+    VisionAiTool,
     ArtifactStore,
   ],
   exports: [
@@ -35,6 +39,8 @@ import { KnowledgeModule } from '../knowledge/knowledge.module.js';
     ImageOcrTool,
     DocSearchTool,
     KnowledgeBuilderTool,
+    WebSearchTool,
+    VisionAiTool,
     ArtifactStore,
   ],
 })

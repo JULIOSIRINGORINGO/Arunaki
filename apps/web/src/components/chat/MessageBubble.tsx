@@ -11,6 +11,7 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
+  onActionChipClick?: (prompt: string) => void;
 }
 
 function MarkdownContent({ content }: { content: string }) {
@@ -88,7 +89,7 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
 
@@ -123,16 +124,90 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
+  // Detect potential follow-up actions based on text content
+  const hasTableOrList =
+    message.content.includes("|") ||
+    message.content.includes("TOTAL") ||
+    message.content.includes("1.") ||
+    message.content.includes("Rekap") ||
+    message.content.includes("Pcs");
+
+  const hasPricesOrNumbers =
+    message.content.includes("Rp") ||
+    message.content.includes("Harga") ||
+    message.content.includes("kain") ||
+    message.content.includes("Bahan");
+
   return (
-    <div className="flex flex-col items-start group animate-fade-in">
-      <div className="flex items-start gap-3 max-w-[75%]">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200">
+    <div className="flex flex-col items-start group animate-fade-in space-y-2">
+      <div className="flex items-start gap-3 max-w-[85%]">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200 shadow-2xs">
           <img src="/logo.svg" alt="Arunaki" className="w-5 h-5 object-contain" />
         </div>
-        <div className="text-base text-gray-700 leading-relaxed">
+        <div className="text-base text-gray-700 leading-relaxed bg-white border border-gray-100/80 rounded-2xl p-4 shadow-2xs">
           <MarkdownContent content={message.content} />
+
+          {/* Smart Action Chips */}
+          {onActionChipClick && (
+            <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+              {hasTableOrList && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onActionChipClick(
+                        "Tolong buatkan file Excel (.xlsx) dari rekap data ini agar bisa di-download."
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium border border-emerald-200 transition-colors cursor-pointer"
+                  >
+                    <span>📊 Unduh File Excel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onActionChipClick(
+                        "Tolong buatkan file PDF (.pdf) resmi dari rekap data ini."
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200 transition-colors cursor-pointer"
+                  >
+                    <span>📄 Unduh File PDF</span>
+                  </button>
+                </>
+              )}
+
+              {hasPricesOrNumbers && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onActionChipClick(
+                      "Coba cari di internet informasi harga & pembanding terbaru untuk produk/bahan ini."
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-medium border border-purple-200 transition-colors cursor-pointer"
+                >
+                  <span>🌐 Cari di Web</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  onActionChipClick(
+                    "Simpan format dan aturan dari percakapan ini ke Knowledge Base saya."
+                  )
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200 transition-colors cursor-pointer"
+              >
+                <span>💾 Simpan ke Knowledge</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
       <div className="flex items-center gap-2 ml-11">
         {time && (
           <span className="text-xs text-gray-400">{time}</span>

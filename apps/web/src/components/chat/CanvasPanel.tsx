@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Markdown from "react-markdown";
 import {
   Sparkles,
@@ -12,6 +12,8 @@ import {
   FileText,
   File,
   History,
+  Edit2,
+  Send,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -45,6 +47,7 @@ interface CanvasPanelProps {
   canvasData?: CanvasData | null;
   pendingDownload?: PendingDownload | null;
   artifacts?: Artifact[];
+  onSaveAndSendToAi?: (updatedContent: string) => void;
 }
 
 const API_BASE = "http://localhost:3000/api/v1";
@@ -71,18 +74,33 @@ export function CanvasPanel({
   canvasData,
   pendingDownload,
   artifacts = [],
+  onSaveAndSendToAi,
 }: CanvasPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showArtifacts, setShowArtifacts] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+
+  useEffect(() => {
+    if (canvasData?.plainTextContent) {
+      setEditedText(canvasData.plainTextContent);
+    }
+  }, [canvasData?.plainTextContent]);
 
   if (!isOpen) return null;
 
   const handleCopy = () => {
     if (!canvasData) return;
-    navigator.clipboard.writeText(canvasData.plainTextContent);
+    navigator.clipboard.writeText(isEditing ? editedText : canvasData.plainTextContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSaveAndSend = () => {
+    if (!editedText.trim()) return;
+    setIsEditing(false);
+    onSaveAndSendToAi?.(editedText);
   };
 
   const handleDownloadFile = () => {
@@ -119,11 +137,10 @@ export function CanvasPanel({
   };
 
   const handleDownloadTxt = () => {
-    if (!canvasData) return;
+    const textToDownload = isEditing ? editedText : canvasData?.plainTextContent || "";
+    if (!textToDownload) return;
     const element = document.createElement("a");
-    const file = new Blob([canvasData.plainTextContent], {
-      type: "text/plain",
-    });
+    const file = new Blob([textToDownload], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
     element.download = `rekap-${Date.now()}.txt`;
     document.body.appendChild(element);
@@ -132,15 +149,12 @@ export function CanvasPanel({
   };
 
   const handleDownloadCsv = () => {
-    if (!canvasData) return;
-    const lines = canvasData.plainTextContent.split("\n");
-    const csvContent = lines
-      .map((l) => `"${l.replace(/"/g, '""')}"`)
-      .join("\n");
+    const textToDownload = isEditing ? editedText : canvasData?.plainTextContent || "";
+    if (!textToDownload) return;
+    const lines = textToDownload.split("\n");
+    const csvContent = lines.map((l) => `"${l.replace(/"/g, '""')}"`).join("\n");
     const element = document.createElement("a");
-    const file = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const file = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     element.href = URL.createObjectURL(file);
     element.download = `rekap-${Date.now()}.csv`;
     document.body.appendChild(element);
@@ -184,6 +198,19 @@ export function CanvasPanel({
 
           {canvasData && !showArtifacts && (
             <>
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className={cn(
+                  "p-1.5 rounded-lg transition-colors cursor-pointer",
+                  isEditing
+                    ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                    : "text-gray-400 hover:text-gray-600 hover:bg-gray-100",
+                )}
+                title={isEditing ? "Mode Preview" : "Edit Canvas"}
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+
               {pendingDownload && (
                 <button
                   onClick={handleDownloadFile}
@@ -279,10 +306,10 @@ export function CanvasPanel({
             )}
           </div>
         ) : canvasData ? (
-          <div className="relative w-full h-full flex flex-col justify-between p-6 rounded-2xl bg-white border border-gray-200/90 shadow-2xs space-y-2 group overflow-y-auto">
+          <div className="relative w-full h-full flex flex-col justify-between p-6 rounded-2xl bg-white border border-gray-200/90 shadow-2xs space-y-4 overflow-y-auto">
             <button
               onClick={handleCopy}
-              className="absolute top-3.5 right-3.5 p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all cursor-pointer border border-transparent hover:border-gray-200 shadow-2xs"
+              className="absolute top-3.5 right-3.5 p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all cursor-pointer border border-transparent hover:border-gray-200 shadow-2xs z-10"
               title={copied ? "Tersalin!" : "Salin Teks (Copy)"}
             >
               {copied ? (
@@ -292,9 +319,42 @@ export function CanvasPanel({
               )}
             </button>
 
-            <div className="text-sm text-gray-900 leading-relaxed selection:bg-emerald-100 pr-8 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-gray-600 [&_td]:py-2 [&_td]:px-3 [&_td]:text-gray-800 [&_tr]:border-b [&_tr]:border-gray-100 [&_strong]:font-semibold [&_strong]:text-gray-900">
-              <Markdown>{canvasData.plainTextContent}</Markdown>
-            </div>
+            {isEditing ? (
+              <div className="flex-1 flex flex-col space-y-3 min-h-0">
+                <div className="flex items-center justify-between text-xs text-gray-500 font-medium">
+                  <span>Edit Teks/Tabel Canvas</span>
+                  <span className="text-emerald-600 font-semibold">Mode Edit Aktif</span>
+                </div>
+                <textarea
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="w-full flex-1 min-h-[240px] p-3 text-sm text-gray-900 font-mono bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none leading-relaxed"
+                  placeholder="Ketik atau edit isi Canvas di sini..."
+                />
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={handleSaveAndSend}
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Terapkan & Update AI</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditedText(canvasData.plainTextContent);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-900 leading-relaxed selection:bg-emerald-100 pr-8 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-gray-600 [&_td]:py-2 [&_td]:px-3 [&_td]:text-gray-800 [&_tr]:border-b [&_tr]:border-gray-100 [&_strong]:font-semibold [&_strong]:text-gray-900">
+                <Markdown>{canvasData.plainTextContent}</Markdown>
+              </div>
+            )}
 
             {pendingDownload && (
               <div className="pt-3 border-t border-gray-100">
