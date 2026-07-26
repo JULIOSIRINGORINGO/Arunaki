@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Paperclip, Send, BookOpen, FileText, Calculator, Search } from "lucide-react";
+import { Paperclip, Send, BookOpen, FileText, Calculator, Search, X, Image as ImageIcon } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -31,10 +31,13 @@ const COMMANDS = [
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [message, setMessage] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
   const [showCommands, setShowCommands] = useState(false);
   const [filteredCommands, setFilteredCommands] = useState(COMMANDS);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const commandsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,10 +81,51 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (message.trim() && !disabled) {
-      onSend(message.trim());
+    if ((message.trim() || attachedFile) && !disabled && !isReadingFile) {
+      let finalPrompt = message.trim();
+
+      if (attachedFile) {
+        setIsReadingFile(true);
+        try {
+          const isImage = attachedFile.type.startsWith("image/");
+          const reader = new FileReader();
+
+          if (isImage) {
+            const base64Data = await new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(attachedFile);
+            });
+            const textIntro = finalPrompt || `Tolong analisis foto/struk/gambar ini (${attachedFile.name}).`;
+            finalPrompt = `${textIntro}\n\n[Foto/Gambar Terlampir]: ${base64Data}`;
+          } else {
+            const textContent = await new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsText(attachedFile);
+            });
+            const textIntro = finalPrompt || `Berikut isi file ${attachedFile.name}:`;
+            finalPrompt = `${textIntro}\n\n[Isi File Terlampir (${attachedFile.name})]:\n\`\`\`\n${textContent}\n\`\`\``;
+          }
+        } catch {
+          finalPrompt += `\n[File terlampir: ${attachedFile.name}]`;
+        } finally {
+          setIsReadingFile(false);
+          setAttachedFile(null);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      }
+
+      onSend(finalPrompt);
       setMessage("");
       setShowCommands(false);
       if (inputRef.current) {
@@ -122,6 +166,15 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   return (
     <div className="w-full px-6 pb-6 pt-2 bg-transparent relative">
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,.pdf,.txt,.csv,.json,.md,.docx,.xlsx"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {showCommands && filteredCommands.length > 0 && (
         <div
           ref={commandsRef}
@@ -166,6 +219,39 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       )}
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto w-full">
+        {/* Attached File Preview Pill */}
+        {attachedFile && (
+          <div className="flex items-center justify-between gap-2 bg-white border border-gray-200/90 rounded-2xl px-4 py-2.5 mb-2 shadow-2xs max-w-md animate-fade-in">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
+                {attachedFile.type.startsWith("image/") ? (
+                  <ImageIcon size={15} />
+                ) : (
+                  <Paperclip size={15} />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">
+                  {attachedFile.name}
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  {Math.round(attachedFile.size / 1024)} KB
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAttachedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-3 bg-white border border-gray-200/90 rounded-[28px] px-6 py-3.5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus-within:border-gray-300 focus-within:shadow-[0_6px_28px_rgba(0,0,0,0.07)] transition-all duration-200">
           <textarea
             ref={inputRef}
@@ -174,22 +260,24 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
             onKeyDown={handleKeyDown}
             placeholder="Ketik pesan atau / untuk commands..."
             rows={1}
-            disabled={disabled}
+            disabled={disabled || isReadingFile}
             className="flex-1 bg-transparent border-0 outline-hidden focus:outline-hidden text-gray-900 placeholder:text-gray-400 text-sm leading-relaxed min-h-[24px] max-h-[180px] py-1 resize-none disabled:opacity-40 overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           />
 
           <div className="flex items-center gap-2 shrink-0 self-end pb-0.5">
             <button
               type="button"
-              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
-              title="Lampirkan file"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || isReadingFile}
+              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer disabled:opacity-40"
+              title="Lampirkan file (Foto, Struk, PDF, Excel, TXT)"
             >
               <Paperclip size={19} />
             </button>
 
             <button
               type="submit"
-              disabled={!message.trim() || disabled}
+              disabled={(!message.trim() && !attachedFile) || disabled || isReadingFile}
               className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 transition-all flex items-center justify-center disabled:opacity-25 disabled:hover:bg-black disabled:cursor-not-allowed active:scale-95 shadow-xs cursor-pointer"
             >
               <Send size={15} className="ml-0.5 text-white" />
