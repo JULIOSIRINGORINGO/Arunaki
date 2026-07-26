@@ -19,7 +19,7 @@ export class ArtifactService {
     const sourceFilesJson = typeof data.sourceFiles === 'string' ? data.sourceFiles : JSON.stringify(data.sourceFiles || []);
 
     return this.artifactRepo.create({
-      workspaceId: data.workspaceId || null,
+      workspaceId: data.workspaceId || undefined,
       name: data.name,
       type: data.type,
       format: data.format || 'md',
