@@ -117,18 +117,37 @@ export class WorkspaceRunnerService {
           }
 
           // Safety Approval Gate Check for Mutating Actions
-          const isMutatingTool = ['write_workspace_file', 'update_workspace_file', 'delete_workspace_file'].includes(funcName);
-          const isApproved = approvedToolCalls.some((tc) => tc.toolName === funcName);
+          const isMutatingTool = [
+            'write_workspace_file',
+            'update_workspace_file',
+            'delete_workspace_file',
+          ].includes(funcName);
+
+          const isApproved = approvedToolCalls.some((tc) => {
+            if (tc.toolName !== funcName) return false;
+            if (!tc.args) return true;
+            const tcFilename = tc.args.filename || tc.args.filePath || tc.args.path;
+            const argsFilename = args.filename || args.filePath || args.path;
+            if (tcFilename && argsFilename) {
+              return tcFilename === argsFilename;
+            }
+            return JSON.stringify(tc.args) === JSON.stringify(args);
+          });
 
           if (isMutatingTool && !isApproved) {
+            this.logger.warn(
+              `Approval Gate: Blocked execution of mutating tool "${funcName}" until user consent.`,
+            );
             onEvent({
               type: 'approval_required',
               data: {
                 toolName: funcName,
                 args,
-                description: `Agent ingin melakukan aksi "${funcName}" pada workspace. Mohon izinkan untuk melanjutkan.`,
+                description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
               },
             });
+            // CRITICAL SECURITY FIX: Stop execution and wait for user approval
+            return;
           }
 
           onEvent({
