@@ -112,6 +112,7 @@ export class ArtifactStore implements OnModuleInit {
         name: artifact.filename,
         type: artifact.type,
         format: artifact.filename.split('.').pop() || 'bin',
+        path: '',
         metadata: metaJson,
         preview: artifact.preview,
         sourceFiles: JSON.stringify(artifact.data),
