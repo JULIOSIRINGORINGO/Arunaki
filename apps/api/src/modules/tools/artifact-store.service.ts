@@ -102,13 +102,13 @@ export class ArtifactStore implements OnModuleInit {
     });
 
     const workspaceTag = artifact.metadata.tags.find((t) => t.startsWith('workspace:'));
-    const workspaceId = workspaceTag ? workspaceTag.replace('workspace:', '') : undefined;
+    const workspaceId = workspaceTag ? workspaceTag.replace('workspace:', '') : null;
 
     await this.prisma.artifact.upsert({
       where: { id: artifact.id },
       create: {
         id: artifact.id,
-        workspaceId,
+        workspace: workspaceId ? { connect: { id: workspaceId } } : undefined,
         name: artifact.filename,
         type: artifact.type,
         format: artifact.filename.split('.').pop() || 'bin',
