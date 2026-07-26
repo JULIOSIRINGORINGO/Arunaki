@@ -204,13 +204,13 @@ model Knowledge {
 // Artifact - Output hasil kerja agent
 model Artifact {
   id          String   @id @default(cuid())
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   name        String
   type        String   // report, dashboard, summary, sop, presentation, export, timeline, diagram, comparison, visualization
   format      String   // md, pdf, html, xlsx, csv, json, pptx
-  path        String   // Storage path
+  path        String?  // Storage path
   size        Int?     // bytes
 
   // Metadata

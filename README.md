@@ -119,6 +119,13 @@ Arunaki/
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
 - [INTELLIGENCE.md](INTELLIGENCE.md) - AI behavior specification
 
+## Security Architecture Notice
+
+> [!IMPORTANT]
+> **Local-First & Single-User Design**:
+> Arunaki is currently designed as a **Local-First / Single-User Workspace System**. By default, endpoints run locally with CORS origin restricted to `http://localhost:5173`.
+> If deploying to a multi-user, multi-tenant, or public cloud environment, a reverse-proxy authentication layer (e.g. JWT/OAuth2) and tenant authorization guards must be configured to enforce identity verification across endpoints.
+
 ## License
 
 MIT

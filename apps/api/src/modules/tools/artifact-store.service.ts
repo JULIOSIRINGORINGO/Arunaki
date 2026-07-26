@@ -1,21 +1,63 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 import {
   Artifact,
-  ArtifactType,
   ArtifactStatus,
   ArtifactFilter,
   CreateArtifactInput,
 } from './interfaces/artifact.interface.js';
 
 @Injectable()
-export class ArtifactStore {
+export class ArtifactStore implements OnModuleInit {
   private readonly logger = new Logger(ArtifactStore.name);
   private readonly artifacts = new Map<string, Artifact>();
-  private counter = 0;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit() {
+    try {
+      const dbArtifacts = await this.prisma.artifact.findMany();
+      for (const a of dbArtifacts) {
+        let meta: any = {};
+        let data: any = {};
+        try {
+          meta = JSON.parse(a.metadata || '{}');
+        } catch {}
+        try {
+          data = JSON.parse(a.sourceFiles || '{}');
+        } catch {}
+
+        const item: Artifact = {
+          id: a.id,
+          type: (a.type as any) || 'document',
+          filename: a.name,
+          mimeType: meta.mimeType || 'application/octet-stream',
+          contentBase64: meta.contentBase64,
+          preview: a.preview || '',
+          data,
+          metadata: {
+            createdBy: meta.createdBy || 'agent',
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+            version: meta.version || 1,
+            lineage: meta.lineage || [],
+            tags: meta.tags || [],
+          },
+          status: (meta.status as ArtifactStatus) || 'draft',
+        };
+        this.artifacts.set(item.id, item);
+      }
+      this.logger.log(`ArtifactStore initialized with ${this.artifacts.size} persistent artifacts from DB.`);
+    } catch (e) {
+      this.logger.warn(`Could not load persistent artifacts from DB: ${e.message}`);
+    }
+  }
 
   create(input: CreateArtifactInput): Artifact {
-    this.counter++;
-    const id = `artifact-${Date.now()}-${this.counter}`;
+    // Unpredictable UUID Generation to prevent IDOR guessing
+    const uuid = crypto.randomUUID();
+    const id = `art_${uuid}`;
     const now = new Date();
 
     const artifact: Artifact = {
@@ -38,8 +80,50 @@ export class ArtifactStore {
     };
 
     this.artifacts.set(id, artifact);
-    this.logger.log(`Artifact created: ${id} (${input.type})`);
+    this.logger.log(`Artifact created with secure UUID: ${id} (${input.type})`);
+
+    // Async DB Persistence
+    this.persistToDb(artifact).catch((err) =>
+      this.logger.error(`Failed to persist artifact ${id} to DB: ${err.message}`),
+    );
+
     return artifact;
+  }
+
+  private async persistToDb(artifact: Artifact) {
+    const metaJson = JSON.stringify({
+      createdBy: artifact.metadata.createdBy,
+      mimeType: artifact.mimeType,
+      contentBase64: artifact.contentBase64,
+      version: artifact.metadata.version,
+      lineage: artifact.metadata.lineage,
+      tags: artifact.metadata.tags,
+      status: artifact.status,
+    });
+
+    const workspaceTag = artifact.metadata.tags.find((t) => t.startsWith('workspace:'));
+    const workspaceId = workspaceTag ? workspaceTag.replace('workspace:', '') : undefined;
+
+    await this.prisma.artifact.upsert({
+      where: { id: artifact.id },
+      create: {
+        id: artifact.id,
+        workspaceId,
+        name: artifact.filename,
+        type: artifact.type,
+        format: artifact.filename.split('.').pop() || 'bin',
+        metadata: metaJson,
+        preview: artifact.preview,
+        sourceFiles: JSON.stringify(artifact.data),
+        createdAt: artifact.metadata.createdAt,
+        updatedAt: artifact.metadata.updatedAt,
+      },
+      update: {
+        metadata: metaJson,
+        preview: artifact.preview,
+        updatedAt: artifact.metadata.updatedAt,
+      },
+    });
   }
 
   findById(id: string): Artifact | undefined {
@@ -88,6 +172,7 @@ export class ArtifactStore {
 
     artifact.status = status;
     artifact.metadata.updatedAt = new Date();
+    this.persistToDb(artifact).catch(() => {});
     return artifact;
   }
 
@@ -98,6 +183,7 @@ export class ArtifactStore {
     if (!artifact.metadata.tags.includes(tag)) {
       artifact.metadata.tags.push(tag);
       artifact.metadata.updatedAt = new Date();
+      this.persistToDb(artifact).catch(() => {});
     }
     return artifact;
   }
@@ -108,11 +194,16 @@ export class ArtifactStore {
 
     artifact.metadata.tags = artifact.metadata.tags.filter((t: string) => t !== tag);
     artifact.metadata.updatedAt = new Date();
+    this.persistToDb(artifact).catch(() => {});
     return artifact;
   }
 
   delete(id: string): boolean {
-    return this.artifacts.delete(id);
+    const deleted = this.artifacts.delete(id);
+    if (deleted) {
+      this.prisma.artifact.delete({ where: { id } }).catch(() => {});
+    }
+    return deleted;
   }
 
   count(): number {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
@@ -153,12 +153,29 @@ export class ChatController {
   @Get('artifacts/:artifactId/download')
   async downloadArtifact(
     @Param('artifactId') artifactId: string,
+    @Query('chatId') chatId: string | undefined,
+    @Query('workspaceId') workspaceId: string | undefined,
     @Res() res: Response,
   ) {
     try {
       const artifact = this.artifactStore.findById(artifactId);
       if (!artifact) {
         return res.status(404).json({ error: 'Artifact not found' });
+      }
+
+      // IDOR Scope Access Control Verification
+      if (chatId && !artifact.metadata.tags.includes(`chat:${chatId}`)) {
+        return res
+          .status(403)
+          .json({ error: 'Access denied: Artifact does not belong to this chat session' });
+      }
+      if (
+        workspaceId &&
+        !artifact.metadata.tags.includes(`workspace:${workspaceId}`)
+      ) {
+        return res
+          .status(403)
+          .json({ error: 'Access denied: Artifact does not belong to this workspace' });
       }
 
       if (!artifact.contentBase64) {
