@@ -74,23 +74,44 @@ export class WorkspaceRunnerService {
         })),
       ];
 
-      // Emit autonomous plan structure
+      // Generate autonomous reasoning plan via dedicated AI call
+      const planningMessages: ChatMessage[] = [
+        {
+          role: 'system',
+          content:
+            'Kamu membuat rencana kerja singkat (maksimal 5 poin, satu kalimat per poin, dalam Bahasa Indonesia) untuk mencapai goal user di sebuah workspace. Balas HANYA dengan poin-poin rencana, tanpa penjelasan tambahan, satu poin per baris, diawali angka.',
+        },
+        {
+          role: 'user',
+          content: `Goal: ${userGoal}\n\nKonteks workspace:\n${workspaceContext}`,
+        },
+      ];
+
+      let steps: string[] = [];
+      try {
+        const planResponse = await this.aiService.chat(planningMessages, []);
+        if (planResponse.content) {
+          steps = planResponse.content
+            .split('\n')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+        }
+      } catch (e) {
+        this.logger.warn(`AI plan generation failed: ${e.message}`);
+      }
+
       onEvent({
         type: 'plan_created',
         data: {
           goal: userGoal,
-          steps: [
-            '1. Memindai berkas & struktur folder di Workspace',
-            '2. Menganalisis isi dokumen relevan via FTS5 Search & Reader',
-            '3. Melakukan kalkulasi & menyusun hasil akhir',
-            '4. Menyimpan output ke Workspace Artifact',
-          ],
+          steps: steps.length > 0 ? steps : ['Menyusun rencana berdasarkan goal Anda...'],
         },
       });
 
       let finalContent = '';
       const createdArtifactIds: string[] = [];
       const MAX_ROUNDS = 5;
+      let reachedMaxRounds = true;
 
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const aiResponse = await this.aiService.chat(messages, tools);
@@ -98,6 +119,8 @@ export class WorkspaceRunnerService {
         if (aiResponse.toolCalls.length === 0) {
           finalContent = aiResponse.content;
           onEvent({ type: 'text_delta', data: finalContent });
+          reachedMaxRounds = false;
+          this.logger.log('Workspace agent finished goal execution within round limit.');
           break;
         }
 
@@ -199,7 +222,13 @@ export class WorkspaceRunnerService {
         }
       }
 
-      if (!finalContent) {
+      if (reachedMaxRounds) {
+        this.logger.warn('Workspace agent reached max round limit without completion.');
+        if (!finalContent) {
+          finalContent =
+            'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.';
+        }
+      } else if (!finalContent) {
         finalContent = 'Pekerjaan otonom di Workspace telah selesai.';
       }
 

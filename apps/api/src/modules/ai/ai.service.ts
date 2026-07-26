@@ -180,7 +180,10 @@ Selalu sapa pengguna dan berikan jawaban yang lengkap dengan konteks.`;
 KONTEKS WORKSPACE:
 ${workspaceContext}
 
-Mode: Workspace Agent.`;
+Mode: Workspace Agent.
+ATURAN KHUSUS WORKSPACE:
+1. Setelah goal user tercapai, JANGAN panggil tool lagi — jawab dengan ringkasan hasil akhir dalam bahasa natural. Jangan memanggil tool tambahan yang tidak diperlukan hanya untuk mengisi ronde.
+2. Kerjakan tugas secara efisien dan otonom.`;
     }
 
     return `${basePrompt}
