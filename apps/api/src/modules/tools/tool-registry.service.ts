@@ -11,6 +11,7 @@ import { WebSearchTool } from './services/web-search.tool.js';
 import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
+import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -47,6 +48,7 @@ export class ToolRegistryService {
     private readonly visionAiTool: VisionAiTool,
     private readonly unitConverterTool: UnitConverterTool,
     private readonly draftCommunicationTool: DraftCommunicationTool,
+    private readonly workspaceToolsService: WorkspaceToolsService,
   ) {
     this.registerBuiltinTools();
   }
@@ -576,6 +578,134 @@ export class ToolRegistryService {
         estimatedLatency: 'fast',
       },
       timeoutMs: 5000,
+    });
+
+    this.register('search_workspace', {
+      handler: (args) => this.workspaceToolsService.searchWorkspace(args.workspaceId, args.query),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'search_workspace',
+          description: 'Mencari kata kunci, topik, atau data di seluruh dokumen di dalam Workspace aktif.',
+          parameters: {
+            type: 'object',
+            properties: {
+              workspaceId: { type: 'string', description: 'ID Workspace' },
+              query: { type: 'string', description: 'Kata kunci pencarian' },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'search_workspace',
+        displayName: 'Pencarian Workspace',
+        description: 'Mencari kata kunci lintas file dokumen workspace',
+        tags: ['search', 'fts', 'workspace', 'query', 'files'],
+        inputSchema: { query: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 8000,
+    });
+
+    this.register('list_workspace_files', {
+      handler: (args) => this.workspaceToolsService.listWorkspaceFiles(args.workspaceId),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'list_workspace_files',
+          description: 'Memindai daftar seluruh file dan folder yang ada di dalam Workspace aktif.',
+          parameters: {
+            type: 'object',
+            properties: {
+              workspaceId: { type: 'string', description: 'ID Workspace' },
+            },
+          },
+        },
+      },
+      capability: {
+        name: 'list_workspace_files',
+        displayName: 'Daftar Berkas Workspace',
+        description: 'Memindai seluruh dokumen di workspace',
+        tags: ['files', 'list', 'workspace', 'directory'],
+        inputSchema: {},
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('read_workspace_file', {
+      handler: (args) => this.workspaceToolsService.readWorkspaceFile(args.filePath),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'read_workspace_file',
+          description: 'Membaca isi lengkap file dokumen (PDF, Word, Excel, CSV, TXT) di dalam workspace.',
+          parameters: {
+            type: 'object',
+            properties: {
+              filePath: { type: 'string', description: 'Path lengkap file dokumen' },
+            },
+            required: ['filePath'],
+          },
+        },
+      },
+      capability: {
+        name: 'read_workspace_file',
+        displayName: 'Pembaca Berkas Workspace',
+        description: 'Membaca teks dokumen spesifik di workspace',
+        tags: ['read', 'pdf', 'docx', 'xlsx', 'csv', 'workspace'],
+        inputSchema: { filePath: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'medium',
+      },
+      timeoutMs: 15000,
+    });
+
+    this.register('write_workspace_file', {
+      handler: (args) =>
+        this.workspaceToolsService.writeWorkspaceFile({
+          workspacePath: args.workspacePath || process.cwd(),
+          filename: args.filename,
+          format: args.format,
+          content: args.content,
+          rows: args.rows,
+          title: args.title,
+        }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'write_workspace_file',
+          description: 'Membuat file laporan/dokumen baru (Excel, PDF, Word, TXT, JSON) di dalam folder Workspace.',
+          parameters: {
+            type: 'object',
+            properties: {
+              filename: { type: 'string', description: 'Nama file yang akan dibuat (misal: laporan.xlsx)' },
+              format: {
+                type: 'string',
+                enum: ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'],
+                description: 'Format dokumen',
+              },
+              content: { type: 'string', description: 'Isi teks/markdown' },
+              rows: { type: 'array', description: 'Baris data untuk Excel/CSV' },
+              title: { type: 'string', description: 'Judul dokumen' },
+            },
+            required: ['filename', 'format'],
+          },
+        },
+      },
+      capability: {
+        name: 'write_workspace_file',
+        displayName: 'Buat File Workspace',
+        description: 'Membuat dokumen baru di folder workspace',
+        tags: ['write', 'create', 'export', 'workspace', 'file'],
+        inputSchema: { filename: 'string', format: 'string' },
+        outputType: 'document',
+        estimatedLatency: 'medium',
+      },
+      timeoutMs: 15000,
     });
   }
 

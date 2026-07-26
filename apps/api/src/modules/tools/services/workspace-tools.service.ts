@@ -1,0 +1,157 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { StorageService } from '../../storage/storage.service.js';
+import { SearchService } from '../../search/search.service.js';
+import { FileService } from '../../file/file.service.js';
+import { DocumentReaderTool } from './document-reader.tool.js';
+import { DocumentGeneratorTool } from './document-generator.tool.js';
+import { ToolResult } from '../interfaces/tool-result.interface.js';
+import * as path from 'path';
+
+@Injectable()
+export class WorkspaceToolsService {
+  private readonly logger = new Logger(WorkspaceToolsService.name);
+
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly searchService: SearchService,
+    private readonly fileService: FileService,
+    private readonly documentReaderTool: DocumentReaderTool,
+    private readonly documentGeneratorTool: DocumentGeneratorTool,
+  ) {}
+
+  /**
+   * Search keywords across indexed files inside active workspace
+   */
+  async searchWorkspace(workspaceId: string, query: string): Promise<ToolResult> {
+    const startTime = Date.now();
+    try {
+      const results = await this.searchService.searchFiles({ workspaceId, query });
+      const formatted = results.length > 0
+        ? results.map((r, i) => `${i + 1}. [${r.fileName}] (Skor: ${r.score}): ${r.matchedContent || r.filePath}`).join('\n')
+        : `Tidak ditemukan dokumen yang mencocokkan kata kunci "${query}" di workspace ini.`;
+
+      return {
+        status: 'success',
+        data: { query, count: results.length, results },
+        preview: formatted,
+        metadata: {
+          toolName: 'search_workspace',
+          displayName: 'Pencarian Workspace',
+          executionTime: Date.now() - startTime,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal mencari di workspace: ${e.message}`,
+        metadata: {
+          toolName: 'search_workspace',
+          displayName: 'Pencarian Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'SEARCH_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * List all files in the workspace
+   */
+  async listWorkspaceFiles(workspaceId: string): Promise<ToolResult> {
+    const startTime = Date.now();
+    try {
+      const files = await this.fileService.findByWorkspaceId(workspaceId);
+      const list = files.map((f, i) => `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB)`).join('\n');
+
+      return {
+        status: 'success',
+        data: { count: files.length, files },
+        preview: list || 'Belum ada file di workspace ini.',
+        metadata: {
+          toolName: 'list_workspace_files',
+          displayName: 'Daftar Berkas Workspace',
+          executionTime: Date.now() - startTime,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal memindai file workspace: ${e.message}`,
+        metadata: {
+          toolName: 'list_workspace_files',
+          displayName: 'Daftar Berkas Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'LIST_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Read content of a specific workspace file
+   */
+  async readWorkspaceFile(filePath: string): Promise<ToolResult> {
+    return this.documentReaderTool.readDocument(filePath);
+  }
+
+  /**
+   * Write new file inside workspace directory (requires Approval Gate)
+   */
+  async writeWorkspaceFile(params: {
+    workspacePath: string;
+    filename: string;
+    format: 'xlsx' | 'csv' | 'pdf' | 'docx' | 'txt' | 'md' | 'json';
+    content?: string;
+    rows?: any[];
+    title?: string;
+  }): Promise<ToolResult> {
+    const { workspacePath, filename, format, content = '', rows = [], title = 'Laporan Workspace' } = params;
+    const targetPath = path.join(workspacePath, filename);
+
+    switch (format) {
+      case 'xlsx':
+        return this.documentGeneratorTool.generateExcel('Data', rows, targetPath);
+      case 'csv':
+        return this.documentGeneratorTool.generateCsv(rows, targetPath);
+      case 'pdf':
+        return this.documentGeneratorTool.generatePdf(title, content, targetPath);
+      case 'docx':
+        return this.documentGeneratorTool.generateDocx(title, content, targetPath);
+      case 'txt':
+      case 'md':
+      case 'json':
+      default: {
+        const startTime = Date.now();
+        try {
+          await this.storageService.writeFile(targetPath, content);
+          return {
+            status: 'success',
+            data: { path: targetPath, filename, format },
+            preview: `File ${filename} berhasil dibuat di folder workspace.`,
+            metadata: {
+              toolName: 'write_workspace_file',
+              displayName: 'Buat File Workspace',
+              executionTime: Date.now() - startTime,
+              filename,
+              format,
+            },
+          };
+        } catch (e) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Gagal membuat file ${filename}: ${e.message}`,
+            metadata: {
+              toolName: 'write_workspace_file',
+              displayName: 'Buat File Workspace',
+              executionTime: Date.now() - startTime,
+            },
+            error: { code: 'WRITE_FAILED', message: e.message },
+          };
+        }
+      }
+    }
+  }
+}
