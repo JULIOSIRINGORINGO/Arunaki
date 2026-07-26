@@ -26,7 +26,7 @@ export class ArtifactController {
 
   @Get()
   async findAll() {
-    const data = await this.artifactService.findByWorkspaceId('');
+    const data = await this.artifactService.findAllArtifacts();
     return { data };
   }
 

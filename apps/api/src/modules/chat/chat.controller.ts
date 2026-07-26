@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AgentRunnerService } from './agent-runner.service.js';
-import { ArtifactStore } from '../tools/artifact-store.service.js';
+import { ArtifactService } from '../artifact/artifact.service.js';
 import {
   successResponse,
   errorResponse,
@@ -15,7 +15,7 @@ export class ChatController {
     private readonly chatHistoryService: ChatHistoryService,
     private readonly messageService: MessageService,
     private readonly agentRunnerService: AgentRunnerService,
-    private readonly artifactStore: ArtifactStore,
+    private readonly artifactService: ArtifactService,
   ) {}
 
   @Post()
@@ -131,19 +131,20 @@ export class ChatController {
   @Get(':id/artifacts')
   async getArtifacts(@Param('id') id: string) {
     try {
-      const artifacts = this.artifactStore.find({
-        tags: [`chat:${id}`],
-      });
+      const artifacts = await this.artifactService.findByTag(`chat:${id}`);
       return successResponse(
-        artifacts.map((a) => ({
-          id: a.id,
-          type: a.type,
-          filename: a.filename,
-          mimeType: a.mimeType,
-          preview: a.preview,
-          status: a.status,
-          createdAt: a.metadata.createdAt,
-        })),
+        artifacts.map((a) => {
+          const meta = this.artifactService.parseMetadata(a);
+          return {
+            id: a.id,
+            type: a.type,
+            filename: a.name,
+            mimeType: meta.mimeType || 'application/octet-stream',
+            preview: a.preview,
+            status: 'draft',
+            createdAt: a.createdAt,
+          };
+        }),
       );
     } catch (error) {
       return errorResponse('FETCH_FAILED', error.message);
@@ -158,34 +159,37 @@ export class ChatController {
     @Res() res: Response,
   ) {
     try {
-      const artifact = this.artifactStore.findById(artifactId);
+      const artifact = await this.artifactService.findById(artifactId);
       if (!artifact) {
         return res.status(404).json({ error: 'Artifact not found' });
       }
 
+      const meta = this.artifactService.parseMetadata(artifact);
+
       // IDOR Scope Access Control Verification
-      if (chatId && !artifact.metadata.tags.includes(`chat:${chatId}`)) {
+      if (chatId && (!meta.tags || !meta.tags.includes(`chat:${chatId}`))) {
         return res
           .status(403)
           .json({ error: 'Access denied: Artifact does not belong to this chat session' });
       }
       if (
         workspaceId &&
-        !artifact.metadata.tags.includes(`workspace:${workspaceId}`)
+        artifact.workspaceId !== workspaceId &&
+        (!meta.tags || !meta.tags.includes(`workspace:${workspaceId}`))
       ) {
         return res
           .status(403)
           .json({ error: 'Access denied: Artifact does not belong to this workspace' });
       }
 
-      if (!artifact.contentBase64) {
+      if (!meta.contentBase64) {
         return res.status(400).json({ error: 'Artifact has no file content' });
       }
 
-      const fileBuffer = Buffer.from(artifact.contentBase64, 'base64');
+      const fileBuffer = Buffer.from(meta.contentBase64, 'base64');
       res.set({
-        'Content-Type': artifact.mimeType,
-        'Content-Disposition': `attachment; filename="${artifact.filename}"`,
+        'Content-Type': meta.mimeType || 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${artifact.name}"`,
         'Content-Length': fileBuffer.length.toString(),
       });
       res.send(fileBuffer);

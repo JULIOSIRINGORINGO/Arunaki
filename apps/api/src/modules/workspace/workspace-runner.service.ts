@@ -4,7 +4,7 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
-import { ArtifactStore } from '../tools/artifact-store.service.js';
+import { ArtifactService } from '../artifact/artifact.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface WorkspaceRunParams {
@@ -37,7 +37,7 @@ export class WorkspaceRunnerService {
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
-    private readonly artifactStore: ArtifactStore,
+    private readonly artifactService: ArtifactService,
   ) {}
 
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
@@ -171,9 +171,10 @@ export class WorkspaceRunnerService {
           }
 
           if (result.status === 'success' && result.metadata?.contentBase64) {
-            const artifact = this.artifactStore.create({
+            const artifact = await this.artifactService.createFromAgent({
+              workspaceId,
               type: result.metadata.format === 'xlsx' || result.metadata.format === 'csv' ? 'spreadsheet' : 'document',
-              filename: result.metadata.filename || `workspace-output-${Date.now()}.file`,
+              name: result.metadata.filename || `workspace-output-${Date.now()}.file`,
               mimeType: result.metadata.mimeType || 'application/octet-stream',
               contentBase64: result.metadata.contentBase64,
               preview: result.preview,
@@ -202,18 +203,24 @@ export class WorkspaceRunnerService {
         finalContent = 'Pekerjaan otonom di Workspace telah selesai.';
       }
 
-      const artifacts = createdArtifactIds
-        .map((aid) => this.artifactStore.findById(aid))
+      const artifactRecords = await Promise.all(
+        createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+      );
+
+      const artifacts = artifactRecords
         .filter(Boolean)
-        .map((a) => ({
-          id: a!.id,
-          type: a!.type,
-          filename: a!.filename,
-          mimeType: a!.mimeType,
-          preview: a!.preview,
-          status: a!.status,
-          createdAt: a!.metadata.createdAt,
-        }));
+        .map((a) => {
+          const meta = this.artifactService.parseMetadata(a!);
+          return {
+            id: a!.id,
+            type: a!.type,
+            filename: a!.name,
+            mimeType: meta.mimeType || 'application/octet-stream',
+            preview: a!.preview,
+            status: 'draft',
+            createdAt: a!.createdAt,
+          };
+        });
 
       onEvent({
         type: 'done',

@@ -13,6 +13,12 @@ export class ArtifactRepository extends PrismaBaseRepository<Artifact> {
     super(prisma);
   }
 
+  async findAllArtifacts(): Promise<Artifact[]> {
+    return this.model.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findByWorkspaceId(workspaceId: string): Promise<Artifact[]> {
     return this.model.findMany({
       where: { workspaceId },
@@ -26,6 +32,17 @@ export class ArtifactRepository extends PrismaBaseRepository<Artifact> {
   ): Promise<Artifact[]> {
     return this.model.findMany({
       where: { workspaceId, type },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findByTag(tag: string): Promise<Artifact[]> {
+    return this.model.findMany({
+      where: {
+        metadata: {
+          contains: tag,
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

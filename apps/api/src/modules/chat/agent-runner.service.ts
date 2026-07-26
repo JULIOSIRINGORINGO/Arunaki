@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
-import { ArtifactStore } from '../tools/artifact-store.service.js';
+import { ArtifactService } from '../artifact/artifact.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface AgentRunParams {
@@ -31,7 +31,7 @@ export class AgentRunnerService {
     private readonly aiService: AiService,
     private readonly toolRegistryService: ToolRegistryService,
     private readonly knowledgeService: KnowledgeService,
-    private readonly artifactStore: ArtifactStore,
+    private readonly artifactService: ArtifactService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -101,9 +101,9 @@ export class AgentRunnerService {
         }
 
         if (result.status === 'success' && result.metadata?.contentBase64) {
-          const artifact = this.artifactStore.create({
+          const artifact = await this.artifactService.createFromAgent({
             type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
-            filename: result.metadata.filename || `export-${Date.now()}.file`,
+            name: result.metadata.filename || `export-${Date.now()}.file`,
             mimeType: result.metadata.mimeType || 'application/octet-stream',
             contentBase64: result.metadata.contentBase64,
             preview: result.preview,
@@ -129,18 +129,24 @@ export class AgentRunnerService {
       finalContent = 'Pekerjaan telah selesai.';
     }
 
-    const artifacts = createdArtifactIds
-      .map((aid) => this.artifactStore.findById(aid))
+    const artifactRecords = await Promise.all(
+      createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+    );
+
+    const artifacts = artifactRecords
       .filter(Boolean)
-      .map((a) => ({
-        id: a!.id,
-        type: a!.type,
-        filename: a!.filename,
-        mimeType: a!.mimeType,
-        preview: a!.preview,
-        status: a!.status,
-        createdAt: a!.metadata.createdAt,
-      }));
+      .map((a) => {
+        const meta = this.artifactService.parseMetadata(a!);
+        return {
+          id: a!.id,
+          type: a!.type,
+          filename: a!.name,
+          mimeType: meta.mimeType || 'application/octet-stream',
+          preview: a!.preview,
+          status: 'draft',
+          createdAt: a!.createdAt,
+        };
+      });
 
     return {
       content: finalContent,
@@ -208,13 +214,19 @@ export class AgentRunnerService {
           try {
             result = await this.toolRegistryService.executeTool(funcName, args);
           } catch (e) {
-            result = { success: false, status: 'error', error: { code: 'EXECUTION_FAILED', message: e.message } } as any;
+            result = {
+              status: 'error',
+              data: {},
+              preview: `Tool error: ${e.message}`,
+              metadata: { toolName: funcName, displayName: funcName, executionTime: 0 },
+              error: { code: 'EXECUTION_FAILED', message: e.message },
+            };
           }
 
           if (result.status === 'success' && result.metadata?.contentBase64) {
-            const artifact = this.artifactStore.create({
+            const artifact = await this.artifactService.createFromAgent({
               type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
-              filename: result.metadata.filename || `export-${Date.now()}.file`,
+              name: result.metadata.filename || `export-${Date.now()}.file`,
               mimeType: result.metadata.mimeType || 'application/octet-stream',
               contentBase64: result.metadata.contentBase64,
               preview: result.preview,
@@ -243,18 +255,24 @@ export class AgentRunnerService {
         finalContent = 'Pekerjaan telah selesai.';
       }
 
-      const artifacts = createdArtifactIds
-        .map((aid) => this.artifactStore.findById(aid))
+      const artifactRecords = await Promise.all(
+        createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+      );
+
+      const artifacts = artifactRecords
         .filter(Boolean)
-        .map((a) => ({
-          id: a!.id,
-          type: a!.type,
-          filename: a!.filename,
-          mimeType: a!.mimeType,
-          preview: a!.preview,
-          status: a!.status,
-          createdAt: a!.metadata.createdAt,
-        }));
+        .map((a) => {
+          const meta = this.artifactService.parseMetadata(a!);
+          return {
+            id: a!.id,
+            type: a!.type,
+            filename: a!.name,
+            mimeType: meta.mimeType || 'application/octet-stream',
+            preview: a!.preview,
+            status: 'draft',
+            createdAt: a!.createdAt,
+          };
+        });
 
       onEvent({
         type: 'done',

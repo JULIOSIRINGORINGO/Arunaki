@@ -7,22 +7,63 @@ export class ArtifactService {
   constructor(private readonly artifactRepo: ArtifactRepository) {}
 
   async create(data: {
-    workspaceId: string;
+    workspaceId?: string;
     name: string;
     type: string;
     format?: string;
     path?: string;
     metadata?: any;
+    sourceFiles?: any;
   }): Promise<Artifact> {
+    const metaJson = typeof data.metadata === 'string' ? data.metadata : JSON.stringify(data.metadata || {});
+    const sourceFilesJson = typeof data.sourceFiles === 'string' ? data.sourceFiles : JSON.stringify(data.sourceFiles || []);
+
     return this.artifactRepo.create({
-      workspaceId: data.workspaceId,
+      workspaceId: data.workspaceId || null,
       name: data.name,
       type: data.type,
       format: data.format || 'md',
       path: data.path || '',
-      metadata: JSON.stringify(data.metadata || {}),
-      sourceFiles: '[]',
+      metadata: metaJson,
+      sourceFiles: sourceFilesJson,
     });
+  }
+
+  async createFromAgent(input: {
+    workspaceId?: string;
+    name: string;
+    type: string;
+    format?: string;
+    mimeType?: string;
+    contentBase64?: string;
+    preview?: string;
+    data?: any;
+    createdBy: string;
+    tags?: string[];
+    lineage?: string[];
+  }): Promise<Artifact> {
+    const metadata = {
+      createdBy: input.createdBy,
+      mimeType: input.mimeType || 'application/octet-stream',
+      contentBase64: input.contentBase64,
+      version: 1,
+      lineage: input.lineage || [],
+      tags: input.tags || [],
+    };
+
+    return this.create({
+      workspaceId: input.workspaceId,
+      name: input.name,
+      type: input.type,
+      format: input.format || input.name.split('.').pop() || 'bin',
+      path: '',
+      metadata,
+      sourceFiles: input.data || [],
+    });
+  }
+
+  async findAllArtifacts(): Promise<Artifact[]> {
+    return this.artifactRepo.findAllArtifacts();
   }
 
   async findById(id: string): Promise<Artifact> {
@@ -44,6 +85,10 @@ export class ArtifactService {
     return this.artifactRepo.findByWorkspaceAndType(workspaceId, type);
   }
 
+  async findByTag(tag: string): Promise<Artifact[]> {
+    return this.artifactRepo.findByTag(tag);
+  }
+
   async update(
     id: string,
     data: { name?: string; metadata?: any },
@@ -56,5 +101,13 @@ export class ArtifactService {
 
   async delete(id: string): Promise<void> {
     await this.artifactRepo.delete(id);
+  }
+
+  parseMetadata(artifact: Artifact): any {
+    try {
+      return JSON.parse(artifact.metadata || '{}');
+    } catch {
+      return {};
+    }
   }
 }

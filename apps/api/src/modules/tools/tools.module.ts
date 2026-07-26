@@ -13,7 +13,6 @@ import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
-import { ArtifactStore } from './artifact-store.service.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
@@ -36,7 +35,6 @@ import { FileModule } from '../file/file.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
-    ArtifactStore,
   ],
   exports: [
     ToolRegistryService,
@@ -53,7 +51,6 @@ import { FileModule } from '../file/file.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
-    ArtifactStore,
   ],
 })
 export class ToolsModule {}
