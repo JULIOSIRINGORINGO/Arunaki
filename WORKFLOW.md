@@ -433,10 +433,29 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 20: Autonomous Workspace Agent Engine & Tools ✅ IN PROGRESS
+
+**Goal:** Build the backend foundation and tools suite for Autonomous Workspace Agent mode (`/workspace`).
+
+### 20.1 Workspace Multi-Document Engine & Streaming (Backend)
+- [x] `WorkspaceRunnerService` created for multi-document workspace context injection, autonomous ReAct loop, and SSE streaming
+- [x] Backend endpoint `POST /workspaces/:id/agent/stream` for real-time plan events, tool execution, and approval requests
+- [x] Registered `WorkspaceRunnerService` in `WorkspaceModule`
+
+### 20.2 Workspace Tools & Safety Approval Gate (Backend)
+- [x] `WorkspaceToolsService` created with mature open-source tools:
+  - `search_workspace` — FTS5 keyword & content search across all workspace files
+  - `list_workspace_files` — Scan directory structure & file metadata
+  - `read_workspace_file` — Extract text from PDF, Docx, XLSX, CSV, TXT files via `DocumentReaderTool`
+  - `write_workspace_file` — Generate new workspace documents (Excel, PDF, Word, TXT, JSON) via `DocumentGeneratorTool`
+- [x] Safety Approval Gate event handling (`approval_required`) for data-mutating tools (`write_workspace_file`, `update_workspace_file`, `delete_workspace_file`)
+
+---
+
 ## Current Status
 
-**Phase:** Phase 19 Complete — AI Assistant 100% Modern & Smart Upgrade ✅  
-**Next:** Workspace Agent Mode (`/workspace`) or additional autonomous features
+**Phase:** Phase 20 In Progress — Workspace Agent Backend Engine & Tools Complete ✅  
+**Next:** Phase 20.3 Frontend UI Integration in `WorkspaceDetailPage.tsx` (Goal Input, Live Progress Logs, Approval Gate Modal)
 
 ---
 
