@@ -433,9 +433,9 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-## Phase 20: Autonomous Workspace Agent Engine & Tools ✅ IN PROGRESS
+## Phase 20: Autonomous Workspace Agent Engine & UI ✅ DONE
 
-**Goal:** Build the backend foundation and tools suite for Autonomous Workspace Agent mode (`/workspace`).
+**Goal:** Build the full end-to-end Autonomous Workspace Agent mode (`/workspace`) with Goal-Oriented execution, multi-document search engine, tools, SSE streaming, live progress logs, and Safety Approval Gate.
 
 ### 20.1 Workspace Multi-Document Engine & Streaming (Backend)
 - [x] `WorkspaceRunnerService` created for multi-document workspace context injection, autonomous ReAct loop, and SSE streaming
@@ -450,12 +450,18 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
   - `write_workspace_file` — Generate new workspace documents (Excel, PDF, Word, TXT, JSON) via `DocumentGeneratorTool`
 - [x] Safety Approval Gate event handling (`approval_required`) for data-mutating tools (`write_workspace_file`, `update_workspace_file`, `delete_workspace_file`)
 
+### 20.3 Autonomous Workspace Agent UI (Frontend)
+- [x] Goal Input Prompt Bar in `WorkspaceDetailPage.tsx` for submitting high-level goals
+- [x] Live Progress Log & Autonomous Plan display (`plan_created`, `thinking`, `tool_start`, `tool_done`, `done`)
+- [x] Prominent Safety Approval Gate Alert Banner with `[Izinkan & Lanjutkan]` and `[Tolak]` buttons
+- [x] Studio / Output Artifact Store list for generated workspace files (.xlsx, .pdf, .docx)
+
 ---
 
 ## Current Status
 
-**Phase:** Phase 20 In Progress — Workspace Agent Backend Engine & Tools Complete ✅  
-**Next:** Phase 20.3 Frontend UI Integration in `WorkspaceDetailPage.tsx` (Goal Input, Live Progress Logs, Approval Gate Modal)
+**Phase:** Phase 20 Complete — Autonomous Workspace Agent Engine & UI ✅  
+**Next:** User Verification / End-to-End System Evaluation
 
 ---
 
