@@ -97,16 +97,25 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         setIsReadingFile(true);
         try {
           const isImage = attachedFile.type.startsWith("image/");
+          const isBinaryDoc =
+            attachedFile.name.endsWith(".pdf") ||
+            attachedFile.name.endsWith(".docx") ||
+            attachedFile.name.endsWith(".xlsx") ||
+            attachedFile.name.endsWith(".xls") ||
+            attachedFile.type.includes("pdf") ||
+            attachedFile.type.includes("wordprocessingml") ||
+            attachedFile.type.includes("spreadsheetml");
+
           const reader = new FileReader();
 
-          if (isImage) {
+          if (isImage || isBinaryDoc) {
             const base64Data = await new Promise<string>((resolve, reject) => {
               reader.onload = () => resolve(reader.result as string);
               reader.onerror = reject;
               reader.readAsDataURL(attachedFile);
             });
-            const textIntro = finalPrompt || `Tolong analisis foto/struk/gambar ini (${attachedFile.name}).`;
-            finalPrompt = `${textIntro}\n\n[Foto/Gambar Terlampir]: ${base64Data}`;
+            const textIntro = finalPrompt || `Tolong baca dan analisis file terlampir ini (${attachedFile.name}).`;
+            finalPrompt = `${textIntro}\n\n[Dokumen/Gambar Terlampir (${attachedFile.name})]: ${base64Data}`;
           } else {
             const textContent = await new Promise<string>((resolve, reject) => {
               reader.onload = () => resolve(reader.result as string);

@@ -316,8 +316,63 @@ export function ChatPage() {
     sendMessage.mutate(content);
   };
 
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDraggingFile(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      const isImage = file.type.startsWith("image/");
+      const reader = new FileReader();
+
+      if (isImage) {
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          handleSend(`Tolong analisis foto/struk ini (${file.name}):\n\n[Foto/Gambar Terlampir]: ${reader.result}`);
+        };
+      } else {
+        reader.readAsText(file);
+        reader.onload = () => {
+          handleSend(`Berikut isi file ${file.name}:\n\n[Isi File Terlampir (${file.name})]:\n\`\`\`\n${reader.result}\n\`\`\``);
+        };
+      }
+    }
+  };
+
   return (
-    <div className="flex h-full w-full bg-white min-w-0 overflow-hidden">
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="relative flex h-full w-full bg-white min-w-0 overflow-hidden"
+    >
+      {/* Drag & Drop File Overlay Backdrop */}
+      {isDraggingFile && (
+        <div className="absolute inset-0 bg-emerald-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white space-y-3 animate-fade-in border-4 border-dashed border-emerald-300 pointer-events-none">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shadow-lg">
+            <Sparkles className="w-8 h-8 text-white animate-bounce" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight">Lepas File di Sini</h2>
+          <p className="text-sm text-emerald-100 font-medium">
+            AI Assistant akan membaca & mengolah isi file secara instant
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col flex-1 h-full min-w-0 bg-white">
         <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
