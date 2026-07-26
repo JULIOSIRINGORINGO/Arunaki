@@ -19,4 +19,30 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Modern Thin Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.7);
+  }
+
+  /* Firefox support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+  }
 }
+

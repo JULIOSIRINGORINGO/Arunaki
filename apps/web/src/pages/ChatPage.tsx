@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
@@ -53,12 +53,21 @@ interface Artifact {
 function extractCanvasContentFromLLM(llmText: string): string {
   if (!llmText) return "";
 
+  // 1. Priority: [CANVAS]...[/CANVAS] marker
+  const canvasMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
+  if (canvasMatch?.[1]) {
+    const content = canvasMatch[1].trim();
+    if (content.length > 3) return content;
+  }
+
+  // 2. Fallback: code block
   const codeBlockMatch = llmText.match(/```[\w]*\n([\s\S]*?)\n```/);
   if (codeBlockMatch?.[1]) {
     const content = codeBlockMatch[1].trim();
     if (content.length > 5) return content;
   }
 
+  // 3. Fallback: markdown table
   const tableLines = llmText
     .split("\n")
     .filter((l) => l.includes("|") && l.trim().length > 3);
@@ -69,13 +78,47 @@ function extractCanvasContentFromLLM(llmText: string): string {
     if (cleaned.length >= 2) return cleaned.join("\n");
   }
 
-  const listLines = llmText
+  // 4. Fallback: structured block (header + list + total as one unit)
+  const lines = llmText.split("\n");
+  const structuredLines: string[] = [];
+  let inBlock = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (inBlock) structuredLines.push("");
+      continue;
+    }
+
+    const isHeader = /^(\*\*[^*]+\*\*|[A-Z][A-Z\s\d/]{2,})$/.test(trimmed);
+    const isList = /^\d+[.)]\s+/.test(trimmed) || /^[-*•]\s+/.test(trimmed);
+    const isTotal = /total/i.test(trimmed) && /\d/.test(trimmed);
+
+    if (isHeader || isList || isTotal) {
+      inBlock = true;
+      structuredLines.push(trimmed);
+    } else if (inBlock) {
+      // Stop collecting when we hit a non-structural line after data
+      const dataLines = structuredLines.filter((l) => l.length > 0);
+      if (dataLines.length >= 3) break;
+      // Not enough data yet, reset
+      structuredLines.length = 0;
+      inBlock = false;
+    }
+  }
+
+  const finalLines = structuredLines
+    .join("\n")
+    .trim()
     .split("\n")
-    .filter(
-      (l) => /^\s*[-*•]\s+/.test(l) || /^\s*\d+[.)]\s+/.test(l),
-    );
-  if (listLines.length >= 3) {
-    return listLines.map((l) => l.trim()).join("\n");
+    .filter((_, i, arr) => {
+      // Trim trailing empty lines
+      if (arr.slice(i).every((l) => l.trim() === "")) return false;
+      return true;
+    });
+
+  if (finalLines.filter((l) => l.length > 0).length >= 3) {
+    return finalLines.join("\n");
   }
 
   return "";
@@ -97,6 +140,17 @@ export function ChatPage() {
   } | null>(null);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [pendingChatId, setPendingChatId] = useState<string | null>(null);
+
+  // Clear local state whenever chatId URL parameter changes (e.g. switching chats or creating a new chat)
+  useEffect(() => {
+    setOptimisticMessages([]);
+    setActiveCanvasData(null);
+    setPendingDownload(null);
+    setArtifacts([]);
+    if (!chatId) {
+      setPendingChatId(null);
+    }
+  }, [chatId]);
 
   const effectiveChatId = chatId || pendingChatId;
 
@@ -135,6 +189,29 @@ export function ChatPage() {
     },
     enabled: !!effectiveChatId,
   });
+
+  // Automatically restore Canvas content from chat history when opening an existing chat
+  useEffect(() => {
+    if (messagesData && messagesData.length > 0) {
+      const assistantMessages = messagesData.filter((m: any) => m.role === "assistant");
+      for (let i = assistantMessages.length - 1; i >= 0; i--) {
+        const msg = assistantMessages[i];
+        if (msg.content) {
+          const extracted = extractCanvasContentFromLLM(msg.content);
+          if (extracted) {
+            setActiveCanvasData({
+              id: `canvas-${msg.id}`,
+              title: "Hasil",
+              brandColorHeader: "",
+              plainTextContent: extracted,
+              createdAt: msg.createdAt || new Date().toLocaleTimeString(),
+            });
+            break;
+          }
+        }
+      }
+    }
+  }, [messagesData]);
 
   const { data: artifactsData = [] } = useQuery({
     queryKey: ["artifacts", effectiveChatId],

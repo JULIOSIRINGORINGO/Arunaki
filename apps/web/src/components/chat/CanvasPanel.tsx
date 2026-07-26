@@ -232,7 +232,7 @@ export function CanvasPanel({
       </div>
 
       {/* Canvas Body */}
-      <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center justify-center min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center min-h-0">
         {showArtifacts ? (
           <div className="w-full space-y-2">
             {artifacts.length === 0 ? (
@@ -279,7 +279,7 @@ export function CanvasPanel({
             )}
           </div>
         ) : canvasData ? (
-          <div className="relative w-full max-w-sm p-6 rounded-2xl bg-white border border-gray-200/90 shadow-2xs space-y-2 group my-auto max-h-[75%] overflow-y-auto">
+          <div className="relative w-full h-full flex flex-col justify-between p-6 rounded-2xl bg-white border border-gray-200/90 shadow-2xs space-y-2 group overflow-y-auto">
             <button
               onClick={handleCopy}
               className="absolute top-3.5 right-3.5 p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all cursor-pointer border border-transparent hover:border-gray-200 shadow-2xs"

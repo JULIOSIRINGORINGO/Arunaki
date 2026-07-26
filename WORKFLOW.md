@@ -392,9 +392,28 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 18: Modern UI Polish, Dynamic Chat Follow-ups & Canvas Fixes ✅ DONE
+
+**Goal:** Sleek thin modern scrollbars, dynamic LLM follow-up handling, Canvas panel height expansion, and seamless canvas restoration on chat navigation.
+
+### 18.1 UI & Layout Improvements
+- [x] Custom thin scrollbar (6px width, rounded pill thumb, no browser arrow buttons) in `index.css`
+- [x] Canvas Panel card sizing — fill almost full height (`h-full w-full`) with a clean 16px padding gap around
+
+### 18.2 Chat Navigation & Canvas Restoration
+- [x] `useEffect` state reset in `ChatPage.tsx` — reset optimistic messages, canvas data, downloads & artifacts when switching chats or starting a new chat
+- [x] Automatic Canvas restoration from history — scans latest assistant message when opening an existing chat and restores Canvas content dynamically
+
+### 18.3 Dynamic Follow-up & Knowledge Base Improvements
+- [x] Removed synthetic `[CANVAS]` tags from system prompt & controller — restore natural LLM responses
+- [x] `garment.md` updated: Size equivalence (`XXL` → `2XL`), deduplication consistency rules
+- [x] `garment.md` updated: Dynamic follow-up rules for updates (e.g. "tambahin L 10") without repeating old anomaly notes
+
+---
+
 ## Current Status
 
-**Phase:** Phase 17 Complete — Knowledge Upload & Chat Polish ✅  
+**Phase:** Phase 18 Complete — Modern UI Polish, Dynamic Chat Follow-ups & Canvas Fixes ✅  
 **Next:** Workspace Agent mode or additional AI Assistant features
 
 ---
