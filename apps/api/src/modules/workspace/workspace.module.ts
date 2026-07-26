@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { WorkspaceController } from './workspace.controller.js';
 import { WorkspaceService } from './workspace.service.js';
 import { WorkspaceRepository } from './workspace.repository.js';
@@ -19,7 +19,7 @@ import { ArtifactModule } from '../artifact/artifact.module.js';
     ParserModule,
     StorageModule,
     AiModule,
-    ToolsModule,
+    forwardRef(() => ToolsModule),
     FileModule,
     SearchModule,
     ArtifactModule,
