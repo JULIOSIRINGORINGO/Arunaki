@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AiService } from '../ai/ai.service.js';
+import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
@@ -66,8 +66,8 @@ export class WorkspaceRunnerService {
       const systemPrompt = this.aiService.getSystemPrompt('workspace', undefined, workspaceContext);
       const tools = this.toolRegistryService.getToolDefinitions();
 
-      const messages: any[] = [
-        { role: 'system' as const, content: systemPrompt },
+      const messages: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
         ...historyMessages.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AiService } from '../ai/ai.service.js';
+import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactStore } from '../tools/artifact-store.service.js';
@@ -15,6 +15,12 @@ export interface AgentRunParams {
 export interface AgentStreamEvent {
   type: 'thinking' | 'tool_start' | 'tool_done' | 'text_delta' | 'canvas_event' | 'done' | 'error';
   data: any;
+}
+
+export interface ToolOutputRecord {
+  toolName: string;
+  args: Record<string, any>;
+  result: ToolResult;
 }
 
 @Injectable()
@@ -43,15 +49,15 @@ export class AgentRunnerService {
     const systemPrompt = this.aiService.getSystemPrompt(chatMode, undefined, knowledgeContext);
     const tools = this.toolRegistryService.getToolDefinitions();
 
-    const messages: any[] = [
-      { role: 'system' as const, content: systemPrompt },
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
       ...historyMessages.map((m) => ({
-        role: m.role as 'user' | 'assistant',
+        role: m.role as 'user' | 'assistant' | 'system',
         content: m.content,
       })),
     ];
 
-    let toolOutputs: any[] = [];
+    let toolOutputs: ToolOutputRecord[] = [];
     let finalContent = '';
     let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     const createdArtifactIds: string[] = [];
@@ -85,7 +91,13 @@ export class AgentRunnerService {
         try {
           result = await this.toolRegistryService.executeTool(funcName, args);
         } catch (e) {
-          result = { success: false, status: 'error', error: { code: 'EXECUTION_FAILED', message: e.message } } as any;
+          result = {
+            status: 'error',
+            data: {},
+            preview: `Tool error: ${e.message}`,
+            metadata: { toolName: funcName, displayName: funcName, executionTime: 0 },
+            error: { code: 'EXECUTION_FAILED', message: e.message },
+          };
         }
 
         if (result.status === 'success' && result.metadata?.contentBase64) {
@@ -151,10 +163,10 @@ export class AgentRunnerService {
       const systemPrompt = this.aiService.getSystemPrompt(chatMode, undefined, knowledgeContext);
       const tools = this.toolRegistryService.getToolDefinitions();
 
-      const messages: any[] = [
-        { role: 'system' as const, content: systemPrompt },
+      const messages: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
         ...historyMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
         })),
       ];

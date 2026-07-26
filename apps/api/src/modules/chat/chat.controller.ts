@@ -277,21 +277,4 @@ export class ChatController {
       res.end();
     }
   }
-
-  private mapOutputTypeToArtifactType(
-    format: string,
-  ): 'document' | 'spreadsheet' | 'presentation' | 'text' | 'calculation' {
-    switch (format) {
-      case 'pdf':
-      case 'docx':
-        return 'document';
-      case 'xlsx':
-      case 'csv':
-        return 'spreadsheet';
-      case 'pptx':
-        return 'presentation';
-      default:
-        return 'text';
-    }
-  }
 }

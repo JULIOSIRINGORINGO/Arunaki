@@ -64,17 +64,26 @@ export class FileService extends BaseService<File> {
     const createdFiles: File[] = [];
 
     for (const file of files) {
-      const filePath = path.join(uploadDir, file.originalname);
+      const safeFilename = path.basename(file.originalname);
+      if (!safeFilename || safeFilename.includes('..')) {
+        throw new Error(
+          `Nama file '${file.originalname}' tidak valid atau berpotensi path traversal.`,
+        );
+      }
+
+      const filePath = path.join(uploadDir, safeFilename);
+      this.storageService.validatePath(filePath, uploadDir);
+
       await this.storageService.writeBuffer(filePath, file.buffer);
 
       const ext = path
-        .extname(file.originalname)
+        .extname(safeFilename)
         .toLowerCase()
         .replace('.', '');
 
       const fileRecord = await this.createFile({
         sourceId: source.id,
-        name: file.originalname,
+        name: safeFilename,
         path: filePath,
         type: ext,
         size: file.size,

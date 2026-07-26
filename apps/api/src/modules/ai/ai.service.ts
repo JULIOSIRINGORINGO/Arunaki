@@ -1,18 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-interface ChatMessage {
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
-  tool_calls?: any[];
+  tool_calls?: ToolCall[];
   tool_call_id?: string;
   name?: string;
 }
 
-interface AiResponse {
+export interface AiResponse {
   content: string;
   model: string;
-  toolCalls: any[];
+  toolCalls: ToolCall[];
   usage: {
     promptTokens: number;
     completionTokens: number;
@@ -20,7 +29,7 @@ interface AiResponse {
   };
 }
 
-interface ToolDefinition {
+export interface ToolDefinition {
   type: 'function';
   function: {
     name: string;
@@ -37,10 +46,62 @@ export class AiService {
   private readonly model: string;
 
   constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('AI_API_KEY') || '';
+    this.apiKey =
+      this.config.get<string>('OPENROUTER_API_KEY') ||
+      this.config.get<string>('AI_API_KEY') ||
+      '';
     this.model =
+      this.config.get<string>('OPENROUTER_MODEL') ||
       this.config.get<string>('AI_MODEL') ||
       'nvidia/nemotron-3-ultra-550b-a55b:free';
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    timeoutMs = 60000,
+    maxRetries = 3,
+  ): Promise<Response> {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      attempt++;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt) * 1000;
+          this.logger.warn(
+            `AI request HTTP ${res.status}. Attempt ${attempt}/${maxRetries}. Retrying in ${backoffMs}ms...`,
+          );
+          await new Promise((r) => setTimeout(r, backoffMs));
+          continue;
+        }
+        return res;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        const isAbort = err.name === 'AbortError';
+        const errMsg = isAbort
+          ? `Request timed out after ${timeoutMs}ms`
+          : err.message;
+
+        if (attempt < maxRetries) {
+          const backoffMs = Math.pow(2, attempt) * 1000;
+          this.logger.warn(
+            `AI request error (${errMsg}). Attempt ${attempt}/${maxRetries}. Retrying in ${backoffMs}ms...`,
+          );
+          await new Promise((r) => setTimeout(r, backoffMs));
+        } else {
+          throw new Error(
+            `AI request failed after ${maxRetries} attempts: ${errMsg}`,
+          );
+        }
+      }
+    }
+    throw new Error(`AI request failed after ${maxRetries} attempts.`);
   }
 
   async chat(
@@ -58,7 +119,7 @@ export class AiService {
       body.tools = tools;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await this.fetchWithRetry(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -86,7 +147,8 @@ export class AiService {
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
     if (!content && choice.message?.tool_calls?.length === 0) {
-      content = 'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
+      content =
+        'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
     }
 
     return {
