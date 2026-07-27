@@ -54,10 +54,10 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 │                   └──────────────────────┘  │
 │  ┌─────────────┐  ┌──────────────────────┐  │
 │  │ Knowledge    │  │ Skills System        │  │
-│  │ (flat blob)  │  │ ❌ TIDAK ADA         │  │
-│  │ No memory    │  └──────────────────────┘  │
-│  │ across       │  ┌──────────────────────┐  │
-│  │ sessions     │  │ Context Management   │  │
+│  │ (flat blob)  │  │ ✅ Basic CRUD        │  │
+│  │ No memory    │  │ - create/view/search │  │
+│  │ across       │  │ - auto-create from   │  │
+│  │ sessions     │  │   experience         │  │
 │  └─────────────┘  │ ❌ TIDAK ADA          │  │
 │                   └──────────────────────┘  │
 │  ┌──────────────────────────────────────┐   │
@@ -125,15 +125,15 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 
 | Aspek | Hermes Agent | Arunaki |
 |-------|-------------|---------|
-| **Existence** | ✅ Full skills system | ❌ TIDAK ADA |
-| **Auto-create** | Agent bisa buat skill dari pengalaman | ❌ |
+| **Existence** | ✅ Full skills system | ✅ Basic skills system |
+| **Auto-create** | Agent bisa buat skill dari pengalaman | ✅ Agent bisa create skill |
 | **Self-improve** | Skill patch otomatis saat outdated | ❌ |
-| **Progressive disclosure** | 3-tier (list → view → files) | ❌ |
+| **Progressive disclosure** | 3-tier (list → view → files) | ✅ Basic (list → view → content) |
 | **Background review** | Curator review tiap 7 hari | ❌ |
 | **Skills Hub** | Share skills dengan komunitas | ❌ |
 | **Security** | Injection scanning, write approval | ❌ |
 
-**Kesimpulan**: Skills system adalah **killer feature** Hermes Agent yang Arunaki TIDAK ADA sama sekali. Ini yang bikin agent bisa "belajar" dan memperbaiki workflow-nya sendiri.
+**Kesimpulan**: Skills system Arunaki sudah **40%** — basic CRUD + agent bisa create skill dari pengalaman. Yang belum: self-improve, background review, Skills Hub, security.
 
 ### 2.5 Memory System
 
@@ -233,10 +233,10 @@ Parameter `workspaceContext` sekarang dikirim ke posisi yang benar (posisi ke-2,
 
 ### Prioritas 2: Agent Intelligence (Minggu 3-4)
 
-1. **Skills system (basic)**
-   - Simpan workflow yang berhasil sebagai "skill"
-   - Saat workspace baru, cek apakah ada skill yang relevan
-   - Agent bisa create skill baru dari pengalaman
+1. ✅ **Skills system (basic)**
+   - ✅ Simpan workflow yang berhasil sebagai "skill"
+   - ✅ Saat workspace baru, cek apakah ada skill yang relevan
+   - ✅ Agent bisa create skill baru dari pengalaman
 
 2. **Context compression**
    - Summary lama percakapan
