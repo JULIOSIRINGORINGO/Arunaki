@@ -1,6 +1,6 @@
 # Arunaki vs Hermes — Gap Checklist
 
-Status: **4/8 selesai**
+Status: **5/8 selesai**
 
 ---
 
@@ -29,10 +29,10 @@ Status: **4/8 selesai**
 - [x] Integrate ke background review
 
 ## 5. Model-specific routing — edit format steering per model family
-- [ ] Detect model family (Claude/GPT/Gemini)
-- [ ] Route edit format berdasarkan model
-- [ ] Tool call format adjustment
-- [ ] Integrate ke AI service
+- [x] Detect model family (Claude/GPT/Gemini)
+- [x] Route edit format berdasarkan model
+- [x] Tool call format adjustment
+- [x] Integrate ke AI service
 
 ## 6. Prompt injection detection — scan user input untuk injection
 - [ ] Detect injection patterns

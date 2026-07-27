@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ProviderService, ProviderConfig } from '../provider/provider.service.js';
 import { ContextManager } from './context-manager.js';
+import { ModelRouterService, ModelHints } from './model-router.service.js';
 
 export interface ToolCall {
   id: string;
@@ -48,6 +49,7 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly enc: ReturnType<typeof encoding_for_model>;
   private readonly contextManager: ContextManager;
+  private readonly modelRouter: ModelRouterService;
 
   // Fallback values from .env (used if no provider configured in DB)
   private readonly fallbackApiKey: string;
@@ -66,7 +68,7 @@ export class AiService {
       this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
     this.enc = encoding_for_model('gpt-4' as any);
 
-    // Initialize context manager with LLM summary enabled
+    // Initialize services
     this.contextManager = new ContextManager(
       {
         contextLength: 128000,
@@ -76,6 +78,7 @@ export class AiService {
       },
       { chat: this.chat.bind(this) },
     );
+    this.modelRouter = new ModelRouterService();
   }
 
   /**
@@ -405,6 +408,10 @@ export class AiService {
     workspaceContext?: string,
     knowledgeContext?: string,
   ): string {
+    // Get model hints for current provider
+    const providerConfig = this.getProviderConfigSync();
+    const modelHints = this.modelRouter.getHints(providerConfig?.model || this.fallbackModel);
+
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load 6 modular prompt files
       const identity = this.loadPrompt('identity.md');
@@ -415,6 +422,9 @@ export class AiService {
       const memoryContext = this.loadPrompt('memory-context.md');
 
       const safeWorkspaceContext = this.limitInjection(workspaceContext, 'workspace-context');
+
+      // Apply model-specific formatting
+      const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
 
       return `${identity}
 
@@ -428,7 +438,9 @@ ${workspaceFlow}
 
 ${memoryContext}
 
-${verification}`;
+${verification}
+
+${modelAdditions}`;
     }
 
     // Chat mode — load 3 modular prompt files
@@ -442,10 +454,35 @@ ${verification}`;
       : '(No active Knowledge Base)';
     const rulesWithKB = rules.replace('{KNOWLEDGE_BASE}', safeKnowledgeContext);
 
+    // Apply model-specific formatting
+    const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
+
     return `${identity}
 
 ${rulesWithKB}
 
-${knowledgeBuilder}`;
+${knowledgeBuilder}
+
+${modelAdditions}`;
+  }
+
+  /**
+   * Synchronous getter for provider config (used in sync getSystemPrompt).
+   * Falls back to .env values.
+   */
+  private getProviderConfigSync(): ProviderConfig | null {
+    try {
+      // We can't use async here, so use fallback directly
+      return {
+        id: 'env-fallback',
+        name: '.env Fallback',
+        type: 'openai-compatible',
+        baseUrl: this.fallbackBaseUrl.replace(/\/$/, ''),
+        apiKey: this.fallbackApiKey,
+        model: this.fallbackModel,
+      };
+    } catch {
+      return null;
+    }
   }
 }
