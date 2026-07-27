@@ -58,8 +58,13 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 │  │ No memory    │  │ - create/view/search │  │
 │  │ across       │  │ - auto-create from   │  │
 │  │ sessions     │  │   experience         │  │
-│  └─────────────┘  │ ❌ TIDAK ADA          │  │
-│                   └──────────────────────┘  │
+│  └─────────────┘  └──────────────────────┘  │
+│  ┌──────────────────────────────────────┐   │
+│  │ Memory System                        │   │
+│  │ ✅ Basic persistence                 │   │
+│  │ - preference, context, history       │   │
+│  │ - auto-save after tasks              │   │
+│  └──────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────┐   │
 │  │ Tools (~16 tools)                     │   │
 │  │ document, export, search, knowledge, │   │
@@ -139,15 +144,15 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 
 | Aspek | Hermes Agent | Arunaki |
 |-------|-------------|---------|
-| **Existence** | ✅ Full memory system | ❌ TIDAK ADA |
-| **Persistence** | MEMORY.md + USER.md + external providers | Knowledge base (flat) |
-| **Cross-session** | ✅ Ingat di semua sesi | ❌ Per-chat only |
-| **Provider abstraction** | ABC interface, bisa plug provider apapun | ❌ |
+| **Existence** | ✅ Full memory system | ✅ Basic memory system |
+| **Persistence** | MEMORY.md + USER.md + external providers | ✅ Database (Memory model) |
+| **Cross-session** | ✅ Ingat di semua sesi | ✅ Workspace history + preferences |
+| **Provider abstraction** | ABC interface, bisa plug provider apapun | ❌ SQLite only |
 | **Context fencing** | XML tags, injection prevention | ❌ |
 | **Prefetch** | Background recall sebelum turn | ❌ |
 | **Sync** | Background thread, serialized writes | ❌ |
 
-**Kesimpulan**: Memory system Arunaki = knowledge base yang di-inject ke system prompt. Tidak ada persistensi silang sesi, tidak ada user profiling, tidak ada intelligent recall.
+**Kesimpulan**: Memory system Arunaki sudah **40%** — basic CRUD + auto-save workspace history + preference tracking. Yang belum: provider abstraction, context fencing, prefetch, sync.
 
 ### 2.6 Context Management
 
@@ -238,15 +243,15 @@ Parameter `workspaceContext` sekarang dikirim ke posisi yang benar (posisi ke-2,
    - ✅ Saat workspace baru, cek apakah ada skill yang relevan
    - ✅ Agent bisa create skill baru dari pengalaman
 
-2. **Context compression**
-   - Summary lama percakapan
-   - Prune tool results yang sudah tua
+2. ✅ **Context compression**
+   - ✅ Summary lama percakapan (tool pruning + truncation)
+   - ✅ Prune tool results yang sudah tua
    - Protect system prompt + recent messages
 
-3. **Memory (basic)**
-   - Simpan user preferences
-   - Ingat workspace yang pernah dikerjakan
-   - Cross-session recall
+3. ✅ **Memory (basic)**
+   - ✅ Simpan user preferences
+   - ✅ Ingat workspace yang pernah dikerjakan
+   - ✅ Cross-session recall (workspace history)
 
 ### Prioritas 3: Advanced Features (Minggu 5+)
 
