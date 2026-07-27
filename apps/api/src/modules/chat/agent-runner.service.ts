@@ -198,58 +198,55 @@ export class AgentRunnerService {
           tool_calls: aiResponse.toolCalls,
         });
 
-        for (const toolCall of aiResponse.toolCalls) {
-          const funcName = toolCall.function.name;
-          let args: Record<string, any> = {};
-          try {
-            args = JSON.parse(toolCall.function.arguments || '{}');
-          } catch {
-            args = {};
-          }
-
+        // Execute all chat tools in parallel (no approval gate needed for chat)
+        if (aiResponse.toolCalls.length > 0) {
           onEvent({
             type: 'tool_start',
-            data: { toolName: funcName, args, timestamp: new Date().toISOString() },
+            data: { toolName: `parallel (${aiResponse.toolCalls.map((c) => c.function.name).join(', ')})`, args: {}, timestamp: new Date().toISOString() },
           });
 
-          let result: ToolResult;
-          try {
-            result = await this.toolRegistryService.executeTool(funcName, args);
-          } catch (e) {
-            result = {
-              status: 'error',
-              data: {},
-              preview: `Tool error: ${e.message}`,
-              metadata: { toolName: funcName, displayName: funcName, executionTime: 0 },
-              error: { code: 'EXECUTION_FAILED', message: e.message },
-            };
-          }
+          const parallelResults = await this.toolRegistryService.executeParallel(
+            aiResponse.toolCalls.map((toolCall) => {
+              let args: Record<string, any> = {};
+              try {
+                args = JSON.parse(toolCall.function.arguments || '{}');
+              } catch {
+                args = {};
+              }
+              return { name: toolCall.function.name, args };
+            }),
+          );
 
-          if (result.status === 'success' && result.metadata?.contentBase64) {
-            const artifact = await this.artifactService.createFromAgent({
-              type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
-              name: result.metadata.filename || `export-${Date.now()}.file`,
-              mimeType: result.metadata.mimeType || 'application/octet-stream',
-              contentBase64: result.metadata.contentBase64,
-              preview: result.preview,
-              data: result.data,
-              createdBy: `tool:${funcName}`,
-              tags: [`chat:${chatId}`, `tool:${funcName}`, `format:${result.metadata.format || 'unknown'}`],
-              lineage: [funcName],
+          for (let i = 0; i < aiResponse.toolCalls.length; i++) {
+            const toolCall = aiResponse.toolCalls[i];
+            const { result } = parallelResults[i];
+
+            if (result.status === 'success' && result.metadata?.contentBase64) {
+              const artifact = await this.artifactService.createFromAgent({
+                type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
+                name: result.metadata.filename || `export-${Date.now()}.file`,
+                mimeType: result.metadata.mimeType || 'application/octet-stream',
+                contentBase64: result.metadata.contentBase64,
+                preview: result.preview,
+                data: result.data,
+                createdBy: `tool:${toolCall.function.name}`,
+                tags: [`chat:${chatId}`, `tool:${toolCall.function.name}`, `format:${result.metadata.format || 'unknown'}`],
+                lineage: [toolCall.function.name],
+              });
+              createdArtifactIds.push(artifact.id);
+            }
+
+            onEvent({
+              type: 'tool_done',
+              data: { toolName: toolCall.function.name, result, timestamp: new Date().toISOString() },
             });
-            createdArtifactIds.push(artifact.id);
+
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result),
+            });
           }
-
-          onEvent({
-            type: 'tool_done',
-            data: { toolName: funcName, result, timestamp: new Date().toISOString() },
-          });
-
-          messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(result),
-          });
         }
       }
 

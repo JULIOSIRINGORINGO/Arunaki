@@ -170,6 +170,16 @@ export class WorkspaceRunnerService {
           tool_calls: aiResponse.toolCalls,
         });
 
+        // Separate mutating vs read-only tools for parallel execution
+        const mutatingTools = [
+          'write_workspace_file',
+          'update_workspace_file',
+          'delete_workspace_file',
+        ];
+
+        const readOnlyCalls: Array<{ toolCall: typeof aiResponse.toolCalls[0]; args: Record<string, any> }> = [];
+        const mutatingCalls: Array<{ toolCall: typeof aiResponse.toolCalls[0]; args: Record<string, any> }> = [];
+
         for (const toolCall of aiResponse.toolCalls) {
           const funcName = toolCall.function.name;
           let args: Record<string, any> = {};
@@ -179,12 +189,63 @@ export class WorkspaceRunnerService {
             args = {};
           }
 
-          // Safety Approval Gate Check for Mutating Actions
-          const isMutatingTool = [
-            'write_workspace_file',
-            'update_workspace_file',
-            'delete_workspace_file',
-          ].includes(funcName);
+          if (mutatingTools.includes(funcName)) {
+            mutatingCalls.push({ toolCall, args });
+          } else {
+            readOnlyCalls.push({ toolCall, args });
+          }
+        }
+
+        // Execute read-only tools in parallel
+        if (readOnlyCalls.length > 0) {
+          onEvent({
+            type: 'tool_start',
+            data: { toolName: `parallel (${readOnlyCalls.map((c) => c.toolCall.function.name).join(', ')})`, args: {}, timestamp: new Date().toISOString() },
+          });
+
+          const parallelResults = await this.toolRegistryService.executeParallel(
+            readOnlyCalls.map(({ toolCall, args }) => ({
+              name: toolCall.function.name,
+              args: { ...args, workspaceId },
+            })),
+          );
+
+          for (let i = 0; i < readOnlyCalls.length; i++) {
+            const { toolCall } = readOnlyCalls[i];
+            const { result } = parallelResults[i];
+
+            if (result.status === 'success' && result.metadata?.contentBase64) {
+              const artifact = await this.artifactService.createFromAgent({
+                workspaceId,
+                type: result.metadata.format === 'xlsx' || result.metadata.format === 'csv' ? 'spreadsheet' : 'document',
+                name: result.metadata.filename || `workspace-output-${Date.now()}.file`,
+                mimeType: result.metadata.mimeType || 'application/octet-stream',
+                contentBase64: result.metadata.contentBase64,
+                preview: result.preview,
+                data: result.data,
+                createdBy: `workspace-agent:${toolCall.function.name}`,
+                tags: [`workspace:${workspaceId}`, `tool:${toolCall.function.name}`],
+                lineage: [toolCall.function.name],
+              });
+              createdArtifactIds.push(artifact.id);
+            }
+
+            onEvent({
+              type: 'tool_done',
+              data: { toolName: toolCall.function.name, result, timestamp: new Date().toISOString() },
+            });
+
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result),
+            });
+          }
+        }
+
+        // Execute mutating tools sequentially (need approval gate)
+        for (const { toolCall, args } of mutatingCalls) {
+          const funcName = toolCall.function.name;
 
           const isApproved = approvedToolCalls.some((tc) => {
             if (tc.toolName !== funcName) return false;
@@ -197,7 +258,7 @@ export class WorkspaceRunnerService {
             return JSON.stringify(tc.args) === JSON.stringify(args);
           });
 
-          if (isMutatingTool && !isApproved) {
+          if (!isApproved) {
             this.logger.warn(
               `Approval Gate: Blocked execution of mutating tool "${funcName}" until user consent.`,
             );
@@ -209,7 +270,6 @@ export class WorkspaceRunnerService {
                 description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
               },
             });
-            // CRITICAL SECURITY FIX: Stop execution and wait for user approval
             return;
           }
 
@@ -220,7 +280,6 @@ export class WorkspaceRunnerService {
 
           let result: ToolResult;
           try {
-            // Include workspaceId in tool args
             const enrichedArgs = { ...args, workspaceId };
             result = await this.toolRegistryService.executeTool(funcName, enrichedArgs);
           } catch (e) {
