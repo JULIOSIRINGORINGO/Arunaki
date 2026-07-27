@@ -381,3 +381,85 @@ export class ContextManager {
     return total;
   }
 }
+
+/**
+ * StreamingContextScrubber — prevents internal context from leaking to user output.
+ *
+ * Strips:
+ * 1. Frozen memory blocks (## Context的记忆 section)
+ * 2. Skills context (## Relevant Skills section)
+ * 3. Knowledge base references
+ * 4. System prompt fragments that might be echoed back
+ *
+ * Inspired by Hermes's StreamingContextScrubber.
+ */
+export class StreamingContextScrubber {
+  private readonly logger = new Logger(StreamingContextScrubber.name);
+
+  // Patterns that indicate internal context leaking
+  private readonly LEAK_PATTERNS: RegExp[] = [
+    // Memory blocks
+    /^## Context.*记忆[\s\S]*?(?=^## |\z)/m,
+    /^## User.*记忆[\s\S]*?(?=^## |\z)/m,
+    /^## MEMORY[\s\S]*?(?=^## |\z)/m,
+    // Skills blocks
+    /^## Relevant Skills[\s\S]*?(?=^## |\z)/m,
+    /^## Skills[\s\S]*?(?=^## |\z)/m,
+    // Knowledge base
+    /^## Knowledge[\s\S]*?(?=^## |\z)/m,
+    // System prompt fragments
+    /^\[SYSTEM\]/m,
+    /^<!--.*-->/m,
+    // Memory/skill references in text
+    /(?:memory|记忆|偏好|偏好设置)(?:\s*:|\s*#)/gi,
+    /(?:skill|技能)(?:\s*:|\s*#)/gi,
+  ];
+
+  /**
+   * Scrub a text delta before sending to client.
+   * Returns cleaned text, or empty string if entire delta is internal context.
+   */
+  scrub(delta: string): string {
+    if (!delta || delta.length === 0) return delta;
+
+    let cleaned = delta;
+
+    // Apply pattern-based scrubbing
+    for (const pattern of this.LEAK_PATTERNS) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+
+    // Strip lines that look like memory/skill injections
+    const lines = cleaned.split('\n');
+    const filteredLines = lines.filter((line) => {
+      const trimmed = line.trim();
+      // Skip empty lines at boundaries
+      if (trimmed === '') return true;
+      // Skip lines that look like internal markers
+      if (/^(?:##|###)\s+(?:Context|Memory|Skill|Knowledge|SYSTEM)/i.test(trimmed)) {
+        this.logger.debug(`Stripped internal line: ${trimmed.substring(0, 60)}`);
+        return false;
+      }
+      return true;
+    });
+
+    cleaned = filteredLines.join('\n');
+
+    // Final check — if entire output is just internal context, return empty
+    if (cleaned.trim().length === 0 && delta.trim().length > 0) {
+      this.logger.warn('Entire delta was internal context — returning empty');
+      return '';
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Scrub a complete response (not streaming).
+   * Used for non-streaming endpoints.
+   */
+  scrubFullResponse(response: string): string {
+    if (!response) return response;
+    return this.scrub(response);
+  }
+}

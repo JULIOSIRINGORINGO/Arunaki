@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
+import { ContextManager, StreamingContextScrubber } from '../ai/context-manager.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
@@ -33,6 +34,7 @@ export interface WorkspaceStreamEvent {
 @Injectable()
 export class WorkspaceRunnerService {
   private readonly logger = new Logger(WorkspaceRunnerService.name);
+  private readonly scrubber = new StreamingContextScrubber();
 
   constructor(
     private readonly aiService: AiService,
@@ -153,7 +155,7 @@ export class WorkspaceRunnerService {
         const aiResponse = await this.aiService.chat(messages, tools);
 
         if (aiResponse.toolCalls.length === 0) {
-          finalContent = aiResponse.content;
+          finalContent = this.scrubber.scrub(aiResponse.content);
           onEvent({ type: 'text_delta', data: finalContent });
           reachedMaxRounds = false;
           this.logger.log('Workspace agent finished goal execution within round limit.');
