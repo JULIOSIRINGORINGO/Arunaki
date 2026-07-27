@@ -42,6 +42,7 @@ export function WorkspacePage() {
   const [promptInput, setPromptInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [customName, setCustomName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
 
@@ -213,56 +214,15 @@ export function WorkspacePage() {
     }
   }, [queryClient, triggerAutoAnalysis]);
 
-  const handleConnectFolder = useCallback(async () => {
-    // Try File System Access API first (true folder picker)
-    if ("showDirectoryPicker" in window) {
-      try {
-        const dirHandle = await (window as any).showDirectoryPicker({ mode: "read" });
-        const folderName = dirHandle.name;
+  const handleConnectFolder = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
-        setIsCreating(true);
-
-        const files: File[] = [];
-        const IGNORED_NAMES = new Set([
-          "node_modules", ".git", "dist", "build", ".next", ".venv", "__pycache__", ".idea", ".vscode", "coverage", ".cache"
-        ]);
-
-        const readEntries = async (handle: any, path: string) => {
-          if (files.length >= 100) return;
-
-          for await (const entry of handle.values()) {
-            if (files.length >= 100) break;
-            if (entry.name.startsWith(".") || IGNORED_NAMES.has(entry.name)) continue;
-
-            if (entry.kind === "file") {
-              try {
-                const file = await entry.getFile();
-                files.push(new File([file], `${path}${file.name}`, { type: file.type }));
-              } catch {
-                // Skip unreadable files silently
-              }
-            } else if (entry.kind === "directory") {
-              await readEntries(entry, `${path}${entry.name}/`);
-            }
-          }
-        };
-
-        await readEntries(dirHandle, "");
-        await doConnect(files, folderName);
-      } catch (e: any) {
-        setIsCreating(false);
-        if (e?.name === "AbortError") {
-          // User cancelled folder picker
-          return;
-        }
-        console.error("showDirectoryPicker error:", e);
-        toast.error(`Gagal membuka folder: ${e.message || e.name}`);
-      }
-    } else {
-      // Fallback: webkitdirectory input
-      fileInputRef.current?.click();
-    }
-  }, [doConnect]);
+  const handleCreateManual = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customName.trim()) return;
+    await doConnect([], customName.trim());
+  }, [customName, doConnect]);
 
   const handleFilesSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -637,7 +597,7 @@ export function WorkspacePage() {
               <button
                 onClick={handleConnectFolder}
                 disabled={isCreating}
-                className="w-full py-3 border border-gray-200 bg-white hover:bg-gray-50 rounded-xl text-sm font-medium text-gray-700 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-3 bg-black text-white hover:bg-gray-800 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
               >
                 {isCreating ? (
                   <>
@@ -647,10 +607,33 @@ export function WorkspacePage() {
                 ) : (
                   <>
                     <Folder className="w-4 h-4" />
-                    <span>Buka Folder</span>
+                    <span>Pilih Folder di Komputer</span>
                   </>
                 )}
               </button>
+
+              <div className="relative w-full my-1">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#F8F9FA] px-2 text-gray-400 font-medium">atau buat nama manual</span></div>
+              </div>
+
+              <form onSubmit={handleCreateManual} className="w-full flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nama workspace (cth: Laporan Keuangan)"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  className="flex-1 px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 focus:outline-hidden focus:border-gray-900"
+                />
+                <button
+                  type="submit"
+                  disabled={isCreating || !customName.trim()}
+                  className="px-4 py-2.5 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-xs font-semibold cursor-pointer disabled:opacity-40 transition-all shrink-0"
+                >
+                  Buat
+                </button>
+              </form>
+
               <input
                 ref={fileInputRef}
                 type="file"
