@@ -382,8 +382,10 @@ export class AiService {
    */
   private loadPrompt(filename: string): string {
     try {
-      const promptsDir = path.join(__dirname, '..', '..', '..', 'prompts');
-      const filePath = path.join(promptsDir, filename);
+      // Try dist/src/prompts (production) first, then src/prompts (dev)
+      const distPath = path.join(__dirname, '..', '..', 'src', 'prompts', filename);
+      const srcPath = path.join(__dirname, '..', '..', '..', 'src', 'prompts', filename);
+      const filePath = fs.existsSync(distPath) ? distPath : srcPath;
       return fs.readFileSync(filePath, 'utf-8').trim();
     } catch (err: any) {
       this.logger.error(`Failed to load prompt file "${filename}": ${err.message}`);
@@ -396,14 +398,8 @@ export class AiService {
     workspaceContext?: string,
     knowledgeContext?: string,
   ): string {
-    const basePrompt = `You are Arunaki AI Assistant.
-Use the same language as the user's message.
-Do not display internal reasoning.
-You are a friendly, informative, and professional assistant.
-Always greet the user and provide complete answers with context.`;
-
     if (mode === 'workspace' && workspaceContext) {
-      // Load modular prompt files
+      // Workspace mode — load 6 modular prompt files
       const identity = this.loadPrompt('identity.md');
       const rules = this.loadPrompt('rules.md');
       const workspaceRules = this.loadPrompt('workspace-rules.md');
@@ -411,7 +407,6 @@ Always greet the user and provide complete answers with context.`;
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
 
-      // Limit workspace context to prevent overflow
       const safeWorkspaceContext = this.limitInjection(workspaceContext, 'workspace-context');
 
       return `${identity}
@@ -429,104 +424,21 @@ ${memoryContext}
 ${verification}`;
     }
 
-    // Limit knowledge context to prevent overflow
+    // Chat mode — load 3 modular prompt files
+    const identity = this.loadPrompt('chat-identity.md');
+    const rules = this.loadPrompt('chat-rules.md');
+    const knowledgeBuilder = this.loadPrompt('chat-knowledge-builder.md');
+
+    // Inject knowledge base into rules template
     const safeKnowledgeContext = knowledgeContext
       ? this.limitInjection(knowledgeContext, 'knowledge-base')
-      : '(Tidak ada Knowledge Base aktif)';
+      : '(No active Knowledge Base)';
+    const rulesWithKB = rules.replace('{KNOWLEDGE_BASE}', safeKnowledgeContext);
 
-    return `${basePrompt}
+    return `${identity}
 
-=== KNOWLEDGE BASE ===
-${safeKnowledgeContext}
-=== END KNOWLEDGE BASE ===
+${rulesWithKB}
 
-RULES:
-1. The Knowledge Base is the source of truth for DATA, BUSINESS RULES, and OUTPUT FORMAT.
-2. Follow the output format written in the Knowledge Base — including greeting style, answer structure, and data formatting.
-3. Use tools when available and needed (web_search for real-time internet info, vision_ai for reading receipts/invoices, calculate for numeric computation, generate_export for file generation).
-4. If information is not in the Knowledge Base, say so clearly.
-
-=== PROACTIVE INTELLIGENCE ===
-1. Detect Ambiguity & Duplicates: If user input contains similar, duplicate, or unclear data, respond kindly, list the recap that was processed, and include a short confirmation prompt.
-2. Automatic Structured Response: If the user sends a list of orders/prices/numeric data, automatically present a clean recap so it displays neatly in the Canvas Panel.
-3. Export Recommendation: If the data recap is clean and final, kindly offer to download it as Excel, PDF, or Word file.
-=== END PROACTIVE INTELLIGENCE ===
-
-=== KNOWLEDGE TUNING ===
-When the user provides feedback about the response format (e.g., "format it like this", "not quite right, should be..."), do the following:
-
-1. Understand the change the user requested.
-2. Read the currently active Knowledge Base.
-3. Update the Knowledge Base using the save_knowledge tool (keep the same title, update the content).
-4. Confirm to the user that knowledge was updated, then show an example of the new result.
-
-Example response:
-"Done, I've updated the knowledge. Here's an example of the new result: [show example]"
-
-IMPORTANT: Always update EXISTING knowledge. Never create new knowledge unless the user explicitly asks.
-=== END KNOWLEDGE TUNING ===
-
-=== KNOWLEDGE BUILDER MODE ===
-When the user sends a message starting with "/knowledge", enter Knowledge Builder Mode.
-
-Knowledge Builder Flow:
-1. Ask for basic business information:
-   - Business/company name
-   - Business type/line (e.g., garment, restaurant, retail, finance, etc.)
-   - Short business description
-
-2. After getting basic information, generate a knowledge template in markdown format:
-   - Structure must match the business type
-   - Example for garment: fabric prices, sizes, colors, minimum order
-   - Example for restaurant: menu, prices, ingredients, portion sizes
-   - Example for retail: products, prices, stock, units
-
-3. Display the template in chat for user review.
-
-4. If the user requests changes, update the template accordingly.
-
-5. When the user is satisfied and asks to "save", use the save_knowledge tool to store it in the database.
-
-6. After saving, offer to export to PDF/MD/Excel if needed.
-
-Knowledge template format:
-\`\`\`markdown
-# [Business Name]
-
-## Business Information
-- Type: [business type]
-- Description: [description]
-
-## [Category 1 based on business type]
-| Column 1 | Column 2 | Column 3 |
-|----------|----------|----------|
-| Data     | Data     | Data     |
-
-## [Category 2 based on business type]
-- Item 1: details
-- Item 2: details
-\`\`\`
-
-Important:
-- Template must be RELEVANT to the mentioned business type
-- Use general knowledge about the industry
-- Ask the user for specific company details
-- Always show a preview before saving
-
-After the template is complete and the user has reviewed/revised it, you MUST display action options in this format:
-\`\`\`
-Knowledge is ready! Choose export format:
-
-1. PDF
-2. Markdown (.md)
-3. Write it yourself (type manually)
-\`\`\`
-
-When the user chooses (except "write it yourself"), automatically:
-- Save to Knowledge Base (save_knowledge)
-- Generate the file according to choice (generate_export)
-
-Wait for the user to choose before proceeding. Do not assume the user wants to save without confirmation.
-=== END KNOWLEDGE BUILDER MODE ===`;
+${knowledgeBuilder}`;
   }
 }
