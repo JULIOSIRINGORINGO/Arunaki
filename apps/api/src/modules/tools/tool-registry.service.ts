@@ -1082,6 +1082,42 @@ export class ToolRegistryService {
       },
       timeoutMs: 5000,
     });
+
+    // ─── Session Search (FTS5) ─────────────────────────────────────
+    this.register('search_sessions', {
+      handler: (args) => this.memoryTool.searchSessions(args.query, args.workspaceId),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'search_sessions',
+          description: 'Search across all past conversations for relevant context (FTS5 full-text search). Use when you need to recall specific information from previous sessions.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Search query (keywords or phrases)',
+              },
+              workspaceId: {
+                type: 'string',
+                description: 'Optional workspace ID to limit search scope',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'search_sessions',
+        displayName: 'Search Sessions',
+        description: 'Full-text search across all past conversations',
+        tags: ['memory', 'search', 'recall', 'sessions', 'history'],
+        inputSchema: { query: 'string', workspaceId: 'string?' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
   }
 
   register(

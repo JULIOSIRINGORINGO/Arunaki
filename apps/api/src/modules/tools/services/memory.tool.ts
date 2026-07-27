@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Memory } from '@prisma/client';
 import { MemoryService } from '../../memory/memory.service.js';
+import { SessionSearchService } from '../../memory/session-search.service.js';
 import {
   ToolResult,
 } from '../interfaces/tool-result.interface.js';
@@ -9,7 +10,10 @@ import {
 export class MemoryTool {
   private readonly logger = new Logger(MemoryTool.name);
 
-  constructor(private readonly memoryService: MemoryService) {}
+  constructor(
+    private readonly memoryService: MemoryService,
+    private readonly sessionSearchService: SessionSearchService,
+  ) {}
 
   async listMemories(workspaceId?: string): Promise<ToolResult> {
     try {
@@ -160,6 +164,47 @@ export class MemoryTool {
         preview: `Gagal hapus memory: ${e.message}`,
         metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
         error: { code: 'MEMORY_ERROR', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Search across all sessions for relevant messages (FTS5).
+   * Enables cross-session recall.
+   */
+  async searchSessions(query: string, workspaceId?: string): Promise<ToolResult> {
+    try {
+      const results = await this.sessionSearchService.search(query, {
+        workspaceId,
+        limit: 5,
+      });
+
+      if (results.length === 0) {
+        return {
+          status: 'success',
+          data: { count: 0, results: [] },
+          preview: `Tidak ditemukan percakapan relevan untuk "${query}".`,
+          metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        };
+      }
+
+      const preview = results
+        .map((r) => `[${r.role}] ${r.snippet.substring(0, 100)}`)
+        .join('\n');
+
+      return {
+        status: 'success',
+        data: { count: results.length, results },
+        preview,
+        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal search sessions: ${e.message}`,
+        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        error: { code: 'SEARCH_ERROR', message: e.message },
       };
     }
   }
