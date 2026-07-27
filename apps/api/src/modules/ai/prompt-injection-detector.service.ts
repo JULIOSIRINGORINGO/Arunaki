@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 /**
  * PromptInjectionDetector — scans user input for injection attempts.
  *
- * Inspired by Hermes's injection detection. Scans for common
+ * Inspired OpenClaw's injection detection. Scans for common
  * prompt injection patterns and blocks/flags suspicious inputs.
  */
 @Injectable()

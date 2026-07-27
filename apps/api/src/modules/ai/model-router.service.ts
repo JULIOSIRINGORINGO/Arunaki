@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 /**
  * ModelRouter — detects model family and provides model-specific steering.
  *
- * Inspired by Hermes's model-specific routing for edit formats, tool calls,
+ * Inspired OpenClaw's model-specific routing for edit formats, tool calls,
  * and system prompt adjustments.
  */
 @Injectable()

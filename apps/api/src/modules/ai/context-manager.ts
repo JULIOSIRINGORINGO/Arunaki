@@ -457,7 +457,7 @@ Provide a concise summary (max 300 chars).`;
  * 3. Knowledge base references
  * 4. System prompt fragments that might be echoed back
  *
- * Inspired by Hermes's StreamingContextScrubber.
+ * Inspired OpenClaw's StreamingContextScrubber.
  */
 export class StreamingContextScrubber {
   private readonly logger = new Logger(StreamingContextScrubber.name);
