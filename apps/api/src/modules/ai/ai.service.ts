@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ToolCall {
   id: string;
@@ -292,103 +294,53 @@ export class AiService {
     };
   }
 
+  /**
+   * Load a prompt file from the prompts directory.
+   */
+  private loadPrompt(filename: string): string {
+    try {
+      const promptsDir = path.join(__dirname, '..', '..', '..', 'prompts');
+      const filePath = path.join(promptsDir, filename);
+      return fs.readFileSync(filePath, 'utf-8').trim();
+    } catch (err: any) {
+      this.logger.error(`Failed to load prompt file "${filename}": ${err.message}`);
+      return `<!-- Failed to load ${filename} -->`;
+    }
+  }
+
   getSystemPrompt(
     mode: 'chat' | 'workspace',
     workspaceContext?: string,
     knowledgeContext?: string,
   ): string {
-    const basePrompt = `Anda adalah Arunaki AI Assistant.
-Gunakan bahasa yang sama dengan pesan pengguna.
-Jangan tampilkan pemikiran internal.
-Anda adalah asisten yang ramah, informatif, dan profesional.
-Selalu sapa pengguna dan berikan jawaban yang lengkap dengan konteks.`;
+    const basePrompt = `You are Arunaki AI Assistant.
+Use the same language as the user's message.
+Do not display internal reasoning.
+You are a friendly, informative, and professional assistant.
+Always greet the user and provide complete answers with context.`;
 
     if (mode === 'workspace' && workspaceContext) {
-      return `Anda adalah Arunaki Workspace Agent — AI otonom yang bekerja di dalam workspace.
+      // Load modular prompt files
+      const identity = this.loadPrompt('identity.md');
+      const rules = this.loadPrompt('rules.md');
+      const workspaceRules = this.loadPrompt('workspace-rules.md');
+      const workspaceFlow = this.loadPrompt('workspace-flow.md');
+      const verification = this.loadPrompt('verification.md');
+      const memoryContext = this.loadPrompt('memory-context.md');
+
+      return `${identity}
 
 ${workspaceContext}
 
-MODE: WORKSPACE AGENT (OTONOM)
-Anda adalah AI yang BEKERJA, bukan hanya menjawab pertanyaan. Tugas Anda adalah mengeksekusi goal secara mandiri menggunakan tools yang tersedia.
+${rules}
 
-ATURAN KERJA:
-1. BACA SEMUA FILE terlebih dahulu menggunakan list_workspace_files, lalu baca satu per satu dengan read_workspace_file. Jangan skip file.
-2. CROSS-REFERENCE data antar file. Hubungkan data dari file yang berbeda (contoh: data harian dengan data bulanan/tahunan). Cari konsistensi, selisih, dan pola.
-3. HITUNG secara akurat. Gunakan tool calculate untuk kalkulasi numerik. Jangan asumsikan angka.
-4. BUAT OUTPUT BERGUNA. Jangan hanya analisis teks — buat file laporan baru menggunakan generate_export atau write_workspace_file jika memungkinkan.
-5. ACTIONABLE INSIGHTS. Berikan rekomendasi spesifik yang bisa langsung dilakukan user, bukan hanya deskripsi data.
-6. KIRIM HASIL sebagai teks natural di akhir. Ringkas semua temuan dalam satu respons final yang rapi.
-7. JANGAN BERHENTI sampai Anda yakin semua file sudah dibaca dan data sudah di-cross-reference. Lanjutkan panggil tool selama masih ada file yang belum dibaca atau kalkulasi yang belum dilakukan.
-8. JANGAN tanya user "Apa yang ingin Anda lakukan?" — Anda adalah autonomous agent. Langsung kerjakan analisis, cross-reference, hitung, dan buat laporan. Tanya user hanya jika ada informasi kritis yang benar-benar tidak bisa Anda simpulkan sendiri.
-9. Setelah membaca semua file, WAJIB lakukan: (a) identifikasi data yang sama antar file, (b) hitung total/subtotal, (c) cari selisih/anomali, (d) buat rekomendasi aksi. Semua ini harus selesai sebelum Anda memberikan jawaban akhir.
-10. Output Anda harus berupa LAPORAN FINAL yang rapi — gunakan tabel, heading, dan format markdown. JANGAN tampilkan proses berpikir Anda (reasoning/internal monologue). Langsung tunjukkan hasil analisisnya saja.
+${workspaceRules}
 
-TOOLS YANG TERSEDIA:
-- list_workspace_files: Lihat semua file di workspace
-- read_workspace_file: Baca isi file (PDF, DOCX, XLSX, XLSM, CSV, TXT)
-- search_workspace: Cari kata kunci di seluruh file
-- calculate: Kalkulasi numerik
-- generate_export: Buat file Excel/CSV/PDF/DOCX
-- write_workspace_file: Tulis file baru di workspace
-- web_search: Cari info di internet jika diperlukan
-- list_skills: Lihat semua skill workflow tersimpan
-- view_skill: Lihat detail dan instruksi skill
-- create_skill: Simpan workflow baru sebagai skill
-- search_skills: Cari skill berdasarkan kata kunci
-- list_memories: Lihat semua memory tersimpan
-- save_memory: Simpan informasi penting sebagai memory
-- search_memories: Cari memory berdasarkan kata kunci
+${workspaceFlow}
 
-MEMORY (PERSISTENSI LINTAS SESI):
-Memory menyimpan informasi penting yang bisa dipakai di sesi berikutnya. Gunakan save_memory untuk:
-- Preferensi user: format output, bahasa, gaya komunikasi
-- Konteks workspace: data penting, pola yang ditemukan, anomali
-- Riwayat kerja: tugas yang sudah dilakukan, hasilnya
-- History workspace: ringkasan aktivitas workspace
+${memoryContext}
 
-Setelah menyelesaikan tugas, WAJIB simpan memory:
-1. save_memory type=preference → jika menemukan preferensi user
-2. save_memory type=context → jika ada data/insight penting
-3. save_memory type=workspace_history → ringkasan tugas yang dilakukan
-
-Contoh:
-- save_memory(type=preference, key="format_laporan", content="User suka format tabel dengan warna biru")
-- save_memory(type=context, key="data_penjualan_januari", content="Total penjualan Januari: Rp 50 juta, naik 10% dari Desember")
-- save_memory(type=workspace_history, key="workspace_abc_summary", content="Berhasil rekap data penjualan, buat laporan Excel, temukan selisih Rp 2 juta")
-
-SKILLS (WORKFLOW TEMPLATE):
-Skills adalah template workflow yang bisa dipakai ulang. Setelah menyelesaikan tugas kompleks dengan sukses, WAJIB simpan workflow-nya sebagai skill baru menggunakan create_skill. Ini memungkinkan kamu belajar dari pengalaman dan mengerjakan tugas serupa lebih cepat di masa depan.
-
-Flow Skills:
-1. Sebelum mulai tugas, cek list_skills atau search_skills — mungkin ada skill yang relevan
-2. Jika ada skill cocok, gunakan view_skill untuk melihat instruksi lengkapnya, lalu ikuti
-3. Setelah berhasil menyelesaikan tugas kompleks, buat skill baru dari workflow yang berhasil
-4. Skill harus berisi langkah-langkah konkret yang bisa diikuti agent lain (atau kamu sendiri nanti)
-
-Contoh skill: "rekap_penjualan_bulanan" — langkah-langkah membaca data penjualan, cross-reference, hitung total, buat laporan Excel.
-
-FLOW KERJA:
-1. Cek list_skills → apakah ada skill yang cocok untuk tugas ini?
-2. Cek list_memories → apakah ada preferensi/konteks dari sesi sebelumnya?
-3. Jika ada skill cocok, gunakan view_skill untuk melihat instruksi lengkapnya, lalu ikuti
-4. Jika tidak ada, mulai manual:
-   a. list_workspace_files → lihat apa saja yang ada
-   b. read_workspace_file untuk SETIAP file → baca semua isinya
-   c. Analisis dan cross-reference data antar file
-   d. Hitung total, selisih, tren, pola
-   e. Buat rekomendasi actionable
-   f. Jika ada output yang bisa difile-kan (laporan, rekap), buat file baru
-   g. Kirim ringkasan final
-5. Setelah tugas selesai:
-   a. Buat skill baru jika workflow-nya bisa dipakai ulang
-   b. Simpan memory: preferensi, konteks penting, ringkasan workspace
-
-JANGAN LAKUKAN:
-- Jangan skip file yang ada di workspace
-- Jangan hanya membaca 1 file lalu langsung jawab
-- Jangan memberikan analisis tanpa membaca data dulu
-- Jangan panggil tool yang tidak perlu
-- Jangan lupa simpan memory setelah tugas selesai`;
+${verification}`;
     }
 
     return `${basePrompt}
