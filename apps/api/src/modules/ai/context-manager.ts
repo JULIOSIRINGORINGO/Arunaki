@@ -14,6 +14,8 @@ export interface ContextConfig {
   toolPreviewChars: number;
   /** Max chars per skill/memory injected into system prompt */
   injectionMaxChars: number;
+  /** Enable LLM-based summary (requires AiService) */
+  useLlmSummary: boolean;
 }
 
 const DEFAULT_CONFIG: ContextConfig = {
@@ -23,6 +25,7 @@ const DEFAULT_CONFIG: ContextConfig = {
   toolPruneChars: 2000,
   toolPreviewChars: 500,
   injectionMaxChars: 7000,
+  useLlmSummary: false,
 };
 
 /**
@@ -33,21 +36,26 @@ const DEFAULT_CONFIG: ContextConfig = {
  * Phase 1: Prune old tool results (cheap, no LLM call)
  * Phase 2: Strip old images (replace with placeholder)
  * Phase 3: Sanitize tool pairs (remove orphaned tool_call/tool_result)
- * Phase 4: Token-aware tail protection + summary generation
+ * Phase 4: Token-aware tail protection + summary generation (LLM or template)
  */
 export class ContextManager {
   private readonly logger = new Logger(ContextManager.name);
   private readonly config: ContextConfig;
+  private readonly aiService?: { chat: (messages: ChatMessage[], tools?: any[]) => Promise<{ content: string }> };
 
-  constructor(config?: Partial<ContextConfig>) {
+  constructor(
+    config?: Partial<ContextConfig>,
+    aiService?: { chat: (messages: ChatMessage[], tools?: any[]) => Promise<{ content: string }> },
+  ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.aiService = aiService;
   }
 
   /**
    * Main entry point — run full compression pipeline.
    * Returns compressed messages ready for API call.
    */
-  compress(messages: ChatMessage[]): ChatMessage[] {
+  async compress(messages: ChatMessage[]): Promise<ChatMessage[]> {
     if (messages.length === 0) return messages;
 
     const tokenCount = this.estimateTokens(messages);
@@ -72,7 +80,7 @@ export class ContextManager {
     result = this.sanitizeToolPairs(result);
 
     // Phase 4: Token-aware tail protection + summary
-    result = this.protectTailAndSummarize(result);
+    result = await this.protectTailAndSummarize(result);
 
     const finalTokens = this.estimateTokens(result);
     this.logger.log(
@@ -238,7 +246,7 @@ export class ContextManager {
    * [3..N]   ← middle turns (compressed/summary)
    * [N..end] ← tail (preserved by token budget)
    */
-  private protectTailAndSummarize(messages: ChatMessage[]): ChatMessage[] {
+  private async protectTailAndSummarize(messages: ChatMessage[]): Promise<ChatMessage[]> {
     if (messages.length <= 5) return messages;
 
     // Split into system vs non-system
@@ -291,7 +299,7 @@ export class ContextManager {
     const middleToCompress = middle.slice(0, tailStart);
 
     // Generate structured summary from middle section
-    const summary = this.generateSummary(middleToCompress);
+    const summary = await this.generateSummary(middleToCompress);
 
     // Assemble: system + head + summary + tail
     const result: ChatMessage[] = [
@@ -317,9 +325,67 @@ export class ContextManager {
 
   /**
    * Generate a structured summary from middle turns.
-   * Template-based (no LLM call) — extracts key information.
+   * Uses LLM if available, falls back to template-based summary.
    */
-  private generateSummary(messages: ChatMessage[]): string | null {
+  private async generateSummary(messages: ChatMessage[]): Promise<string | null> {
+    if (messages.length === 0) return null;
+
+    // Try LLM-based summary first
+    if (this.config.useLlmSummary && this.aiService) {
+      try {
+        return await this.generateLlmSummary(messages);
+      } catch (err: any) {
+        this.logger.warn(`LLM summary failed, falling back to template: ${err.message}`);
+      }
+    }
+
+    // Fallback: template-based summary
+    return this.generateTemplateSummary(messages);
+  }
+
+  /**
+   * LLM-based summary — generates intelligent compression.
+   * Extracts Goal/Progress/Files/Decisions from conversation.
+   */
+  private async generateLlmSummary(messages: ChatMessage[]): Promise<string> {
+    // Prepare messages for LLM (strip system messages, keep user/assistant/tool)
+    const relevantMessages = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => ({
+        role: m.role as 'user' | 'assistant' | 'tool',
+        content: m.content?.substring(0, 500) || '[tool call]',
+      }));
+
+    const summaryPrompt = `Summarize this conversation segment concisely. Include:
+1. GOAL: What the user wanted
+2. PROGRESS: What was accomplished
+3. FILES: Any files created/modified
+4. DECISIONS: Key decisions made
+
+Conversation:
+${relevantMessages.map((m) => `${m.role}: ${m.content}`).join('\n')}
+
+Provide a concise summary (max 300 chars).`;
+
+    const response = await this.aiService!.chat([
+      { role: 'system', content: 'You are a conversation summarizer. Be concise.' },
+      { role: 'user', content: summaryPrompt },
+    ]);
+
+    const summary = response.content?.substring(0, 500);
+    if (summary) {
+      const originalTokens = this.estimateTokens(messages);
+      return `[LLM Summary — ~${originalTokens} tokens compressed]\n${summary}`;
+    }
+
+    // Fallback to template if LLM returns empty
+    return this.generateTemplateSummary(messages) || '';
+  }
+
+  /**
+   * Template-based summary — extracts key information without LLM.
+   */
+  private generateTemplateSummary(messages: ChatMessage[]): string | null {
     if (messages.length === 0) return null;
 
     const parts: string[] = ['[Context Summary — compressed for efficiency]'];

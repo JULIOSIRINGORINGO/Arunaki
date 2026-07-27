@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ContextManager, StreamingContextScrubber } from '../ai/context-manager.js';
+import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
@@ -8,6 +9,7 @@ import { SearchService } from '../search/search.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
+import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -39,6 +41,7 @@ export class WorkspaceRunnerService {
 
   constructor(
     private readonly aiService: AiService,
+    private readonly selfEvaluationService: SelfEvaluationService,
     private readonly toolRegistryService: ToolRegistryService,
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
@@ -46,6 +49,7 @@ export class WorkspaceRunnerService {
     private readonly artifactService: ArtifactService,
     private readonly memoryService: MemoryService,
     private readonly backgroundReviewService: BackgroundReviewService,
+    private readonly smartRecallService: SmartRecallService,
     private readonly skillService: SkillService,
     private readonly prisma: PrismaService,
   ) {}
@@ -103,11 +107,37 @@ export class WorkspaceRunnerService {
       onEvent({ type: 'thinking', data: 'Memindai dokumen workspace dan menyusun rencana otonom...' });
 
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);
+
+      // Smart recall: prefetch relevant memory and past conversations
+      let recallContext = '';
+      try {
+        const ws = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { businessType: true },
+        });
+        recallContext = await this.smartRecallService.recall(
+          userGoal,
+          workspaceId,
+          ws?.businessType || 'generic',
+        );
+        if (recallContext) {
+          this.logger.log(`Smart recall: found ${recallContext.length} chars of relevant context`);
+        }
+      } catch (err: any) {
+        this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
+      }
+
       const systemPrompt = this.aiService.getSystemPrompt('workspace', workspaceContext);
       const tools = this.toolRegistryService.getToolDefinitions();
 
+      // Build system content with recall context injected
+      let systemContent = systemPrompt;
+      if (recallContext) {
+        systemContent = `${systemPrompt}\n\n## Relevant Context (Auto-recalled)\n${recallContext}`;
+      }
+
       const messages: ChatMessage[] = [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: systemContent },
         ...historyMessages.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
@@ -158,6 +188,45 @@ export class WorkspaceRunnerService {
 
         if (aiResponse.toolCalls.length === 0) {
           finalContent = this.scrubber.scrub(aiResponse.content);
+
+          // Self-evaluation: verify output against goal
+          try {
+            const evaluation = await this.selfEvaluationService.evaluate(
+              userGoal,
+              finalContent,
+              workspaceContext,
+            );
+
+            if (!evaluation.passed) {
+              this.logger.log(
+                `Self-evaluation: score ${evaluation.score}/10, issues: ${evaluation.issues.join('; ')}`,
+              );
+
+              // Auto-retry with feedback
+              const retryResult = await this.selfEvaluationService.evaluateAndRetry(
+                userGoal,
+                finalContent,
+                async (feedback) => {
+                  // Add feedback to messages and retry
+                  messages.push({
+                    role: 'user',
+                    content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
+                  });
+                  const retryResponse = await this.aiService.chat(messages, tools);
+                  return this.scrubber.scrub(retryResponse.content);
+                },
+                workspaceContext,
+              );
+
+              finalContent = retryResult.output;
+              this.logger.log(
+                `Self-evaluation retry: final score ${retryResult.evaluation.score}/10`,
+              );
+            }
+          } catch (err: any) {
+            this.logger.warn(`Self-evaluation failed (non-critical): ${err.message}`);
+          }
+
           onEvent({ type: 'text_delta', data: finalContent });
           reachedMaxRounds = false;
           this.logger.log('Workspace agent finished goal execution within round limit.');

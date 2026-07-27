@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MemoryService } from './memory.service.js';
+import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js';
 
 /**
  * BackgroundReviewService — auto-learn after every turn.
@@ -14,7 +15,10 @@ import { MemoryService } from './memory.service.js';
 export class BackgroundReviewService {
   private readonly logger = new Logger(BackgroundReviewService.name);
 
-  constructor(private readonly memoryService: MemoryService) {}
+  constructor(
+    private readonly memoryService: MemoryService,
+    private readonly skillSelfImproveService: SkillSelfImproveService,
+  ) {}
 
   /**
    * Review a conversation turn and extract learnable information.
@@ -42,8 +46,36 @@ export class BackgroundReviewService {
       const learnings = this.extractLearnings(messages);
 
       // Save each learning to memory
+      const savedLearnings: Array<{
+        type: string;
+        content: string;
+        workspaceId?: string;
+        domain?: string;
+        importance: number;
+      }> = [];
+
       for (const learning of learnings) {
         await this.saveLearning(learning, workspaceId, domain);
+        savedLearnings.push({
+          type: learning.type,
+          content: learning.content,
+          workspaceId,
+          domain,
+          importance: learning.importance,
+        });
+      }
+
+      // Skill self-improve: update relevant skills based on learnings
+      if (savedLearnings.length > 0) {
+        await this.skillSelfImproveService.improveSkillsFromLessons(
+          savedLearnings as Array<{
+            type: 'preference' | 'business_fact' | 'correction';
+            content: string;
+            workspaceId?: string;
+            domain?: string;
+            importance: number;
+          }>,
+        );
       }
 
       if (learnings.length > 0) {

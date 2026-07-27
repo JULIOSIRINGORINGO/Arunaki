@@ -66,12 +66,16 @@ export class AiService {
       this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
     this.enc = encoding_for_model('gpt-4' as any);
 
-    // Initialize context manager with defaults
-    this.contextManager = new ContextManager({
-      contextLength: 128000,
-      threshold: 0.50,
-      targetRatio: 0.20,
-    });
+    // Initialize context manager with LLM summary enabled
+    this.contextManager = new ContextManager(
+      {
+        contextLength: 128000,
+        threshold: 0.50,
+        targetRatio: 0.20,
+        useLlmSummary: true,
+      },
+      { chat: this.chat.bind(this) },
+    );
   }
 
   /**
@@ -200,15 +204,18 @@ export class AiService {
    * Phase 1: Prune old tool results (keep last 3 unpruned)
    * Phase 2: Strip old images
    * Phase 3: Sanitize orphaned tool_call/tool_result pairs
-   * Phase 4: Token-aware tail protection + structured summary
+   * Phase 4: Token-aware tail protection + structured summary (LLM or template)
    */
-  prepareMessages(
+  async prepareMessages(
     messages: ChatMessage[],
     maxContextTokens?: number,
-  ): ChatMessage[] {
+  ): Promise<ChatMessage[]> {
     if (maxContextTokens && maxContextTokens !== 128000) {
       // Allow override — create temporary ContextManager
-      const tempManager = new ContextManager({ contextLength: maxContextTokens });
+      const tempManager = new ContextManager(
+        { contextLength: maxContextTokens },
+        { chat: this.chat.bind(this) },
+      );
       return tempManager.compress(messages);
     }
     return this.contextManager.compress(messages);
@@ -228,7 +235,7 @@ export class AiService {
     tools?: ToolDefinition[],
   ): Promise<AiResponse> {
     // Apply context management: prune large outputs + truncate if needed
-    const preparedMessages = this.prepareMessages(messages);
+    const preparedMessages = await this.prepareMessages(messages);
 
     // Get starting provider
     let provider = await this.getProviderConfig();
