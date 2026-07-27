@@ -12,6 +12,7 @@ import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
+import { SkillsTool } from './services/skills.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -49,6 +50,7 @@ export class ToolRegistryService {
     private readonly unitConverterTool: UnitConverterTool,
     private readonly draftCommunicationTool: DraftCommunicationTool,
     private readonly workspaceToolsService: WorkspaceToolsService,
+    private readonly skillsTool: SkillsTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -707,6 +709,153 @@ export class ToolRegistryService {
         estimatedLatency: 'medium',
       },
       timeoutMs: 15000,
+    });
+
+    this.register('list_skills', {
+      handler: () => this.skillsTool.listSkills(),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'list_skills',
+          description: 'Melihat semua skill workflow yang tersimpan. Skill adalah template workflow yang bisa dipakai ulang.',
+          parameters: {
+            type: 'object',
+            properties: {},
+          },
+        },
+      },
+      capability: {
+        name: 'list_skills',
+        displayName: 'Daftar Skills',
+        description: 'Melihat semua skill workflow tersimpan',
+        tags: ['skills', 'list', 'workflow', 'template'],
+        inputSchema: {},
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('view_skill', {
+      handler: (args) => this.skillsTool.viewSkill(args.name),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'view_skill',
+          description: 'Melihat detail skill workflow — termasuk instruksi lengkap untuk diikuti.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Nama skill (snake_case, misal: rekap_penjualan)',
+              },
+            },
+            required: ['name'],
+          },
+        },
+      },
+      capability: {
+        name: 'view_skill',
+        displayName: 'Lihat Skill',
+        description: 'Melihat detail dan instruksi skill workflow',
+        tags: ['skills', 'view', 'workflow', 'template'],
+        inputSchema: { name: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('create_skill', {
+      handler: (args) => this.skillsTool.createSkill({
+        name: args.name,
+        displayName: args.displayName,
+        description: args.description,
+        category: args.category,
+        content: args.content,
+        tags: args.tags,
+      }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'create_skill',
+          description: 'Menyimpan workflow yang berhasil sebagai skill baru. Gunakan setelah menyelesaikan tugas kompleks dengan sukses.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Nama skill dalam snake_case (misal: rekap_penjualan_bulanan)',
+              },
+              displayName: {
+                type: 'string',
+                description: 'Nama tampilan skill (misal: Rekap Penjualan Bulanan)',
+              },
+              description: {
+                type: 'string',
+                description: 'Deskripsi singkat skill (maks 120 karakter)',
+              },
+              category: {
+                type: 'string',
+                enum: ['general', 'data-processing', 'reporting', 'integration'],
+                description: 'Kategori skill',
+              },
+              content: {
+                type: 'string',
+                description: 'Instruksi lengkap skill dalam format markdown. Berisi langkah-langkah workflow yang bisa diikuti.',
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Tag untuk pencarian (misal: ["penjualan", "bulanan", "excel"])',
+              },
+            },
+            required: ['name', 'displayName', 'description', 'content'],
+          },
+        },
+      },
+      capability: {
+        name: 'create_skill',
+        displayName: 'Buat Skill',
+        description: 'Menyimpan workflow sebagai skill baru',
+        tags: ['skills', 'create', 'workflow', 'template', 'save'],
+        inputSchema: { name: 'string', displayName: 'string', description: 'string', content: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('search_skills', {
+      handler: (args) => this.skillsTool.searchSkills(args.query),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'search_skills',
+          description: 'Mencari skill berdasarkan kata kunci.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Kata kunci pencarian',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'search_skills',
+        displayName: 'Cari Skills',
+        description: 'Mencari skill berdasarkan kata kunci',
+        tags: ['skills', 'search', 'find', 'workflow'],
+        inputSchema: { query: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
     });
   }
 

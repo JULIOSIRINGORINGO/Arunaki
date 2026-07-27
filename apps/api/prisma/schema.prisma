@@ -241,3 +241,34 @@ model ActivityLog {
 
   @@map("activity_logs")
 }
+
+// Skill - Workflow template yang dipelajari agent
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique // lowercase-hyphenated (e.g. "rekap-penjualan")
+  displayName String   // Human-readable name (e.g. "Rekap Penjualan Harian")
+  description String   // One-line description (max 120 chars)
+  category    String   @default("general") // general, data-processing, reporting, integration
+
+  // Skill content (markdown instructions)
+  content     String   // Full skill instructions in markdown
+
+  // Metadata
+  tags        String   @default("[]") // JSON array of tags
+  version     String   @default("1.0.0")
+  usageCount  Int      @default(0) // How many times this skill was used
+  successRate Float    @default(1.0) // 0.0 - 1.0
+
+  // Source tracking
+  sourceType  String   @default("auto") // auto (created by agent), manual (created by user)
+  sourceInfo  String?  // JSON - what workspace/task created this skill
+
+  // Status
+  active      Boolean  @default(true)
+  pinned      Boolean  @default(false) // Pinned skills are never auto-archived
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("skills")
+}

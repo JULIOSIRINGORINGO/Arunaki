@@ -13,13 +13,15 @@ import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
+import { SkillsTool } from './services/skills.tool.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { FileModule } from '../file/file.module.js';
+import { SkillsModule } from '../skills/skills.module.js';
 
 @Module({
-  imports: [KnowledgeModule, StorageModule, SearchModule, FileModule],
+  imports: [KnowledgeModule, StorageModule, SearchModule, FileModule, SkillsModule],
   providers: [
     ToolRegistryService,
     TextExtractorTool,
@@ -35,6 +37,7 @@ import { FileModule } from '../file/file.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
+    SkillsTool,
   ],
   exports: [
     ToolRegistryService,
@@ -51,6 +54,7 @@ import { FileModule } from '../file/file.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
+    SkillsTool,
   ],
 })
 export class ToolsModule {}
