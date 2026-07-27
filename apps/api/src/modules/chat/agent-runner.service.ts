@@ -4,6 +4,9 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
+import { AutonomousPlannerService, ExecutionPlan } from '../ai/autonomous-planner.service.js';
+import { SelfHealingService } from '../ai/self-healing.service.js';
+import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface AgentRunParams {
@@ -14,7 +17,7 @@ export interface AgentRunParams {
 }
 
 export interface AgentStreamEvent {
-  type: 'thinking' | 'tool_start' | 'tool_done' | 'text_delta' | 'canvas_event' | 'done' | 'error';
+  type: 'thinking' | 'tool_start' | 'tool_done' | 'text_delta' | 'canvas_event' | 'plan_created' | 'plan_step' | 'self_heal' | 'done' | 'error';
   data: any;
 }
 
@@ -34,6 +37,9 @@ export class AgentRunnerService {
     private readonly knowledgeService: KnowledgeService,
     private readonly artifactService: ArtifactService,
     private readonly backgroundReviewService: BackgroundReviewService,
+    private readonly plannerService: AutonomousPlannerService,
+    private readonly selfHealingService: SelfHealingService,
+    private readonly autoMemoryService: AutoMemoryService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -198,29 +204,46 @@ export class AgentRunnerService {
           tool_calls: aiResponse.toolCalls,
         });
 
-        // Execute all chat tools in parallel (no approval gate needed for chat)
+        // Execute all chat tools with self-healing (auto error recovery)
         if (aiResponse.toolCalls.length > 0) {
           onEvent({
             type: 'tool_start',
             data: { toolName: `parallel (${aiResponse.toolCalls.map((c) => c.function.name).join(', ')})`, args: {}, timestamp: new Date().toISOString() },
           });
 
-          const parallelResults = await this.toolRegistryService.executeParallel(
-            aiResponse.toolCalls.map((toolCall) => {
-              let args: Record<string, any> = {};
-              try {
-                args = JSON.parse(toolCall.function.arguments || '{}');
-              } catch {
-                args = {};
-              }
-              return { name: toolCall.function.name, args };
-            }),
-          );
+          // Use self-healing wrapper for each tool call
+          const healingPromises = aiResponse.toolCalls.map(async (toolCall) => {
+            let args: Record<string, any> = {};
+            try {
+              args = JSON.parse(toolCall.function.arguments || '{}');
+            } catch {
+              args = {};
+            }
 
-          for (let i = 0; i < aiResponse.toolCalls.length; i++) {
-            const toolCall = aiResponse.toolCalls[i];
-            const { result } = parallelResults[i];
+            const healResult = await this.selfHealingService.executeWithHealing(
+              toolCall.function.name,
+              args,
+            );
 
+            // Emit self-healing events if recovery was attempted
+            if (healResult.healed) {
+              onEvent({
+                type: 'self_heal',
+                data: {
+                  toolName: toolCall.function.name,
+                  attempts: healResult.attempts.length,
+                  strategy: healResult.attempts[healResult.attempts.length - 1]?.strategy,
+                  timestamp: new Date().toISOString(),
+                },
+              });
+            }
+
+            return { toolCall, result: healResult.finalResult };
+          });
+
+          const healedResults = await Promise.all(healingPromises);
+
+          for (const { toolCall, result } of healedResults) {
             if (result.status === 'success' && result.metadata?.contentBase64) {
               const artifact = await this.artifactService.createFromAgent({
                 type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
@@ -288,6 +311,16 @@ export class AgentRunnerService {
         );
       } catch (err: any) {
         this.logger.debug(`Background review failed (non-critical): ${err.message}`);
+      }
+
+      // Auto memory distillation — compress memories if threshold exceeded
+      try {
+        const distillResult = await this.autoMemoryService.checkAndDistill();
+        if (distillResult.distilled) {
+          this.logger.log(`Memory distilled: ${distillResult.count} entries compressed`);
+        }
+      } catch (err: any) {
+        this.logger.debug(`Memory distillation failed (non-critical): ${err.message}`);
       }
 
       return finalContent;

@@ -126,6 +126,10 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 | Planning (agent buat rencana sebelum kerja) | ✅ |
 | Background review (auto-learn setiap turn) | ✅ |
 | Session search FTS5 (cross-session recall) | ✅ |
+| **Autonomous Planner (goal decomposition + reflection)** | ✅ |
+| **Self-Healing (auto error recovery + tool fallback)** | ✅ |
+| **Workspace Heartbeat (proactive file change detection)** | ✅ |
+| **Auto Memory Distillation (compress + deduplicate memories)** | ✅ |
 | Self-evaluation (agent cek hasilnya sendiri) | ⏳ |
 | Skill self-improve (skill update otomatis) | ⏳ |
 | Background curator (review skills berkala) | ⏳ |

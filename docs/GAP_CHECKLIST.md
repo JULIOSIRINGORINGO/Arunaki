@@ -46,6 +46,17 @@ Status: **Phase 1 Complete (10/10 core patterns)**
 
 ---
 
+## ✅ Phase 4: Autonomous Agent Engine ✅ DONE
+
+| # | Feature | OpenClaw Pattern | Status |
+|---|---|---|---|
+| 1 | **Autonomous Planner** — goal decomposition + reflection loop | Agent planning / task breakdown | ✅ |
+| 2 | **Self-Healing** — auto error recovery + tool fallback | Error recovery / retry strategies | ✅ |
+| 3 | **Workspace Heartbeat** — proactive file change detection | File monitoring / heartbeat | ✅ |
+| 4 | **Auto Memory Distillation** — compress + deduplicate memories | Memory distillation / cleanup | ✅ |
+
+---
+
 ## ❌ Explicitly NOT Implementing (OpenClaw Personal Features)
 
 | OpenClaw Feature | Reason |
@@ -73,6 +84,10 @@ Status: **Phase 1 Complete (10/10 core patterns)**
 | Chat Interface | `apps/api/src/modules/chat/` |
 | Sandbox | `apps/api/src/modules/storage/storage.service.ts` |
 | **Domain Config (NEW)** | `apps/api/src/modules/domain/` |
+| **Autonomous Planner** | `apps/api/src/modules/ai/autonomous-planner.service.ts` |
+| **Self-Healing** | `apps/api/src/modules/ai/self-healing.service.ts` |
+| **Workspace Heartbeat** | `apps/api/src/modules/ai/workspace-heartbeat.service.ts` |
+| **Auto Memory Distillation** | `apps/api/src/modules/memory/auto-memory.service.ts` |
 
 ---
 
