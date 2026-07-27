@@ -169,6 +169,25 @@ FULL AUTONOMY 🎯
 
 ---
 
+## Employee Capability Map
+
+Setiap phase menghasilkan kemampuan karyawan tertentu:
+
+| Phase | Output | Employee Capability |
+|-------|--------|-------------------|
+| Phase 1 | Baca file, jawab pertanyaan | 📋 Receptionist — terima info, kasih jawaban |
+| Phase 2 | Handle error, context panjang | 🛡️ Reliable — tidak mudah crash |
+| Phase 3 | Memory + Skills + Prompt | 🧠 Learning — ingat dan belajar |
+| Phase 4 | Rate limit resilient | ⏰ Consistent — tetap kerja meski ada gangguan |
+| Phase 5 | Context besar | 📚 Capable — handle banyak data |
+| Phase 6 | Approval + transparency | 🤝 Trustworthy — minta izin, transparan |
+| Phase 7 | Planning + self-evaluation | 👔 Professional — rencanakan, verifikasi |
+| Phase 8 | Business intelligence | 💼 Expert — kasih insight bisnis |
+
+**Target:** Setelah Phase 8, agent = **karyawan digital yang bisa diandalkan**.
+
+---
+
 ## Catatan Penting
 
 1. **Setiap phase harus selesai SEBELUM lanjut ke phase berikutnya**
@@ -176,3 +195,5 @@ FULL AUTONOMY 🎯
 3. **Workspace = folder bisnis user, bukan seluruh komputer**
 4. **Agent tidak pernah akses file di luar workspace**
 5. **Rate limit testing butuh OpenRouter credit ($10)**
+6. **Agent harus bisa jadi karyawan digital — bukan sekadar tool**
+7. **Lihat docs/EMPLOYEE_FRAMEWORK.md untuk detail kemampuan karyawan**
