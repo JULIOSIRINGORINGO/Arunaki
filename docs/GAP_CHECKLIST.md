@@ -35,15 +35,14 @@ Status: **Phase 1 Complete (10/10 core patterns)**
 
 ---
 
-## 📋 Phase 3: OpenClaw-Advanced Features 📋 PLANNED
+## 📋 Phase 3: OpenClaw-Advanced Features (Web UI Native) 📋 PLANNED
 
 | # | Feature | OpenClaw Pattern | Priority |
 |---|---|---|---|
-| 1 | WhatsApp/Telegram Gateway | Chat-native interface | High |
-| 2 | Cron Scheduler + Proactive Reports | Background tasks / heartbeats | High |
-| 3 | Template Marketplace | Skill marketplace | Medium |
-| 4 | Cross-workspace Domain Sharing | Cross-agent memory | Medium |
-| 5 | Voice/Phone Integration | Twilio + TTS | Low |
+| 1 | Proactive Cron Scheduler + Web Reports | Background tasks / heartbeats | High |
+| 2 | Web UI Template Marketplace | Skill marketplace | Medium |
+| 3 | Cross-workspace Domain Sharing | Cross-agent memory | Medium |
+| 4 | Web Notification & Realtime Alerts | Proactive alerts | Medium |
 
 ---
 
@@ -52,10 +51,11 @@ Status: **Phase 1 Complete (10/10 core patterns)**
 | OpenClaw Feature | Reason |
 |---|---|
 | Full OS access (browser, shell, apps) | **Safety violation** — Workspace sandbox only |
+| Telegram / WhatsApp / CLI interfaces | **Platform Constraint** — Arunaki is 100% Web UI application |
 | Local-first / single-user | **Enterprise requirement** — Multi-tenant, team collaboration |
 | No compliance / audit | **Enterprise requirement** — Audit trail, approval gates |
 | Personal memory only | **Business requirement** — Domain + Workspace Knowledge separation |
-| English only | **Indonesian market** — Full Indonesian UI + business terminology |
+| English only | **Indonesian market** — Full Indonesian Web UI + business terminology |
 
 ---
 

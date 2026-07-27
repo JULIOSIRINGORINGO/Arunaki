@@ -16,7 +16,7 @@ Arunaki is **not** "Hermes for business" — it is a **fundamental re-architectu
 | Dimension | OpenClaw (Personal) | Arunaki (Enterprise) |
 |---|---|---|
 | **Working Directory** | User's entire computer | **Workspace folder (sandboxed)** |
-| **Interface** | WhatsApp/Telegram/Discord | **Web Dashboard + Chat Gateway (planned)** |
+| **Interface** | WhatsApp/Telegram/Discord | **Web Dashboard App (Web UI Native)** |
 | **Multi-user** | ❌ Single user | ✅ Multi-tenant, RBAC-ready |
 | **OS Access** | Full (browser, shell, apps) | **Sandboxed (workspace only)** |
 | **Business Context** | None | **Domain Config System** |
