@@ -4,6 +4,7 @@ import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ProviderService, ProviderConfig } from '../provider/provider.service.js';
+import { ContextManager } from './context-manager.js';
 
 export interface ToolCall {
   id: string;
@@ -46,6 +47,7 @@ export interface ToolDefinition {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private readonly enc: ReturnType<typeof encoding_for_model>;
+  private readonly contextManager: ContextManager;
 
   // Fallback values from .env (used if no provider configured in DB)
   private readonly fallbackApiKey: string;
@@ -63,6 +65,13 @@ export class AiService {
     this.fallbackModel =
       this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
     this.enc = encoding_for_model('gpt-4' as any);
+
+    // Initialize context manager with defaults
+    this.contextManager = new ContextManager({
+      contextLength: 128000,
+      threshold: 0.50,
+      targetRatio: 0.20,
+    });
   }
 
   /**
@@ -170,114 +179,39 @@ export class AiService {
   }
 
   /**
-   * Count tokens in a message array
+   * Count tokens in a message array.
+   * Delegates to ContextManager's char-based estimation for speed.
    */
   countMessageTokens(messages: ChatMessage[]): number {
-    let total = 0;
-    for (const msg of messages) {
-      // Per-message overhead: ~4 tokens (role, separators)
-      total += 4;
-      if (msg.content) {
-        total += this.countTokens(msg.content);
-      }
-      if (msg.tool_calls) {
-        for (const tc of msg.tool_calls) {
-          total += this.countTokens(tc.function.name);
-          total += this.countTokens(tc.function.arguments);
-        }
-      }
-    }
-    return total;
+    return this.contextManager.estimateTokens(messages);
   }
 
   /**
-   * Prune large tool results to save context space.
-   * Replaces content > maxChars with a summary placeholder.
+   * Limit injected content (skills, memory, knowledge) to safe size.
+   * Prevents large injections from eating context budget.
    */
-  pruneToolResults(messages: ChatMessage[], maxChars = 2000): ChatMessage[] {
-    return messages.map((msg) => {
-      if (msg.role === 'tool' && msg.content && msg.content.length > maxChars) {
-        const preview = msg.content.substring(0, 500);
-        return {
-          ...msg,
-          content: `[Tool output dipangkas: ${msg.content.length} chars → 500 chars preview]\n${preview}\n...[dipotong]`,
-        };
-      }
-      return msg;
-    });
+  limitInjection(content: string, label: string): string {
+    return this.contextManager.limitInjection(content, label);
   }
 
   /**
-   * Truncate history to fit within token budget.
-   * Keeps: system message + last N messages within budget.
-   */
-  truncateHistory(
-    messages: ChatMessage[],
-    maxTokens: number,
-  ): ChatMessage[] {
-    if (messages.length === 0) return messages;
-
-    const systemMessages: ChatMessage[] = [];
-    const otherMessages: ChatMessage[] = [];
-
-    for (const msg of messages) {
-      if (msg.role === 'system') {
-        systemMessages.push(msg);
-      } else {
-        otherMessages.push(msg);
-      }
-    }
-
-    // System messages always stay
-    const systemTokens = this.countMessageTokens(systemMessages);
-    const budget = maxTokens - systemTokens;
-
-    if (budget <= 0) {
-      this.logger.warn('System messages exceed token budget, returning only system');
-      return systemMessages;
-    }
-
-    // Keep most recent messages within budget
-    const kept: ChatMessage[] = [];
-    let usedTokens = 0;
-
-    for (let i = otherMessages.length - 1; i >= 0; i--) {
-      const msgTokens = this.countTokens(otherMessages[i].content || '');
-      if (usedTokens + msgTokens > budget) break;
-      usedTokens += msgTokens;
-      kept.unshift(otherMessages[i]);
-    }
-
-    const totalMessages = systemMessages.length + kept.length;
-    this.logger.log(
-      `Context truncated: ${messages.length} → ${totalMessages} messages (${systemMessages.length} system + ${kept.length} history)`,
-    );
-
-    return [...systemMessages, ...kept];
-  }
-
-  /**
-   * Prepare messages for API call with context management.
-   * - Prunes large tool results
-   * - Truncates history if needed
+   * Prepare messages for API call using 4-phase context compression.
+   *
+   * Phase 1: Prune old tool results (keep last 3 unpruned)
+   * Phase 2: Strip old images
+   * Phase 3: Sanitize orphaned tool_call/tool_result pairs
+   * Phase 4: Token-aware tail protection + structured summary
    */
   prepareMessages(
     messages: ChatMessage[],
-    maxContextTokens = 120000,
+    maxContextTokens?: number,
   ): ChatMessage[] {
-    // Step 1: Prune large tool results
-    let prepared = this.pruneToolResults(messages);
-
-    // Step 2: Check token count and truncate if needed
-    const tokenCount = this.countMessageTokens(prepared);
-    if (tokenCount > maxContextTokens) {
-      this.logger.warn(
-        `Context too large: ${tokenCount} tokens (max: ${maxContextTokens}). Truncating...`,
-      );
-      prepared = this.truncateHistory(prepared, maxContextTokens);
+    if (maxContextTokens && maxContextTokens !== 128000) {
+      // Allow override — create temporary ContextManager
+      const tempManager = new ContextManager({ contextLength: maxContextTokens });
+      return tempManager.compress(messages);
     }
-
-    return prepared;
+    return this.contextManager.compress(messages);
   }
 
   /**
@@ -477,9 +411,12 @@ Always greet the user and provide complete answers with context.`;
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
 
+      // Limit workspace context to prevent overflow
+      const safeWorkspaceContext = this.limitInjection(workspaceContext, 'workspace-context');
+
       return `${identity}
 
-${workspaceContext}
+${safeWorkspaceContext}
 
 ${rules}
 
@@ -492,10 +429,15 @@ ${memoryContext}
 ${verification}`;
     }
 
+    // Limit knowledge context to prevent overflow
+    const safeKnowledgeContext = knowledgeContext
+      ? this.limitInjection(knowledgeContext, 'knowledge-base')
+      : '(Tidak ada Knowledge Base aktif)';
+
     return `${basePrompt}
 
 === KNOWLEDGE BASE ===
-${knowledgeContext}
+${safeKnowledgeContext}
 === END KNOWLEDGE BASE ===
 
 ATURAN:

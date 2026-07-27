@@ -1,0 +1,383 @@
+import { Logger } from '@nestjs/common';
+import { ChatMessage } from './ai.service.js';
+
+export interface ContextConfig {
+  /** Context window size (tokens) */
+  contextLength: number;
+  /** Threshold to trigger compression (0.0 - 1.0, default 0.50) */
+  threshold: number;
+  /** Ratio of threshold allocated for tail messages (default 0.20) */
+  targetRatio: number;
+  /** Max chars for tool result before pruning */
+  toolPruneChars: number;
+  /** Chars to keep in pruned tool preview */
+  toolPreviewChars: number;
+  /** Max chars per skill/memory injected into system prompt */
+  injectionMaxChars: number;
+}
+
+const DEFAULT_CONFIG: ContextConfig = {
+  contextLength: 128000,
+  threshold: 0.50,
+  targetRatio: 0.20,
+  toolPruneChars: 2000,
+  toolPreviewChars: 500,
+  injectionMaxChars: 7000,
+};
+
+/**
+ * ContextManager — 4-phase context compression pipeline.
+ *
+ * Inspired by Hermes Agent's ContextCompressor, adapted for Arunaki web UI.
+ *
+ * Phase 1: Prune old tool results (cheap, no LLM call)
+ * Phase 2: Strip old images (replace with placeholder)
+ * Phase 3: Sanitize tool pairs (remove orphaned tool_call/tool_result)
+ * Phase 4: Token-aware tail protection + summary generation
+ */
+export class ContextManager {
+  private readonly logger = new Logger(ContextManager.name);
+  private readonly config: ContextConfig;
+
+  constructor(config?: Partial<ContextConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  /**
+   * Main entry point — run full compression pipeline.
+   * Returns compressed messages ready for API call.
+   */
+  compress(messages: ChatMessage[]): ChatMessage[] {
+    if (messages.length === 0) return messages;
+
+    const tokenCount = this.estimateTokens(messages);
+    const thresholdTokens = Math.floor(this.config.contextLength * this.config.threshold);
+
+    // Don't compress if under threshold
+    if (tokenCount <= thresholdTokens) {
+      return messages;
+    }
+
+    this.logger.log(
+      `Context compression triggered: ${tokenCount} tokens > ${thresholdTokens} threshold (${this.config.contextLength} × ${this.config.threshold})`,
+    );
+
+    // Phase 1: Prune old tool results
+    let result = this.pruneOldToolResults(messages);
+
+    // Phase 2: Strip old images
+    result = this.stripOldImages(result);
+
+    // Phase 3: Sanitize tool pairs
+    result = this.sanitizeToolPairs(result);
+
+    // Phase 4: Token-aware tail protection + summary
+    result = this.protectTailAndSummarize(result);
+
+    const finalTokens = this.estimateTokens(result);
+    this.logger.log(
+      `Compression complete: ${tokenCount} → ${finalTokens} tokens (${Math.round((1 - finalTokens / tokenCount) * 100)}% reduction)`,
+    );
+
+    return result;
+  }
+
+  /**
+   * Limit injected content (skills, memory) to max chars.
+   * Returns truncated content with marker.
+   */
+  limitInjection(content: string, label: string): string {
+    if (content.length <= this.config.injectionMaxChars) {
+      return content;
+    }
+
+    const kept = this.config.injectionMaxChars;
+    const truncated = content.substring(0, kept);
+    this.logger.log(
+      `Injection "${label}" truncated: ${content.length} → ${kept} chars`,
+    );
+
+    return `${truncated}\n\n[...truncated ${label}: kept ${kept} of ${content.length} chars. Use view_skill or search_memories for full content.]`;
+  }
+
+  // ─── Phase 1: Prune Old Tool Results ───────────────────────────────
+
+  /**
+   * Replace old tool results (> toolPruneChars) with preview.
+   * Keeps the LAST 3 tool results unpruned (tail protection).
+   */
+  private pruneOldToolResults(messages: ChatMessage[]): ChatMessage[] {
+    // Find indices of all tool messages
+    const toolIndices: number[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === 'tool') {
+        toolIndices.push(i);
+      }
+    }
+
+    if (toolIndices.length === 0) return messages;
+
+    // Keep last 3 tool results unpruned
+    const pruneThreshold = toolIndices.length - 3;
+    if (pruneThreshold <= 0) return messages;
+
+    return messages.map((msg, idx) => {
+      if (
+        msg.role === 'tool' &&
+        msg.content &&
+        msg.content.length > this.config.toolPruneChars &&
+        toolIndices.indexOf(idx) < pruneThreshold
+      ) {
+        const preview = msg.content.substring(0, this.config.toolPreviewChars);
+        return {
+          ...msg,
+          content: `[Old tool output cleared to save context space — ${msg.content.length} chars]\n${preview}\n...[truncated]`,
+        };
+      }
+      return msg;
+    });
+  }
+
+  // ─── Phase 2: Strip Old Images ─────────────────────────────────────
+
+  /**
+   * Replace old images (base64 in content) with placeholder.
+   * Keeps the LAST 2 images unstripped.
+   */
+  private stripOldImages(messages: ChatMessage[]): ChatMessage[] {
+    // Find messages with base64 images
+    const imageIndices: number[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const content = messages[i].content || '';
+      if (content.includes('data:image/') || content.includes('![image]')) {
+        imageIndices.push(i);
+      }
+    }
+
+    if (imageIndices.length <= 2) return messages;
+
+    // Strip all but last 2 images
+    const stripThreshold = imageIndices.length - 2;
+
+    return messages.map((msg, idx) => {
+      if (imageIndices.indexOf(idx) < stripThreshold) {
+        const content = msg.content || '';
+        // Replace base64 images with placeholder
+        const cleaned = content.replace(
+          /data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g,
+          '[Image removed to save context space]',
+        );
+        if (cleaned !== content) {
+          return { ...msg, content: cleaned };
+        }
+      }
+      return msg;
+    });
+  }
+
+  // ─── Phase 3: Tool Pair Sanitization ───────────────────────────────
+
+  /**
+   * Clean orphaned tool_call / tool_result pairs.
+   * - If a tool_result references a tool_call_id that doesn't exist → remove it
+   * - If a tool_call has no matching tool_result → inject stub result
+   */
+  private sanitizeToolPairs(messages: ChatMessage[]): ChatMessage[] {
+    // Collect all tool_call IDs and tool_result IDs
+    const callIds = new Set<string>();
+    const resultIds = new Set<string>();
+
+    for (const msg of messages) {
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          callIds.add(tc.id);
+        }
+      }
+      if (msg.role === 'tool' && msg.tool_call_id) {
+        resultIds.add(msg.tool_call_id);
+      }
+    }
+
+    // Remove orphaned tool_results (no matching tool_call)
+    let result = messages.filter((msg) => {
+      if (msg.role === 'tool' && msg.tool_call_id && !callIds.has(msg.tool_call_id)) {
+        this.logger.debug(`Removing orphaned tool_result: ${msg.tool_call_id}`);
+        return false;
+      }
+      return true;
+    });
+
+    // Inject stub results for tool_calls without results
+    const newMessages: ChatMessage[] = [];
+    for (const msg of result) {
+      newMessages.push(msg);
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          if (!resultIds.has(tc.id)) {
+            newMessages.push({
+              role: 'tool',
+              content: '[Tool result missing — context was compressed]',
+              tool_call_id: tc.id,
+              name: tc.function.name,
+            });
+          }
+        }
+      }
+    }
+
+    return newMessages;
+  }
+
+  // ─── Phase 4: Token-Aware Tail Protection ──────────────────────────
+
+  /**
+   * Protect recent messages by token budget, compress middle section.
+   *
+   * Structure:
+   * [0..2]   ← system + first exchange (always preserved)
+   * [3..N]   ← middle turns (compressed/summary)
+   * [N..end] ← tail (preserved by token budget)
+   */
+  private protectTailAndSummarize(messages: ChatMessage[]): ChatMessage[] {
+    if (messages.length <= 5) return messages;
+
+    // Split into system vs non-system
+    const systemMessages: ChatMessage[] = [];
+    const nonSystemMessages: ChatMessage[] = [];
+
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemMessages.push(msg);
+      } else {
+        nonSystemMessages.push(msg);
+      }
+    }
+
+    if (nonSystemMessages.length <= 4) return messages;
+
+    // Protect first 3 non-system messages (first exchange)
+    const PROTECT_FIRST = 3;
+    const head = nonSystemMessages.slice(0, PROTECT_FIRST);
+    const middle = nonSystemMessages.slice(PROTECT_FIRST);
+
+    // Calculate tail token budget
+    const thresholdTokens = Math.floor(this.config.contextLength * this.config.threshold);
+    const tailBudget = Math.floor(thresholdTokens * this.config.targetRatio);
+
+    // Walk backward from end to find tail boundary
+    let tailTokens = 0;
+    let tailStart = middle.length;
+
+    for (let i = middle.length - 1; i >= 0; i--) {
+      const msgTokens = this.estimateTokens([middle[i]]);
+      if (tailTokens + msgTokens > tailBudget) break;
+      tailTokens += msgTokens;
+      tailStart = i;
+    }
+
+    // Ensure at least 1 user message in tail
+    const tail = middle.slice(tailStart);
+    const hasUserMessage = tail.some((m) => m.role === 'user');
+    if (!hasUserMessage && middle.length > tailStart) {
+      // Find last user message in middle and include it
+      for (let i = tailStart - 1; i >= 0; i--) {
+        if (middle[i].role === 'user') {
+          tail.unshift(middle[i]);
+          break;
+        }
+      }
+    }
+
+    const middleToCompress = middle.slice(0, tailStart);
+
+    // Generate structured summary from middle section
+    const summary = this.generateSummary(middleToCompress);
+
+    // Assemble: system + head + summary + tail
+    const result: ChatMessage[] = [
+      ...systemMessages,
+      ...head,
+    ];
+
+    // Add summary as a system message (role-safe)
+    if (summary) {
+      result.push({
+        role: 'system',
+        content: summary,
+      });
+    }
+
+    // Add tail
+    result.push(...tail);
+
+    return result;
+  }
+
+  // ─── Summary Generation ────────────────────────────────────────────
+
+  /**
+   * Generate a structured summary from middle turns.
+   * Template-based (no LLM call) — extracts key information.
+   */
+  private generateSummary(messages: ChatMessage[]): string | null {
+    if (messages.length === 0) return null;
+
+    const parts: string[] = ['[Context Summary — compressed for efficiency]'];
+
+    // Extract tool calls
+    const toolCalls: string[] = [];
+    for (const msg of messages) {
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          toolCalls.push(tc.function.name);
+        }
+      }
+    }
+    if (toolCalls.length > 0) {
+      parts.push(`Tools used: ${[...new Set(toolCalls)].join(', ')}`);
+    }
+
+    // Extract user messages (goals)
+    const userMessages = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => m.content?.substring(0, 200))
+      .filter(Boolean);
+    if (userMessages.length > 0) {
+      parts.push(`User goals: ${userMessages.join(' | ')}`);
+    }
+
+    // Count messages by role
+    const assistantCount = messages.filter((m) => m.role === 'assistant').length;
+    const toolCount = messages.filter((m) => m.role === 'tool').length;
+    parts.push(`Exchange: ${assistantCount} assistant turns, ${toolCount} tool results`);
+
+    // Estimated tokens saved
+    const originalTokens = this.estimateTokens(messages);
+    parts.push(`[~${originalTokens} tokens compressed from this section]`);
+
+    return parts.join('\n');
+  }
+
+  // ─── Token Estimation ──────────────────────────────────────────────
+
+  /**
+   * Estimate tokens for a message array.
+   * Uses char-based estimation (~4 chars per token) for speed.
+   */
+  estimateTokens(messages: ChatMessage[]): number {
+    let total = 0;
+    for (const msg of messages) {
+      total += 4; // Per-message overhead
+      if (msg.content) {
+        total += Math.ceil(msg.content.length / 4);
+      }
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          total += Math.ceil(tc.function.name.length / 4);
+          total += Math.ceil(tc.function.arguments.length / 4);
+        }
+      }
+    }
+    return total;
+  }
+}
