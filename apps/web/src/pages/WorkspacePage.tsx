@@ -174,24 +174,25 @@ export function WorkspacePage() {
         return;
       }
 
-      // 2. Upload files
-      const formData = new FormData();
-      formData.append("workspaceId", newId);
-      formData.append("sourceName", "Uploads");
-      const relativePaths: string[] = [];
-      files.forEach((f) => {
-        formData.append("files", f);
-        relativePaths.push(f.name);
-      });
-      formData.append("relativePaths", JSON.stringify(relativePaths));
+      // 2. Upload files (if any exist)
+      if (files.length > 0) {
+        const formData = new FormData();
+        formData.append("workspaceId", newId);
+        formData.append("sourceName", "Uploads");
+        const relativePaths: string[] = [];
+        files.forEach((f) => {
+          formData.append("files", f);
+          relativePaths.push(f.name);
+        });
+        formData.append("relativePaths", JSON.stringify(relativePaths));
 
-      const uploadRes = await fetch(`${API_BASE}/files/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!uploadRes.ok) {
-        toast.error("Gagal upload file");
-        return;
+        const uploadRes = await fetch(`${API_BASE}/files/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          console.warn("File upload failed, but workspace created");
+        }
       }
 
       // 3. Connect
@@ -219,35 +220,46 @@ export function WorkspacePage() {
         const dirHandle = await (window as any).showDirectoryPicker({ mode: "read" });
         const folderName = dirHandle.name;
 
+        setIsCreating(true);
+
         const files: File[] = [];
+        const IGNORED_NAMES = new Set([
+          "node_modules", ".git", "dist", "build", ".next", ".venv", "__pycache__", ".idea", ".vscode", "coverage", ".cache"
+        ]);
+
         const readEntries = async (handle: any, path: string) => {
+          if (files.length >= 100) return;
+
           for await (const entry of handle.values()) {
+            if (files.length >= 100) break;
+            if (entry.name.startsWith(".") || IGNORED_NAMES.has(entry.name)) continue;
+
             if (entry.kind === "file") {
-              const file = await entry.getFile();
-              files.push(new File([file], `${path}${file.name}`, { type: file.type }));
+              try {
+                const file = await entry.getFile();
+                files.push(new File([file], `${path}${file.name}`, { type: file.type }));
+              } catch {
+                // Skip unreadable files silently
+              }
             } else if (entry.kind === "directory") {
               await readEntries(entry, `${path}${entry.name}/`);
             }
           }
         };
+
         await readEntries(dirHandle, "");
-
-        if (files.length === 0) {
-          toast.warning("Folder kosong, pilih folder yang berisi dokumen");
-          return;
-        }
-
         await doConnect(files, folderName);
       } catch (e: any) {
+        setIsCreating(false);
         if (e?.name === "AbortError") {
-          // User cancelled — do nothing
+          // User cancelled folder picker
           return;
         }
         console.error("showDirectoryPicker error:", e);
         toast.error(`Gagal membuka folder: ${e.message || e.name}`);
       }
     } else {
-      // Fallback: webkitdirectory
+      // Fallback: webkitdirectory input
       fileInputRef.current?.click();
     }
   }, [doConnect]);
@@ -256,11 +268,14 @@ export function WorkspacePage() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    setIsCreating(true);
     const folderName = files[0].webkitRelativePath?.split("/")[0] || "Workspace Baru";
-    const fileList = Array.from(files);
+    const fileList = Array.from(files).filter(
+      (f) => !f.name.startsWith(".") && !f.webkitRelativePath.includes("node_modules/")
+    ).slice(0, 100);
+
     await doConnect(fileList, folderName);
 
-    // Reset input so same folder can be re-selected
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
