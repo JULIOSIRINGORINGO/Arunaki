@@ -250,6 +250,8 @@ model Skill {
   displayName String   // Human-readable name (e.g. "Rekap Penjualan Harian")
   description String   // One-line description (max 120 chars)
   category    String   @default("general") // general, data-processing, reporting, integration
+  domain      String   @default("generic") // garment, restaurant, retail, generic (links to DomainConfig)
+  workspaceId String?  // null = global skill, set = workspace-scoped
 
   // Skill content (markdown instructions)
   content     String   // Full skill instructions in markdown
@@ -261,7 +263,7 @@ model Skill {
   successRate Float    @default(1.0) // 0.0 - 1.0
 
   // Source tracking
-  sourceType  String   @default("auto") // auto (created by agent), manual (created by user)
+  sourceType  String   @default("auto") // auto (created by agent), manual (created by user), starter (bundled)
   sourceInfo  String?  // JSON - what workspace/task created this skill
 
   // Status

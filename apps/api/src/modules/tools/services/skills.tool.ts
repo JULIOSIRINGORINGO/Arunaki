@@ -165,4 +165,80 @@ export class SkillsTool {
       };
     }
   }
+
+  async updateSkill(name: string, data: Partial<{
+    displayName: string;
+    description: string;
+    content: string;
+    tags: string[];
+  }>): Promise<ToolResult> {
+    try {
+      const skill = await this.skillService.findByName(name);
+      if (!skill) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Skill "${name}" tidak ditemukan.`,
+          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
+        };
+      }
+
+      const updated = await this.skillService.updateSkill(skill.id, data);
+
+      const preview = `Skill "${updated.displayName}" berhasil diupdate! (v${updated.version})`;
+
+      return {
+        status: 'success',
+        data: {
+          id: updated.id,
+          name: updated.name,
+          displayName: updated.displayName,
+          version: updated.version,
+        },
+        preview,
+        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal update skill: ${e.message}`,
+        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        error: { code: 'SKILLS_ERROR', message: e.message },
+      };
+    }
+  }
+
+  async deleteSkill(name: string): Promise<ToolResult> {
+    try {
+      const skill = await this.skillService.findByName(name);
+      if (!skill) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Skill "${name}" tidak ditemukan.`,
+          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
+        };
+      }
+
+      await this.skillService.updateSkill(skill.id, { active: false });
+
+      return {
+        status: 'success',
+        data: { name },
+        preview: `Skill "${name}" berhasil dinonaktifkan.`,
+        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal hapus skill: ${e.message}`,
+        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        error: { code: 'SKILLS_ERROR', message: e.message },
+      };
+    }
+  }
 }

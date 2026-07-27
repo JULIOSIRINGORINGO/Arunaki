@@ -6,6 +6,8 @@ import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { MemoryService } from '../memory/memory.service.js';
+import { SkillService } from '../skills/skill.service.js';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface WorkspaceRunParams {
@@ -40,6 +42,8 @@ export class WorkspaceRunnerService {
     private readonly searchService: SearchService,
     private readonly artifactService: ArtifactService,
     private readonly memoryService: MemoryService,
+    private readonly skillService: SkillService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
@@ -49,7 +53,30 @@ export class WorkspaceRunnerService {
         ? files.map((f) => `- ${f.name} (Tipe: ${f.type || 'file'}, Ukuran: ${Math.round(f.size / 1024)} KB)`).join('\n')
         : 'Belum ada file di workspace ini.';
 
-      return `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+      // Get workspace business type for domain-aware skills
+      let businessType = 'generic';
+      try {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { businessType: true },
+        });
+        if (workspace?.businessType) {
+          businessType = workspace.businessType;
+        }
+      } catch {
+        // fallback to generic
+      }
+
+      // Auto-inject relevant skills
+      const skillsContext = await this.skillService.getSkillsContext(businessType, workspaceId);
+
+      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+
+      if (skillsContext) {
+        context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
+      }
+
+      return context;
     } catch {
       return '';
     }

@@ -862,6 +862,72 @@ export class ToolRegistryService {
       timeoutMs: 5000,
     });
 
+    this.register('update_skill', {
+      handler: (args) =>
+        this.skillsTool.updateSkill(args.name, {
+          displayName: args.displayName,
+          description: args.description,
+          content: args.content,
+          tags: args.tags,
+        }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'update_skill',
+          description: 'Memperbarui skill yang sudah ada (konten, deskripsi, tags). Versi otomatis diincrement.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Nama skill yang akan diupdate' },
+              displayName: { type: 'string', description: 'Nama tampilan baru (opsional)' },
+              description: { type: 'string', description: 'Deskripsi baru (opsional)' },
+              content: { type: 'string', description: 'Konten markdown baru (opsional)' },
+              tags: { type: 'array', items: { type: 'string' }, description: 'Tags baru (opsional)' },
+            },
+            required: ['name'],
+          },
+        },
+      },
+      capability: {
+        name: 'update_skill',
+        displayName: 'Update Skill',
+        description: 'Memperbarui skill yang sudah ada',
+        tags: ['skills', 'update', 'edit', 'workflow'],
+        inputSchema: { name: 'string', content: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('delete_skill', {
+      handler: (args) => this.skillsTool.deleteSkill(args.name),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'delete_skill',
+          description: 'Menonaktifkan skill (soft delete). Skill tidak akan muncul di list tapi masih ada di database.',
+          parameters: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Nama skill yang akan dinonaktifkan' },
+            },
+            required: ['name'],
+          },
+        },
+      },
+      capability: {
+        name: 'delete_skill',
+        displayName: 'Hapus Skill',
+        description: 'Menonaktifkan skill',
+        tags: ['skills', 'delete', 'remove', 'workflow'],
+        inputSchema: { name: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
     this.register('list_memories', {
       handler: (args) => this.memoryTool.listMemories(args.workspaceId),
       definition: {

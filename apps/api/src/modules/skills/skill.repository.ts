@@ -19,9 +19,46 @@ export class SkillRepository extends PrismaBaseRepository<Skill> {
     });
   }
 
+  /**
+   * Find skills relevant to a domain and/or workspace.
+   * Returns global skills + workspace-scoped skills, filtered by domain.
+   */
+  async findRelevant(domain?: string, workspaceId?: string): Promise<Skill[]> {
+    const where: any = {
+      active: true,
+      OR: [
+        // Global skills matching domain
+        { domain: domain || 'generic', workspaceId: null },
+        // Global generic skills (always available)
+        { domain: 'generic', workspaceId: null },
+        // Workspace-scoped skills
+        ...(workspaceId ? [{ workspaceId }] : []),
+      ],
+    };
+
+    return this.prisma.skill.findMany({
+      where,
+      orderBy: [{ pinned: 'desc' }, { usageCount: 'desc' }],
+    });
+  }
+
   async findByCategory(category: string): Promise<Skill[]> {
     return this.prisma.skill.findMany({
       where: { category, active: true },
+      orderBy: { usageCount: 'desc' },
+    });
+  }
+
+  async findByDomain(domain: string): Promise<Skill[]> {
+    return this.prisma.skill.findMany({
+      where: { domain, active: true },
+      orderBy: { usageCount: 'desc' },
+    });
+  }
+
+  async findByWorkspace(workspaceId: string): Promise<Skill[]> {
+    return this.prisma.skill.findMany({
+      where: { workspaceId, active: true },
       orderBy: { usageCount: 'desc' },
     });
   }

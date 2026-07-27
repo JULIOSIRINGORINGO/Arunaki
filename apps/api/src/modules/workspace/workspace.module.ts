@@ -13,6 +13,7 @@ import { FileModule } from '../file/file.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { SkillsModule } from '../skills/skills.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MemoryModule } from '../memory/memory.module.js';
     SearchModule,
     ArtifactModule,
     MemoryModule,
+    SkillsModule,
   ],
   controllers: [WorkspaceController],
   providers: [
