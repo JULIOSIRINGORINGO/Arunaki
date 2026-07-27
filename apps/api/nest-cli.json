@@ -9,6 +9,10 @@
       {
         "include": "prompts/**/*",
         "outDir": "dist/src"
+      },
+      {
+        "include": "modules/domain/configs/**/*",
+        "outDir": "dist/src"
       }
     ]
   }

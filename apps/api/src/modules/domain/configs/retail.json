@@ -1,0 +1,72 @@
+{
+  "id": "retail",
+  "name": "Retail / Trading",
+  "description": "Retail, wholesale, and trading business",
+  "units": {
+    "length": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces" },
+      { "name": "box", "toBase": 12, "label": "Box (12 pcs)" },
+      { "name": "lusin", "toBase": 12, "label": "Lusin (12)" },
+      { "name": "kodi", "toBase": 20, "label": "Kodi (20)" },
+      { "name": "karton", "toBase": 48, "label": "Karton (48)" }
+    ],
+    "mass": [
+      { "name": "kg", "toBase": 1, "label": "Kilogram" },
+      { "name": "g", "toBase": 0.001, "label": "Gram" },
+      { "name": "lbs", "toBase": 0.453592, "label": "Pound" }
+    ],
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces" },
+      { "name": "unit", "toBase": 1, "label": "Unit" },
+      { "name": "set", "toBase": 1, "label": "Set" }
+    ],
+    "currency": [
+      { "name": "usd", "toBase": 16200, "label": "US Dollar" },
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" },
+      { "name": "eur", "toBase": 17500, "label": "Euro" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Daftar Produk",
+      "columns": ["SKU", "Nama Produk", "Kategori", "Harga Beli", "Harga Jual", "Stok"],
+      "example": ["SKU-001", "Laptop ASUS", "Elektronik", "Rp 8.500.000", "Rp 9.999.000", "15"]
+    },
+    {
+      "name": "Supplier",
+      "columns": ["Nama Supplier", "Kontak", "Produk", "Harga Grosir", "MOQ"],
+      "example": ["PT Maju Jaya", "081234567890", "Laptop, Aksesoris", "Harga khusus", "10 pcs"]
+    },
+    {
+      "name": "Penjualan",
+      "columns": ["Tanggal", "Invoice", "Customer", "Total", "Status"],
+      "example": ["2026-07-27", "INV-001", "PT Sejahtera", "Rp 15.000.000", "Lunas"]
+    }
+  ],
+  "terminology": {
+    "sku": "Stock Keeping Unit - unique product identifier",
+    "moq": "Minimum Order Quantity",
+    "margin": "Profit margin percentage",
+    "turnover": "Inventory turnover rate",
+    "deadstock": "Products that haven't sold in 90+ days"
+  },
+  "catalogMatch": {
+    "skuPatterns": ["SKU-[0-9]+", "[A-Z]{3}-[0-9]{3,6}"],
+    "nameAliases": {
+      "laptop": ["notebook", "komputer jinjing"],
+      "handphone": ["hp", "smartphone", "ponsel"],
+      "headset": ["headphone", "earphone"]
+    },
+    "threshold": 0.7
+  },
+  "communication": {
+    "greetingTemplate": "Halo Kak {name} 👋,\n\nMengenai *{topic}*:\n{points}\n\nJika ada pertanyaan, silakan hubungi kami. Terima kasih! 🙏",
+    "formality": "casual",
+    "phrases": {
+      "confirm_order": "Apakah pesanan sudah sesuai?",
+      "stock_alert": "Stok {product} sudah menipis.",
+      "payment_received": "Pembayaran sudah kami terima."
+    }
+  },
+  "promptExamples": "- Example for retail: product list (SKU, name, buy/sell price, stock), supplier info, sales transactions, inventory status"
+}

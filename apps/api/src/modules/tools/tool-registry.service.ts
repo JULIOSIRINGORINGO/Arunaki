@@ -408,7 +408,7 @@ export class ToolRegistryService {
               },
               type: {
                 type: 'string',
-                description: 'Tipe knowledge (custom, garment, restaurant, finance, dll)',
+                description: 'Tipe knowledge berdasarkan domain bisnis (garment, restaurant, retail, generic, dll)',
               },
             },
             required: ['title', 'content'],
@@ -508,6 +508,7 @@ export class ToolRegistryService {
           value: Number(args.value),
           from: args.from,
           to: args.to,
+          domain: args.domain,
         }),
       definition: {
         type: 'function',
@@ -519,8 +520,9 @@ export class ToolRegistryService {
             type: 'object',
             properties: {
               value: { type: 'number', description: 'Nilai yang akan dikonversi' },
-              from: { type: 'string', description: 'Satuan asal (contoh: yard, meter, roll, usd, idr)' },
-              to: { type: 'string', description: 'Satuan tujuan (contoh: meter, yard, idr, usd)' },
+              from: { type: 'string', description: 'Satuan asal (contoh: yard, meter, kg, usd, idr, pcs)' },
+              to: { type: 'string', description: 'Satuan tujuan (contoh: meter, yard, idr, usd, kg)' },
+              domain: { type: 'string', description: 'Tipe bisnis untuk unit spesifik (garment, restaurant, retail, generic). Default: generic' },
             },
             required: ['value', 'from', 'to'],
           },
@@ -529,9 +531,9 @@ export class ToolRegistryService {
       capability: {
         name: 'unit_converter',
         displayName: 'Konverter Satuan & Mata Uang',
-        description: 'Mengonversi satuan bahan garment dan mata uang secara presisi',
-        tags: ['converter', 'unit', 'currency', 'garment', 'yard', 'meter', 'usd', 'idr'],
-        inputSchema: { value: 'number', from: 'string', to: 'string' },
+        description: 'Mengonversi satuan dan mata uang berdasarkan konfigurasi domain bisnis',
+        tags: ['converter', 'unit', 'currency', 'domain-config'],
+        inputSchema: { value: 'number', from: 'string', to: 'string', domain: 'string' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },

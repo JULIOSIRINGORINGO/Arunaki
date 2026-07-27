@@ -1,17 +1,27 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DomainRegistryService } from '../../domain/domain.registry.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 
+/**
+ * UnitConverterTool — converts units using domain-specific configs.
+ *
+ * Reads unit definitions from DomainRegistryService instead of hardcoding.
+ * Each business type (garment, restaurant, retail) provides its own units.
+ */
 @Injectable()
 export class UnitConverterTool {
   private readonly logger = new Logger(UnitConverterTool.name);
+
+  constructor(private readonly domainRegistry: DomainRegistryService) {}
 
   async convert(params: {
     value: number;
     from: string;
     to: string;
+    domain?: string;
   }): Promise<ToolResult> {
     const startTime = Date.now();
-    const { value, from, to } = params;
+    const { value, from, to, domain } = params;
 
     if (value === undefined || !from || !to) {
       return {
@@ -29,99 +39,80 @@ export class UnitConverterTool {
 
     const fromClean = from.trim().toLowerCase();
     const toClean = to.trim().toLowerCase();
+    const domainId = domain || 'generic';
 
-    // Currency rates (USD, IDR, EUR, SGD, MYR)
-    const currencyRates: Record<string, number> = {
-      usd: 16200,
-      idr: 1,
-      eur: 17500,
-      sgd: 12100,
-      myr: 3650,
-    };
+    // Get unit definitions from domain config
+    const categories = ['currency', 'length', 'mass', 'count'] as const;
 
-    if (currencyRates[fromClean] !== undefined && currencyRates[toClean] !== undefined) {
-      const valueInIdr = value * currencyRates[fromClean];
-      const resultValue = valueInIdr / currencyRates[toClean];
-      const formattedResult = resultValue.toLocaleString('id-ID', { maximumFractionDigits: 2 });
-      const text = `${value} ${from.toUpperCase()} = ${formattedResult} ${to.toUpperCase()}`;
+    for (const category of categories) {
+      const units = this.domainRegistry.getUnits(domainId, category) || [];
+      const fromUnit = units.find((u) => u.name === fromClean);
+      const toUnit = units.find((u) => u.name === toClean);
 
-      return {
-        status: 'success',
-        data: { value, from: from.toUpperCase(), to: to.toUpperCase(), result: resultValue },
-        preview: text,
-        metadata: {
-          toolName: 'unit_converter',
-          displayName: 'Konverter Mata Uang',
-          executionTime: Date.now() - startTime,
-        },
-      };
+      if (fromUnit && toUnit) {
+        // Convert: value * fromBase / toBase
+        const baseValue = value * fromUnit.toBase;
+        const resultValue = baseValue / toUnit.toBase;
+
+        const formattedResult = Number(resultValue.toFixed(4));
+        const text = `${value} ${from} = ${formattedResult} ${to}`;
+
+        return {
+          status: 'success',
+          data: {
+            value,
+            from: from.toUpperCase(),
+            to: to.toUpperCase(),
+            result: formattedResult,
+            domain: domainId,
+          },
+          preview: text,
+          metadata: {
+            toolName: 'unit_converter',
+            displayName: 'Konverter Satuan',
+            executionTime: Date.now() - startTime,
+          },
+        };
+      }
     }
 
-    // Common Garment & Business Units (Yard, Meter, Roll, Kg, Gram, Pcs, Dozen)
-    const lengthToMeters: Record<string, number> = {
-      yard: 0.9144,
-      yd: 0.9144,
-      meter: 1,
-      m: 1,
-      cm: 0.01,
-      inch: 0.0254,
-      in: 0.0254,
-      feet: 0.3048,
-      ft: 0.3048,
-      roll: 45.72, // 1 roll standard garment = 50 yards = 45.72 meters
-    };
+    // Try cross-category (e.g., length to length from different domains)
+    // This handles cases where user doesn't specify domain
+    for (const category of categories) {
+      const allUnits = this.domainRegistry.getUnits('generic', category) || [];
+      const fromUnit = allUnits.find((u) => u.name === fromClean);
+      const toUnit = allUnits.find((u) => u.name === toClean);
 
-    const massToKg: Record<string, number> = {
-      kg: 1,
-      kilogram: 1,
-      g: 0.001,
-      gram: 0.001,
-      lbs: 0.453592,
-      pound: 0.453592,
-      oz: 0.0283495,
-    };
+      if (fromUnit && toUnit) {
+        const baseValue = value * fromUnit.toBase;
+        const resultValue = baseValue / toUnit.toBase;
+        const formattedResult = Number(resultValue.toFixed(4));
+        const text = `${value} ${from} = ${formattedResult} ${to}`;
 
-    const countToPcs: Record<string, number> = {
-      pcs: 1,
-      lusin: 12,
-      dozen: 12,
-      kodi: 20,
-      gross: 144,
-    };
-
-    let resultValue: number | null = null;
-
-    if (lengthToMeters[fromClean] && lengthToMeters[toClean]) {
-      const meters = value * lengthToMeters[fromClean];
-      resultValue = meters / lengthToMeters[toClean];
-    } else if (massToKg[fromClean] && massToKg[toClean]) {
-      const kgs = value * massToKg[fromClean];
-      resultValue = kgs / massToKg[toClean];
-    } else if (countToPcs[fromClean] && countToPcs[toClean]) {
-      const pcs = value * countToPcs[fromClean];
-      resultValue = pcs / countToPcs[toClean];
+        return {
+          status: 'success',
+          data: { value, from: from.toUpperCase(), to: to.toUpperCase(), result: formattedResult },
+          preview: text,
+          metadata: {
+            toolName: 'unit_converter',
+            displayName: 'Konverter Satuan',
+            executionTime: Date.now() - startTime,
+          },
+        };
+      }
     }
 
-    if (resultValue !== null) {
-      const formattedResult = Number(resultValue.toFixed(4));
-      const text = `${value} ${from} = ${formattedResult} ${to}`;
-
-      return {
-        status: 'success',
-        data: { value, from, to, result: formattedResult },
-        preview: text,
-        metadata: {
-          toolName: 'unit_converter',
-          displayName: 'Konverter Satuan',
-          executionTime: Date.now() - startTime,
-        },
-      };
+    // Build available units list for error message
+    const availableUnits: string[] = [];
+    for (const category of categories) {
+      const units = this.domainRegistry.getUnits(domainId, category) || [];
+      availableUnits.push(...units.map((u) => u.name));
     }
 
     return {
       status: 'error',
       data: {},
-      preview: `Satuan '${from}' atau '${to}' tidak dikenali. Gunakan: yard, meter, cm, inch, roll, kg, gram, lusin, kodi, usd, idr.`,
+      preview: `Satuan '${from}' atau '${to}' tidak dikenali. Gunakan: ${availableUnits.join(', ')}.`,
       metadata: {
         toolName: 'unit_converter',
         displayName: 'Konverter Satuan',

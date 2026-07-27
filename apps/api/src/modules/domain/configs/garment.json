@@ -1,0 +1,85 @@
+{
+  "id": "garment",
+  "name": "Garment / Textile",
+  "description": "Fabric, sewing, and garment production business",
+  "units": {
+    "length": [
+      { "name": "yard", "toBase": 0.9144, "label": "Yard" },
+      { "name": "yd", "toBase": 0.9144, "label": "Yard" },
+      { "name": "meter", "toBase": 1, "label": "Meter" },
+      { "name": "m", "toBase": 1, "label": "Meter" },
+      { "name": "cm", "toBase": 0.01, "label": "Centimeter" },
+      { "name": "inch", "toBase": 0.0254, "label": "Inch" },
+      { "name": "in", "toBase": 0.0254, "label": "Inch" },
+      { "name": "feet", "toBase": 0.3048, "label": "Feet" },
+      { "name": "ft", "toBase": 0.3048, "label": "Feet" },
+      { "name": "roll", "toBase": 45.72, "label": "Roll (50 yards)" }
+    ],
+    "mass": [
+      { "name": "kg", "toBase": 1, "label": "Kilogram" },
+      { "name": "kilogram", "toBase": 1, "label": "Kilogram" },
+      { "name": "g", "toBase": 0.001, "label": "Gram" },
+      { "name": "gram", "toBase": 0.001, "label": "Gram" },
+      { "name": "lbs", "toBase": 0.453592, "label": "Pound" },
+      { "name": "pound", "toBase": 0.453592, "label": "Pound" },
+      { "name": "oz", "toBase": 0.0283495, "label": "Ounce" }
+    ],
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces" },
+      { "name": "lusin", "toBase": 12, "label": "Lusin (12)" },
+      { "name": "dozen", "toBase": 12, "label": "Dozen (12)" },
+      { "name": "kodi", "toBase": 20, "label": "Kodi (20)" },
+      { "name": "gross", "toBase": 144, "label": "Gross (144)" }
+    ],
+    "currency": [
+      { "name": "usd", "toBase": 16200, "label": "US Dollar" },
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" },
+      { "name": "eur", "toBase": 17500, "label": "Euro" },
+      { "name": "sgd", "toBase": 12100, "label": "Singapore Dollar" },
+      { "name": "myr", "toBase": 3650, "label": "Malaysian Ringgit" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Harga Kain",
+      "columns": ["Jenis Kain", "Lebar", "Harga/meter", "Minimal Order", "Stok"],
+      "example": ["Katun Combed 30s", "1.5m", "Rp 35.000", "50 meter", "200 meter"]
+    },
+    {
+      "name": "Warna & Ukuran",
+      "columns": ["Warna", "Kode", "Tersedia"],
+      "example": ["Putih", "#FFFFFF", "Ya"]
+    },
+    {
+      "name": "Biaya Produksi",
+      "columns": ["Item", "Harga", "Satuan"],
+      "example": ["Jahit Kaos", "Rp 15.000", "pcs"]
+    }
+  ],
+  "terminology": {
+    "combed": "Cotton combed yarn (smooth, combed fibers)",
+    "carded": "Cotton carded yarn (rougher, uncombed fibers)",
+    "gsm": "Grams per square meter (fabric weight)",
+    "width": "Fabric width in meters",
+    "min_order": "Minimum order quantity"
+  },
+  "catalogMatch": {
+    "skuPatterns": ["[A-Z]{2}-[0-9]{4}", "FBR-[0-9]+"],
+    "nameAliases": {
+      "katun combed": ["combed cotton", "cotton combed", "combed"],
+      "katun carded": ["carded cotton", "cotton carded", "carded"],
+      "polyester": ["poly", "polyester", "PE"]
+    },
+    "threshold": 0.7
+  },
+  "communication": {
+    "greetingTemplate": "Halo Kak {name} 👋,\n\nMengenai *{topic}*:\n{points}\n\nJika ada pertanyaan atau perubahan, silakan kabari ya Kak. Terima kasih! 🙏",
+    "formality": "casual",
+    "phrases": {
+      "confirm_order": "Apakah pesanan ini sudah benar?",
+      "price_quote": "Berikut harga yang kami tawarkan:",
+      "delivery": "Estimasi pengiriman:"
+    }
+  },
+  "promptExamples": "- Example for garment: fabric prices (per meter/yard), sizes (S/M/L/XL), colors (with codes), minimum order quantity, GSM weight, fabric composition"
+}

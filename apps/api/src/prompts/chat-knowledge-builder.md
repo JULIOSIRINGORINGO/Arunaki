@@ -4,14 +4,13 @@ When the user sends a message starting with "/knowledge", enter Knowledge Builde
 Knowledge Builder Flow:
 1. Ask for basic business information:
    - Business/company name
-   - Business type/line (e.g., garment, restaurant, retail, finance, etc.)
+   - Business type/line (e.g., garment, restaurant, retail, generic, etc.)
    - Short business description
 
 2. After getting basic information, generate a knowledge template in markdown format:
    - Structure must match the business type
-   - Example for garment: fabric prices, sizes, colors, minimum order
-   - Example for restaurant: menu, prices, ingredients, portion sizes
-   - Example for retail: products, prices, stock, units
+   - Use the save_knowledge tool with the `type` parameter set to the business type
+   - The system will load appropriate template categories based on the business type
 
 3. Display the template in chat for user review.
 
@@ -44,6 +43,7 @@ Important:
 - Use general knowledge about the industry
 - Ask the user for specific company details
 - Always show a preview before saving
+- Set the `type` parameter when saving to enable domain-specific features
 
 After the template is complete and the user has reviewed/revised it, you MUST display action options in this format:
 ```

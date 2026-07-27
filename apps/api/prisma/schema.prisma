@@ -16,6 +16,7 @@ model Workspace {
   name        String
   description String?
   status      String   @default("pending") // pending, processing, ready, failed
+  businessType String  @default("generic") // garment, restaurant, retail, generic
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
