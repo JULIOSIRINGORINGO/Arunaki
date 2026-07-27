@@ -214,9 +214,58 @@ export function WorkspacePage() {
     }
   }, [queryClient, triggerAutoAnalysis]);
 
-  const handleConnectFolder = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  const handleConnectFolder = useCallback(async () => {
+    if ("showDirectoryPicker" in window) {
+      try {
+        const dirHandle = await (window as any).showDirectoryPicker({ mode: "read" });
+        const folderName = dirHandle.name;
+
+        setIsCreating(true);
+
+        const files: File[] = [];
+        const IGNORED_NAMES = new Set([
+          "node_modules", ".git", "dist", "build", ".next", ".venv", "__pycache__", ".idea", ".vscode", "coverage", ".cache"
+        ]);
+
+        const readEntries = async (handle: any, path: string) => {
+          if (files.length >= 100) return;
+
+          try {
+            const entries = handle.values ? handle.values() : [];
+            for await (const entry of entries) {
+              if (files.length >= 100) break;
+              if (!entry || !entry.name || entry.name.startsWith(".") || IGNORED_NAMES.has(entry.name)) continue;
+
+              if (entry.kind === "file") {
+                try {
+                  const file = await entry.getFile();
+                  files.push(new File([file], `${path}${file.name}`, { type: file.type }));
+                } catch {
+                  // Skip unreadable files silently
+                }
+              } else if (entry.kind === "directory") {
+                await readEntries(entry, `${path}${entry.name}/`);
+              }
+            }
+          } catch {
+            // Fallback for directory reading
+          }
+        };
+
+        await readEntries(dirHandle, "");
+        await doConnect(files, folderName);
+      } catch (e: any) {
+        setIsCreating(false);
+        if (e?.name === "AbortError") {
+          return;
+        }
+        // Fallback to webkitdirectory if showDirectoryPicker fails
+        fileInputRef.current?.click();
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  }, [doConnect]);
 
   const handleCreateManual = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
