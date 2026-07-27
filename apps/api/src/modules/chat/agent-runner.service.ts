@@ -3,6 +3,7 @@ import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
+import { BackgroundReviewService } from '../memory/background-review.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface AgentRunParams {
@@ -32,6 +33,7 @@ export class AgentRunnerService {
     private readonly toolRegistryService: ToolRegistryService,
     private readonly knowledgeService: KnowledgeService,
     private readonly artifactService: ArtifactService,
+    private readonly backgroundReviewService: BackgroundReviewService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -281,6 +283,15 @@ export class AgentRunnerService {
           artifacts,
         },
       });
+
+      // Background review — extract learnings from conversation
+      try {
+        await this.backgroundReviewService.reviewAndLearn(
+          messages.map((m) => ({ role: m.role, content: m.content || '' })),
+        );
+      } catch (err: any) {
+        this.logger.debug(`Background review failed (non-critical): ${err.message}`);
+      }
 
       return finalContent;
     } catch (error) {

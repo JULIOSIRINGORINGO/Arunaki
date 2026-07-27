@@ -7,6 +7,7 @@ import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { MemoryService } from '../memory/memory.service.js';
+import { BackgroundReviewService } from '../memory/background-review.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -44,6 +45,7 @@ export class WorkspaceRunnerService {
     private readonly searchService: SearchService,
     private readonly artifactService: ArtifactService,
     private readonly memoryService: MemoryService,
+    private readonly backgroundReviewService: BackgroundReviewService,
     private readonly skillService: SkillService,
     private readonly prisma: PrismaService,
   ) {}
@@ -315,6 +317,13 @@ export class WorkspaceRunnerService {
           saveDomain,
         );
         this.logger.log(`Auto-saved workspace history memory for workspace ${workspaceId}`);
+
+        // Background review — extract learnings from conversation
+        await this.backgroundReviewService.reviewAndLearn(
+          messages.map((m) => ({ role: m.role, content: m.content || '' })),
+          workspaceId,
+          saveDomain,
+        );
       } catch (e) {
         this.logger.warn(`Failed to auto-save workspace history: ${e.message}`);
       }

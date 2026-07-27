@@ -10,9 +10,10 @@ import { AiModule } from '../ai/ai.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
+import { MemoryModule } from '../memory/memory.module.js';
 
 @Module({
-  imports: [PrismaModule, AiModule, ToolsModule, KnowledgeModule, ArtifactModule],
+  imports: [PrismaModule, AiModule, ToolsModule, KnowledgeModule, ArtifactModule, MemoryModule],
   controllers: [ChatController],
   providers: [
     ChatHistoryService,
