@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { encoding_for_model } from 'tiktoken';
 
 export interface ToolCall {
   id: string;
@@ -44,6 +45,7 @@ export class AiService {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
   private readonly model: string;
+  private readonly enc: ReturnType<typeof encoding_for_model>;
 
   constructor(private readonly config: ConfigService) {
     this.apiKey =
@@ -54,6 +56,130 @@ export class AiService {
       this.config.get<string>('OPENROUTER_MODEL') ||
       this.config.get<string>('AI_MODEL') ||
       'nvidia/nemotron-3-ultra-550b-a55b:free';
+    this.enc = encoding_for_model('gpt-4' as any);
+  }
+
+  /**
+   * Count tokens in a string using tiktoken
+   */
+  countTokens(text: string): number {
+    try {
+      return this.enc.encode(text).length;
+    } catch {
+      // Fallback: rough estimate (4 chars per token)
+      return Math.ceil(text.length / 4);
+    }
+  }
+
+  /**
+   * Count tokens in a message array
+   */
+  countMessageTokens(messages: ChatMessage[]): number {
+    let total = 0;
+    for (const msg of messages) {
+      // Per-message overhead: ~4 tokens (role, separators)
+      total += 4;
+      if (msg.content) {
+        total += this.countTokens(msg.content);
+      }
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          total += this.countTokens(tc.function.name);
+          total += this.countTokens(tc.function.arguments);
+        }
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Prune large tool results to save context space.
+   * Replaces content > maxChars with a summary placeholder.
+   */
+  pruneToolResults(messages: ChatMessage[], maxChars = 2000): ChatMessage[] {
+    return messages.map((msg) => {
+      if (msg.role === 'tool' && msg.content && msg.content.length > maxChars) {
+        const preview = msg.content.substring(0, 500);
+        return {
+          ...msg,
+          content: `[Tool output dipangkas: ${msg.content.length} chars → 500 chars preview]\n${preview}\n...[dipotong]`,
+        };
+      }
+      return msg;
+    });
+  }
+
+  /**
+   * Truncate history to fit within token budget.
+   * Keeps: system message + last N messages within budget.
+   */
+  truncateHistory(
+    messages: ChatMessage[],
+    maxTokens: number,
+  ): ChatMessage[] {
+    if (messages.length === 0) return messages;
+
+    const systemMessages: ChatMessage[] = [];
+    const otherMessages: ChatMessage[] = [];
+
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemMessages.push(msg);
+      } else {
+        otherMessages.push(msg);
+      }
+    }
+
+    // System messages always stay
+    const systemTokens = this.countMessageTokens(systemMessages);
+    const budget = maxTokens - systemTokens;
+
+    if (budget <= 0) {
+      this.logger.warn('System messages exceed token budget, returning only system');
+      return systemMessages;
+    }
+
+    // Keep most recent messages within budget
+    const kept: ChatMessage[] = [];
+    let usedTokens = 0;
+
+    for (let i = otherMessages.length - 1; i >= 0; i--) {
+      const msgTokens = this.countTokens(otherMessages[i].content || '');
+      if (usedTokens + msgTokens > budget) break;
+      usedTokens += msgTokens;
+      kept.unshift(otherMessages[i]);
+    }
+
+    const totalMessages = systemMessages.length + kept.length;
+    this.logger.log(
+      `Context truncated: ${messages.length} → ${totalMessages} messages (${systemMessages.length} system + ${kept.length} history)`,
+    );
+
+    return [...systemMessages, ...kept];
+  }
+
+  /**
+   * Prepare messages for API call with context management.
+   * - Prunes large tool results
+   * - Truncates history if needed
+   */
+  prepareMessages(
+    messages: ChatMessage[],
+    maxContextTokens = 120000,
+  ): ChatMessage[] {
+    // Step 1: Prune large tool results
+    let prepared = this.pruneToolResults(messages);
+
+    // Step 2: Check token count and truncate if needed
+    const tokenCount = this.countMessageTokens(prepared);
+    if (tokenCount > maxContextTokens) {
+      this.logger.warn(
+        `Context too large: ${tokenCount} tokens (max: ${maxContextTokens}). Truncating...`,
+      );
+      prepared = this.truncateHistory(prepared, maxContextTokens);
+    }
+
+    return prepared;
   }
 
   private async fetchWithRetry(
@@ -108,9 +234,12 @@ export class AiService {
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): Promise<AiResponse> {
+    // Apply context management: prune large outputs + truncate if needed
+    const preparedMessages = this.prepareMessages(messages);
+
     const body: Record<string, any> = {
       model: this.model,
-      messages,
+      messages: preparedMessages,
       temperature: 0.7,
       max_tokens: 4096,
     };

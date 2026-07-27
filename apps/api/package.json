@@ -48,6 +48,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "tesseract.js": "^7.0.0",
+    "tiktoken": "^1.0.22",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },

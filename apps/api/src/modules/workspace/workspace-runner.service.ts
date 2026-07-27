@@ -63,7 +63,7 @@ export class WorkspaceRunnerService {
       onEvent({ type: 'thinking', data: 'Memindai dokumen workspace dan menyusun rencana otonom...' });
 
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);
-      const systemPrompt = this.aiService.getSystemPrompt('workspace', undefined, workspaceContext);
+      const systemPrompt = this.aiService.getSystemPrompt('workspace', workspaceContext);
       const tools = this.toolRegistryService.getToolDefinitions();
 
       const messages: ChatMessage[] = [
