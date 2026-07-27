@@ -63,6 +63,7 @@ export class MemoryTool {
     key: string;
     content: string;
     importance?: number;
+    domain?: string;
     workspaceId?: string;
   }): Promise<ToolResult> {
     try {
@@ -71,7 +72,8 @@ export class MemoryTool {
         source: 'auto',
       });
 
-      const preview = `Memory tersimpan: [${memory.type}] ${memory.key}`;
+      // Check if it was rejected as duplicate
+      const preview = `Memory tersimpan: [${memory.type}] ${memory.key} (domain: ${memory.domain || 'generic'})`;
 
       return {
         status: 'success',
@@ -80,6 +82,7 @@ export class MemoryTool {
           type: memory.type,
           key: memory.key,
           content: memory.content,
+          domain: memory.domain,
         },
         preview,
         metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },

@@ -70,10 +70,17 @@ export class WorkspaceRunnerService {
       // Auto-inject relevant skills
       const skillsContext = await this.skillService.getSkillsContext(businessType, workspaceId);
 
+      // Frozen snapshot: inject relevant memories at session start
+      const memoryContext = await this.memoryService.getMemoryContext(businessType, workspaceId);
+
       let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
+      }
+
+      if (memoryContext) {
+        context += `\n\n=== MEMORY SNAPSHOT ===\n${memoryContext}\n=== END MEMORY ===`;
       }
 
       return context;
@@ -290,9 +297,20 @@ export class WorkspaceRunnerService {
 
       // Auto-save memory after successful task completion
       try {
+        // Fetch business type for domain-aware memory
+        let saveDomain = 'generic';
+        try {
+          const ws = await this.prisma.workspace.findUnique({
+            where: { id: workspaceId },
+            select: { businessType: true },
+          });
+          if (ws?.businessType) saveDomain = ws.businessType;
+        } catch {}
+
         await this.memoryService.recordWorkspaceHistory(
           workspaceId,
           `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
+          saveDomain,
         );
         this.logger.log(`Auto-saved workspace history memory for workspace ${workspaceId}`);
       } catch (e) {

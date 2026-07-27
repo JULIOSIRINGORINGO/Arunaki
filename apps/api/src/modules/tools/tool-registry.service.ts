@@ -964,20 +964,21 @@ export class ToolRegistryService {
         key: args.key,
         content: args.content,
         importance: args.importance,
+        domain: args.domain,
         workspaceId: args.workspaceId,
       }),
       definition: {
         type: 'function',
         function: {
           name: 'save_memory',
-          description: 'Menyimpan informasi penting sebagai memory (preferensi, konteks, riwayat).',
+          description: 'Menyimpan informasi penting sebagai memory lintas sesi.',
           parameters: {
             type: 'object',
             properties: {
               type: {
                 type: 'string',
-                enum: ['preference', 'context', 'interaction', 'workspace_history'],
-                description: 'Jenis memory: preference (suka/tidak suka), context (info penting), interaction (riwayat kerja), workspace_history (riwayat workspace)',
+                enum: ['preference', 'business_fact', 'correction', 'workspace_history', 'context', 'interaction'],
+                description: 'Jenis memory: preference (user preferences), business_fact (info bisnis penting), correction (user koreksi behavior agent), workspace_history (riwayat workspace), context (info umum)',
               },
               key: {
                 type: 'string',
@@ -989,7 +990,11 @@ export class ToolRegistryService {
               },
               importance: {
                 type: 'number',
-                description: 'Tingkat kepentingan 1-10 (default: 5)',
+                description: 'Tingkat kepentingan 1-10 (correction=9, business_fact=8, preference=7, history=6, context=5)',
+              },
+              domain: {
+                type: 'string',
+                description: 'Domain bisnis (garment, restaurant, retail, generic). Default: generic',
               },
               workspaceId: {
                 type: 'string',
@@ -1003,9 +1008,9 @@ export class ToolRegistryService {
       capability: {
         name: 'save_memory',
         displayName: 'Simpan Memory',
-        description: 'Menyimpan informasi penting sebagai memory',
-        tags: ['memory', 'save', 'remember', 'preference', 'context'],
-        inputSchema: { type: 'string', key: 'string', content: 'string' },
+        description: 'Menyimpan informasi penting sebagai memory lintas sesi',
+        tags: ['memory', 'save', 'remember', 'preference', 'context', 'domain'],
+        inputSchema: { type: 'string', key: 'string', content: 'string', domain: 'string' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },

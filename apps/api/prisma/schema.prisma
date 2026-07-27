@@ -279,10 +279,11 @@ model Skill {
 // Memory - Persistensi lintas sesi
 model Memory {
   id        String   @id @default(cuid())
-  type      String   @default("preference") // preference, context, interaction, workspace_history
+  type      String   @default("preference") // preference, context, interaction, workspace_history, business_fact, correction
   key       String   // Unique identifier (e.g. "user_name", "workspace_abc_last_task")
   content   String   // The actual memory content
   source    String   @default("auto") // auto (learned), manual (user-set), system
+  domain    String   @default("generic") // garment, restaurant, retail, generic (links to DomainConfig)
 
   // Relevance scoring
   importance Int     @default(5) // 1-10, higher = more important

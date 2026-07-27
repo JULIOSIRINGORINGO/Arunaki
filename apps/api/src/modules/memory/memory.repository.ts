@@ -45,6 +45,30 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
     });
   }
 
+  /**
+   * Find memories relevant to a domain and/or workspace.
+   * Used for frozen snapshot injection into system prompt.
+   */
+  async findRelevant(domain?: string, workspaceId?: string, limit = 20): Promise<Memory[]> {
+    const where: any = {
+      active: true,
+      OR: [
+        // Domain-specific global memories
+        { domain: domain || 'generic', workspaceId: null },
+        // Generic global memories (always relevant)
+        { domain: 'generic', workspaceId: null },
+        // Workspace-scoped memories
+        ...(workspaceId ? [{ workspaceId }] : []),
+      ],
+    };
+
+    return this.prisma.memory.findMany({
+      where,
+      orderBy: [{ importance: 'desc' }, { accessCount: 'desc' }],
+      take: limit,
+    });
+  }
+
   async incrementAccess(id: string): Promise<void> {
     await this.prisma.memory.update({
       where: { id },
@@ -55,12 +79,29 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
     });
   }
 
+  /**
+   * Check for duplicate content before inserting.
+   * Returns existing memory if duplicate found, null otherwise.
+   */
+  async findDuplicate(content: string, type?: string): Promise<Memory | null> {
+    const where: any = {
+      active: true,
+      content: content.trim(),
+    };
+    if (type) {
+      where.type = type;
+    }
+
+    return this.prisma.memory.findFirst({ where });
+  }
+
   async upsert(data: {
     type: string;
     key: string;
     content: string;
     source?: string;
     importance?: number;
+    domain?: string;
     workspaceId?: string;
     sessionId?: string;
   }): Promise<Memory> {
@@ -70,6 +111,7 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
         content: data.content,
         source: data.source || 'auto',
         importance: data.importance || 5,
+        domain: data.domain || 'generic',
         workspaceId: data.workspaceId,
         sessionId: data.sessionId,
       },
@@ -79,6 +121,7 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
         content: data.content,
         source: data.source || 'auto',
         importance: data.importance || 5,
+        domain: data.domain || 'generic',
         workspaceId: data.workspaceId,
         sessionId: data.sessionId,
       },

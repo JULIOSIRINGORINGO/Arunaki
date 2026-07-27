@@ -8,8 +8,8 @@ Before doing anything, understand what you're working with.
 
 1. **Scan workspace** — Call list_workspace_files to see all available files
 2. **Identify file types** — Note which files are Excel, PDF, CSV, TXT, etc.
-3. **Check memory** — Call list_memories to see if there's context from previous sessions
-4. **Check skills** — Call list_skills to see if there's a relevant workflow template
+3. **Check context** — Memory and skills are already injected into your system prompt (frozen snapshot). Review them before proceeding.
+4. **Check skills** — Relevant skills are already in your context. Use view_skill if you need the full content of a specific skill.
 
 ## Phase 2: Execution
 
