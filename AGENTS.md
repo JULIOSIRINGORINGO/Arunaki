@@ -8,6 +8,24 @@ Follow the project specifications before writing code. Specifications take prece
 
 ---
 
+## Platform Constraint (CRITICAL)
+
+**Arunaki is a Web UI application.** Not terminal, not Telegram, not CLI. All features, interactions, and UX must be designed for a browser-based web interface.
+
+When reverse-engineering or borrowing ideas from other projects (Hermes Agent, OpenClaw, etc.), always adapt them to fit a web UI context. Do NOT assume terminal/CLI/Telegram patterns unless explicitly told otherwise.
+
+## Workspace Isolation (CRITICAL)
+
+**Agent only accesses the workspace folder. NOT the entire computer.**
+
+- Workspace = a dedicated folder the user selects for their business files
+- Agent CANNOT read files outside the workspace (no OS files, no user documents, no source code)
+- Agent CANNOT execute system commands or install software
+- Agent CANNOT modify original files in the workspace
+- See `docs/BOUNDARIES.md` for complete scope definition
+
+---
+
 ## Source of Truth
 
 Always follow these documents, in this priority order:
