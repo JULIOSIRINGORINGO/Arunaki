@@ -4,7 +4,7 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 
 ---
 
-## Status: Phase 3 — Agent Intelligence
+## Status: Phase 7 — Advanced Intelligence (Partial)
 
 ---
 
@@ -64,68 +64,74 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 
 ---
 
-## Phase 4: Rate Limit Resilience ⏳ BERikutnya
+## Phase 4: Rate Limit Resilience ✅ SELESAI
 
 **Goal:** Agent yang bisa handle rate limit dan network error dengan graceful degradation.
 
 | Item | Status |
 |------|--------|
-| Error classification (3 sub-types 429) | ⏳ Diresearch |
-| Jittered backoff (decorrelated) | ⏳ |
-| Credential pool (multi-key rotation) | ⏳ |
-| Cross-session circuit breaker | ⏳ |
-| OpenRouter upstream error unwrapping | ⏳ |
-| Graceful degradation (skip failed tools) | ⏳ |
+| Error classification (retry/rotate/fatal) | ✅ |
+| Jittered backoff (decorrelated) | ✅ |
+| Credential pool (multi-provider rotation) | ✅ |
+| Provider DB-driven configuration | ✅ |
+| Cooldown with jittered backoff | ✅ |
+| Graceful degradation (skip failed tools) | ✅ |
 
-**Output:** Agent tidak crash saat rate limit. Bisa continue dengan tools yang tersedia.
-
-**Dependensi:** Butuh $10 OpenRouter credit untuk test (free tier = 50 req/day).
+**Output:** Agent tidak crash saat rate limit. Bisa continue dengan provider rotation.
 
 ---
 
-## Phase 5: Context Compression Lengkap ⏳
+## Phase 5: Context Compression ✅ SELESAI
 
 **Goal:** Agent yang bisa handle workspace sangat besar tanpa kehabisan context.
 
 | Item | Status |
 |------|--------|
-| Image stripping (old images → placeholder) | ⏳ |
-| Session rotation (new session saat compress) | ⏳ |
-| Full compression (summary + recent) | ⏳ |
-| Memory prefetch (background recall) | ⏳ |
+| 4-phase compression pipeline | ✅ |
+| Tool result pruning (keep last 3) | ✅ |
+| Image stripping (old images → placeholder) | ✅ |
+| Tool pair sanitization | ✅ |
+| Token-aware tail protection | ✅ |
+| Structured summary generation | ✅ |
+| StreamingContextScrubber (security) | ✅ |
+| Injection limiting (skills/memory) | ✅ |
 
 **Output:** Agent bisa handle workspace dengan 50+ file tanpa degradasi.
 
 ---
 
-## Phase 6: Approval Gate & Transparency ⏳
+## Phase 6: Approval Gate & Transparency ✅ SELESAI
 
 **Goal:** Agent yang minta approval sebelum aksi berbahaya, dan transparan tentang apa yang dilakukan.
 
 | Item | Status |
 |------|--------|
-| Approval dialog untuk aksi destructive | ⏳ |
-| Progress indicator di UI | ⏳ |
-| Step-by-step log di UI | ⏳ |
-| Undo capability | ⏳ |
+| Approval dialog untuk aksi destructive | ✅ |
+| Progress indicator di UI (SSE events) | ✅ |
+| Step-by-step log di UI | ✅ |
+| Domain config system | ✅ |
+| Skills-lite (auto-injected) | ✅ |
+| Memory frozen snapshot | ✅ |
 
 **Output:** User punya kontrol penuh atas agent. Trust meningkat.
 
 ---
 
-## Phase 7: Advanced Intelligence ⏳
+## Phase 7: Advanced Intelligence ⏳ PARTIAL
 
 **Goal:** Agent yang benar-benar otonom — bisa rencanakan, eksekusi, dan evaluasi sendiri.
 
 | Item | Status |
 |------|--------|
-| Planning (agent buat rencana sebelum kerja) | ⏳ |
+| Planning (agent buat rencana sebelum kerja) | ✅ |
+| Background review (auto-learn setiap turn) | ✅ |
+| Session search FTS5 (cross-session recall) | ✅ |
 | Self-evaluation (agent cek hasilnya sendiri) | ⏳ |
 | Skill self-improve (skill update otomatis) | ⏳ |
 | Background curator (review skills berkala) | ⏳ |
 | Smart memory recall (prefetch konteks relevan) | ⏳ |
 
-**Output:** Agent belajar dan improve sendiri dari setiap tugas.
+**Output:** Agent belajar dari setiap tugas. Perlu self-evaluation dan skill self-improve.
 
 ---
 
@@ -135,6 +141,7 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 
 | Item | Status |
 |------|--------|
+| Domain config (garment/restaurant/retail) | ✅ |
 | Template laporan bisnis (RUG, LABA RUGI, NERACA) | ⏳ |
 | Knowledge base business rules | ⏳ |
 | Smart recommendation engine | ⏳ |
@@ -152,15 +159,15 @@ Phase 1: Foundation ✅
     ↓
 Phase 2: Resilience ✅
     ↓
-Phase 3: Agent Intelligence ✅  ← SEKARANG
+Phase 3: Agent Intelligence ✅
     ↓
-Phase 4: Rate Limit Resilience ⏳
+Phase 4: Rate Limit Resilience ✅
     ↓
-Phase 5: Context Compression ⏳
+Phase 5: Context Compression ✅
     ↓
-Phase 6: Approval Gate ⏳
+Phase 6: Approval Gate ✅
     ↓
-Phase 7: Advanced Intelligence ⏳
+Phase 7: Advanced Intelligence ⏳  ← SEKARANG
     ↓
 Phase 8: Business Intelligence ⏳
     ↓
@@ -179,8 +186,8 @@ Setiap phase menghasilkan kemampuan karyawan tertentu:
 | Phase 2 | Handle error, context panjang | 🛡️ Reliable — tidak mudah crash |
 | Phase 3 | Memory + Skills + Prompt | 🧠 Learning — ingat dan belajar |
 | Phase 4 | Rate limit resilient | ⏰ Consistent — tetap kerja meski ada gangguan |
-| Phase 5 | Context besar | 📚 Capable — handle banyak data |
-| Phase 6 | Approval + transparency | 🤝 Trustworthy — minta izin, transparan |
+| Phase 5 | Context besar + security | 📚 Capable — handle banyak data, aman |
+| Phase 6 | Approval + transparency + domain | 🤝 Trustworthy — minta izin, transparan |
 | Phase 7 | Planning + self-evaluation | 👔 Professional — rencanakan, verifikasi |
 | Phase 8 | Business intelligence | 💼 Expert — kasih insight bisnis |
 
