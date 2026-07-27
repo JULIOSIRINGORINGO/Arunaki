@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { SkillService } from './skill.service.js';
 import { AiService } from '../ai/ai.service.js';
 
@@ -20,6 +20,7 @@ export class SkillSelfImproveService {
 
   constructor(
     private readonly skillService: SkillService,
+    @Inject(forwardRef(() => AiService))
     private readonly aiService: AiService,
   ) {}
 

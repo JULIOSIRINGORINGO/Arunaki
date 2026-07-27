@@ -1,4 +1,10 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { KnowledgeModule } from '../knowledge/knowledge.module.js';
+import { StorageModule } from '../storage/storage.module.js';
+import { SearchModule } from '../search/search.module.js';
+import { FileModule } from '../file/file.module.js';
+import { SkillsModule } from '../skills/skills.module.js';
+import { MemoryModule } from '../memory/memory.module.js';
 import { ToolRegistryService } from './tool-registry.service.js';
 import { ToolAdapter } from './services/tool-adapter.js';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
@@ -17,19 +23,15 @@ import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
 
-/**
- * ToolsProviderModule — self-registering tool provider.
- *
- * All tool services are injected here and registered into
- * the ToolRegistry during OnModuleInit. Adding a new tool
- * only requires:
- * 1. Creating the tool service
- * 2. Adding it to this module's imports/providers
- * 3. Adding a register() call here
- *
- * No more editing a 1000+ line monolithic file.
- */
 @Module({
+  imports: [
+    KnowledgeModule,
+    StorageModule,
+    SearchModule,
+    FileModule,
+    SkillsModule,
+    MemoryModule,
+  ],
   providers: [
     ToolRegistryService,
     TextExtractorTool,
@@ -48,7 +50,24 @@ import { MemoryTool } from './services/memory.tool.js';
     SkillsTool,
     MemoryTool,
   ],
-  exports: [ToolRegistryService],
+  exports: [
+    ToolRegistryService,
+    TextExtractorTool,
+    EnterpriseCalculatorTool,
+    DocumentGeneratorTool,
+    DocumentReaderTool,
+    DataQueryTool,
+    ImageOcrTool,
+    DocSearchTool,
+    KnowledgeBuilderTool,
+    WebSearchTool,
+    VisionAiTool,
+    UnitConverterTool,
+    DraftCommunicationTool,
+    WorkspaceToolsService,
+    SkillsTool,
+    MemoryTool,
+  ],
 })
 export class ToolsProviderModule implements OnModuleInit {
   constructor(

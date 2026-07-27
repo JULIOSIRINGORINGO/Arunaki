@@ -25,6 +25,6 @@ import { MemoryModule } from '../memory/memory.module.js';
     MemoryModule,
     ToolsProviderModule,
   ],
-  exports: [ToolRegistryService],
+  exports: [ToolsProviderModule],
 })
 export class ToolsModule {}
