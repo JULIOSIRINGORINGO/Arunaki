@@ -1,6 +1,6 @@
 # Arunaki vs Hermes — Gap Checklist
 
-Status: **7/8 selesai**
+Status: **8/8 selesai**
 
 ---
 
@@ -47,7 +47,7 @@ Status: **7/8 selesai**
 - [x] Integrate ke AI service
 
 ## 8. Template laporan bisnis — RUG, LABA RUGI, NERACA
-- [ ] Buat template RUG (Rincian Usaha Gym)
-- [ ] Buat template LABA RUGI
-- [ ] Buat template NERACA
-- [ ] Integrate ke document generator
+- [x] Buat template RUG (Rincian Usaha Gym)
+- [x] Buat template LABA RUGI
+- [x] Buat template NERACA
+- [x] Integrate ke document generator

@@ -16,6 +16,23 @@ import {
 import PptxGenJS from 'pptxgenjs';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 
+export interface BusinessReportData {
+  companyName: string;
+  period: string;
+  currency?: string;
+  // RUG data
+  revenue?: Array<{ category: string; amount: number }>;
+  cogs?: Array<{ category: string; amount: number }>;
+  operatingExpenses?: Array<{ category: string; amount: number }>;
+  // Laba Rugi data
+  incomeItems?: Array<{ category: string; amount: number }>;
+  expenseItems?: Array<{ category: string; amount: number }>;
+  // Neraca data
+  assets?: Array<{ category: string; amount: number }>;
+  liabilities?: Array<{ category: string; amount: number }>;
+  equity?: Array<{ category: string; amount: number }>;
+}
+
 @Injectable()
 export class DocumentGeneratorTool {
   private readonly logger = new Logger(DocumentGeneratorTool.name);
@@ -516,5 +533,491 @@ export class DocumentGeneratorTool {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  }
+
+  /**
+   * Generate RUG (Rincian Usaha Gym) - Revenue & Cost Report
+   */
+  async generateRugReport(
+    data: BusinessReportData,
+    filename: string = 'rug-report.xlsx',
+  ): Promise<ToolResult> {
+    const startTime = Date.now();
+    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+
+    try {
+      const workbook = xlsx.utils.book_new();
+      const currency = data.currency || 'IDR';
+
+      const summaryRows: Array<Record<string, string | number>> = [
+        { 'Laporan': 'Rincian Usaha Gym (RUG)', 'Periode': data.period, 'Perusahaan': data.companyName },
+        { 'Laporan': '', 'Periode': '', 'Perusahaan': '' },
+        { 'Laporan': 'PENDAPATAN', 'Jumlah': '', 'Keterangan': '' },
+      ];
+
+      let totalRevenue = 0;
+
+      if (data.revenue && data.revenue.length > 0) {
+        for (const item of data.revenue) {
+          totalRevenue += item.amount;
+          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+        }
+        summaryRows.push({ 'Laporan': 'Total Pendapatan', 'Jumlah': String(totalRevenue), 'Keterangan': currency });
+      }
+
+      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
+      summaryRows.push({ 'Laporan': 'HARGA POKOK PENJUALAN (HPP)', 'Jumlah': '', 'Keterangan': '' });
+
+      let totalCogs = 0;
+      if (data.cogs && data.cogs.length > 0) {
+        for (const item of data.cogs) {
+          totalCogs += item.amount;
+          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+        }
+        summaryRows.push({ 'Laporan': 'Total HPP', 'Jumlah': String(totalCogs), 'Keterangan': currency });
+      }
+
+      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
+      summaryRows.push({ 'Laporan': 'LABA KOTOR', 'Jumlah': String(totalRevenue - totalCogs), 'Keterangan': currency });
+
+      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
+      summaryRows.push({ 'Laporan': 'BIAYA OPERASIONAL', 'Jumlah': '', 'Keterangan': '' });
+
+      let totalOpEx = 0;
+      if (data.operatingExpenses && data.operatingExpenses.length > 0) {
+        for (const item of data.operatingExpenses) {
+          totalOpEx += item.amount;
+          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+        }
+        summaryRows.push({ 'Laporan': 'Total Biaya Operasional', 'Jumlah': String(totalOpEx), 'Keterangan': currency });
+      }
+
+      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
+      summaryRows.push({ 'Laporan': 'LABA BERSIH', 'Jumlah': String(totalRevenue - totalCogs - totalOpEx), 'Keterangan': currency });
+
+      const summarySheet = xlsx.utils.json_to_sheet(summaryRows);
+      xlsx.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan RUG');
+
+      // Sheet 2: Detail Revenue
+      if (data.revenue && data.revenue.length > 0) {
+        const revenueRows = data.revenue.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const revSheet = xlsx.utils.json_to_sheet(revenueRows);
+        xlsx.utils.book_append_sheet(workbook, revSheet, 'Detail Pendapatan');
+      }
+
+      // Sheet 3: Detail COGS
+      if (data.cogs && data.cogs.length > 0) {
+        const cogsRows = data.cogs.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const cogsSheet = xlsx.utils.json_to_sheet(cogsRows);
+        xlsx.utils.book_append_sheet(workbook, cogsSheet, 'Detail HPP');
+      }
+
+      // Sheet 4: Detail Operating Expenses
+      if (data.operatingExpenses && data.operatingExpenses.length > 0) {
+        const opexRows = data.operatingExpenses.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const opexSheet = xlsx.utils.json_to_sheet(opexRows);
+        xlsx.utils.book_append_sheet(workbook, opexSheet, 'Detail Biaya Operasional');
+      }
+
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const contentBase64 = buffer.toString('base64');
+
+      return {
+        status: 'success',
+        data: { companyName: data.companyName, period: data.period, totalRevenue, totalCogs, totalOpEx, netIncome: totalRevenue - totalCogs - totalOpEx },
+        preview: `RUG Report: ${data.companyName} - ${data.period} | Laba Bersih: ${this.formatCurrency(totalRevenue - totalCogs - totalOpEx, currency)}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Bisnis (RUG)',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          contentBase64,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal generate RUG: ${e.message}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Bisnis (RUG)',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+        },
+        error: { code: 'RUG_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Generate Laba Rugi (Profit & Loss) Report
+   */
+  async generateLabaRugiReport(
+    data: BusinessReportData,
+    filename: string = 'laba-rugi-report.xlsx',
+  ): Promise<ToolResult> {
+    const startTime = Date.now();
+    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+
+    try {
+      const workbook = xlsx.utils.book_new();
+      const currency = data.currency || 'IDR';
+
+      const rows: Array<Record<string, string | number>> = [
+        { 'Laporan Laba Rugi': data.companyName, 'Periode': data.period, '': '' },
+        { 'Laporan Laba Rugi': '', 'Periode': '', '': '' },
+        { 'Laporan Laba Rugi': 'PENDAPATAN', 'Jumlah': '', 'Mata Uang': '' },
+      ];
+
+      let totalIncome = 0;
+      if (data.incomeItems) {
+        for (const item of data.incomeItems) {
+          rows.push({ 'Laporan Laba Rugi': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          totalIncome += item.amount;
+        }
+      }
+      rows.push({ 'Laporan Laba Rugi': 'Total Pendapatan', 'Jumlah': String(totalIncome), 'Mata Uang': currency });
+
+      rows.push({ 'Laporan Laba Rugi': '', 'Periode': '', '': '' });
+      rows.push({ 'Laporan Laba Rugi': 'BEBAN/BIAYA', 'Jumlah': '', 'Mata Uang': '' });
+
+      let totalExpense = 0;
+      if (data.expenseItems) {
+        for (const item of data.expenseItems) {
+          rows.push({ 'Laporan Laba Rugi': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          totalExpense += item.amount;
+        }
+      }
+      rows.push({ 'Laporan Laba Rugi': 'Total Beban', 'Jumlah': String(totalExpense), 'Mata Uang': currency });
+
+      rows.push({ 'Laporan Laba Rugi': '', 'Periode': '', '': '' });
+      const netProfit = totalIncome - totalExpense;
+      rows.push({ 'Laporan Laba Rugi': netProfit >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH', 'Jumlah': String(Math.abs(netProfit)), 'Mata Uang': currency });
+
+      const sheet = xlsx.utils.json_to_sheet(rows);
+      xlsx.utils.book_append_sheet(workbook, sheet, 'Laba Rugi');
+
+      // Detail sheets
+      if (data.incomeItems && data.incomeItems.length > 0) {
+        const incRows = data.incomeItems.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(incRows), 'Detail Pendapatan');
+      }
+
+      if (data.expenseItems && data.expenseItems.length > 0) {
+        const expRows = data.expenseItems.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(expRows), 'Detail Beban');
+      }
+
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const contentBase64 = buffer.toString('base64');
+
+      return {
+        status: 'success',
+        data: { companyName: data.companyName, period: data.period, totalIncome, totalExpense, netProfit },
+        preview: `Laba Rugi: ${data.companyName} - ${data.period} | ${netProfit >= 0 ? 'Laba' : 'Rugi'}: ${this.formatCurrency(Math.abs(netProfit), currency)}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Laba Rugi',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          contentBase64,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal generate Laba Rugi: ${e.message}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Laba Rugi',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+        },
+        error: { code: 'LABA_RUGI_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Generate Neraca (Balance Sheet) Report
+   */
+  async generateNeracaReport(
+    data: BusinessReportData,
+    filename: string = 'neraca-report.xlsx',
+  ): Promise<ToolResult> {
+    const startTime = Date.now();
+    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+
+    try {
+      const workbook = xlsx.utils.book_new();
+      const currency = data.currency || 'IDR';
+
+      const rows: Array<Record<string, string | number>> = [
+        { 'Neraca': data.companyName, 'Per Tanggal': data.period, '': '' },
+        { 'Neraca': '', 'Per Tanggal': '', '': '' },
+        { 'Neraca': 'ASET', 'Jumlah': '', 'Mata Uang': '' },
+      ];
+
+      let totalAssets = 0;
+      if (data.assets) {
+        for (const item of data.assets) {
+          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          totalAssets += item.amount;
+        }
+      }
+      rows.push({ 'Neraca': 'Total Aset', 'Jumlah': String(totalAssets), 'Mata Uang': currency });
+
+      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
+      rows.push({ 'Neraca': 'KEWAJIBAN', 'Jumlah': '', 'Mata Uang': '' });
+
+      let totalLiabilities = 0;
+      if (data.liabilities) {
+        for (const item of data.liabilities) {
+          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          totalLiabilities += item.amount;
+        }
+      }
+      rows.push({ 'Neraca': 'Total Kewajiban', 'Jumlah': String(totalLiabilities), 'Mata Uang': currency });
+
+      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
+      rows.push({ 'Neraca': 'EKUITAS', 'Jumlah': '', 'Mata Uang': '' });
+
+      let totalEquity = 0;
+      if (data.equity) {
+        for (const item of data.equity) {
+          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          totalEquity += item.amount;
+        }
+      }
+      rows.push({ 'Neraca': 'Total Ekuitas', 'Jumlah': String(totalEquity), 'Mata Uang': currency });
+
+      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
+      rows.push({ 'Neraca': 'TOTAL KEWAJIBAN & EKUITAS', 'Jumlah': String(totalLiabilities + totalEquity), 'Mata Uang': currency });
+
+      const sheet = xlsx.utils.json_to_sheet(rows);
+      xlsx.utils.book_append_sheet(workbook, sheet, 'Neraca');
+
+      // Detail sheets
+      if (data.assets && data.assets.length > 0) {
+        const assetRows = data.assets.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(assetRows), 'Detail Aset');
+      }
+
+      if (data.liabilities && data.liabilities.length > 0) {
+        const liabRows = data.liabilities.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(liabRows), 'Detail Kewajiban');
+      }
+
+      if (data.equity && data.equity.length > 0) {
+        const eqRows = data.equity.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(eqRows), 'Detail Ekuitas');
+      }
+
+      const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      const contentBase64 = buffer.toString('base64');
+
+      const balanced = totalAssets === totalLiabilities + totalEquity;
+
+      return {
+        status: 'success',
+        data: { companyName: data.companyName, period: data.period, totalAssets, totalLiabilities, totalEquity, balanced },
+        preview: `Neraca: ${data.companyName} - ${data.period} | Aset: ${this.formatCurrency(totalAssets, currency)} | Kewajiban+Ekuitas: ${this.formatCurrency(totalLiabilities + totalEquity, currency)} ${balanced ? '✓ Seimbang' : '⚠ Tidak Seimbang'}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Neraca',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          contentBase64,
+        },
+      };
+    } catch (e) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal generate Neraca: ${e.message}`,
+        metadata: {
+          toolName: 'generate_business_report',
+          displayName: 'Laporan Neraca',
+          executionTime: Date.now() - startTime,
+          format: 'xlsx',
+          filename: safeFilename,
+        },
+        error: { code: 'NERACA_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Generate PDF version of business report using existing PDF generator
+   */
+  async generateBusinessReportPdf(
+    data: BusinessReportData,
+    reportType: 'rug' | 'laba-rugi' | 'neraca',
+    filename: string = 'business-report.pdf',
+  ): Promise<ToolResult> {
+    const currency = data.currency || 'IDR';
+    let content = '';
+
+    if (reportType === 'rug') {
+      content = this.formatRugContent(data, currency);
+    } else if (reportType === 'laba-rugi') {
+      content = this.formatLabaRugiContent(data, currency);
+    } else if (reportType === 'neraca') {
+      content = this.formatNeracaContent(data, currency);
+    }
+
+    const titles: Record<string, string> = {
+      'rug': 'Laporan Rincian Usaha Gym (RUG)',
+      'laba-rugi': 'Laporan Laba Rugi',
+      'neraca': 'Laporan Neraca (Balance Sheet)',
+    };
+
+    return this.generatePdf(
+      `${titles[reportType]} - ${data.companyName}`,
+      content,
+      filename,
+    );
+  }
+
+  private formatRugContent(data: BusinessReportData, currency: string): string {
+    let content = `${data.companyName}\nPeriode: ${data.period}\n\n`;
+
+    content += `## PENDAPATAN\n`;
+    let totalRevenue = 0;
+    if (data.revenue) {
+      for (const item of data.revenue) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalRevenue += item.amount;
+      }
+    }
+    content += `**Total Pendapatan: ${this.formatCurrency(totalRevenue, currency)}**\n\n`;
+
+    content += `## HARGA POKOK PENJUALAN (HPP)\n`;
+    let totalCogs = 0;
+    if (data.cogs) {
+      for (const item of data.cogs) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalCogs += item.amount;
+      }
+    }
+    content += `**Total HPP: ${this.formatCurrency(totalCogs, currency)}**\n\n`;
+
+    content += `## LABA KOTOR\n`;
+    content += `**${this.formatCurrency(totalRevenue - totalCogs, currency)}**\n\n`;
+
+    content += `## BIAYA OPERASIONAL\n`;
+    let totalOpEx = 0;
+    if (data.operatingExpenses) {
+      for (const item of data.operatingExpenses) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalOpEx += item.amount;
+      }
+    }
+    content += `**Total Biaya Operasional: ${this.formatCurrency(totalOpEx, currency)}**\n\n`;
+
+    content += `## LABA BERSIH\n`;
+    content += `**${this.formatCurrency(totalRevenue - totalCogs - totalOpEx, currency)}**\n`;
+
+    return content;
+  }
+
+  private formatLabaRugiContent(data: BusinessReportData, currency: string): string {
+    let content = `${data.companyName}\nPeriode: ${data.period}\n\n`;
+
+    content += `## PENDAPATAN\n`;
+    let totalIncome = 0;
+    if (data.incomeItems) {
+      for (const item of data.incomeItems) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalIncome += item.amount;
+      }
+    }
+    content += `**Total Pendapatan: ${this.formatCurrency(totalIncome, currency)}**\n\n`;
+
+    content += `## BEBAN/BIAYA\n`;
+    let totalExpense = 0;
+    if (data.expenseItems) {
+      for (const item of data.expenseItems) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalExpense += item.amount;
+      }
+    }
+    content += `**Total Beban: ${this.formatCurrency(totalExpense, currency)}**\n\n`;
+
+    const netProfit = totalIncome - totalExpense;
+    content += `## ${netProfit >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH'}\n`;
+    content += `**${this.formatCurrency(Math.abs(netProfit), currency)}**\n`;
+
+    return content;
+  }
+
+  private formatNeracaContent(data: BusinessReportData, currency: string): string {
+    let content = `${data.companyName}\nPer Tanggal: ${data.period}\n\n`;
+
+    content += `## ASET\n`;
+    let totalAssets = 0;
+    if (data.assets) {
+      for (const item of data.assets) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalAssets += item.amount;
+      }
+    }
+    content += `**Total Aset: ${this.formatCurrency(totalAssets, currency)}**\n\n`;
+
+    content += `## KEWAJIBAN\n`;
+    let totalLiabilities = 0;
+    if (data.liabilities) {
+      for (const item of data.liabilities) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalLiabilities += item.amount;
+      }
+    }
+    content += `**Total Kewajiban: ${this.formatCurrency(totalLiabilities, currency)}**\n\n`;
+
+    content += `## EKUITAS\n`;
+    let totalEquity = 0;
+    if (data.equity) {
+      for (const item of data.equity) {
+        content += `- ${item.category}: ${this.formatCurrency(item.amount, currency)}\n`;
+        totalEquity += item.amount;
+      }
+    }
+    content += `**Total Ekuitas: ${this.formatCurrency(totalEquity, currency)}**\n\n`;
+
+    content += `## TOTAL KEWAJIBAN & EKUITAS\n`;
+    content += `**${this.formatCurrency(totalLiabilities + totalEquity, currency)}**\n`;
+
+    const balanced = totalAssets === totalLiabilities + totalEquity;
+    content += balanced ? '\n✓ Neraca seimbang' : '\n⚠ Neraca tidak seimbang';
+
+    return content;
+  }
+
+  private formatCurrency(amount: number, currency: string): string {
+    const formatted = new Intl.NumberFormat('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(amount));
+
+    const symbols: Record<string, string> = {
+      IDR: 'Rp ',
+      USD: '$ ',
+      EUR: '€ ',
+      SGD: 'S$ ',
+      MYR: 'RM ',
+    };
+
+    const symbol = symbols[currency] || `${currency} `;
+    return `${symbol}${formatted}`;
   }
 }
