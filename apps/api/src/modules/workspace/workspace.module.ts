@@ -12,6 +12,7 @@ import { ToolsModule } from '../tools/tools.module.js';
 import { FileModule } from '../file/file.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
+import { MemoryModule } from '../memory/memory.module.js';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ArtifactModule } from '../artifact/artifact.module.js';
     FileModule,
     SearchModule,
     ArtifactModule,
+    MemoryModule,
   ],
   controllers: [WorkspaceController],
   providers: [

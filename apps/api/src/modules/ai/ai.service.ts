@@ -335,6 +335,26 @@ TOOLS YANG TERSEDIA:
 - view_skill: Lihat detail dan instruksi skill
 - create_skill: Simpan workflow baru sebagai skill
 - search_skills: Cari skill berdasarkan kata kunci
+- list_memories: Lihat semua memory tersimpan
+- save_memory: Simpan informasi penting sebagai memory
+- search_memories: Cari memory berdasarkan kata kunci
+
+MEMORY (PERSISTENSI LINTAS SESI):
+Memory menyimpan informasi penting yang bisa dipakai di sesi berikutnya. Gunakan save_memory untuk:
+- Preferensi user: format output, bahasa, gaya komunikasi
+- Konteks workspace: data penting, pola yang ditemukan, anomali
+- Riwayat kerja: tugas yang sudah dilakukan, hasilnya
+- History workspace: ringkasan aktivitas workspace
+
+Setelah menyelesaikan tugas, WAJIB simpan memory:
+1. save_memory type=preference → jika menemukan preferensi user
+2. save_memory type=context → jika ada data/insight penting
+3. save_memory type=workspace_history → ringkasan tugas yang dilakukan
+
+Contoh:
+- save_memory(type=preference, key="format_laporan", content="User suka format tabel dengan warna biru")
+- save_memory(type=context, key="data_penjualan_januari", content="Total penjualan Januari: Rp 50 juta, naik 10% dari Desember")
+- save_memory(type=workspace_history, key="workspace_abc_summary", content="Berhasil rekap data penjualan, buat laporan Excel, temukan selisih Rp 2 juta")
 
 SKILLS (WORKFLOW TEMPLATE):
 Skills adalah template workflow yang bisa dipakai ulang. Setelah menyelesaikan tugas kompleks dengan sukses, WAJIB simpan workflow-nya sebagai skill baru menggunakan create_skill. Ini memungkinkan kamu belajar dari pengalaman dan mengerjakan tugas serupa lebih cepat di masa depan.
@@ -349,8 +369,9 @@ Contoh skill: "rekap_penjualan_bulanan" — langkah-langkah membaca data penjual
 
 FLOW KERJA:
 1. Cek list_skills → apakah ada skill yang cocok untuk tugas ini?
-2. Jika ada, view_skill → ikuti instruksi skill
-3. Jika tidak ada, mulai manual:
+2. Cek list_memories → apakah ada preferensi/konteks dari sesi sebelumnya?
+3. Jika ada skill cocok, gunakan view_skill untuk melihat instruksi lengkapnya, lalu ikuti
+4. Jika tidak ada, mulai manual:
    a. list_workspace_files → lihat apa saja yang ada
    b. read_workspace_file untuk SETIAP file → baca semua isinya
    c. Analisis dan cross-reference data antar file
@@ -358,13 +379,16 @@ FLOW KERJA:
    e. Buat rekomendasi actionable
    f. Jika ada output yang bisa difile-kan (laporan, rekap), buat file baru
    g. Kirim ringkasan final
-4. Setelah tugas selesai, buat skill baru jika workflow-nya bisa dipakai ulang
+5. Setelah tugas selesai:
+   a. Buat skill baru jika workflow-nya bisa dipakai ulang
+   b. Simpan memory: preferensi, konteks penting, ringkasan workspace
 
 JANGAN LAKUKAN:
 - Jangan skip file yang ada di workspace
 - Jangan hanya membaca 1 file lalu langsung jawab
 - Jangan memberikan analisis tanpa membaca data dulu
-- Jangan panggil tool yang tidak perlu`;
+- Jangan panggil tool yang tidak perlu
+- Jangan lupa simpan memory setelah tugas selesai`;
     }
 
     return `${basePrompt}

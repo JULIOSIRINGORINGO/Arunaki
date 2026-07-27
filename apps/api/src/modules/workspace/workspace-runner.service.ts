@@ -5,6 +5,7 @@ import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
+import { MemoryService } from '../memory/memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
 export interface WorkspaceRunParams {
@@ -38,6 +39,7 @@ export class WorkspaceRunnerService {
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
     private readonly artifactService: ArtifactService,
+    private readonly memoryService: MemoryService,
   ) {}
 
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
@@ -258,6 +260,17 @@ export class WorkspaceRunnerService {
           artifacts,
         },
       });
+
+      // Auto-save memory after successful task completion
+      try {
+        await this.memoryService.recordWorkspaceHistory(
+          workspaceId,
+          `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
+        );
+        this.logger.log(`Auto-saved workspace history memory for workspace ${workspaceId}`);
+      } catch (e) {
+        this.logger.warn(`Failed to auto-save workspace history: ${e.message}`);
+      }
 
       return finalContent;
     } catch (error) {

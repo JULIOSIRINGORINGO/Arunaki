@@ -14,14 +14,16 @@ import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import { SkillsTool } from './services/skills.tool.js';
+import { MemoryTool } from './services/memory.tool.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { FileModule } from '../file/file.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
+import { MemoryModule } from '../memory/memory.module.js';
 
 @Module({
-  imports: [KnowledgeModule, StorageModule, SearchModule, FileModule, SkillsModule],
+  imports: [KnowledgeModule, StorageModule, SearchModule, FileModule, SkillsModule, MemoryModule],
   providers: [
     ToolRegistryService,
     TextExtractorTool,
@@ -38,6 +40,7 @@ import { SkillsModule } from '../skills/skills.module.js';
     DraftCommunicationTool,
     WorkspaceToolsService,
     SkillsTool,
+    MemoryTool,
   ],
   exports: [
     ToolRegistryService,
@@ -55,6 +58,7 @@ import { SkillsModule } from '../skills/skills.module.js';
     DraftCommunicationTool,
     WorkspaceToolsService,
     SkillsTool,
+    MemoryTool,
   ],
 })
 export class ToolsModule {}

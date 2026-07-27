@@ -272,3 +272,31 @@ model Skill {
 
   @@map("skills")
 }
+
+// Memory - Persistensi lintas sesi
+model Memory {
+  id        String   @id @default(cuid())
+  type      String   @default("preference") // preference, context, interaction, workspace_history
+  key       String   // Unique identifier (e.g. "user_name", "workspace_abc_last_task")
+  content   String   // The actual memory content
+  source    String   @default("auto") // auto (learned), manual (user-set), system
+
+  // Relevance scoring
+  importance Int     @default(5) // 1-10, higher = more important
+  accessCount Int    @default(0) // How many times accessed
+  lastAccessed DateTime? // When last accessed
+
+  // Scope
+  workspaceId String? // If tied to specific workspace (null = global)
+  sessionId  String?  // If tied to specific session
+
+  // Status
+  active     Boolean  @default(true)
+  expiresAt  DateTime? // Optional TTL
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([type, key])
+  @@map("memories")
+}

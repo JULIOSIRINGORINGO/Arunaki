@@ -13,6 +13,7 @@ import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import { SkillsTool } from './services/skills.tool.js';
+import { MemoryTool } from './services/memory.tool.js';
 import {
   ToolResult,
   ToolDefinition,
@@ -51,6 +52,7 @@ export class ToolRegistryService {
     private readonly draftCommunicationTool: DraftCommunicationTool,
     private readonly workspaceToolsService: WorkspaceToolsService,
     private readonly skillsTool: SkillsTool,
+    private readonly memoryTool: MemoryTool,
   ) {
     this.registerBuiltinTools();
   }
@@ -852,6 +854,156 @@ export class ToolRegistryService {
         description: 'Mencari skill berdasarkan kata kunci',
         tags: ['skills', 'search', 'find', 'workflow'],
         inputSchema: { query: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('list_memories', {
+      handler: (args) => this.memoryTool.listMemories(args.workspaceId),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'list_memories',
+          description: 'Melihat semua memory (preferensi, konteks, riwayat) yang tersimpan.',
+          parameters: {
+            type: 'object',
+            properties: {
+              workspaceId: {
+                type: 'string',
+                description: 'ID Workspace (opsional, untuk melihat memory spesifik workspace)',
+              },
+            },
+          },
+        },
+      },
+      capability: {
+        name: 'list_memories',
+        displayName: 'Daftar Memory',
+        description: 'Melihat semua memory tersimpan',
+        tags: ['memory', 'list', 'context', 'preferences'],
+        inputSchema: {},
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('save_memory', {
+      handler: (args) => this.memoryTool.saveMemory({
+        type: args.type,
+        key: args.key,
+        content: args.content,
+        importance: args.importance,
+        workspaceId: args.workspaceId,
+      }),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'save_memory',
+          description: 'Menyimpan informasi penting sebagai memory (preferensi, konteks, riwayat).',
+          parameters: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['preference', 'context', 'interaction', 'workspace_history'],
+                description: 'Jenis memory: preference (suka/tidak suka), context (info penting), interaction (riwayat kerja), workspace_history (riwayat workspace)',
+              },
+              key: {
+                type: 'string',
+                description: 'Kunci unik memory (misal: "user_name", "format_output")',
+              },
+              content: {
+                type: 'string',
+                description: 'Isi memory',
+              },
+              importance: {
+                type: 'number',
+                description: 'Tingkat kepentingan 1-10 (default: 5)',
+              },
+              workspaceId: {
+                type: 'string',
+                description: 'ID Workspace (opsional, untuk memory spesifik workspace)',
+              },
+            },
+            required: ['type', 'key', 'content'],
+          },
+        },
+      },
+      capability: {
+        name: 'save_memory',
+        displayName: 'Simpan Memory',
+        description: 'Menyimpan informasi penting sebagai memory',
+        tags: ['memory', 'save', 'remember', 'preference', 'context'],
+        inputSchema: { type: 'string', key: 'string', content: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('search_memories', {
+      handler: (args) => this.memoryTool.searchMemories(args.query),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'search_memories',
+          description: 'Mencari memory berdasarkan kata kunci.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Kata kunci pencarian',
+              },
+            },
+            required: ['query'],
+          },
+        },
+      },
+      capability: {
+        name: 'search_memories',
+        displayName: 'Cari Memory',
+        description: 'Mencari memory berdasarkan kata kunci',
+        tags: ['memory', 'search', 'find', 'recall'],
+        inputSchema: { query: 'string' },
+        outputType: 'text',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: 5000,
+    });
+
+    this.register('delete_memory', {
+      handler: (args) => this.memoryTool.deleteMemory(args.type, args.key),
+      definition: {
+        type: 'function',
+        function: {
+          name: 'delete_memory',
+          description: 'Menghapus memory berdasarkan jenis dan kunci.',
+          parameters: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                description: 'Jenis memory',
+              },
+              key: {
+                type: 'string',
+                description: 'Kunci memory',
+              },
+            },
+            required: ['type', 'key'],
+          },
+        },
+      },
+      capability: {
+        name: 'delete_memory',
+        displayName: 'Hapus Memory',
+        description: 'Menghapus memory',
+        tags: ['memory', 'delete', 'remove'],
+        inputSchema: { type: 'string', key: 'string' },
         outputType: 'text',
         estimatedLatency: 'fast',
       },
