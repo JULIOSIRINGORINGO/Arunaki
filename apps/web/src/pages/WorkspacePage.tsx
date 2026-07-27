@@ -158,14 +158,14 @@ export function WorkspacePage() {
     }
   }, []);
 
-  const doConnect = useCallback(async (files: File[], folderName: string) => {
+  const doConnect = useCallback(async (files: File[], folderName: string, businessType: string = "generic") => {
     setIsCreating(true);
     try {
       // 1. Create workspace
       const wsRes = await fetch(`${API_BASE}/workspaces`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: folderName }),
+        body: JSON.stringify({ name: folderName, businessType }),
       });
       const wsJson = await wsRes.json();
       const newId = wsJson.data?.id;

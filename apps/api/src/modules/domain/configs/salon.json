@@ -1,0 +1,37 @@
+{
+  "id": "salon",
+  "name": "Salon / Spa Kecantikan",
+  "description": "Perawatan rambut, facial, manicure/pedicure, paket treatment, dan produk kecantikan",
+  "units": {
+    "count": [
+      { "name": "treatment", "toBase": 1, "label": "Perawatan / Treatment" },
+      { "name": "paket", "toBase": 1, "label": "Paket Spa" },
+      { "name": "pcs", "toBase": 1, "label": "Pcs Produk" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Daftar Perawatan",
+      "columns": ["Nama Treatment", "Kategori", "Durasi", "Harga"],
+      "example": ["Hair Spa + Creambath", "Rambut", "60 Menit", "Rp 120.000"]
+    }
+  ],
+  "terminology": {
+    "treatment": "Layanan perawatan kecantikan",
+    "capster": "Stylist / Penata Rambut",
+    "therapist": "Terapis Spa & Facial"
+  },
+  "communication": {
+    "greetingTemplate": "Halo Kak {name} 💇‍♀️,\n\nReservasi/Treatment *{topic}*:\n{points}\n\nSampai jumpa di salon kami!",
+    "formality": "polite",
+    "phrases": {
+      "confirm_order": "Konfirmasi reservasi jam & stylist salon",
+      "price_quote": "Rincian biaya perawatan:",
+      "delivery": "Jadwal kedatangan:"
+    }
+  },
+  "promptExamples": "- Contoh salon: Reservasi Hair Spa + Creambath alpukat besok jam 2 siang"
+}

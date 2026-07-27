@@ -1,5 +1,6 @@
 import { Module, Global } from '@nestjs/common';
 import { DomainRegistryService } from './domain.registry.service.js';
+import { DomainController } from './domain.controller.js';
 
 /**
  * DomainModule — provides domain-specific configuration.
@@ -10,6 +11,7 @@ import { DomainRegistryService } from './domain.registry.service.js';
  */
 @Global()
 @Module({
+  controllers: [DomainController],
   providers: [DomainRegistryService],
   exports: [DomainRegistryService],
 })

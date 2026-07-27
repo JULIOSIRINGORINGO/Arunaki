@@ -333,3 +333,22 @@ model Provider {
 
   @@map("providers")
 }
+
+// DomainConfig - Dynamic industry domain configuration (units, terminology, formulas, reports, skills)
+model DomainConfig {
+  id           String   @id @default(cuid())
+  key          String   @unique // e.g. "garment", "restaurant", "retail", "manufaktur"
+  name         String
+  category     String   // e.g. "manufacturing", "culinary", "retail", "services"
+  description  String?
+  units        String   // JSON stringified: { weight: ["kg", "gram"], currency: "IDR" }
+  terminology  String   // JSON stringified: { product: "Baju", bom: "PolaPotong" }
+  formulas     String   // JSON stringified: { hpp: "bahan_baku + tenaga_kerja + overhead" }
+  reports      String   // JSON stringified: { templates: ["laba_rugi", "rug", "neraca"] }
+  skills       String   // JSON stringified: array of skill IDs
+  isSystem     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("domain_configs")
+}

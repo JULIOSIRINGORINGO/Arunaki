@@ -1,0 +1,44 @@
+{
+  "id": "percetakan",
+  "name": "Percetakan / Digital Printing",
+  "description": "Cetak banner, spanduk, brosur, bahan kertas (Art Paper, Flexi), ukuran per meter persegi (m2), dan finishing",
+  "units": {
+    "length": [
+      { "name": "m2", "toBase": 1, "label": "Meter Persegi (m²)" },
+      { "name": "meter", "toBase": 1, "label": "Meter" },
+      { "name": "cm", "toBase": 0.01, "label": "Centimeter" }
+    ],
+    "count": [
+      { "name": "rim", "toBase": 500, "label": "Rim (500 lembar)" },
+      { "name": "lembar", "toBase": 1, "label": "Lembar" },
+      { "name": "pcs", "toBase": 1, "label": "Pieces" },
+      { "name": "box", "toBase": 100, "label": "Box Kartu Nama (100 pcs)" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Daftar Biaya Cetak",
+      "columns": ["Jenis Bahan", "Tipe Print", "Harga/m2", "Finishing", "Minimal Order"],
+      "example": ["Flexi Korea 440g", "Outdoor HighRes", "Rp 25.000/m2", "Mata Ayam 4 sudut", "1 m2"]
+    }
+  ],
+  "terminology": {
+    "flexi": "Bahan spanduk / banner outdoor",
+    "art_paper": "Kertas halus untuk brosur & katalog",
+    "rim": "Satuan kertas (500 lembar)",
+    "mata_ayam": "Lubang cincin besi pengikat banner"
+  },
+  "communication": {
+    "greetingTemplate": "Halo Kak {name} 🖨️,\n\nEstimasi Biaya Cetak *{topic}*:\n{points}\n\nFile siap cetak bisa dikirimkan ke email/WA ini ya.",
+    "formality": "polite",
+    "phrases": {
+      "confirm_order": "Konfirmasi ukuran, bahan, & finishing cetak",
+      "price_quote": "Hitungan luas m2 & biaya total:",
+      "delivery": "Estimasi waktu selesai cetak:"
+    }
+  },
+  "promptExamples": "- Contoh percetakan: Hitung cetak banner 3m x 2m bahan Flexi Korea 440g"
+}

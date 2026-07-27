@@ -26,8 +26,16 @@ interface KnowledgeDoc {
   createdAt: string;
 }
 
+interface DomainTemplate {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export function KnowledgePage() {
+  const [activeTab, setActiveTab] = useState<"knowledge" | "domains">("knowledge");
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [domains, setDomains] = useState<DomainTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
@@ -51,9 +59,20 @@ export function KnowledgePage() {
     }
   }, []);
 
+  const fetchDomains = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/domains`);
+      const data = await res.json();
+      setDomains(data.data || []);
+    } catch {
+      setDomains([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDocs();
-  }, [fetchDocs]);
+    fetchDomains();
+  }, [fetchDocs, fetchDomains]);
 
   const toggleActive = async (id: string) => {
     try {
@@ -175,6 +194,63 @@ export function KnowledgePage() {
           <span>Tambah Knowledge</span>
         </button>
       </div>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("knowledge")}
+          className={cn(
+            "px-4 py-2 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px",
+            activeTab === "knowledge"
+              ? "border-gray-900 text-gray-900"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          )}
+        >
+          Basis Pengetahuan Perusahaan ({docs.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("domains")}
+          className={cn(
+            "px-4 py-2 text-sm font-semibold transition-all duration-150 border-b-2 -mb-px flex items-center gap-2",
+            activeTab === "domains"
+              ? "border-gray-900 text-gray-900"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          )}
+        >
+          <span>Templat Industri Bisnis ({domains.length})</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent">
+            Domain System
+          </span>
+        </button>
+      </div>
+
+      {activeTab === "domains" && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="p-4 rounded-xl bg-surface-100 border border-surface-200 text-xs text-surface-600 leading-relaxed">
+            💡 <strong>Domain Config System</strong> mengatur secara otomatis istilah industri, satuan (*units*), rumus kalkulasi (*formulas*), dan format laporan (*report templates*) untuk AI Agent Anda tanpa hardcoded rules.
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {domains.map((domain) => (
+              <div
+                key={domain.id}
+                className="p-5 rounded-2xl bg-white border border-gray-200/80 shadow-2xs hover:border-accent/40 transition-all duration-150 space-y-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900 text-sm">{domain.name}</h3>
+                  <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                    {domain.id}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 line-clamp-2">{domain.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === "knowledge" && (
+      <>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -529,6 +605,9 @@ export function KnowledgePage() {
             )}
           </div>
         </div>
+      )}
+
+      </>
       )}
 
       {/* Preview Modal */}

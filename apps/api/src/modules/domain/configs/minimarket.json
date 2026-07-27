@@ -1,0 +1,44 @@
+{
+  "id": "minimarket",
+  "name": "Minimarket / Toko Kelontong",
+  "description": "Retail bahan pokok, snack, minuman, harga grosir vs eceran, dan stok kasir",
+  "units": {
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces / Eceran" },
+      { "name": "pack", "toBase": 1, "label": "Pack" },
+      { "name": "dus", "toBase": 24, "label": "Dus / Karton (24 pcs)" },
+      { "name": "karton", "toBase": 24, "label": "Karton (24 pcs)" },
+      { "name": "slop", "toBase": 10, "label": "Slop (10 bungkus)" },
+      { "name": "renceng", "toBase": 10, "label": "Renceng (10 sachet)" }
+    ],
+    "mass": [
+      { "name": "kg", "toBase": 1, "label": "Kilogram (Beras/Gula)" },
+      { "name": "gram", "toBase": 0.001, "label": "Gram" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Katalog Minimarket",
+      "columns": ["Barcode", "Nama Barang", "Kategori", "Harga Ecer", "Harga Dus", "Stok"],
+      "example": ["8999901001", "Minyak Goreng 2L", "Sembako", "Rp 34.000", "Rp 195.000/dus", "48 pcs"]
+    }
+  ],
+  "terminology": {
+    "ecer": "Harga Penjualan Satuan",
+    "grosir": "Harga Penjualan Jumlah Banyak (Dus/Karton)",
+    "barcode": "Kode Barcode Produk Barcode Scanner"
+  },
+  "communication": {
+    "greetingTemplate": "Halo Pelanggan Setia {name} 🛒,\n\nInformasi *{topic}*:\n{points}\n\nTerima kasih sudah berbelanja!",
+    "formality": "casual",
+    "phrases": {
+      "confirm_order": "Konfirmasi barang belanjaan",
+      "price_quote": "Rincian struk belanja:",
+      "delivery": "Pengiriman barang grosir:"
+    }
+  },
+  "promptExamples": "- Contoh minimarket: Hitung total belanja 2 dus Indomie + 5kg gula pasir"
+}

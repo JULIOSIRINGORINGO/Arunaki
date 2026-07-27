@@ -458,10 +458,26 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 21: Domain Config System (Plugin System for Business) ✅ DONE
+
+**Goal:** Dynamic industry domain configuration engine replacing hardcoded rules with 15+ Indonesian business templates, DB storage, and Web UI builder.
+
+### 21.1 Backend - Prisma Schema & Domain Module
+- [x] Model `DomainConfig` in `schema.prisma` with SQLite & Prisma ORM generation
+- [x] `DomainRegistryService` — Dynamic resolution of domain units, terminology, formulas, and report templates
+- [x] `DomainController` — REST API (`GET /api/v1/domains`, `GET /api/v1/domains/:key`)
+- [x] 15+ Indonesian Industry JSON Templates (`garment.json`, `restaurant.json`, `retail.json`, `manufaktur.json`, `apotek.json`, `bengkel.json`, `laundry.json`, `minimarket.json`, `distributor.json`, `percetakan.json`, `petshop.json`, `salon.json`, `kontraktor.json`, `ekspedisi.json`, `generic.json`)
+
+### 21.2 Frontend - Workspace & Knowledge UI
+- [x] `CreateWorkspaceModal.tsx` — Dynamic Industry Domain Selector (15 Indonesian industry options)
+- [x] `KnowledgePage.tsx` — Domain System tab rendering active industry domain templates & specs
+
+---
+
 ## Current Status
 
-**Phase:** Phase 20 Complete — Autonomous Workspace Agent Engine & UI ✅  
-**Next:** User Verification / End-to-End System Evaluation
+**Phase:** Phase 21 Complete — Domain Config System (Plugin System for Business) ✅  
+**Next:** Phase 3 Multi-Channel Gateway (WhatsApp/Telegram) & Proactive Cron Scheduler
 
 ---
 

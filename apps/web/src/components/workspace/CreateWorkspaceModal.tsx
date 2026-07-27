@@ -1,13 +1,31 @@
 /* Hallmark · component: create-workspace-modal · genre: atmospheric · theme: Studio */
 import { useState, useRef, useEffect } from "react";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, Building2 } from "lucide-react";
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string) => void;
+  onSubmit: (name: string, businessType?: string) => void;
   isLoading?: boolean;
 }
+
+const DOMAIN_TEMPLATES = [
+  { id: "generic", label: "Umum / Generic" },
+  { id: "garment", label: "Garment & Tekstil" },
+  { id: "restaurant", label: "Restoran / Kuliner" },
+  { id: "retail", label: "Retail / Toko" },
+  { id: "manufaktur", label: "Manufaktur / Pabrik" },
+  { id: "apotek", label: "Apotek / Farmasi" },
+  { id: "bengkel", label: "Bengkel / Otomotif" },
+  { id: "laundry", label: "Laundry / Jasa Cuci" },
+  { id: "minimarket", label: "Minimarket / Kelontong" },
+  { id: "distributor", label: "Distributor / Supplier" },
+  { id: "percetakan", label: "Percetakan / Printing" },
+  { id: "petshop", label: "Petshop / Grooming" },
+  { id: "salon", label: "Salon / Spa Kecantikan" },
+  { id: "kontraktor", label: "Kontraktor / Konstruksi" },
+  { id: "ekspedisi", label: "Ekspedisi / Logistik" },
+];
 
 export function CreateWorkspaceModal({
   isOpen,
@@ -16,6 +34,7 @@ export function CreateWorkspaceModal({
   isLoading,
 }: CreateWorkspaceModalProps) {
   const [name, setName] = useState("");
+  const [businessType, setBusinessType] = useState("generic");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,8 +48,9 @@ export function CreateWorkspaceModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onSubmit(name.trim());
+      onSubmit(name.trim(), businessType);
       setName("");
+      setBusinessType("generic");
     }
   };
 
@@ -48,7 +68,7 @@ export function CreateWorkspaceModal({
                 Buat Workspace
               </h2>
               <p className="text-[11px] text-surface-500">
-                Workspace baru untuk dokumen Anda
+                Workspace baru untuk bisnis Anda
               </p>
             </div>
           </div>
@@ -60,20 +80,40 @@ export function CreateWorkspaceModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5">
-          <label className="block text-[12px] font-medium text-surface-600 mb-1.5">
-            Nama Workspace
-          </label>
-          <input
-            ref={inputRef}
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Contoh: Garment Production Q3"
-            className="w-full px-3 py-2.5 bg-surface-200 border border-surface-300 rounded-lg text-[13px] text-surface-900 placeholder:text-surface-500 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all duration-150"
-          />
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-[12px] font-medium text-surface-600 mb-1.5">
+              Nama Workspace
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Contoh: Garment Production Q3"
+              className="w-full px-3 py-2.5 bg-surface-200 border border-surface-300 rounded-lg text-[13px] text-surface-900 placeholder:text-surface-500 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all duration-150"
+            />
+          </div>
 
-          <div className="flex justify-end gap-2.5 mt-5">
+          <div>
+            <label className="block text-[12px] font-medium text-surface-600 mb-1.5 flex items-center gap-1.5">
+              <Building2 size={13} className="text-surface-500" />
+              Industri / Domain Bisnis
+            </label>
+            <select
+              value={businessType}
+              onChange={(e) => setBusinessType(e.target.value)}
+              className="w-full px-3 py-2.5 bg-surface-200 border border-surface-300 rounded-lg text-[13px] text-surface-900 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all duration-150"
+            >
+              {DOMAIN_TEMPLATES.map((tmpl) => (
+                <option key={tmpl.id} value={tmpl.id}>
+                  {tmpl.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-2.5 mt-5 pt-2">
             <button
               type="button"
               onClick={onClose}
