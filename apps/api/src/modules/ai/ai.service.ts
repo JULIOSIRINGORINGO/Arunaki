@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ProviderService } from '../provider/provider.service.js';
 
 export interface ToolCall {
   id: string;
@@ -44,21 +45,59 @@ export interface ToolDefinition {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private readonly apiKey: string;
-  private readonly baseUrl = 'https://openrouter.ai/api/v1';
-  private readonly model: string;
   private readonly enc: ReturnType<typeof encoding_for_model>;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey =
-      this.config.get<string>('OPENROUTER_API_KEY') ||
-      this.config.get<string>('AI_API_KEY') ||
-      '';
-    this.model =
-      this.config.get<string>('OPENROUTER_MODEL') ||
-      this.config.get<string>('AI_MODEL') ||
-      'nvidia/nemotron-3-ultra-550b-a55b:free';
+  // Fallback values from .env (used if no provider configured in DB)
+  private readonly fallbackApiKey: string;
+  private readonly fallbackBaseUrl: string;
+  private readonly fallbackModel: string;
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly providerService: ProviderService,
+  ) {
+    this.fallbackApiKey =
+      this.config.get<string>('AI_API_KEY') || '';
+    this.fallbackBaseUrl =
+      this.config.get<string>('AI_BASE_URL') || 'https://openrouter.ai/api/v1';
+    this.fallbackModel =
+      this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
     this.enc = encoding_for_model('gpt-4' as any);
+  }
+
+  /**
+   * Get active provider config from DB, fallback to .env
+   */
+  private async getProviderConfig(): Promise<{
+    apiKey: string;
+    baseUrl: string;
+    model: string;
+    providerId?: string;
+    headerPrefix?: string;
+    headerTitle?: string;
+  }> {
+    try {
+      const dbConfig = await this.providerService.getActiveConfig();
+      if (dbConfig) {
+        return {
+          apiKey: dbConfig.apiKey,
+          baseUrl: dbConfig.baseUrl.replace(/\/$/, ''),
+          model: dbConfig.model,
+          providerId: dbConfig.id,
+          headerPrefix: dbConfig.headerPrefix,
+          headerTitle: dbConfig.headerTitle,
+        };
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to load provider from DB: ${err.message}`);
+    }
+
+    // Fallback to .env
+    return {
+      apiKey: this.fallbackApiKey,
+      baseUrl: this.fallbackBaseUrl.replace(/\/$/, ''),
+      model: this.fallbackModel,
+    };
   }
 
   /**
@@ -236,11 +275,18 @@ export class AiService {
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): Promise<AiResponse> {
+    // Get provider config from DB (or .env fallback)
+    const provider = await this.getProviderConfig();
+
+    if (!provider.apiKey) {
+      throw new Error('No API key configured. Go to Settings → AI Models to add a provider.');
+    }
+
     // Apply context management: prune large outputs + truncate if needed
     const preparedMessages = this.prepareMessages(messages);
 
     const body: Record<string, any> = {
-      model: this.model,
+      model: provider.model,
       messages: preparedMessages,
       temperature: 0.7,
       max_tokens: 4096,
@@ -250,21 +296,50 @@ export class AiService {
       body.tools = tools;
     }
 
-    const response = await this.fetchWithRetry(`${this.baseUrl}/chat/completions`, {
+    // Build headers — support custom headers per provider
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${provider.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // OpenRouter requires HTTP-Referer
+    if (provider.baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://arunaki.app';
+      headers['X-Title'] = 'Arunaki AI Assistant';
+    }
+
+    // Custom headers from provider config
+    if (provider.headerPrefix) {
+      headers['HTTP-Referer'] = provider.headerPrefix;
+    }
+    if (provider.headerTitle) {
+      headers['X-Title'] = provider.headerTitle;
+    }
+
+    const response = await this.fetchWithRetry(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://arunaki.app',
-        'X-Title': 'Arunaki AI Assistant',
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const error = await response.text();
-      this.logger.error(`OpenRouter API error: ${response.status} - ${error}`);
+      this.logger.error(`AI API error (${provider.baseUrl}): ${response.status} - ${error}`);
+
+      // Record error for the provider
+      if (provider.providerId) {
+        await this.providerService.recordError(
+          provider.providerId,
+          `HTTP ${response.status}: ${error.substring(0, 200)}`,
+        ).catch(() => {});
+      }
+
       throw new Error(`AI request failed: ${response.status}`);
+    }
+
+    // Record successful usage
+    if (provider.providerId) {
+      await this.providerService.recordUsage(provider.providerId).catch(() => {});
     }
 
     const data = await response.json();
