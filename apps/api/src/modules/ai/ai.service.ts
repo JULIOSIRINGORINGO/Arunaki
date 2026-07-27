@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ProviderService } from '../provider/provider.service.js';
+import { ProviderService, ProviderConfig } from '../provider/provider.service.js';
 
 export interface ToolCall {
   id: string;
@@ -68,24 +68,13 @@ export class AiService {
   /**
    * Get active provider config from DB, fallback to .env
    */
-  private async getProviderConfig(): Promise<{
-    apiKey: string;
-    baseUrl: string;
-    model: string;
-    providerId?: string;
-    headerPrefix?: string;
-    headerTitle?: string;
-  }> {
+  private async getProviderConfig(): Promise<ProviderConfig> {
     try {
       const dbConfig = await this.providerService.getActiveConfig();
       if (dbConfig) {
         return {
-          apiKey: dbConfig.apiKey,
+          ...dbConfig,
           baseUrl: dbConfig.baseUrl.replace(/\/$/, ''),
-          model: dbConfig.model,
-          providerId: dbConfig.id,
-          headerPrefix: dbConfig.headerPrefix,
-          headerTitle: dbConfig.headerTitle,
         };
       }
     } catch (err: any) {
@@ -94,10 +83,78 @@ export class AiService {
 
     // Fallback to .env
     return {
-      apiKey: this.fallbackApiKey,
+      id: 'env-fallback',
+      name: '.env Fallback',
+      type: 'openai-compatible',
       baseUrl: this.fallbackBaseUrl.replace(/\/$/, ''),
+      apiKey: this.fallbackApiKey,
       model: this.fallbackModel,
     };
+  }
+
+  /**
+   * Build request headers for a provider.
+   */
+  private buildHeaders(provider: ProviderConfig): Record<string, string> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${provider.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+
+    // OpenRouter requires HTTP-Referer
+    if (provider.baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://arunaki.app';
+      headers['X-Title'] = 'Arunaki AI Assistant';
+    }
+
+    // Custom headers from provider config
+    if (provider.headerPrefix) {
+      headers['HTTP-Referer'] = provider.headerPrefix;
+    }
+    if (provider.headerTitle) {
+      headers['X-Title'] = provider.headerTitle;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Make a single API request to a provider.
+   * Returns the response or throws on network/timeout errors.
+   */
+  private async makeRequest(
+    provider: ProviderConfig,
+    body: Record<string, any>,
+    timeoutMs = 60000,
+  ): Promise<{ response: Response; statusCode: number }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: this.buildHeaders(provider),
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return { response, statusCode: response.status };
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      const isAbort = err.name === 'AbortError';
+      throw new Error(isAbort ? `Request timed out after ${timeoutMs}ms` : err.message);
+    }
+  }
+
+  /**
+   * Sleep with jittered exponential backoff.
+   * attempt 1 → 1-2s, attempt 2 → 2-4s, attempt 3 → 4-8s
+   */
+  private async jitteredBackoff(attempt: number, baseMs = 1000): Promise<void> {
+    const maxDelay = baseMs * Math.pow(2, attempt);
+    const delay = Math.floor(Math.random() * maxDelay) + baseMs;
+    this.logger.log(`Backoff: waiting ${delay}ms (attempt ${attempt})`);
+    await new Promise((r) => setTimeout(r, delay));
   }
 
   /**
@@ -223,67 +280,28 @@ export class AiService {
     return prepared;
   }
 
-  private async fetchWithRetry(
-    url: string,
-    options: RequestInit,
-    timeoutMs = 60000,
-    maxRetries = 3,
-  ): Promise<Response> {
-    let attempt = 0;
-    while (attempt < maxRetries) {
-      attempt++;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
-          const backoffMs = Math.pow(2, attempt) * 1000;
-          this.logger.warn(
-            `AI request HTTP ${res.status}. Attempt ${attempt}/${maxRetries}. Retrying in ${backoffMs}ms...`,
-          );
-          await new Promise((r) => setTimeout(r, backoffMs));
-          continue;
-        }
-        return res;
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        const isAbort = err.name === 'AbortError';
-        const errMsg = isAbort
-          ? `Request timed out after ${timeoutMs}ms`
-          : err.message;
-
-        if (attempt < maxRetries) {
-          const backoffMs = Math.pow(2, attempt) * 1000;
-          this.logger.warn(
-            `AI request error (${errMsg}). Attempt ${attempt}/${maxRetries}. Retrying in ${backoffMs}ms...`,
-          );
-          await new Promise((r) => setTimeout(r, backoffMs));
-        } else {
-          throw new Error(
-            `AI request failed after ${maxRetries} attempts: ${errMsg}`,
-          );
-        }
-      }
-    }
-    throw new Error(`AI request failed after ${maxRetries} attempts.`);
-  }
-
+  /**
+   * Main chat method with credential pool + error classification.
+   *
+   * Flow:
+   * 1. Get active provider
+   * 2. Make request
+   * 3. On error: classify → retry (same provider) or rotate (next provider)
+   * 4. Max 3 retries per provider, max 3 provider rotations
+   */
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): Promise<AiResponse> {
-    // Get provider config from DB (or .env fallback)
-    const provider = await this.getProviderConfig();
+    // Apply context management: prune large outputs + truncate if needed
+    const preparedMessages = this.prepareMessages(messages);
+
+    // Get starting provider
+    let provider = await this.getProviderConfig();
 
     if (!provider.apiKey) {
       throw new Error('No API key configured. Go to Settings → AI Models to add a provider.');
     }
-
-    // Apply context management: prune large outputs + truncate if needed
-    const preparedMessages = this.prepareMessages(messages);
 
     const body: Record<string, any> = {
       model: provider.model,
@@ -296,77 +314,133 @@ export class AiService {
       body.tools = tools;
     }
 
-    // Build headers — support custom headers per provider
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${provider.apiKey}`,
-      'Content-Type': 'application/json',
-    };
+    // Pool state
+    const MAX_RETRIES_PER_PROVIDER = 3;
+    const MAX_ROTATIONS = 3;
+    let rotationCount = 0;
+    let triedProviders = new Set<string>([provider.id]);
+    let lastError: string | undefined;
 
-    // OpenRouter requires HTTP-Referer
-    if (provider.baseUrl.includes('openrouter.ai')) {
-      headers['HTTP-Referer'] = 'https://arunaki.app';
-      headers['X-Title'] = 'Arunaki AI Assistant';
-    }
+    while (rotationCount <= MAX_ROTATIONS) {
+      let retryCount = 0;
 
-    // Custom headers from provider config
-    if (provider.headerPrefix) {
-      headers['HTTP-Referer'] = provider.headerPrefix;
-    }
-    if (provider.headerTitle) {
-      headers['X-Title'] = provider.headerTitle;
-    }
+      // Retry loop for the same provider (5xx errors)
+      while (retryCount < MAX_RETRIES_PER_PROVIDER) {
+        try {
+          this.logger.log(
+            `[${provider.name}] Request attempt (retry=${retryCount}, rotation=${rotationCount})`,
+          );
 
-    const response = await this.fetchWithRetry(`${provider.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+          const { response, statusCode } = await this.makeRequest(provider, body);
 
-    if (!response.ok) {
-      const error = await response.text();
-      this.logger.error(`AI API error (${provider.baseUrl}): ${response.status} - ${error}`);
+          // Success
+          if (response.ok) {
+            // Record successful usage
+            if (provider.id !== 'env-fallback') {
+              await this.providerService.recordUsage(provider.id).catch(() => {});
+            }
 
-      // Record error for the provider
-      if (provider.providerId) {
-        await this.providerService.recordError(
-          provider.providerId,
-          `HTTP ${response.status}: ${error.substring(0, 200)}`,
-        ).catch(() => {});
+            const data = await response.json();
+            const choice = data.choices?.[0];
+
+            if (!choice) {
+              throw new Error('No response from AI');
+            }
+
+            let content = choice.message?.content || '';
+            content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+            if (!content && choice.message?.tool_calls?.length === 0) {
+              content = 'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
+            }
+
+            return {
+              content,
+              model: data.model,
+              toolCalls: choice.message?.tool_calls || [],
+              usage: {
+                promptTokens: data.usage?.prompt_tokens || 0,
+                completionTokens: data.usage?.completion_tokens || 0,
+                totalTokens: data.usage?.total_tokens || 0,
+              },
+            };
+          }
+
+          // Error — classify it
+          const errorBody = await response.text();
+          const classified = this.providerService.classifyError(statusCode, errorBody);
+
+          this.logger.warn(
+            `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
+          );
+
+          // Record error for this provider
+          if (provider.id !== 'env-fallback') {
+            await this.providerService
+              .recordError(provider.id, `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`)
+              .catch(() => {});
+          }
+
+          if (classified.action === 'retry') {
+            // 5xx: retry same provider with backoff
+            retryCount++;
+            if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+              await this.jitteredBackoff(retryCount);
+              continue;
+            }
+            // Exhausted retries for this provider → try rotation
+            break;
+          }
+
+          if (classified.action === 'rotate') {
+            // 429/402/401/403/503: rotate to next provider
+            if (provider.id !== 'env-fallback' && classified.cooldownSeconds) {
+              await this.providerService
+                .setCooldown(provider.id, classified.cooldownSeconds)
+                .catch(() => {});
+            }
+            break; // Exit retry loop, enter rotation
+          }
+
+          if (classified.action === 'fatal') {
+            throw new Error(classified.message);
+          }
+        } catch (err: any) {
+          // Network/timeout error
+          lastError = err.message;
+          this.logger.warn(`[${provider.name}] Network error: ${err.message}`);
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+            await this.jitteredBackoff(retryCount);
+            continue;
+          }
+          break;
+        }
       }
 
-      throw new Error(`AI request failed: ${response.status}`);
+      // Try rotation — get next available provider
+      rotationCount++;
+      if (rotationCount > MAX_ROTATIONS) {
+        break;
+      }
+
+      const nextProvider = await this.providerService.getNextAvailable(provider.id);
+      if (!nextProvider) {
+        this.logger.warn('No more available providers for rotation');
+        break;
+      }
+
+      this.logger.log(
+        `Rotating: ${provider.name} → ${nextProvider.name} (rotation ${rotationCount}/${MAX_ROTATIONS})`,
+      );
+      triedProviders.add(nextProvider.id);
+      provider = nextProvider;
     }
 
-    // Record successful usage
-    if (provider.providerId) {
-      await this.providerService.recordUsage(provider.providerId).catch(() => {});
-    }
-
-    const data = await response.json();
-    const choice = data.choices?.[0];
-
-    if (!choice) {
-      throw new Error('No response from AI');
-    }
-
-    let content = choice.message?.content || '';
-    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-    if (!content && choice.message?.tool_calls?.length === 0) {
-      content =
-        'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
-    }
-
-    return {
-      content,
-      model: data.model,
-      toolCalls: choice.message?.tool_calls || [],
-      usage: {
-        promptTokens: data.usage?.prompt_tokens || 0,
-        completionTokens: data.usage?.completion_tokens || 0,
-        totalTokens: data.usage?.total_tokens || 0,
-      },
-    };
+    // All providers exhausted
+    throw new Error(
+      `All providers exhausted after ${rotationCount} rotations. Last error: ${lastError || 'unknown'}`,
+    );
   }
 
   /**

@@ -317,6 +317,7 @@ model Provider {
   // Status
   active    Boolean  @default(false) // Only one provider active at a time
   priority  Int      @default(0) // For future credential pool: higher = tried first
+  cooldownUntil DateTime? // When this provider can be retried (null = available)
 
   // Metadata
   lastUsedAt  DateTime?
