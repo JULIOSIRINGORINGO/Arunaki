@@ -54,7 +54,7 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 | Auto-save memory setelah tugas | ✅ |
 | Auto-save skill dari workflow | ✅ |
 | Workspace prompt updated | ✅ |
-| Hermes-style prompt architecture | ✅ |
+| OpenClaw-style prompt architecture | ✅ |
 | English prompts (modular files) | ✅ |
 | Tool-Use Enforcement rules | ✅ |
 | Anti-Fabrication rules | ✅ |

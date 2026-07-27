@@ -12,7 +12,7 @@ Follow the project specifications before writing code. Specifications take prece
 
 **Arunaki is a Web UI application.** Not terminal, not Telegram, not CLI. All features, interactions, and UX must be designed for a browser-based web interface.
 
-When reverse-engineering or borrowing ideas from other projects (Hermes Agent, OpenClaw, etc.), always adapt them to fit a web UI context. Do NOT assume terminal/CLI/Telegram patterns unless explicitly told otherwise.
+When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.), always adapt them to fit a web UI context. Do NOT assume terminal/CLI/Telegram patterns unless explicitly told otherwise.
 
 ## Workspace Isolation (CRITICAL)
 

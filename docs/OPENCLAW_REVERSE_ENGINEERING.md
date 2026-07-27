@@ -1,6 +1,6 @@
 # Arunaki vs OpenClaw — Reverse Engineering Checklist
 
-Status: **Phase 1 Complete (10/10 core patterns)**  
+Status: **Phase 1 Complete** — Core patterns implemented  
 **Phase 2 In Progress** — Domain Config System (the "Plugin System")
 
 ---

@@ -6,7 +6,7 @@ import { DomainConfig, UnitDefinition } from './domain.interface.js';
 /**
  * DomainRegistryService — loads and provides domain configs.
  *
- * Config-driven approach (like Hermes): tools read from JSON configs
+ * Config-driven approach (like OpenClaw): tools read from JSON configs
  * instead of hardcoding domain-specific logic.
  *
  * Usage:
