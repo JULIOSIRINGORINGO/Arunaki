@@ -474,10 +474,26 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 22: Proactive Cron Scheduler & Automated Web Reports ✅ DONE
+
+**Goal:** Background automated report generation engine for scheduled business reports (RUG, Laba Rugi, Neraca, Stok) saved to Workspace Artifact Store.
+
+### 22.1 Backend - Cron Module & Database Schema
+- [x] Model `ScheduledReport` in `schema.prisma` with SQLite & Prisma ORM generation
+- [x] `CronService` — Interval scheduler executing automated report generation using `DocumentGeneratorTool`
+- [x] `CronController` — REST API (`GET`, `POST`, `PATCH /toggle`, `DELETE`, `POST /run`)
+- [x] Workspace Artifact Store Integration — Auto-save generated `.xlsx`, `.pdf`, `.csv` reports
+
+### 22.2 Frontend - Workspace Studio UI
+- [x] `ScheduledReportsPanel.tsx` — Web UI panel for viewing, adding, toggling, and testing scheduled reports
+- [x] `WorkspaceDetailPage.tsx` — Integrated `ScheduledReportsPanel` into Studio Right Panel
+
+---
+
 ## Current Status
 
-**Phase:** Phase 21 Complete — Domain Config System (Plugin System for Business) ✅  
-**Next:** Phase 3 Multi-Channel Gateway (WhatsApp/Telegram) & Proactive Cron Scheduler
+**Phase:** Phase 22 Complete — Proactive Cron Scheduler & Automated Web Reports ✅  
+**Next:** Phase 3.2 Web UI Template Marketplace & Cross-Workspace Sharing
 
 ---
 

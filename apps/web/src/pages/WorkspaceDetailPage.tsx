@@ -17,6 +17,7 @@ import {
 import { Link } from "react-router-dom";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { FileUploadZone } from "../components/workspace/FileUploadZone";
+import { ScheduledReportsPanel } from "../components/workspace/ScheduledReportsPanel";
 
 const API_BASE = "http://localhost:3000/api/v1";
 
@@ -420,22 +421,28 @@ export function WorkspaceDetailPage() {
       </div>
 
       {/* Right Panel - Studio & Artifacts */}
-      <div className="w-64 border-l border-surface-200 bg-surface-100 flex flex-col shrink-0">
+      <div className="w-80 border-l border-surface-200 bg-surface-100 flex flex-col shrink-0">
         <div className="px-4 py-3.5 border-b border-surface-200 flex items-center justify-between">
           <h2 className="text-[13px] font-semibold text-surface-800">
-            Studio / Output
+            Studio / Output & Jadwal
           </h2>
           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
-            Artifacts
+            Proactive Cron
           </span>
         </div>
 
-        <div className="p-3.5 flex-1 overflow-y-auto space-y-2">
-          {agentArtifacts.length === 0 ? (
-            <p className="text-[11px] text-surface-500 text-center py-6">
-              File hasil kerja agent akan muncul di sini.
-            </p>
-          ) : (
+        <div className="p-3.5 flex-1 overflow-y-auto space-y-4">
+          <ScheduledReportsPanel workspaceId={id || ""} />
+
+          <div className="border-t border-surface-200 pt-3">
+            <h4 className="text-[11px] font-semibold text-surface-600 mb-2 uppercase tracking-wider">
+              File Hasil / Artifacts ({agentArtifacts.length})
+            </h4>
+            {agentArtifacts.length === 0 ? (
+              <p className="text-[11px] text-surface-500 text-center py-4">
+                File hasil kerja agent / cron akan muncul di sini.
+              </p>
+            ) : (
             agentArtifacts.map((art) => (
               <div
                 key={art.id}
@@ -453,6 +460,7 @@ export function WorkspaceDetailPage() {
               </div>
             ))
           )}
+          </div>
         </div>
 
         <div className="px-4 py-3.5 border-t border-surface-200">
