@@ -4,6 +4,7 @@ import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
+import { PromptInjectionDetector, InjectionDetectionResult } from '../ai/prompt-injection-detector.service.js';
 import {
   successResponse,
   errorResponse,
@@ -16,6 +17,7 @@ export class ChatController {
     private readonly messageService: MessageService,
     private readonly agentRunnerService: AgentRunnerService,
     private readonly artifactService: ArtifactService,
+    private readonly injectionDetector: PromptInjectionDetector,
   ) {}
 
   @Post()
@@ -209,20 +211,30 @@ export class ChatController {
         return errorResponse('NOT_FOUND', 'Chat not found');
       }
 
-      await this.messageService.createMessage(id, 'user', body.content);
+      // Scan for prompt injection
+      const injectionResult = this.injectionDetector.scan(body.content);
+      if (injectionResult.detected && injectionResult.severity !== 'low') {
+        this.injectionDetector.logDetection(id, body.content, injectionResult);
+        return errorResponse('INJECTION_DETECTED', 'Potential prompt injection detected. Request blocked.');
+      }
+
+      // Use sanitized content if injection was detected (low severity)
+      const userContent = injectionResult.detected ? injectionResult.sanitized : body.content;
+
+      await this.messageService.createMessage(id, 'user', userContent);
 
       if (!chat.title) {
         const title =
-          body.content.length > 50
-            ? body.content.substring(0, 50) + '...'
-            : body.content;
+          userContent.length > 50
+            ? userContent.substring(0, 50) + '...'
+            : userContent;
         await this.chatHistoryService.updateTitle(id, title);
       }
 
       const history = await this.messageService.findByChatHistoryId(id);
       const agentResult = await this.agentRunnerService.runAgentSync({
         chatId: id,
-        userContent: body.content,
+        userContent: userContent,
         chatMode: chat.mode as 'chat' | 'workspace',
         historyMessages: history.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
@@ -265,13 +277,24 @@ export class ChatController {
         return res.end();
       }
 
-      await this.messageService.createMessage(id, 'user', body.content);
+      // Scan for prompt injection
+      const injectionResult = this.injectionDetector.scan(body.content);
+      if (injectionResult.detected && injectionResult.severity !== 'low') {
+        this.injectionDetector.logDetection(id, body.content, injectionResult);
+        res.write(`data: ${JSON.stringify({ type: 'error', data: { message: 'Potential prompt injection detected. Request blocked.' } })}\n\n`);
+        return res.end();
+      }
+
+      // Use sanitized content if injection was detected (low severity)
+      const userContent = injectionResult.detected ? injectionResult.sanitized : body.content;
+
+      await this.messageService.createMessage(id, 'user', userContent);
 
       if (!chat.title) {
         const title =
-          body.content.length > 50
-            ? body.content.substring(0, 50) + '...'
-            : body.content;
+          userContent.length > 50
+            ? userContent.substring(0, 50) + '...'
+            : userContent;
         await this.chatHistoryService.updateTitle(id, title);
       }
 
@@ -279,7 +302,7 @@ export class ChatController {
       const finalContent = await this.agentRunnerService.runAgentStream(
         {
           chatId: id,
-          userContent: body.content,
+          userContent: userContent,
           chatMode: chat.mode as 'chat' | 'workspace',
           historyMessages: history.map((m) => ({
             role: m.role as 'user' | 'assistant' | 'system',

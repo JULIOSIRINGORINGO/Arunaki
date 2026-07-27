@@ -1,6 +1,6 @@
 # Arunaki vs Hermes — Gap Checklist
 
-Status: **5/8 selesai**
+Status: **6/8 selesai**
 
 ---
 
@@ -35,10 +35,10 @@ Status: **5/8 selesai**
 - [x] Integrate ke AI service
 
 ## 6. Prompt injection detection — scan user input untuk injection
-- [ ] Detect injection patterns
-- [ ] Block/flag suspicious inputs
-- [ ] Log security events
-- [ ] Integrate ke chat controller
+- [x] Detect injection patterns
+- [x] Block/flag suspicious inputs
+- [x] Log security events
+- [x] Integrate ke chat controller
 
 ## 7. Auto-posture detection — detect general vs coding otomatis
 - [ ] Analyze user message untuk detect intent
