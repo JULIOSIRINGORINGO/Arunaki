@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import {
-  User, Brain, Puzzle, Shield, Database, Info, Sun, Moon,
-  Plus, Trash2, Check, X, Loader2, Wifi, WifiOff, Eye, EyeOff,
-  ChevronDown, ChevronRight, Zap,
+  User, Brain, Puzzle, Shield, Database, Sun, Moon,
+  Plus, Trash2, Check, Loader2, Wifi, WifiOff,
+  Zap, Palette, Info,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -65,7 +65,6 @@ export function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string; reply?: string } | null>(null);
-  const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
 
   // Form state
   const [form, setForm] = useState({
