@@ -51,6 +51,7 @@ export class FileService extends BaseService<File> {
     workspaceId: string,
     sourceName: string,
     files: Express.Multer.File[],
+    relativePaths?: string[],
   ): Promise<File[]> {
     const uploadDir = path.join('workspace-data', workspaceId, 'uploads');
     await this.storageService.ensureDir(uploadDir);
@@ -63,7 +64,8 @@ export class FileService extends BaseService<File> {
 
     const createdFiles: File[] = [];
 
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const safeFilename = path.basename(file.originalname);
       if (!safeFilename || safeFilename.includes('..')) {
         throw new Error(
@@ -81,9 +83,17 @@ export class FileService extends BaseService<File> {
         .toLowerCase()
         .replace('.', '');
 
+      // Gunakan relativePath jika ada, agar struktur folder terlihat
+      const relativePath = relativePaths?.[i];
+      const displayName = relativePath
+        ? relativePath.replace(/^.*[\\/]/, '') === safeFilename
+          ? relativePath
+          : relativePath
+        : safeFilename;
+
       const fileRecord = await this.createFile({
         sourceId: source.id,
-        name: safeFilename,
+        name: displayName,
         path: filePath,
         type: ext,
         size: file.size,

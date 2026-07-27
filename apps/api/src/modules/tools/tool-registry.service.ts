@@ -637,16 +637,17 @@ export class ToolRegistryService {
     });
 
     this.register('read_workspace_file', {
-      handler: (args) => this.workspaceToolsService.readWorkspaceFile(args.filePath),
+      handler: (args) => this.workspaceToolsService.readWorkspaceFile(args.filePath, args.workspaceId),
       definition: {
         type: 'function',
         function: {
           name: 'read_workspace_file',
-          description: 'Membaca isi lengkap file dokumen (PDF, Word, Excel, CSV, TXT) di dalam workspace.',
+          description: 'Membaca isi lengkap file dokumen (PDF, Word, Excel, CSV, TXT) di dalam workspace. Bisa pakai nama file atau path lengkap.',
           parameters: {
             type: 'object',
             properties: {
-              filePath: { type: 'string', description: 'Path lengkap file dokumen' },
+              filePath: { type: 'string', description: 'Nama file atau path lengkap file dokumen (dari hasil list_workspace_files)' },
+              workspaceId: { type: 'string', description: 'ID Workspace (diisi otomatis)' },
             },
             required: ['filePath'],
           },

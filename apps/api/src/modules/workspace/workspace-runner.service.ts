@@ -110,7 +110,7 @@ export class WorkspaceRunnerService {
 
       let finalContent = '';
       const createdArtifactIds: string[] = [];
-      const MAX_ROUNDS = 5;
+      const MAX_ROUNDS = 25;
       let reachedMaxRounds = true;
 
       for (let round = 0; round < MAX_ROUNDS; round++) {

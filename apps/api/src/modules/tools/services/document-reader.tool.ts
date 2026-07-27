@@ -53,6 +53,8 @@ export class DocumentReaderTool {
           break;
         case '.xlsx':
         case '.xls':
+        case '.xlsm':
+        case '.xlsb':
           text = await this.readExcel(resolvedPath);
           break;
         case '.csv':
@@ -65,7 +67,7 @@ export class DocumentReaderTool {
           return {
             status: 'error',
             data: {},
-            preview: `Format ${ext} tidak didukung. Gunakan: .pdf, .docx, .xlsx, .csv, .txt`,
+            preview: `Format ${ext} tidak didukung. Gunakan: .pdf, .docx, .xlsx, .xlsm, .csv, .txt`,
             metadata: {
               toolName: 'document_reader',
               displayName: 'Pembaca Dokumen',
@@ -150,7 +152,8 @@ export class DocumentReaderTool {
   }
 
   private async readExcel(filePath: string): Promise<string> {
-    const XLSX = await import('xlsx');
+    const XLSXModule = await import('xlsx');
+    const XLSX = XLSXModule.default || XLSXModule;
     const workbook = XLSX.readFile(filePath);
     const allText: string[] = [];
 

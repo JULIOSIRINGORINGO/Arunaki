@@ -62,7 +62,7 @@ export class WorkspaceToolsService {
     const startTime = Date.now();
     try {
       const files = await this.fileService.findByWorkspaceId(workspaceId);
-      const list = files.map((f, i) => `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB)`).join('\n');
+      const list = files.map((f, i) => `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB) [path: ${f.path}]`).join('\n');
 
       return {
         status: 'success',
@@ -90,10 +90,33 @@ export class WorkspaceToolsService {
   }
 
   /**
-   * Read content of a specific workspace file
+   * Read content of a specific workspace file.
+   * Accepts either a full disk path or a display name — resolves via DB if needed.
    */
-  async readWorkspaceFile(filePath: string): Promise<ToolResult> {
-    return this.documentReaderTool.readDocument(filePath);
+  async readWorkspaceFile(filePath: string, workspaceId?: string): Promise<ToolResult> {
+    let resolvedPath = filePath;
+
+    if (workspaceId && !filePath.includes('workspace-data') && !filePath.includes('/') && !filePath.includes('\\')) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(f => f.name === filePath || f.name.endsWith(filePath));
+        if (match) {
+          resolvedPath = match.path;
+        }
+      } catch {
+        // fallback to original path
+      }
+    }
+
+    // If path is relative (like "workspace-data/..."), resolve relative to API base dir
+    if (!path.isAbsolute(resolvedPath)) {
+      // __dirname in compiled JS is dist/modules/tools/services/
+      // Go up 4 levels to reach apps/api/
+      const apiBase = path.resolve(__dirname, '..', '..', '..', '..');
+      resolvedPath = path.resolve(apiBase, resolvedPath);
+    }
+
+    return this.documentReaderTool.readDocument(resolvedPath);
   }
 
   /**

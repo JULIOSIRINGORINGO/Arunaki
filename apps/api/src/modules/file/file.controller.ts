@@ -51,6 +51,7 @@ export class FileController {
     @UploadedFiles() files: Express.Multer.File[],
     @Body('workspaceId') workspaceId: string,
     @Body('sourceName') sourceName?: string,
+    @Body('relativePaths') relativePaths?: string,
   ) {
     try {
       if (!files || files.length === 0) {
@@ -60,10 +61,20 @@ export class FileController {
         throw new BadRequestException('workspaceId is required');
       }
 
+      let parsedPaths: string[] | undefined;
+      if (relativePaths) {
+        try {
+          parsedPaths = JSON.parse(relativePaths);
+        } catch {
+          // ignore parse error, fallback to originalname
+        }
+      }
+
       const createdFiles = await this.fileService.uploadFiles(
         workspaceId,
         sourceName || 'Uploads',
         files,
+        parsedPaths,
       );
       return successResponse(createdFiles);
     } catch (error) {
