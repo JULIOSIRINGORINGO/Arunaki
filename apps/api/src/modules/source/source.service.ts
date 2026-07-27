@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { Source } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
@@ -12,6 +14,7 @@ import { WorkspaceService } from '../workspace/workspace.service.js';
 export class SourceService extends BaseService<Source> {
   constructor(
     protected readonly repository: SourceRepository,
+    @Inject(forwardRef(() => WorkspaceService))
     private readonly workspaceService: WorkspaceService,
   ) {
     super(repository);
