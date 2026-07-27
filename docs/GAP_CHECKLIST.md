@@ -1,6 +1,6 @@
 # Arunaki vs Hermes — Gap Checklist
 
-Status: **6/8 selesai**
+Status: **7/8 selesai**
 
 ---
 
@@ -41,10 +41,10 @@ Status: **6/8 selesai**
 - [x] Integrate ke chat controller
 
 ## 7. Auto-posture detection — detect general vs coding otomatis
-- [ ] Analyze user message untuk detect intent
-- [ ] Auto-switch prompt posture
-- [ ] Confidence scoring
-- [ ] Integrate ke AI service
+- [x] Analyze user message untuk detect intent
+- [x] Auto-switch prompt posture
+- [x] Confidence scoring
+- [x] Integrate ke AI service
 
 ## 8. Template laporan bisnis — RUG, LABA RUGI, NERACA
 - [ ] Buat template RUG (Rincian Usaha Gym)

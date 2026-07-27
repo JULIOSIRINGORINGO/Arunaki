@@ -4,11 +4,12 @@ import { ContextManager } from './context-manager.js';
 import { SelfEvaluationService } from './self-evaluation.service.js';
 import { ModelRouterService } from './model-router.service.js';
 import { PromptInjectionDetector } from './prompt-injection-detector.service.js';
+import { AutoPostureDetector } from './auto-posture-detector.service.js';
 import { ProviderModule } from '../provider/provider.module.js';
 
 @Module({
   imports: [ProviderModule],
-  providers: [AiService, ContextManager, SelfEvaluationService, ModelRouterService, PromptInjectionDetector],
-  exports: [AiService, ContextManager, SelfEvaluationService, ModelRouterService, PromptInjectionDetector],
+  providers: [AiService, ContextManager, SelfEvaluationService, ModelRouterService, PromptInjectionDetector, AutoPostureDetector],
+  exports: [AiService, ContextManager, SelfEvaluationService, ModelRouterService, PromptInjectionDetector, AutoPostureDetector],
 })
 export class AiModule {}

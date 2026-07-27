@@ -6,6 +6,7 @@ import * as path from 'path';
 import { ProviderService, ProviderConfig } from '../provider/provider.service.js';
 import { ContextManager } from './context-manager.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
+import { AutoPostureDetector, PostureDetectionResult } from './auto-posture-detector.service.js';
 
 export interface ToolCall {
   id: string;
@@ -50,6 +51,7 @@ export class AiService {
   private readonly enc: ReturnType<typeof encoding_for_model>;
   private readonly contextManager: ContextManager;
   private readonly modelRouter: ModelRouterService;
+  private readonly postureDetector: AutoPostureDetector;
 
   // Fallback values from .env (used if no provider configured in DB)
   private readonly fallbackApiKey: string;
@@ -79,6 +81,7 @@ export class AiService {
       { chat: this.chat.bind(this) },
     );
     this.modelRouter = new ModelRouterService();
+    this.postureDetector = new AutoPostureDetector();
   }
 
   /**
@@ -407,10 +410,21 @@ export class AiService {
     mode: 'chat' | 'workspace',
     workspaceContext?: string,
     knowledgeContext?: string,
+    historyMessages?: Array<{ role: string; content: string }>,
   ): string {
     // Get model hints for current provider
     const providerConfig = this.getProviderConfigSync();
-    const modelHints = this.modelRouter.getHints(providerConfig?.model || this.fallbackModel);
+
+    // Detect posture from conversation history (chat mode only)
+    let posturePrompt = '';
+    if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
+      const postureResult = this.postureDetector.detectPostureFromHistory(historyMessages);
+      posturePrompt = this.postureDetector.getPosturePrompt(postureResult.posture);
+      this.logger.debug(`Auto-posture: ${postureResult.posture} (${(postureResult.confidence * 100).toFixed(1)}%)`);
+    }
+
+    // Apply model-specific formatting
+    const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
 
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load 6 modular prompt files
@@ -422,9 +436,6 @@ export class AiService {
       const memoryContext = this.loadPrompt('memory-context.md');
 
       const safeWorkspaceContext = this.limitInjection(workspaceContext, 'workspace-context');
-
-      // Apply model-specific formatting
-      const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
 
       return `${identity}
 
@@ -454,16 +465,15 @@ ${modelAdditions}`;
       : '(No active Knowledge Base)';
     const rulesWithKB = rules.replace('{KNOWLEDGE_BASE}', safeKnowledgeContext);
 
-    // Apply model-specific formatting
-    const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
-
     return `${identity}
 
 ${rulesWithKB}
 
 ${knowledgeBuilder}
 
-${modelAdditions}`;
+${modelAdditions}
+
+${posturePrompt}`;
   }
 
   /**
