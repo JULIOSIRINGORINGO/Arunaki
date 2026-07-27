@@ -1,10 +1,23 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService } from './message.service.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
-import { PromptInjectionDetector, InjectionDetectionResult } from '../ai/prompt-injection-detector.service.js';
+import {
+  PromptInjectionDetector,
+  InjectionDetectionResult,
+} from '../ai/prompt-injection-detector.service.js';
 import {
   successResponse,
   errorResponse,
@@ -48,9 +61,8 @@ export class ChatController {
   @Get('workspace/:workspaceId')
   async findByWorkspace(@Param('workspaceId') workspaceId: string) {
     try {
-      const chats = await this.chatHistoryService.findByWorkspaceId(
-        workspaceId,
-      );
+      const chats =
+        await this.chatHistoryService.findByWorkspaceId(workspaceId);
       return successResponse(chats);
     } catch (error) {
       return errorResponse('FETCH_FAILED', error.message);
@@ -81,10 +93,7 @@ export class ChatController {
   }
 
   @Patch(':id/title')
-  async updateTitle(
-    @Param('id') id: string,
-    @Body() body: { title: string },
-  ) {
+  async updateTitle(@Param('id') id: string, @Body() body: { title: string }) {
     try {
       const chat = await this.chatHistoryService.updateTitle(id, body.title);
       return successResponse(chat);
@@ -170,18 +179,18 @@ export class ChatController {
 
       // IDOR Scope Access Control Verification
       if (chatId && (!meta.tags || !meta.tags.includes(`chat:${chatId}`))) {
-        return res
-          .status(403)
-          .json({ error: 'Access denied: Artifact does not belong to this chat session' });
+        return res.status(403).json({
+          error: 'Access denied: Artifact does not belong to this chat session',
+        });
       }
       if (
         workspaceId &&
         artifact.workspaceId !== workspaceId &&
         (!meta.tags || !meta.tags.includes(`workspace:${workspaceId}`))
       ) {
-        return res
-          .status(403)
-          .json({ error: 'Access denied: Artifact does not belong to this workspace' });
+        return res.status(403).json({
+          error: 'Access denied: Artifact does not belong to this workspace',
+        });
       }
 
       if (!meta.contentBase64) {
@@ -215,11 +224,16 @@ export class ChatController {
       const injectionResult = this.injectionDetector.scan(body.content);
       if (injectionResult.detected && injectionResult.severity !== 'low') {
         this.injectionDetector.logDetection(id, body.content, injectionResult);
-        return errorResponse('INJECTION_DETECTED', 'Potential prompt injection detected. Request blocked.');
+        return errorResponse(
+          'INJECTION_DETECTED',
+          'Potential prompt injection detected. Request blocked.',
+        );
       }
 
       // Use sanitized content if injection was detected (low severity)
-      const userContent = injectionResult.detected ? injectionResult.sanitized : body.content;
+      const userContent = injectionResult.detected
+        ? injectionResult.sanitized
+        : body.content;
 
       await this.messageService.createMessage(id, 'user', userContent);
 
@@ -273,7 +287,9 @@ export class ChatController {
     try {
       const chat = await this.chatHistoryService.findById(id);
       if (!chat) {
-        res.write(`data: ${JSON.stringify({ type: 'error', data: { message: 'Chat not found' } })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Chat not found' } })}\n\n`,
+        );
         return res.end();
       }
 
@@ -281,12 +297,16 @@ export class ChatController {
       const injectionResult = this.injectionDetector.scan(body.content);
       if (injectionResult.detected && injectionResult.severity !== 'low') {
         this.injectionDetector.logDetection(id, body.content, injectionResult);
-        res.write(`data: ${JSON.stringify({ type: 'error', data: { message: 'Potential prompt injection detected. Request blocked.' } })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Potential prompt injection detected. Request blocked.' } })}\n\n`,
+        );
         return res.end();
       }
 
       // Use sanitized content if injection was detected (low severity)
-      const userContent = injectionResult.detected ? injectionResult.sanitized : body.content;
+      const userContent = injectionResult.detected
+        ? injectionResult.sanitized
+        : body.content;
 
       await this.messageService.createMessage(id, 'user', userContent);
 
@@ -317,7 +337,9 @@ export class ChatController {
       await this.messageService.createMessage(id, 'assistant', finalContent);
       res.end();
     } catch (error) {
-      res.write(`data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
+      );
       res.end();
     }
   }

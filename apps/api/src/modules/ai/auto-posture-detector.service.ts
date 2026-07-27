@@ -17,28 +17,105 @@ export class AutoPostureDetector {
       type: 'business',
       keywords: [
         // Core business terms (highest weight)
-        'bisnis', 'business', 'revenue', 'profit', 'laba', 'rugi', 'sales', 'penjualan',
-        'customer', 'client', 'pelanggan', 'strategy', 'strategi', 'rencana',
-        'investasi', 'investment', 'kpi', 'roi', 'modal', 'capital',
-        
+        'bisnis',
+        'business',
+        'revenue',
+        'profit',
+        'laba',
+        'rugi',
+        'sales',
+        'penjualan',
+        'customer',
+        'client',
+        'pelanggan',
+        'strategy',
+        'strategi',
+        'rencana',
+        'investasi',
+        'investment',
+        'kpi',
+        'roi',
+        'modal',
+        'capital',
+
         // Business operations
-        'marketing', 'pemasaran', 'brand', 'merk', 'harga', 'produk', 'layanan',
-        'operasi', 'operations', 'optimasi', 'pengeluaran', 'biaya', 'expense',
-        'anggaran', 'budget', 'keuangan', 'finance', 'financial', 'arus kas',
-        
+        'marketing',
+        'pemasaran',
+        'brand',
+        'merk',
+        'harga',
+        'produk',
+        'layanan',
+        'operasi',
+        'operations',
+        'optimasi',
+        'pengeluaran',
+        'biaya',
+        'expense',
+        'anggaran',
+        'budget',
+        'keuangan',
+        'finance',
+        'financial',
+        'arus kas',
+
         // Analysis & reporting (business context)
-        'analisis', 'analysis', 'laporan', 'report', 'dashboard', 'insight', 'insights',
-        'tren', 'trend', 'data', 'statistik', 'statistics', 'metrik', 'metrics',
-        'perbandingan', 'comparison', 'kompetitor', 'competitor', 'pasar', 'market',
-        
+        'analisis',
+        'analysis',
+        'laporan',
+        'report',
+        'dashboard',
+        'insight',
+        'insights',
+        'tren',
+        'trend',
+        'data',
+        'statistik',
+        'statistics',
+        'metrik',
+        'metrics',
+        'perbandingan',
+        'comparison',
+        'kompetitor',
+        'competitor',
+        'pasar',
+        'market',
+
         // Document & planning
-        'sop', 'prosedur', 'procedure', 'standar', 'standard', 'kebijakan', 'policy',
-        'template', 'rencana kerja', 'roadmap', 'target', 'tujuan', 'goal',
-        'pengelolaan', 'manajemen', 'management', 'organisasi', 'organization',
-        
+        'sop',
+        'prosedur',
+        'procedure',
+        'standar',
+        'standard',
+        'kebijakan',
+        'policy',
+        'template',
+        'rencana kerja',
+        'roadmap',
+        'target',
+        'tujuan',
+        'goal',
+        'pengelolaan',
+        'manajemen',
+        'management',
+        'organisasi',
+        'organization',
+
         // Garment/manufacturing specific
-        'costing', 'hpp', 'bom', 'bill of materials', 'konsumsi', 'kain', 'fabric',
-        'ukuran', 'size', 'grade', 'quality control', 'qc', 'produksi', 'production',
+        'costing',
+        'hpp',
+        'bom',
+        'bill of materials',
+        'konsumsi',
+        'kain',
+        'fabric',
+        'ukuran',
+        'size',
+        'grade',
+        'quality control',
+        'qc',
+        'produksi',
+        'production',
       ],
       patterns: [
         // Direct business requests
@@ -59,11 +136,39 @@ export class AutoPostureDetector {
     {
       type: 'analysis',
       keywords: [
-        'analisis', 'analysis', 'review', 'evaluasi', 'assess', 'examine', 'investigate',
-        'compare', 'contrast', 'pros', 'cons', 'advantages', 'disadvantages', 'trade-offs',
-        'recommend', 'suggestion', 'opinion', 'thoughts', 'perspective', 'insight',
-        'trend', 'pattern', 'correlation', 'causation', 'statistics', 'data', 'metrics',
-        'kpi', 'dashboard', 'report', 'forecast', 'prediction', 'model',
+        'analisis',
+        'analysis',
+        'review',
+        'evaluasi',
+        'assess',
+        'examine',
+        'investigate',
+        'compare',
+        'contrast',
+        'pros',
+        'cons',
+        'advantages',
+        'disadvantages',
+        'trade-offs',
+        'recommend',
+        'suggestion',
+        'opinion',
+        'thoughts',
+        'perspective',
+        'insight',
+        'trend',
+        'pattern',
+        'correlation',
+        'causation',
+        'statistics',
+        'data',
+        'metrics',
+        'kpi',
+        'dashboard',
+        'report',
+        'forecast',
+        'prediction',
+        'model',
       ],
       patterns: [
         /\b(analyze|review|evaluate|assess)\s+(?:the\s+)?(?:data|code|performance|results?)\b/i,
@@ -82,10 +187,35 @@ export class AutoPostureDetector {
     {
       type: 'creative',
       keywords: [
-        'write', 'story', 'article', 'blog', 'post', 'content', 'copy', 'marketing',
-        'email', 'newsletter', 'social', 'tweet', 'linkedin', 'caption', 'headline',
-        'slogan', 'tagline', 'brand', 'voice', 'tone', 'style', 'creative', 'idea',
-        'brainstorm', 'concept', 'campaign', 'ad', 'advertisement', 'promo',
+        'write',
+        'story',
+        'article',
+        'blog',
+        'post',
+        'content',
+        'copy',
+        'marketing',
+        'email',
+        'newsletter',
+        'social',
+        'tweet',
+        'linkedin',
+        'caption',
+        'headline',
+        'slogan',
+        'tagline',
+        'brand',
+        'voice',
+        'tone',
+        'style',
+        'creative',
+        'idea',
+        'brainstorm',
+        'concept',
+        'campaign',
+        'ad',
+        'advertisement',
+        'promo',
       ],
       patterns: [
         /\b(write|create|draft)\s+(?:a\s+)?(?:story|article|blog|email|post|copy)\b/i,
@@ -103,9 +233,27 @@ export class AutoPostureDetector {
     {
       type: 'learning',
       keywords: [
-        'learn', 'study', 'understand', 'explain', 'teach', 'tutorial', 'guide', 'how',
-        'what', 'why', 'concept', 'theory', 'principle', 'fundamental', 'basic',
-        'beginner', 'introduction', 'overview', 'summary', 'example', 'definition',
+        'learn',
+        'study',
+        'understand',
+        'explain',
+        'teach',
+        'tutorial',
+        'guide',
+        'how',
+        'what',
+        'why',
+        'concept',
+        'theory',
+        'principle',
+        'fundamental',
+        'basic',
+        'beginner',
+        'introduction',
+        'overview',
+        'summary',
+        'example',
+        'definition',
       ],
       patterns: [
         /\b(?:how|what|why)\s+(?:does|is|does\s+it|can\s+i)\b/i,
@@ -124,13 +272,65 @@ export class AutoPostureDetector {
     {
       type: 'coding',
       keywords: [
-        'code', 'program', 'function', 'class', 'method', 'variable', 'loop', 'array', 'object',
-        'api', 'endpoint', 'database', 'query', 'sql', 'html', 'css', 'javascript', 'typescript',
-        'python', 'java', 'react', 'vue', 'angular', 'node', 'express', 'nest', 'nextjs',
-        'debug', 'error', 'bug', 'fix', 'refactor', 'optimize', 'performance', 'algorithm',
-        'git', 'github', 'commit', 'push', 'pull', 'merge', 'branch', 'deploy', 'docker',
-        'kubernetes', 'aws', 'azure', 'gcp', 'serverless', 'lambda', 'microservice',
-        'rest', 'graphql', 'grpc', 'websocket', 'auth', 'jwt', 'oauth', 'middleware',
+        'code',
+        'program',
+        'function',
+        'class',
+        'method',
+        'variable',
+        'loop',
+        'array',
+        'object',
+        'api',
+        'endpoint',
+        'database',
+        'query',
+        'sql',
+        'html',
+        'css',
+        'javascript',
+        'typescript',
+        'python',
+        'java',
+        'react',
+        'vue',
+        'angular',
+        'node',
+        'express',
+        'nest',
+        'nextjs',
+        'debug',
+        'error',
+        'bug',
+        'fix',
+        'refactor',
+        'optimize',
+        'performance',
+        'algorithm',
+        'git',
+        'github',
+        'commit',
+        'push',
+        'pull',
+        'merge',
+        'branch',
+        'deploy',
+        'docker',
+        'kubernetes',
+        'aws',
+        'azure',
+        'gcp',
+        'serverless',
+        'lambda',
+        'microservice',
+        'rest',
+        'graphql',
+        'grpc',
+        'websocket',
+        'auth',
+        'jwt',
+        'oauth',
+        'middleware',
       ],
       patterns: [
         /\b(write|create|build|make|implement)\s+(?:a\s+)?(?:function|class|component|api|endpoint)\b/i,
@@ -163,7 +363,7 @@ export class AutoPostureDetector {
    * Prioritizes business posture for Arunaki's document-centric workspace focus.
    */
   detectPostureFromHistory(
-    history: Array<{ role: string; content: string }>
+    history: Array<{ role: string; content: string }>,
   ): PostureDetectionResult {
     // Get last 5 user messages
     const userMessages = history
@@ -219,12 +419,20 @@ export class AutoPostureDetector {
     }
 
     // Calculate confidence (0-1)
-    const totalSignals = Object.values(scores).reduce((sum, s) => sum + s.score, 0);
-    const confidence = totalSignals > 0 ? Math.min(bestScore / totalSignals, 1) : 0.7;
+    const totalSignals = Object.values(scores).reduce(
+      (sum, s) => sum + s.score,
+      0,
+    );
+    const confidence =
+      totalSignals > 0 ? Math.min(bestScore / totalSignals, 1) : 0.7;
 
     // Minimum threshold - default to business if uncertain
     if (bestScore < 2) {
-      return { posture: 'business', confidence: Math.max(confidence, 0.6), matchedKeywords: [] };
+      return {
+        posture: 'business',
+        confidence: Math.max(confidence, 0.6),
+        matchedKeywords: [],
+      };
     }
 
     return {
@@ -253,12 +461,7 @@ interface PostureConfig {
 
 /** Supported posture types - ordered by Arunaki priority */
 export type PostureType =
-  | 'business'
-  | 'analysis'
-  | 'creative'
-  | 'learning'
-  | 'coding'
-  | 'general';
+  'business' | 'analysis' | 'creative' | 'learning' | 'coding' | 'general';
 
 /** Posture detection result */
 export interface PostureDetectionResult {

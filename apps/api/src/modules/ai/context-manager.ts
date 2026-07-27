@@ -20,8 +20,8 @@ export interface ContextConfig {
 
 const DEFAULT_CONFIG: ContextConfig = {
   contextLength: 128000,
-  threshold: 0.50,
-  targetRatio: 0.20,
+  threshold: 0.5,
+  targetRatio: 0.2,
   toolPruneChars: 2000,
   toolPreviewChars: 500,
   injectionMaxChars: 7000,
@@ -41,11 +41,21 @@ const DEFAULT_CONFIG: ContextConfig = {
 export class ContextManager {
   private readonly logger = new Logger(ContextManager.name);
   private readonly config: ContextConfig;
-  private readonly aiService?: { chat: (messages: ChatMessage[], tools?: any[]) => Promise<{ content: string }> };
+  private readonly aiService?: {
+    chat: (
+      messages: ChatMessage[],
+      tools?: any[],
+    ) => Promise<{ content: string }>;
+  };
 
   constructor(
     config?: Partial<ContextConfig>,
-    aiService?: { chat: (messages: ChatMessage[], tools?: any[]) => Promise<{ content: string }> },
+    aiService?: {
+      chat: (
+        messages: ChatMessage[],
+        tools?: any[],
+      ) => Promise<{ content: string }>;
+    },
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.aiService = aiService;
@@ -59,7 +69,9 @@ export class ContextManager {
     if (messages.length === 0) return messages;
 
     const tokenCount = this.estimateTokens(messages);
-    const thresholdTokens = Math.floor(this.config.contextLength * this.config.threshold);
+    const thresholdTokens = Math.floor(
+      this.config.contextLength * this.config.threshold,
+    );
 
     // Don't compress if under threshold
     if (tokenCount <= thresholdTokens) {
@@ -207,8 +219,12 @@ export class ContextManager {
     }
 
     // Remove orphaned tool_results (no matching tool_call)
-    let result = messages.filter((msg) => {
-      if (msg.role === 'tool' && msg.tool_call_id && !callIds.has(msg.tool_call_id)) {
+    const result = messages.filter((msg) => {
+      if (
+        msg.role === 'tool' &&
+        msg.tool_call_id &&
+        !callIds.has(msg.tool_call_id)
+      ) {
         this.logger.debug(`Removing orphaned tool_result: ${msg.tool_call_id}`);
         return false;
       }
@@ -246,7 +262,9 @@ export class ContextManager {
    * [3..N]   ← middle turns (compressed/summary)
    * [N..end] ← tail (preserved by token budget)
    */
-  private async protectTailAndSummarize(messages: ChatMessage[]): Promise<ChatMessage[]> {
+  private async protectTailAndSummarize(
+    messages: ChatMessage[],
+  ): Promise<ChatMessage[]> {
     if (messages.length <= 5) return messages;
 
     // Split into system vs non-system
@@ -269,7 +287,9 @@ export class ContextManager {
     const middle = nonSystemMessages.slice(PROTECT_FIRST);
 
     // Calculate tail token budget
-    const thresholdTokens = Math.floor(this.config.contextLength * this.config.threshold);
+    const thresholdTokens = Math.floor(
+      this.config.contextLength * this.config.threshold,
+    );
     const tailBudget = Math.floor(thresholdTokens * this.config.targetRatio);
 
     // Walk backward from end to find tail boundary
@@ -302,10 +322,7 @@ export class ContextManager {
     const summary = await this.generateSummary(middleToCompress);
 
     // Assemble: system + head + summary + tail
-    const result: ChatMessage[] = [
-      ...systemMessages,
-      ...head,
-    ];
+    const result: ChatMessage[] = [...systemMessages, ...head];
 
     // Add summary as a system message (role-safe)
     if (summary) {
@@ -327,7 +344,9 @@ export class ContextManager {
    * Generate a structured summary from middle turns.
    * Uses LLM if available, falls back to template-based summary.
    */
-  private async generateSummary(messages: ChatMessage[]): Promise<string | null> {
+  private async generateSummary(
+    messages: ChatMessage[],
+  ): Promise<string | null> {
     if (messages.length === 0) return null;
 
     // Try LLM-based summary first
@@ -335,7 +354,9 @@ export class ContextManager {
       try {
         return await this.generateLlmSummary(messages);
       } catch (err: any) {
-        this.logger.warn(`LLM summary failed, falling back to template: ${err.message}`);
+        this.logger.warn(
+          `LLM summary failed, falling back to template: ${err.message}`,
+        );
       }
     }
 
@@ -368,7 +389,10 @@ ${relevantMessages.map((m) => `${m.role}: ${m.content}`).join('\n')}
 Provide a concise summary (max 300 chars).`;
 
     const response = await this.aiService!.chat([
-      { role: 'system', content: 'You are a conversation summarizer. Be concise.' },
+      {
+        role: 'system',
+        content: 'You are a conversation summarizer. Be concise.',
+      },
       { role: 'user', content: summaryPrompt },
     ]);
 
@@ -413,9 +437,13 @@ Provide a concise summary (max 300 chars).`;
     }
 
     // Count messages by role
-    const assistantCount = messages.filter((m) => m.role === 'assistant').length;
+    const assistantCount = messages.filter(
+      (m) => m.role === 'assistant',
+    ).length;
     const toolCount = messages.filter((m) => m.role === 'tool').length;
-    parts.push(`Exchange: ${assistantCount} assistant turns, ${toolCount} tool results`);
+    parts.push(
+      `Exchange: ${assistantCount} assistant turns, ${toolCount} tool results`,
+    );
 
     // Estimated tokens saved
     const originalTokens = this.estimateTokens(messages);
@@ -502,8 +530,12 @@ export class StreamingContextScrubber {
       // Skip empty lines at boundaries
       if (trimmed === '') return true;
       // Skip lines that look like internal markers
-      if (/^(?:##|###)\s+(?:Context|Memory|Skill|Knowledge|SYSTEM)/i.test(trimmed)) {
-        this.logger.debug(`Stripped internal line: ${trimmed.substring(0, 60)}`);
+      if (
+        /^(?:##|###)\s+(?:Context|Memory|Skill|Knowledge|SYSTEM)/i.test(trimmed)
+      ) {
+        this.logger.debug(
+          `Stripped internal line: ${trimmed.substring(0, 60)}`,
+        );
         return false;
       }
       return true;

@@ -38,7 +38,7 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
         active: true,
         OR: [
           { workspaceId: null }, // Global memories
-          { workspaceId },      // Workspace-specific memories
+          { workspaceId }, // Workspace-specific memories
         ],
       },
       orderBy: [{ importance: 'desc' }, { accessCount: 'desc' }],
@@ -49,7 +49,11 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
    * Find memories relevant to a domain and/or workspace.
    * Used for frozen snapshot injection into system prompt.
    */
-  async findRelevant(domain?: string, workspaceId?: string, limit = 20): Promise<Memory[]> {
+  async findRelevant(
+    domain?: string,
+    workspaceId?: string,
+    limit = 20,
+  ): Promise<Memory[]> {
     const where: any = {
       active: true,
       OR: [

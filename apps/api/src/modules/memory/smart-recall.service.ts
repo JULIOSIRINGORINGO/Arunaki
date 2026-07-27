@@ -43,7 +43,11 @@ export class SmartRecallService {
       const keywords = this.extractKeywords(goal);
 
       // 2. Search memory for relevant entries
-      const memoryContext = await this.searchMemory(keywords, workspaceId, domain);
+      const memoryContext = await this.searchMemory(
+        keywords,
+        workspaceId,
+        domain,
+      );
       if (memoryContext) {
         parts.push(memoryContext);
       }
@@ -76,16 +80,95 @@ export class SmartRecallService {
   private extractKeywords(goal: string): string[] {
     // Simple keyword extraction: split by spaces, filter common words
     const stopWords = new Set([
-      'yang', 'di', 'dan', 'untuk', 'dengan', 'pada', 'adalah', 'ini', 'itu',
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-      'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-      'should', 'may', 'might', 'can', 'shall', 'to', 'of', 'in', 'for',
-      'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during',
-      'before', 'after', 'above', 'below', 'between', 'out', 'off', 'over',
-      'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when',
-      'where', 'why', 'how', 'all', 'both', 'each', 'few', 'more', 'most',
-      'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same',
-      'so', 'than', 'too', 'very', 'just', 'because', 'but', 'and', 'or',
+      'yang',
+      'di',
+      'dan',
+      'untuk',
+      'dengan',
+      'pada',
+      'adalah',
+      'ini',
+      'itu',
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'can',
+      'shall',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'as',
+      'into',
+      'through',
+      'during',
+      'before',
+      'after',
+      'above',
+      'below',
+      'between',
+      'out',
+      'off',
+      'over',
+      'under',
+      'again',
+      'further',
+      'then',
+      'once',
+      'here',
+      'there',
+      'when',
+      'where',
+      'why',
+      'how',
+      'all',
+      'both',
+      'each',
+      'few',
+      'more',
+      'most',
+      'other',
+      'some',
+      'such',
+      'no',
+      'nor',
+      'not',
+      'only',
+      'own',
+      'same',
+      'so',
+      'than',
+      'too',
+      'very',
+      'just',
+      'because',
+      'but',
+      'and',
+      'or',
     ]);
 
     const words = goal
@@ -140,7 +223,10 @@ export class SmartRecallService {
     if (results.length === 0) return '';
 
     const lines = results.map((r) => {
-      const preview = r.snippet.replace(/>>>/g, '').replace(/<<<>/g, '').substring(0, 100);
+      const preview = r.snippet
+        .replace(/>>>/g, '')
+        .replace(/<<<>/g, '')
+        .substring(0, 100);
       return `- ${preview}`;
     });
 

@@ -62,7 +62,11 @@ Rate the output 1-10 and list any issues. Respond in JSON:
 }`;
 
       const messages: ChatMessage[] = [
-        { role: 'system', content: 'You are a strict quality reviewer. Respond only in valid JSON.' },
+        {
+          role: 'system',
+          content:
+            'You are a strict quality reviewer. Respond only in valid JSON.',
+        },
         { role: 'user', content: evalPrompt },
       ];
 
@@ -71,14 +75,18 @@ Rate the output 1-10 and list any issues. Respond in JSON:
       // Parse JSON response
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        this.logger.warn('Self-evaluation: failed to parse AI response as JSON');
+        this.logger.warn(
+          'Self-evaluation: failed to parse AI response as JSON',
+        );
         return { passed: true, score: 7, issues: [], suggestions: [] };
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
       const score = Math.min(10, Math.max(1, parsed.score || 7));
       const issues = Array.isArray(parsed.issues) ? parsed.issues : [];
-      const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
+      const suggestions = Array.isArray(parsed.suggestions)
+        ? parsed.suggestions
+        : [];
 
       return {
         passed: score >= this.MIN_SCORE,
@@ -124,7 +132,9 @@ Rate the output 1-10 and list any issues. Respond in JSON:
         evaluation = await this.evaluate(goal, currentOutput, context);
 
         if (evaluation.passed) {
-          this.logger.log(`Self-evaluation passed after retry (score: ${evaluation.score}/10)`);
+          this.logger.log(
+            `Self-evaluation passed after retry (score: ${evaluation.score}/10)`,
+          );
           return { output: currentOutput, evaluation };
         }
       } catch (err: any) {
@@ -134,7 +144,9 @@ Rate the output 1-10 and list any issues. Respond in JSON:
     }
 
     // Accept best effort
-    this.logger.log(`Self-evaluation: accepting best effort (score: ${evaluation.score}/10)`);
+    this.logger.log(
+      `Self-evaluation: accepting best effort (score: ${evaluation.score}/10)`,
+    );
     return { output: currentOutput, evaluation };
   }
 }

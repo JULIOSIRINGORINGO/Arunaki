@@ -2,9 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Memory } from '@prisma/client';
 import { MemoryService } from '../../memory/memory.service.js';
 import { SessionSearchService } from '../../memory/session-search.service.js';
-import {
-  ToolResult,
-} from '../interfaces/tool-result.interface.js';
+import { ToolResult } from '../interfaces/tool-result.interface.js';
 
 @Injectable()
 export class MemoryTool {
@@ -26,7 +24,11 @@ export class MemoryTool {
           status: 'success',
           data: { count: 0, memories: [] },
           preview: 'Belum ada memory tersimpan.',
-          metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
         };
       }
 
@@ -42,21 +44,31 @@ export class MemoryTool {
 
       const preview = memories
         .slice(0, 10)
-        .map((m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`)
+        .map(
+          (m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`,
+        )
         .join('\n');
 
       return {
         status: 'success',
         data: { count: memories.length, memories: memoryList },
         preview,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal list memories: ${e.message}`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
         error: { code: 'MEMORY_ERROR', message: e.message },
       };
     }
@@ -89,14 +101,22 @@ export class MemoryTool {
           domain: memory.domain,
         },
         preview,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal simpan memory: ${e.message}`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
         error: { code: 'MEMORY_ERROR', message: e.message },
       };
     }
@@ -111,26 +131,40 @@ export class MemoryTool {
           status: 'success',
           data: { count: 0, memories: [] },
           preview: `Tidak ditemukan memory untuk "${query}".`,
-          metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
         };
       }
 
       const preview = memories
-        .map((m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`)
+        .map(
+          (m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`,
+        )
         .join('\n');
 
       return {
         status: 'success',
         data: { count: memories.length, memories },
         preview,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal search memories: ${e.message}`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
         error: { code: 'MEMORY_ERROR', message: e.message },
       };
     }
@@ -144,7 +178,11 @@ export class MemoryTool {
           status: 'error',
           data: {},
           preview: `Memory "[${type}] ${key}" tidak ditemukan.`,
-          metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
           error: { code: 'NOT_FOUND', message: `Memory not found` },
         };
       }
@@ -155,14 +193,22 @@ export class MemoryTool {
         status: 'success',
         data: { type, key },
         preview: `Memory "[${type}] ${key}" berhasil dihapus.`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal hapus memory: ${e.message}`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
         error: { code: 'MEMORY_ERROR', message: e.message },
       };
     }
@@ -172,7 +218,10 @@ export class MemoryTool {
    * Search across all sessions for relevant messages (FTS5).
    * Enables cross-session recall.
    */
-  async searchSessions(query: string, workspaceId?: string): Promise<ToolResult> {
+  async searchSessions(
+    query: string,
+    workspaceId?: string,
+  ): Promise<ToolResult> {
     try {
       const results = await this.sessionSearchService.search(query, {
         workspaceId,
@@ -184,7 +233,11 @@ export class MemoryTool {
           status: 'success',
           data: { count: 0, results: [] },
           preview: `Tidak ditemukan percakapan relevan untuk "${query}".`,
-          metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
         };
       }
 
@@ -196,14 +249,22 @@ export class MemoryTool {
         status: 'success',
         data: { count: results.length, results },
         preview,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal search sessions: ${e.message}`,
-        metadata: { toolName: 'memory', displayName: 'Memory', executionTime: 0 },
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
         error: { code: 'SEARCH_ERROR', message: e.message },
       };
     }

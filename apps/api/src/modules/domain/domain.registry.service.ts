@@ -22,9 +22,14 @@ export class DomainRegistryService {
   constructor() {
     // Resolve configs directory relative to compiled output
     // dist/src/modules/domain/configs (prod) or src/modules/domain/configs (dev)
-    const distPath = path.join(__dirname, 'configs');
-    const srcPath = path.join(__dirname, '..', 'domain', 'configs');
-    this.configsDir = fs.existsSync(distPath) ? distPath : srcPath;
+    const configPaths = [
+      path.join(__dirname, 'configs'),
+      path.join(__dirname, '..', '..', 'src', 'modules', 'domain', 'configs'),
+      path.join(process.cwd(), 'src', 'modules', 'domain', 'configs'),
+    ];
+    this.configsDir =
+      configPaths.find((configPath) => fs.existsSync(configPath)) ||
+      configPaths[0];
 
     this.loadAll();
   }
@@ -34,7 +39,9 @@ export class DomainRegistryService {
    */
   private loadAll(): void {
     try {
-      const files = fs.readdirSync(this.configsDir).filter((f) => f.endsWith('.json'));
+      const files = fs
+        .readdirSync(this.configsDir)
+        .filter((f) => f.endsWith('.json'));
 
       for (const file of files) {
         try {
@@ -43,11 +50,15 @@ export class DomainRegistryService {
           const config: DomainConfig = JSON.parse(raw);
           this.configs.set(config.id, config);
         } catch (err: any) {
-          this.logger.error(`Failed to load domain config "${file}": ${err.message}`);
+          this.logger.error(
+            `Failed to load domain config "${file}": ${err.message}`,
+          );
         }
       }
 
-      this.logger.log(`Loaded ${this.configs.size} domain configs: ${[...this.configs.keys()].join(', ')}`);
+      this.logger.log(
+        `Loaded ${this.configs.size} domain configs: ${[...this.configs.keys()].join(', ')}`,
+      );
     } catch (err: any) {
       this.logger.error(`Failed to read configs directory: ${err.message}`);
     }
@@ -75,7 +86,10 @@ export class DomainRegistryService {
   /**
    * Get unit definitions for a specific category (length, mass, count, currency).
    */
-  getUnits(domainId: string, category: 'length' | 'mass' | 'count' | 'currency'): DomainConfig['units'][typeof category] {
+  getUnits(
+    domainId: string,
+    category: 'length' | 'mass' | 'count' | 'currency',
+  ): DomainConfig['units'][typeof category] {
     const config = this.get(domainId);
     return config.units[category] || [];
   }
@@ -83,7 +97,10 @@ export class DomainRegistryService {
   /**
    * Find a unit definition by name within a domain.
    */
-  findUnit(domainId: string, unitName: string): { definition: UnitDefinition; category: string } | null {
+  findUnit(
+    domainId: string,
+    unitName: string,
+  ): { definition: UnitDefinition; category: string } | null {
     const config = this.get(domainId);
     const categories = ['length', 'mass', 'count', 'currency'] as const;
 

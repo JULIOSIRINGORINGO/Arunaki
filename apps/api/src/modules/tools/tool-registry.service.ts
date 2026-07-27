@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Tool, ToolDefinition, ToolCapability } from './interfaces/tool.interface.js';
+import {
+  Tool,
+  ToolDefinition,
+  ToolCapability,
+} from './interfaces/tool.interface.js';
 import { ToolResult } from './interfaces/tool-result.interface.js';
 
 interface RegisteredTool {
@@ -46,7 +50,9 @@ export class ToolRegistryService {
    * Get all tool capabilities for discovery.
    */
   getToolCapabilities(): ToolCapability[] {
-    return Array.from(this.tools.values()).map((r) => r.tool.capability) as ToolCapability[];
+    return Array.from(this.tools.values()).map(
+      (r) => r.tool.capability,
+    ) as ToolCapability[];
   }
 
   /**
@@ -79,7 +85,7 @@ export class ToolRegistryService {
       const value = args[key];
       if (value === undefined || value === null) continue;
 
-      const expectedType = (schema as any).type;
+      const expectedType = schema.type;
       if (expectedType === 'string' && typeof value !== 'string') {
         errors.push(`Field "${key}" harus bertipe string`);
       }
@@ -90,8 +96,12 @@ export class ToolRegistryService {
         errors.push(`Field "${key}" harus berupa array`);
       }
 
-      const enumValues = (schema as any).enum;
-      if (enumValues && Array.isArray(enumValues) && !enumValues.includes(value)) {
+      const enumValues = schema.enum;
+      if (
+        enumValues &&
+        Array.isArray(enumValues) &&
+        !enumValues.includes(value)
+      ) {
         errors.push(
           `Field "${key}" harus salah satu dari: ${enumValues.join(', ')}`,
         );
@@ -119,13 +129,19 @@ export class ToolRegistryService {
           displayName: name,
           executionTime: 0,
         },
-        error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
+        error: {
+          code: 'TOOL_NOT_FOUND',
+          message: `Tool "${name}" not recognized`,
+        },
       };
     }
 
     const { tool, timeoutMs } = registered;
 
-    const validation = this.validateArgs(args, tool.definition.function.parameters);
+    const validation = this.validateArgs(
+      args,
+      tool.definition.function.parameters,
+    );
     if (!validation.valid) {
       return {
         status: 'error',

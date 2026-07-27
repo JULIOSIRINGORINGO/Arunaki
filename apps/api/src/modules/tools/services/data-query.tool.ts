@@ -45,7 +45,10 @@ export class DataQueryTool {
           displayName: 'Query Database',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'FORBIDDEN_QUERY', message: 'Only SELECT queries allowed' },
+        error: {
+          code: 'FORBIDDEN_QUERY',
+          message: 'Only SELECT queries allowed',
+        },
       };
     }
 
@@ -92,7 +95,7 @@ export class DataQueryTool {
 
     try {
       const result = await this.prisma.$queryRawUnsafe(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
       );
 
       const tables = Array.isArray(result)
@@ -129,7 +132,7 @@ export class DataQueryTool {
 
     try {
       const result = await this.prisma.$queryRawUnsafe(
-        `PRAGMA table_info(${tableName})`
+        `PRAGMA table_info(${tableName})`,
       );
 
       return {

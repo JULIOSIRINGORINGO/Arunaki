@@ -7,7 +7,10 @@ import * as path from 'path';
 export class ImageOcrTool {
   private readonly logger = new Logger(ImageOcrTool.name);
 
-  async recognizeText(filePath: string, language?: string): Promise<ToolResult> {
+  async recognizeText(
+    filePath: string,
+    language?: string,
+  ): Promise<ToolResult> {
     const startTime = Date.now();
 
     if (!filePath || filePath.trim().length === 0) {
@@ -36,7 +39,10 @@ export class ImageOcrTool {
           displayName: 'OCR Gambar',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'FILE_NOT_FOUND', message: `File not found: ${resolvedPath}` },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `File not found: ${resolvedPath}`,
+        },
       };
     }
 

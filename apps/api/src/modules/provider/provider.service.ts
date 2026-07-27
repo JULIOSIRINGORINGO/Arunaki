@@ -35,13 +35,13 @@ export class ProviderService extends BaseService<Provider> {
 
   // Cooldown durations per error type (seconds)
   private readonly COOLDOWN = {
-    '429': 60,       // Rate limit: 1 minute cooldown
-    '402': 300,      // Payment required: 5 minutes
-    '401': 600,      // Auth error: 10 minutes
-    '403': 600,      // Forbidden: 10 minutes
-    '500': 30,       // Server error: 30 seconds (will retry anyway)
-    '502': 30,       // Bad gateway: 30 seconds
-    '503': 60,       // Service unavailable: 1 minute
+    '429': 60, // Rate limit: 1 minute cooldown
+    '402': 300, // Payment required: 5 minutes
+    '401': 600, // Auth error: 10 minutes
+    '403': 600, // Forbidden: 10 minutes
+    '500': 30, // Server error: 30 seconds (will retry anyway)
+    '502': 30, // Bad gateway: 30 seconds
+    '503': 60, // Service unavailable: 1 minute
   };
 
   constructor(protected readonly repository: ProviderRepository) {
@@ -126,7 +126,9 @@ export class ProviderService extends BaseService<Provider> {
    * Get next available provider for rotation.
    * Returns the first provider not in cooldown, or null if all are cooling down.
    */
-  async getNextAvailable(currentProviderId?: string): Promise<ProviderConfig | null> {
+  async getNextAvailable(
+    currentProviderId?: string,
+  ): Promise<ProviderConfig | null> {
     const available = await this.repository.findAvailable();
 
     // Skip the current provider (we're rotating AWAY from it)
@@ -169,7 +171,7 @@ export class ProviderService extends BaseService<Provider> {
     headerTitle?: string;
     active?: boolean;
   }): Promise<Provider> {
-    const provider = await this.repository.create(data as any);
+    const provider = await this.repository.create(data);
 
     // If this is set as active, deactivate others
     if (data.active) {
@@ -199,6 +201,6 @@ export class ProviderService extends BaseService<Provider> {
       delete data.apiKey;
     }
 
-    return this.repository.update(id, data as any);
+    return this.repository.update(id, data);
   }
 }

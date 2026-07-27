@@ -37,9 +37,12 @@ export class DocSearchTool {
         ...messageResults,
       ].slice(0, searchLimit);
 
-      const preview = allResults.length > 0
-        ? allResults.map((r, i) => `${i + 1}. [${r.type}] ${r.title}: ${r.preview}`).join('\n')
-        : `Tidak ditemukan hasil untuk "${query}"`;
+      const preview =
+        allResults.length > 0
+          ? allResults
+              .map((r, i) => `${i + 1}. [${r.type}] ${r.title}: ${r.preview}`)
+              .join('\n')
+          : `Tidak ditemukan hasil untuk "${query}"`;
 
       return {
         status: 'success',
@@ -100,10 +103,7 @@ export class DocSearchTool {
     try {
       const results = await this.prisma.file.findMany({
         where: {
-          OR: [
-            { name: { contains: query } },
-            { type: { contains: query } },
-          ],
+          OR: [{ name: { contains: query } }, { type: { contains: query } }],
         },
         take: limit,
       });

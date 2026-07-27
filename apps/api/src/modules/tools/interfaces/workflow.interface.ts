@@ -1,9 +1,12 @@
-export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+export type StepStatus =
+  'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface WorkflowStep {
   id: string;
   tool: string;
-  args: Record<string, any> | ((prevResults: Record<string, any>) => Record<string, any>);
+  args:
+    | Record<string, any>
+    | ((prevResults: Record<string, any>) => Record<string, any>);
   dependsOn: string[];
   condition?: (results: Record<string, any>) => boolean;
   retryPolicy?: {

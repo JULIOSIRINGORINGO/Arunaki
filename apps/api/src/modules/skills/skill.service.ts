@@ -52,7 +52,11 @@ export class SkillService extends BaseService<Skill> {
    * Filters by domain and workspace, formats as markdown.
    * This is the AUTO-INJECTION method — called by workspace runner.
    */
-  async getSkillsContext(domain?: string, workspaceId?: string, maxChars = 5000): Promise<string> {
+  async getSkillsContext(
+    domain?: string,
+    workspaceId?: string,
+    maxChars = 5000,
+  ): Promise<string> {
     const skills = await this.findRelevant(domain, workspaceId);
     if (skills.length === 0) return '';
 
@@ -104,7 +108,7 @@ export class SkillService extends BaseService<Skill> {
       tags: JSON.stringify(data.tags || []),
       sourceType: data.sourceType || 'auto',
       sourceInfo: data.sourceInfo || null,
-    } as any);
+    });
   }
 
   async updateSkill(
@@ -141,14 +145,17 @@ export class SkillService extends BaseService<Skill> {
    * Seed starter skills for a domain.
    * Skips if skill name already exists.
    */
-  async seedStarterSkills(domain: string, skills: Array<{
-    name: string;
-    displayName: string;
-    description: string;
-    category: string;
-    content: string;
-    tags: string[];
-  }>): Promise<number> {
+  async seedStarterSkills(
+    domain: string,
+    skills: Array<{
+      name: string;
+      displayName: string;
+      description: string;
+      category: string;
+      content: string;
+      tags: string[];
+    }>,
+  ): Promise<number> {
     let seeded = 0;
 
     for (const skill of skills) {
@@ -163,7 +170,9 @@ export class SkillService extends BaseService<Skill> {
           seeded++;
         }
       } catch (err: any) {
-        this.logger.warn(`Failed to seed skill "${skill.name}": ${err.message}`);
+        this.logger.warn(
+          `Failed to seed skill "${skill.name}": ${err.message}`,
+        );
       }
     }
 

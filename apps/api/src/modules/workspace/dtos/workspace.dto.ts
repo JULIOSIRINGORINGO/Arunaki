@@ -8,6 +8,14 @@ export class CreateWorkspaceDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  businessType?: string;
+
+  @IsString()
+  @IsOptional()
+  rootPath?: string;
 }
 
 export class UpdateWorkspaceDto {

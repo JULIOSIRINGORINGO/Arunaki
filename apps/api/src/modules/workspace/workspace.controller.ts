@@ -82,6 +82,19 @@ export class WorkspaceController {
     }
   }
 
+  @Post(':id/connect-folder')
+  async connectFolder(
+    @Param('id') id: string,
+    @Body() body: { folderPath: string },
+  ) {
+    try {
+      const result = await this.workspaceService.connectFolder(id, body.folderPath);
+      return successResponse(result);
+    } catch (error) {
+      return errorResponse('CONNECT_FOLDER_FAILED', error.message);
+    }
+  }
+
   @Post(':id/initialize')
   async initialize(@Param('id') id: string) {
     try {
@@ -95,7 +108,8 @@ export class WorkspaceController {
   @Post(':id/agent/stream')
   async streamAgent(
     @Param('id') id: string,
-    @Body() body: { goal: string; historyMessages?: any[]; approvedToolCalls?: any[] },
+    @Body()
+    body: { goal: string; historyMessages?: any[]; approvedToolCalls?: any[] },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -106,7 +120,9 @@ export class WorkspaceController {
     try {
       const workspace = await this.workspaceService.findById(id);
       if (!workspace) {
-        res.write(`data: ${JSON.stringify({ type: 'error', data: { message: 'Workspace not found' } })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Workspace not found' } })}\n\n`,
+        );
         return res.end();
       }
 
@@ -114,7 +130,9 @@ export class WorkspaceController {
         {
           workspaceId: id,
           userGoal: body.goal,
-          historyMessages: body.historyMessages || [{ role: 'user', content: body.goal }],
+          historyMessages: body.historyMessages || [
+            { role: 'user', content: body.goal },
+          ],
           approvedToolCalls: body.approvedToolCalls || [],
         },
         (event) => {
@@ -124,7 +142,9 @@ export class WorkspaceController {
 
       res.end();
     } catch (error) {
-      res.write(`data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
+      );
       res.end();
     }
   }

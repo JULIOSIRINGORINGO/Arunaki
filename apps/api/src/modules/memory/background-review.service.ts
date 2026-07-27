@@ -79,7 +79,9 @@ export class BackgroundReviewService {
       }
 
       if (learnings.length > 0) {
-        this.logger.log(`Background review: extracted ${learnings.length} learnings`);
+        this.logger.log(
+          `Background review: extracted ${learnings.length} learnings`,
+        );
       }
     } catch (err: any) {
       this.logger.warn(`Background review failed: ${err.message}`);
@@ -91,7 +93,7 @@ export class BackgroundReviewService {
    * Returns array of learnings with type, key, content, and importance.
    */
   private extractLearnings(
-    messages: Array<{ role: string; content: string }>
+    messages: Array<{ role: string; content: string }>,
   ): Array<{
     type: string;
     key: string;

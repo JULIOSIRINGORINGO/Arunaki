@@ -12,7 +12,10 @@ export class WebSearchTool {
     this.apiKey = this.config.get<string>('TAVILY_API_KEY') || '';
   }
 
-  async searchWeb(query: string, searchDepth: 'basic' | 'advanced' = 'basic'): Promise<ToolResult> {
+  async searchWeb(
+    query: string,
+    searchDepth: 'basic' | 'advanced' = 'basic',
+  ): Promise<ToolResult> {
     const startTime = Date.now();
     try {
       if (!query || query.trim().length === 0) {
@@ -20,21 +23,36 @@ export class WebSearchTool {
           status: 'error',
           data: {},
           preview: 'Query pencarian tidak boleh kosong.',
-          metadata: { toolName: 'web_search', displayName: 'Pencarian Web', executionTime: Date.now() - startTime },
-          error: { code: 'INVALID_QUERY', message: 'Query pencarian tidak boleh kosong' },
+          metadata: {
+            toolName: 'web_search',
+            displayName: 'Pencarian Web',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'INVALID_QUERY',
+            message: 'Query pencarian tidak boleh kosong',
+          },
         };
       }
 
       if (!this.apiKey) {
-        this.logger.warn('TAVILY_API_KEY is not configured in environment variables.');
+        this.logger.warn(
+          'TAVILY_API_KEY is not configured in environment variables.',
+        );
         return {
           status: 'error',
           data: {},
-          preview: 'Fitur pencarian web belum dikonfigurasi (TAVILY_API_KEY belum dipasang).',
-          metadata: { toolName: 'web_search', displayName: 'Pencarian Web', executionTime: Date.now() - startTime },
+          preview:
+            'Fitur pencarian web belum dikonfigurasi (TAVILY_API_KEY belum dipasang).',
+          metadata: {
+            toolName: 'web_search',
+            displayName: 'Pencarian Web',
+            executionTime: Date.now() - startTime,
+          },
           error: {
             code: 'SEARCH_KEY_MISSING',
-            message: 'Fitur pencarian web belum dikonfigurasi (TAVILY_API_KEY belum dipasang).',
+            message:
+              'Fitur pencarian web belum dikonfigurasi (TAVILY_API_KEY belum dipasang).',
           },
         };
       }
@@ -55,8 +73,12 @@ export class WebSearchTool {
 
       const summaryText = response.answer
         ? `Ringkasan: ${response.answer}\n\nSumber:\n` +
-          results.map((r, i) => `[${i + 1}] ${r.title} (${r.url})\n${r.content}`).join('\n\n')
-        : results.map((r, i) => `[${i + 1}] ${r.title} (${r.url})\n${r.content}`).join('\n\n');
+          results
+            .map((r, i) => `[${i + 1}] ${r.title} (${r.url})\n${r.content}`)
+            .join('\n\n')
+        : results
+            .map((r, i) => `[${i + 1}] ${r.title} (${r.url})\n${r.content}`)
+            .join('\n\n');
 
       return {
         status: 'success',
@@ -74,12 +96,18 @@ export class WebSearchTool {
         },
       };
     } catch (error) {
-      this.logger.error(`Web search failed for query "${query}": ${error.message}`);
+      this.logger.error(
+        `Web search failed for query "${query}": ${error.message}`,
+      );
       return {
         status: 'error',
         data: {},
         preview: `Pencarian gagal: ${error.message}`,
-        metadata: { toolName: 'web_search', displayName: 'Pencarian Web', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'web_search',
+          displayName: 'Pencarian Web',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'WEB_SEARCH_FAILED', message: error.message },
       };
     }

@@ -73,14 +73,16 @@ export class SessionSearchService implements OnModuleInit {
 
       // Populate FTS index from existing messages (if empty)
       const countResult = await this.prisma.$queryRawUnsafe<{ cnt: number }[]>(
-        `SELECT COUNT(*) as cnt FROM message_fts`
+        `SELECT COUNT(*) as cnt FROM message_fts`,
       );
       const ftsCount = countResult[0]?.cnt || 0;
 
       if (ftsCount === 0) {
         const msgCount = await this.prisma.message.count();
         if (msgCount > 0) {
-          this.logger.log(`Populating FTS5 index from ${msgCount} existing messages...`);
+          this.logger.log(
+            `Populating FTS5 index from ${msgCount} existing messages...`,
+          );
           await this.prisma.$executeRawUnsafe(`
             INSERT INTO message_fts(rowid, message_id, chat_history_id, workspace_id, role, content)
             SELECT m.rowid, m.id, m.chatHistoryId,
@@ -94,7 +96,9 @@ export class SessionSearchService implements OnModuleInit {
 
       this.logger.log('FTS5 session search initialized');
     } catch (err: any) {
-      this.logger.warn(`FTS5 initialization failed (non-critical): ${err.message}`);
+      this.logger.warn(
+        `FTS5 initialization failed (non-critical): ${err.message}`,
+      );
     }
   }
 
@@ -108,16 +112,18 @@ export class SessionSearchService implements OnModuleInit {
       workspaceId?: string;
       limit?: number;
       role?: string;
-    }
-  ): Promise<Array<{
-    messageId: string;
-    chatHistoryId: string;
-    workspaceId: string | null;
-    role: string;
-    content: string;
-    snippet: string;
-    rank: number;
-  }>> {
+    },
+  ): Promise<
+    Array<{
+      messageId: string;
+      chatHistoryId: string;
+      workspaceId: string | null;
+      role: string;
+      content: string;
+      snippet: string;
+      rank: number;
+    }>
+  > {
     const limit = options?.limit || 10;
 
     try {
@@ -176,16 +182,18 @@ export class SessionSearchService implements OnModuleInit {
       workspaceId?: string;
       limit?: number;
       role?: string;
-    }
-  ): Promise<Array<{
-    messageId: string;
-    chatHistoryId: string;
-    workspaceId: string | null;
-    role: string;
-    content: string;
-    snippet: string;
-    rank: number;
-  }>> {
+    },
+  ): Promise<
+    Array<{
+      messageId: string;
+      chatHistoryId: string;
+      workspaceId: string | null;
+      role: string;
+      content: string;
+      snippet: string;
+      rank: number;
+    }>
+  > {
     const limit = options?.limit || 10;
 
     const where: any = {
@@ -231,7 +239,7 @@ export class SessionSearchService implements OnModuleInit {
   async getRelevantContext(
     query: string,
     workspaceId?: string,
-    maxChars = 2000
+    maxChars = 2000,
   ): Promise<string> {
     const results = await this.search(query, {
       workspaceId,
@@ -242,7 +250,10 @@ export class SessionSearchService implements OnModuleInit {
     if (results.length === 0) return '';
 
     const contextLines = results.map((r) => {
-      const preview = r.snippet.replace(/>>>/g, '').replace(/<<<>/g, '').substring(0, 150);
+      const preview = r.snippet
+        .replace(/>>>/g, '')
+        .replace(/<<<>/g, '')
+        .substring(0, 150);
       return `- [${r.role}] ${preview}`;
     });
 

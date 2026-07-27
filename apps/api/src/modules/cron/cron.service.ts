@@ -7,8 +7,8 @@ export interface CreateScheduleDto {
   workspaceId: string;
   name: string;
   reportType: string; // laba_rugi, rug, neraca, stok
-  cronExpr?: string;  // e.g. "daily", "weekly", "monthly", or standard cron expression
-  format?: string;    // excel, pdf, csv
+  cronExpr?: string; // e.g. "daily", "weekly", "monthly", or standard cron expression
+  format?: string; // excel, pdf, csv
 }
 
 @Injectable()
@@ -63,7 +63,9 @@ export class CronService implements OnModuleInit {
    * Toggle active status.
    */
   async toggleSchedule(id: string) {
-    const existing = await this.prisma.scheduledReport.findUnique({ where: { id } });
+    const existing = await this.prisma.scheduledReport.findUnique({
+      where: { id },
+    });
     if (!existing) return null;
 
     return this.prisma.scheduledReport.update({
@@ -83,7 +85,9 @@ export class CronService implements OnModuleInit {
    * Immediately trigger a report generation (manual run test).
    */
   async triggerScheduleRun(id: string) {
-    const schedule = await this.prisma.scheduledReport.findUnique({ where: { id } });
+    const schedule = await this.prisma.scheduledReport.findUnique({
+      where: { id },
+    });
     if (!schedule) throw new Error('Schedule not found');
 
     return this.executeReportGeneration(schedule);
@@ -97,10 +101,7 @@ export class CronService implements OnModuleInit {
     const dueJobs = await this.prisma.scheduledReport.findMany({
       where: {
         active: true,
-        OR: [
-          { nextRunAt: { lte: now } },
-          { nextRunAt: null },
-        ],
+        OR: [{ nextRunAt: { lte: now } }, { nextRunAt: null }],
       },
     });
 
@@ -108,7 +109,9 @@ export class CronService implements OnModuleInit {
       try {
         await this.executeReportGeneration(job);
       } catch (err: any) {
-        this.logger.error(`Failed to execute scheduled report "${job.name}": ${err.message}`);
+        this.logger.error(
+          `Failed to execute scheduled report "${job.name}": ${err.message}`,
+        );
       }
     }
   }
@@ -117,7 +120,9 @@ export class CronService implements OnModuleInit {
    * Generate report artifact using DocumentGeneratorTool and save to workspace.
    */
   private async executeReportGeneration(job: any) {
-    this.logger.log(`Executing scheduled report "${job.name}" (${job.reportType}) for workspace ${job.workspaceId}...`);
+    this.logger.log(
+      `Executing scheduled report "${job.name}" (${job.reportType}) for workspace ${job.workspaceId}...`,
+    );
 
     let toolResult: any;
     const title = `${job.name} - ${new Date().toISOString().split('T')[0]}`;
@@ -144,9 +149,7 @@ export class CronService implements OnModuleInit {
         liabilities: [
           { category: 'Hutang Dagang / Supplier', amount: 20000000 },
         ],
-        equity: [
-          { category: 'Modal Pemilik', amount: 125000000 },
-        ],
+        equity: [{ category: 'Modal Pemilik', amount: 125000000 }],
       });
     } else {
       // Default: Laba Rugi
@@ -183,7 +186,9 @@ export class CronService implements OnModuleInit {
       },
     });
 
-    this.logger.log(`Scheduled report "${job.name}" generated successfully! Artifact ID: ${artifact.id}`);
+    this.logger.log(
+      `Scheduled report "${job.name}" generated successfully! Artifact ID: ${artifact.id}`,
+    );
     return artifact;
   }
 }

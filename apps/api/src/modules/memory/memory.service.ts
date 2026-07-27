@@ -31,7 +31,11 @@ export class MemoryService extends BaseService<Memory> {
    * Find memories relevant to a domain and/or workspace.
    * Used for frozen snapshot injection.
    */
-  async findRelevant(domain?: string, workspaceId?: string, limit = 20): Promise<Memory[]> {
+  async findRelevant(
+    domain?: string,
+    workspaceId?: string,
+    limit = 20,
+  ): Promise<Memory[]> {
     return this.repository.findRelevant(domain, workspaceId, limit);
   }
 
@@ -63,9 +67,14 @@ export class MemoryService extends BaseService<Memory> {
   }): Promise<Memory> {
     // Duplicate prevention: check if identical content exists
     const trimmedContent = data.content.trim();
-    const existing = await this.repository.findDuplicate(trimmedContent, data.type);
+    const existing = await this.repository.findDuplicate(
+      trimmedContent,
+      data.type,
+    );
     if (existing && existing.key !== data.key) {
-      this.logger.log(`Duplicate memory rejected: "${trimmedContent.substring(0, 50)}..." (existing: ${existing.key})`);
+      this.logger.log(
+        `Duplicate memory rejected: "${trimmedContent.substring(0, 50)}..." (existing: ${existing.key})`,
+      );
       return existing;
     }
 

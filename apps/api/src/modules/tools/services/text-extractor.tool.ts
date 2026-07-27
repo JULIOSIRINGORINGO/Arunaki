@@ -13,7 +13,10 @@ export class TextExtractorTool {
   extractStructuredData(input: ExtractedDataInput): ToolResult {
     const startTime = Date.now();
 
-    if (!input || (!input.items || input.items.length === 0) && !input.title) {
+    if (
+      !input ||
+      ((!input.items || input.items.length === 0) && !input.title)
+    ) {
       return {
         status: 'error',
         data: {},
@@ -23,7 +26,10 @@ export class TextExtractorTool {
           displayName: 'Ekstraksi Data',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'EMPTY_INPUT', message: 'Input kosong — LLM harus mengisi minimal title atau items' },
+        error: {
+          code: 'EMPTY_INPUT',
+          message: 'Input kosong — LLM harus mengisi minimal title atau items',
+        },
       };
     }
 

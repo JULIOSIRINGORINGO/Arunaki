@@ -11,7 +11,8 @@ export interface ToolConfig {
   tags: string[];
   handler: (args: Record<string, any>) => Promise<ToolResult> | ToolResult;
   parameters: Record<string, any>;
-  outputType?: 'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
+  outputType?:
+    'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
   estimatedLatency?: 'fast' | 'medium' | 'slow';
   timeoutMs?: number;
 }
@@ -30,7 +31,9 @@ export class ToolAdapter implements Tool {
   readonly capability: Tool['capability'];
   readonly timeoutMs: number;
 
-  private readonly handler: (args: Record<string, any>) => Promise<ToolResult> | ToolResult;
+  private readonly handler: (
+    args: Record<string, any>,
+  ) => Promise<ToolResult> | ToolResult;
 
   private constructor(config: ToolConfig) {
     this.name = config.name;
@@ -73,7 +76,9 @@ export class ToolAdapter implements Tool {
   /**
    * Extract input schema from parameters for capability display.
    */
-  private extractInputSchema(parameters: Record<string, any>): Record<string, string> {
+  private extractInputSchema(
+    parameters: Record<string, any>,
+  ): Record<string, string> {
     const schema: Record<string, string> = {};
     const properties = parameters.properties || {};
     for (const [key, value] of Object.entries(properties)) {

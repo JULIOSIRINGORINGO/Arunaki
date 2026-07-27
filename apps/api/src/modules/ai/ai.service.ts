@@ -3,10 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ProviderService, ProviderConfig } from '../provider/provider.service.js';
+import {
+  ProviderService,
+  ProviderConfig,
+} from '../provider/provider.service.js';
 import { ContextManager } from './context-manager.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
-import { AutoPostureDetector, PostureDetectionResult } from './auto-posture-detector.service.js';
+import {
+  AutoPostureDetector,
+  PostureDetectionResult,
+} from './auto-posture-detector.service.js';
 
 export interface ToolCall {
   id: string;
@@ -62,20 +68,20 @@ export class AiService {
     private readonly config: ConfigService,
     private readonly providerService: ProviderService,
   ) {
-    this.fallbackApiKey =
-      this.config.get<string>('AI_API_KEY') || '';
+    this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
       this.config.get<string>('AI_BASE_URL') || 'https://openrouter.ai/api/v1';
     this.fallbackModel =
-      this.config.get<string>('AI_MODEL') || 'nvidia/nemotron-3-ultra-550b-a55b:free';
-    this.enc = encoding_for_model('gpt-4' as any);
+      this.config.get<string>('AI_MODEL') ||
+      'nvidia/nemotron-3-ultra-550b-a55b:free';
+    this.enc = encoding_for_model('gpt-4');
 
     // Initialize services
     this.contextManager = new ContextManager(
       {
         contextLength: 128000,
-        threshold: 0.50,
-        targetRatio: 0.20,
+        threshold: 0.5,
+        targetRatio: 0.2,
         useLlmSummary: true,
       },
       { chat: this.chat.bind(this) },
@@ -161,7 +167,9 @@ export class AiService {
     } catch (err: any) {
       clearTimeout(timeoutId);
       const isAbort = err.name === 'AbortError';
-      throw new Error(isAbort ? `Request timed out after ${timeoutMs}ms` : err.message);
+      throw new Error(
+        isAbort ? `Request timed out after ${timeoutMs}ms` : err.message,
+      );
     }
   }
 
@@ -247,7 +255,9 @@ export class AiService {
     let provider = await this.getProviderConfig();
 
     if (!provider.apiKey) {
-      throw new Error('No API key configured. Go to Settings → AI Models to add a provider.');
+      throw new Error(
+        'No API key configured. Go to Settings → AI Models to add a provider.',
+      );
     }
 
     const body: Record<string, any> = {
@@ -265,7 +275,7 @@ export class AiService {
     const MAX_RETRIES_PER_PROVIDER = 3;
     const MAX_ROTATIONS = 3;
     let rotationCount = 0;
-    let triedProviders = new Set<string>([provider.id]);
+    const triedProviders = new Set<string>([provider.id]);
     let lastError: string | undefined;
 
     while (rotationCount <= MAX_ROTATIONS) {
@@ -278,13 +288,18 @@ export class AiService {
             `[${provider.name}] Request attempt (retry=${retryCount}, rotation=${rotationCount})`,
           );
 
-          const { response, statusCode } = await this.makeRequest(provider, body);
+          const { response, statusCode } = await this.makeRequest(
+            provider,
+            body,
+          );
 
           // Success
           if (response.ok) {
             // Record successful usage
             if (provider.id !== 'env-fallback') {
-              await this.providerService.recordUsage(provider.id).catch(() => {});
+              await this.providerService
+                .recordUsage(provider.id)
+                .catch(() => {});
             }
 
             const data = await response.json();
@@ -298,7 +313,8 @@ export class AiService {
             content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
             if (!content && choice.message?.tool_calls?.length === 0) {
-              content = 'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
+              content =
+                'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
             }
 
             return {
@@ -315,7 +331,10 @@ export class AiService {
 
           // Error — classify it
           const errorBody = await response.text();
-          const classified = this.providerService.classifyError(statusCode, errorBody);
+          const classified = this.providerService.classifyError(
+            statusCode,
+            errorBody,
+          );
 
           this.logger.warn(
             `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
@@ -324,7 +343,10 @@ export class AiService {
           // Record error for this provider
           if (provider.id !== 'env-fallback') {
             await this.providerService
-              .recordError(provider.id, `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`)
+              .recordError(
+                provider.id,
+                `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
+              )
               .catch(() => {});
           }
 
@@ -371,7 +393,9 @@ export class AiService {
         break;
       }
 
-      const nextProvider = await this.providerService.getNextAvailable(provider.id);
+      const nextProvider = await this.providerService.getNextAvailable(
+        provider.id,
+      );
       if (!nextProvider) {
         this.logger.warn('No more available providers for rotation');
         break;
@@ -396,12 +420,29 @@ export class AiService {
   private loadPrompt(filename: string): string {
     try {
       // Try dist/src/prompts (production) first, then src/prompts (dev)
-      const distPath = path.join(__dirname, '..', '..', 'src', 'prompts', filename);
-      const srcPath = path.join(__dirname, '..', '..', '..', 'src', 'prompts', filename);
+      const distPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        'src',
+        'prompts',
+        filename,
+      );
+      const srcPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'src',
+        'prompts',
+        filename,
+      );
       const filePath = fs.existsSync(distPath) ? distPath : srcPath;
       return fs.readFileSync(filePath, 'utf-8').trim();
     } catch (err: any) {
-      this.logger.error(`Failed to load prompt file "${filename}": ${err.message}`);
+      this.logger.error(
+        `Failed to load prompt file "${filename}": ${err.message}`,
+      );
       return `<!-- Failed to load ${filename} -->`;
     }
   }
@@ -418,13 +459,20 @@ export class AiService {
     // Detect posture from conversation history (chat mode only)
     let posturePrompt = '';
     if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
-      const postureResult = this.postureDetector.detectPostureFromHistory(historyMessages);
-      posturePrompt = this.postureDetector.getPosturePrompt(postureResult.posture);
-      this.logger.debug(`Auto-posture: ${postureResult.posture} (${(postureResult.confidence * 100).toFixed(1)}%)`);
+      const postureResult =
+        this.postureDetector.detectPostureFromHistory(historyMessages);
+      posturePrompt = this.postureDetector.getPosturePrompt(
+        postureResult.posture,
+      );
+      this.logger.debug(
+        `Auto-posture: ${postureResult.posture} (${(postureResult.confidence * 100).toFixed(1)}%)`,
+      );
     }
 
     // Apply model-specific formatting
-    const modelAdditions = this.modelRouter.getSystemPromptAdditions(providerConfig?.model || this.fallbackModel);
+    const modelAdditions = this.modelRouter.getSystemPromptAdditions(
+      providerConfig?.model || this.fallbackModel,
+    );
 
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load 6 modular prompt files
@@ -435,7 +483,10 @@ export class AiService {
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
 
-      const safeWorkspaceContext = this.limitInjection(workspaceContext, 'workspace-context');
+      const safeWorkspaceContext = this.limitInjection(
+        workspaceContext,
+        'workspace-context',
+      );
 
       return `${identity}
 

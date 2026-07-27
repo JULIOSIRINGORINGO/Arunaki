@@ -4,7 +4,10 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
-import { AutonomousPlannerService, ExecutionPlan } from '../ai/autonomous-planner.service.js';
+import {
+  AutonomousPlannerService,
+  ExecutionPlan,
+} from '../ai/autonomous-planner.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -13,11 +16,24 @@ export interface AgentRunParams {
   chatId: string;
   userContent: string;
   chatMode?: 'chat' | 'workspace';
-  historyMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  historyMessages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
 }
 
 export interface AgentStreamEvent {
-  type: 'thinking' | 'tool_start' | 'tool_done' | 'text_delta' | 'canvas_event' | 'plan_created' | 'plan_step' | 'self_heal' | 'done' | 'error';
+  type:
+    | 'thinking'
+    | 'tool_start'
+    | 'tool_done'
+    | 'text_delta'
+    | 'canvas_event'
+    | 'plan_created'
+    | 'plan_step'
+    | 'self_heal'
+    | 'done'
+    | 'error';
   data: any;
 }
 
@@ -54,18 +70,22 @@ export class AgentRunnerService {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
     const knowledgeContext = await this.getKnowledgeContext();
-    const systemPrompt = this.aiService.getSystemPrompt(chatMode, undefined, knowledgeContext);
+    const systemPrompt = this.aiService.getSystemPrompt(
+      chatMode,
+      undefined,
+      knowledgeContext,
+    );
     const tools = this.toolRegistryService.getToolDefinitions();
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
       ...historyMessages.map((m) => ({
-        role: m.role as 'user' | 'assistant' | 'system',
+        role: m.role,
         content: m.content,
       })),
     ];
 
-    let toolOutputs: ToolOutputRecord[] = [];
+    const toolOutputs: ToolOutputRecord[] = [];
     let finalContent = '';
     let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     const createdArtifactIds: string[] = [];
@@ -103,21 +123,31 @@ export class AgentRunnerService {
             status: 'error',
             data: {},
             preview: `Tool error: ${e.message}`,
-            metadata: { toolName: funcName, displayName: funcName, executionTime: 0 },
+            metadata: {
+              toolName: funcName,
+              displayName: funcName,
+              executionTime: 0,
+            },
             error: { code: 'EXECUTION_FAILED', message: e.message },
           };
         }
 
         if (result.status === 'success' && result.metadata?.contentBase64) {
           const artifact = await this.artifactService.createFromAgent({
-            type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
+            type: this.mapFormatToArtifactType(
+              result.metadata.format || 'document',
+            ),
             name: result.metadata.filename || `export-${Date.now()}.file`,
             mimeType: result.metadata.mimeType || 'application/octet-stream',
             contentBase64: result.metadata.contentBase64,
             preview: result.preview,
             data: result.data,
             createdBy: `tool:${funcName}`,
-            tags: [`chat:${chatId}`, `tool:${funcName}`, `format:${result.metadata.format || 'unknown'}`],
+            tags: [
+              `chat:${chatId}`,
+              `tool:${funcName}`,
+              `format:${result.metadata.format || 'unknown'}`,
+            ],
             lineage: [funcName],
           });
           createdArtifactIds.push(artifact.id);
@@ -138,23 +168,23 @@ export class AgentRunnerService {
     }
 
     const artifactRecords = await Promise.all(
-      createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+      createdArtifactIds.map((aid) =>
+        this.artifactService.findById(aid).catch(() => null),
+      ),
     );
 
-    const artifacts = artifactRecords
-      .filter(Boolean)
-      .map((a) => {
-        const meta = this.artifactService.parseMetadata(a!);
-        return {
-          id: a!.id,
-          type: a!.type,
-          filename: a!.name,
-          mimeType: meta.mimeType || 'application/octet-stream',
-          preview: a!.preview,
-          status: 'draft',
-          createdAt: a!.createdAt,
-        };
-      });
+    const artifacts = artifactRecords.filter(Boolean).map((a) => {
+      const meta = this.artifactService.parseMetadata(a!);
+      return {
+        id: a!.id,
+        type: a!.type,
+        filename: a!.name,
+        mimeType: meta.mimeType || 'application/octet-stream',
+        preview: a!.preview,
+        status: 'draft',
+        createdAt: a!.createdAt,
+      };
+    });
 
     return {
       content: finalContent,
@@ -171,16 +201,23 @@ export class AgentRunnerService {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
     try {
-      onEvent({ type: 'thinking', data: 'Memproses pesan dan mengumpulkan konteks...' });
+      onEvent({
+        type: 'thinking',
+        data: 'Memproses pesan dan mengumpulkan konteks...',
+      });
 
       const knowledgeContext = await this.getKnowledgeContext();
-      const systemPrompt = this.aiService.getSystemPrompt(chatMode, undefined, knowledgeContext);
+      const systemPrompt = this.aiService.getSystemPrompt(
+        chatMode,
+        undefined,
+        knowledgeContext,
+      );
       const tools = this.toolRegistryService.getToolDefinitions();
 
       const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
         ...historyMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
+          role: m.role,
           content: m.content,
         })),
       ];
@@ -208,7 +245,11 @@ export class AgentRunnerService {
         if (aiResponse.toolCalls.length > 0) {
           onEvent({
             type: 'tool_start',
-            data: { toolName: `parallel (${aiResponse.toolCalls.map((c) => c.function.name).join(', ')})`, args: {}, timestamp: new Date().toISOString() },
+            data: {
+              toolName: `parallel (${aiResponse.toolCalls.map((c) => c.function.name).join(', ')})`,
+              args: {},
+              timestamp: new Date().toISOString(),
+            },
           });
 
           // Use self-healing wrapper for each tool call
@@ -232,7 +273,9 @@ export class AgentRunnerService {
                 data: {
                   toolName: toolCall.function.name,
                   attempts: healResult.attempts.length,
-                  strategy: healResult.attempts[healResult.attempts.length - 1]?.strategy,
+                  strategy:
+                    healResult.attempts[healResult.attempts.length - 1]
+                      ?.strategy,
                   timestamp: new Date().toISOString(),
                 },
               });
@@ -246,14 +289,21 @@ export class AgentRunnerService {
           for (const { toolCall, result } of healedResults) {
             if (result.status === 'success' && result.metadata?.contentBase64) {
               const artifact = await this.artifactService.createFromAgent({
-                type: this.mapFormatToArtifactType(result.metadata.format || 'document'),
+                type: this.mapFormatToArtifactType(
+                  result.metadata.format || 'document',
+                ),
                 name: result.metadata.filename || `export-${Date.now()}.file`,
-                mimeType: result.metadata.mimeType || 'application/octet-stream',
+                mimeType:
+                  result.metadata.mimeType || 'application/octet-stream',
                 contentBase64: result.metadata.contentBase64,
                 preview: result.preview,
                 data: result.data,
                 createdBy: `tool:${toolCall.function.name}`,
-                tags: [`chat:${chatId}`, `tool:${toolCall.function.name}`, `format:${result.metadata.format || 'unknown'}`],
+                tags: [
+                  `chat:${chatId}`,
+                  `tool:${toolCall.function.name}`,
+                  `format:${result.metadata.format || 'unknown'}`,
+                ],
                 lineage: [toolCall.function.name],
               });
               createdArtifactIds.push(artifact.id);
@@ -261,7 +311,11 @@ export class AgentRunnerService {
 
             onEvent({
               type: 'tool_done',
-              data: { toolName: toolCall.function.name, result, timestamp: new Date().toISOString() },
+              data: {
+                toolName: toolCall.function.name,
+                result,
+                timestamp: new Date().toISOString(),
+              },
             });
 
             messages.push({
@@ -278,23 +332,23 @@ export class AgentRunnerService {
       }
 
       const artifactRecords = await Promise.all(
-        createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+        createdArtifactIds.map((aid) =>
+          this.artifactService.findById(aid).catch(() => null),
+        ),
       );
 
-      const artifacts = artifactRecords
-        .filter(Boolean)
-        .map((a) => {
-          const meta = this.artifactService.parseMetadata(a!);
-          return {
-            id: a!.id,
-            type: a!.type,
-            filename: a!.name,
-            mimeType: meta.mimeType || 'application/octet-stream',
-            preview: a!.preview,
-            status: 'draft',
-            createdAt: a!.createdAt,
-          };
-        });
+      const artifacts = artifactRecords.filter(Boolean).map((a) => {
+        const meta = this.artifactService.parseMetadata(a!);
+        return {
+          id: a!.id,
+          type: a!.type,
+          filename: a!.name,
+          mimeType: meta.mimeType || 'application/octet-stream',
+          preview: a!.preview,
+          status: 'draft',
+          createdAt: a!.createdAt,
+        };
+      });
 
       onEvent({
         type: 'done',
@@ -310,17 +364,23 @@ export class AgentRunnerService {
           messages.map((m) => ({ role: m.role, content: m.content || '' })),
         );
       } catch (err: any) {
-        this.logger.debug(`Background review failed (non-critical): ${err.message}`);
+        this.logger.debug(
+          `Background review failed (non-critical): ${err.message}`,
+        );
       }
 
       // Auto memory distillation — compress memories if threshold exceeded
       try {
         const distillResult = await this.autoMemoryService.checkAndDistill();
         if (distillResult.distilled) {
-          this.logger.log(`Memory distilled: ${distillResult.count} entries compressed`);
+          this.logger.log(
+            `Memory distilled: ${distillResult.count} entries compressed`,
+          );
         }
       } catch (err: any) {
-        this.logger.debug(`Memory distillation failed (non-critical): ${err.message}`);
+        this.logger.debug(
+          `Memory distillation failed (non-critical): ${err.message}`,
+        );
       }
 
       return finalContent;
@@ -331,7 +391,9 @@ export class AgentRunnerService {
     }
   }
 
-  private mapFormatToArtifactType(format: string): 'document' | 'spreadsheet' | 'presentation' | 'image' {
+  private mapFormatToArtifactType(
+    format: string,
+  ): 'document' | 'spreadsheet' | 'presentation' | 'image' {
     switch (format.toLowerCase()) {
       case 'xlsx':
       case 'csv':

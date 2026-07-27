@@ -22,13 +22,25 @@ export class WorkspaceToolsService {
   /**
    * Search keywords across indexed files inside active workspace
    */
-  async searchWorkspace(workspaceId: string, query: string): Promise<ToolResult> {
+  async searchWorkspace(
+    workspaceId: string,
+    query: string,
+  ): Promise<ToolResult> {
     const startTime = Date.now();
     try {
-      const results = await this.searchService.searchFiles({ workspaceId, query });
-      const formatted = results.length > 0
-        ? results.map((r, i) => `${i + 1}. [${r.fileName}] (Skor: ${r.score}): ${r.matchedContent || r.filePath}`).join('\n')
-        : `Tidak ditemukan dokumen yang mencocokkan kata kunci "${query}" di workspace ini.`;
+      const results = await this.searchService.searchFiles({
+        workspaceId,
+        query,
+      });
+      const formatted =
+        results.length > 0
+          ? results
+              .map(
+                (r, i) =>
+                  `${i + 1}. [${r.fileName}] (Skor: ${r.score}): ${r.matchedContent || r.filePath}`,
+              )
+              .join('\n')
+          : `Tidak ditemukan dokumen yang mencocokkan kata kunci "${query}" di workspace ini.`;
 
       return {
         status: 'success',
@@ -62,7 +74,12 @@ export class WorkspaceToolsService {
     const startTime = Date.now();
     try {
       const files = await this.fileService.findByWorkspaceId(workspaceId);
-      const list = files.map((f, i) => `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB) [path: ${f.path}]`).join('\n');
+      const list = files
+        .map(
+          (f, i) =>
+            `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB) [path: ${f.path}]`,
+        )
+        .join('\n');
 
       return {
         status: 'success',
@@ -93,13 +110,23 @@ export class WorkspaceToolsService {
    * Read content of a specific workspace file.
    * Accepts either a full disk path or a display name — resolves via DB if needed.
    */
-  async readWorkspaceFile(filePath: string, workspaceId?: string): Promise<ToolResult> {
+  async readWorkspaceFile(
+    filePath: string,
+    workspaceId?: string,
+  ): Promise<ToolResult> {
     let resolvedPath = filePath;
 
-    if (workspaceId && !filePath.includes('workspace-data') && !filePath.includes('/') && !filePath.includes('\\')) {
+    if (
+      workspaceId &&
+      !filePath.includes('workspace-data') &&
+      !filePath.includes('/') &&
+      !filePath.includes('\\')
+    ) {
       try {
         const files = await this.fileService.findByWorkspaceId(workspaceId);
-        const match = files.find(f => f.name === filePath || f.name.endsWith(filePath));
+        const match = files.find(
+          (f) => f.name === filePath || f.name.endsWith(filePath),
+        );
         if (match) {
           resolvedPath = match.path;
         }
@@ -130,18 +157,37 @@ export class WorkspaceToolsService {
     rows?: any[];
     title?: string;
   }): Promise<ToolResult> {
-    const { workspacePath, filename, format, content = '', rows = [], title = 'Laporan Workspace' } = params;
+    const {
+      workspacePath,
+      filename,
+      format,
+      content = '',
+      rows = [],
+      title = 'Laporan Workspace',
+    } = params;
     const targetPath = path.join(workspacePath, filename);
 
     switch (format) {
       case 'xlsx':
-        return this.documentGeneratorTool.generateExcel('Data', rows, targetPath);
+        return this.documentGeneratorTool.generateExcel(
+          'Data',
+          rows,
+          targetPath,
+        );
       case 'csv':
         return this.documentGeneratorTool.generateCsv(rows, targetPath);
       case 'pdf':
-        return this.documentGeneratorTool.generatePdf(title, content, targetPath);
+        return this.documentGeneratorTool.generatePdf(
+          title,
+          content,
+          targetPath,
+        );
       case 'docx':
-        return this.documentGeneratorTool.generateDocx(title, content, targetPath);
+        return this.documentGeneratorTool.generateDocx(
+          title,
+          content,
+          targetPath,
+        );
       case 'txt':
       case 'md':
       case 'json':

@@ -215,6 +215,67 @@ export function WorkspacePage() {
   }, [queryClient, triggerAutoAnalysis]);
 
   const handleConnectFolder = useCallback(async () => {
+    // Check if running in Electron with native folder picker
+    const isElectron = typeof window !== 'undefined' && (window as any).arunakiDesktop?.pickFolder;
+    
+    if (isElectron) {
+      try {
+        setIsCreating(true);
+        const result = await (window as any).arunakiDesktop.pickFolder();
+        
+        if (!result?.path) {
+          setIsCreating(false);
+          return;
+        }
+        
+        const folderPath = result.path;
+        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
+        
+        // Send folder path to backend for sandbox connection
+        const wsRes = await fetch(`${API_BASE}/workspaces`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: "generic" }),
+        });
+        
+        const wsJson = await wsRes.json();
+        const newId = wsJson.data?.id;
+        if (!newId) {
+          toast.error("Gagal membuat workspace");
+          setIsCreating(false);
+          return;
+        }
+        
+        // Connect the folder (scan and index files)
+        const connectRes = await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderPath }),
+        });
+        
+        const connectJson = await connectRes.json();
+        if (!connectRes.ok) {
+          toast.error(connectJson.error?.message || "Gagal menghubungkan folder");
+          setIsCreating(false);
+          return;
+        }
+        
+        setWorkspaceId(newId);
+        setIsConnected(true);
+        setIsModalOpen(false);
+        connectedWsRef.current = newId;
+        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
+        toast.success(`Folder "${folderName}" terhubung!`);
+      } catch (err: any) {
+        console.error("Connect folder failed:", err);
+        toast.error(`Gagal menghubungkan folder: ${err.message || "Periksa apakah backend berjalan"}`);
+      } finally {
+        setIsCreating(false);
+      }
+      return;
+    }
+    
+    // Fallback to browser File System Access API
     if ("showDirectoryPicker" in window) {
       try {
         const dirHandle = await (window as any).showDirectoryPicker({ mode: "read" });
@@ -265,7 +326,7 @@ export function WorkspacePage() {
     } else {
       fileInputRef.current?.click();
     }
-  }, [doConnect]);
+  }, [doConnect, queryClient]);
 
   const handleCreateManual = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

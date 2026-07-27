@@ -85,7 +85,12 @@ export class AutoMemoryService {
    * Uses LLM to identify patterns, merge duplicates, and extract insights.
    */
   async distill(
-    memories: Array<{ key: string; content: string; type: string; importance?: number }>,
+    memories: Array<{
+      key: string;
+      content: string;
+      type: string;
+      importance?: number;
+    }>,
     workspaceId?: string,
     domain = 'generic',
   ): Promise<DistilledMemory[]> {
@@ -147,7 +152,9 @@ export class AutoMemoryService {
     memories: Array<{ key: string; content: string; importance?: number }>,
   ): Promise<DistilledMemory[]> {
     const memoryText = memories
-      .map((m, i) => `[${i + 1}] (importance: ${m.importance || 5}) ${m.content}`)
+      .map(
+        (m, i) => `[${i + 1}] (importance: ${m.importance || 5}) ${m.content}`,
+      )
       .join('\n');
 
     const messages: ChatMessage[] = [
@@ -187,7 +194,9 @@ Respond dalam JSON:
     const parsed = this.parseJsonFromResponse(response.content);
 
     return (parsed.distilled || []).map((d: any) => ({
-      key: d.key || `distilled-${type}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      key:
+        d.key ||
+        `distilled-${type}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       summary: d.summary || '',
       importance: Math.min(10, Math.max(1, d.importance || 7)),
       category: d.category || 'insight',
@@ -200,7 +209,10 @@ Respond dalam JSON:
    * Parse JSON from LLM response text (handles markdown code blocks).
    */
   private parseJsonFromResponse(text: string): any {
-    let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    let cleaned = text
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .trim();
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');
     if (start !== -1 && end !== -1) {

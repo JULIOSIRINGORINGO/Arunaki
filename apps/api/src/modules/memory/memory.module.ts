@@ -10,7 +10,20 @@ import { AiModule } from '../ai/ai.module.js';
 
 @Module({
   imports: [SkillsModule, forwardRef(() => AiModule)],
-  providers: [MemoryService, MemoryRepository, SessionSearchService, BackgroundReviewService, SmartRecallService, AutoMemoryService],
-  exports: [MemoryService, SessionSearchService, BackgroundReviewService, SmartRecallService, AutoMemoryService],
+  providers: [
+    MemoryService,
+    MemoryRepository,
+    SessionSearchService,
+    BackgroundReviewService,
+    SmartRecallService,
+    AutoMemoryService,
+  ],
+  exports: [
+    MemoryService,
+    SessionSearchService,
+    BackgroundReviewService,
+    SmartRecallService,
+    AutoMemoryService,
+  ],
 })
-export class MemoryModule {}
+export class MemoryModule {}

@@ -14,8 +14,7 @@ export class VisionAiTool {
   constructor(private readonly config: ConfigService) {
     this.apiKey = this.config.get<string>('AI_API_KEY') || '';
     this.visionModel =
-      this.config.get<string>('VISION_MODEL') ||
-      'google/gemini-2.0-flash-001';
+      this.config.get<string>('VISION_MODEL') || 'google/gemini-2.0-flash-001';
   }
 
   async analyzeImage(
@@ -29,15 +28,26 @@ export class VisionAiTool {
           status: 'error',
           data: {},
           preview: 'Path atau URL gambar wajib diisi.',
-          metadata: { toolName: 'vision_ai', displayName: 'Vision AI', executionTime: Date.now() - startTime },
-          error: { code: 'INVALID_IMAGE', message: 'Path atau URL gambar wajib diisi' },
+          metadata: {
+            toolName: 'vision_ai',
+            displayName: 'Vision AI',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'INVALID_IMAGE',
+            message: 'Path atau URL gambar wajib diisi',
+          },
         };
       }
 
       let imageUrl = imageSource;
 
       // Handle local file path
-      if (!imageSource.startsWith('http://') && !imageSource.startsWith('https://') && !imageSource.startsWith('data:')) {
+      if (
+        !imageSource.startsWith('http://') &&
+        !imageSource.startsWith('https://') &&
+        !imageSource.startsWith('data:')
+      ) {
         const absolutePath = path.isAbsolute(imageSource)
           ? imageSource
           : path.join(process.cwd(), imageSource);
@@ -47,14 +57,27 @@ export class VisionAiTool {
             status: 'error',
             data: {},
             preview: `File gambar tidak ditemukan: ${imageSource}`,
-            metadata: { toolName: 'vision_ai', displayName: 'Vision AI', executionTime: Date.now() - startTime },
-            error: { code: 'FILE_NOT_FOUND', message: `File gambar tidak ditemukan: ${imageSource}` },
+            metadata: {
+              toolName: 'vision_ai',
+              displayName: 'Vision AI',
+              executionTime: Date.now() - startTime,
+            },
+            error: {
+              code: 'FILE_NOT_FOUND',
+              message: `File gambar tidak ditemukan: ${imageSource}`,
+            },
           };
         }
 
         const buffer = fs.readFileSync(absolutePath);
-        const ext = path.extname(absolutePath).toLowerCase().replace('.', '') || 'jpeg';
-        const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        const ext =
+          path.extname(absolutePath).toLowerCase().replace('.', '') || 'jpeg';
+        const mimeType =
+          ext === 'png'
+            ? 'image/png'
+            : ext === 'webp'
+              ? 'image/webp'
+              : 'image/jpeg';
         imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
@@ -111,7 +134,11 @@ export class VisionAiTool {
         status: 'error',
         data: {},
         preview: `Vision AI gagal: ${error.message}`,
-        metadata: { toolName: 'vision_ai', displayName: 'Vision AI', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'vision_ai',
+          displayName: 'Vision AI',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'VISION_ANALYSIS_FAILED', message: error.message },
       };
     }

@@ -78,10 +78,7 @@ export class FileService extends BaseService<File> {
 
       await this.storageService.writeBuffer(filePath, file.buffer);
 
-      const ext = path
-        .extname(safeFilename)
-        .toLowerCase()
-        .replace('.', '');
+      const ext = path.extname(safeFilename).toLowerCase().replace('.', '');
 
       // Gunakan relativePath jika ada, agar struktur folder terlihat
       const relativePath = relativePaths?.[i];

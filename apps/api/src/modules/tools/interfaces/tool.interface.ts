@@ -50,4 +50,7 @@ export interface Tool {
 /**
  * ToolDefinition — for backward compatibility with existing code.
  */
-export type { ToolDefinition, ToolCapability } from './tool-result.interface.js';
+export type {
+  ToolDefinition,
+  ToolCapability,
+} from './tool-result.interface.js';

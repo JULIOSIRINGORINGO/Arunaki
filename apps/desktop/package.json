@@ -1,0 +1,10 @@
+{
+  "name": "arunaki-desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "electron ."
+  }
+}

@@ -15,8 +15,14 @@ export class ArtifactService {
     metadata?: any;
     sourceFiles?: any;
   }): Promise<Artifact> {
-    const metaJson = typeof data.metadata === 'string' ? data.metadata : JSON.stringify(data.metadata || {});
-    const sourceFilesJson = typeof data.sourceFiles === 'string' ? data.sourceFiles : JSON.stringify(data.sourceFiles || []);
+    const metaJson =
+      typeof data.metadata === 'string'
+        ? data.metadata
+        : JSON.stringify(data.metadata || {});
+    const sourceFilesJson =
+      typeof data.sourceFiles === 'string'
+        ? data.sourceFiles
+        : JSON.stringify(data.sourceFiles || []);
 
     return this.artifactRepo.create({
       workspaceId: data.workspaceId || undefined,

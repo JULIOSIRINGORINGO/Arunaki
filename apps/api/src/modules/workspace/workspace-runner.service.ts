@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
-import { ContextManager, StreamingContextScrubber } from '../ai/context-manager.js';
+import {
+  ContextManager,
+  StreamingContextScrubber,
+} from '../ai/context-manager.js';
 import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -17,7 +20,10 @@ import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 export interface WorkspaceRunParams {
   workspaceId: string;
   userGoal: string;
-  historyMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  historyMessages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
   approvedToolCalls?: Array<{ toolName: string; args: Record<string, any> }>;
 }
 
@@ -57,9 +63,15 @@ export class WorkspaceRunnerService {
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
     try {
       const files = await this.fileService.findByWorkspaceId(workspaceId);
-      const fileList = files.length > 0
-        ? files.map((f) => `- ${f.name} (Tipe: ${f.type || 'file'}, Ukuran: ${Math.round(f.size / 1024)} KB)`).join('\n')
-        : 'Belum ada file di workspace ini.';
+      const fileList =
+        files.length > 0
+          ? files
+              .map(
+                (f) =>
+                  `- ${f.name} (Tipe: ${f.type || 'file'}, Ukuran: ${Math.round(f.size / 1024)} KB)`,
+              )
+              .join('\n')
+          : 'Belum ada file di workspace ini.';
 
       // Get workspace business type for domain-aware skills
       let businessType = 'generic';
@@ -76,10 +88,16 @@ export class WorkspaceRunnerService {
       }
 
       // Auto-inject relevant skills
-      const skillsContext = await this.skillService.getSkillsContext(businessType, workspaceId);
+      const skillsContext = await this.skillService.getSkillsContext(
+        businessType,
+        workspaceId,
+      );
 
       // Frozen snapshot: inject relevant memories at session start
-      const memoryContext = await this.memoryService.getMemoryContext(businessType, workspaceId);
+      const memoryContext = await this.memoryService.getMemoryContext(
+        businessType,
+        workspaceId,
+      );
 
       let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
@@ -101,10 +119,18 @@ export class WorkspaceRunnerService {
     params: WorkspaceRunParams,
     onEvent: (event: WorkspaceStreamEvent) => void,
   ) {
-    const { workspaceId, userGoal, historyMessages, approvedToolCalls = [] } = params;
+    const {
+      workspaceId,
+      userGoal,
+      historyMessages,
+      approvedToolCalls = [],
+    } = params;
 
     try {
-      onEvent({ type: 'thinking', data: 'Memindai dokumen workspace dan menyusun rencana otonom...' });
+      onEvent({
+        type: 'thinking',
+        data: 'Memindai dokumen workspace dan menyusun rencana otonom...',
+      });
 
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);
 
@@ -121,13 +147,18 @@ export class WorkspaceRunnerService {
           ws?.businessType || 'generic',
         );
         if (recallContext) {
-          this.logger.log(`Smart recall: found ${recallContext.length} chars of relevant context`);
+          this.logger.log(
+            `Smart recall: found ${recallContext.length} chars of relevant context`,
+          );
         }
       } catch (err: any) {
         this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
       }
 
-      const systemPrompt = this.aiService.getSystemPrompt('workspace', workspaceContext);
+      const systemPrompt = this.aiService.getSystemPrompt(
+        'workspace',
+        workspaceContext,
+      );
       const tools = this.toolRegistryService.getToolDefinitions();
 
       // Build system content with recall context injected
@@ -139,7 +170,7 @@ export class WorkspaceRunnerService {
       const messages: ChatMessage[] = [
         { role: 'system', content: systemContent },
         ...historyMessages.map((m) => ({
-          role: m.role as 'user' | 'assistant' | 'system',
+          role: m.role,
           content: m.content,
         })),
       ];
@@ -174,7 +205,10 @@ export class WorkspaceRunnerService {
         type: 'plan_created',
         data: {
           goal: userGoal,
-          steps: steps.length > 0 ? steps : ['Menyusun rencana berdasarkan goal Anda...'],
+          steps:
+            steps.length > 0
+              ? steps
+              : ['Menyusun rencana berdasarkan goal Anda...'],
         },
       });
 
@@ -203,20 +237,24 @@ export class WorkspaceRunnerService {
               );
 
               // Auto-retry with feedback
-              const retryResult = await this.selfEvaluationService.evaluateAndRetry(
-                userGoal,
-                finalContent,
-                async (feedback) => {
-                  // Add feedback to messages and retry
-                  messages.push({
-                    role: 'user',
-                    content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
-                  });
-                  const retryResponse = await this.aiService.chat(messages, tools);
-                  return this.scrubber.scrub(retryResponse.content);
-                },
-                workspaceContext,
-              );
+              const retryResult =
+                await this.selfEvaluationService.evaluateAndRetry(
+                  userGoal,
+                  finalContent,
+                  async (feedback) => {
+                    // Add feedback to messages and retry
+                    messages.push({
+                      role: 'user',
+                      content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
+                    });
+                    const retryResponse = await this.aiService.chat(
+                      messages,
+                      tools,
+                    );
+                    return this.scrubber.scrub(retryResponse.content);
+                  },
+                  workspaceContext,
+                );
 
               finalContent = retryResult.output;
               this.logger.log(
@@ -224,12 +262,16 @@ export class WorkspaceRunnerService {
               );
             }
           } catch (err: any) {
-            this.logger.warn(`Self-evaluation failed (non-critical): ${err.message}`);
+            this.logger.warn(
+              `Self-evaluation failed (non-critical): ${err.message}`,
+            );
           }
 
           onEvent({ type: 'text_delta', data: finalContent });
           reachedMaxRounds = false;
-          this.logger.log('Workspace agent finished goal execution within round limit.');
+          this.logger.log(
+            'Workspace agent finished goal execution within round limit.',
+          );
           break;
         }
 
@@ -246,8 +288,14 @@ export class WorkspaceRunnerService {
           'delete_workspace_file',
         ];
 
-        const readOnlyCalls: Array<{ toolCall: typeof aiResponse.toolCalls[0]; args: Record<string, any> }> = [];
-        const mutatingCalls: Array<{ toolCall: typeof aiResponse.toolCalls[0]; args: Record<string, any> }> = [];
+        const readOnlyCalls: Array<{
+          toolCall: (typeof aiResponse.toolCalls)[0];
+          args: Record<string, any>;
+        }> = [];
+        const mutatingCalls: Array<{
+          toolCall: (typeof aiResponse.toolCalls)[0];
+          args: Record<string, any>;
+        }> = [];
 
         for (const toolCall of aiResponse.toolCalls) {
           const funcName = toolCall.function.name;
@@ -269,15 +317,20 @@ export class WorkspaceRunnerService {
         if (readOnlyCalls.length > 0) {
           onEvent({
             type: 'tool_start',
-            data: { toolName: `parallel (${readOnlyCalls.map((c) => c.toolCall.function.name).join(', ')})`, args: {}, timestamp: new Date().toISOString() },
+            data: {
+              toolName: `parallel (${readOnlyCalls.map((c) => c.toolCall.function.name).join(', ')})`,
+              args: {},
+              timestamp: new Date().toISOString(),
+            },
           });
 
-          const parallelResults = await this.toolRegistryService.executeParallel(
-            readOnlyCalls.map(({ toolCall, args }) => ({
-              name: toolCall.function.name,
-              args: { ...args, workspaceId },
-            })),
-          );
+          const parallelResults =
+            await this.toolRegistryService.executeParallel(
+              readOnlyCalls.map(({ toolCall, args }) => ({
+                name: toolCall.function.name,
+                args: { ...args, workspaceId },
+              })),
+            );
 
           for (let i = 0; i < readOnlyCalls.length; i++) {
             const { toolCall } = readOnlyCalls[i];
@@ -286,14 +339,24 @@ export class WorkspaceRunnerService {
             if (result.status === 'success' && result.metadata?.contentBase64) {
               const artifact = await this.artifactService.createFromAgent({
                 workspaceId,
-                type: result.metadata.format === 'xlsx' || result.metadata.format === 'csv' ? 'spreadsheet' : 'document',
-                name: result.metadata.filename || `workspace-output-${Date.now()}.file`,
-                mimeType: result.metadata.mimeType || 'application/octet-stream',
+                type:
+                  result.metadata.format === 'xlsx' ||
+                  result.metadata.format === 'csv'
+                    ? 'spreadsheet'
+                    : 'document',
+                name:
+                  result.metadata.filename ||
+                  `workspace-output-${Date.now()}.file`,
+                mimeType:
+                  result.metadata.mimeType || 'application/octet-stream',
                 contentBase64: result.metadata.contentBase64,
                 preview: result.preview,
                 data: result.data,
                 createdBy: `workspace-agent:${toolCall.function.name}`,
-                tags: [`workspace:${workspaceId}`, `tool:${toolCall.function.name}`],
+                tags: [
+                  `workspace:${workspaceId}`,
+                  `tool:${toolCall.function.name}`,
+                ],
                 lineage: [toolCall.function.name],
               });
               createdArtifactIds.push(artifact.id);
@@ -301,7 +364,11 @@ export class WorkspaceRunnerService {
 
             onEvent({
               type: 'tool_done',
-              data: { toolName: toolCall.function.name, result, timestamp: new Date().toISOString() },
+              data: {
+                toolName: toolCall.function.name,
+                result,
+                timestamp: new Date().toISOString(),
+              },
             });
 
             messages.push({
@@ -319,7 +386,8 @@ export class WorkspaceRunnerService {
           const isApproved = approvedToolCalls.some((tc) => {
             if (tc.toolName !== funcName) return false;
             if (!tc.args) return true;
-            const tcFilename = tc.args.filename || tc.args.filePath || tc.args.path;
+            const tcFilename =
+              tc.args.filename || tc.args.filePath || tc.args.path;
             const argsFilename = args.filename || args.filePath || args.path;
             if (tcFilename && argsFilename) {
               return tcFilename === argsFilename;
@@ -344,19 +412,30 @@ export class WorkspaceRunnerService {
 
           onEvent({
             type: 'tool_start',
-            data: { toolName: funcName, args, timestamp: new Date().toISOString() },
+            data: {
+              toolName: funcName,
+              args,
+              timestamp: new Date().toISOString(),
+            },
           });
 
           let result: ToolResult;
           try {
             const enrichedArgs = { ...args, workspaceId };
-            result = await this.toolRegistryService.executeTool(funcName, enrichedArgs);
+            result = await this.toolRegistryService.executeTool(
+              funcName,
+              enrichedArgs,
+            );
           } catch (e) {
             result = {
               status: 'error',
               data: {},
               preview: `Eksekusi tool gagal: ${e.message}`,
-              metadata: { toolName: funcName, displayName: funcName, executionTime: 0 },
+              metadata: {
+                toolName: funcName,
+                displayName: funcName,
+                executionTime: 0,
+              },
               error: { code: 'EXECUTION_FAILED', message: e.message },
             };
           }
@@ -364,8 +443,14 @@ export class WorkspaceRunnerService {
           if (result.status === 'success' && result.metadata?.contentBase64) {
             const artifact = await this.artifactService.createFromAgent({
               workspaceId,
-              type: result.metadata.format === 'xlsx' || result.metadata.format === 'csv' ? 'spreadsheet' : 'document',
-              name: result.metadata.filename || `workspace-output-${Date.now()}.file`,
+              type:
+                result.metadata.format === 'xlsx' ||
+                result.metadata.format === 'csv'
+                  ? 'spreadsheet'
+                  : 'document',
+              name:
+                result.metadata.filename ||
+                `workspace-output-${Date.now()}.file`,
               mimeType: result.metadata.mimeType || 'application/octet-stream',
               contentBase64: result.metadata.contentBase64,
               preview: result.preview,
@@ -379,7 +464,11 @@ export class WorkspaceRunnerService {
 
           onEvent({
             type: 'tool_done',
-            data: { toolName: funcName, result, timestamp: new Date().toISOString() },
+            data: {
+              toolName: funcName,
+              result,
+              timestamp: new Date().toISOString(),
+            },
           });
 
           messages.push({
@@ -391,7 +480,9 @@ export class WorkspaceRunnerService {
       }
 
       if (reachedMaxRounds) {
-        this.logger.warn('Workspace agent reached max round limit without completion.');
+        this.logger.warn(
+          'Workspace agent reached max round limit without completion.',
+        );
         if (!finalContent) {
           finalContent =
             'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.';
@@ -401,23 +492,23 @@ export class WorkspaceRunnerService {
       }
 
       const artifactRecords = await Promise.all(
-        createdArtifactIds.map((aid) => this.artifactService.findById(aid).catch(() => null)),
+        createdArtifactIds.map((aid) =>
+          this.artifactService.findById(aid).catch(() => null),
+        ),
       );
 
-      const artifacts = artifactRecords
-        .filter(Boolean)
-        .map((a) => {
-          const meta = this.artifactService.parseMetadata(a!);
-          return {
-            id: a!.id,
-            type: a!.type,
-            filename: a!.name,
-            mimeType: meta.mimeType || 'application/octet-stream',
-            preview: a!.preview,
-            status: 'draft',
-            createdAt: a!.createdAt,
-          };
-        });
+      const artifacts = artifactRecords.filter(Boolean).map((a) => {
+        const meta = this.artifactService.parseMetadata(a!);
+        return {
+          id: a!.id,
+          type: a!.type,
+          filename: a!.name,
+          mimeType: meta.mimeType || 'application/octet-stream',
+          preview: a!.preview,
+          status: 'draft',
+          createdAt: a!.createdAt,
+        };
+      });
 
       onEvent({
         type: 'done',
@@ -444,7 +535,9 @@ export class WorkspaceRunnerService {
           `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
           saveDomain,
         );
-        this.logger.log(`Auto-saved workspace history memory for workspace ${workspaceId}`);
+        this.logger.log(
+          `Auto-saved workspace history memory for workspace ${workspaceId}`,
+        );
 
         // Background review — extract learnings from conversation
         await this.backgroundReviewService.reviewAndLearn(

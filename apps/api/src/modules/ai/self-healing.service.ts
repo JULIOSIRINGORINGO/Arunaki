@@ -34,9 +34,9 @@ export class SelfHealingService {
 
   /** Map of tool name → fallback tool names */
   private readonly fallbackMap: Record<string, string[]> = {
-    'workspace_search': ['workspace_list_files'],
-    'workspace_read': ['workspace_list_files'],
-    'workspace_analyze': ['workspace_read', 'workspace_list_files'],
+    workspace_search: ['workspace_list_files'],
+    workspace_read: ['workspace_list_files'],
+    workspace_analyze: ['workspace_read', 'workspace_list_files'],
   };
 
   /** Map of error patterns → recovery strategies */
@@ -68,7 +68,8 @@ export class SelfHealingService {
         // Reduce limit/count parameters
         if (adjusted.limit) adjusted.limit = Math.ceil(adjusted.limit / 2);
         if (adjusted.count) adjusted.count = Math.ceil(adjusted.count / 2);
-        if (adjusted.maxResults) adjusted.maxResults = Math.ceil(adjusted.maxResults / 2);
+        if (adjusted.maxResults)
+          adjusted.maxResults = Math.ceil(adjusted.maxResults / 2);
         return adjusted;
       },
     },
@@ -100,14 +101,20 @@ export class SelfHealingService {
     const attempts: HealingAttempt[] = [];
 
     // 1. First attempt — normal execution
-    const firstResult = await this.toolRegistryService.executeTool(toolName, args);
+    const firstResult = await this.toolRegistryService.executeTool(
+      toolName,
+      args,
+    );
 
     if (firstResult.status === 'success') {
       return { finalResult: firstResult, attempts: [], healed: false };
     }
 
-    this.logger.warn(`Tool "${toolName}" failed: ${firstResult.error?.message}. Attempting self-healing...`);
-    const errorMessage = firstResult.error?.message || firstResult.preview || 'Unknown error';
+    this.logger.warn(
+      `Tool "${toolName}" failed: ${firstResult.error?.message}. Attempting self-healing...`,
+    );
+    const errorMessage =
+      firstResult.error?.message || firstResult.preview || 'Unknown error';
 
     // 2. Try recovery strategies based on error pattern
     for (let retry = 0; retry < this.MAX_RETRIES; retry++) {
@@ -116,8 +123,13 @@ export class SelfHealingService {
       if (strategy) {
         const adjustedArgs = strategy.adjust(args, errorMessage);
 
-        this.logger.log(`Healing attempt ${retry + 1}: strategy="${strategy.strategy}"`);
-        const retryResult = await this.toolRegistryService.executeTool(toolName, adjustedArgs);
+        this.logger.log(
+          `Healing attempt ${retry + 1}: strategy="${strategy.strategy}"`,
+        );
+        const retryResult = await this.toolRegistryService.executeTool(
+          toolName,
+          adjustedArgs,
+        );
 
         const attempt: HealingAttempt = {
           originalError: errorMessage,
@@ -129,7 +141,9 @@ export class SelfHealingService {
         attempts.push(attempt);
 
         if (retryResult.status === 'success') {
-          this.logger.log(`Self-healed with strategy "${strategy.strategy}" on attempt ${retry + 1}`);
+          this.logger.log(
+            `Self-healed with strategy "${strategy.strategy}" on attempt ${retry + 1}`,
+          );
           return { finalResult: retryResult, attempts, healed: true };
         }
       }
@@ -138,7 +152,10 @@ export class SelfHealingService {
       const fallbacks = this.fallbackMap[toolName] || [];
       for (const fallbackTool of fallbacks) {
         this.logger.log(`Trying fallback tool: ${fallbackTool}`);
-        const fallbackResult = await this.toolRegistryService.executeTool(fallbackTool, args);
+        const fallbackResult = await this.toolRegistryService.executeTool(
+          fallbackTool,
+          args,
+        );
 
         const attempt: HealingAttempt = {
           originalError: errorMessage,
@@ -157,7 +174,9 @@ export class SelfHealingService {
     }
 
     // 4. All recovery failed — return original error with healing context
-    this.logger.warn(`Self-healing exhausted for "${toolName}" after ${attempts.length} attempts`);
+    this.logger.warn(
+      `Self-healing exhausted for "${toolName}" after ${attempts.length} attempts`,
+    );
 
     const enrichedResult: ToolResult = {
       ...firstResult,

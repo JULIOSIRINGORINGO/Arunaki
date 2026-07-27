@@ -24,14 +24,18 @@ export class DraftCommunicationTool {
           displayName: 'Pembuat Draf Pesan',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'INVALID_PARAMS', message: 'Missing required parameters' },
+        error: {
+          code: 'INVALID_PARAMS',
+          message: 'Missing required parameters',
+        },
       };
     }
 
     let template = '';
-    const pointsList = keyPoints.length > 0
-      ? keyPoints.map((p) => `- ${p}`).join('\n')
-      : '- (Detail pembahasan)';
+    const pointsList =
+      keyPoints.length > 0
+        ? keyPoints.map((p) => `- ${p}`).join('\n')
+        : '- (Detail pembahasan)';
 
     switch (type) {
       case 'whatsapp':

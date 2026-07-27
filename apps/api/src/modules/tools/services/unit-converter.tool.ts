@@ -91,7 +91,12 @@ export class UnitConverterTool {
 
         return {
           status: 'success',
-          data: { value, from: from.toUpperCase(), to: to.toUpperCase(), result: formattedResult },
+          data: {
+            value,
+            from: from.toUpperCase(),
+            to: to.toUpperCase(),
+            result: formattedResult,
+          },
           preview: text,
           metadata: {
             toolName: 'unit_converter',
@@ -118,7 +123,10 @@ export class UnitConverterTool {
         displayName: 'Konverter Satuan',
         executionTime: Date.now() - startTime,
       },
-      error: { code: 'UNKNOWN_UNIT', message: `Unknown unit: ${from} to ${to}` },
+      error: {
+        code: 'UNKNOWN_UNIT',
+        message: `Unknown unit: ${from} to ${to}`,
+      },
     };
   }
 }

@@ -82,12 +82,14 @@ Respond dalam JSON format:
       const response = await this.aiService.chat(messages, []);
       const parsed = this.parseJsonFromResponse(response.content);
 
-      const steps: TaskStep[] = (parsed.steps || []).map((s: any, i: number) => ({
-        id: s.id || i + 1,
-        description: s.description || `Langkah ${i + 1}`,
-        toolHint: s.toolHint,
-        status: 'pending' as const,
-      }));
+      const steps: TaskStep[] = (parsed.steps || []).map(
+        (s: any, i: number) => ({
+          id: s.id || i + 1,
+          description: s.description || `Langkah ${i + 1}`,
+          toolHint: s.toolHint,
+          status: 'pending' as const,
+        }),
+      );
 
       const plan: ExecutionPlan = {
         goal,
@@ -96,7 +98,9 @@ Respond dalam JSON format:
         createdAt: new Date(),
       };
 
-      this.logger.log(`Plan created: ${steps.length} steps for goal "${goal.substring(0, 60)}..."`);
+      this.logger.log(
+        `Plan created: ${steps.length} steps for goal "${goal.substring(0, 60)}..."`,
+      );
       return plan;
     } catch (err: any) {
       this.logger.error(`Plan decomposition failed: ${err.message}`);
@@ -118,7 +122,11 @@ Respond dalam JSON format:
     plan: ExecutionPlan,
     completedStepId: number,
     stepResult: string,
-  ): Promise<{ shouldContinue: boolean; planAdjustment?: string; newSteps?: TaskStep[] }> {
+  ): Promise<{
+    shouldContinue: boolean;
+    planAdjustment?: string;
+    newSteps?: TaskStep[];
+  }> {
     const completedStep = plan.steps.find((s) => s.id === completedStepId);
     if (!completedStep) return { shouldContinue: true };
 
@@ -172,7 +180,10 @@ Respond dalam JSON:
    */
   private parseJsonFromResponse(text: string): any {
     // Strip markdown code fences
-    let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    let cleaned = text
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .trim();
     // Find JSON object boundaries
     const start = cleaned.indexOf('{');
     const end = cleaned.lastIndexOf('}');

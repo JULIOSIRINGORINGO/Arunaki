@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Skill } from '@prisma/client';
 import { SkillService } from '../../skills/skill.service.js';
-import {
-  ToolResult,
-} from '../interfaces/tool-result.interface.js';
+import { ToolResult } from '../interfaces/tool-result.interface.js';
 
 @Injectable()
 export class SkillsTool {
@@ -19,8 +17,13 @@ export class SkillsTool {
         return {
           status: 'success',
           data: { count: 0, skills: [] },
-          preview: 'Belum ada skill tersimpan. Agent bisa membuat skill baru dari pengalaman.',
-          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          preview:
+            'Belum ada skill tersimpan. Agent bisa membuat skill baru dari pengalaman.',
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
         };
       }
 
@@ -41,14 +44,22 @@ export class SkillsTool {
         status: 'success',
         data: { count: skills.length, skills: skillList },
         preview,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal list skills: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }
@@ -62,7 +73,11 @@ export class SkillsTool {
           status: 'error',
           data: {},
           preview: `Skill "${name}" tidak ditemukan.`,
-          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
           error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
         };
       }
@@ -82,14 +97,22 @@ export class SkillsTool {
           content: skill.content,
         },
         preview,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal view skill: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }
@@ -119,14 +142,22 @@ export class SkillsTool {
           displayName: skill.displayName,
         },
         preview,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal buat skill: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }
@@ -141,7 +172,11 @@ export class SkillsTool {
           status: 'success',
           data: { count: 0, skills: [] },
           preview: `Tidak ditemukan skill untuk "${query}".`,
-          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
         };
       }
 
@@ -153,25 +188,36 @@ export class SkillsTool {
         status: 'success',
         data: { count: skills.length, skills },
         preview,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal search skills: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }
   }
 
-  async updateSkill(name: string, data: Partial<{
-    displayName: string;
-    description: string;
-    content: string;
-    tags: string[];
-  }>): Promise<ToolResult> {
+  async updateSkill(
+    name: string,
+    data: Partial<{
+      displayName: string;
+      description: string;
+      content: string;
+      tags: string[];
+    }>,
+  ): Promise<ToolResult> {
     try {
       const skill = await this.skillService.findByName(name);
       if (!skill) {
@@ -179,7 +225,11 @@ export class SkillsTool {
           status: 'error',
           data: {},
           preview: `Skill "${name}" tidak ditemukan.`,
-          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
           error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
         };
       }
@@ -197,14 +247,22 @@ export class SkillsTool {
           version: updated.version,
         },
         preview,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal update skill: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }
@@ -218,7 +276,11 @@ export class SkillsTool {
           status: 'error',
           data: {},
           preview: `Skill "${name}" tidak ditemukan.`,
-          metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
           error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
         };
       }
@@ -229,14 +291,22 @@ export class SkillsTool {
         status: 'success',
         data: { name },
         preview: `Skill "${name}" berhasil dinonaktifkan.`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
       };
     } catch (e) {
       return {
         status: 'error',
         data: {},
         preview: `Gagal hapus skill: ${e.message}`,
-        metadata: { toolName: 'skills', displayName: 'Skills', executionTime: 0 },
+        metadata: {
+          toolName: 'skills',
+          displayName: 'Skills',
+          executionTime: 0,
+        },
         error: { code: 'SKILLS_ERROR', message: e.message },
       };
     }

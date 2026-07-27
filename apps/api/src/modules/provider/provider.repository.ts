@@ -49,15 +49,9 @@ export class ProviderRepository extends PrismaBaseRepository<Provider> {
     return this.prisma.provider.findMany({
       where: {
         active: true,
-        OR: [
-          { cooldownUntil: null },
-          { cooldownUntil: { lt: now } },
-        ],
+        OR: [{ cooldownUntil: null }, { cooldownUntil: { lt: now } }],
       },
-      orderBy: [
-        { priority: 'desc' },
-        { lastErrorAt: 'asc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { lastErrorAt: 'asc' }],
     });
   }
 

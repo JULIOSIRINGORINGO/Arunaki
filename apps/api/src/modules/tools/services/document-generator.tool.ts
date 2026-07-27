@@ -43,7 +43,9 @@ export class DocumentGeneratorTool {
     filename: string = 'export.xlsx',
   ): ToolResult {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+    const safeFilename = filename.endsWith('.xlsx')
+      ? filename
+      : `${filename}.xlsx`;
 
     try {
       const worksheet = xlsx.utils.json_to_sheet(rows);
@@ -52,13 +54,18 @@ export class DocumentGeneratorTool {
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       const contentBase64 = buffer.toString('base64');
 
-      const preview = rows.length > 0
-        ? `${sheetName}: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
-        : `${sheetName}: 0 baris data`;
+      const preview =
+        rows.length > 0
+          ? `${sheetName}: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
+          : `${sheetName}: 0 baris data`;
 
       return {
         status: 'success',
-        data: { sheetName, rowCount: rows.length, columns: rows.length > 0 ? Object.keys(rows[0]) : [] },
+        data: {
+          sheetName,
+          rowCount: rows.length,
+          columns: rows.length > 0 ? Object.keys(rows[0]) : [],
+        },
         preview,
         metadata: {
           toolName: 'generate_export',
@@ -66,7 +73,8 @@ export class DocumentGeneratorTool {
           executionTime: Date.now() - startTime,
           format: 'xlsx',
           filename: safeFilename,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           contentBase64,
         },
       };
@@ -92,20 +100,26 @@ export class DocumentGeneratorTool {
     filename: string = 'export.csv',
   ): ToolResult {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+    const safeFilename = filename.endsWith('.csv')
+      ? filename
+      : `${filename}.csv`;
 
     try {
       const worksheet = xlsx.utils.json_to_sheet(rows);
       const csvContent = xlsx.utils.sheet_to_csv(worksheet);
       const contentBase64 = Buffer.from(csvContent, 'utf-8').toString('base64');
 
-      const preview = rows.length > 0
-        ? `CSV: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
-        : `CSV: 0 baris data`;
+      const preview =
+        rows.length > 0
+          ? `CSV: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
+          : `CSV: 0 baris data`;
 
       return {
         status: 'success',
-        data: { rowCount: rows.length, columns: rows.length > 0 ? Object.keys(rows[0]) : [] },
+        data: {
+          rowCount: rows.length,
+          columns: rows.length > 0 ? Object.keys(rows[0]) : [],
+        },
         preview,
         metadata: {
           toolName: 'generate_export',
@@ -140,7 +154,9 @@ export class DocumentGeneratorTool {
     filename: string = 'document.pdf',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    const safeFilename = filename.endsWith('.pdf')
+      ? filename
+      : `${filename}.pdf`;
 
     try {
       const pdfDoc = await PDFDocument.create();
@@ -212,9 +228,7 @@ export class DocumentGeneratorTool {
           let currentLine = '';
 
           for (const word of words) {
-            const testLine = currentLine
-              ? `${currentLine} ${word}`
-              : word;
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
             const textWidth = helvetica.widthOfTextAtSize(testLine, 11);
 
             if (textWidth > maxWidth) {
@@ -286,7 +300,9 @@ export class DocumentGeneratorTool {
     filename: string = 'document.docx',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.docx') ? filename : `${filename}.docx`;
+    const safeFilename = filename.endsWith('.docx')
+      ? filename
+      : `${filename}.docx`;
 
     try {
       const lines = content.split('\n').filter((l) => l.trim().length > 0);
@@ -294,9 +310,7 @@ export class DocumentGeneratorTool {
 
       children.push(
         new Paragraph({
-          children: [
-            new TextRun({ text: title, bold: true, size: 36 }),
-          ],
+          children: [new TextRun({ text: title, bold: true, size: 36 })],
           heading: HeadingLevel.HEADING_1,
           alignment: AlignmentType.CENTER,
           spacing: { after: 300 },
@@ -344,9 +358,7 @@ export class DocumentGeneratorTool {
                   new TableCell({
                     children: [
                       new Paragraph({
-                        children: [
-                          new TextRun({ text: cell, size: 20 }),
-                        ],
+                        children: [new TextRun({ text: cell, size: 20 })],
                       }),
                     ],
                     width: {
@@ -476,9 +488,7 @@ export class DocumentGeneratorTool {
           .split('\n')
           .filter((l) => l.trim().length > 0);
         const bulletItems = bulletLines.map((line) => ({
-          text: line
-            .replace(/^[-*•]\s*/, '')
-            .replace(/^\d+[.)]\s*/, ''),
+          text: line.replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, ''),
           options: { fontSize: 16, color: '374151', bullet: true },
         }));
 
@@ -543,16 +553,22 @@ export class DocumentGeneratorTool {
     filename: string = 'rug-report.xlsx',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+    const safeFilename = filename.endsWith('.xlsx')
+      ? filename
+      : `${filename}.xlsx`;
 
     try {
       const workbook = xlsx.utils.book_new();
       const currency = data.currency || 'IDR';
 
       const summaryRows: Array<Record<string, string | number>> = [
-        { 'Laporan': 'Rincian Usaha Gym (RUG)', 'Periode': data.period, 'Perusahaan': data.companyName },
-        { 'Laporan': '', 'Periode': '', 'Perusahaan': '' },
-        { 'Laporan': 'PENDAPATAN', 'Jumlah': '', 'Keterangan': '' },
+        {
+          Laporan: 'Rincian Usaha Gym (RUG)',
+          Periode: data.period,
+          Perusahaan: data.companyName,
+        },
+        { Laporan: '', Periode: '', Perusahaan: '' },
+        { Laporan: 'PENDAPATAN', Jumlah: '', Keterangan: '' },
       ];
 
       let totalRevenue = 0;
@@ -560,63 +576,122 @@ export class DocumentGeneratorTool {
       if (data.revenue && data.revenue.length > 0) {
         for (const item of data.revenue) {
           totalRevenue += item.amount;
-          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+          summaryRows.push({
+            Laporan: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            Keterangan: currency,
+          });
         }
-        summaryRows.push({ 'Laporan': 'Total Pendapatan', 'Jumlah': String(totalRevenue), 'Keterangan': currency });
+        summaryRows.push({
+          Laporan: 'Total Pendapatan',
+          Jumlah: String(totalRevenue),
+          Keterangan: currency,
+        });
       }
 
-      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
-      summaryRows.push({ 'Laporan': 'HARGA POKOK PENJUALAN (HPP)', 'Jumlah': '', 'Keterangan': '' });
+      summaryRows.push({ Laporan: '', Periode: '', Perusahaan: '' });
+      summaryRows.push({
+        Laporan: 'HARGA POKOK PENJUALAN (HPP)',
+        Jumlah: '',
+        Keterangan: '',
+      });
 
       let totalCogs = 0;
       if (data.cogs && data.cogs.length > 0) {
         for (const item of data.cogs) {
           totalCogs += item.amount;
-          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+          summaryRows.push({
+            Laporan: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            Keterangan: currency,
+          });
         }
-        summaryRows.push({ 'Laporan': 'Total HPP', 'Jumlah': String(totalCogs), 'Keterangan': currency });
+        summaryRows.push({
+          Laporan: 'Total HPP',
+          Jumlah: String(totalCogs),
+          Keterangan: currency,
+        });
       }
 
-      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
-      summaryRows.push({ 'Laporan': 'LABA KOTOR', 'Jumlah': String(totalRevenue - totalCogs), 'Keterangan': currency });
+      summaryRows.push({ Laporan: '', Periode: '', Perusahaan: '' });
+      summaryRows.push({
+        Laporan: 'LABA KOTOR',
+        Jumlah: String(totalRevenue - totalCogs),
+        Keterangan: currency,
+      });
 
-      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
-      summaryRows.push({ 'Laporan': 'BIAYA OPERASIONAL', 'Jumlah': '', 'Keterangan': '' });
+      summaryRows.push({ Laporan: '', Periode: '', Perusahaan: '' });
+      summaryRows.push({
+        Laporan: 'BIAYA OPERASIONAL',
+        Jumlah: '',
+        Keterangan: '',
+      });
 
       let totalOpEx = 0;
       if (data.operatingExpenses && data.operatingExpenses.length > 0) {
         for (const item of data.operatingExpenses) {
           totalOpEx += item.amount;
-          summaryRows.push({ 'Laporan': `  ${item.category}`, 'Jumlah': String(item.amount), 'Keterangan': currency });
+          summaryRows.push({
+            Laporan: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            Keterangan: currency,
+          });
         }
-        summaryRows.push({ 'Laporan': 'Total Biaya Operasional', 'Jumlah': String(totalOpEx), 'Keterangan': currency });
+        summaryRows.push({
+          Laporan: 'Total Biaya Operasional',
+          Jumlah: String(totalOpEx),
+          Keterangan: currency,
+        });
       }
 
-      summaryRows.push({ 'Laporan': '', 'Periode': '', 'Perusahaan': '' });
-      summaryRows.push({ 'Laporan': 'LABA BERSIH', 'Jumlah': String(totalRevenue - totalCogs - totalOpEx), 'Keterangan': currency });
+      summaryRows.push({ Laporan: '', Periode: '', Perusahaan: '' });
+      summaryRows.push({
+        Laporan: 'LABA BERSIH',
+        Jumlah: String(totalRevenue - totalCogs - totalOpEx),
+        Keterangan: currency,
+      });
 
       const summarySheet = xlsx.utils.json_to_sheet(summaryRows);
       xlsx.utils.book_append_sheet(workbook, summarySheet, 'Ringkasan RUG');
 
       // Sheet 2: Detail Revenue
       if (data.revenue && data.revenue.length > 0) {
-        const revenueRows = data.revenue.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const revenueRows = data.revenue.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
         const revSheet = xlsx.utils.json_to_sheet(revenueRows);
         xlsx.utils.book_append_sheet(workbook, revSheet, 'Detail Pendapatan');
       }
 
       // Sheet 3: Detail COGS
       if (data.cogs && data.cogs.length > 0) {
-        const cogsRows = data.cogs.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const cogsRows = data.cogs.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
         const cogsSheet = xlsx.utils.json_to_sheet(cogsRows);
         xlsx.utils.book_append_sheet(workbook, cogsSheet, 'Detail HPP');
       }
 
       // Sheet 4: Detail Operating Expenses
       if (data.operatingExpenses && data.operatingExpenses.length > 0) {
-        const opexRows = data.operatingExpenses.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
+        const opexRows = data.operatingExpenses.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
         const opexSheet = xlsx.utils.json_to_sheet(opexRows);
-        xlsx.utils.book_append_sheet(workbook, opexSheet, 'Detail Biaya Operasional');
+        xlsx.utils.book_append_sheet(
+          workbook,
+          opexSheet,
+          'Detail Biaya Operasional',
+        );
       }
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -624,7 +699,14 @@ export class DocumentGeneratorTool {
 
       return {
         status: 'success',
-        data: { companyName: data.companyName, period: data.period, totalRevenue, totalCogs, totalOpEx, netIncome: totalRevenue - totalCogs - totalOpEx },
+        data: {
+          companyName: data.companyName,
+          period: data.period,
+          totalRevenue,
+          totalCogs,
+          totalOpEx,
+          netIncome: totalRevenue - totalCogs - totalOpEx,
+        },
         preview: `RUG Report: ${data.companyName} - ${data.period} | Laba Bersih: ${this.formatCurrency(totalRevenue - totalCogs - totalOpEx, currency)}`,
         metadata: {
           toolName: 'generate_business_report',
@@ -632,7 +714,8 @@ export class DocumentGeneratorTool {
           executionTime: Date.now() - startTime,
           format: 'xlsx',
           filename: safeFilename,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           contentBase64,
         },
       };
@@ -661,55 +744,99 @@ export class DocumentGeneratorTool {
     filename: string = 'laba-rugi-report.xlsx',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+    const safeFilename = filename.endsWith('.xlsx')
+      ? filename
+      : `${filename}.xlsx`;
 
     try {
       const workbook = xlsx.utils.book_new();
       const currency = data.currency || 'IDR';
 
       const rows: Array<Record<string, string | number>> = [
-        { 'Laporan Laba Rugi': data.companyName, 'Periode': data.period, '': '' },
-        { 'Laporan Laba Rugi': '', 'Periode': '', '': '' },
-        { 'Laporan Laba Rugi': 'PENDAPATAN', 'Jumlah': '', 'Mata Uang': '' },
+        { 'Laporan Laba Rugi': data.companyName, Periode: data.period, '': '' },
+        { 'Laporan Laba Rugi': '', Periode: '', '': '' },
+        { 'Laporan Laba Rugi': 'PENDAPATAN', Jumlah: '', 'Mata Uang': '' },
       ];
 
       let totalIncome = 0;
       if (data.incomeItems) {
         for (const item of data.incomeItems) {
-          rows.push({ 'Laporan Laba Rugi': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          rows.push({
+            'Laporan Laba Rugi': `  ${item.category}`,
+            Jumlah: String(item.amount),
+            'Mata Uang': currency,
+          });
           totalIncome += item.amount;
         }
       }
-      rows.push({ 'Laporan Laba Rugi': 'Total Pendapatan', 'Jumlah': String(totalIncome), 'Mata Uang': currency });
+      rows.push({
+        'Laporan Laba Rugi': 'Total Pendapatan',
+        Jumlah: String(totalIncome),
+        'Mata Uang': currency,
+      });
 
-      rows.push({ 'Laporan Laba Rugi': '', 'Periode': '', '': '' });
-      rows.push({ 'Laporan Laba Rugi': 'BEBAN/BIAYA', 'Jumlah': '', 'Mata Uang': '' });
+      rows.push({ 'Laporan Laba Rugi': '', Periode: '', '': '' });
+      rows.push({
+        'Laporan Laba Rugi': 'BEBAN/BIAYA',
+        Jumlah: '',
+        'Mata Uang': '',
+      });
 
       let totalExpense = 0;
       if (data.expenseItems) {
         for (const item of data.expenseItems) {
-          rows.push({ 'Laporan Laba Rugi': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          rows.push({
+            'Laporan Laba Rugi': `  ${item.category}`,
+            Jumlah: String(item.amount),
+            'Mata Uang': currency,
+          });
           totalExpense += item.amount;
         }
       }
-      rows.push({ 'Laporan Laba Rugi': 'Total Beban', 'Jumlah': String(totalExpense), 'Mata Uang': currency });
+      rows.push({
+        'Laporan Laba Rugi': 'Total Beban',
+        Jumlah: String(totalExpense),
+        'Mata Uang': currency,
+      });
 
-      rows.push({ 'Laporan Laba Rugi': '', 'Periode': '', '': '' });
+      rows.push({ 'Laporan Laba Rugi': '', Periode: '', '': '' });
       const netProfit = totalIncome - totalExpense;
-      rows.push({ 'Laporan Laba Rugi': netProfit >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH', 'Jumlah': String(Math.abs(netProfit)), 'Mata Uang': currency });
+      rows.push({
+        'Laporan Laba Rugi': netProfit >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH',
+        Jumlah: String(Math.abs(netProfit)),
+        'Mata Uang': currency,
+      });
 
       const sheet = xlsx.utils.json_to_sheet(rows);
       xlsx.utils.book_append_sheet(workbook, sheet, 'Laba Rugi');
 
       // Detail sheets
       if (data.incomeItems && data.incomeItems.length > 0) {
-        const incRows = data.incomeItems.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
-        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(incRows), 'Detail Pendapatan');
+        const incRows = data.incomeItems.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
+        xlsx.utils.book_append_sheet(
+          workbook,
+          xlsx.utils.json_to_sheet(incRows),
+          'Detail Pendapatan',
+        );
       }
 
       if (data.expenseItems && data.expenseItems.length > 0) {
-        const expRows = data.expenseItems.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
-        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(expRows), 'Detail Beban');
+        const expRows = data.expenseItems.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
+        xlsx.utils.book_append_sheet(
+          workbook,
+          xlsx.utils.json_to_sheet(expRows),
+          'Detail Beban',
+        );
       }
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -717,7 +844,13 @@ export class DocumentGeneratorTool {
 
       return {
         status: 'success',
-        data: { companyName: data.companyName, period: data.period, totalIncome, totalExpense, netProfit },
+        data: {
+          companyName: data.companyName,
+          period: data.period,
+          totalIncome,
+          totalExpense,
+          netProfit,
+        },
         preview: `Laba Rugi: ${data.companyName} - ${data.period} | ${netProfit >= 0 ? 'Laba' : 'Rugi'}: ${this.formatCurrency(Math.abs(netProfit), currency)}`,
         metadata: {
           toolName: 'generate_business_report',
@@ -725,7 +858,8 @@ export class DocumentGeneratorTool {
           executionTime: Date.now() - startTime,
           format: 'xlsx',
           filename: safeFilename,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           contentBase64,
         },
       };
@@ -754,71 +888,128 @@ export class DocumentGeneratorTool {
     filename: string = 'neraca-report.xlsx',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+    const safeFilename = filename.endsWith('.xlsx')
+      ? filename
+      : `${filename}.xlsx`;
 
     try {
       const workbook = xlsx.utils.book_new();
       const currency = data.currency || 'IDR';
 
       const rows: Array<Record<string, string | number>> = [
-        { 'Neraca': data.companyName, 'Per Tanggal': data.period, '': '' },
-        { 'Neraca': '', 'Per Tanggal': '', '': '' },
-        { 'Neraca': 'ASET', 'Jumlah': '', 'Mata Uang': '' },
+        { Neraca: data.companyName, 'Per Tanggal': data.period, '': '' },
+        { Neraca: '', 'Per Tanggal': '', '': '' },
+        { Neraca: 'ASET', Jumlah: '', 'Mata Uang': '' },
       ];
 
       let totalAssets = 0;
       if (data.assets) {
         for (const item of data.assets) {
-          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          rows.push({
+            Neraca: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            'Mata Uang': currency,
+          });
           totalAssets += item.amount;
         }
       }
-      rows.push({ 'Neraca': 'Total Aset', 'Jumlah': String(totalAssets), 'Mata Uang': currency });
+      rows.push({
+        Neraca: 'Total Aset',
+        Jumlah: String(totalAssets),
+        'Mata Uang': currency,
+      });
 
-      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
-      rows.push({ 'Neraca': 'KEWAJIBAN', 'Jumlah': '', 'Mata Uang': '' });
+      rows.push({ Neraca: '', 'Per Tanggal': '', '': '' });
+      rows.push({ Neraca: 'KEWAJIBAN', Jumlah: '', 'Mata Uang': '' });
 
       let totalLiabilities = 0;
       if (data.liabilities) {
         for (const item of data.liabilities) {
-          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          rows.push({
+            Neraca: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            'Mata Uang': currency,
+          });
           totalLiabilities += item.amount;
         }
       }
-      rows.push({ 'Neraca': 'Total Kewajiban', 'Jumlah': String(totalLiabilities), 'Mata Uang': currency });
+      rows.push({
+        Neraca: 'Total Kewajiban',
+        Jumlah: String(totalLiabilities),
+        'Mata Uang': currency,
+      });
 
-      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
-      rows.push({ 'Neraca': 'EKUITAS', 'Jumlah': '', 'Mata Uang': '' });
+      rows.push({ Neraca: '', 'Per Tanggal': '', '': '' });
+      rows.push({ Neraca: 'EKUITAS', Jumlah: '', 'Mata Uang': '' });
 
       let totalEquity = 0;
       if (data.equity) {
         for (const item of data.equity) {
-          rows.push({ 'Neraca': `  ${item.category}`, 'Jumlah': String(item.amount), 'Mata Uang': currency });
+          rows.push({
+            Neraca: `  ${item.category}`,
+            Jumlah: String(item.amount),
+            'Mata Uang': currency,
+          });
           totalEquity += item.amount;
         }
       }
-      rows.push({ 'Neraca': 'Total Ekuitas', 'Jumlah': String(totalEquity), 'Mata Uang': currency });
+      rows.push({
+        Neraca: 'Total Ekuitas',
+        Jumlah: String(totalEquity),
+        'Mata Uang': currency,
+      });
 
-      rows.push({ 'Neraca': '', 'Per Tanggal': '', '': '' });
-      rows.push({ 'Neraca': 'TOTAL KEWAJIBAN & EKUITAS', 'Jumlah': String(totalLiabilities + totalEquity), 'Mata Uang': currency });
+      rows.push({ Neraca: '', 'Per Tanggal': '', '': '' });
+      rows.push({
+        Neraca: 'TOTAL KEWAJIBAN & EKUITAS',
+        Jumlah: String(totalLiabilities + totalEquity),
+        'Mata Uang': currency,
+      });
 
       const sheet = xlsx.utils.json_to_sheet(rows);
       xlsx.utils.book_append_sheet(workbook, sheet, 'Neraca');
 
       // Detail sheets
       if (data.assets && data.assets.length > 0) {
-        const assetRows = data.assets.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
-        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(assetRows), 'Detail Aset');
+        const assetRows = data.assets.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
+        xlsx.utils.book_append_sheet(
+          workbook,
+          xlsx.utils.json_to_sheet(assetRows),
+          'Detail Aset',
+        );
       }
 
       if (data.liabilities && data.liabilities.length > 0) {
-        const liabRows = data.liabilities.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
-        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(liabRows), 'Detail Kewajiban');
+        const liabRows = data.liabilities.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
+        xlsx.utils.book_append_sheet(
+          workbook,
+          xlsx.utils.json_to_sheet(liabRows),
+          'Detail Kewajiban',
+        );
       }
 
       if (data.equity && data.equity.length > 0) {
-        const eqRows = data.equity.map((r, i) => ({ No: i + 1, Kategori: r.category, Jumlah: r.amount, Mata_Uang: currency }));
-        xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(eqRows), 'Detail Ekuitas');
+        const eqRows = data.equity.map((r, i) => ({
+          No: i + 1,
+          Kategori: r.category,
+          Jumlah: r.amount,
+          Mata_Uang: currency,
+        }));
+        xlsx.utils.book_append_sheet(
+          workbook,
+          xlsx.utils.json_to_sheet(eqRows),
+          'Detail Ekuitas',
+        );
       }
 
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
@@ -828,7 +1019,14 @@ export class DocumentGeneratorTool {
 
       return {
         status: 'success',
-        data: { companyName: data.companyName, period: data.period, totalAssets, totalLiabilities, totalEquity, balanced },
+        data: {
+          companyName: data.companyName,
+          period: data.period,
+          totalAssets,
+          totalLiabilities,
+          totalEquity,
+          balanced,
+        },
         preview: `Neraca: ${data.companyName} - ${data.period} | Aset: ${this.formatCurrency(totalAssets, currency)} | Kewajiban+Ekuitas: ${this.formatCurrency(totalLiabilities + totalEquity, currency)} ${balanced ? '✓ Seimbang' : '⚠ Tidak Seimbang'}`,
         metadata: {
           toolName: 'generate_business_report',
@@ -836,7 +1034,8 @@ export class DocumentGeneratorTool {
           executionTime: Date.now() - startTime,
           format: 'xlsx',
           filename: safeFilename,
-          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           contentBase64,
         },
       };
@@ -877,9 +1076,9 @@ export class DocumentGeneratorTool {
     }
 
     const titles: Record<string, string> = {
-      'rug': 'Laporan Rincian Usaha Gym (RUG)',
+      rug: 'Laporan Rincian Usaha Gym (RUG)',
       'laba-rugi': 'Laporan Laba Rugi',
-      'neraca': 'Laporan Neraca (Balance Sheet)',
+      neraca: 'Laporan Neraca (Balance Sheet)',
     };
 
     return this.generatePdf(
@@ -931,7 +1130,10 @@ export class DocumentGeneratorTool {
     return content;
   }
 
-  private formatLabaRugiContent(data: BusinessReportData, currency: string): string {
+  private formatLabaRugiContent(
+    data: BusinessReportData,
+    currency: string,
+  ): string {
     let content = `${data.companyName}\nPeriode: ${data.period}\n\n`;
 
     content += `## PENDAPATAN\n`;
@@ -961,7 +1163,10 @@ export class DocumentGeneratorTool {
     return content;
   }
 
-  private formatNeracaContent(data: BusinessReportData, currency: string): string {
+  private formatNeracaContent(
+    data: BusinessReportData,
+    currency: string,
+  ): string {
     let content = `${data.companyName}\nPer Tanggal: ${data.period}\n\n`;
 
     content += `## ASET\n`;

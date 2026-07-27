@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { MemoryService } from '../memory/memory.service.js';
 
 export interface HeartbeatSnapshot {
@@ -30,7 +35,9 @@ export interface FileSnapshot {
  * - Runs as NestJS interval (configurable, default 60s)
  */
 @Injectable()
-export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy {
+export class WorkspaceHeartbeatService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(WorkspaceHeartbeatService.name);
 
   /** In-memory cache of last-known workspace states */
@@ -58,7 +65,9 @@ export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy 
       () => this.runHeartbeat(),
       this.HEARTBEAT_INTERVAL_MS,
     );
-    this.logger.log(`Heartbeat started (interval: ${this.HEARTBEAT_INTERVAL_MS}ms)`);
+    this.logger.log(
+      `Heartbeat started (interval: ${this.HEARTBEAT_INTERVAL_MS}ms)`,
+    );
   }
 
   onModuleDestroy() {
@@ -115,7 +124,9 @@ export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy 
           }
         }
       } catch (err: any) {
-        this.logger.warn(`Heartbeat failed for workspace ${workspaceId}: ${err.message}`);
+        this.logger.warn(
+          `Heartbeat failed for workspace ${workspaceId}: ${err.message}`,
+        );
       }
     }
 
@@ -192,7 +203,9 @@ export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy 
   /**
    * Store heartbeat results in memory for agent context enrichment.
    */
-  private async storeHeartbeatResult(snapshot: HeartbeatSnapshot): Promise<void> {
+  private async storeHeartbeatResult(
+    snapshot: HeartbeatSnapshot,
+  ): Promise<void> {
     const changeSummary = [];
 
     if (snapshot.newFiles.length > 0) {
@@ -218,8 +231,8 @@ export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy 
 
       this.logger.debug(
         `Heartbeat stored: ${snapshot.newFiles.length} new, ` +
-        `${snapshot.modifiedFiles.length} modified, ` +
-        `${snapshot.deletedFiles.length} deleted in workspace ${snapshot.workspaceId}`,
+          `${snapshot.modifiedFiles.length} modified, ` +
+          `${snapshot.deletedFiles.length} deleted in workspace ${snapshot.workspaceId}`,
       );
     } catch (err: any) {
       this.logger.warn(`Failed to store heartbeat result: ${err.message}`);
@@ -229,7 +242,10 @@ export class WorkspaceHeartbeatService implements OnModuleInit, OnModuleDestroy 
   /**
    * Get the latest changes for a workspace (for context injection).
    */
-  getLatestChanges(workspaceId: string): { fileCount: number; hasSnapshot: boolean } {
+  getLatestChanges(workspaceId: string): {
+    fileCount: number;
+    hasSnapshot: boolean;
+  } {
     const snapshot = this.snapshots.get(workspaceId);
     return {
       fileCount: snapshot?.size || 0,

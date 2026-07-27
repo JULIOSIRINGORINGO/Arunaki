@@ -39,7 +39,7 @@
     {
       "name": "Bahan Baku",
       "columns": ["Bahan", "Satuan", "Harga Beli", "Stok Minimum", "Supplier"],
-      ["Beras Premium", "kg", "Rp 12.000", "50 kg", "Toko Beras Makmur"]
+      "example": ["Beras Premium", "kg", "Rp 12.000", "50 kg", "Toko Beras Makmur"]
     }
   ],
   "terminology": {

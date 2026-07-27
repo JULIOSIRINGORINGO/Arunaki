@@ -1,6 +1,17 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
 import { ProviderService } from './provider.service.js';
-import { successResponse, errorResponse } from '../../common/dtos/api-response.dto.js';
+import {
+  successResponse,
+  errorResponse,
+} from '../../common/dtos/api-response.dto.js';
 
 @Controller('providers')
 export class ProviderController {
@@ -57,7 +68,9 @@ export class ProviderController {
       }
       return successResponse({
         ...item,
-        apiKey: (item as any).apiKey ? `${(item as any).apiKey.substring(0, 8)}...` : '',
+        apiKey: (item as any).apiKey
+          ? `${(item as any).apiKey.substring(0, 8)}...`
+          : '',
       });
     } catch (error: any) {
       return errorResponse('NOT_FOUND', error.message);
@@ -80,7 +93,10 @@ export class ProviderController {
   ) {
     try {
       if (!body.name || !body.baseUrl || !body.apiKey || !body.model) {
-        return errorResponse('VALIDATION_FAILED', 'name, baseUrl, apiKey, and model are required');
+        return errorResponse(
+          'VALIDATION_FAILED',
+          'name, baseUrl, apiKey, and model are required',
+        );
       }
 
       const item = await this.providerService.createProvider(body);
@@ -139,7 +155,10 @@ export class ProviderController {
   ) {
     try {
       if (!body.baseUrl || !body.apiKey || !body.model) {
-        return errorResponse('VALIDATION_FAILED', 'baseUrl, apiKey, and model are required');
+        return errorResponse(
+          'VALIDATION_FAILED',
+          'baseUrl, apiKey, and model are required',
+        );
       }
 
       // Test by sending a minimal chat completion request
@@ -192,7 +211,10 @@ export class ProviderController {
       // Don't allow deleting the active provider
       const item = await this.providerService.findById(id);
       if ((item as any)?.active) {
-        return errorResponse('DELETE_FAILED', 'Cannot delete the active provider. Activate another provider first.');
+        return errorResponse(
+          'DELETE_FAILED',
+          'Cannot delete the active provider. Activate another provider first.',
+        );
       }
 
       await this.providerService.delete(id);

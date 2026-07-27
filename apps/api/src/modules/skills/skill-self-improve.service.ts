@@ -46,7 +46,9 @@ export class SkillSelfImproveService {
       try {
         await this.improveSkillForLesson(lesson);
       } catch (err: any) {
-        this.logger.warn(`Skill self-improve failed for lesson: ${err.message}`);
+        this.logger.warn(
+          `Skill self-improve failed for lesson: ${err.message}`,
+        );
       }
     }
   }
@@ -62,10 +64,15 @@ export class SkillSelfImproveService {
     importance: number;
   }): Promise<void> {
     // Find skills relevant to this lesson
-    const skills = await this.skillService.findRelevant(lesson.domain, lesson.workspaceId);
+    const skills = await this.skillService.findRelevant(
+      lesson.domain,
+      lesson.workspaceId,
+    );
 
     if (skills.length === 0) {
-      this.logger.debug(`No relevant skills for lesson: ${lesson.content.substring(0, 50)}`);
+      this.logger.debug(
+        `No relevant skills for lesson: ${lesson.content.substring(0, 50)}`,
+      );
       return;
     }
 
@@ -82,7 +89,9 @@ export class SkillSelfImproveService {
         description: this.generateUpdatedDescription(skill.description, lesson),
       });
 
-      this.logger.log(`Auto-improved skill: ${skill.name} (v${skill.version} -> new version)`);
+      this.logger.log(
+        `Auto-improved skill: ${skill.name} (v${skill.version} -> new version)`,
+      );
     }
   }
 
@@ -130,7 +139,10 @@ Return ONLY the updated skill content in markdown. No explanation.`;
   /**
    * Generate updated description reflecting the lesson.
    */
-  private generateUpdatedDescription(original: string, lesson: { type: string; content: string }): string {
+  private generateUpdatedDescription(
+    original: string,
+    lesson: { type: string; content: string },
+  ): string {
     const lessonSummary = lesson.content.substring(0, 80);
     return `${original} [Auto-updated: ${lesson.type} — ${lessonSummary}]`;
   }
@@ -155,11 +167,13 @@ Return ONLY the updated skill content in markdown. No explanation.`;
     const skill = await this.skillService.findById(skillId);
     if (!skill) return [];
 
-    return [{
-      version: skill.version,
-      updatedAt: skill.updatedAt,
-      sourceType: skill.sourceType,
-      sourceInfo: skill.sourceInfo,
-    }];
+    return [
+      {
+        version: skill.version,
+        updatedAt: skill.updatedAt,
+        sourceType: skill.sourceType,
+        sourceInfo: skill.sourceInfo,
+      },
+    ];
   }
 }

@@ -14,6 +14,7 @@ import { SearchModule } from '../search/search.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
+import { SourceModule } from '../source/source.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SkillsModule } from '../skills/skills.module.js';
     ArtifactModule,
     MemoryModule,
     SkillsModule,
+    forwardRef(() => SourceModule),
   ],
   controllers: [WorkspaceController],
   providers: [

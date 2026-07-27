@@ -9,7 +9,12 @@ import { AiModule } from '../ai/ai.module.js';
 @Module({
   imports: [forwardRef(() => AiModule)],
   controllers: [SkillsController],
-  providers: [SkillService, SkillRepository, SkillSeedService, SkillSelfImproveService],
+  providers: [
+    SkillService,
+    SkillRepository,
+    SkillSeedService,
+    SkillSelfImproveService,
+  ],
   exports: [SkillService, SkillSelfImproveService],
 })
 export class SkillsModule implements OnModuleInit {

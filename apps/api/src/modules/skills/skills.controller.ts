@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { SkillService } from './skill.service.js';
 
 @Controller('api/v1/skills')
@@ -30,23 +39,27 @@ export class SkillsController {
   }
 
   @Post()
-  async create(@Body() body: {
-    name: string;
-    displayName: string;
-    description: string;
-    category?: string;
-    domain?: string;
-    workspaceId?: string;
-    content: string;
-    tags?: string[];
-  }) {
+  async create(
+    @Body()
+    body: {
+      name: string;
+      displayName: string;
+      description: string;
+      category?: string;
+      domain?: string;
+      workspaceId?: string;
+      content: string;
+      tags?: string[];
+    },
+  ) {
     return this.skillService.createSkill(body);
   }
 
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Body() body: Partial<{
+    @Body()
+    body: Partial<{
       displayName: string;
       description: string;
       category: string;

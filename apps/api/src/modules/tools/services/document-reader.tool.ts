@@ -36,7 +36,10 @@ export class DocumentReaderTool {
           displayName: 'Pembaca Dokumen',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'FILE_NOT_FOUND', message: `File not found: ${resolvedPath}` },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `File not found: ${resolvedPath}`,
+        },
       };
     }
 
@@ -73,7 +76,10 @@ export class DocumentReaderTool {
               displayName: 'Pembaca Dokumen',
               executionTime: Date.now() - startTime,
             },
-            error: { code: 'UNSUPPORTED_FORMAT', message: `Format ${ext} not supported` },
+            error: {
+              code: 'UNSUPPORTED_FORMAT',
+              message: `Format ${ext} not supported`,
+            },
           };
       }
 

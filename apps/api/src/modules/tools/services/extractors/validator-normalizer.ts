@@ -42,18 +42,29 @@ export interface NormalizedDocument {
 }
 
 const VALID_DOC_TYPES = [
-  'invoice', 'receipt', 'purchase_order', 'quotation',
-  'delivery_note', 'inventory', 'report', 'list', 'other',
+  'invoice',
+  'receipt',
+  'purchase_order',
+  'quotation',
+  'delivery_note',
+  'inventory',
+  'report',
+  'list',
+  'other',
 ];
 
-export function validateExtractedData(input: ExtractedDataInput): ValidationResult {
+export function validateExtractedData(
+  input: ExtractedDataInput,
+): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
   if (input.documentType) {
     const normalized = input.documentType.toLowerCase().replace(/[\s-]/g, '_');
     if (!VALID_DOC_TYPES.includes(normalized)) {
-      warnings.push(`documentType "${input.documentType}" tidak dikenali, gunakan: ${VALID_DOC_TYPES.join(', ')}`);
+      warnings.push(
+        `documentType "${input.documentType}" tidak dikenali, gunakan: ${VALID_DOC_TYPES.join(', ')}`,
+      );
     }
   }
 
@@ -68,17 +79,27 @@ export function validateExtractedData(input: ExtractedDataInput): ValidationResu
       if (item.qty !== null && item.qty !== undefined && item.qty <= 0) {
         errors.push(`Item ${i + 1} (${item.name}): qty harus > 0`);
       }
-      if (item.unitPrice !== null && item.unitPrice !== undefined && item.unitPrice < 0) {
+      if (
+        item.unitPrice !== null &&
+        item.unitPrice !== undefined &&
+        item.unitPrice < 0
+      ) {
         errors.push(`Item ${i + 1} (${item.name}): harga tidak boleh negatif`);
       }
     }
   }
 
   if (input.totals) {
-    if (input.totals.total !== null && input.totals.total !== undefined &&
-        input.totals.subtotal !== null && input.totals.subtotal !== undefined) {
+    if (
+      input.totals.total !== null &&
+      input.totals.total !== undefined &&
+      input.totals.subtotal !== null &&
+      input.totals.subtotal !== undefined
+    ) {
       if (input.totals.total < input.totals.subtotal) {
-        warnings.push('Total kurang dari subtotal — mungkin ada diskon yang tidak terdeteksi');
+        warnings.push(
+          'Total kurang dari subtotal — mungkin ada diskon yang tidak terdeteksi',
+        );
       }
     }
   }
@@ -90,7 +111,9 @@ export function validateExtractedData(input: ExtractedDataInput): ValidationResu
   };
 }
 
-export function normalizeExtractedData(input: ExtractedDataInput): NormalizedDocument {
+export function normalizeExtractedData(
+  input: ExtractedDataInput,
+): NormalizedDocument {
   const validation = validateExtractedData(input);
 
   const normalizedItems = (input.items || [])
@@ -99,7 +122,9 @@ export function normalizeExtractedData(input: ExtractedDataInput): NormalizedDoc
       name: item.name!.trim(),
       qty: item.qty ?? null,
       unitPrice: item.unitPrice ?? null,
-      total: item.total ?? (item.qty && item.unitPrice ? item.qty * item.unitPrice : null),
+      total:
+        item.total ??
+        (item.qty && item.unitPrice ? item.qty * item.unitPrice : null),
     }));
 
   const calculatedSubtotal = normalizedItems.reduce(
@@ -107,7 +132,9 @@ export function normalizeExtractedData(input: ExtractedDataInput): NormalizedDoc
     0,
   );
 
-  const format = (input.documentType || 'other').toLowerCase().replace(/[\s-]/g, '_');
+  const format = (input.documentType || 'other')
+    .toLowerCase()
+    .replace(/[\s-]/g, '_');
   const title = input.title || 'Data';
 
   const normalizedMetadata: Record<string, string> = {};
@@ -123,9 +150,15 @@ export function normalizeExtractedData(input: ExtractedDataInput): NormalizedDoc
     items: normalizedItems,
     summary: {
       itemCount: normalizedItems.length,
-      subtotal: input.totals?.subtotal ?? (calculatedSubtotal > 0 ? calculatedSubtotal : null),
+      subtotal:
+        input.totals?.subtotal ??
+        (calculatedSubtotal > 0 ? calculatedSubtotal : null),
       tax: input.totals?.tax ?? null,
-      total: input.totals?.total ?? (calculatedSubtotal > 0 && input.totals?.tax ? calculatedSubtotal + input.totals.tax : null),
+      total:
+        input.totals?.total ??
+        (calculatedSubtotal > 0 && input.totals?.tax
+          ? calculatedSubtotal + input.totals.tax
+          : null),
     },
     metadata: normalizedMetadata,
     validation,
@@ -142,8 +175,12 @@ export function formatAsPreview(doc: NormalizedDocument): string {
     lines.push('Item:');
     for (const item of doc.items) {
       const qtyStr = item.qty ? `${item.qty} x ` : '';
-      const priceStr = item.unitPrice ? `@ Rp ${item.unitPrice.toLocaleString('id-ID')}` : '';
-      const totalStr = item.total ? ` = Rp ${item.total.toLocaleString('id-ID')}` : '';
+      const priceStr = item.unitPrice
+        ? `@ Rp ${item.unitPrice.toLocaleString('id-ID')}`
+        : '';
+      const totalStr = item.total
+        ? ` = Rp ${item.total.toLocaleString('id-ID')}`
+        : '';
       lines.push(`  ${item.name}: ${qtyStr}${priceStr}${totalStr}`);
     }
     lines.push('');

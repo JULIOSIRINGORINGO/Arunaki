@@ -27,7 +27,8 @@ export class SkillSeedService {
       {
         name: 'rekap-penjualan-kain',
         displayName: 'Rekap Penjualan Kain',
-        description: 'Merangkum data penjualan kain per periode dengan format standar',
+        description:
+          'Merangkum data penjualan kain per periode dengan format standar',
         category: 'reporting',
         content: `# Rekap Penjualan Kain
 

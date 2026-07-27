@@ -28,7 +28,8 @@ export interface ToolCapability {
   description: string;
   tags: string[];
   inputSchema: Record<string, any>;
-  outputType: 'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
+  outputType:
+    'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
   estimatedLatency: 'fast' | 'medium' | 'slow';
 }
 
