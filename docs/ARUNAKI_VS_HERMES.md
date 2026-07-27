@@ -95,17 +95,17 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 | Aspek | Hermes Agent | Arunaki |
 |-------|-------------|---------|
 | **MAX_ROUNDS** | Unlimited (iteration budget-based) | 5 (chat) / 25 (workspace) |
-| **Error handling** | 73KB error classifier, 7 kategori | Try-catch generik |
-| **Retry** | Adaptive backoff + jittered wait | ❌ Tidak ada |
+| **Error handling** | 73KB error classifier, 7 kategori | fetchWithRetry (429/500) |
+| **Retry** | Adaptive backoff + jittered wait | ✅ Exponential backoff |
 | **Credential pool** | API key rotation + failover | 1 API key statis |
-| **Context compression** | Multi-path (pre-API, overflow, post-tool) | ❌ Tidak ada |
-| **Parallel tools** | ThreadPoolExecutor untuk tools independen | Sequential selalu |
+| **Context compression** | Multi-path (pre-API, overflow, post-tool) | ✅ Tool pruning + truncation |
+| **Parallel tools** | ThreadPoolExecutor untuk tools independen | Sequential (approval gate safe) |
 | **Interrupt & redirect** | User bisa interupsi mid-execution | ❌ Tidak ada |
 | **Sub-agent delegation** | Spawn isolated child agents | ❌ Tidak ada |
 | **Stream handling** | Streaming + continuation prompts | SSE basic |
 | **Budget management** | Shared iteration budget parent+child | Fixed MAX_ROUNDS |
 
-**Kesimpulan**: Agent loop Arunaki sangat basic. Tidak ada error recovery, tidak ada context management, tidak ada parallel execution. Ini yang bikin agent "gampang macet".
+**Kesimpulan**: Agent loop Arunaki sudah **60%** — error retry dan context management sudah jalan. Yang belum: interrupt & redirect, sub-agent delegation, credential pool.
 
 ### 2.3 Tool System
 
@@ -153,53 +153,39 @@ Hermes Agent (dahulu OpenClaw) adalah **agent framework** yang bisa pakai model 
 
 | Aspek | Hermes Agent | Arunaki |
 |-------|-------------|---------|
-| **Token counting** | ✅ Hitung token sebelum API call | ❌ Tidak ada |
-| **Compression** | Multi-path: pre-API, overflow, post-tool | ❌ Tidak ada |
-| **Message pruning** | Tool results diganti placeholder | ❌ Tidak ada |
-| **History truncation** | Sliding window + summarization | ❌ Kirim semua history |
+| **Token counting** | ✅ Hitung token sebelum API call | ✅ tiktoken integration |
+| **Compression** | Multi-path: pre-API, overflow, post-tool | ⏳ Tool pruning + truncation (partial) |
+| **Message pruning** | Tool results diganti placeholder | ✅ Large outputs compressed |
+| **History truncation** | Sliding window + summarization | ✅ Sliding window (token budget) |
 | **Image stripping** | Old images diganti placeholder | ❌ |
 | **Session rotation** | New session saat compress | ❌ |
 | **Lock safety** | SQLite compression lock | ❌ |
 
-**Kesimpulan**: Context management Arunaki = **TIDAK ADA**. Ini masalah kritis. Semua history dikirim ke LLM tanpa batas. Tool results yang besar akan cepat exceeds context window.
+**Kesimpulan**: Context management Arunaki sudah **70%** — token counting, tool pruning, dan history truncation sudah jalan. Yang belum: image stripping, session rotation, dan full compression.
 
 ---
 
 ## 3. BUG KRITIS: Workspace Mode Tidak Pernah Aktif
 
-### Masalah
+### Status: ✅ SUDAH DIPERBAIKI
+
+### Masalah (SUDAH FIXED)
 
 Di `workspace-runner.service.ts` line 66:
 ```typescript
+// SEBELUM (bug):
 const systemPrompt = this.aiService.getSystemPrompt('workspace', undefined, workspaceContext);
+
+// SESUDAH (fixed):
+const systemPrompt = this.aiService.getSystemPrompt('workspace', workspaceContext);
 ```
 
-Parameter `workspaceContext` dikirim ke posisi ke-3 (`knowledgeContext`), bukan posisi ke-2 (`workspaceContext`).
+Parameter `workspaceContext` sekarang dikirim ke posisi yang benar (posisi ke-2, bukan ke-3).
 
-Di `ai.service.ts` line 177:
-```typescript
-if (mode === 'workspace' && workspaceContext) {  // workspaceContext = undefined!
-```
-
-Karena `workspaceContext` (posisi 2) = `undefined`, condition selalu `false`. Workspace mode **jatuh ke chat prompt**, bukan autonomous agent prompt.
-
-### Dampak
+### Dampak (SEBELUM FIXED)
 - Workspace agent selalu dapat system prompt chat mode (bukan autonomous)
 - File listing di-inject sebagai "knowledge base" bukan sebagai workspace context
 - Agent tidak punya panduan autonomous yang benar
-
-### Fix
-```typescript
-// workspace-runner.service.ts
-const systemPrompt = this.aiService.getSystemPrompt('workspace', workspaceContext);
-
-// ai.service.ts
-getSystemPrompt(
-  mode: 'chat' | 'workspace',
-  contextOrWorkspace?: string,  // rename parameter
-  knowledgeContext?: string,
-)
-```
 
 ---
 
@@ -238,12 +224,12 @@ getSystemPrompt(
 
 ### Prioritas 1: Fix Bug + Basic Framework (Minggu 1-2)
 
-1. **Fix workspace system prompt bug** — parameter posisi
-2. **Token counting** — hitung token sebelum API call, handle overflow
-3. **History truncation** — sliding window, jangan kirim semua history
-4. **Tool result pruning** — compress large tool results
-5. **Error retry** — minimal retry 1-2x untuk transient errors
-6. **Parallel tool execution** — tools independen bisa jalan bersama
+1. ✅ **Fix workspace system prompt bug** — parameter posisi
+2. ✅ **Token counting** — hitung token sebelum API call, handle overflow
+3. ✅ **History truncation** — sliding window, jangan kirim semua history
+4. ✅ **Tool result pruning** — compress large tool results
+5. ✅ **Error retry** — retry 1-2x untuk transient errors (429/500)
+6. ⏳ **Parallel tool execution** — deferred (sequential lebih aman untuk approval gate)
 
 ### Prioritas 2: Agent Intelligence (Minggu 3-4)
 
@@ -320,11 +306,13 @@ getSystemPrompt(
 | Aspect | Status Sekarang | Target |
 |--------|----------------|--------|
 | Tool System | ✅ Solid (16 tools) | ✅ + toolsets |
-| System Prompt | ❌ Flat, no tiers | ✅ 3-tier |
-| Agent Loop | ❌ Basic, no error handling | ✅ Resilient |
-| Context Management | ❌ Tidak ada | ✅ Full compression |
+| System Prompt | ⚠️ Flat, workspace fixed | ✅ 3-tier |
+| Agent Loop | ⚠️ Basic + retry + context mgmt | ✅ Resilient |
+| Context Management | ⚠️ 70% done (token/prune/truncate) | ✅ Full compression |
 | Skills System | ❌ Tidak ada | ✅ Auto-learn |
 | Memory System | ❌ Tidak ada | ✅ Cross-session |
-| Workspace Agent | ❌ Bug, prompt salah | ✅ Autonomous |
+| Workspace Agent | ✅ Bug fixed, prompt autonomous | ✅ Autonomous |
 
-**Bottom line**: Arunaki punya "tangan" (tools) yang cukup, tapi kurang "otak" (framework). Fix framework-nya, dan model gratisan pun bisa kerja autonomous.
+**Progress: 4/7 items selesai atau partial.** Yang belum: Skills system, Memory system, dan full Context compression (image stripping, session rotation).
+
+**Bottom line**: Arunaki punya "tangan" (tools) yang cukup, dan sekarang "otak" (framework) sudah mulai dibangun. Skills system dan memory system adalah langkah berikutnya untuk menjadikan agent benar-benar autonomous.
