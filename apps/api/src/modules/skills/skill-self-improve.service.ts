@@ -5,7 +5,7 @@ import { AiService } from '../ai/ai.service.js';
 /**
  * SkillSelfImproveService — skills auto-update from experience.
  *
- * Inspired by Hermes's skill self-improvement. After background review
+ * Inspired OpenClaw's skill self-improvement. After background review
  * detects a pattern or correction, the skill can be updated automatically.
  *
  * Flow:

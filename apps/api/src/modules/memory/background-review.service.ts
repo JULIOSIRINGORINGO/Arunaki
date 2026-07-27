@@ -5,7 +5,7 @@ import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js
 /**
  * BackgroundReviewService — auto-learn after every turn.
  *
- * Inspired by Hermes's background_review that runs after every agent turn.
+ * Inspired OpenClaw's background_review that runs after every agent turn.
  * Extracts new facts, preferences, and corrections from conversations
  * and automatically saves them to memory.
  *

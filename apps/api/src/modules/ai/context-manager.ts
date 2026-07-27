@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: ContextConfig = {
 /**
  * ContextManager — 4-phase context compression pipeline.
  *
- * Inspired by Hermes Agent's ContextCompressor, adapted for Arunaki web UI.
+ * Inspired OpenClaw's ContextCompressor, adapted for Arunaki web UI.
  *
  * Phase 1: Prune old tool results (cheap, no LLM call)
  * Phase 2: Strip old images (replace with placeholder)

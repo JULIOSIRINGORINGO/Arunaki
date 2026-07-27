@@ -5,7 +5,7 @@
  * Each business type (garment, restaurant, retail, etc.) provides
  * its own config that tools and prompts read from.
  *
- * Design: Config-driven (like Hermes), not code-driven.
+ * Design: Config-driven (like OpenClaw), not code-driven.
  * Tools read from this config instead of hardcoding domain logic.
  */
 

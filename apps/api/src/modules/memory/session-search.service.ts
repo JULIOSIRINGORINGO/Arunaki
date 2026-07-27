@@ -8,7 +8,7 @@ import { PrismaService } from '../../common/providers/prisma.service.js';
  * across all chat messages. Enables agent to recall relevant
  * context from past conversations.
  *
- * Inspired by Hermes's session_search with FTS5.
+ * Inspired OpenClaw's session_search with FTS5.
  */
 @Injectable()
 export class SessionSearchService implements OnModuleInit {

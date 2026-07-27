@@ -14,7 +14,7 @@ export interface EvaluationResult {
 /**
  * SelfEvaluationService — agent verifikasi hasil kerja sendiri.
  *
- * Inspired by Hermes's self-evaluation pattern. After completing
+ * Inspired OpenClaw's self-evaluation pattern. After completing
  * a task, the agent reviews its own output to catch errors,
  * missing requirements, and quality issues.
  *

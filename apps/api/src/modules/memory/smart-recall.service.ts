@@ -5,7 +5,7 @@ import { SessionSearchService } from './session-search.service.js';
 /**
  * SmartRecallService — prefetch relevant context before task.
  *
- * Inspired Hermes's smart memory recall. Before executing a task,
+ * Inspired OpenClaw's smart memory recall. Before executing a task,
  * the agent searches memory and past conversations for relevant
  * context to inform its approach.
  *
