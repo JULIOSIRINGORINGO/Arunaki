@@ -25,8 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 interface AgentStep {
   type: "thinking" | "plan" | "tool" | "result" | "error";

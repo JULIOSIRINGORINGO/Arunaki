@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Clock, Plus, Play, Trash2, Calendar, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../../lib/api";
 
 interface ScheduledReport {
   id: string;

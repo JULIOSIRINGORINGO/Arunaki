@@ -18,8 +18,7 @@ import { Link } from "react-router-dom";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { FileUploadZone } from "../components/workspace/FileUploadZone";
 import { ScheduledReportsPanel } from "../components/workspace/ScheduledReportsPanel";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 const fileTypeColors: Record<string, string> = {
   pdf: "text-error",

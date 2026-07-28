@@ -8,8 +8,7 @@ import { ChatInput } from "../components/chat/ChatInput";
 import type { CanvasData } from "../components/chat/CanvasPanel";
 import { CanvasPanel } from "../components/chat/CanvasPanel";
 import { cn } from "../lib/utils";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 interface Message {
   id: string;
