@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const http = require('node:http');
 const path = require('node:path');
+const fs = require('node:fs/promises');
 
 const WEB_URL = process.env.ARUNAKI_WEB_URL || 'http://127.0.0.1:5173';
 const WAIT_TIMEOUT_MS = 30000;
@@ -82,6 +83,80 @@ app.whenReady().then(() => {
       return { path: result.filePaths[0] };
     }
     return { path: null };
+  });
+
+  // VS Code-like: get full folder tree (structure only, no file content)
+  ipcMain.handle('fs:getFolderTree', async (_event, folderPath) => {
+    const IGNORED = new Set([
+      'node_modules', '.git', 'dist', 'build', '.next', '.venv',
+      '__pycache__', '.idea', '.vscode', 'coverage', '.cache', '.nuxt',
+    ]);
+
+    const buildTree = async (dir, depth = 0) => {
+      if (depth > 6) return []; // max depth
+      let entries;
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch {
+        return [];
+      }
+
+      const nodes = [];
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || IGNORED.has(entry.name)) continue;
+        const fullPath = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+          const children = await buildTree(fullPath, depth + 1);
+          nodes.push({
+            name: entry.name,
+            path: fullPath,
+            type: 'directory',
+            children,
+          });
+        } else if (entry.isFile()) {
+          try {
+            const stat = await fs.stat(fullPath);
+            nodes.push({
+              name: entry.name,
+              path: fullPath,
+              type: 'file',
+              size: stat.size,
+              ext: path.extname(entry.name).toLowerCase().replace('.', ''),
+            });
+          } catch {
+            // skip
+          }
+        }
+      }
+
+      // Sort: directories first, then files, alphabetical
+      nodes.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return nodes;
+    };
+
+    const tree = await buildTree(folderPath);
+    return { tree, folderName: path.basename(folderPath), folderPath };
+  });
+
+  // Read individual file content on demand
+  ipcMain.handle('fs:readFile', async (_event, filePath) => {
+    try {
+      const ext = path.extname(filePath).toLowerCase();
+      const BINARY_EXT = new Set(['.pdf', '.docx', '.xlsx', '.xls', '.png', '.jpg', '.jpeg', '.gif']);
+      if (BINARY_EXT.has(ext)) {
+        const buf = await fs.readFile(filePath);
+        return { content: buf.toString('base64'), encoding: 'base64' };
+      }
+      const content = await fs.readFile(filePath, 'utf-8');
+      return { content, encoding: 'utf-8' };
+    } catch (err) {
+      return { error: err.message };
+    }
   });
 
   createWindow();

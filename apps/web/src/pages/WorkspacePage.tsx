@@ -51,6 +51,10 @@ export function WorkspacePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
 
+  // VS Code-like: native folder tree from Electron IPC
+  const [nativeTree, setNativeTree] = useState<any[] | null>(null);
+  const [nativeFileCount, setNativeFileCount] = useState(0);
+
   useEffect(() => {
     if (!workspaceId) {
       setIsModalOpen(true);
@@ -216,64 +220,79 @@ export function WorkspacePage() {
 
   const handleConnectFolder = useCallback(async () => {
     // Check if running in Electron with native folder picker
-    const isElectron = typeof window !== 'undefined' && (window as any).arunakiDesktop?.pickFolder;
-    
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    const isElectron = !!(desktop?.pickFolder && desktop?.getFolderTree);
+
     if (isElectron) {
       try {
+        // 1. Open native folder dialog (like VS Code)
+        const result = await desktop.pickFolder();
+        if (!result?.path) return;
+
+        const folderPath = result.path;
+        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
+
         setIsCreating(true);
-        const result = await (window as any).arunakiDesktop.pickFolder();
-        
-        if (!result?.path) {
+        toast.info(`Membaca struktur folder "${folderName}"...`);
+
+        // 2. Get full folder tree (files stay on disk — VS Code approach)
+        const scan = await desktop.getFolderTree(folderPath);
+
+        if (!scan?.tree) {
+          toast.error('Gagal membaca folder.');
           setIsCreating(false);
           return;
         }
-        
-        const folderPath = result.path;
-        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
-        
-        // Send folder path to backend for sandbox connection
+
+        // 3. Count all files in tree
+        const countFiles = (nodes: any[]): number =>
+          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+        const fileCount = countFiles(scan.tree);
+
+        // 4. Register workspace in backend (rootPath stored — API can read files by path)
         const wsRes = await fetch(`${API_BASE}/workspaces`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: "generic" }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: 'generic' }),
         });
-        
         const wsJson = await wsRes.json();
         const newId = wsJson.data?.id;
         if (!newId) {
-          toast.error("Gagal membuat workspace");
+          toast.error('Gagal membuat workspace');
           setIsCreating(false);
           return;
         }
-        
-        // Connect the folder (scan and index files)
-        const connectRes = await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderPath }),
-        });
-        
-        const connectJson = await connectRes.json();
-        if (!connectRes.ok) {
-          toast.error(connectJson.error?.message || "Gagal menghubungkan folder");
-          setIsCreating(false);
-          return;
-        }
-        
+
+        // 5. Set native tree in state — displayed immediately like VS Code
+        setNativeTree(scan.tree);
+        setNativeFileCount(fileCount);
         setWorkspaceId(newId);
         setIsConnected(true);
         setIsModalOpen(false);
         connectedWsRef.current = newId;
-        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
-        toast.success(`Folder "${folderName}" terhubung!`);
+        toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
+
+        // 6. Background: index files in backend for AI (fire & forget)
+        void fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folderPath }),
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
+          triggerAutoAnalysis(newId);
+        }).catch(() => {
+          // Backend indexing failed silently — tree still visible
+        });
       } catch (err: any) {
-        console.error("Connect folder failed:", err);
-        toast.error(`Gagal menghubungkan folder: ${err.message || "Periksa apakah backend berjalan"}`);
+        console.error('Connect folder failed:', err);
+        toast.error(`Gagal menghubungkan folder: ${err.message || 'Periksa apakah backend berjalan'}`);
+        setIsCreating(false);
       } finally {
         setIsCreating(false);
       }
       return;
     }
+
     
     // Fallback to browser File System Access API
     if ("showDirectoryPicker" in window) {
@@ -377,11 +396,14 @@ export function WorkspacePage() {
     setAgentSteps([]);
     setAnalysisResult(null);
     setIsAnalyzing(false);
+    setNativeTree(null);
+    setNativeFileCount(0);
     connectedWsRef.current = null;
     setIsModalOpen(true);
   };
 
-  const fileCount = files.length;
+  // Use native file count from Electron tree if available, else from API
+  const fileCount = nativeTree ? nativeFileCount : files.length;
 
   const quickPrompts = [
     { icon: BarChart3, text: "Analisis Tren Laporan Keuangan FY24" },
@@ -622,6 +644,13 @@ export function WorkspacePage() {
                 <FileTree
                   files={files.map((f: any) => ({ id: f.id, name: f.name, type: f.type, size: f.size }))}
                   workspaceName={workspace?.name || "Workspace"}
+                  nativeTree={nativeTree ?? undefined}
+                  onFileClick={async (filePath, fileName) => {
+                    if (!(window as any).arunakiDesktop?.readFile) return;
+                    const res = await (window as any).arunakiDesktop.readFile(filePath);
+                    if (res?.error) { toast.error(`Gagal baca file: ${fileName}`); return; }
+                    toast.info(`File "${fileName}" dibuka (${res.encoding})`);
+                  }}
                 />
               </div>
             )}
