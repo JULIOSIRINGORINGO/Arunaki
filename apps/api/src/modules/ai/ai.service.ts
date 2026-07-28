@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
@@ -8,6 +8,7 @@ import {
   ProviderConfig,
 } from '../provider/provider.service.js';
 import { ContextManager } from './context-manager.js';
+import { ContextRegistry } from './context/context-registry.service.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
 import {
   AutoPostureDetector,
@@ -67,6 +68,7 @@ export class AiService {
   constructor(
     private readonly config: ConfigService,
     private readonly providerService: ProviderService,
+    @Optional() @Inject(ContextRegistry) private readonly contextRegistry?: ContextRegistry,
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
@@ -224,6 +226,10 @@ export class AiService {
     messages: ChatMessage[],
     maxContextTokens?: number,
   ): Promise<ChatMessage[]> {
+    if (this.contextRegistry) {
+      return this.contextRegistry.getActive().compress(messages);
+    }
+
     if (maxContextTokens && maxContextTokens !== 128000) {
       // Allow override — create temporary ContextManager
       const tempManager = new ContextManager(

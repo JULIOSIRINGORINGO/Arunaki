@@ -10,9 +10,9 @@ Follow the project specifications before writing code. Specifications take prece
 
 ## Platform Constraint (CRITICAL)
 
-**Arunaki is a Web UI application.** Not terminal, not Telegram, not CLI. All features, interactions, and UX must be designed for a browser-based web interface.
+**Arunaki is a Web UI + Desktop (Electron) application.** Not terminal, not Telegram, not CLI. All features, interactions, and UX must be designed for a browser-based web interface and a native desktop shell.
 
-When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.), always adapt them to fit a web UI context. Do NOT assume terminal/CLI/Telegram patterns unless explicitly told otherwise.
+When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.), always adapt them to fit a web UI context. Desktop-only capabilities (native folder access, OS integration) are allowed via Electron main process, but core logic must remain platform-agnostic.
 
 ## Workspace Isolation (CRITICAL)
 

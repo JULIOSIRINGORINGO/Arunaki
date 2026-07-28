@@ -5,6 +5,7 @@ import {
   StreamingContextScrubber,
 } from '../ai/context-manager.js';
 import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
+import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
 import { StorageService } from '../storage/storage.service.js';
@@ -106,6 +107,7 @@ export class WorkspaceRunnerService {
     private readonly skillService: SkillService,
     private readonly selfHealingService: SelfHealingService,
     private readonly prisma: PrismaService,
+    private readonly contextRegistry: ContextRegistry,
   ) {}
 
   /** Get current state of a workspace run */
@@ -388,18 +390,23 @@ export class WorkspaceRunnerService {
       );
       const tools = this.toolRegistryService.getToolDefinitions();
 
-      // Build system content with recall context injected
-      let systemContent = systemPrompt;
-      if (recallContext) {
-        systemContent = `${systemPrompt}\n\n## Relevant Context (Auto-recalled)\n${recallContext}`;
-      }
-
+      const history = historyMessages.map((message) => ({
+        role: message.role,
+        content: message.content,
+      })) as ChatMessage[];
+      const context = await this.contextRegistry.getActive().assemble({
+        mode: 'workspace',
+        workspaceId,
+        messages: history,
+        workspaceContext,
+        memoryContext: recallContext,
+      });
+      const systemContent = context.systemPrompt
+        ? `${systemPrompt}\n\n${context.systemPrompt}`
+        : systemPrompt;
       const messages: ChatMessage[] = [
         { role: 'system', content: systemContent },
-        ...historyMessages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        ...context.messages,
       ];
 
       // Generate autonomous reasoning plan via dedicated AI call

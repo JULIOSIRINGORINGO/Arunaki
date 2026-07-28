@@ -11,9 +11,15 @@ import { WorkspaceHeartbeatService } from './workspace-heartbeat.service.js';
 import { ProviderModule } from '../provider/provider.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { ContextModule } from './context/context.module.js';
 
 @Module({
-  imports: [ProviderModule, ToolsModule, forwardRef(() => MemoryModule)],
+  imports: [
+    ProviderModule,
+    ToolsModule,
+    forwardRef(() => MemoryModule),
+    ContextModule,
+  ],
   providers: [
     AiService,
     ContextManager,
@@ -35,6 +41,7 @@ import { MemoryModule } from '../memory/memory.module.js';
     AutonomousPlannerService,
     SelfHealingService,
     WorkspaceHeartbeatService,
+    ContextModule,
   ],
 })
 export class AiModule {}
