@@ -32,6 +32,16 @@ export interface ChatMessage {
   name?: string;
 }
 
+export interface AiAttempt {
+  providerId: string;
+  providerName: string;
+  retry: number;
+  rotation: number;
+  outcome: 'success' | 'retry' | 'rotate' | 'fatal';
+  statusCode?: number;
+  error?: string;
+}
+
 export interface AiResponse {
   content: string;
   model: string;
@@ -41,6 +51,7 @@ export interface AiResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  attempts: AiAttempt[];
 }
 
 export interface ToolDefinition {
@@ -282,6 +293,7 @@ export class AiService {
     const MAX_ROTATIONS = 3;
     let rotationCount = 0;
     const triedProviders = new Set<string>([provider.id]);
+    const attempts: AiAttempt[] = [];
     let lastError: string | undefined;
 
     while (rotationCount <= MAX_ROTATIONS) {
@@ -323,6 +335,14 @@ export class AiService {
                 'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
             }
 
+            attempts.push({
+              providerId: provider.id,
+              providerName: provider.name,
+              retry: retryCount,
+              rotation: rotationCount,
+              outcome: 'success',
+              statusCode,
+            });
             return {
               content,
               model: data.model,
@@ -332,6 +352,7 @@ export class AiService {
                 completionTokens: data.usage?.completion_tokens || 0,
                 totalTokens: data.usage?.total_tokens || 0,
               },
+              attempts,
             };
           }
 
@@ -345,6 +366,15 @@ export class AiService {
           this.logger.warn(
             `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
           );
+          attempts.push({
+            providerId: provider.id,
+            providerName: provider.name,
+            retry: retryCount,
+            rotation: rotationCount,
+            outcome: classified.action,
+            statusCode,
+            error: classified.message,
+          });
 
           // Record error for this provider
           if (provider.id !== 'env-fallback') {
@@ -384,6 +414,14 @@ export class AiService {
           // Network/timeout error
           lastError = err.message;
           this.logger.warn(`[${provider.name}] Network error: ${err.message}`);
+          attempts.push({
+            providerId: provider.id,
+            providerName: provider.name,
+            retry: retryCount,
+            rotation: rotationCount,
+            outcome: 'retry',
+            error: err.message,
+          });
           retryCount++;
           if (retryCount < MAX_RETRIES_PER_PROVIDER) {
             await this.jitteredBackoff(retryCount);

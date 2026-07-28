@@ -40,11 +40,19 @@ export class MessageService extends BaseService<Message> {
       content,
       metadata: metadata ? JSON.stringify(metadata) : '{}',
       idempotencyKey,
-      provenance: provenance ? provenance : undefined,
+      provenance:
+        provenance ||
+        (role === 'user'
+          ? { kind: 'external_user', isUser: true }
+          : { kind: 'internal_system', isUser: false }),
     });
   }
 
   async findByChatHistoryId(chatHistoryId: string): Promise<Message[]> {
     return this.repository.findByChatHistoryId(chatHistoryId);
+  }
+
+  async findByIdempotencyKey(idempotencyKey: string): Promise<Message | null> {
+    return this.repository.findByIdempotencyKey(idempotencyKey);
   }
 }

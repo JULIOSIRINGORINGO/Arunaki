@@ -203,4 +203,11 @@ export class ProviderService extends BaseService<Provider> {
 
     return this.repository.update(id, data);
   }
+
+  /**
+   * Get all providers with their status for pool monitoring.
+   */
+  async findAllForPool(): Promise<Provider[]> {
+    return this.repository.findAllForPool();
+  }
 }

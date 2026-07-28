@@ -14,6 +14,7 @@ import { ChatHistoryService } from './chat-history.service.js';
 import { MessageService, CreateMessageOptions } from './message.service.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
+import { ProviderService } from '../provider/provider.service.js';
 import {
   PromptInjectionDetector,
   InjectionDetectionResult,
@@ -31,6 +32,7 @@ export class ChatController {
     private readonly messageService: MessageService,
     private readonly agentRunnerService: AgentRunnerService,
     private readonly artifactService: ArtifactService,
+    private readonly providerService: ProviderService,
     private readonly injectionDetector: PromptInjectionDetector,
   ) {}
 
@@ -126,15 +128,18 @@ export class ChatController {
   @Post(':id/messages')
   async addMessage(
     @Param('id') id: string,
-    @Body() body: { role: 'user' | 'assistant' | 'system'; content: string },
+    @Body() body: { role: 'user' | 'assistant' | 'system'; content: string; idempotencyKey?: string },
   ) {
     try {
       const message = await this.messageService.createMessage({
         chatHistoryId: id,
         role: body.role,
         content: body.content,
-        idempotencyKey: body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined,
-        provenance: body.role === 'user' ? { kind: 'external_user', isUser: true } : { kind: 'internal_system', isUser: false },
+        idempotencyKey: body.idempotencyKey || (body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined),
+        provenance:
+          body.role === 'user'
+            ? { kind: 'external_user', isUser: true }
+            : { kind: 'internal_system', isUser: false },
       });
       return successResponse(message);
     } catch (error) {
@@ -215,7 +220,7 @@ export class ChatController {
   @Post(':id/send')
   async sendMessage(
     @Param('id') id: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; idempotencyKey?: string },
   ) {
     try {
       const chat = await this.chatHistoryService.findById(id);
@@ -223,7 +228,6 @@ export class ChatController {
         return errorResponse('NOT_FOUND', 'Chat not found');
       }
 
-      // Scan for prompt injection
       const injectionResult = this.injectionDetector.scan(body.content);
       if (injectionResult.detected && injectionResult.severity !== 'low') {
         this.injectionDetector.logDetection(id, body.content, injectionResult);
@@ -233,13 +237,14 @@ export class ChatController {
         );
       }
 
-      // Use sanitized content if injection was detected (low severity)
       const userContent = injectionResult.detected
         ? injectionResult.sanitized
         : body.content;
 
-      const runId = randomUUID();
-      await this.messageService.createMessage({
+      const runId = body.idempotencyKey || randomUUID();
+
+      // Create user message with idempotency key
+      const userMessage = await this.messageService.createMessage({
         chatHistoryId: id,
         role: 'user',
         content: userContent,
@@ -247,6 +252,7 @@ export class ChatController {
         provenance: { kind: 'external_user', isUser: true },
       });
 
+      // Update chat title if first message
       if (!chat.title) {
         const title =
           userContent.length > 50
@@ -255,6 +261,7 @@ export class ChatController {
         await this.chatHistoryService.updateTitle(id, title);
       }
 
+      // Run agent with same runId for idempotency
       const history = await this.messageService.findByChatHistoryId(id);
       const agentResult = await this.agentRunnerService.runAgentSync({
         chatId: id,
@@ -264,8 +271,10 @@ export class ChatController {
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
         })),
+        idempotencyKey: runId,
       });
 
+      // Create assistant message (idempotent - runAgentSync handles dedup)
       const assistantMessage = await this.messageService.createMessage({
         chatHistoryId: id,
         role: 'assistant',
@@ -288,7 +297,7 @@ export class ChatController {
   @Post(':id/stream')
   async streamMessage(
     @Param('id') id: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; idempotencyKey?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -305,7 +314,6 @@ export class ChatController {
         return res.end();
       }
 
-      // Scan for prompt injection
       const injectionResult = this.injectionDetector.scan(body.content);
       if (injectionResult.detected && injectionResult.severity !== 'low') {
         this.injectionDetector.logDetection(id, body.content, injectionResult);
@@ -315,12 +323,13 @@ export class ChatController {
         return res.end();
       }
 
-      // Use sanitized content if injection was detected (low severity)
       const userContent = injectionResult.detected
         ? injectionResult.sanitized
         : body.content;
 
-      const runId = randomUUID();
+      const runId = body.idempotencyKey || randomUUID();
+
+      // Create user message with idempotency key
       await this.messageService.createMessage({
         chatHistoryId: id,
         role: 'user',
@@ -329,6 +338,7 @@ export class ChatController {
         provenance: { kind: 'external_user', isUser: true },
       });
 
+      // Update chat title if first message
       if (!chat.title) {
         const title =
           userContent.length > 50
@@ -347,12 +357,14 @@ export class ChatController {
             role: m.role as 'user' | 'assistant' | 'system',
             content: m.content,
           })),
+          idempotencyKey: runId,
         },
         (event) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
         },
       );
 
+      // Create assistant message (idempotent - agentRunner handles dedup)
       await this.messageService.createMessage({
         chatHistoryId: id,
         role: 'assistant',
@@ -360,12 +372,37 @@ export class ChatController {
         idempotencyKey: `run:${runId}:assistant`,
         provenance: { kind: 'internal_system', isUser: false },
       });
+
       res.end();
     } catch (error) {
       res.write(
         `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
       );
       res.end();
+    }
+  }
+
+  @Get('providers/status')
+  async getProviderPoolStatus() {
+    try {
+      const providers = await this.providerService.findAllForPool();
+      return successResponse(
+        providers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          type: p.type,
+          model: p.model,
+          active: p.active,
+          priority: p.priority,
+          lastUsedAt: p.lastUsedAt,
+          lastErrorAt: p.lastErrorAt,
+          lastError: p.lastError,
+          cooldownUntil: p.cooldownUntil,
+          inCooldown: p.cooldownUntil ? new Date(p.cooldownUntil) > new Date() : false,
+        })),
+      );
+    } catch (error) {
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 }

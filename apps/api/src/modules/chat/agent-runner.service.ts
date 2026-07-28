@@ -12,6 +12,7 @@ import { SelfHealingService } from '../ai/self-healing.service.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { SessionAdmissionService } from './session-admission.service.js';
+import { MessageService } from './message.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -21,6 +22,7 @@ export interface AgentRunParams {
     role: 'user' | 'assistant' | 'system';
     content: string;
   }>;
+  idempotencyKey?: string;
 }
 
 export interface AgentStreamEvent {
@@ -58,6 +60,7 @@ export class AgentRunnerService {
     private readonly selfHealingService: SelfHealingService,
     private readonly autoMemoryService: AutoMemoryService,
     private readonly sessionAdmissionService: SessionAdmissionService,
+    private readonly messageService: MessageService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -69,17 +72,24 @@ export class AgentRunnerService {
   }
 
   async runAgentSync(params: AgentRunParams) {
-    const { chatId, chatMode = 'chat', historyMessages } = params;
-    
-    // Acquire session admission lease (session-level lock)
-    const lease = await this.sessionAdmissionService.acquireAdmission(chatId);
-    
+    const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
     try {
-      return await lease.run(async () => {
-        return this.runAgentSyncInternal(params);
-      });
+      if (params.idempotencyKey) {
+        const assistant = await this.messageService.findByIdempotencyKey(
+          `run:${params.idempotencyKey}:assistant`,
+        );
+        if (assistant) {
+          return {
+            content: assistant.content,
+            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            toolOutputs: [],
+            artifacts: [],
+          };
+        }
+      }
+      return await this.runAgentSyncInternal(params);
     } finally {
-      await this.sessionAdmissionService.releaseAdmission(chatId);
+      await lease.release();
     }
   }
 
@@ -215,17 +225,30 @@ export class AgentRunnerService {
     params: AgentRunParams,
     onEvent: (event: AgentStreamEvent) => void,
   ) {
-    const { chatId, chatMode = 'chat', historyMessages } = params;
-
-    // Acquire session admission lease (session-level lock)
-    const lease = await this.sessionAdmissionService.acquireAdmission(chatId);
-
+    const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
     try {
-      return await lease.run(async () => {
-        return this.runAgentStreamInternal(params, onEvent);
-      });
+      if (params.idempotencyKey) {
+        const assistant = await this.messageService.findByIdempotencyKey(
+          `run:${params.idempotencyKey}:assistant`,
+        );
+        if (assistant) {
+          onEvent({
+            type: 'text_delta',
+            data: assistant.content,
+          });
+          onEvent({
+            type: 'done',
+            data: {
+              content: assistant.content,
+              artifacts: [],
+            },
+          });
+          return assistant.content;
+        }
+      }
+      return await this.runAgentStreamInternal(params, onEvent);
     } finally {
-      await this.sessionAdmissionService.releaseAdmission(chatId);
+      await lease.release();
     }
   }
 
