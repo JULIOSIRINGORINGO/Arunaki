@@ -18,4 +18,10 @@ export class MessageRepository extends PrismaBaseRepository<Message> {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  async findByIdempotencyKey(idempotencyKey: string): Promise<Message | null> {
+    return this.prisma.message.findFirst({
+      where: { idempotencyKey },
+    });
+  }
 }

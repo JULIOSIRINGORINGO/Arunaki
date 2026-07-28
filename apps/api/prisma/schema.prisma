@@ -189,6 +189,12 @@ model Message {
   content      String
   metadata     String     @default("{}") // JSON - tool calls, artifacts, etc.
 
+  // Idempotency key for retry safety (run:runId, turn:chatId:timestamp)
+  idempotencyKey String?   @unique
+
+  // Input provenance tracking for security
+  provenance   Json?      // { kind: "external_user" | "inter_session" | "internal_system", sourceSessionId?, sourceTool?, isUser? }
+
   createdAt    DateTime   @default(now())
 
   @@map("messages")
