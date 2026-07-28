@@ -28,7 +28,7 @@ import { SourceModule } from '../source/source.module.js';
     ArtifactModule,
     MemoryModule,
     SkillsModule,
-    forwardRef(() => SourceModule),
+    SourceModule,
   ],
   controllers: [WorkspaceController],
   providers: [

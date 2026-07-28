@@ -18,8 +18,7 @@ import { Link } from "react-router-dom";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { FileUploadZone } from "../components/workspace/FileUploadZone";
 import { ScheduledReportsPanel } from "../components/workspace/ScheduledReportsPanel";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 const fileTypeColors: Record<string, string> = {
   pdf: "text-error",
@@ -54,10 +53,9 @@ export function WorkspaceDetailPage() {
   const [currentPlan, setCurrentPlan] = useState<string[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<{
     toolName: string;
-    args: any;
+    args: Record<string, any>;
     description: string;
   } | null>(null);
-  const [approvedToolCalls, setApprovedToolCalls] = useState<any[]>([]);
   const [agentArtifacts, setAgentArtifacts] = useState<any[]>([]);
   const [agentResultText, setAgentResultText] = useState("");
 
@@ -93,7 +91,7 @@ export function WorkspaceDetailPage() {
     },
   });
 
-  const runWorkspaceAgent = async (overrideGoal?: string, overrideApproved?: any[]) => {
+  const runWorkspaceAgent = async (overrideGoal?: string) => {
     const targetGoal = overrideGoal || goal;
     if (!targetGoal.trim() || !id || isAgentRunning) return;
 
@@ -102,15 +100,12 @@ export function WorkspaceDetailPage() {
     setAgentResultText("");
     setApprovalRequest(null);
 
-    const effectiveApproved = overrideApproved || approvedToolCalls;
-
     try {
       await fetchEventSource(`${API_BASE}/workspaces/${id}/agent/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           goal: targetGoal,
-          approvedToolCalls: effectiveApproved,
         }),
         onmessage(msg) {
           if (!msg.data) return;
@@ -195,12 +190,32 @@ export function WorkspaceDetailPage() {
     }
   };
 
-  const handleApprove = () => {
-    if (!approvalRequest) return;
-    const newApproved = [...approvedToolCalls, { toolName: approvalRequest.toolName, args: approvalRequest.args }];
-    setApprovedToolCalls(newApproved);
-    setApprovalRequest(null);
-    runWorkspaceAgent(goal, newApproved);
+  const handleApprove = async () => {
+    if (!approvalRequest || !id) return;
+    try {
+      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true }),
+      });
+      setApprovalRequest(null);
+    } catch (e) {
+      console.error("Failed to approve:", e);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!approvalRequest || !id) return;
+    try {
+      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: false }),
+      });
+      setApprovalRequest(null);
+    } catch (e) {
+      console.error("Failed to reject:", e);
+    }
   };
 
   const files = filesData || [];
@@ -308,7 +323,7 @@ export function WorkspaceDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setApprovalRequest(null)}
+                onClick={handleReject}
                 className="px-2.5 py-1 rounded-md text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors"
               >
                 Tolak

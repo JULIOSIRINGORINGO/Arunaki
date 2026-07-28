@@ -6,6 +6,7 @@ import {
 } from '../ai/context-manager.js';
 import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
+import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
@@ -14,8 +15,26 @@ import { MemoryService } from '../memory/memory.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
 import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
+import { SelfHealingService } from '../ai/self-healing.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+
+export type AgentState =
+  | 'idle'
+  | 'running'
+  | 'steering'
+  | 'aborting'
+  | 'completed'
+  | 'failed';
+
+export interface WorkspaceRunState {
+  workspaceId: string;
+  state: AgentState;
+  goal: string;
+  startedAt: Date;
+  round: number;
+  abortController: AbortController;
+}
 
 export interface WorkspaceRunParams {
   workspaceId: string;
@@ -24,7 +43,6 @@ export interface WorkspaceRunParams {
     role: 'user' | 'assistant' | 'system';
     content: string;
   }>;
-  approvedToolCalls?: Array<{ toolName: string; args: Record<string, any> }>;
 }
 
 export interface WorkspaceStreamEvent {
@@ -35,6 +53,7 @@ export interface WorkspaceStreamEvent {
     | 'approval_required'
     | 'tool_done'
     | 'text_delta'
+    | 'state_changed'
     | 'done'
     | 'error';
   data: any;
@@ -45,10 +64,38 @@ export class WorkspaceRunnerService {
   private readonly logger = new Logger(WorkspaceRunnerService.name);
   private readonly scrubber = new StreamingContextScrubber();
 
+  /** Active workspace runs — enables abort and state tracking */
+  private readonly activeRuns = new Map<string, WorkspaceRunState>();
+
+  /** Approval queue — holds approval promises per workspace */
+  private readonly approvalQueue = new Map<
+    string,
+    {
+      resolve: (approved: boolean) => void;
+      toolName: string;
+      args: Record<string, any>;
+      timestamp: Date;
+    }
+  >();
+
+  /** Request queue — holds pending requests when workspace is busy */
+  private readonly requestQueue = new Map<
+    string,
+    Array<{
+      resolve: () => void;
+      reject: (error: Error) => void;
+      goal: string;
+      historyMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+      onEvent: (event: WorkspaceStreamEvent) => void;
+      timestamp: Date;
+    }>
+  >();
+
   constructor(
     private readonly aiService: AiService,
     private readonly selfEvaluationService: SelfEvaluationService,
     private readonly toolRegistryService: ToolRegistryService,
+    private readonly documentReaderTool: DocumentReaderTool,
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
@@ -57,8 +104,140 @@ export class WorkspaceRunnerService {
     private readonly backgroundReviewService: BackgroundReviewService,
     private readonly smartRecallService: SmartRecallService,
     private readonly skillService: SkillService,
+    private readonly selfHealingService: SelfHealingService,
     private readonly prisma: PrismaService,
   ) {}
+
+  /** Get current state of a workspace run */
+  getRunState(workspaceId: string): WorkspaceRunState | undefined {
+    return this.activeRuns.get(workspaceId);
+  }
+
+  /** Check if a workspace is currently running */
+  isRunning(workspaceId: string): boolean {
+    const state = this.activeRuns.get(workspaceId);
+    return state?.state === 'running' || state?.state === 'steering';
+  }
+
+  /** Abort a running workspace analysis */
+  abortRun(workspaceId: string, reason: string): boolean {
+    const state = this.activeRuns.get(workspaceId);
+    if (!state || (state.state !== 'running' && state.state !== 'steering')) {
+      return false;
+    }
+    state.state = 'aborting';
+    state.abortController.abort(reason);
+    this.logger.log(`Workspace run abort requested: ${workspaceId} (${reason})`);
+    return true;
+  }
+
+  /** Get all active run states (for dashboard/monitoring) */
+  getAllActiveRuns(): WorkspaceRunState[] {
+    return Array.from(this.activeRuns.values());
+  }
+
+  /**
+   * Wait for approval on a specific tool call.
+   * Returns a Promise that resolves when approval is received.
+   * Used by the approval gate to pause execution without killing the loop.
+   */
+  private waitForApproval(
+    workspaceId: string,
+    toolName: string,
+    args: Record<string, any>,
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.approvalQueue.set(workspaceId, {
+        resolve,
+        toolName,
+        args,
+        timestamp: new Date(),
+      });
+      this.logger.log(`Approval queue: waiting for user approval (${toolName})`);
+    });
+  }
+
+  /**
+   * Resolve a pending approval request.
+   * Called when user approves or rejects a tool call.
+   */
+  resolveApproval(workspaceId: string, approved: boolean): boolean {
+    const pending = this.approvalQueue.get(workspaceId);
+    if (!pending) return false;
+    pending.resolve(approved);
+    this.approvalQueue.delete(workspaceId);
+    this.logger.log(`Approval resolved: ${approved ? 'approved' : 'rejected'} (${pending.toolName})`);
+    return true;
+  }
+
+  /**
+   * Enqueue a request when workspace is busy.
+   * Returns a Promise that resolves when it's the request's turn.
+   */
+  private enqueueRequest(
+    workspaceId: string,
+    goal: string,
+    historyMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+    onEvent: (event: WorkspaceStreamEvent) => void,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const queue = this.requestQueue.get(workspaceId) || [];
+      queue.push({ resolve, reject, goal, historyMessages, onEvent, timestamp: new Date() });
+      this.requestQueue.set(workspaceId, queue);
+      this.logger.log(`Request queued for workspace ${workspaceId} (${queue.length} in queue)`);
+    });
+  }
+
+  /**
+   * Process next request in queue when current run finishes.
+   */
+  private async processNextInQueue(workspaceId: string): Promise<void> {
+    const queue = this.requestQueue.get(workspaceId);
+    if (!queue || queue.length === 0) return;
+
+    const next = queue.shift()!;
+    if (queue.length === 0) {
+      this.requestQueue.delete(workspaceId);
+    }
+
+    this.logger.log(`Processing next queued request for workspace ${workspaceId}`);
+    next.resolve(); // Unblocks the enqueued caller
+
+    // Start the run
+    try {
+      await this.runWorkspaceAgentStream(
+        {
+          workspaceId,
+          userGoal: next.goal,
+          historyMessages: next.historyMessages,
+        },
+        next.onEvent,
+      );
+    } catch (error) {
+      this.logger.error(`Queued request failed: ${error.message}`);
+    }
+  }
+
+  private setState(
+    runState: WorkspaceRunState,
+    newState: AgentState,
+    onEvent: (event: WorkspaceStreamEvent) => void,
+  ): void {
+    const oldState = runState.state;
+    runState.state = newState;
+    this.logger.debug(
+      `Agent state: ${oldState} → ${newState} (workspace: ${runState.workspaceId})`,
+    );
+    onEvent({
+      type: 'state_changed',
+      data: {
+        workspaceId: runState.workspaceId,
+        from: oldState,
+        to: newState,
+        round: runState.round,
+      },
+    });
+  }
 
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
     try {
@@ -73,15 +252,35 @@ export class WorkspaceRunnerService {
               .join('\n')
           : 'Belum ada file di workspace ini.';
 
+      // Auto-read top 5 files to give AI actual content
+      const previews: string[] = [];
+      const maxPreviews = Math.min(files.length, 5);
+      for (let i = 0; i < maxPreviews; i++) {
+        const f = files[i];
+        try {
+          const result = await this.documentReaderTool.readDocument(f.path);
+          if (result.status === 'success' && result.data?.text) {
+            const truncated = (result.data.text as string).substring(0, 2000);
+            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
+          }
+        } catch {
+          // skip unreadable files
+        }
+      }
+
       // Get workspace business type for domain-aware skills
       let businessType = 'generic';
+      let rootPath: string | null = null;
       try {
         const workspace = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
-          select: { businessType: true },
+          select: { businessType: true, rootPath: true },
         });
         if (workspace?.businessType) {
           businessType = workspace.businessType;
+        }
+        if (workspace?.rootPath) {
+          rootPath = workspace.rootPath;
         }
       } catch {
         // fallback to generic
@@ -99,7 +298,11 @@ export class WorkspaceRunnerService {
         workspaceId,
       );
 
-      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+
+      if (previews.length > 0) {
+        context += `\n\n=== ISI FILE (Preview) ===\n${previews.join('\n\n')}\n=== END ISI FILE ===`;
+      }
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
@@ -123,10 +326,34 @@ export class WorkspaceRunnerService {
       workspaceId,
       userGoal,
       historyMessages,
-      approvedToolCalls = [],
     } = params;
 
+    // Guard: prevent duplicate runs on same workspace
+    if (this.isRunning(workspaceId)) {
+      onEvent({
+        type: 'error',
+        data: {
+          message:
+            'Workspace sedang dalam analisis. Tunggu selesai atau batalkan sebelum memulai baru.',
+        },
+      });
+      return;
+    }
+
+    // Initialize state tracking
+    const abortController = new AbortController();
+    const runState: WorkspaceRunState = {
+      workspaceId,
+      state: 'idle',
+      goal: userGoal,
+      startedAt: new Date(),
+      round: 0,
+      abortController,
+    };
+    this.activeRuns.set(workspaceId, runState);
+
     try {
+      this.setState(runState, 'running', onEvent);
       onEvent({
         type: 'thinking',
         data: 'Memindai dokumen workspace dan menyusun rencana otonom...',
@@ -176,6 +403,14 @@ export class WorkspaceRunnerService {
       ];
 
       // Generate autonomous reasoning plan via dedicated AI call
+      if (abortController.signal.aborted) {
+        this.setState(runState, 'aborting', onEvent);
+        onEvent({
+          type: 'error',
+          data: { message: 'Analisis dibatalkan oleh pengguna.' },
+        });
+        return;
+      }
       const planningMessages: ChatMessage[] = [
         {
           role: 'system',
@@ -218,6 +453,17 @@ export class WorkspaceRunnerService {
       let reachedMaxRounds = true;
 
       for (let round = 0; round < MAX_ROUNDS; round++) {
+        // Check abort before each round
+        if (abortController.signal.aborted) {
+          this.setState(runState, 'aborting', onEvent);
+          onEvent({
+            type: 'error',
+            data: { message: 'Analisis dibatalkan oleh pengguna.' },
+          });
+          return;
+        }
+        runState.round = round + 1;
+
         const aiResponse = await this.aiService.chat(messages, tools);
 
         if (aiResponse.toolCalls.length === 0) {
@@ -383,29 +629,25 @@ export class WorkspaceRunnerService {
         for (const { toolCall, args } of mutatingCalls) {
           const funcName = toolCall.function.name;
 
-          const isApproved = approvedToolCalls.some((tc) => {
-            if (tc.toolName !== funcName) return false;
-            if (!tc.args) return true;
-            const tcFilename =
-              tc.args.filename || tc.args.filePath || tc.args.path;
-            const argsFilename = args.filename || args.filePath || args.path;
-            if (tcFilename && argsFilename) {
-              return tcFilename === argsFilename;
-            }
-            return JSON.stringify(tc.args) === JSON.stringify(args);
+          this.logger.warn(
+            `Approval Gate: Requesting consent for mutating tool "${funcName}".`,
+          );
+
+          this.setState(runState, 'steering', onEvent);
+          onEvent({
+            type: 'approval_required',
+            data: {
+              toolName: funcName,
+              args,
+              description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
+            },
           });
 
-          if (!isApproved) {
-            this.logger.warn(
-              `Approval Gate: Blocked execution of mutating tool "${funcName}" until user consent.`,
-            );
+          const approved = await this.waitForApproval(workspaceId, funcName, args);
+          if (!approved) {
             onEvent({
-              type: 'approval_required',
-              data: {
-                toolName: funcName,
-                args,
-                description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
-              },
+              type: 'error',
+              data: { message: `Aksi "${funcName}" ditolak oleh pengguna.` },
             });
             return;
           }
@@ -422,10 +664,11 @@ export class WorkspaceRunnerService {
           let result: ToolResult;
           try {
             const enrichedArgs = { ...args, workspaceId };
-            result = await this.toolRegistryService.executeTool(
+            const healResult = await this.selfHealingService.executeWithHealing(
               funcName,
               enrichedArgs,
             );
+            result = healResult.finalResult;
           } catch (e) {
             result = {
               status: 'error',
@@ -518,6 +761,24 @@ export class WorkspaceRunnerService {
         },
       });
 
+      this.setState(runState, 'completed', onEvent);
+
+      // Persist analysis result to workspace (cached across sessions)
+      try {
+        await this.prisma.workspace.update({
+          where: { id: workspaceId },
+          data: {
+            analysisResult: finalContent,
+            analyzedAt: new Date(),
+          },
+        });
+        this.logger.log(
+          `Cached analysis result for workspace ${workspaceId} (${finalContent.length} chars)`,
+        );
+      } catch (e: any) {
+        this.logger.warn(`Failed to cache analysis result: ${e.message}`);
+      }
+
       // Auto-save memory after successful task completion
       try {
         // Fetch business type for domain-aware memory
@@ -551,9 +812,12 @@ export class WorkspaceRunnerService {
 
       return finalContent;
     } catch (error) {
+      this.setState(runState, 'failed', onEvent);
       this.logger.error(`Workspace stream execution failed: ${error.message}`);
       onEvent({ type: 'error', data: { message: error.message } });
       throw error;
+    } finally {
+      this.activeRuns.delete(workspaceId);
     }
   }
 }

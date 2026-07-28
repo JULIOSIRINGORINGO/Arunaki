@@ -5,8 +5,7 @@ import {
   Zap, Palette, Info,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },

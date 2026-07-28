@@ -1,6 +1,7 @@
 /* Hallmark · component: file-upload-zone · genre: atmospheric · theme: Studio */
 import { useState, useCallback, useRef } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
+import { API_BASE } from "../../lib/api";
 
 interface UploadedFile {
   id: string;
@@ -20,8 +21,6 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const API_BASE = "http://localhost:3000/api/v1";
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;

@@ -8,8 +8,7 @@ import { ChatInput } from "../components/chat/ChatInput";
 import type { CanvasData } from "../components/chat/CanvasPanel";
 import { CanvasPanel } from "../components/chat/CanvasPanel";
 import { cn } from "../lib/utils";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 interface Message {
   id: string;
@@ -373,7 +372,7 @@ export function ChatPage() {
         </div>
       )}
 
-      <div className="flex flex-col flex-1 h-full min-w-0 bg-white">
+      <div className="flex flex-col flex-1 h-full min-w-0 bg-white overflow-hidden">
         <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
             Chat
@@ -393,7 +392,7 @@ export function ChatPage() {
           </button>
         </div>
 
-        <div className="flex-1 overflow-auto min-h-0 px-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 px-6">
           <ChatMessages
             messages={messages}
             isLoading={sendMessage.isPending}

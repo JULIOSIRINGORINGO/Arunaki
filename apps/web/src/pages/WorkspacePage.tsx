@@ -25,8 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
-
-const API_BASE = "http://localhost:3000/api/v1";
+import { API_BASE } from "../lib/api";
 
 interface AgentStep {
   type: "thinking" | "plan" | "tool" | "result" | "error";
@@ -43,6 +42,7 @@ export function WorkspacePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
+  const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
 
@@ -51,13 +51,79 @@ export function WorkspacePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
 
+  // VS Code-like: native folder tree from Electron IPC
+  const [nativeTree, setNativeTree] = useState<any[] | null>(null);
+  const [nativeFileCount, setNativeFileCount] = useState(0);
+
+  // Restore last connected workspace on mount
   useEffect(() => {
-    if (!workspaceId) {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/workspaces`);
+        const json = await res.json();
+        const workspaces = json.data || [];
+
+        // Find workspace with rootPath (connected folder)
+        const connected = workspaces.find((ws: any) => ws.rootPath);
+
+        if (connected && !cancelled) {
+          setWorkspaceId(connected.id);
+          setIsConnected(true);
+          connectedWsRef.current = connected.id;
+          localStorage.setItem('arunaki_workspace_id', connected.id);
+          queryClient.invalidateQueries({ queryKey: ["wsFiles", connected.id] });
+
+          // Load cached analysis result (if available from previous session)
+          try {
+            const analysisRes = await fetch(`${API_BASE}/workspaces/${connected.id}/analysis`);
+            const analysisJson = await analysisRes.json();
+            if (analysisJson.data?.analysisResult && !cancelled) {
+              setAnalysisResult(analysisJson.data.analysisResult);
+              setAgentSteps([{
+                type: "result",
+                label: "Analisis sebelumnya dimuat dari cache",
+                detail: `Terakhir dianalisis: ${new Date(analysisJson.data.analyzedAt).toLocaleString('id-ID')}`,
+                status: "done",
+              }]);
+            }
+          } catch {
+            // No cached analysis — that's fine
+          }
+
+          setIsRestoring(false);
+
+          // Load native tree in background (non-blocking)
+          const desktop = (window as any).arunakiDesktop;
+          if (desktop?.getFolderTree && connected.rootPath) {
+            desktop.getFolderTree(connected.rootPath).then((scan: any) => {
+              if (scan?.tree && !cancelled) {
+                const countFiles = (nodes: any[]): number =>
+                  nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+                setNativeTree(scan.tree);
+                setNativeFileCount(countFiles(scan.tree));
+              }
+            }).catch(() => {});
+          }
+          return;
+        }
+      } catch {
+        // Backend not available
+      }
+      if (!cancelled) setIsRestoring(false);
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, [queryClient]);
+
+  // Show modal only after restore attempt
+  useEffect(() => {
+    if (!isRestoring && !workspaceId) {
       setIsModalOpen(true);
     }
-  }, []);
+  }, [isRestoring, workspaceId]);
 
-  const triggerAutoAnalysis = useCallback(async (wsId: string) => {
+  const triggerAutoAnalysis = useCallback(async (wsId: string, goal?: string) => {
     setIsAnalyzing(true);
     setAgentSteps([]);
     setAnalysisResult(null);
@@ -67,7 +133,7 @@ export function WorkspacePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          goal: "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
+          goal: goal || "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
         }),
         openWhenHidden: true,
         onmessage(ev) {
@@ -201,6 +267,7 @@ export function WorkspacePage() {
       setIsConnected(true);
       setIsModalOpen(false);
       connectedWsRef.current = newId;
+      localStorage.setItem('arunaki_workspace_id', newId);
       queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
       toast.success(`Workspace "${folderName}" terhubung!`);
 
@@ -216,64 +283,81 @@ export function WorkspacePage() {
 
   const handleConnectFolder = useCallback(async () => {
     // Check if running in Electron with native folder picker
-    const isElectron = typeof window !== 'undefined' && (window as any).arunakiDesktop?.pickFolder;
-    
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    const isElectron = !!(desktop?.pickFolder && desktop?.getFolderTree);
+
     if (isElectron) {
       try {
+        // 1. Open native folder dialog (like VS Code)
+        const result = await desktop.pickFolder();
+        if (!result?.path) return;
+
+        const folderPath = result.path;
+        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
+
         setIsCreating(true);
-        const result = await (window as any).arunakiDesktop.pickFolder();
-        
-        if (!result?.path) {
+        toast.info(`Membaca struktur folder "${folderName}"...`);
+
+        // 2. Get full folder tree (files stay on disk — VS Code approach)
+        const scan = await desktop.getFolderTree(folderPath);
+
+        if (!scan?.tree) {
+          toast.error('Gagal membaca folder.');
           setIsCreating(false);
           return;
         }
-        
-        const folderPath = result.path;
-        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
-        
-        // Send folder path to backend for sandbox connection
+
+        // 3. Count all files in tree
+        const countFiles = (nodes: any[]): number =>
+          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+        const fileCount = countFiles(scan.tree);
+
+        // 4. Register workspace in backend (rootPath stored — API can read files by path)
         const wsRes = await fetch(`${API_BASE}/workspaces`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: "generic" }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: 'generic' }),
         });
-        
         const wsJson = await wsRes.json();
         const newId = wsJson.data?.id;
         if (!newId) {
-          toast.error("Gagal membuat workspace");
+          toast.error('Gagal membuat workspace');
           setIsCreating(false);
           return;
         }
-        
-        // Connect the folder (scan and index files)
-        const connectRes = await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ folderPath }),
-        });
-        
-        const connectJson = await connectRes.json();
-        if (!connectRes.ok) {
-          toast.error(connectJson.error?.message || "Gagal menghubungkan folder");
-          setIsCreating(false);
-          return;
-        }
-        
+
+        // 5. Set native tree in state — displayed immediately like VS Code
+        setNativeTree(scan.tree);
+        setNativeFileCount(fileCount);
         setWorkspaceId(newId);
         setIsConnected(true);
         setIsModalOpen(false);
         connectedWsRef.current = newId;
-        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
-        toast.success(`Folder "${folderName}" terhubung!`);
+        localStorage.setItem('arunaki_workspace_id', newId);
+        toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
+
+        // 6. Index files in backend for AI (await before analysis)
+        try {
+          await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderPath }),
+          });
+          queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
+        } catch {
+          // Backend indexing failed — tree still visible
+        }
+        triggerAutoAnalysis(newId);
       } catch (err: any) {
-        console.error("Connect folder failed:", err);
-        toast.error(`Gagal menghubungkan folder: ${err.message || "Periksa apakah backend berjalan"}`);
+        console.error('Connect folder failed:', err);
+        toast.error(`Gagal menghubungkan folder: ${err.message || 'Periksa apakah backend berjalan'}`);
+        setIsCreating(false);
       } finally {
         setIsCreating(false);
       }
       return;
     }
+
     
     // Fallback to browser File System Access API
     if ("showDirectoryPicker" in window) {
@@ -371,17 +455,28 @@ export function WorkspacePage() {
     enabled: !!workspaceId,
   });
 
+  const handleSendChat = useCallback(() => {
+    if (!isConnected || !promptInput.trim() || isAnalyzing) return;
+    const goal = promptInput.trim();
+    setPromptInput("");
+    triggerAutoAnalysis(workspaceId!, goal);
+  }, [isConnected, promptInput, isAnalyzing, workspaceId, triggerAutoAnalysis]);
+
   const handleDisconnectFolder = () => {
     setIsConnected(false);
     setWorkspaceId(null);
     setAgentSteps([]);
     setAnalysisResult(null);
     setIsAnalyzing(false);
+    setNativeTree(null);
+    setNativeFileCount(0);
     connectedWsRef.current = null;
+    localStorage.removeItem('arunaki_workspace_id');
     setIsModalOpen(true);
   };
 
-  const fileCount = files.length;
+  // Use native file count from Electron tree if available, else from API
+  const fileCount = nativeTree ? nativeFileCount : files.length;
 
   const quickPrompts = [
     { icon: BarChart3, text: "Analisis Tren Laporan Keuangan FY24" },
@@ -396,8 +491,19 @@ export function WorkspacePage() {
     return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
   };
 
+  if (isRestoring) {
+    return (
+      <div className="flex-1 h-full bg-[#FAFAFA] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-medium">Memuat workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto h-full bg-[#FAFAFA] p-6 lg:p-8 space-y-6 flex flex-col relative">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden h-full bg-[#FAFAFA] p-6 lg:p-8 space-y-6 flex flex-col relative min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3.5">
@@ -445,8 +551,8 @@ export function WorkspacePage() {
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
         {/* Left - Chat Area */}
-        <div className="lg:col-span-8 flex flex-col h-full space-y-6 min-h-[550px]">
-          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-8 flex flex-col h-full space-y-6 min-h-[550px] min-w-0">
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6 overflow-hidden min-w-0">
             {/* Top Header */}
             <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -463,7 +569,7 @@ export function WorkspacePage() {
             </div>
 
             {/* Middle Message Area */}
-            <div className="flex-1 overflow-y-auto min-h-0 py-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 py-2">
               {!isConnected ? (
                 <div className="bg-[#F8F9FA] border border-gray-200/70 rounded-2xl p-6 text-xs sm:text-sm text-gray-700 space-y-3.5 max-w-2xl">
                   <div className="flex items-center gap-2 text-gray-900 font-bold text-base sm:text-lg">
@@ -483,7 +589,7 @@ export function WorkspacePage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 max-w-2xl animate-fade-in">
+                <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
                   {/* Agent Progress */}
                   {agentSteps.length > 0 && (
                     <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 space-y-3">
@@ -501,10 +607,10 @@ export function WorkspacePage() {
                         {agentSteps.map((step, i) => (
                           <div key={i} className="flex items-start gap-2 text-xs">
                             {getStepIcon(step)}
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 break-words">
                               <span className="text-gray-700 font-medium">{step.label}</span>
                               {step.detail && (
-                                <span className="text-gray-500 ml-1.5 truncate">{step.detail}</span>
+                                <span className="text-gray-500 ml-1.5 block break-words">{step.detail}</span>
                               )}
                             </div>
                           </div>
@@ -515,9 +621,9 @@ export function WorkspacePage() {
 
                   {/* Analysis Result */}
                   {analysisResult && (
-                    <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2">
+                    <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2 overflow-hidden min-w-0">
                       <p className="font-bold text-gray-900 text-base">Hasil Analisis AI</p>
-                      <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">{analysisResult}</div>
+                      <div className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{analysisResult}</div>
                     </div>
                   )}
 
@@ -572,6 +678,7 @@ export function WorkspacePage() {
                     value={promptInput}
                     disabled={!isConnected}
                     onChange={(e) => setPromptInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
                     placeholder={
                       !isConnected
                         ? "Hubungkan folder direktori terlebih dahulu untuk mulai bertanya..."
@@ -581,7 +688,8 @@ export function WorkspacePage() {
                   />
 
                   <button
-                    disabled={!isConnected}
+                    onClick={handleSendChat}
+                    disabled={!isConnected || !promptInput.trim() || isAnalyzing}
                     className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ArrowUp className="w-4.5 h-4.5" />
@@ -622,6 +730,13 @@ export function WorkspacePage() {
                 <FileTree
                   files={files.map((f: any) => ({ id: f.id, name: f.name, type: f.type, size: f.size }))}
                   workspaceName={workspace?.name || "Workspace"}
+                  nativeTree={nativeTree ?? undefined}
+                  onFileClick={async (filePath, fileName) => {
+                    if (!(window as any).arunakiDesktop?.readFile) return;
+                    const res = await (window as any).arunakiDesktop.readFile(filePath);
+                    if (res?.error) { toast.error(`Gagal baca file: ${fileName}`); return; }
+                    toast.info(`File "${fileName}" dibuka (${res.encoding})`);
+                  }}
                 />
               </div>
             )}

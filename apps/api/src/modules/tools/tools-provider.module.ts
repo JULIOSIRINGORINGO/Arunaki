@@ -241,10 +241,11 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
+            workspaceId: { type: 'string', description: 'ID Workspace' },
             query: { type: 'string', description: 'Kata kunci pencarian' },
             limit: { type: 'number', description: 'Batas hasil (default: 10)' },
           },
-          required: ['query'],
+          required: ['workspaceId', 'query'],
         },
         timeoutMs: 10000,
       }),
@@ -545,7 +546,7 @@ export class ToolsProviderModule implements OnModuleInit {
             workspaceId: { type: 'string', description: 'ID Workspace' },
             query: { type: 'string', description: 'Kata kunci pencarian' },
           },
-          required: ['query'],
+          required: ['workspaceId', 'query'],
         },
         timeoutMs: 8000,
       }),
@@ -591,7 +592,7 @@ export class ToolsProviderModule implements OnModuleInit {
             },
             workspaceId: { type: 'string', description: 'ID Workspace' },
           },
-          required: ['filePath'],
+          required: ['workspaceId', 'filePath'],
         },
         estimatedLatency: 'medium',
         timeoutMs: 15000,
@@ -603,11 +604,11 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'write_workspace_file',
         displayName: 'Buat File Workspace',
         description:
-          'Membuat file laporan/dokumen baru (Excel, PDF, Word, TXT, JSON) di dalam folder Workspace.',
+          'Membuat file laporan/dokumen baru (Excel, PDF, Word, TXT, JSON) di dalam folder Workspace. Path folder otomatis diambil dari database.',
         tags: ['write', 'create', 'export', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.writeWorkspaceFile({
-            workspacePath: args.workspacePath || process.cwd(),
+            workspaceId: args.workspaceId,
             filename: args.filename,
             format: args.format,
             content: args.content,
@@ -617,6 +618,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
+            workspaceId: { type: 'string', description: 'ID Workspace (wajib)' },
             filename: {
               type: 'string',
               description: 'Nama file yang akan dibuat',
@@ -630,7 +632,7 @@ export class ToolsProviderModule implements OnModuleInit {
             rows: { type: 'array', description: 'Baris data untuk Excel/CSV' },
             title: { type: 'string', description: 'Judul dokumen' },
           },
-          required: ['filename', 'format'],
+          required: ['workspaceId', 'filename', 'format'],
         },
         outputType: 'document',
         estimatedLatency: 'medium',

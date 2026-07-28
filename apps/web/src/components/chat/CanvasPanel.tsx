@@ -16,6 +16,7 @@ import {
   Send,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { API_BASE } from "../../lib/api";
 
 export interface CanvasData {
   id: string;
@@ -49,8 +50,6 @@ interface CanvasPanelProps {
   artifacts?: Artifact[];
   onSaveAndSendToAi?: (updatedContent: string) => void;
 }
-
-const API_BASE = "http://localhost:3000/api/v1";
 
 function getFileLabel(mimeType: string): string {
   if (mimeType.includes("pdf")) return "PDF";

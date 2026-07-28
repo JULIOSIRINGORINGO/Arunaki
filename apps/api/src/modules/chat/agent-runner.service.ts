@@ -11,6 +11,7 @@ import {
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+import { SessionAdmissionService } from './session-admission.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -56,6 +57,7 @@ export class AgentRunnerService {
     private readonly plannerService: AutonomousPlannerService,
     private readonly selfHealingService: SelfHealingService,
     private readonly autoMemoryService: AutoMemoryService,
+    private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -67,6 +69,21 @@ export class AgentRunnerService {
   }
 
   async runAgentSync(params: AgentRunParams) {
+    const { chatId, chatMode = 'chat', historyMessages } = params;
+    
+    // Acquire session admission lease (session-level lock)
+    const lease = await this.sessionAdmissionService.acquireAdmission(chatId);
+    
+    try {
+      return await lease.run(async () => {
+        return this.runAgentSyncInternal(params);
+      });
+    } finally {
+      await this.sessionAdmissionService.releaseAdmission(chatId);
+    }
+  }
+
+  private async runAgentSyncInternal(params: AgentRunParams) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
     const knowledgeContext = await this.getKnowledgeContext();
@@ -195,6 +212,24 @@ export class AgentRunnerService {
   }
 
   async runAgentStream(
+    params: AgentRunParams,
+    onEvent: (event: AgentStreamEvent) => void,
+  ) {
+    const { chatId, chatMode = 'chat', historyMessages } = params;
+
+    // Acquire session admission lease (session-level lock)
+    const lease = await this.sessionAdmissionService.acquireAdmission(chatId);
+
+    try {
+      return await lease.run(async () => {
+        return this.runAgentStreamInternal(params, onEvent);
+      });
+    } finally {
+      await this.sessionAdmissionService.releaseAdmission(chatId);
+    }
+  }
+
+  private async runAgentStreamInternal(
     params: AgentRunParams,
     onEvent: (event: AgentStreamEvent) => void,
   ) {

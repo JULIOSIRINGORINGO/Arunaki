@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ChatHistoryService } from './chat-history.service.js';
-import { MessageService } from './message.service.js';
+import { MessageService, CreateMessageOptions } from './message.service.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import {
@@ -22,6 +22,7 @@ import {
   successResponse,
   errorResponse,
 } from '../../common/dtos/api-response.dto.js';
+import { randomUUID } from 'node:crypto';
 
 @Controller('chat')
 export class ChatController {
@@ -128,11 +129,13 @@ export class ChatController {
     @Body() body: { role: 'user' | 'assistant' | 'system'; content: string },
   ) {
     try {
-      const message = await this.messageService.createMessage(
-        id,
-        body.role,
-        body.content,
-      );
+      const message = await this.messageService.createMessage({
+        chatHistoryId: id,
+        role: body.role,
+        content: body.content,
+        idempotencyKey: body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined,
+        provenance: body.role === 'user' ? { kind: 'external_user', isUser: true } : { kind: 'internal_system', isUser: false },
+      });
       return successResponse(message);
     } catch (error) {
       return errorResponse('CREATE_FAILED', error.message);
@@ -235,7 +238,14 @@ export class ChatController {
         ? injectionResult.sanitized
         : body.content;
 
-      await this.messageService.createMessage(id, 'user', userContent);
+      const runId = randomUUID();
+      await this.messageService.createMessage({
+        chatHistoryId: id,
+        role: 'user',
+        content: userContent,
+        idempotencyKey: `run:${runId}`,
+        provenance: { kind: 'external_user', isUser: true },
+      });
 
       if (!chat.title) {
         const title =
@@ -256,11 +266,13 @@ export class ChatController {
         })),
       });
 
-      const assistantMessage = await this.messageService.createMessage(
-        id,
-        'assistant',
-        agentResult.content,
-      );
+      const assistantMessage = await this.messageService.createMessage({
+        chatHistoryId: id,
+        role: 'assistant',
+        content: agentResult.content,
+        idempotencyKey: `run:${runId}:assistant`,
+        provenance: { kind: 'internal_system', isUser: false },
+      });
 
       return successResponse({
         message: assistantMessage,
@@ -308,7 +320,14 @@ export class ChatController {
         ? injectionResult.sanitized
         : body.content;
 
-      await this.messageService.createMessage(id, 'user', userContent);
+      const runId = randomUUID();
+      await this.messageService.createMessage({
+        chatHistoryId: id,
+        role: 'user',
+        content: userContent,
+        idempotencyKey: `run:${runId}`,
+        provenance: { kind: 'external_user', isUser: true },
+      });
 
       if (!chat.title) {
         const title =
@@ -334,7 +353,13 @@ export class ChatController {
         },
       );
 
-      await this.messageService.createMessage(id, 'assistant', finalContent);
+      await this.messageService.createMessage({
+        chatHistoryId: id,
+        role: 'assistant',
+        content: finalContent,
+        idempotencyKey: `run:${runId}:assistant`,
+        provenance: { kind: 'internal_system', isUser: false },
+      });
       res.end();
     } catch (error) {
       res.write(
