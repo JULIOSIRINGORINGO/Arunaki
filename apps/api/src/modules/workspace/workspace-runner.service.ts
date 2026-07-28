@@ -6,6 +6,7 @@ import {
 } from '../ai/context-manager.js';
 import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
+import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
@@ -49,6 +50,7 @@ export class WorkspaceRunnerService {
     private readonly aiService: AiService,
     private readonly selfEvaluationService: SelfEvaluationService,
     private readonly toolRegistryService: ToolRegistryService,
+    private readonly documentReaderTool: DocumentReaderTool,
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
@@ -72,6 +74,22 @@ export class WorkspaceRunnerService {
               )
               .join('\n')
           : 'Belum ada file di workspace ini.';
+
+      // Auto-read top 5 files to give AI actual content
+      const previews: string[] = [];
+      const maxPreviews = Math.min(files.length, 5);
+      for (let i = 0; i < maxPreviews; i++) {
+        const f = files[i];
+        try {
+          const result = await this.documentReaderTool.readDocument(f.path);
+          if (result.status === 'success' && result.data?.text) {
+            const truncated = (result.data.text as string).substring(0, 2000);
+            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
+          }
+        } catch {
+          // skip unreadable files
+        }
+      }
 
       // Get workspace business type for domain-aware skills
       let businessType = 'generic';
@@ -104,6 +122,10 @@ export class WorkspaceRunnerService {
       );
 
       let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+
+      if (previews.length > 0) {
+        context += `\n\n=== ISI FILE (Preview) ===\n${previews.join('\n\n')}\n=== END ISI FILE ===`;
+      }
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;

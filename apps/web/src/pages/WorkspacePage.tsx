@@ -61,7 +61,7 @@ export function WorkspacePage() {
     }
   }, []);
 
-  const triggerAutoAnalysis = useCallback(async (wsId: string) => {
+  const triggerAutoAnalysis = useCallback(async (wsId: string, goal?: string) => {
     setIsAnalyzing(true);
     setAgentSteps([]);
     setAnalysisResult(null);
@@ -71,7 +71,7 @@ export function WorkspacePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          goal: "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
+          goal: goal || "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
         }),
         openWhenHidden: true,
         onmessage(ev) {
@@ -272,17 +272,18 @@ export function WorkspacePage() {
         connectedWsRef.current = newId;
         toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
 
-        // 6. Background: index files in backend for AI (fire & forget)
-        void fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderPath }),
-        }).then(() => {
+        // 6. Index files in backend for AI (await before analysis)
+        try {
+          await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folderPath }),
+          });
           queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
-          triggerAutoAnalysis(newId);
-        }).catch(() => {
-          // Backend indexing failed silently — tree still visible
-        });
+        } catch {
+          // Backend indexing failed — tree still visible
+        }
+        triggerAutoAnalysis(newId);
       } catch (err: any) {
         console.error('Connect folder failed:', err);
         toast.error(`Gagal menghubungkan folder: ${err.message || 'Periksa apakah backend berjalan'}`);
@@ -389,6 +390,13 @@ export function WorkspacePage() {
     },
     enabled: !!workspaceId,
   });
+
+  const handleSendChat = useCallback(() => {
+    if (!isConnected || !promptInput.trim() || isAnalyzing) return;
+    const goal = promptInput.trim();
+    setPromptInput("");
+    triggerAutoAnalysis(workspaceId!, goal);
+  }, [isConnected, promptInput, isAnalyzing, workspaceId, triggerAutoAnalysis]);
 
   const handleDisconnectFolder = () => {
     setIsConnected(false);
@@ -594,6 +602,7 @@ export function WorkspacePage() {
                     value={promptInput}
                     disabled={!isConnected}
                     onChange={(e) => setPromptInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
                     placeholder={
                       !isConnected
                         ? "Hubungkan folder direktori terlebih dahulu untuk mulai bertanya..."
@@ -603,7 +612,8 @@ export function WorkspacePage() {
                   />
 
                   <button
-                    disabled={!isConnected}
+                    onClick={handleSendChat}
+                    disabled={!isConnected || !promptInput.trim() || isAnalyzing}
                     className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ArrowUp className="w-4.5 h-4.5" />
