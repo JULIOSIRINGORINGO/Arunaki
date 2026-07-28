@@ -42,6 +42,7 @@ export function WorkspacePage() {
   const [isCreating, setIsCreating] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [customName, setCustomName] = useState("");
+  const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
 
@@ -54,11 +55,73 @@ export function WorkspacePage() {
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
   const [nativeFileCount, setNativeFileCount] = useState(0);
 
+  // Restore last connected workspace on mount
   useEffect(() => {
-    if (!workspaceId) {
+    let cancelled = false;
+    const restore = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/workspaces`);
+        const json = await res.json();
+        const workspaces = json.data || [];
+
+        // Find workspace with rootPath (connected folder)
+        const connected = workspaces.find((ws: any) => ws.rootPath);
+
+        if (connected && !cancelled) {
+          setWorkspaceId(connected.id);
+          setIsConnected(true);
+          connectedWsRef.current = connected.id;
+          localStorage.setItem('arunaki_workspace_id', connected.id);
+          queryClient.invalidateQueries({ queryKey: ["wsFiles", connected.id] });
+
+          // Load cached analysis result (if available from previous session)
+          try {
+            const analysisRes = await fetch(`${API_BASE}/workspaces/${connected.id}/analysis`);
+            const analysisJson = await analysisRes.json();
+            if (analysisJson.data?.analysisResult && !cancelled) {
+              setAnalysisResult(analysisJson.data.analysisResult);
+              setAgentSteps([{
+                type: "result",
+                label: "Analisis sebelumnya dimuat dari cache",
+                detail: `Terakhir dianalisis: ${new Date(analysisJson.data.analyzedAt).toLocaleString('id-ID')}`,
+                status: "done",
+              }]);
+            }
+          } catch {
+            // No cached analysis — that's fine
+          }
+
+          setIsRestoring(false);
+
+          // Load native tree in background (non-blocking)
+          const desktop = (window as any).arunakiDesktop;
+          if (desktop?.getFolderTree && connected.rootPath) {
+            desktop.getFolderTree(connected.rootPath).then((scan: any) => {
+              if (scan?.tree && !cancelled) {
+                const countFiles = (nodes: any[]): number =>
+                  nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+                setNativeTree(scan.tree);
+                setNativeFileCount(countFiles(scan.tree));
+              }
+            }).catch(() => {});
+          }
+          return;
+        }
+      } catch {
+        // Backend not available
+      }
+      if (!cancelled) setIsRestoring(false);
+    };
+    restore();
+    return () => { cancelled = true; };
+  }, [queryClient]);
+
+  // Show modal only after restore attempt
+  useEffect(() => {
+    if (!isRestoring && !workspaceId) {
       setIsModalOpen(true);
     }
-  }, []);
+  }, [isRestoring, workspaceId]);
 
   const triggerAutoAnalysis = useCallback(async (wsId: string, goal?: string) => {
     setIsAnalyzing(true);
@@ -204,6 +267,7 @@ export function WorkspacePage() {
       setIsConnected(true);
       setIsModalOpen(false);
       connectedWsRef.current = newId;
+      localStorage.setItem('arunaki_workspace_id', newId);
       queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
       toast.success(`Workspace "${folderName}" terhubung!`);
 
@@ -269,6 +333,7 @@ export function WorkspacePage() {
         setIsConnected(true);
         setIsModalOpen(false);
         connectedWsRef.current = newId;
+        localStorage.setItem('arunaki_workspace_id', newId);
         toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
 
         // 6. Index files in backend for AI (await before analysis)
@@ -406,6 +471,7 @@ export function WorkspacePage() {
     setNativeTree(null);
     setNativeFileCount(0);
     connectedWsRef.current = null;
+    localStorage.removeItem('arunaki_workspace_id');
     setIsModalOpen(true);
   };
 
@@ -425,8 +491,19 @@ export function WorkspacePage() {
     return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
   };
 
+  if (isRestoring) {
+    return (
+      <div className="flex-1 h-full bg-[#FAFAFA] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-500">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="text-sm font-medium">Memuat workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto h-full bg-[#FAFAFA] p-6 lg:p-8 space-y-6 flex flex-col relative">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden h-full bg-[#FAFAFA] p-6 lg:p-8 space-y-6 flex flex-col relative min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3.5">
@@ -474,8 +551,8 @@ export function WorkspacePage() {
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
         {/* Left - Chat Area */}
-        <div className="lg:col-span-8 flex flex-col h-full space-y-6 min-h-[550px]">
-          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6">
+        <div className="lg:col-span-8 flex flex-col h-full space-y-6 min-h-[550px] min-w-0">
+          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6 overflow-hidden min-w-0">
             {/* Top Header */}
             <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -492,7 +569,7 @@ export function WorkspacePage() {
             </div>
 
             {/* Middle Message Area */}
-            <div className="flex-1 overflow-y-auto min-h-0 py-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 py-2">
               {!isConnected ? (
                 <div className="bg-[#F8F9FA] border border-gray-200/70 rounded-2xl p-6 text-xs sm:text-sm text-gray-700 space-y-3.5 max-w-2xl">
                   <div className="flex items-center gap-2 text-gray-900 font-bold text-base sm:text-lg">
@@ -512,7 +589,7 @@ export function WorkspacePage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 max-w-2xl animate-fade-in">
+                <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
                   {/* Agent Progress */}
                   {agentSteps.length > 0 && (
                     <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 space-y-3">
@@ -530,10 +607,10 @@ export function WorkspacePage() {
                         {agentSteps.map((step, i) => (
                           <div key={i} className="flex items-start gap-2 text-xs">
                             {getStepIcon(step)}
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 break-words">
                               <span className="text-gray-700 font-medium">{step.label}</span>
                               {step.detail && (
-                                <span className="text-gray-500 ml-1.5 truncate">{step.detail}</span>
+                                <span className="text-gray-500 ml-1.5 block break-words">{step.detail}</span>
                               )}
                             </div>
                           </div>
@@ -544,9 +621,9 @@ export function WorkspacePage() {
 
                   {/* Analysis Result */}
                   {analysisResult && (
-                    <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2">
+                    <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2 overflow-hidden min-w-0">
                       <p className="font-bold text-gray-900 text-base">Hasil Analisis AI</p>
-                      <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">{analysisResult}</div>
+                      <div className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{analysisResult}</div>
                     </div>
                   )}
 

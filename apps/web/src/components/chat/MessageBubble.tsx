@@ -16,10 +16,11 @@ interface MessageBubbleProps {
 
 function MarkdownContent({ content }: { content: string }) {
   return (
+    <div className="overflow-hidden min-w-0 break-words" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
     <Markdown
       components={{
         table: ({ children }) => (
-          <div className="overflow-x-auto my-3">
+          <div className="overflow-x-auto my-3 max-w-full">
             <table className="w-full text-sm border-collapse">{children}</table>
           </div>
         ),
@@ -36,18 +37,18 @@ function MarkdownContent({ content }: { content: string }) {
           </th>
         ),
         td: ({ children }) => (
-          <td className="py-2 px-3 text-gray-800">{children}</td>
+          <td className="py-2 px-3 text-gray-800 break-words">{children}</td>
         ),
         p: ({ children }) => (
-          <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>
+          <p className="mb-2 last:mb-0 leading-relaxed break-words">{children}</p>
         ),
         ul: ({ children }) => (
-          <ul className="list-disc list-inside mb-2 space-y-0.5">{children}</ul>
+          <ul className="list-disc list-inside mb-2 space-y-0.5 break-words">{children}</ul>
         ),
         ol: ({ children }) => (
-          <ol className="list-decimal list-inside mb-2 space-y-0.5">{children}</ol>
+          <ol className="list-decimal list-inside mb-2 space-y-0.5 break-words">{children}</ol>
         ),
-        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        li: ({ children }) => <li className="leading-relaxed break-words">{children}</li>,
         strong: ({ children }) => (
           <strong className="font-semibold text-gray-900">{children}</strong>
         ),
@@ -55,29 +56,29 @@ function MarkdownContent({ content }: { content: string }) {
           const isInline = !className;
           if (isInline) {
             return (
-              <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs font-mono">
+              <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs font-mono break-all">
                 {children}
               </code>
             );
           }
           return (
-            <code className="block bg-gray-900 text-gray-100 p-4 rounded-xl text-xs font-mono overflow-x-auto mb-3">
+            <code className="block bg-gray-900 text-gray-100 p-4 rounded-xl text-xs font-mono overflow-x-auto mb-3 whitespace-pre-wrap break-all">
               {children}
             </code>
           );
         },
-        pre: ({ children }) => <pre className="mb-3">{children}</pre>,
+        pre: ({ children }) => <pre className="mb-3 overflow-x-auto max-w-full whitespace-pre-wrap">{children}</pre>,
         h1: ({ children }) => (
-          <h1 className="text-lg font-bold text-gray-900 mb-2">{children}</h1>
+          <h1 className="text-lg font-bold text-gray-900 mb-2 break-words">{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="text-base font-bold text-gray-900 mb-2">{children}</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-2 break-words">{children}</h2>
         ),
         h3: ({ children }) => (
-          <h3 className="text-sm font-bold text-gray-900 mb-1">{children}</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-1 break-words">{children}</h3>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="border-l-3 border-gray-300 pl-4 italic text-gray-600 my-2">
+          <blockquote className="border-l-3 border-gray-300 pl-4 italic text-gray-600 my-2 break-words">
             {children}
           </blockquote>
         ),
@@ -86,6 +87,7 @@ function MarkdownContent({ content }: { content: string }) {
     >
       {content}
     </Markdown>
+    </div>
   );
 }
 
@@ -109,8 +111,8 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
   if (isUser) {
     return (
       <div className="flex flex-col items-end group animate-fade-in">
-        <div className="flex items-start gap-3 max-w-[75%]">
-          <div className="bg-gray-100 rounded-2xl rounded-br-md px-4 py-3 text-base text-gray-800 leading-relaxed">
+        <div className="flex items-start gap-3 max-w-[75%] min-w-0">
+          <div className="bg-gray-100 rounded-2xl rounded-br-md px-4 py-3 text-base text-gray-800 leading-relaxed overflow-hidden break-words min-w-0 flex-1">
             <MarkdownContent content={message.content} />
           </div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-200">
@@ -138,11 +140,11 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
 
   return (
     <div className="flex flex-col items-start group animate-fade-in space-y-2">
-      <div className="flex items-start gap-3 max-w-[85%]">
+      <div className="flex items-start gap-3 max-w-[85%] min-w-0">
         <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200 shadow-2xs">
           <img src="/logo.svg" alt="Arunaki" className="w-5 h-5 object-contain" />
         </div>
-        <div className="text-base text-gray-700 leading-relaxed bg-white border border-gray-100/80 rounded-2xl p-4 shadow-2xs">
+        <div className="text-base text-gray-700 leading-relaxed bg-white border border-gray-100/80 rounded-2xl p-4 shadow-2xs overflow-hidden break-words min-w-0 flex-1">
           <MarkdownContent content={message.content} />
 
           {/* Smart Action Chips — Only rendered when genuinely relevant */}

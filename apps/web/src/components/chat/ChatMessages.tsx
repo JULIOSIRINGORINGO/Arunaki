@@ -58,7 +58,7 @@ export function ChatMessages({
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-1 overflow-auto h-full flex flex-col justify-between">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden h-full flex flex-col justify-between min-w-0">
       {messages.length === 0 && !isLoading ? (
         <div className="h-full flex flex-col items-center justify-center p-6 my-auto max-w-3xl mx-auto text-center space-y-8">
           {/* Logo & Heading */}
@@ -111,7 +111,7 @@ export function ChatMessages({
           </div>
         </div>
       ) : (
-        <div className="w-full px-6 py-8 space-y-8 max-w-4xl mx-auto">
+        <div className="w-full px-6 py-8 space-y-8 max-w-4xl mx-auto overflow-hidden">
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
@@ -123,7 +123,7 @@ export function ChatMessages({
       )}
 
       {isLoading && (
-        <div className="w-full px-6 py-8 max-w-4xl mx-auto">
+        <div className="w-full px-6 py-8 max-w-4xl mx-auto overflow-hidden">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white border border-gray-200">
               <img src="/logo.svg" alt="Arunaki" className="w-5 h-5 object-contain" />

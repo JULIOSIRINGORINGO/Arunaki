@@ -6,13 +6,13 @@ import {
 import { Source } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { SourceRepository } from './source.repository.js';
-import { WorkspaceService } from '../workspace/workspace.service.js';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 
 @Injectable()
 export class SourceService extends BaseService<Source> {
   constructor(
     protected readonly repository: SourceRepository,
-    private readonly workspaceService: WorkspaceService,
+    private readonly prisma: PrismaService,
   ) {
     super(repository);
   }
@@ -23,7 +23,12 @@ export class SourceService extends BaseService<Source> {
     type: string;
     path?: string;
   }): Promise<Source> {
-    await this.workspaceService.findById(data.workspaceId);
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: data.workspaceId },
+    });
+    if (!workspace) {
+      throw new NotFoundException(`Workspace with id ${data.workspaceId} not found`);
+    }
     return this.repository.create({
       workspaceId: data.workspaceId,
       name: data.name,

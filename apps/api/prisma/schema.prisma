@@ -21,6 +21,10 @@ model Workspace {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Cached AI analysis result (persisted across sessions)
+  analysisResult String?   // Last analysis output from agent
+  analyzedAt     DateTime? // When analysis was last completed
+
   // Relations
   sources     Source[]
   chatHistory ChatHistory[]

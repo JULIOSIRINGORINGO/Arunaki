@@ -61,6 +61,19 @@ export class WorkspaceController {
     }
   }
 
+  @Get(':id/analysis')
+  async getAnalysis(@Param('id') id: string) {
+    try {
+      const workspace = await this.workspaceService.findById(id);
+      return successResponse({
+        analysisResult: workspace.analysisResult || null,
+        analyzedAt: workspace.analyzedAt || null,
+      });
+    } catch (error) {
+      return errorResponse('NOT_FOUND', error.message);
+    }
+  }
+
   @Put(':id')
   async update(@Param('id') id: string, @Body() dto: UpdateWorkspaceDto) {
     try {
@@ -109,7 +122,7 @@ export class WorkspaceController {
   async streamAgent(
     @Param('id') id: string,
     @Body()
-    body: { goal: string; historyMessages?: any[]; approvedToolCalls?: any[] },
+    body: { goal: string; historyMessages?: any[] },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -133,7 +146,6 @@ export class WorkspaceController {
           historyMessages: body.historyMessages || [
             { role: 'user', content: body.goal },
           ],
-          approvedToolCalls: body.approvedToolCalls || [],
         },
         (event) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -146,6 +158,67 @@ export class WorkspaceController {
         `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
       );
       res.end();
+    }
+  }
+
+  @Post(':id/agent/abort')
+  async abortAgent(@Param('id') id: string) {
+    try {
+      const aborted = this.workspaceRunnerService.abortRun(
+        id,
+        'User cancelled',
+      );
+      return successResponse({
+        aborted,
+        message: aborted
+          ? 'Analisis sedang dibatalkan.'
+          : 'Tidak ada analisis yang sedang berjalan.',
+      });
+    } catch (error) {
+      return errorResponse('ABORT_FAILED', error.message);
+    }
+  }
+
+  @Post(':id/agent/approve')
+  async approveAgent(
+    @Param('id') id: string,
+    @Body() body: { approved: boolean },
+  ) {
+    try {
+      const resolved = this.workspaceRunnerService.resolveApproval(
+        id,
+        body.approved,
+      );
+      return successResponse({
+        resolved,
+        message: resolved
+          ? body.approved
+            ? 'Aksi disetujui.'
+            : 'Aksi ditolak.'
+          : 'Tidak ada aksi yang menunggu persetujuan.',
+      });
+    } catch (error) {
+      return errorResponse('APPROVE_FAILED', error.message);
+    }
+  }
+
+  @Get(':id/agent/state')
+  async getAgentState(@Param('id') id: string) {
+    try {
+      const state = this.workspaceRunnerService.getRunState(id);
+      return successResponse({
+        isRunning: this.workspaceRunnerService.isRunning(id),
+        state: state
+          ? {
+              state: state.state,
+              goal: state.goal,
+              round: state.round,
+              startedAt: state.startedAt,
+            }
+          : null,
+      });
+    } catch (error) {
+      return errorResponse('STATE_FAILED', error.message);
     }
   }
 }
