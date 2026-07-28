@@ -75,13 +75,17 @@ export class WorkspaceRunnerService {
 
       // Get workspace business type for domain-aware skills
       let businessType = 'generic';
+      let rootPath: string | null = null;
       try {
         const workspace = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
-          select: { businessType: true },
+          select: { businessType: true, rootPath: true },
         });
         if (workspace?.businessType) {
           businessType = workspace.businessType;
+        }
+        if (workspace?.rootPath) {
+          rootPath = workspace.rootPath;
         }
       } catch {
         // fallback to generic
@@ -99,7 +103,7 @@ export class WorkspaceRunnerService {
         workspaceId,
       );
 
-      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;

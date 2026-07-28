@@ -5,6 +5,7 @@ import { FileService } from '../../file/file.service.js';
 import { DocumentReaderTool } from './document-reader.tool.js';
 import { DocumentGeneratorTool } from './document-generator.tool.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { PrismaService } from '../../../common/providers/prisma.service.js';
 import * as path from 'path';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class WorkspaceToolsService {
     private readonly fileService: FileService,
     private readonly documentReaderTool: DocumentReaderTool,
     private readonly documentGeneratorTool: DocumentGeneratorTool,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -148,9 +150,10 @@ export class WorkspaceToolsService {
 
   /**
    * Write new file inside workspace directory (requires Approval Gate)
+   * Automatically resolves rootPath from workspace DB record.
    */
   async writeWorkspaceFile(params: {
-    workspacePath: string;
+    workspaceId: string;
     filename: string;
     format: 'xlsx' | 'csv' | 'pdf' | 'docx' | 'txt' | 'md' | 'json';
     content?: string;
@@ -158,14 +161,35 @@ export class WorkspaceToolsService {
     title?: string;
   }): Promise<ToolResult> {
     const {
-      workspacePath,
+      workspaceId,
       filename,
       format,
       content = '',
       rows = [],
       title = 'Laporan Workspace',
     } = params;
-    const targetPath = path.join(workspacePath, filename);
+
+    // Auto-resolve rootPath from workspace database
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
+        metadata: {
+          toolName: 'write_workspace_file',
+          displayName: 'Buat File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    const targetPath = path.join(workspace.rootPath, filename);
 
     switch (format) {
       case 'xlsx':
