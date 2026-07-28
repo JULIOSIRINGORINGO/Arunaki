@@ -36,6 +36,11 @@ Always follow these documents, in this priority order:
 4. INTELLIGENCE.md
 5. ARCHITECTURE.md
 6. **WORKFLOW.md** — Development roadmap & checklist
+7. **docs/OpenClaw-Blueprint.md** — OpenClaw architecture reference (32+ layers from source)
+8. **docs/ROADMAP-Implementation.md** — Phase 1-3 implementation plan (162h critical path)
+9. **docs/SESSIONS-LAYER-CRITICAL-FINDINGS.md** — Session admission, idempotent transcript, provenance patterns
+10. **docs/ARCHITECTURE-REVIEW.md** — System validation (7 questions answered)
+11. **docs/VERIFICATION-Checklist.md** — Team sign-off & GO/NO-GO decision matrix
 
 **Priority order means conflict resolution, not just reading order.** If two documents disagree, the higher-numbered-priority document wins (VISION > PRD > UX_UI > INTELLIGENCE > ARCHITECTURE). If ARCHITECTURE.md conflicts with PRD.md, PRD.md wins — but you must still flag the conflict (see "Handling Conflicts & Ambiguity" below) instead of silently picking one.
 
