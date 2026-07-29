@@ -522,6 +522,26 @@ export function WorkspacePage() {
     }
   }, [handleRefreshFolder]);
 
+  const handleRenamePath = useCallback(async (oldPath: string, oldName: string, newName: string) => {
+    if (!newName.trim() || oldName === newName) return;
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.renamePath) {
+      const parts = oldPath.replace(/\\/g, '/').split('/');
+      parts[parts.length - 1] = newName;
+      const newPath = parts.join('/');
+
+      const res = await desktop.renamePath(oldPath, newPath);
+      if (res?.error) {
+        toast.error(`Gagal mengubah nama: ${res.error}`);
+      } else {
+        toast.success(`Nama berhasil diubah dari "${oldName}" menjadi "${newName}"!`);
+        handleRefreshFolder();
+      }
+    } else {
+      toast.info("Pengubahan nama file/folder via Explorer membutuhkan Desktop Electron.");
+    }
+  }, [handleRefreshFolder]);
+
   const handleSendChat = useCallback(() => {
     if (!isConnected || !promptInput.trim() || isAnalyzing) return;
     const goal = promptInput.trim();
@@ -805,6 +825,7 @@ export function WorkspacePage() {
                   onCreateFile={handleCreateFile}
                   onCreateFolder={handleCreateFolder}
                   onDeletePath={handleDeletePath}
+                  onRenamePath={handleRenamePath}
                 />
               </div>
             )}

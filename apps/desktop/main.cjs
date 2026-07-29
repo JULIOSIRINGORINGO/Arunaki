@@ -186,6 +186,15 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('fs:renamePath', async (_event, oldPath, newPath) => {
+    try {
+      await fs.rename(oldPath, newPath);
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {

@@ -120,11 +120,13 @@ function TreeNodeItem({
   depth,
   onFileClick,
   onDeletePath,
+  onRenameClick,
 }: {
   node: TreeNode;
   depth: number;
   onFileClick?: (path: string, name: string) => void;
   onDeletePath?: (path: string, name: string) => void;
+  onRenameClick?: (path: string, currentName: string) => void;
 }) {
   const [open, setOpen] = useState(depth < 2);
 
@@ -152,11 +154,24 @@ function TreeNodeItem({
             <span className="truncate font-medium text-gray-800 text-xs">{node.name}</span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            {node.nativePath && onRenameClick && (
+              <button
+                type="button"
+                title="Ubah Nama Folder"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRenameClick(node.nativePath!, node.name);
+                }}
+                className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+            )}
             {node.nativePath && onDeletePath && (
               <button
                 type="button"
-                title="Hapus folder"
+                title="Hapus Folder"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeletePath(node.nativePath!, node.name);
@@ -183,6 +198,7 @@ function TreeNodeItem({
                 depth={depth + 1}
                 onFileClick={onFileClick}
                 onDeletePath={onDeletePath}
+                onRenameClick={onRenameClick}
               />
             ))}
           </div>
@@ -218,18 +234,36 @@ function TreeNodeItem({
         <span className="text-[10px] text-gray-400 font-mono group-hover:hidden">
           {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
         </span>
-        {node.nativePath && onDeletePath && (
-          <button
-            type="button"
-            title="Hapus file"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeletePath(node.nativePath!, node.name);
-            }}
-            className="hidden group-hover:block p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+
+        {node.nativePath && (onDeletePath || onRenameClick) && (
+          <div className="hidden group-hover:flex items-center gap-0.5">
+            {onRenameClick && (
+              <button
+                type="button"
+                title="Ubah Nama File"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRenameClick(node.nativePath!, node.name);
+                }}
+                className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+            )}
+            {onDeletePath && (
+              <button
+                type="button"
+                title="Hapus File"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeletePath(node.nativePath!, node.name);
+                }}
+                className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -246,6 +280,7 @@ interface FileTreeProps {
   onCreateFile?: (fileName: string) => void;
   onCreateFolder?: (folderName: string) => void;
   onDeletePath?: (path: string, name: string) => void;
+  onRenamePath?: (oldPath: string, oldName: string, newName: string) => void;
 }
 
 export default function FileTree({
@@ -258,15 +293,20 @@ export default function FileTree({
   onCreateFile,
   onCreateFolder,
   onDeletePath,
+  onRenamePath,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
   const [activeFile, setActiveFile] = useState<{ path: string; name: string; content: string } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // New File / Folder Prompts Modal
+  // New File / Folder Prompt Modal
   const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
   const [newItemName, setNewItemName] = useState("");
+
+  // Rename File / Folder Modal
+  const [renameModalState, setRenameModalState] = useState<{ oldPath: string; oldName: string } | null>(null);
+  const [renameNewName, setRenameNewName] = useState("");
 
   const tree = useMemo(() => {
     if (nativeTree && nativeTree.length > 0) {
@@ -306,13 +346,11 @@ export default function FileTree({
     );
   const totalFiles = countFiles(tree);
 
-  // Handle clicking a file to open built-in VS Code style Editor Modal
   const handleItemClick = async (filePath: string, fileName: string) => {
     if (onFileClick) {
       onFileClick(filePath, fileName);
     }
 
-    // Try reading file content via Desktop IPC or API
     if ((window as any).arunakiDesktop?.readFile) {
       const res = await (window as any).arunakiDesktop.readFile(filePath);
       if (res?.error) {
@@ -362,6 +400,22 @@ export default function FileTree({
     }
     setPromptModal(null);
     setNewItemName("");
+  };
+
+  const handleOpenRenameModal = (path: string, currentName: string) => {
+    setRenameModalState({ oldPath: path, oldName: currentName });
+    setRenameNewName(currentName);
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameModalState || !renameNewName.trim()) return;
+
+    if (onRenamePath) {
+      onRenamePath(renameModalState.oldPath, renameModalState.oldName, renameNewName.trim());
+    }
+    setRenameModalState(null);
+    setRenameNewName("");
   };
 
   return (
@@ -443,6 +497,7 @@ export default function FileTree({
                 depth={0}
                 onFileClick={handleItemClick}
                 onDeletePath={onDeletePath}
+                onRenameClick={handleOpenRenameModal}
               />
             ))}
           </div>
@@ -516,6 +571,58 @@ export default function FileTree({
         </div>
       )}
 
+      {/* Modal Prompt Rename File / Folder */}
+      {renameModalState && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-blue-500" /> Ubah Nama File / Folder
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRenameModalState(null)}
+                className="text-gray-400 hover:text-gray-600 rounded p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Nama Baru
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={renameNewName}
+                  onChange={(e) => setRenameNewName(e.target.value)}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setRenameModalState(null)}
+                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renameNewName.trim() || renameNewName === renameModalState.oldName}
+                  className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md disabled:opacity-50"
+                >
+                  Ubah Nama
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* VS Code Style Editor / Viewer Modal */}
       {activeFile && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -536,7 +643,7 @@ export default function FileTree({
                     className="flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded border border-gray-700 transition-colors"
                   >
                     <Edit3 className="w-3 h-3 text-amber-400" />
-                    <span>Edit</span>
+                    <span>Edit Content</span>
                   </button>
                 ) : (
                   <button

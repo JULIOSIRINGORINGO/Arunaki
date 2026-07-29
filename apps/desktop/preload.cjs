@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('arunakiDesktop', {
   writeFile: (filePath, content) => ipcRenderer.invoke('fs:writeFile', filePath, content),
   createFolder: (folderPath) => ipcRenderer.invoke('fs:createFolder', folderPath),
   deletePath: (targetPath) => ipcRenderer.invoke('fs:deletePath', targetPath),
+  renamePath: (oldPath, newPath) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
 });
