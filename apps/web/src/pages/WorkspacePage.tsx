@@ -231,6 +231,8 @@ export function WorkspacePage() {
             ...prev,
             { type: "error", label: "Koneksi stream terputus", status: "error" },
           ]);
+          setIsAnalyzing(false);
+          throw err;
         },
         onclose() {
           setIsAnalyzing(false);
