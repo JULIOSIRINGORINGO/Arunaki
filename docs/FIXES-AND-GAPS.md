@@ -54,7 +54,7 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 
 | # | Gap | Layer | Prioritas | Dampak |
 |---|-----|-------|-----------|--------|
-| A | Input Provenance | 9 | 🔴 P0 SECURITY | Cross-session rawan prompt injection |
+| A | Input Provenance | 9 | 🔴 P0 SECURITY | ✅ Done — input-provenance.ts + factory + inter-session utils |
 | B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | Recording bisa duplikasi/korupsi |
 | C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | 2 API beda, potensi race condition |
 | D | Session State Events | 7 | 🟡 P1 AUDIT | Tidak ada audit trail session |
@@ -451,6 +451,10 @@ if (!resolvedPath.startsWith(workspace.rootPath)) {
 
 ### Phase 2: Blueprint P0 Security (Sekarang)
 A. **Implement Input Provenance (Layer 9)** — Provenance tracking (`external_user`, `inter_session`, `internal_system`), inter-session safety prefixing
+   - ✅ `input-provenance.ts` — factory methods + inter-session annotation/stripping
+   - ✅ `message.service.ts` — menggunakan `InputProvenanceFactory`
+   - ✅ `chat.controller.ts` — semua message pake factory
+   - ✅ `annotateInterSession()` / `stripInterSessionPrefix()` utility ready
 B. **Implement User Turn Transcript (Layer 8)** — Idempotent transcript recording, runId deduplication, late media detection
 C. **Merge Session Admission Duplikasi (Layer 6)** — Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`, tambah handoff token + AsyncLocalStorage
 

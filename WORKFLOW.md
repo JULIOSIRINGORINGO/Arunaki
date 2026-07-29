@@ -574,6 +574,30 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+---
+
+## Phase 25: Blueprint P0 Security Gaps 🔴 CURRENT
+
+**Goal:** Implement 3 P0 security/idempotency gaps dari audit 32-layer.
+
+### 25.1 Input Provenance (Layer 9) ✅
+- [x] `input-provenance.ts` — tipe, factory, inter-session annotation/stripping
+- [x] `message.service.ts` — pake `InputProvenanceFactory.fromRole()` untuk default
+- [x] `chat.controller.ts` — semua message creation pake factory
+- [x] `annotateInterSession()` + `stripInterSessionPrefix()` utility ready
+
+### 25.2 User Turn Transcript (Layer 8) ⏳ PENDING
+- [ ] Dedicated `user-turn-transcript.ts` dengan idempotent recording
+- [ ] `markSentToProvider()` / `markRuntimePersisted()` / `persistApproved()` methods
+- [ ] late media detection
+
+### 25.3 Merge Session Admission (Layer 6) ⏳ PENDING
+- [ ] Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`
+- [ ] Standarisasi API (lease pattern)
+- [ ] Tambah handoff token + AsyncLocalStorage
+
+---
+
 ## AUTONOMY_ROADMAP Phase 7 ✅ DONE
 
 **Goal:** Advanced Intelligence — self-evaluation, skill self-improve, smart recall.

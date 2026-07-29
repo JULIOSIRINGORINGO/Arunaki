@@ -20,6 +20,9 @@ import {
   InjectionDetectionResult,
 } from '../ai/prompt-injection-detector.service.js';
 import {
+  InputProvenanceFactory,
+} from '../ai/input-provenance.js';
+import {
   successResponse,
   errorResponse,
 } from '../../common/dtos/api-response.dto.js';
@@ -136,10 +139,7 @@ export class ChatController {
         role: body.role,
         content: body.content,
         idempotencyKey: body.idempotencyKey || (body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined),
-        provenance:
-          body.role === 'user'
-            ? { kind: 'external_user', isUser: true }
-            : { kind: 'internal_system', isUser: false },
+        provenance: InputProvenanceFactory.fromRole(body.role),
       });
       return successResponse(message);
     } catch (error) {
@@ -249,7 +249,7 @@ export class ChatController {
         role: 'user',
         content: userContent,
         idempotencyKey: `run:${runId}`,
-        provenance: { kind: 'external_user', isUser: true },
+        provenance: InputProvenanceFactory.externalUser(),
       });
 
       // Update chat title if first message
@@ -280,7 +280,7 @@ export class ChatController {
         role: 'assistant',
         content: agentResult.content,
         idempotencyKey: `run:${runId}:assistant`,
-        provenance: { kind: 'internal_system', isUser: false },
+        provenance: InputProvenanceFactory.internalSystem(),
       });
 
       return successResponse({
@@ -335,7 +335,7 @@ export class ChatController {
         role: 'user',
         content: userContent,
         idempotencyKey: `run:${runId}`,
-        provenance: { kind: 'external_user', isUser: true },
+        provenance: InputProvenanceFactory.externalUser(),
       });
 
       // Update chat title if first message
@@ -370,7 +370,7 @@ export class ChatController {
         role: 'assistant',
         content: finalContent,
         idempotencyKey: `run:${runId}:assistant`,
-        provenance: { kind: 'internal_system', isUser: false },
+        provenance: InputProvenanceFactory.internalSystem(),
       });
 
       res.end();

@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { Message, Prisma } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { MessageRepository } from './message.repository.js';
+import {
+  InputProvenance,
+  InputProvenanceFactory,
+} from '../ai/input-provenance.js';
 
 export interface CreateMessageOptions {
   chatHistoryId: string;
@@ -9,12 +13,11 @@ export interface CreateMessageOptions {
   content: string;
   metadata?: Record<string, any>;
   idempotencyKey?: string;
-  provenance?: {
-    kind: 'external_user' | 'inter_session' | 'internal_system';
-    sourceSessionId?: string;
-    sourceTool?: string;
-    isUser?: boolean;
-  };
+  provenance?: InputProvenance;
+}
+
+function toJsonValue(obj: InputProvenance): Prisma.JsonValue {
+  return JSON.parse(JSON.stringify(obj));
 }
 
 @Injectable()
@@ -34,17 +37,15 @@ export class MessageService extends BaseService<Message> {
       }
     }
 
+    const prov = provenance || InputProvenanceFactory.fromRole(role);
+
     return this.repository.create({
       chatHistoryId,
       role,
       content,
       metadata: metadata ? JSON.stringify(metadata) : '{}',
       idempotencyKey,
-      provenance:
-        provenance ||
-        (role === 'user'
-          ? { kind: 'external_user', isUser: true }
-          : { kind: 'internal_system', isUser: false }),
+      provenance: toJsonValue(prov),
     });
   }
 
