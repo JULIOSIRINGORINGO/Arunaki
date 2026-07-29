@@ -38,6 +38,7 @@ export default function DocumentEngineHost({
   onOpenNativeOS,
 }: DocumentEngineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeServerUrl, setActiveServerUrl] = useState(onlyOfficeServerUrl);
   const [isLoading, setIsLoading] = useState(true);
   const [isServerReady, setIsServerReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export default function DocumentEngineHost({
         }
 
         // 2. Load DocsAPI script dynamically from OnlyOffice Server endpoint
-        const scriptUrl = `${onlyOfficeServerUrl.replace(/\/$/, "")}/web-apps/apps/api/documents/api.js`;
+        const scriptUrl = `${activeServerUrl.replace(/\/$/, "")}/web-apps/apps/api/documents/api.js`;
         const script = document.createElement("script");
         script.src = scriptUrl;
         script.async = true;
@@ -78,7 +79,7 @@ export default function DocumentEngineHost({
           setIsLoading(false);
           setIsServerReady(false);
           setErrorMessage(
-            `Server OnlyOffice Document (` + onlyOfficeServerUrl + `) tidak merespons. Menampilkan OnlyOffice Local Embedded Host Viewer...`
+            `Server OnlyOffice Document (` + activeServerUrl + `) tidak merespons. Pilih Server Online Gratis atau nyalakan Docker lokal.`
           );
         };
 
@@ -152,7 +153,7 @@ export default function DocumentEngineHost({
         }
       }
     };
-  }, [filePath, fileName, fileType, onlyOfficeServerUrl]);
+  }, [filePath, fileName, fileType, activeServerUrl]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
@@ -262,6 +263,18 @@ export default function DocumentEngineHost({
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveServerUrl("https://documentserver.onlyoffice.com");
+                    setIsLoading(true);
+                  }}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>🌐 Gunakan OnlyOffice Server Online Gratis</span>
+                </button>
+
                 {onOpenNativeOS && (
                   <button
                     type="button"
