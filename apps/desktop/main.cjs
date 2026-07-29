@@ -207,11 +207,39 @@ app.whenReady().then(() => {
   ipcMain.handle('fs:parseExcel', async (_event, filePath) => {
     try {
       const xlsx = require('xlsx');
-      const workbook = xlsx.readFile(filePath);
+      const workbook = xlsx.readFile(filePath, { cellDates: true, cellStyles: true, cellNF: true, cellFormulas: true });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
-      return { success: true, sheetName, sheets: workbook.SheetNames, rows: data };
+      
+      if (!worksheet['!ref']) {
+        return { success: true, sheetName, sheets: workbook.SheetNames, rows: [] };
+      }
+
+      const range = xlsx.utils.decode_range(worksheet['!ref']);
+      const rows = [];
+
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        const row = [];
+        let hasData = false;
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = xlsx.utils.encode_cell({ r: R, c: C });
+          const cell = worksheet[cellAddress];
+          if (!cell) {
+            row.push(null);
+          } else {
+            hasData = true;
+            row.push({
+              v: cell.v,
+              w: cell.w !== undefined ? String(cell.w) : (cell.v !== undefined ? String(cell.v) : ''),
+              t: cell.t,
+              f: cell.f
+            });
+          }
+        }
+        rows.push(row);
+      }
+
+      return { success: true, sheetName, sheets: workbook.SheetNames, rows };
     } catch (err) {
       return { error: err.message };
     }

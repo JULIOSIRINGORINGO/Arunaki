@@ -121,9 +121,16 @@ export default function DocumentEngineHost({
                 if (!row) continue;
                 cellData[r] = {};
                 for (let c = 0; c < row.length; c++) {
-                  const val = row[c];
-                  if (val !== null && val !== undefined && val !== "") {
-                    cellData[r][c] = { v: val as string | number | boolean };
+                  const cell = row[c];
+                  if (cell !== null && cell !== undefined) {
+                    if (typeof cell === "object" && cell !== null) {
+                      const displayValue = (cell as any).w !== undefined && (cell as any).w !== "" ? (cell as any).w : (cell as any).v;
+                      if (displayValue !== null && displayValue !== undefined && displayValue !== "") {
+                        cellData[r][c] = { v: displayValue };
+                      }
+                    } else if (cell !== "") {
+                      cellData[r][c] = { v: cell as string | number | boolean };
+                    }
                   }
                 }
                 if (row.length > maxCol) maxCol = row.length;
