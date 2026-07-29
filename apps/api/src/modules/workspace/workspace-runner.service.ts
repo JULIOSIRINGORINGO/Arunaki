@@ -637,6 +637,17 @@ export class WorkspaceRunnerService {
         ? injectionResult.sanitized
         : userGoal;
 
+      // Crucial fix: Append current user goal to messages array so LLM knows what tool to call!
+      const hasGoalInMessages = messages.some(
+        (m) => m.role === 'user' && m.content === safeGoal,
+      );
+      if (!hasGoalInMessages) {
+        messages.push({
+          role: 'user',
+          content: safeGoal,
+        });
+      }
+
       // Generate autonomous reasoning plan
       if (abortController.signal.aborted) {
         this.setState(runState, 'aborting', onEvent);
