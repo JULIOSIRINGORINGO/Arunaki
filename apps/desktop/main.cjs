@@ -159,6 +159,33 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('fs:writeFile', async (_event, filePath, content) => {
+    try {
+      await fs.writeFile(filePath, content, 'utf-8');
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
+  ipcMain.handle('fs:createFolder', async (_event, folderPath) => {
+    try {
+      await fs.mkdir(folderPath, { recursive: true });
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
+  ipcMain.handle('fs:deletePath', async (_event, targetPath) => {
+    try {
+      await fs.rm(targetPath, { recursive: true, force: true });
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {

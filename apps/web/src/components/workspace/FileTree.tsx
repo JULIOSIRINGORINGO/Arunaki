@@ -9,7 +9,16 @@ import {
   Folder,
   FolderOpen,
   Search,
+  FilePlus,
+  FolderPlus,
+  RotateCw,
+  Trash2,
+  Edit3,
+  Save,
+  X,
+  FileCode,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface FileItem {
   id: string;
@@ -88,16 +97,19 @@ function nativeToTreeNodes(nodes: NativeNode[]): TreeNode[] {
 
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-red-400" />;
+  if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
   if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext))
-    return <FileImage className="w-4 h-4 text-blue-400" />;
+    return <FileImage className="w-4 h-4 text-blue-500 shrink-0" />;
   if (["xlsx", "xls", "csv"].includes(ext))
-    return <FileSpreadsheet className="w-4 h-4 text-green-500" />;
-  if (["md", "txt"].includes(ext)) return <FileText className="w-4 h-4 text-gray-400" />;
-  return <File className="w-4 h-4 text-gray-400" />;
+    return <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />;
+  if (["json", "js", "ts", "tsx", "html", "css", "py"].includes(ext))
+    return <FileCode className="w-4 h-4 text-purple-500 shrink-0" />;
+  if (["md", "txt"].includes(ext)) return <FileText className="w-4 h-4 text-gray-500 shrink-0" />;
+  return <File className="w-4 h-4 text-gray-400 shrink-0" />;
 }
 
 function formatSize(bytes: number) {
+  if (!bytes) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
@@ -107,40 +119,61 @@ function TreeNodeItem({
   node,
   depth,
   onFileClick,
+  onDeletePath,
 }: {
   node: TreeNode;
   depth: number;
   onFileClick?: (path: string, name: string) => void;
+  onDeletePath?: (path: string, name: string) => void;
 }) {
-  const [open, setOpen] = useState(depth < 2); // auto-expand first 2 levels
+  const [open, setOpen] = useState(depth < 2);
 
   if (node.isDir) {
     return (
       <div>
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex items-center gap-1.5 w-full text-left py-[3px] hover:bg-gray-50 rounded-md transition-colors text-sm text-gray-700"
+        <div
+          className="group flex items-center justify-between py-[3px] px-1 hover:bg-gray-100/80 rounded-md transition-colors text-sm text-gray-700 select-none cursor-pointer"
           style={{ paddingLeft: `${depth * 14 + 4}px` }}
+          onClick={() => setOpen(!open)}
         >
-          <span className="shrink-0 text-gray-400">
-            {open ? (
-              <ChevronDown className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
-            )}
-          </span>
-          {open ? (
-            <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-          ) : (
-            <Folder className="w-4 h-4 text-amber-500 shrink-0" />
-          )}
-          <span className="truncate font-medium text-gray-800">{node.name}</span>
-          {node.children.length > 0 && (
-            <span className="ml-auto text-[10px] text-gray-400 shrink-0 pr-1">
-              {node.children.length}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="shrink-0 text-gray-400">
+              {open ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5" />
+              )}
             </span>
-          )}
-        </button>
+            {open ? (
+              <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
+            ) : (
+              <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+            )}
+            <span className="truncate font-medium text-gray-800 text-xs">{node.name}</span>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            {node.nativePath && onDeletePath && (
+              <button
+                type="button"
+                title="Hapus folder"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeletePath(node.nativePath!, node.name);
+                }}
+                className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            )}
+            {node.children.length > 0 && (
+              <span className="text-[10px] text-gray-400 font-mono px-1">
+                {node.children.length}
+              </span>
+            )}
+          </div>
+        </div>
+
         {open && node.children.length > 0 && (
           <div>
             {node.children.map((child, i) => (
@@ -149,6 +182,7 @@ function TreeNodeItem({
                 node={child}
                 depth={depth + 1}
                 onFileClick={onFileClick}
+                onDeletePath={onDeletePath}
               />
             ))}
           </div>
@@ -166,38 +200,74 @@ function TreeNodeItem({
   }
 
   return (
-    <button
+    <div
       onClick={() =>
-        node.nativePath && onFileClick?.(node.nativePath, node.name)
+        node.nativePath
+          ? onFileClick?.(node.nativePath, node.name)
+          : onFileClick?.(node.name, node.name)
       }
-      className="flex items-center gap-1.5 w-full text-left py-[3px] hover:bg-gray-50 rounded-md transition-colors text-sm text-gray-500 group"
+      className="group flex items-center justify-between py-[3px] px-1 hover:bg-gray-100/90 rounded-md transition-colors text-xs text-gray-600 select-none cursor-pointer"
       style={{ paddingLeft: `${depth * 14 + 4}px` }}
     >
-      {getFileIcon(node.name)}
-      <span className="truncate group-hover:text-gray-800 transition-colors">{node.name}</span>
-      <span className="ml-auto text-[10px] text-gray-400 shrink-0 pr-1">
-        {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
-      </span>
-    </button>
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {getFileIcon(node.name)}
+        <span className="truncate group-hover:text-gray-900 font-normal">{node.name}</span>
+      </div>
+
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-[10px] text-gray-400 font-mono group-hover:hidden">
+          {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
+        </span>
+        {node.nativePath && onDeletePath && (
+          <button
+            type="button"
+            title="Hapus file"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeletePath(node.nativePath!, node.name);
+            }}
+            className="hidden group-hover:block p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
 interface FileTreeProps {
   files: FileItem[];
   workspaceName: string;
+  workspaceFolderPath?: string;
   nativeTree?: NativeNode[]; // from Electron IPC
   onFileClick?: (path: string, name: string) => void;
+  onRefresh?: () => void;
+  onCreateFile?: (fileName: string) => void;
+  onCreateFolder?: (folderName: string) => void;
+  onDeletePath?: (path: string, name: string) => void;
 }
 
 export default function FileTree({
   files,
   workspaceName,
+  workspaceFolderPath,
   nativeTree,
   onFileClick,
+  onRefresh,
+  onCreateFile,
+  onCreateFolder,
+  onDeletePath,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
+  const [activeFile, setActiveFile] = useState<{ path: string; name: string; content: string } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Use native tree from Electron if available, else build from flat file list
+  // New File / Folder Prompts Modal
+  const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
+  const [newItemName, setNewItemName] = useState("");
+
   const tree = useMemo(() => {
     if (nativeTree && nativeTree.length > 0) {
       return nativeToTreeNodes(nativeTree);
@@ -229,7 +299,6 @@ export default function FileTree({
     return filterNodes(tree);
   }, [tree, search]);
 
-  // Count total files in tree
   const countFiles = (nodes: TreeNode[]): number =>
     nodes.reduce(
       (sum, n) => sum + (n.isDir ? countFiles(n.children) : 1),
@@ -237,48 +306,290 @@ export default function FileTree({
     );
   const totalFiles = countFiles(tree);
 
+  // Handle clicking a file to open built-in VS Code style Editor Modal
+  const handleItemClick = async (filePath: string, fileName: string) => {
+    if (onFileClick) {
+      onFileClick(filePath, fileName);
+    }
+
+    // Try reading file content via Desktop IPC or API
+    if ((window as any).arunakiDesktop?.readFile) {
+      const res = await (window as any).arunakiDesktop.readFile(filePath);
+      if (res?.error) {
+        toast.error(`Gagal membaca file: ${res.error}`);
+        return;
+      }
+      setActiveFile({
+        path: filePath,
+        name: fileName,
+        content: res.content || "",
+      });
+      setIsEditing(false);
+    }
+  };
+
+  const handleSaveFileContent = async () => {
+    if (!activeFile) return;
+    setIsSaving(true);
+    try {
+      if ((window as any).arunakiDesktop?.writeFile) {
+        const res = await (window as any).arunakiDesktop.writeFile(activeFile.path, activeFile.content);
+        if (res?.error) {
+          toast.error(`Gagal menyimpan file: ${res.error}`);
+        } else {
+          toast.success(`File "${activeFile.name}" berhasil disimpan!`);
+          setIsEditing(false);
+          if (onRefresh) onRefresh();
+        }
+      } else {
+        toast.info("Penyimpanan file didukung pada mode Desktop Electron.");
+      }
+    } catch (err: any) {
+      toast.error(`Gagal menyimpan: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCreateNewItemSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemName.trim()) return;
+
+    if (promptModal === "file" && onCreateFile) {
+      onCreateFile(newItemName.trim());
+    } else if (promptModal === "folder" && onCreateFolder) {
+      onCreateFolder(newItemName.trim());
+    }
+    setPromptModal(null);
+    setNewItemName("");
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Search */}
-      <div className="relative mb-2">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Cari file atau folder..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-7 pr-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white placeholder:text-gray-400 focus:outline-none focus:border-gray-300"
-        />
+    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200/90 shadow-2xs overflow-hidden">
+      {/* VS Code Style Header Toolbar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50/70">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="font-semibold text-xs text-gray-800 truncate" title={workspaceName}>
+            {workspaceName}
+          </span>
+        </div>
+
+        {/* Action Icons (VS Code Explorer Actions) */}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            title="Tambah File Baru"
+            onClick={() => {
+              setNewItemName("");
+              setPromptModal("file");
+            }}
+            className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <FilePlus className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
+            title="Tambah Folder Baru"
+            onClick={() => {
+              setNewItemName("");
+              setPromptModal("folder");
+            }}
+            className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+          </button>
+
+          {onRefresh && (
+            <button
+              type="button"
+              title="Refresh Struktur Direktori"
+              onClick={onRefresh}
+              className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tree */}
-      <div className="flex-1 overflow-y-auto min-h-0 -mx-1 px-1">
+      {/* Search Input */}
+      <div className="p-2 border-b border-gray-100 bg-white">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari file atau folder..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-2 py-1 border border-gray-200 rounded-md text-xs bg-gray-50/50 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-gray-300"
+          />
+        </div>
+      </div>
+
+      {/* Tree Content */}
+      <div className="flex-1 overflow-y-auto p-1.5 min-h-0">
         {filteredTree.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">
-            {search ? "Tidak ditemukan" : "Belum ada file"}
+          <p className="text-xs text-gray-400 text-center py-6">
+            {search ? "File/folder tidak ditemukan" : "Belum ada file di workspace ini"}
           </p>
         ) : (
-          <div>
-            {/* Root folder header */}
-            <div className="flex items-center gap-1.5 py-1 px-1 text-sm text-gray-800 font-semibold mb-0.5">
-              <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-              <span className="truncate">{workspaceName}</span>
-              <span className="ml-auto text-[10px] text-gray-400 font-normal shrink-0">
-                {totalFiles} file
-              </span>
-            </div>
+          <div className="space-y-0.5">
             {filteredTree.map((node, i) => (
               <TreeNodeItem
                 key={`${node.name}-${i}`}
                 node={node}
-                depth={1}
-                onFileClick={onFileClick}
+                depth={0}
+                onFileClick={handleItemClick}
+                onDeletePath={onDeletePath}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Footer Info */}
+      <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50/40 text-[10px] text-gray-400 flex items-center justify-between">
+        <span>{totalFiles} file terdaftar</span>
+        {workspaceFolderPath && <span className="truncate max-w-[120px] font-mono">{workspaceFolderPath}</span>}
+      </div>
+
+      {/* Modal Prompt Tambah File / Folder */}
+      {promptModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                {promptModal === "file" ? (
+                  <>
+                    <FilePlus className="w-4 h-4 text-blue-500" /> Tambah File Baru
+                  </>
+                ) : (
+                  <>
+                    <FolderPlus className="w-4 h-4 text-amber-500" /> Tambah Folder Baru
+                  </>
+                )}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPromptModal(null)}
+                className="text-gray-400 hover:text-gray-600 rounded p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Nama {promptModal === "file" ? "File (contoh: catatan.txt, data.json)" : "Folder"}
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  placeholder={promptModal === "file" ? "nama-file.txt" : "nama-folder"}
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPromptModal(null)}
+                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newItemName.trim()}
+                  className="px-3 py-1.5 text-xs bg-gray-900 hover:bg-black text-white font-medium rounded-md disabled:opacity-50"
+                >
+                  Buat {promptModal === "file" ? "File" : "Folder"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VS Code Style Editor / Viewer Modal */}
+      {activeFile && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-3xl h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Editor Header Toolbar */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-gray-900 text-white border-b border-gray-800">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileCode className="w-4 h-4 text-purple-400 shrink-0" />
+                <span className="font-semibold text-xs truncate">{activeFile.name}</span>
+                <span className="text-[10px] text-gray-400 font-mono truncate hidden sm:inline">{activeFile.path}</span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded border border-gray-700 transition-colors"
+                  >
+                    <Edit3 className="w-3 h-3 text-amber-400" />
+                    <span>Edit</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveFileContent}
+                    disabled={isSaving}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium transition-colors"
+                  >
+                    <Save className="w-3 h-3" />
+                    <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setActiveFile(null)}
+                  className="p-1 hover:bg-gray-800 text-gray-400 hover:text-white rounded"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Editor Text Area */}
+            <div className="flex-1 bg-gray-950 text-gray-100 p-4 font-mono text-xs overflow-auto">
+              {isEditing ? (
+                <textarea
+                  value={activeFile.content}
+                  onChange={(e) => setActiveFile({ ...activeFile, content: e.target.value })}
+                  className="w-full h-full bg-transparent text-gray-100 resize-none outline-none font-mono leading-relaxed"
+                  spellCheck={false}
+                />
+              ) : (
+                <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-200">
+                  {activeFile.content || "(File kosong)"}
+                </pre>
+              )}
+            </div>
+
+            {/* Editor Footer */}
+            <div className="px-4 py-2 bg-gray-900 border-t border-gray-800 text-[11px] text-gray-400 flex items-center justify-between">
+              <span>{isEditing ? "Mode Edit (Aktif)" : "Mode Pratinjau (Read-Only)"}</span>
+              <button
+                type="button"
+                onClick={() => setActiveFile(null)}
+                className="hover:text-gray-200"
+              >
+                Tutup Editor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

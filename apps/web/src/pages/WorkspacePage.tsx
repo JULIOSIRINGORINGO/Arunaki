@@ -54,6 +54,7 @@ export function WorkspacePage() {
   // VS Code-like: native folder tree from Electron IPC
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
   const [nativeFileCount, setNativeFileCount] = useState(0);
+  const [connectedFolderPath, setConnectedFolderPath] = useState<string | null>(null);
 
   // Restore last connected workspace on mount
   useEffect(() => {
@@ -69,6 +70,7 @@ export function WorkspacePage() {
 
         if (connected && !cancelled) {
           setWorkspaceId(connected.id);
+          setConnectedFolderPath(connected.rootPath);
           setIsConnected(true);
           connectedWsRef.current = connected.id;
           localStorage.setItem('arunaki_workspace_id', connected.id);
@@ -329,6 +331,7 @@ export function WorkspacePage() {
         // 5. Set native tree in state — displayed immediately like VS Code
         setNativeTree(scan.tree);
         setNativeFileCount(fileCount);
+        setConnectedFolderPath(folderPath);
         setWorkspaceId(newId);
         setIsConnected(true);
         setIsModalOpen(false);
@@ -454,6 +457,70 @@ export function WorkspacePage() {
     },
     enabled: !!workspaceId,
   });
+
+  const handleRefreshFolder = useCallback(async () => {
+    const rootPath = connectedFolderPath || workspace?.rootPath;
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.getFolderTree && rootPath) {
+      const scan = await desktop.getFolderTree(rootPath);
+      if (scan?.tree) {
+        setNativeTree(scan.tree);
+        const countFiles = (nodes: any[]): number =>
+          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+        setNativeFileCount(countFiles(scan.tree));
+        toast.success("Struktur folder diperbarui!");
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["wsFiles", workspaceId] });
+  }, [connectedFolderPath, workspace?.rootPath, workspaceId, queryClient]);
+
+  const handleCreateFile = useCallback(async (fileName: string) => {
+    const rootPath = connectedFolderPath || workspace?.rootPath;
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.writeFile && rootPath) {
+      const filePath = `${rootPath}/${fileName}`.replace(/\\/g, '/');
+      const res = await desktop.writeFile(filePath, '');
+      if (res?.error) {
+        toast.error(`Gagal membuat file: ${res.error}`);
+      } else {
+        toast.success(`File "${fileName}" berhasil dibuat!`);
+        handleRefreshFolder();
+      }
+    } else {
+      toast.info("Pembuatan file via Explorer membutuhkan Desktop Electron.");
+    }
+  }, [connectedFolderPath, workspace?.rootPath, handleRefreshFolder]);
+
+  const handleCreateFolder = useCallback(async (folderName: string) => {
+    const rootPath = connectedFolderPath || workspace?.rootPath;
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.createFolder && rootPath) {
+      const folderPath = `${rootPath}/${folderName}`.replace(/\\/g, '/');
+      const res = await desktop.createFolder(folderPath);
+      if (res?.error) {
+        toast.error(`Gagal membuat folder: ${res.error}`);
+      } else {
+        toast.success(`Folder "${folderName}" berhasil dibuat!`);
+        handleRefreshFolder();
+      }
+    } else {
+      toast.info("Pembuatan folder via Explorer membutuhkan Desktop Electron.");
+    }
+  }, [connectedFolderPath, workspace?.rootPath, handleRefreshFolder]);
+
+  const handleDeletePath = useCallback(async (targetPath: string, name: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${name}"?`)) return;
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.deletePath) {
+      const res = await desktop.deletePath(targetPath);
+      if (res?.error) {
+        toast.error(`Gagal menghapus: ${res.error}`);
+      } else {
+        toast.success(`"${name}" telah dihapus.`);
+        handleRefreshFolder();
+      }
+    }
+  }, [handleRefreshFolder]);
 
   const handleSendChat = useCallback(() => {
     if (!isConnected || !promptInput.trim() || isAnalyzing) return;
@@ -721,22 +788,23 @@ export function WorkspacePage() {
           </div>
 
           {/* Struktur Folder */}
-          <div className="bg-white rounded-2xl border border-gray-200/90 p-5 shadow-2xs flex-1 min-h-0 flex flex-col">
-            <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-3">Struktur Folder</h3>
+          <div className="flex-1 min-h-0 flex flex-col">
             {!isConnected ? (
-              <p className="text-xs text-gray-500">Hubungkan folder untuk melihat struktur direktori.</p>
+              <div className="bg-white rounded-2xl border border-gray-200/90 p-5 shadow-2xs">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-2">Struktur Folder</h3>
+                <p className="text-xs text-gray-500">Hubungkan folder untuk melihat struktur direktori.</p>
+              </div>
             ) : (
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-[360px]">
                 <FileTree
                   files={files.map((f: any) => ({ id: f.id, name: f.name, type: f.type, size: f.size }))}
                   workspaceName={workspace?.name || "Workspace"}
+                  workspaceFolderPath={connectedFolderPath || workspace?.rootPath}
                   nativeTree={nativeTree ?? undefined}
-                  onFileClick={async (filePath, fileName) => {
-                    if (!(window as any).arunakiDesktop?.readFile) return;
-                    const res = await (window as any).arunakiDesktop.readFile(filePath);
-                    if (res?.error) { toast.error(`Gagal baca file: ${fileName}`); return; }
-                    toast.info(`File "${fileName}" dibuka (${res.encoding})`);
-                  }}
+                  onRefresh={handleRefreshFolder}
+                  onCreateFile={handleCreateFile}
+                  onCreateFolder={handleCreateFolder}
+                  onDeletePath={handleDeletePath}
                 />
               </div>
             )}

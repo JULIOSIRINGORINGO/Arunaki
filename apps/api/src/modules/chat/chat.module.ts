@@ -15,6 +15,7 @@ import { ToolsModule } from '../tools/tools.module.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { ProviderModule } from '../provider/provider.module.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MemoryModule } from '../memory/memory.module.js';
     KnowledgeModule,
     ArtifactModule,
     MemoryModule,
+    ProviderModule,
   ],
   controllers: [ChatController],
   providers: [

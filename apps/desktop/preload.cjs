@@ -5,4 +5,7 @@ contextBridge.exposeInMainWorld('arunakiDesktop', {
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   getFolderTree: (folderPath) => ipcRenderer.invoke('fs:getFolderTree', folderPath),
   readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
+  writeFile: (filePath, content) => ipcRenderer.invoke('fs:writeFile', filePath, content),
+  createFolder: (folderPath) => ipcRenderer.invoke('fs:createFolder', folderPath),
+  deletePath: (targetPath) => ipcRenderer.invoke('fs:deletePath', targetPath),
 });
