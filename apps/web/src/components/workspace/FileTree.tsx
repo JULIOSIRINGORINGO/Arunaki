@@ -53,10 +53,6 @@ function isBinaryFile(name: string): boolean {
   return ["pdf", "docx", "doc", "zip", "rar", "png", "jpg", "jpeg", "gif", "exe", "bin", "pptx", "ppt", "xlsx", "xlsm", "xls"].includes(ext);
 }
 
-function isOfficeDocument(name: string): boolean {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  return ["xlsx", "xlsm", "xls", "csv", "docx", "doc", "pptx", "ppt"].includes(ext);
-}
 
 function buildTree(files: FileItem[]): TreeNode[] {
   const root: TreeNode[] = [];
@@ -393,21 +389,21 @@ export default function FileTree({
 
   const handleItemClick = async (filePath: string, fileName: string) => {
     try {
-      if (onFileClick) {
-        onFileClick(filePath, fileName);
-        return;
-      }
-
-      // Fallback: Open natively in OS external application if no callback provided
-      if (isOfficeDocument(fileName)) {
+      const ext = fileName.split('.').pop()?.toLowerCase() || '';
+      if (['xlsx', 'xlsm', 'xls'].includes(ext)) {
         if ((window as any).arunakiDesktop?.openExcelNative) {
           (window as any).arunakiDesktop.openExcelNative(filePath);
+          toast.info(`Membuka "${fileName}" di Microsoft Excel Desktop...`);
         } else if ((window as any).arunakiDesktop?.openPath) {
           (window as any).arunakiDesktop.openPath(filePath);
         } else {
           toast.info("Fitur buka native hanya tersedia di aplikasi desktop Arunaki.");
         }
         return;
+      }
+
+      if (onFileClick) {
+        onFileClick(filePath, fileName);
       }
 
       if (isBinaryFile(fileName)) {

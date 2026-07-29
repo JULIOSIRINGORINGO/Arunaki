@@ -1014,13 +1014,6 @@ export function WorkspacePage() {
                   onRenamePath={handleRenamePath}
                   onAnalyzeFile={handleAnalyzeFile}
                   activeAgentAction={activeToolAction}
-                  onFileClick={(filePath, fileName) => {
-                    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-                    if (['xlsx', 'xlsm', 'xls'].includes(ext)) {
-                      (window as any).arunakiDesktop?.openExcelNative?.(filePath);
-                      toast.info(`Membuka "${fileName}" di Microsoft Excel Desktop...`);
-                    }
-                  }}
                 />
               </div>
             )}
