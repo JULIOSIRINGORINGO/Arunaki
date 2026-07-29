@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import {
   ContextManager,
@@ -130,6 +131,7 @@ export class WorkspaceRunnerService {
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
     private readonly domainRegistry: DomainRegistryService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /** Get current state of a workspace run */
@@ -347,6 +349,16 @@ export class WorkspaceRunnerService {
         round: runState.round,
       },
     });
+
+    // Emit to EventEmitter for other listeners
+    this.eventEmitter.emit('workspace.agent.phase_changed', {
+      workspaceId: runState.workspaceId,
+      from: oldPhase,
+      to: phase,
+      label: this.PHASE_LABELS[phase],
+      round: runState.round,
+      timestamp: new Date(),
+    });
   }
 
   private setState(
@@ -367,6 +379,15 @@ export class WorkspaceRunnerService {
         to: newState,
         round: runState.round,
       },
+    });
+
+    // Emit to EventEmitter for other listeners
+    this.eventEmitter.emit('workspace.agent.state_changed', {
+      workspaceId: runState.workspaceId,
+      from: oldState,
+      to: newState,
+      round: runState.round,
+      timestamp: new Date(),
     });
   }
 
@@ -531,6 +552,14 @@ export class WorkspaceRunnerService {
     try {
       this.setState(runState, 'running', onEvent);
       this.setPhase(runState, 'scanning', onEvent);
+      
+      // Emit agent started event
+      this.eventEmitter.emit('workspace.agent.started', {
+        workspaceId,
+        goal: userGoal,
+        timestamp: new Date(),
+      });
+
       onEvent({
         type: 'thinking',
         data: 'Memindai dokumen workspace dan menyusun rencana otonom...',
@@ -589,6 +618,15 @@ export class WorkspaceRunnerService {
       if (injectionResult.detected && injectionResult.severity === 'high') {
         this.promptInjectionDetector.logDetection(workspaceId, userGoal, injectionResult);
         this.setState(runState, 'failed', onEvent);
+
+        // Emit agent failed event
+        this.eventEmitter.emit('workspace.agent.failed', {
+          workspaceId,
+          goal: userGoal,
+          reason: 'prompt_injection_blocked',
+          timestamp: new Date(),
+        });
+
         onEvent({
           type: 'error',
           data: { message: 'Input mengandung konten yang tidak diizinkan. Silakan perbaiki dan coba lagi.' },
@@ -602,6 +640,14 @@ export class WorkspaceRunnerService {
       // Generate autonomous reasoning plan
       if (abortController.signal.aborted) {
         this.setState(runState, 'aborting', onEvent);
+
+        // Emit agent aborted event
+        this.eventEmitter.emit('workspace.agent.aborted', {
+          workspaceId,
+          goal: userGoal,
+          timestamp: new Date(),
+        });
+
         onEvent({
           type: 'error',
           data: { message: 'Analisis dibatalkan oleh pengguna.' },
@@ -960,6 +1006,15 @@ export class WorkspaceRunnerService {
       this.setPhase(runState, 'completed', onEvent);
       this.setState(runState, 'completed', onEvent);
 
+      // Emit agent completed event
+      this.eventEmitter.emit('workspace.agent.completed', {
+        workspaceId,
+        goal: userGoal,
+        finalContent: finalContent.substring(0, 200),
+        artifactsCount: artifacts.length,
+        timestamp: new Date(),
+      });
+
       // Persist analysis result to workspace (cached across sessions)
       try {
         await this.prisma.workspace.update({
@@ -1010,6 +1065,15 @@ export class WorkspaceRunnerService {
       return finalContent;
     } catch (error) {
       this.setState(runState, 'failed', onEvent);
+
+      // Emit agent failed event
+      this.eventEmitter.emit('workspace.agent.failed', {
+        workspaceId,
+        goal: userGoal,
+        error: error.message,
+        timestamp: new Date(),
+      });
+
       this.logger.error(`Workspace stream execution failed: ${error.message}`);
       onEvent({ type: 'error', data: { message: error.message } });
       throw error;

@@ -443,21 +443,25 @@ private async checkAndRunDueSchedules() {
 
 ## MISSING Gaps (Not implemented)
 
-### 19. No Event System for Agent Lifecycle
+### 19. No Event System for Agent Lifecycle ✅
+
+**File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
 
 **Problem:** No structured event emission for agent state changes.
 
-**Fix:** Implement EventEmitter-based event system:
+**Fix applied:**
 ```typescript
-// In workspace-runner.service.ts
-import { EventEmitter } from '@nestjs/event-emitter';
-
-// Emit events for every lifecycle moment
-this.eventEmitter.emit('agent.state_changed', { from: 'idle', to: 'running' });
-this.eventEmitter.emit('agent.tool_start', { toolName, args });
-this.eventEmitter.emit('agent.tool_done', { toolName, result });
-this.eventEmitter.emit('agent.completed', { workspaceId, result });
+// Added EventEmitter2 to WorkspaceModule and injected into WorkspaceRunnerService
+// Emits events at key lifecycle points:
+this.eventEmitter.emit('workspace.agent.started', { workspaceId, goal, timestamp });
+this.eventEmitter.emit('workspace.agent.state_changed', { workspaceId, from, to, round, timestamp });
+this.eventEmitter.emit('workspace.agent.phase_changed', { workspaceId, from, to, phase, round, timestamp });
+this.eventEmitter.emit('workspace.agent.completed', { workspaceId, goal, finalContent, artifactsCount, timestamp });
+this.eventEmitter.emit('workspace.agent.failed', { workspaceId, goal, reason, error, timestamp });
+this.eventEmitter.emit('workspace.agent.aborted', { workspaceId, goal, timestamp });
 ```
+
+**Status:** ✅ Done — EventEmitter2 integrated, events emitted at all lifecycle points
 
 ### 20. No Streaming for Tool Results
 

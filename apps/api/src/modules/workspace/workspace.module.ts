@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { WorkspaceController } from './workspace.controller.js';
 import { WorkspaceService } from './workspace.service.js';
 import { WorkspaceRepository } from './workspace.repository.js';
@@ -29,6 +30,7 @@ import { SourceModule } from '../source/source.module.js';
     MemoryModule,
     SkillsModule,
     SourceModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [WorkspaceController],
   providers: [
