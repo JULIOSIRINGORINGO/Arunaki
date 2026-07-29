@@ -720,14 +720,42 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools);
 
           if (aiResponse.toolCalls.length === 0) {
-            finalContent = this.scrubber.scrub(aiResponse.content);
+            // OpenClaw Fallback Tool Synthesizer: If free LLM outputs text plan instead of tool_calls, synthesize tool call
+            if (round === 0 && /(?:buat|tulis|create|simpan)\s+file/i.test(safeGoal)) {
+              const fileMatch =
+                safeGoal.match(/(?:bernama|name|file)\s+["']?([\w\-.\/ ]+\.[a-zA-Z0-9]+)["']?/i) ||
+                safeGoal.match(/["']([\w\-.\/ ]+\.[a-zA-Z0-9]+)["']/);
+              
+              if (fileMatch && fileMatch[1]) {
+                const targetFilename = fileMatch[1].trim();
+                const contentMatch = safeGoal.match(/(?:isi|content|teks)\s+["']?([^"']+)["']?/i);
+                const fileContent = contentMatch ? contentMatch[1] : 'File created by Arunaki AI Agent.';
 
-            onEvent({ type: 'text_delta', data: finalContent });
-            reachedMaxRounds = false;
-            this.logger.log(
-              'Workspace agent finished goal execution within round limit.',
-            );
-            break;
+                this.logger.log(`OpenClaw Fallback Synthesizer: Auto-executing write_workspace_file for "${targetFilename}"`);
+                
+                aiResponse.toolCalls.push({
+                  id: `fallback-call-${Date.now()}`,
+                  type: 'function',
+                  function: {
+                    name: 'write_workspace_file',
+                    arguments: JSON.stringify({
+                      filename: targetFilename,
+                      content: fileContent,
+                    }),
+                  },
+                });
+              }
+            }
+
+            if (aiResponse.toolCalls.length === 0) {
+              finalContent = this.scrubber.scrub(aiResponse.content);
+              onEvent({ type: 'text_delta', data: finalContent });
+              reachedMaxRounds = false;
+              this.logger.log(
+                'Workspace agent finished goal execution within round limit.',
+              );
+              break;
+            }
           }
 
           messages.push({
