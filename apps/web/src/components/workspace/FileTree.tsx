@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 interface FileItem {
   id: string;
@@ -50,7 +51,7 @@ interface TreeNode {
 
 function isBinaryFile(name: string): boolean {
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  return ["pdf", "docx", "doc", "zip", "rar", "png", "jpg", "jpeg", "gif", "exe", "bin", "pptx", "ppt"].includes(ext);
+  return ["pdf", "docx", "doc", "zip", "rar", "png", "jpg", "jpeg", "gif", "exe", "bin", "pptx", "ppt", "xlsx", "xlsm", "xls"].includes(ext);
 }
 
 function isExcelFile(name: string): boolean {
@@ -411,17 +412,55 @@ export default function FileTree({
     }
 
     // Check if Excel / CSV file
-    if (isExcelFile(fileName) && (window as any).arunakiDesktop?.parseExcel) {
-      const res = await (window as any).arunakiDesktop.parseExcel(filePath);
-      if (res?.success && res.rows) {
-        setExcelGrid({
-          path: filePath,
-          name: fileName,
-          sheetName: res.sheetName || "Sheet1",
-          rows: res.rows,
-        });
-        return;
+    if (isExcelFile(fileName)) {
+      const desktop = (window as any).arunakiDesktop;
+      
+      // 1. Try desktop parseExcel IPC
+      if (desktop?.parseExcel) {
+        const res = await desktop.parseExcel(filePath);
+        if (res?.success && res.rows && res.rows.length > 0) {
+          setExcelGrid({
+            path: filePath,
+            name: fileName,
+            sheetName: res.sheetName || "Sheet1",
+            rows: res.rows,
+          });
+          setActiveFile(null);
+          return;
+        }
       }
+
+      // 2. Try client-side XLSX parser via readBinaryFile (base64)
+      if (desktop?.readBinaryFile) {
+        const binRes = await desktop.readBinaryFile(filePath);
+        if (binRes?.success && binRes.base64) {
+          try {
+            const wb = XLSX.read(binRes.base64, { type: "base64" });
+            const sName = wb.SheetNames[0] || "Sheet1";
+            const ws = wb.Sheets[sName];
+            const parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+            setExcelGrid({
+              path: filePath,
+              name: fileName,
+              sheetName: sName,
+              rows: parsedRows,
+            });
+            setActiveFile(null);
+            return;
+          } catch {
+            // fallback
+          }
+        }
+      }
+
+      // 3. Fallback binary card
+      setActiveFile({
+        path: filePath,
+        name: fileName,
+        content: "",
+      });
+      setIsEditing(false);
+      return;
     }
 
     if (isBinaryFile(fileName)) {
@@ -526,6 +565,11 @@ export default function FileTree({
     if (!excelGrid?.rows) return 0;
     return Math.max(...excelGrid.rows.map((r) => (Array.isArray(r) ? r.length : 0)), 0);
   }, [excelGrid]);
+
+  const activeContentIsRawBinary = useMemo(() => {
+    if (!activeFile?.content) return false;
+    return activeFile.content.startsWith("PK\x03\x04") || activeFile.content.startsWith("PK") || isBinaryFile(activeFile.name);
+  }, [activeFile]);
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200/90 shadow-2xs overflow-hidden">
@@ -891,7 +935,7 @@ export default function FileTree({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {!isBinaryFile(activeFile.name) && (
+                {!activeContentIsRawBinary && (
                   !isEditing ? (
                     <button
                       type="button"
@@ -925,13 +969,13 @@ export default function FileTree({
             </div>
 
             {/* Editor Area / Binary File View */}
-            {isBinaryFile(activeFile.name) ? (
+            {activeContentIsRawBinary ? (
               <div className="flex-1 bg-gray-900 text-gray-100 p-8 flex flex-col items-center justify-center text-center space-y-4">
                 <FileSpreadsheet className="w-16 h-16 text-emerald-500 animate-pulse shrink-0" />
                 <div className="max-w-md space-y-1">
                   <h4 className="font-bold text-base text-white">{activeFile.name}</h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Dokumen ini adalah format biner terkompresi (PDF / Office). Anda dapat membukanya di aplikasi bawaan atau meminta AI menganalisis nilainya secara otomatis.
+                    Dokumen ini adalah format biner terkompresi (Excel / PDF / Office). Anda dapat menguraikan isinya sebagai Spreadsheet Data Grid atau membukanya di Microsoft Excel bawaan.
                   </p>
                 </div>
 
@@ -989,7 +1033,7 @@ export default function FileTree({
             {/* Editor Footer */}
             <div className="px-4 py-2 bg-gray-900 border-t border-gray-800 text-[11px] text-gray-400 flex items-center justify-between">
               <span>
-                {isBinaryFile(activeFile.name)
+                {activeContentIsRawBinary
                   ? "Pratinjau File Biner Terkompresi"
                   : isEditing
                   ? "Mode Edit (Aktif)"

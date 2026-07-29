@@ -230,6 +230,15 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('fs:readBinaryFile', async (_event, filePath) => {
+    try {
+      const data = await fs.readFile(filePath);
+      return { success: true, base64: data.toString('base64') };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {
