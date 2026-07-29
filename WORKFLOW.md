@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 8 Complete ✅ — Blueprint P3 Low (LLM Stream Inline async generator)  
-**Next:** Phase 9 — Blueprint P4 (Autonomous Agent Background Curator)  
+**Phase:** Phase 9 Complete ✅ — Blueprint P4 (Background Curator)  
+**Next:** Phase 10 — Blueprint P4 (Business Intelligence)  
 
 ---
 
@@ -692,8 +692,22 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Handles provider fallback (retry + rotation) during streaming
 - [x] Yields `StreamChunk` objects: `content`, `tool_calls`, `done`, `error`
 - [x] Added `chatStream()` method to `AiService` returning `AsyncGenerator<StreamChunk>`
-- [x] Strips `<think>` tags from streamed content
+- [x] Strips `think` tags from streamed content
 - [x] Reusable across chat, agent-runner, workspace-runner
+
+---
+
+## Phase 9: Blueprint P4 ✅ DONE
+
+**Goal:** Background Curator — Periodic skill review & maintenance.
+
+### J. Background Curator ✅
+- [x] Added `runBackgroundCurator()` private method to `CronService`
+- [x] Scheduled interval: every 1 hour (3,600,000ms) via `setInterval` in `onModuleInit`
+- [x] Deactivates skills with `usageCount === 0` and age > 30 days (using `createdAt` as proxy)
+- [x] Auto-pins skills with `usageCount >= 50` (sets `pinned: true`)
+- [x] Seeds missing starter skills for each active domain
+- [x] SkillsModule forwarded in CronModule imports (forwardRef)
 
 ---
 
@@ -703,7 +717,7 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - Self-evaluation ✅ — Already implemented in `self-evaluation.service.ts`
 - Skill self-improve ✅ — Already implemented, wired via `BackgroundReviewService`
 - Smart memory recall ✅ — Already implemented in `smart-recall.service.ts`
-- Background curator ⏳ — Deferred
+- Background curator ✅ — Implemented in `CronService.runBackgroundCurator()`
 
 ---
 

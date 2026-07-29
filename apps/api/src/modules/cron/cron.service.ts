@@ -3,6 +3,7 @@ import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { DocumentGeneratorTool } from '../tools/services/document-generator.tool.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
+import { SkillService } from '../skills/skill.service.js';
 
 export interface CreateScheduleDto {
   workspaceId: string;
@@ -18,12 +19,15 @@ export class CronService implements OnModuleInit {
   private timerHandle: NodeJS.Timeout | null = null;
   private autoMemoryHandle: NodeJS.Timeout | null = null;
   private autoMemoryIntervalMs = 5 * 60 * 1000; // 5 minutes
+  private backgroundCuratorHandle: NodeJS.Timeout | null = null;
+  private backgroundCuratorIntervalMs = 60 * 60 * 1000; // 1 hour
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly artifactService: ArtifactService,
     private readonly documentGenerator: DocumentGeneratorTool,
     private readonly autoMemoryService: AutoMemoryService,
+    private readonly skillService: SkillService,
   ) {}
 
   onModuleInit() {
@@ -43,6 +47,16 @@ export class CronService implements OnModuleInit {
     }, this.autoMemoryIntervalMs);
     this.logger.log(
       `Auto-memory distillation scheduled every ${this.autoMemoryIntervalMs / 1000}s`,
+    );
+
+    // Start background curator interval (every 1 hour)
+    this.backgroundCuratorHandle = setInterval(() => {
+      this.runBackgroundCurator().catch((err) => {
+        this.logger.error(`Error in background curator: ${err.message}`);
+      });
+    }, this.backgroundCuratorIntervalMs);
+    this.logger.log(
+      `Background curator scheduled every ${this.backgroundCuratorIntervalMs / 1000}s`,
     );
   }
 
@@ -167,6 +181,63 @@ export class CronService implements OnModuleInit {
       }
     } catch (err: any) {
       this.logger.error(`Auto-memory distillation sweep failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Run background curator — reviews skills usage, deactivates unused skills,
+   * suggests updates for frequently used skills, and seeds missing starter skills.
+   * Called periodically (default: every 1 hour).
+   */
+  private async runBackgroundCurator(): Promise<void> {
+    try {
+      this.logger.log('Running background skill curator...');
+
+      // 1. Get all active skills with usage stats
+      const skills = await this.skillService.findActive();
+      this.logger.log(`Curator: reviewing ${skills.length} active skills`);
+
+      // 2. Deactivate skills with zero usage for 30+ days (use createdAt as proxy for age)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      let deactivated = 0;
+      for (const skill of skills) {
+        if (skill.usageCount === 0 && skill.createdAt < thirtyDaysAgo) {
+          await this.skillService.updateSkill(skill.id, { active: false });
+          deactivated++;
+        }
+      }
+      if (deactivated > 0) {
+        this.logger.log(`Curator: deactivated ${deactivated} unused skills`);
+      }
+
+      // 3. Boost priority/pinned for high-usage skills
+      let boosted = 0;
+      for (const skill of skills) {
+        if (skill.usageCount >= 50 && !skill.pinned) {
+          await this.skillService.updateSkill(skill.id, { pinned: true });
+          boosted++;
+        }
+      }
+      if (boosted > 0) {
+        this.logger.log(`Curator: boosted ${boosted} high-usage skills to pinned`);
+      }
+
+      // 4. Seed missing starter skills for each active domain
+      const domains = [...new Set(skills.map((s) => s.domain).filter(Boolean))];
+      for (const domain of domains) {
+        try {
+          const count = await this.skillService.seedStarterSkills(domain, []);
+          if (count > 0) {
+            this.logger.log(`Curator: seeded ${count} starter skills for domain ${domain}`);
+          }
+        } catch (err: any) {
+          this.logger.warn(`Curator: failed to seed domain ${domain}: ${err.message}`);
+        }
+      }
+
+      this.logger.log('Background curator completed');
+    } catch (err: any) {
+      this.logger.error(`Background curator failed: ${err.message}`);
     }
   }
 

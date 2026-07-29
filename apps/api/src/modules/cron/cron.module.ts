@@ -5,9 +5,10 @@ import { StorageModule } from '../storage/storage.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { SkillsModule } from '../skills/skills.module.js';
 
 @Module({
-  imports: [StorageModule, ArtifactModule, ToolsModule, forwardRef(() => MemoryModule)],
+  imports: [StorageModule, ArtifactModule, ToolsModule, forwardRef(() => MemoryModule), forwardRef(() => SkillsModule)],
   controllers: [CronController],
   providers: [CronService],
   exports: [CronService],
