@@ -22,6 +22,9 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Square,
+  Activity,
+  Compass,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -55,6 +58,10 @@ export function WorkspacePage() {
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
   const [nativeFileCount, setNativeFileCount] = useState(0);
   const [connectedFolderPath, setConnectedFolderPath] = useState<string | null>(null);
+
+  // Workspace Heartbeat & Proactive Monitor State (OpenClaw Layer 10 & 29)
+  const [heartbeatAlert, setHeartbeatAlert] = useState<string | null>(null);
+  const previousFileCountRef = useRef<number>(0);
 
   // Restore last connected workspace on mount
   useEffect(() => {
@@ -181,6 +188,7 @@ export function WorkspacePage() {
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
                 );
+                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
                 break;
               case "text_delta":
                 setAnalysisResult(event.data);
@@ -194,6 +202,7 @@ export function WorkspacePage() {
                 if (event.data?.content) {
                   setAnalysisResult(event.data.content);
                 }
+                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
                 break;
               case "error":
                 setAgentSteps((prev) => [
@@ -542,6 +551,85 @@ export function WorkspacePage() {
     }
   }, [handleRefreshFolder]);
 
+  const handleAnalyzeFile = useCallback((fileName: string) => {
+    if (!workspaceId || isAnalyzing) return;
+    const goal = `Baca dan analisis file "${fileName}" secara mendalam. Ekstrak data penting, identifikasi informasi utama, dan berikan ringkasan komprehensif.`;
+    setPromptInput(goal);
+    triggerAutoAnalysis(workspaceId, goal);
+  }, [workspaceId, isAnalyzing, triggerAutoAnalysis]);
+
+  const handleAbortAgent = useCallback(async () => {
+    if (!workspaceId) return;
+    try {
+      await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/abort`, { method: "POST" });
+      toast.info("Permintaan pembatalan analisis dikirim.");
+      setIsAnalyzing(false);
+    } catch {
+      toast.error("Gagal membatalkan agen.");
+    }
+  }, [workspaceId]);
+
+  const handleSteerAgent = useCallback(async () => {
+    if (!workspaceId || !promptInput.trim() || !isAnalyzing) return;
+    const steerMessage = promptInput.trim();
+    setPromptInput("");
+
+    try {
+      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/steer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: steerMessage }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`🎯 Mid-Run Steering terkirim: "${steerMessage}"`);
+        setAgentSteps((prev) => [
+          ...prev,
+          {
+            type: "thinking",
+            label: `🎯 Mid-Run Steering dari Pengguna: "${steerMessage}"`,
+            detail: "Agen otonom menerima instruksi tambahan pertengahan alur",
+            status: "done",
+          },
+        ]);
+      } else {
+        toast.error(`Gagal mengirim steering: ${json.message}`);
+      }
+    } catch (err: any) {
+      toast.error(`Gagal mengirim steering: ${err.message}`);
+    }
+  }, [workspaceId, promptInput, isAnalyzing]);
+
+  // Periodic Workspace Heartbeat & Background Monitor (Layer 10 & 29 OpenClaw)
+  useEffect(() => {
+    if (!isConnected || !workspaceId) return;
+
+    const interval = setInterval(async () => {
+      const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+      const rootPath = connectedFolderPath || workspace?.rootPath;
+
+      if (desktop?.getFolderTree && rootPath) {
+        const scan = await desktop.getFolderTree(rootPath);
+        if (scan?.tree) {
+          const countFiles = (nodes: any[]): number =>
+            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+          const currentCount = countFiles(scan.tree);
+
+          if (previousFileCountRef.current > 0 && currentCount > previousFileCountRef.current) {
+            const diff = currentCount - previousFileCountRef.current;
+            toast.info(`📁 Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace!`);
+            setNativeTree(scan.tree);
+            setNativeFileCount(currentCount);
+            setHeartbeatAlert(`Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace. Klik untuk memicu pemindaian ingatan AI.`);
+          }
+          previousFileCountRef.current = currentCount;
+        }
+      }
+    }, 12000);
+
+    return () => clearInterval(interval);
+  }, [isConnected, workspaceId, connectedFolderPath, workspace?.rootPath]);
+
   const handleSendChat = useCallback(() => {
     if (!isConnected || !promptInput.trim() || isAnalyzing) return;
     const goal = promptInput.trim();
@@ -677,18 +765,60 @@ export function WorkspacePage() {
                 </div>
               ) : (
                 <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
+                  {/* Proactive Heartbeat Alert Banner */}
+                  {heartbeatAlert && (
+                    <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Activity className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
+                        <span className="font-medium truncate">{heartbeatAlert}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHeartbeatAlert(null);
+                            if (workspaceId) triggerAutoAnalysis(workspaceId, "Lakukan pemindaian cepat terhadap file/dokumen baru yang ditambahkan di workspace.");
+                          }}
+                          className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+                        >
+                          Pindai Dokumen Baru
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHeartbeatAlert(null)}
+                          className="text-amber-500 hover:text-amber-700 p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Agent Progress */}
                   {agentSteps.length > 0 && (
                     <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 space-y-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        {isAnalyzing ? (
-                          <Loader2 className="w-4 h-4 text-gray-600 animate-spin" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {isAnalyzing ? (
+                            <Loader2 className="w-4 h-4 text-gray-600 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          )}
+                          <span className="text-sm font-bold text-gray-900">
+                            {isAnalyzing ? "AI sedang menganalisis dokumen..." : "Analisis Selesai"}
+                          </span>
+                        </div>
+
+                        {isAnalyzing && (
+                          <button
+                            type="button"
+                            onClick={handleAbortAgent}
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 font-medium transition-colors cursor-pointer"
+                          >
+                            <Square className="w-3 h-3 text-red-600 fill-red-600" />
+                            <span>Hentikan AI</span>
+                          </button>
                         )}
-                        <span className="text-sm font-bold text-gray-900">
-                          {isAnalyzing ? "AI sedang menganalisis dokumen..." : "Analisis Selesai"}
-                        </span>
                       </div>
                       <div className="space-y-1.5">
                         {agentSteps.map((step, i) => (
@@ -765,22 +895,43 @@ export function WorkspacePage() {
                     value={promptInput}
                     disabled={!isConnected}
                     onChange={(e) => setPromptInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (isAnalyzing) handleSteerAgent();
+                        else handleSendChat();
+                      }
+                    }}
                     placeholder={
                       !isConnected
                         ? "Hubungkan folder direktori terlebih dahulu untuk mulai bertanya..."
+                        : isAnalyzing
+                        ? "🎯 Kirim arahan/instruksi tambahan (Mid-Run Steering) ke agen..."
                         : "Tanyakan analisis dokumen, korelasi data, atau draf laporan bisnis..."
                     }
                     className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:ring-0 px-2 disabled:cursor-not-allowed"
                   />
 
-                  <button
-                    onClick={handleSendChat}
-                    disabled={!isConnected || !promptInput.trim() || isAnalyzing}
-                    className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <ArrowUp className="w-4.5 h-4.5" />
-                  </button>
+                  {isAnalyzing ? (
+                    <button
+                      type="button"
+                      onClick={handleSteerAgent}
+                      disabled={!promptInput.trim()}
+                      className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Kirim Mid-Run Steering ke Agen AI"
+                    >
+                      <Compass className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
+                      <span>Steer AI</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSendChat}
+                      disabled={!isConnected || !promptInput.trim()}
+                      className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ArrowUp className="w-4.5 h-4.5" />
+                    </button>
+                  )}
                 </div>
 
                 <p className="text-[11px] text-gray-400 text-center mt-2.5">
@@ -826,6 +977,7 @@ export function WorkspacePage() {
                   onCreateFolder={handleCreateFolder}
                   onDeletePath={handleDeletePath}
                   onRenamePath={handleRenamePath}
+                  onAnalyzeFile={handleAnalyzeFile}
                 />
               </div>
             )}

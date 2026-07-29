@@ -17,6 +17,7 @@ import {
   Save,
   X,
   FileCode,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -121,12 +122,14 @@ function TreeNodeItem({
   onFileClick,
   onDeletePath,
   onRenameClick,
+  onAnalyzeFile,
 }: {
   node: TreeNode;
   depth: number;
   onFileClick?: (path: string, name: string) => void;
   onDeletePath?: (path: string, name: string) => void;
   onRenameClick?: (path: string, currentName: string) => void;
+  onAnalyzeFile?: (name: string, path?: string) => void;
 }) {
   const [open, setOpen] = useState(depth < 2);
 
@@ -199,6 +202,7 @@ function TreeNodeItem({
                 onFileClick={onFileClick}
                 onDeletePath={onDeletePath}
                 onRenameClick={onRenameClick}
+                onAnalyzeFile={onAnalyzeFile}
               />
             ))}
           </div>
@@ -235,36 +239,47 @@ function TreeNodeItem({
           {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
         </span>
 
-        {node.nativePath && (onDeletePath || onRenameClick) && (
-          <div className="hidden group-hover:flex items-center gap-0.5">
-            {onRenameClick && (
-              <button
-                type="button"
-                title="Ubah Nama File"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRenameClick(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
-              >
-                <Edit3 className="w-3 h-3" />
-              </button>
-            )}
-            {onDeletePath && (
-              <button
-                type="button"
-                title="Hapus File"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeletePath(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="hidden group-hover:flex items-center gap-0.5">
+          {onAnalyzeFile && (
+            <button
+              type="button"
+              title="Minta AI Analisis File Ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAnalyzeFile(node.name, node.nativePath);
+              }}
+              className="p-1 hover:bg-amber-100 hover:text-amber-700 rounded text-amber-500 transition-colors"
+            >
+              <Sparkles className="w-3 h-3" />
+            </button>
+          )}
+          {node.nativePath && onRenameClick && (
+            <button
+              type="button"
+              title="Ubah Nama File"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRenameClick(node.nativePath!, node.name);
+              }}
+              className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+          )}
+          {node.nativePath && onDeletePath && (
+            <button
+              type="button"
+              title="Hapus File"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeletePath(node.nativePath!, node.name);
+              }}
+              className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -281,6 +296,7 @@ interface FileTreeProps {
   onCreateFolder?: (folderName: string) => void;
   onDeletePath?: (path: string, name: string) => void;
   onRenamePath?: (oldPath: string, oldName: string, newName: string) => void;
+  onAnalyzeFile?: (name: string, path?: string) => void;
 }
 
 export default function FileTree({
@@ -294,6 +310,7 @@ export default function FileTree({
   onCreateFolder,
   onDeletePath,
   onRenamePath,
+  onAnalyzeFile,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
   const [activeFile, setActiveFile] = useState<{ path: string; name: string; content: string } | null>(null);
@@ -498,6 +515,7 @@ export default function FileTree({
                 onFileClick={handleItemClick}
                 onDeletePath={onDeletePath}
                 onRenameClick={handleOpenRenameModal}
+                onAnalyzeFile={onAnalyzeFile}
               />
             ))}
           </div>
