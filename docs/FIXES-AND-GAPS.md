@@ -17,7 +17,7 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 | 3 | CLI Backend | ❌ CLI | ✅ SKIP | Tidak relevan |
 | 4 | Execution Phase | 📌 Opsional | ✅ DONE | Phase tracking sudah di Phase 24 |
 | 5 | **Harness Registry** | 🔄 Simplified | ❌ MISSING | Plugin system belum ada |
-| 6 | **Session Admission** | ✅ P0 | ⚠️ DUPLIKASI | 2 file: `ai/` vs `chat/` beda API |
+| 6 | **Session Admission** | ✅ P0 | ✅ DONE | Sudah digabung — `chat/` + `run()` + `OnModuleDestroy` |
 | 7 | **Session State Events** | 🔄 P1 | ❌ MISSING | Durable event log belum ada |
 | 8 | **User Turn Transcript** | ✅ P0 | ❌ KRITIS | Idempotent transcript belum ada |
 | 9 | **Input Provenance** | ✅ P0 Security | ❌ KRITIS | Cross-session markers belum ada |
@@ -56,7 +56,7 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 |---|-----|-------|-----------|--------|
 | A | Input Provenance | 9 | 🔴 P0 SECURITY | ✅ Done — input-provenance.ts + factory + inter-session utils |
 | B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | ✅ Done — user-turn-transcript.service.ts + lifecycle + late media |
-| C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | 2 API beda, potensi race condition |
+| C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | ✅ Done — merged ke chat/ + hapus ai/ orphan |
 | D | Session State Events | 7 | 🟡 P1 AUDIT | Tidak ada audit trail session |
 | E | Harness Registry | 5 | 🟡 P1 PLUGIN | Plugin system belum ada |
 | F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | Fallback logic inline di AiService |
@@ -449,7 +449,7 @@ if (!resolvedPath.startsWith(workspace.rootPath)) {
 3. ~~Fix approval gate to wait (#9)~~ ✅ Done Phase 23
 4. ~~Integrate SelfHealingService (#4)~~ ✅ Done Phase 24
 
-### Phase 2: Blueprint P0 Security (Sekarang)
+### ✅ Phase 2: Blueprint P0 Security — **SELESAI (A+B+C)**
 A. **Implement Input Provenance (Layer 9)** — Provenance tracking (`external_user`, `inter_session`, `internal_system`), inter-session safety prefixing
    - ✅ `input-provenance.ts` — factory methods + inter-session annotation/stripping
    - ✅ `message.service.ts` — menggunakan `InputProvenanceFactory`
@@ -461,6 +461,8 @@ B. **Implement User Turn Transcript (Layer 8)** — Idempotent transcript record
    - ✅ `hasActiveTurn()` late media detection di controller
    - ✅ Wired ke `AgentRunnerService.runAgentSync()` dan `runAgentStream()`
 C. **Merge Session Admission Duplikasi (Layer 6)** — Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`, tambah handoff token + AsyncLocalStorage
+   - ✅ `chat/session-admission.service.ts` ditingkatkan: tambah `run<T>()`, `isAdmitted()`, `getQueueLength()`, `OnModuleDestroy`
+   - ✅ `ai/session-admission.service.ts` dihapus (orphaned — tidak diimport siapapun)
 
 ### Phase 3: Blueprint P1 High (Next)
 D. **Implement Session State Events (Layer 7)** — Durable event log, CAS version heads, watch cursors

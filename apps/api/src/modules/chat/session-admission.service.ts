@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface SessionAdmissionLease {
   release(): Promise<void>;
+  run<T>(fn: () => Promise<T>): Promise<T>;
 }
 
 interface QueuedAdmission {
@@ -19,7 +20,8 @@ interface AdmissionState {
 }
 
 @Injectable()
-export class SessionAdmissionService {
+export class SessionAdmissionService implements OnModuleDestroy {
+  private readonly logger = new Logger(SessionAdmissionService.name);
   private readonly state = new Map<string, AdmissionState>();
   private readonly timeoutMs: number;
 
@@ -71,12 +73,24 @@ export class SessionAdmissionService {
     return state ? { active: state.active, waiting: state.queue.length > 0 } : null;
   }
 
+  isAdmitted(sessionKey: string): boolean {
+    const state = this.state.get(sessionKey);
+    return state?.active === true;
+  }
+
+  getQueueLength(sessionKey: string): number {
+    const state = this.state.get(sessionKey);
+    return state?.queue.length ?? 0;
+  }
+
   private createLease(sessionKey: string, state: AdmissionState): SessionAdmissionLease {
     let released = false;
-    return {
+
+    const lease: SessionAdmissionLease = {
       release: async () => {
         if (released) return;
         released = true;
+        state.active = false;
         const next = state.queue.shift();
         if (!next) {
           this.state.delete(sessionKey);
@@ -86,7 +100,16 @@ export class SessionAdmissionService {
         if (next.onAbort) next.signal?.removeEventListener('abort', next.onAbort);
         next.resolve(this.createLease(sessionKey, state));
       },
+      run: async <T>(fn: () => Promise<T>): Promise<T> => {
+        try {
+          return await fn();
+        } finally {
+          await lease.release();
+        }
+      },
     };
+
+    return lease;
   }
 
   private removeQueuedAdmission(
@@ -97,5 +120,17 @@ export class SessionAdmissionService {
     const index = state.queue.indexOf(queued);
     if (index >= 0) state.queue.splice(index, 1);
     if (!state.active && state.queue.length === 0) this.state.delete(sessionKey);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    for (const [sessionKey, state] of this.state.entries()) {
+      for (const queued of state.queue) {
+        clearTimeout(queued.timeoutId);
+        queued.reject(new Error('Service shutting down'));
+      }
+      state.queue = [];
+    }
+    this.state.clear();
+    this.logger.log('SessionAdmissionService: all admissions cleared on shutdown');
   }
 }

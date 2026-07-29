@@ -592,10 +592,10 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `hasActiveTurn()` — late media detection di controller
 - [x] Wired ke `AgentRunnerService.runAgentSync()` dan `runAgentStream()`
 
-### 25.3 Merge Session Admission (Layer 6) ⏳ PENDING
-- [ ] Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`
-- [ ] Standarisasi API (lease pattern)
-- [ ] Tambah handoff token + AsyncLocalStorage
+### 25.3 Merge Session Admission (Layer 6) ✅
+- [x] `chat/session-admission.service.ts` — merged with `run<T>()` helper + `OnModuleDestroy`
+- [x] Deleted orphaned `ai/session-admission.service.ts` (not imported anywhere)
+- [x] Added `isAdmitted()` + `getQueueLength()` methods
 
 ---
 
