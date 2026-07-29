@@ -62,7 +62,7 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 | F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | ✅ Done — model-fallback.ts extracted with runWithModelFallback() factory function |
 | G | Heartbeat Tidak Jalan | 29 | 🟢 P2 INTEGRASI | ✅ Done — registerWorkspace() dipanggil dari WorkspaceService.connectFolder() |
 | H | Auto Memory Bukan Cron | 25 | 🟢 P3 REAKTIF | ✅ Done — CronService menjalankan auto-memory distillation setiap 5 menit |
-| I | LLM Stream Inline | 9d | 🟢 P3 MODULAR | Belum async generator reusable |
+| I | LLM Stream Inline | 9d | 🟢 P3 MODULAR | ✅ Done — stream-chat.ts async generator with fallback |
 
 ---
 

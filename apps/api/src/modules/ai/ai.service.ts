@@ -15,6 +15,7 @@ import {
   PostureDetectionResult,
 } from './auto-posture-detector.service.js';
 import { runWithModelFallback } from './model-fallback.js';
+import { streamWithFallback, StreamChunk } from './stream-chat.js';
 
 export interface ToolCall {
   id: string;
@@ -337,7 +338,7 @@ export class AiService {
         promptTokens: result.data.usage?.prompt_tokens || 0,
         completionTokens: result.data.usage?.completion_tokens || 0,
         totalTokens: result.data.usage?.total_tokens || 0,
-      },
+},
       attempts: result.attempts.map((a) => ({
         providerId: a.providerId,
         providerName: a.providerName,
@@ -348,6 +349,59 @@ export class AiService {
         error: a.error,
       })),
     };
+  }
+
+  /**
+   * Streaming chat with provider fallback.
+   * Returns async generator yielding StreamChunk objects.
+   */
+  async *chatStream(
+    messages: ChatMessage[],
+    tools?: ToolDefinition[],
+  ): AsyncGenerator<StreamChunk> {
+    const preparedMessages = await this.prepareMessages(messages);
+
+    const provider = await this.getProviderConfig();
+    if (!provider.apiKey) {
+      throw new Error(
+        'No API key configured. Go to Settings → AI Models to add a provider.',
+      );
+    }
+
+    const body: Record<string, any> = {
+      model: provider.model,
+      messages: preparedMessages,
+      temperature: 0.7,
+      max_tokens: 4096,
+    };
+    if (tools && tools.length > 0) {
+      body.tools = tools;
+    }
+
+    for await (const chunk of streamWithFallback({
+      provider,
+      body,
+      makeRequest: (p, b) => this.makeRequest(p, b),
+      getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
+      classifyError: (statusCode, errorBody) =>
+        this.providerService.classifyError(statusCode, errorBody),
+      recordUsage: (id) => this.providerService.recordUsage(id),
+      recordError: (id, err) => this.providerService.recordError(id, err),
+      setCooldown: (id, seconds) => this.providerService.setCooldown(id, seconds),
+    })) {
+      if (chunk.type === 'content' && chunk.content) {
+        const cleaned = chunk.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
+        if (cleaned) {
+          yield { type: 'content', content: cleaned };
+        }
+      } else if (chunk.type === 'tool_call') {
+        yield chunk;
+      } else if (chunk.type === 'done') {
+        yield chunk;
+      } else if (chunk.type === 'error') {
+        yield chunk;
+      }
+    }
   }
 
   /**

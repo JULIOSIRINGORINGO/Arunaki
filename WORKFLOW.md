@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 7 Complete ✅ — Blueprint P3 Low (Auto Memory Cron, LLM Stream Inline)  
-**Next:** Phase 8 — Blueprint P3 Low continued (LLM Stream Inline)  
+**Phase:** Phase 8 Complete ✅ — Blueprint P3 Low (LLM Stream Inline async generator)  
+**Next:** Phase 9 — Blueprint P4 (Autonomous Agent Background Curator)  
 
 ---
 
@@ -687,9 +687,13 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Logs distillation results per workspace
 - [x] MemoryModule forwarded in CronModule imports (forwardRef)
 
-### I. LLM Stream Inline (Layer 9d) ⏳
-- [ ] Extract async generator for streaming response chunks
-- [ ] Reusable across chat, agent-runner, workspace-runner
+### I. LLM Stream Inline (Layer 9d) ✅
+- [x] Created `apps/api/src/modules/ai/stream-chat.ts` with `streamWithFallback()` async generator
+- [x] Handles provider fallback (retry + rotation) during streaming
+- [x] Yields `StreamChunk` objects: `content`, `tool_calls`, `done`, `error`
+- [x] Added `chatStream()` method to `AiService` returning `AsyncGenerator<StreamChunk>`
+- [x] Strips `<think>` tags from streamed content
+- [x] Reusable across chat, agent-runner, workspace-runner
 
 ---
 
