@@ -19,10 +19,9 @@ import {
   FileCode,
   Sparkles,
   ExternalLink,
-  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import DocumentEngineHost from "../document/DocumentEngineHost";
 
 interface FileItem {
   id: string;
@@ -55,9 +54,9 @@ function isBinaryFile(name: string): boolean {
   return ["pdf", "docx", "doc", "zip", "rar", "png", "jpg", "jpeg", "gif", "exe", "bin", "pptx", "ppt", "xlsx", "xlsm", "xls"].includes(ext);
 }
 
-function isExcelFile(name: string): boolean {
+function isOfficeDocument(name: string): boolean {
   const ext = name.split(".").pop()?.toLowerCase() || "";
-  return ["xlsx", "xlsm", "xls", "csv"].includes(ext);
+  return ["xlsx", "xlsm", "xls", "csv", "docx", "doc", "pptx", "ppt"].includes(ext);
 }
 
 function buildTree(files: FileItem[]): TreeNode[] {
@@ -127,16 +126,6 @@ function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
-}
-
-function getColumnLabel(index: number): string {
-  let label = "";
-  let i = index;
-  while (i >= 0) {
-    label = String.fromCharCode((i % 26) + 65) + label;
-    i = Math.floor(i / 26) - 1;
-  }
-  return label;
 }
 
 function TreeNodeItem({
@@ -357,9 +346,12 @@ export default function FileTree({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Excel Spreadsheet Data Grid State
-  const [excelGrid, setExcelGrid] = useState<{ path: string; name: string; sheetName: string; rows: any[][] } | null>(null);
-  const [gridSearch, setGridSearch] = useState("");
+  // OnlyOffice Document Engine Host State
+  const [activeDocumentHost, setActiveDocumentHost] = useState<{
+    path: string;
+    name: string;
+    ext: "xlsx" | "xlsm" | "xls" | "csv" | "docx" | "doc" | "pptx" | "ppt";
+  } | null>(null);
 
   // New File / Folder Prompt Modal
   const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
@@ -413,53 +405,14 @@ export default function FileTree({
         onFileClick(filePath, fileName);
       }
 
-      // Check if Excel / CSV file
-      if (isExcelFile(fileName)) {
-        const desktop = (window as any).arunakiDesktop;
-        let extractedRows: any[][] = [];
-        let sheetName = "Sheet1";
+      const ext = (fileName.split(".").pop()?.toLowerCase() || "") as any;
 
-        // 1. Try desktop parseExcel IPC
-        if (desktop?.parseExcel) {
-          try {
-            const res = await desktop.parseExcel(filePath);
-            if (res?.success && res.rows && res.rows.length > 0) {
-              extractedRows = res.rows;
-              sheetName = res.sheetName || "Sheet1";
-            }
-          } catch (e) {
-            console.warn("Desktop parseExcel failed:", e);
-          }
-        }
-
-        // 2. Try client-side XLSX parser via readBinaryFile (base64)
-        if (extractedRows.length === 0 && desktop?.readBinaryFile) {
-          try {
-            const binRes = await desktop.readBinaryFile(filePath);
-            if (binRes?.success && binRes.base64) {
-              const wb = XLSX.read(binRes.base64, { type: "base64" });
-              sheetName = wb.SheetNames[0] || "Sheet1";
-              const ws = wb.Sheets[sheetName];
-              extractedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-            }
-          } catch (e) {
-            console.warn("Client XLSX read failed:", e);
-          }
-        }
-
-        // Always show Excel Grid Viewer (even if sheet is new/empty)
-        if (extractedRows.length === 0) {
-          extractedRows = [
-            ["Kolom A", "Kolom B", "Kolom C"],
-            ["", "", ""],
-          ];
-        }
-
-        setExcelGrid({
+      // 1. Open in OnlyOffice Document Engine Host for Office/Excel files
+      if (isOfficeDocument(fileName)) {
+        setActiveDocumentHost({
           path: filePath,
           name: fileName,
-          sheetName,
-          rows: extractedRows,
+          ext: ext,
         });
         setActiveFile(null);
         return;
@@ -496,26 +449,6 @@ export default function FileTree({
         content: "",
       });
       setIsEditing(false);
-    }
-  };
-
-  const handleSaveExcelGrid = async () => {
-    if (!excelGrid) return;
-    setIsSaving(true);
-    try {
-      if ((window as any).arunakiDesktop?.writeExcel) {
-        const res = await (window as any).arunakiDesktop.writeExcel(excelGrid.path, excelGrid.rows);
-        if (res?.error) {
-          toast.error(`Gagal menyimpan Excel: ${res.error}`);
-        } else {
-          toast.success(`Spreadsheet "${excelGrid.name}" berhasil disimpan ke disk!`);
-          if (onRefresh) onRefresh();
-        }
-      }
-    } catch (err: any) {
-      toast.error(`Gagal menyimpan Excel: ${err.message}`);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -570,12 +503,6 @@ export default function FileTree({
     setRenameModalState(null);
     setRenameNewName("");
   };
-
-  // Determine max column count for Excel Grid
-  const maxCols = useMemo(() => {
-    if (!excelGrid?.rows) return 0;
-    return Math.max(...excelGrid.rows.map((r) => (Array.isArray(r) ? r.length : 0)), 0);
-  }, [excelGrid]);
 
   const activeContentIsRawBinary = useMemo(() => {
     if (!activeFile?.content) return false;
@@ -789,165 +716,22 @@ export default function FileTree({
         </div>
       )}
 
-      {/* Interactive Excel Spreadsheet Grid Modal */}
-      {excelGrid && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* Header Toolbar */}
-            <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-emerald-950 text-white border-b border-emerald-900 gap-2 shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-400 shrink-0" />
-                <div className="min-w-0">
-                  <h3 className="font-bold text-xs sm:text-sm truncate">{excelGrid.name}</h3>
-                  <span className="text-[10px] text-emerald-300 font-mono">Sheet: {excelGrid.sheetName} ({excelGrid.rows.length} baris)</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleSaveExcelGrid}
-                  disabled={isSaving}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{isSaving ? "Menyimpan..." : "Simpan Perubahan"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const colsCount = Math.max(maxCols || 3, 3);
-                    const newRow = Array(colsCount).fill("");
-                    setExcelGrid({
-                      ...excelGrid,
-                      rows: [...excelGrid.rows, newRow],
-                    });
-                    toast.success("Baris baru berhasil ditambahkan!");
-                  }}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-800 hover:bg-emerald-700 text-white rounded-lg font-medium transition-all shadow-xs cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Baris</span>
-                </button>
-
-                {onAnalyzeFile && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const name = excelGrid.name;
-                      const path = excelGrid.path;
-                      setExcelGrid(null);
-                      onAnalyzeFile(name, path);
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-medium transition-all shadow-xs cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Analisis AI</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => (window as any).arunakiDesktop?.openPath?.(excelGrid.path)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-900 hover:bg-emerald-800 text-emerald-100 rounded-lg border border-emerald-700 font-medium transition-all shadow-xs cursor-pointer"
-                  title="Buka di Microsoft Excel OS"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Buka di Excel</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setExcelGrid(null)}
-                  className="p-1.5 hover:bg-emerald-900 text-emerald-400 hover:text-white rounded-lg"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Grid Search Bar */}
-            <div className="p-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nilai dalam tabel spreadsheet..."
-                  value={gridSearch}
-                  onChange={(e) => setGridSearch(e.target.value)}
-                  className="w-full pl-7 pr-3 py-1 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="text-xs text-gray-500 font-mono">
-                {maxCols} Kolom × {excelGrid.rows.length} Baris
-              </div>
-            </div>
-
-            {/* Interactive Data Grid Table */}
-            <div className="flex-1 overflow-auto bg-gray-100 p-2">
-              <table className="w-full border-collapse bg-white text-xs select-none shadow-xs">
-                <thead>
-                  <tr className="bg-gray-200/80 text-gray-600 font-mono text-[11px] sticky top-0 z-10">
-                    <th className="w-10 p-2 border border-gray-300 text-center bg-gray-200">#</th>
-                    {Array.from({ length: maxCols }).map((_, cIdx) => (
-                      <th key={cIdx} className="p-2 border border-gray-300 text-center font-bold bg-gray-200 min-w-[100px]">
-                        {getColumnLabel(cIdx)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {excelGrid.rows.map((row, rIdx) => {
-                    const rowText = Array.isArray(row) ? row.join(" ").toLowerCase() : "";
-                    if (gridSearch && !rowText.includes(gridSearch.toLowerCase())) return null;
-
-                    return (
-                      <tr key={rIdx} className="hover:bg-emerald-50/50 transition-colors">
-                        <td className="p-2 border border-gray-200 text-center bg-gray-100 font-mono text-gray-500 text-[10px]">
-                          {rIdx + 1}
-                        </td>
-                        {Array.from({ length: maxCols }).map((_, cIdx) => {
-                          const cellVal = Array.isArray(row) && row[cIdx] !== undefined ? row[cIdx] : "";
-                          return (
-                            <td key={cIdx} className="p-1 border border-gray-200 bg-white hover:bg-blue-50/40">
-                              <input
-                                type="text"
-                                value={cellVal ?? ""}
-                                onChange={(e) => {
-                                  const updatedRows = [...excelGrid.rows];
-                                  if (!Array.isArray(updatedRows[rIdx])) {
-                                    updatedRows[rIdx] = [];
-                                  }
-                                  updatedRows[rIdx][cIdx] = e.target.value;
-                                  setExcelGrid({ ...excelGrid, rows: updatedRows });
-                                }}
-                                className="w-full bg-transparent border-none outline-none text-xs text-gray-900 focus:bg-amber-50 focus:ring-1 focus:ring-amber-400 rounded px-1"
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Grid Footer */}
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-[11px] text-gray-500 flex items-center justify-between">
-              <span>Spreadsheet Grid View (Klik sel mana saja untuk mengedit data)</span>
-              <button
-                type="button"
-                onClick={() => setExcelGrid(null)}
-                className="hover:text-gray-900 font-medium"
-              >
-                Tutup Spreadsheet
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* OnlyOffice Document Engine Host Modal */}
+      {activeDocumentHost && (
+        <DocumentEngineHost
+          filePath={activeDocumentHost.path}
+          fileName={activeDocumentHost.name}
+          fileType={activeDocumentHost.ext}
+          onClose={() => setActiveDocumentHost(null)}
+          onSave={() => toast.success(`Menyimpan dokumen "${activeDocumentHost.name}"...`)}
+          onAnalyzeAI={() => {
+            const name = activeDocumentHost.name;
+            const path = activeDocumentHost.path;
+            setActiveDocumentHost(null);
+            if (onAnalyzeFile) onAnalyzeFile(name, path);
+          }}
+          onOpenNativeOS={() => (window as any).arunakiDesktop?.openPath?.(activeDocumentHost.path)}
+        />
       )}
 
       {/* VS Code Style Text Editor / Viewer Modal */}
@@ -1003,7 +787,7 @@ export default function FileTree({
                 <div className="max-w-md space-y-1">
                   <h4 className="font-bold text-base text-white">{activeFile.name}</h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Dokumen ini adalah format biner terkompresi (Excel / PDF / Office). Anda dapat menguraikan isinya sebagai Spreadsheet Data Grid atau membukanya di Microsoft Excel bawaan.
+                    Dokumen ini adalah format biner terkompresi. Anda dapat membukanya di OnlyOffice Host atau aplikasi OS bawaan.
                   </p>
                 </div>
 
