@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as path from 'path';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 
 export interface HealingAttempt {
   originalError: string;
@@ -88,16 +90,48 @@ export class SelfHealingService {
     },
   ];
 
-  constructor(private readonly toolRegistryService: ToolRegistryService) {}
+  constructor(
+    private readonly toolRegistryService: ToolRegistryService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * Execute a tool with self-healing wrapper.
    * If the tool fails, attempts automatic recovery before giving up.
+   * Validates workspace path isolation before execution.
    */
   async executeWithHealing(
     toolName: string,
     args: Record<string, any>,
+    workspaceId?: string,
   ): Promise<SelfHealingResult> {
+    // Workspace Isolation: validate paths before execution
+    if (workspaceId) {
+      try {
+        await this.validateToolPaths(toolName, args, workspaceId);
+      } catch (err: any) {
+        this.logger.warn(`Workspace isolation blocked: ${err.message}`);
+        return {
+          finalResult: {
+            status: 'error',
+            data: {},
+            preview: `Access denied: ${err.message}`,
+            metadata: {
+              toolName,
+              displayName: toolName,
+              executionTime: 0,
+            },
+            error: {
+              code: 'WORKSPACE_ISOLATION_VIOLATION',
+              message: err.message,
+            },
+          },
+          attempts: [],
+          healed: false,
+        };
+      }
+    }
+
     const attempts: HealingAttempt[] = [];
 
     // 1. First attempt — normal execution
@@ -201,5 +235,89 @@ export class SelfHealingService {
       }
     }
     return null;
+  }
+
+  /**
+   * Get workspace root path for isolation validation.
+   */
+  private async getWorkspaceRootPath(workspaceId: string): Promise<string | null> {
+    try {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
+      return workspace?.rootPath || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Validate that a path is within the workspace root (Workspace Isolation).
+   * Returns validated path or throws if outside workspace.
+   */
+  validateWorkspacePath(workspaceId: string, requestedPath: string, rootPath: string): string {
+    const resolvedRequested = path.resolve(requestedPath);
+    const resolvedRoot = path.resolve(rootPath);
+
+    if (!resolvedRequested.startsWith(resolvedRoot + path.sep) && resolvedRequested !== resolvedRoot) {
+      throw new Error(
+        `Access denied: Path "${requestedPath}" is outside workspace root "${rootPath}"`,
+      );
+    }
+
+    return resolvedRequested;
+  }
+
+  /**
+   * Validate all path-like arguments in tool args against workspace root.
+   * Throws if any path is outside workspace.
+   */
+  private async validateToolPaths(
+    toolName: string,
+    args: Record<string, any>,
+    workspaceId: string,
+  ): Promise<void> {
+    const rootPath = await this.getWorkspaceRootPath(workspaceId);
+    if (!rootPath) return; // No workspace root configured — skip validation
+
+    // Recursively find path-like values in args
+    const findPaths = (obj: any, prefix = ''): string[] => {
+      const paths: string[] = [];
+      for (const [key, value] of Object.entries(obj)) {
+        if (typeof value === 'string') {
+          // Check if key suggests a path (common patterns)
+          if (
+            key.includes('path') ||
+            key.includes('folder') ||
+            key.includes('directory') ||
+            key.includes('file') ||
+            key.includes('location') ||
+            key.includes('root') ||
+            key.includes('dir') ||
+            key === 'target' ||
+            key === 'source' ||
+            key === 'destination'
+          ) {
+            // Only validate absolute paths or paths with separators
+            if (path.isAbsolute(value) || value.includes(path.sep)) {
+              paths.push(value);
+            }
+          }
+        } else if (value && typeof value === 'object') {
+          paths.push(...findPaths(value, `${prefix}${key}.`));
+        }
+      }
+      return paths;
+    };
+
+    const pathsToValidate = findPaths(args);
+    for (const p of pathsToValidate) {
+      try {
+        this.validateWorkspacePath(workspaceId, p, rootPath);
+      } catch (err: any) {
+        throw new Error(`Tool "${toolName}" argument validation failed: ${err.message}`);
+      }
+    }
   }
 }

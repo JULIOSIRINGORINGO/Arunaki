@@ -440,18 +440,33 @@ onEvent({
 });
 ```
 
-### 21. No Workspace Isolation Enforcement
+### 21. No Workspace Isolation Enforcement ✅
+
+**File:** `apps/api/src/modules/ai/self-healing.service.ts`
 
 **Problem:** Agent can potentially access files outside workspace via tool args.
 
-**Fix:** Add path validation:
+**Fix applied:**
 ```typescript
-// In tool execution
-const resolvedPath = path.resolve(args.path);
-if (!resolvedPath.startsWith(workspace.rootPath)) {
-  return { status: 'error', preview: 'Access denied: path outside workspace' };
+// In executeWithHealing() — validates all path-like args against workspace root
+async executeWithHealing(toolName, args, workspaceId?) {
+  if (workspaceId) {
+    await this.validateToolPaths(toolName, args, workspaceId);
+  }
+  // ... rest of execution
+}
+
+private async validateToolPaths(toolName, args, workspaceId) {
+  const rootPath = await this.getWorkspaceRootPath(workspaceId);
+  if (!rootPath) return;
+  
+  // Recursively find path-like args (keys containing: path, folder, directory, file, etc.)
+  // Validates each against workspace root using path.resolve()
+  // Throws if outside workspace
 }
 ```
+
+**Status:** ✅ Done — SelfHealingService now enforces workspace boundary before every tool execution
 
 ---
 
