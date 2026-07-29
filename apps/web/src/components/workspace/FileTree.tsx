@@ -18,6 +18,7 @@ import {
   X,
   FileCode,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +46,11 @@ interface TreeNode {
   file?: FileItem;
   nativePath?: string;
   size?: number;
+}
+
+function isBinaryFile(name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  return ["xlsx", "xlsm", "xls", "pdf", "docx", "doc", "zip", "rar", "png", "jpg", "jpeg", "gif", "exe", "bin", "pptx", "ppt"].includes(ext);
 }
 
 function buildTree(files: FileItem[]): TreeNode[] {
@@ -101,7 +107,7 @@ function getFileIcon(name: string) {
   if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
   if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext))
     return <FileImage className="w-4 h-4 text-blue-500 shrink-0" />;
-  if (["xlsx", "xls", "csv"].includes(ext))
+  if (["xlsx", "xls", "xlsm", "csv"].includes(ext))
     return <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />;
   if (["json", "js", "ts", "tsx", "html", "css", "py"].includes(ext))
     return <FileCode className="w-4 h-4 text-purple-500 shrink-0" />;
@@ -368,6 +374,16 @@ export default function FileTree({
       onFileClick(filePath, fileName);
     }
 
+    if (isBinaryFile(fileName)) {
+      setActiveFile({
+        path: filePath,
+        name: fileName,
+        content: "",
+      });
+      setIsEditing(false);
+      return;
+    }
+
     if ((window as any).arunakiDesktop?.readFile) {
       const res = await (window as any).arunakiDesktop.readFile(filePath);
       if (res?.error) {
@@ -384,7 +400,7 @@ export default function FileTree({
   };
 
   const handleSaveFileContent = async () => {
-    if (!activeFile) return;
+    if (!activeFile || isBinaryFile(activeFile.name)) return;
     setIsSaving(true);
     try {
       if ((window as any).arunakiDesktop?.writeFile) {
@@ -654,25 +670,27 @@ export default function FileTree({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {!isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded border border-gray-700 transition-colors"
-                  >
-                    <Edit3 className="w-3 h-3 text-amber-400" />
-                    <span>Edit Content</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSaveFileContent}
-                    disabled={isSaving}
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium transition-colors"
-                  >
-                    <Save className="w-3 h-3" />
-                    <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
-                  </button>
+                {!isBinaryFile(activeFile.name) && (
+                  !isEditing ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded border border-gray-700 transition-colors"
+                    >
+                      <Edit3 className="w-3 h-3 text-amber-400" />
+                      <span>Edit Content</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveFileContent}
+                      disabled={isSaving}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium transition-colors"
+                    >
+                      <Save className="w-3 h-3" />
+                      <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
+                    </button>
+                  )
                 )}
 
                 <button
@@ -685,25 +703,77 @@ export default function FileTree({
               </div>
             </div>
 
-            {/* Editor Text Area */}
-            <div className="flex-1 bg-gray-950 text-gray-100 p-4 font-mono text-xs overflow-auto">
-              {isEditing ? (
-                <textarea
-                  value={activeFile.content}
-                  onChange={(e) => setActiveFile({ ...activeFile, content: e.target.value })}
-                  className="w-full h-full bg-transparent text-gray-100 resize-none outline-none font-mono leading-relaxed"
-                  spellCheck={false}
-                />
-              ) : (
-                <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-200">
-                  {activeFile.content || "(File kosong)"}
-                </pre>
-              )}
-            </div>
+            {/* Editor Area / Binary File View */}
+            {isBinaryFile(activeFile.name) ? (
+              <div className="flex-1 bg-gray-900 text-gray-100 p-8 flex flex-col items-center justify-center text-center space-y-4">
+                <FileSpreadsheet className="w-16 h-16 text-emerald-500 animate-pulse shrink-0" />
+                <div className="max-w-md space-y-1">
+                  <h4 className="font-bold text-base text-white">{activeFile.name}</h4>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Dokumen ini adalah format biner/terkompresi (Excel / Office / PDF). Anda dapat membukanya di aplikasi bawaan (seperti Microsoft Excel) atau meminta AI menganalisis nilainya secara otomatis.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if ((window as any).arunakiDesktop?.openPath) {
+                        (window as any).arunakiDesktop.openPath(activeFile.path);
+                        toast.success(`Membuka "${activeFile.name}" di aplikasi OS bawaan...`);
+                      } else {
+                        toast.info("Fitur membuka di aplikasi OS bawaan membutuhkan Desktop Electron.");
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Buka di Excel / Aplikasi OS Bawaan</span>
+                  </button>
+
+                  {onAnalyzeFile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = activeFile.name;
+                        const path = activeFile.path;
+                        setActiveFile(null);
+                        onAnalyzeFile(name, path);
+                      }}
+                      className="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Minta AI Analisis Dokumen Ini</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 bg-gray-950 text-gray-100 p-4 font-mono text-xs overflow-auto">
+                {isEditing ? (
+                  <textarea
+                    value={activeFile.content}
+                    onChange={(e) => setActiveFile({ ...activeFile, content: e.target.value })}
+                    className="w-full h-full bg-transparent text-gray-100 resize-none outline-none font-mono leading-relaxed"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-200">
+                    {activeFile.content || "(File kosong)"}
+                  </pre>
+                )}
+              </div>
+            )}
 
             {/* Editor Footer */}
             <div className="px-4 py-2 bg-gray-900 border-t border-gray-800 text-[11px] text-gray-400 flex items-center justify-between">
-              <span>{isEditing ? "Mode Edit (Aktif)" : "Mode Pratinjau (Read-Only)"}</span>
+              <span>
+                {isBinaryFile(activeFile.name)
+                  ? "Pratinjau File Biner Terkompresi"
+                  : isEditing
+                  ? "Mode Edit (Aktif)"
+                  : "Mode Pratinjau (Read-Only)"}
+              </span>
               <button
                 type="button"
                 onClick={() => setActiveFile(null)}

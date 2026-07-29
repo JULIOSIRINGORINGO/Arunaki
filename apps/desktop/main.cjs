@@ -195,6 +195,15 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('app:openPath', async (_event, targetPath) => {
+    try {
+      await shell.openPath(targetPath);
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {
