@@ -137,7 +137,7 @@ export class ProviderService extends BaseService<Provider> {
   async getNextAvailable(
     currentProviderId?: string,
   ): Promise<ProviderConfig | null> {
-    const available = await this.repository.findAvailable().catch(() => []);
+    const available: Provider[] = await this.repository.findAvailable().catch(() => []);
 
     // Skip the current provider (we're rotating AWAY from it)
     const next = available.find((p) => p.id !== currentProviderId);
