@@ -22,6 +22,23 @@ export interface ToolResult {
   error?: ToolResultError;
 }
 
+// Streaming tool result chunks
+export interface ToolResultChunk {
+  type: 'progress' | 'data' | 'complete' | 'error';
+  toolName: string;
+  progress?: number; // 0-100
+  message?: string;
+  data?: Record<string, any>;
+  preview?: string;
+  metadata?: ToolResultMetadata;
+  error?: ToolResultError;
+}
+
+export interface StreamingToolResult {
+  stream: AsyncGenerator<ToolResultChunk>;
+  finalResult: Promise<ToolResult>;
+}
+
 export interface ToolCapability {
   name: string;
   displayName: string;

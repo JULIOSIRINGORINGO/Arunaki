@@ -4,7 +4,7 @@ import {
   ToolDefinition,
   ToolCapability,
 } from './interfaces/tool.interface.js';
-import { ToolResult } from './interfaces/tool-result.interface.js';
+import { ToolResult, ToolResultChunk, StreamingToolResult } from './interfaces/tool-result.interface.js';
 
 interface RegisteredTool {
   tool: Tool;
@@ -252,6 +252,227 @@ export class ToolRegistryService {
     }
 
     return results;
+  }
+
+  /**
+   * Execute a tool with streaming results.
+   * Yields progress chunks as the tool executes.
+   *
+   * @param name - Tool name
+   * @param args - Tool arguments
+   * @returns StreamingToolResult with async generator for chunks and promise for final result
+   */
+  executeToolStreaming(
+    name: string,
+    args: Record<string, any>,
+  ): StreamingToolResult {
+    const registered = this.tools.get(name);
+    if (!registered) {
+      // Return immediately with error
+      const errorChunk: ToolResultChunk = {
+        type: 'error',
+        toolName: name,
+        error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
+      };
+      const asyncGen = (async function* () {
+        yield errorChunk;
+      })();
+      return {
+        stream: asyncGen,
+        finalResult: Promise.resolve({
+          status: 'error',
+          data: {},
+          preview: `Tool "${name}" tidak dikenali`,
+          metadata: { toolName: name, displayName: name, executionTime: 0 },
+          error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
+        }),
+      };
+    }
+
+    const { tool, timeoutMs } = registered;
+
+    const validation = this.validateArgs(
+      args,
+      tool.definition.function.parameters,
+    );
+    if (!validation.valid) {
+      const errorChunk: ToolResultChunk = {
+        type: 'error',
+        toolName: name,
+        error: {
+          code: 'INVALID_ARGS',
+          message: validation.errors.join('; '),
+        },
+      };
+      const asyncGen = (async function* () {
+        yield errorChunk;
+      })();
+      return {
+        stream: asyncGen,
+        finalResult: Promise.resolve({
+          status: 'error',
+          data: { receivedArgs: args },
+          preview: `Input tidak valid: ${validation.errors.join('; ')}`,
+          metadata: {
+            toolName: name,
+            displayName: tool.capability.displayName,
+            executionTime: 0,
+          },
+          error: { code: 'INVALID_ARGS', message: validation.errors.join('; ') },
+        }),
+      };
+    }
+
+    // Create the async generator for streaming
+    const stream = this.createToolStream(tool, name, args, timeoutMs);
+
+    const finalResult = this.collectStreamResult(stream, name, tool.capability.displayName);
+
+    return { stream, finalResult };
+  }
+
+  /**
+   * Creates an async generator that yields progress chunks during tool execution.
+   */
+  private async *createToolStream(
+    tool: any,
+    name: string,
+    args: Record<string, any>,
+    timeoutMs: number,
+  ): AsyncGenerator<ToolResultChunk> {
+    const startTime = Date.now();
+    let hasYieldedProgress = false;
+
+    // Initial progress chunk
+    yield {
+      type: 'progress',
+      toolName: name,
+      progress: 0,
+      message: `Memulai eksekusi ${tool.capability.displayName}...`,
+    };
+
+    try {
+      // If tool has a streaming method, use it
+      if (tool.executeStreaming) {
+        for await (const chunk of tool.executeStreaming(args)) {
+          yield {
+            type: 'progress',
+            toolName: name,
+            progress: chunk.progress,
+            message: chunk.message,
+            data: chunk.data,
+            preview: chunk.preview,
+            metadata: chunk.metadata,
+          };
+          hasYieldedProgress = true;
+        }
+      } else {
+        // For non-streaming tools, execute with timeout and yield progress
+        let completed = false;
+        const progressInterval = setInterval(() => {
+          if (!completed && !hasYieldedProgress) {
+            // Yield indeterminate progress
+            hasYieldedProgress = true;
+          }
+        }, 2000);
+
+        try {
+          const result = await this.executeWithTimeout(
+            () => Promise.resolve(tool.execute(args)),
+            timeoutMs,
+          );
+          completed = true;
+          clearInterval(progressInterval);
+
+          result.metadata.executionTime = Date.now() - startTime;
+
+          // Yield completion
+          yield {
+            type: 'complete',
+            toolName: name,
+            progress: 100,
+            message: `Selesai: ${tool.capability.displayName}`,
+            data: result.data,
+            preview: result.preview,
+            metadata: result.metadata,
+          };
+        } catch (e) {
+          completed = true;
+          clearInterval(progressInterval);
+          throw e;
+        }
+      }
+    } catch (e) {
+      const isTimeout = e.message?.includes('timeout');
+      yield {
+        type: 'error',
+        toolName: name,
+        progress: 0,
+        message: isTimeout
+          ? `Tool "${name}" timeout setelah ${timeoutMs}ms`
+          : `Tool "${name}" gagal: ${e.message}`,
+        error: {
+          code: isTimeout ? 'TOOL_TIMEOUT' : 'EXECUTION_FAILED',
+          message: e.message,
+        },
+      };
+    }
+  }
+
+  /**
+   * Consumes the stream and returns the final ToolResult.
+   */
+  private async collectStreamResult(
+    stream: AsyncGenerator<ToolResultChunk>,
+    name: string,
+    displayName: string,
+  ): Promise<ToolResult> {
+    let finalResult: ToolResult | null = null;
+    let lastProgressChunk: ToolResultChunk | null = null;
+
+    for await (const chunk of stream) {
+      lastProgressChunk = chunk;
+      if (chunk.type === 'complete') {
+        finalResult = {
+          status: 'success',
+          data: chunk.data || {},
+          preview: chunk.preview || '',
+          metadata: chunk.metadata || {
+            toolName: name,
+            displayName,
+            executionTime: 0,
+          },
+        };
+      } else if (chunk.type === 'error') {
+        finalResult = {
+          status: 'error',
+          data: {},
+          preview: chunk.message || '',
+          metadata: {
+            toolName: name,
+            displayName,
+            executionTime: 0,
+          },
+          error: chunk.error,
+        };
+      }
+    }
+
+    if (!finalResult && lastProgressChunk) {
+      // No completion chunk received - construct from last progress
+      finalResult = {
+        status: 'partial',
+        data: lastProgressChunk.data || {},
+        preview: lastProgressChunk.preview || `Tool "${name}" completed without final result`,
+        metadata: {
+          toolName: name,
+          displayName,
+          executionTime: 0,
+        },
+      };
+    }
+
+    return finalResult!;
   }
 
   private async executeWithTimeout<T>(

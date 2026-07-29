@@ -1,4 +1,4 @@
-import { ToolResult } from './tool-result.interface.js';
+import { ToolResult, ToolResultChunk } from './tool-result.interface.js';
 
 /**
  * Tool — interface that every tool service must implement.
@@ -45,6 +45,9 @@ export interface Tool {
 
   /** Execute the tool with given arguments */
   execute(args: Record<string, any>): Promise<ToolResult> | ToolResult;
+
+  /** Optional: Execute the tool with streaming results for progress reporting */
+  executeStreaming?(args: Record<string, any>): AsyncGenerator<ToolResultChunk>;
 }
 
 /**

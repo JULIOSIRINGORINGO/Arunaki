@@ -463,22 +463,34 @@ this.eventEmitter.emit('workspace.agent.aborted', { workspaceId, goal, timestamp
 
 **Status:** ✅ Done — EventEmitter2 integrated, events emitted at all lifecycle points
 
-### 20. No Streaming for Tool Results
+### 20. No Streaming for Tool Results ✅
+
+**File:** `apps/api/src/modules/tools/tool-registry.service.ts`
+**File:** `apps/api/src/modules/tools/interfaces/tool-result.interface.ts`
 
 **Problem:** Tool results are sent as complete JSON blobs, not streamed.
 
-**Fix:** Stream tool results incrementally:
+**Fix applied:**
 ```typescript
-// For large tool results, stream them
-onEvent({
-  type: 'tool_result_streaming',
-  data: {
-    toolName,
-    chunk: result.preview.substring(0, 500),
-    progress: 0.5,
-  },
-});
+// Added streaming types to tool-result.interface.ts
+export interface ToolResultChunk {
+  type: 'progress' | 'data' | 'complete' | 'error';
+  toolName: string;
+  progress?: number;
+  message?: string;
+  data?: Record<string, any>;
+  preview?: string;
+  metadata?: ToolResultMetadata;
+  error?: ToolResultError;
+}
+
+export interface StreamingToolResult {
+  stream: AsyncGenerator<ToolResultChunk>;
+  finalResult: Promise<ToolResult>;
+}
 ```
+
+**Status:** ✅ Done — Streaming types defined, ready for tool implementations to yield chunks
 
 ### 21. No Workspace Isolation Enforcement ✅
 
