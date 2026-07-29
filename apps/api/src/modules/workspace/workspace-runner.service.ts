@@ -17,6 +17,7 @@ import { BackgroundReviewService } from '../memory/background-review.service.js'
 import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
+import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 
@@ -55,6 +56,7 @@ export interface WorkspaceStreamEvent {
     | 'tool_done'
     | 'text_delta'
     | 'state_changed'
+    | 'steering'
     | 'done'
     | 'error';
   data: any;
@@ -92,6 +94,15 @@ export class WorkspaceRunnerService {
     }>
   >();
 
+  /** Steering queue — holds follow-up inputs for mid-run steering */
+  private readonly steeringQueue = new Map<
+    string,
+    Array<{
+      message: string;
+      timestamp: Date;
+    }>
+  >();
+
   constructor(
     private readonly aiService: AiService,
     private readonly selfEvaluationService: SelfEvaluationService,
@@ -106,6 +117,7 @@ export class WorkspaceRunnerService {
     private readonly smartRecallService: SmartRecallService,
     private readonly skillService: SkillService,
     private readonly selfHealingService: SelfHealingService,
+    private readonly promptInjectionDetector: PromptInjectionDetector,
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
   ) {}
@@ -217,6 +229,44 @@ export class WorkspaceRunnerService {
       );
     } catch (error) {
       this.logger.error(`Queued request failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Add steering/follow-up input for a running workspace.
+   * The input will be injected into the agent loop on next outer iteration.
+   */
+  addSteeringInput(workspaceId: string, message: string): boolean {
+    const state = this.activeRuns.get(workspaceId);
+    if (!state || state.state !== 'running') {
+      return false;
+    }
+    const queue = this.steeringQueue.get(workspaceId) || [];
+    queue.push({ message, timestamp: new Date() });
+    this.steeringQueue.set(workspaceId, queue);
+    this.logger.log(`Steering input queued for workspace ${workspaceId}`);
+    return true;
+  }
+
+  /**
+   * Refresh context mid-run every N rounds.
+   */
+  private async prepareNextTurn(
+    workspaceId: string,
+    messages: ChatMessage[],
+    round: number,
+  ): Promise<void> {
+    if (round > 0 && round % 5 === 0) {
+      this.logger.log(`Refreshing context at round ${round}...`);
+      try {
+        const freshContext = await this.buildWorkspaceContext(workspaceId);
+        messages.push({
+          role: 'system',
+          content: `[Context Refreshed - Round ${round}]\n${freshContext}`,
+        });
+      } catch (err: any) {
+        this.logger.warn(`Context refresh failed (non-critical): ${err.message}`);
+      }
     }
   }
 
@@ -409,7 +459,22 @@ export class WorkspaceRunnerService {
         ...context.messages,
       ];
 
-      // Generate autonomous reasoning plan via dedicated AI call
+      // Prompt injection scan
+      const injectionResult = this.promptInjectionDetector.scan(userGoal);
+      if (injectionResult.detected && injectionResult.severity === 'high') {
+        this.promptInjectionDetector.logDetection(workspaceId, userGoal, injectionResult);
+        this.setState(runState, 'failed', onEvent);
+        onEvent({
+          type: 'error',
+          data: { message: 'Input mengandung konten yang tidak diizinkan. Silakan perbaiki dan coba lagi.' },
+        });
+        return;
+      }
+      const safeGoal = injectionResult.detected
+        ? injectionResult.sanitized
+        : userGoal;
+
+      // Generate autonomous reasoning plan
       if (abortController.signal.aborted) {
         this.setState(runState, 'aborting', onEvent);
         onEvent({
@@ -426,7 +491,7 @@ export class WorkspaceRunnerService {
         },
         {
           role: 'user',
-          content: `Goal: ${userGoal}\n\nKonteks workspace:\n${workspaceContext}`,
+          content: `Goal: ${safeGoal}\n\nKonteks workspace:\n${workspaceContext}`,
         },
       ];
 
@@ -446,7 +511,7 @@ export class WorkspaceRunnerService {
       onEvent({
         type: 'plan_created',
         data: {
-          goal: userGoal,
+          goal: safeGoal,
           steps:
             steps.length > 0
               ? steps
@@ -459,135 +524,236 @@ export class WorkspaceRunnerService {
       const MAX_ROUNDS = 25;
       let reachedMaxRounds = true;
 
-      for (let round = 0; round < MAX_ROUNDS; round++) {
-        // Check abort before each round
-        if (abortController.signal.aborted) {
-          this.setState(runState, 'aborting', onEvent);
-          onEvent({
-            type: 'error',
-            data: { message: 'Analisis dibatalkan oleh pengguna.' },
-          });
-          return;
-        }
-        runState.round = round + 1;
+      // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
+      for (let turn = 0; turn < 5; turn++) {
+        // Inner loop: tool execution
+        for (let round = 0; round < MAX_ROUNDS; round++) {
+          // Check abort before each round
+          if (abortController.signal.aborted) {
+            this.setState(runState, 'aborting', onEvent);
+            onEvent({
+              type: 'error',
+              data: { message: 'Analisis dibatalkan oleh pengguna.' },
+            });
+            return;
+          }
+          runState.round = turn * MAX_ROUNDS + round + 1;
 
-        const aiResponse = await this.aiService.chat(messages, tools);
+          // Context refresh every 5 rounds
+          await this.prepareNextTurn(workspaceId, messages, runState.round);
 
-        if (aiResponse.toolCalls.length === 0) {
-          finalContent = this.scrubber.scrub(aiResponse.content);
+          const aiResponse = await this.aiService.chat(messages, tools);
 
-          // Self-evaluation: verify output against goal
-          try {
-            const evaluation = await this.selfEvaluationService.evaluate(
-              userGoal,
-              finalContent,
-              workspaceContext,
-            );
+          if (aiResponse.toolCalls.length === 0) {
+            finalContent = this.scrubber.scrub(aiResponse.content);
 
-            if (!evaluation.passed) {
-              this.logger.log(
-                `Self-evaluation: score ${evaluation.score}/10, issues: ${evaluation.issues.join('; ')}`,
+            // Self-evaluation: verify output against goal
+            try {
+              const evaluation = await this.selfEvaluationService.evaluate(
+                safeGoal,
+                finalContent,
+                workspaceContext,
               );
 
-              // Auto-retry with feedback
-              const retryResult =
-                await this.selfEvaluationService.evaluateAndRetry(
-                  userGoal,
-                  finalContent,
-                  async (feedback) => {
-                    // Add feedback to messages and retry
-                    messages.push({
-                      role: 'user',
-                      content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
-                    });
-                    const retryResponse = await this.aiService.chat(
-                      messages,
-                      tools,
-                    );
-                    return this.scrubber.scrub(retryResponse.content);
-                  },
-                  workspaceContext,
+              if (!evaluation.passed) {
+                this.logger.log(
+                  `Self-evaluation: score ${evaluation.score}/10, issues: ${evaluation.issues.join('; ')}`,
                 );
 
-              finalContent = retryResult.output;
-              this.logger.log(
-                `Self-evaluation retry: final score ${retryResult.evaluation.score}/10`,
+                const retryResult =
+                  await this.selfEvaluationService.evaluateAndRetry(
+                    safeGoal,
+                    finalContent,
+                    async (feedback) => {
+                      messages.push({
+                        role: 'user',
+                        content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
+                      });
+                      const retryResponse = await this.aiService.chat(
+                        messages,
+                        tools,
+                      );
+                      return this.scrubber.scrub(retryResponse.content);
+                    },
+                    workspaceContext,
+                  );
+
+                finalContent = retryResult.output;
+                this.logger.log(
+                  `Self-evaluation retry: final score ${retryResult.evaluation.score}/10`,
+                );
+              }
+            } catch (err: any) {
+              this.logger.warn(
+                `Self-evaluation failed (non-critical): ${err.message}`,
               );
             }
-          } catch (err: any) {
-            this.logger.warn(
-              `Self-evaluation failed (non-critical): ${err.message}`,
+
+            onEvent({ type: 'text_delta', data: finalContent });
+            reachedMaxRounds = false;
+            this.logger.log(
+              'Workspace agent finished goal execution within round limit.',
             );
+            break;
           }
 
-          onEvent({ type: 'text_delta', data: finalContent });
-          reachedMaxRounds = false;
-          this.logger.log(
-            'Workspace agent finished goal execution within round limit.',
-          );
-          break;
-        }
-
-        messages.push({
-          role: 'assistant',
-          content: aiResponse.content || null,
-          tool_calls: aiResponse.toolCalls,
-        });
-
-        // Separate mutating vs read-only tools for parallel execution
-        const mutatingTools = [
-          'write_workspace_file',
-          'update_workspace_file',
-          'delete_workspace_file',
-        ];
-
-        const readOnlyCalls: Array<{
-          toolCall: (typeof aiResponse.toolCalls)[0];
-          args: Record<string, any>;
-        }> = [];
-        const mutatingCalls: Array<{
-          toolCall: (typeof aiResponse.toolCalls)[0];
-          args: Record<string, any>;
-        }> = [];
-
-        for (const toolCall of aiResponse.toolCalls) {
-          const funcName = toolCall.function.name;
-          let args: Record<string, any> = {};
-          try {
-            args = JSON.parse(toolCall.function.arguments || '{}');
-          } catch {
-            args = {};
-          }
-
-          if (mutatingTools.includes(funcName)) {
-            mutatingCalls.push({ toolCall, args });
-          } else {
-            readOnlyCalls.push({ toolCall, args });
-          }
-        }
-
-        // Execute read-only tools in parallel
-        if (readOnlyCalls.length > 0) {
-          onEvent({
-            type: 'tool_start',
-            data: {
-              toolName: `parallel (${readOnlyCalls.map((c) => c.toolCall.function.name).join(', ')})`,
-              args: {},
-              timestamp: new Date().toISOString(),
-            },
+          messages.push({
+            role: 'assistant',
+            content: aiResponse.content || null,
+            tool_calls: aiResponse.toolCalls,
           });
 
-          const parallelResults =
-            await this.toolRegistryService.executeParallel(
-              readOnlyCalls.map(({ toolCall, args }) => ({
-                name: toolCall.function.name,
-                args: { ...args, workspaceId },
-              })),
+          // Separate mutating vs read-only tools for parallel execution
+          const mutatingTools = [
+            'write_workspace_file',
+            'update_workspace_file',
+            'delete_workspace_file',
+          ];
+
+          const readOnlyCalls: Array<{
+            toolCall: (typeof aiResponse.toolCalls)[0];
+            args: Record<string, any>;
+          }> = [];
+          const mutatingCalls: Array<{
+            toolCall: (typeof aiResponse.toolCalls)[0];
+            args: Record<string, any>;
+          }> = [];
+
+          for (const toolCall of aiResponse.toolCalls) {
+            const funcName = toolCall.function.name;
+            let args: Record<string, any> = {};
+            try {
+              args = JSON.parse(toolCall.function.arguments || '{}');
+            } catch {
+              args = {};
+            }
+
+            if (mutatingTools.includes(funcName)) {
+              mutatingCalls.push({ toolCall, args });
+            } else {
+              readOnlyCalls.push({ toolCall, args });
+            }
+          }
+
+          // Execute read-only tools in parallel with SelfHealing
+          if (readOnlyCalls.length > 0) {
+            onEvent({
+              type: 'tool_start',
+              data: {
+                toolName: `parallel (${readOnlyCalls.map((c) => c.toolCall.function.name).join(', ')})`,
+                args: {},
+                timestamp: new Date().toISOString(),
+              },
+            });
+
+            for (const { toolCall, args } of readOnlyCalls) {
+              const enrichedArgs = { ...args, workspaceId };
+              const healResult = await this.selfHealingService.executeWithHealing(
+                toolCall.function.name,
+                enrichedArgs,
+              );
+              const result = healResult.finalResult;
+
+              if (result.status === 'success' && result.metadata?.contentBase64) {
+                const artifact = await this.artifactService.createFromAgent({
+                  workspaceId,
+                  type:
+                    result.metadata.format === 'xlsx' ||
+                    result.metadata.format === 'csv'
+                      ? 'spreadsheet'
+                      : 'document',
+                  name:
+                    result.metadata.filename ||
+                    `workspace-output-${Date.now()}.file`,
+                  mimeType:
+                    result.metadata.mimeType || 'application/octet-stream',
+                  contentBase64: result.metadata.contentBase64,
+                  preview: result.preview,
+                  data: result.data,
+                  createdBy: `workspace-agent:${toolCall.function.name}`,
+                  tags: [
+                    `workspace:${workspaceId}`,
+                    `tool:${toolCall.function.name}`,
+                  ],
+                  lineage: [toolCall.function.name],
+                });
+                createdArtifactIds.push(artifact.id);
+              }
+
+              onEvent({
+                type: 'tool_done',
+                data: {
+                  toolName: toolCall.function.name,
+                  result,
+                  timestamp: new Date().toISOString(),
+                },
+              });
+
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(result),
+              });
+            }
+          }
+
+          // Execute mutating tools sequentially (need approval gate)
+          for (const { toolCall, args } of mutatingCalls) {
+            const funcName = toolCall.function.name;
+
+            this.logger.warn(
+              `Approval Gate: Requesting consent for mutating tool "${funcName}".`,
             );
 
-          for (let i = 0; i < readOnlyCalls.length; i++) {
-            const { toolCall } = readOnlyCalls[i];
-            const { result } = parallelResults[i];
+            this.setState(runState, 'steering', onEvent);
+            onEvent({
+              type: 'approval_required',
+              data: {
+                toolName: funcName,
+                args,
+                description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
+              },
+            });
+
+            const approved = await this.waitForApproval(workspaceId, funcName, args);
+            if (!approved) {
+              onEvent({
+                type: 'error',
+                data: { message: `Aksi "${funcName}" ditolak oleh pengguna.` },
+              });
+              return;
+            }
+
+            onEvent({
+              type: 'tool_start',
+              data: {
+                toolName: funcName,
+                args,
+                timestamp: new Date().toISOString(),
+              },
+            });
+
+            let result: ToolResult;
+            try {
+              const enrichedArgs = { ...args, workspaceId };
+              const healResult = await this.selfHealingService.executeWithHealing(
+                funcName,
+                enrichedArgs,
+              );
+              result = healResult.finalResult;
+            } catch (e) {
+              result = {
+                status: 'error',
+                data: {},
+                preview: `Eksekusi tool gagal: ${e.message}`,
+                metadata: {
+                  toolName: funcName,
+                  displayName: funcName,
+                  executionTime: 0,
+                },
+                error: { code: 'EXECUTION_FAILED', message: e.message },
+              };
+            }
 
             if (result.status === 'success' && result.metadata?.contentBase64) {
               const artifact = await this.artifactService.createFromAgent({
@@ -600,17 +766,13 @@ export class WorkspaceRunnerService {
                 name:
                   result.metadata.filename ||
                   `workspace-output-${Date.now()}.file`,
-                mimeType:
-                  result.metadata.mimeType || 'application/octet-stream',
+                mimeType: result.metadata.mimeType || 'application/octet-stream',
                 contentBase64: result.metadata.contentBase64,
                 preview: result.preview,
                 data: result.data,
-                createdBy: `workspace-agent:${toolCall.function.name}`,
-                tags: [
-                  `workspace:${workspaceId}`,
-                  `tool:${toolCall.function.name}`,
-                ],
-                lineage: [toolCall.function.name],
+                createdBy: `workspace-agent:${funcName}`,
+                tags: [`workspace:${workspaceId}`, `tool:${funcName}`],
+                lineage: [funcName],
               });
               createdArtifactIds.push(artifact.id);
             }
@@ -618,7 +780,7 @@ export class WorkspaceRunnerService {
             onEvent({
               type: 'tool_done',
               data: {
-                toolName: toolCall.function.name,
+                toolName: funcName,
                 result,
                 timestamp: new Date().toISOString(),
               },
@@ -632,101 +794,31 @@ export class WorkspaceRunnerService {
           }
         }
 
-        // Execute mutating tools sequentially (need approval gate)
-        for (const { toolCall, args } of mutatingCalls) {
-          const funcName = toolCall.function.name;
-
-          this.logger.warn(
-            `Approval Gate: Requesting consent for mutating tool "${funcName}".`,
-          );
-
-          this.setState(runState, 'steering', onEvent);
-          onEvent({
-            type: 'approval_required',
-            data: {
-              toolName: funcName,
-              args,
-              description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
-            },
-          });
-
-          const approved = await this.waitForApproval(workspaceId, funcName, args);
-          if (!approved) {
-            onEvent({
-              type: 'error',
-              data: { message: `Aksi "${funcName}" ditolak oleh pengguna.` },
-            });
-            return;
-          }
-
-          onEvent({
-            type: 'tool_start',
-            data: {
-              toolName: funcName,
-              args,
-              timestamp: new Date().toISOString(),
-            },
-          });
-
-          let result: ToolResult;
-          try {
-            const enrichedArgs = { ...args, workspaceId };
-            const healResult = await this.selfHealingService.executeWithHealing(
-              funcName,
-              enrichedArgs,
-            );
-            result = healResult.finalResult;
-          } catch (e) {
-            result = {
-              status: 'error',
-              data: {},
-              preview: `Eksekusi tool gagal: ${e.message}`,
-              metadata: {
-                toolName: funcName,
-                displayName: funcName,
-                executionTime: 0,
-              },
-              error: { code: 'EXECUTION_FAILED', message: e.message },
-            };
-          }
-
-          if (result.status === 'success' && result.metadata?.contentBase64) {
-            const artifact = await this.artifactService.createFromAgent({
-              workspaceId,
-              type:
-                result.metadata.format === 'xlsx' ||
-                result.metadata.format === 'csv'
-                  ? 'spreadsheet'
-                  : 'document',
-              name:
-                result.metadata.filename ||
-                `workspace-output-${Date.now()}.file`,
-              mimeType: result.metadata.mimeType || 'application/octet-stream',
-              contentBase64: result.metadata.contentBase64,
-              preview: result.preview,
-              data: result.data,
-              createdBy: `workspace-agent:${funcName}`,
-              tags: [`workspace:${workspaceId}`, `tool:${funcName}`],
-              lineage: [funcName],
-            });
-            createdArtifactIds.push(artifact.id);
-          }
-
-          onEvent({
-            type: 'tool_done',
-            data: {
-              toolName: funcName,
-              result,
-              timestamp: new Date().toISOString(),
-            },
-          });
-
-          messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(result),
-          });
+        if (!reachedMaxRounds) {
+          break; // Inner loop completed with a final answer
         }
+
+        // Check for steering input before next turn
+        const steeringInputs = this.steeringQueue.get(workspaceId) || [];
+        if (steeringInputs.length === 0) {
+          break; // No steering, exit outer loop
+        }
+
+        // Inject steering input and continue outer loop
+        const steering = steeringInputs.shift()!;
+        if (steeringInputs.length === 0) {
+          this.steeringQueue.delete(workspaceId);
+        }
+        messages.push({
+          role: 'user',
+          content: steering.message,
+        });
+        this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
+        onEvent({
+          type: 'steering',
+          data: { message: 'Follow-up diterima, melanjutkan analisis...' },
+        });
+        reachedMaxRounds = true;
       }
 
       if (reachedMaxRounds) {

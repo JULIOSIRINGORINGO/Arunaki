@@ -179,6 +179,27 @@ export class WorkspaceController {
     }
   }
 
+  @Post(':id/agent/steer')
+  async steerAgent(
+    @Param('id') id: string,
+    @Body() body: { message: string },
+  ) {
+    try {
+      const queued = this.workspaceRunnerService.addSteeringInput(
+        id,
+        body.message,
+      );
+      return successResponse({
+        queued,
+        message: queued
+          ? 'Follow-up diterima dan akan diproses.'
+          : 'Tidak ada analisis yang sedang berjalan untuk menerima follow-up.',
+      });
+    } catch (error) {
+      return errorResponse('STEER_FAILED', error.message);
+    }
+  }
+
   @Post(':id/agent/approve')
   async approveAgent(
     @Param('id') id: string,
