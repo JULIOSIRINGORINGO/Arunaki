@@ -146,7 +146,7 @@ Proyek ini dikerjakan oleh beberapa AI agent. Untuk menghindari double pengerjaa
 ```markdown
 # Dev Log — [Task Name]
 
-**Date:** YYYY-MM-DD
+**Date & Time:** YYYY-MM-DD HH:mm:ss WIB
 **Author:** [AI Agent Name]
 
 ## What
