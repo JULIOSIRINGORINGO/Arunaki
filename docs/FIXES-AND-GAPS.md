@@ -55,7 +55,7 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 | # | Gap | Layer | Prioritas | Dampak |
 |---|-----|-------|-----------|--------|
 | A | Input Provenance | 9 | 🔴 P0 SECURITY | ✅ Done — input-provenance.ts + factory + inter-session utils |
-| B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | Recording bisa duplikasi/korupsi |
+| B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | ✅ Done — user-turn-transcript.service.ts + lifecycle + late media |
 | C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | 2 API beda, potensi race condition |
 | D | Session State Events | 7 | 🟡 P1 AUDIT | Tidak ada audit trail session |
 | E | Harness Registry | 5 | 🟡 P1 PLUGIN | Plugin system belum ada |
@@ -456,6 +456,10 @@ A. **Implement Input Provenance (Layer 9)** — Provenance tracking (`external_u
    - ✅ `chat.controller.ts` — semua message pake factory
    - ✅ `annotateInterSession()` / `stripInterSessionPrefix()` utility ready
 B. **Implement User Turn Transcript (Layer 8)** — Idempotent transcript recording, runId deduplication, late media detection
+   - ✅ `user-turn-transcript.service.ts` — lifecycle: created → sent_to_provider → runtime_persisted → approved
+   - ✅ `markSentToProvider()` / `markRuntimePersisted()` / `markApproved()` methods
+   - ✅ `hasActiveTurn()` late media detection di controller
+   - ✅ Wired ke `AgentRunnerService.runAgentSync()` dan `runAgentStream()`
 C. **Merge Session Admission Duplikasi (Layer 6)** — Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`, tambah handoff token + AsyncLocalStorage
 
 ### Phase 3: Blueprint P1 High (Next)

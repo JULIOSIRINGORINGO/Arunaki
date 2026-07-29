@@ -13,6 +13,7 @@ import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { SessionAdmissionService } from './session-admission.service.js';
 import { MessageService } from './message.service.js';
+import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -61,6 +62,7 @@ export class AgentRunnerService {
     private readonly autoMemoryService: AutoMemoryService,
     private readonly sessionAdmissionService: SessionAdmissionService,
     private readonly messageService: MessageService,
+    private readonly transcriptService: UserTurnTranscriptService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -73,6 +75,7 @@ export class AgentRunnerService {
 
   async runAgentSync(params: AgentRunParams) {
     const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
+    const runId = params.idempotencyKey || `sync:${params.chatId}:${Date.now()}`;
     try {
       if (params.idempotencyKey) {
         const assistant = await this.messageService.findByIdempotencyKey(
@@ -87,7 +90,18 @@ export class AgentRunnerService {
           };
         }
       }
-      return await this.runAgentSyncInternal(params);
+
+      const messages = await this.messageService.findByChatHistoryId(params.chatId);
+      this.transcriptService.createTurn(runId, params.chatId, messages.length);
+      this.transcriptService.markSentToProvider(runId);
+
+      const result = await this.runAgentSyncInternal(params);
+
+      const afterMessages = await this.messageService.findByChatHistoryId(params.chatId);
+      this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
+      this.transcriptService.markApproved(runId);
+
+      return result;
     } finally {
       await lease.release();
     }
@@ -226,6 +240,7 @@ export class AgentRunnerService {
     onEvent: (event: AgentStreamEvent) => void,
   ) {
     const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
+    const runId = params.idempotencyKey || `stream:${params.chatId}:${Date.now()}`;
     try {
       if (params.idempotencyKey) {
         const assistant = await this.messageService.findByIdempotencyKey(
@@ -246,7 +261,18 @@ export class AgentRunnerService {
           return assistant.content;
         }
       }
-      return await this.runAgentStreamInternal(params, onEvent);
+
+      const messages = await this.messageService.findByChatHistoryId(params.chatId);
+      this.transcriptService.createTurn(runId, params.chatId, messages.length);
+      this.transcriptService.markSentToProvider(runId);
+
+      const result = await this.runAgentStreamInternal(params, onEvent);
+
+      const afterMessages = await this.messageService.findByChatHistoryId(params.chatId);
+      this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
+      this.transcriptService.markApproved(runId);
+
+      return result;
     } finally {
       await lease.release();
     }

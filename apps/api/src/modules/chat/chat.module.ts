@@ -6,6 +6,7 @@ import { MessageService } from './message.service.js';
 import { MessageRepository } from './message.repository.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { SessionAdmissionService } from './session-admission.service.js';
+import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { AiModule } from '../ai/ai.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
@@ -30,7 +31,8 @@ import { MemoryModule } from '../memory/memory.module.js';
     MessageRepository,
     AgentRunnerService,
     SessionAdmissionService,
+    UserTurnTranscriptService,
   ],
-  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService],
+  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService],
 })
 export class ChatModule {}

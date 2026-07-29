@@ -22,6 +22,7 @@ import {
 import {
   InputProvenanceFactory,
 } from '../ai/input-provenance.js';
+import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 import {
   successResponse,
   errorResponse,
@@ -37,6 +38,7 @@ export class ChatController {
     private readonly artifactService: ArtifactService,
     private readonly providerService: ProviderService,
     private readonly injectionDetector: PromptInjectionDetector,
+    private readonly transcriptService: UserTurnTranscriptService,
   ) {}
 
   @Post()
@@ -243,6 +245,15 @@ export class ChatController {
 
       const runId = body.idempotencyKey || randomUUID();
 
+      // Late media check — if there's an active turn, queue instead of starting new
+      const activeTurn = this.transcriptService.hasActiveTurn(id);
+      if (activeTurn) {
+        return errorResponse(
+          'TURN_IN_PROGRESS',
+          'Another request is being processed. Please wait.',
+        );
+      }
+
       // Create user message with idempotency key
       const userMessage = await this.messageService.createMessage({
         chatHistoryId: id,
@@ -328,6 +339,15 @@ export class ChatController {
         : body.content;
 
       const runId = body.idempotencyKey || randomUUID();
+
+      // Late media check
+      const activeTurn = this.transcriptService.hasActiveTurn(id);
+      if (activeTurn) {
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Another request is being processed. Please wait.' } })}\n\n`,
+        );
+        return res.end();
+      }
 
       // Create user message with idempotency key
       await this.messageService.createMessage({
