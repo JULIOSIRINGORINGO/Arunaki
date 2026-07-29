@@ -223,34 +223,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle('excel:reparent', async (_event, hwnd, parentHwnd) => {
-    try {
-      const { execSync } = require('child_process');
-      // Gunakan HWND dari main process untuk reparent
-      const script = `
-        Add-Type -TypeDefinition @"
-        using System;
-        using System.Runtime.InteropServices;
-        public class Win32 {
-            [DllImport("user32.dll")] public static extern IntPtr SetParent(IntPtr h, IntPtr p);
-            [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
-            [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr i, int x, int y, int w, int h, uint f);
-        }
-"@
-        $h = [IntPtr]${hwnd}
-        $p = [IntPtr]${parentHwnd}
-        [Win32]::SetParent($h, $p)
-        $style = [Win32]::GetWindowLong($h, -16)
-        [Win32]::SetWindowLong($h, -16, ($style -bor 0x40000000) -band -not 0x00C00000)
-        [Win32]::SetWindowPos($h, [IntPtr]::Zero, 0, 0, 800, 600, 0x0020)
-      `;
-      // Jalankan sebagai satu baris
-      execSync(`powershell -Command "${script.replace(/\n/g, ';')}"`);
-      return { success: true };
-    } catch (err) {
-      return { error: err.message };
-    }
-  });
+
 
   ipcMain.handle('fs:parseExcel', async (_event, filePath) => {
     try {

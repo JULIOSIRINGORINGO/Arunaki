@@ -8,7 +8,6 @@
     "dev": "electron ."
   },
   "dependencies": {
-    "edge-js": "^26.0.0",
     "winax": "^3.6.9"
   }
 }

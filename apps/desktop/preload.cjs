@@ -11,7 +11,6 @@ contextBridge.exposeInMainWorld('arunakiDesktop', {
   renamePath: (oldPath, newPath) => ipcRenderer.invoke('fs:renamePath', oldPath, newPath),
   openPath: (targetPath) => ipcRenderer.invoke('app:openPath', targetPath),
   openExcelNative: (filePath) => ipcRenderer.invoke('excel:openNative', filePath),
-  reparentExcel: (hwnd, parentHwnd) => ipcRenderer.invoke('excel:reparent', hwnd, parentHwnd),
   parseExcel: (filePath) => ipcRenderer.invoke('fs:parseExcel', filePath),
   writeExcel: (filePath, rows) => ipcRenderer.invoke('fs:writeExcel', filePath, rows),
   readBinaryFile: (filePath) => ipcRenderer.invoke('fs:readBinaryFile', filePath),

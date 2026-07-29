@@ -395,9 +395,10 @@ export default function FileTree({
     try {
       if (onFileClick) {
         onFileClick(filePath, fileName);
+        return;
       }
 
-      // 1. Open natively in OS application
+      // Fallback: Open natively in OS external application if no callback provided
       if (isOfficeDocument(fileName)) {
         if ((window as any).arunakiDesktop?.openExcelNative) {
           (window as any).arunakiDesktop.openExcelNative(filePath);
