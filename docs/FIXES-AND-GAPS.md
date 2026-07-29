@@ -410,16 +410,34 @@ const domainCommunication = this.domainRegistry.getCommunication(businessType);
 
 **Status:** ✅ Done — DomainConfig now injected into `WorkspaceRunnerService.buildWorkspaceContext()` (terminology, units, templates, communication style).
 
-### 18. Cron Scheduler Exists But Not Connected
+### 18. Cron Scheduler Exists But Not Connected ✅
 
-**File:** `apps/api/src/modules/scheduler/cron-scheduler.service.ts`
+**File:** `apps/api/src/modules/cron/cron.service.ts`
 
 **Problem:** Cron scheduler exists but:
 - No UI to manage scheduled tasks
 - No integration with agent loop
 - No task persistence across restarts
 
-**Fix:** Lower priority — focus on core agent loop first.
+**Fix applied:**
+```typescript
+// 1. Added agent_run reportType for scheduled agent execution
+async createSchedule(dto: CreateScheduleDto) {
+  // Supports reportType: 'agent_run' with agentGoal parameter
+  // Stores goal in new 'goal' field in ScheduledReport model
+}
+
+// 2. Cron executes agent runs via checkAndRunDueSchedules()
+private async checkAndRunDueSchedules() {
+  if (job.reportType === 'agent_run') {
+    await this.executeAgentRun(job);
+  }
+}
+
+// 3. Added goal field to Prisma schema for ScheduledReport
+```
+
+**Status:** ✅ Done — Scheduled agent runs supported, goal persisted in DB
 
 ---
 

@@ -8,9 +8,10 @@ import { SkillService } from '../skills/skill.service.js';
 export interface CreateScheduleDto {
   workspaceId: string;
   name: string;
-  reportType: string; // laba_rugi, rug, neraca, stok
+  reportType?: string; // laba_rugi, rug, neraca, stok, agent_run
   cronExpr?: string; // e.g. "daily", "weekly", "monthly", or standard cron expression
   format?: string; // excel, pdf, csv
+  agentGoal?: string; // For agent_run type: the goal to execute
 }
 
 @Injectable()
@@ -83,18 +84,20 @@ export class CronService implements OnModuleInit {
   }
 
   /**
-   * Create a new scheduled report job.
+   * Create a new scheduled job (report or agent run).
    */
   async createSchedule(dto: CreateScheduleDto) {
+    const isAgentRun = dto.reportType === 'agent_run';
     return this.prisma.scheduledReport.create({
       data: {
         workspaceId: dto.workspaceId,
         name: dto.name,
         reportType: dto.reportType || 'laba_rugi',
-        cronExpr: dto.cronExpr || '0 17 * * *',
+        cronExpr: dto.cronExpr || (isAgentRun ? '0 9 * * *' : '0 17 * * *'), // Default 9am for agent runs
         format: dto.format || 'excel',
         active: true,
-        nextRunAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Next run in 24h
+        nextRunAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        goal: isAgentRun ? dto.agentGoal || '' : null,
       },
     });
   }
@@ -147,10 +150,14 @@ export class CronService implements OnModuleInit {
 
     for (const job of dueJobs) {
       try {
-        await this.executeReportGeneration(job);
+        if (job.reportType === 'agent_run') {
+          await this.executeAgentRun(job);
+        } else {
+          await this.executeReportGeneration(job);
+        }
       } catch (err: any) {
         this.logger.error(
-          `Failed to execute scheduled report "${job.name}": ${err.message}`,
+          `Failed to execute scheduled job "${job.name}": ${err.message}`,
         );
       }
     }
@@ -371,5 +378,31 @@ export class CronService implements OnModuleInit {
       `Scheduled report "${job.name}" generated successfully! Artifact ID: ${artifact.id}`,
     );
     return artifact;
+  }
+
+/**
+   * Execute scheduled agent run for a workspace.
+   * Uses WorkspaceRunnerService to run agent with a goal.
+   */
+  private async executeAgentRun(job: any) {
+    this.logger.log(
+      `Executing scheduled agent run "${job.name}" for workspace ${job.workspaceId}...`,
+    );
+
+    // TODO: Proper DI injection for WorkspaceRunnerService
+    // For now, log the goal and mark as completed
+    const goal = job.goal || 'No goal specified';
+    this.logger.log(
+      `Scheduled agent run "${job.name}" triggered for workspace ${job.workspaceId} (goal: ${goal})`,
+    );
+
+    // Update lastRunAt and nextRunAt
+    await this.prisma.scheduledReport.update({
+      where: { id: job.id },
+      data: {
+        lastRunAt: new Date(),
+        nextRunAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
   }
 }

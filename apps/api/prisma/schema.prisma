@@ -385,12 +385,13 @@ model ScheduledReport {
   id          String   @id @default(cuid())
   workspaceId String
   name        String   // e.g. "Laporan Laba Rugi Mingguan"
-  reportType  String   // laba_rugi, rug, neraca, stok
+  reportType  String   // laba_rugi, rug, neraca, stok, agent_run
   cronExpr    String   // e.g. "0 17 * * 5" (every Friday at 5 PM)
   format      String   @default("excel") // excel, pdf, csv
   active      Boolean  @default(true)
   lastRunAt   DateTime?
   nextRunAt   DateTime?
+  goal        String?  // For agent_run: the goal to execute
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
