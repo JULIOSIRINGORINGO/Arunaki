@@ -407,82 +407,96 @@ export default function FileTree({
   const totalFiles = countFiles(tree);
 
   const handleItemClick = async (filePath: string, fileName: string) => {
-    if (onFileClick) {
-      onFileClick(filePath, fileName);
-    }
-
-    // Check if Excel / CSV file
-    if (isExcelFile(fileName)) {
-      const desktop = (window as any).arunakiDesktop;
-      
-      // 1. Try desktop parseExcel IPC
-      if (desktop?.parseExcel) {
-        const res = await desktop.parseExcel(filePath);
-        if (res?.success && res.rows && res.rows.length > 0) {
-          setExcelGrid({
-            path: filePath,
-            name: fileName,
-            sheetName: res.sheetName || "Sheet1",
-            rows: res.rows,
-          });
-          setActiveFile(null);
-          return;
-        }
+    try {
+      if (onFileClick) {
+        onFileClick(filePath, fileName);
       }
 
-      // 2. Try client-side XLSX parser via readBinaryFile (base64)
-      if (desktop?.readBinaryFile) {
-        const binRes = await desktop.readBinaryFile(filePath);
-        if (binRes?.success && binRes.base64) {
+      // Check if Excel / CSV file
+      if (isExcelFile(fileName)) {
+        const desktop = (window as any).arunakiDesktop;
+        
+        // 1. Try desktop parseExcel IPC
+        if (desktop?.parseExcel) {
           try {
-            const wb = XLSX.read(binRes.base64, { type: "base64" });
-            const sName = wb.SheetNames[0] || "Sheet1";
-            const ws = wb.Sheets[sName];
-            const parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-            setExcelGrid({
-              path: filePath,
-              name: fileName,
-              sheetName: sName,
-              rows: parsedRows,
-            });
-            setActiveFile(null);
-            return;
-          } catch {
-            // fallback
+            const res = await desktop.parseExcel(filePath);
+            if (res?.success && res.rows && res.rows.length > 0) {
+              setExcelGrid({
+                path: filePath,
+                name: fileName,
+                sheetName: res.sheetName || "Sheet1",
+                rows: res.rows,
+              });
+              setActiveFile(null);
+              return;
+            }
+          } catch (e) {
+            console.warn("Desktop parseExcel failed:", e);
           }
         }
-      }
 
-      // 3. Fallback binary card
-      setActiveFile({
-        path: filePath,
-        name: fileName,
-        content: "",
-      });
-      setIsEditing(false);
-      return;
-    }
+        // 2. Try client-side XLSX parser via readBinaryFile (base64)
+        if (desktop?.readBinaryFile) {
+          try {
+            const binRes = await desktop.readBinaryFile(filePath);
+            if (binRes?.success && binRes.base64) {
+              const wb = XLSX.read(binRes.base64, { type: "base64" });
+              const sName = wb.SheetNames[0] || "Sheet1";
+              const ws = wb.Sheets[sName];
+              const parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+              setExcelGrid({
+                path: filePath,
+                name: fileName,
+                sheetName: sName,
+                rows: parsedRows,
+              });
+              setActiveFile(null);
+              return;
+            }
+          } catch (e) {
+            console.warn("Client XLSX read failed:", e);
+          }
+        }
 
-    if (isBinaryFile(fileName)) {
-      setActiveFile({
-        path: filePath,
-        name: fileName,
-        content: "",
-      });
-      setIsEditing(false);
-      return;
-    }
-
-    if ((window as any).arunakiDesktop?.readFile) {
-      const res = await (window as any).arunakiDesktop.readFile(filePath);
-      if (res?.error) {
-        toast.error(`Gagal membaca file: ${res.error}`);
+        // 3. Fallback binary card
+        setActiveFile({
+          path: filePath,
+          name: fileName,
+          content: "",
+        });
+        setIsEditing(false);
         return;
       }
+
+      if (isBinaryFile(fileName)) {
+        setActiveFile({
+          path: filePath,
+          name: fileName,
+          content: "",
+        });
+        setIsEditing(false);
+        return;
+      }
+
+      if ((window as any).arunakiDesktop?.readFile) {
+        const res = await (window as any).arunakiDesktop.readFile(filePath);
+        if (res?.error) {
+          toast.error(`Gagal membaca file: ${res.error}`);
+          return;
+        }
+        setActiveFile({
+          path: filePath,
+          name: fileName,
+          content: res.content || "",
+        });
+        setIsEditing(false);
+      }
+    } catch (err: any) {
+      console.error("Error opening file:", err);
       setActiveFile({
         path: filePath,
         name: fileName,
-        content: res.content || "",
+        content: "",
       });
       setIsEditing(false);
     }
