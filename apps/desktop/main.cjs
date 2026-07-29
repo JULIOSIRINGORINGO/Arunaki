@@ -204,6 +204,32 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('fs:parseExcel', async (_event, filePath) => {
+    try {
+      const xlsx = require('xlsx');
+      const workbook = xlsx.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+      return { success: true, sheetName, sheets: workbook.SheetNames, rows: data };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
+  ipcMain.handle('fs:writeExcel', async (_event, filePath, rows) => {
+    try {
+      const xlsx = require('xlsx');
+      const worksheet = xlsx.utils.aoa_to_sheet(rows);
+      const workbook = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+      xlsx.writeFile(workbook, filePath);
+      return { success: true };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {
