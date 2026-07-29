@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { DocumentGeneratorTool } from '../tools/services/document-generator.tool.js';
+import { AutoMemoryService } from '../memory/auto-memory.service.js';
 
 export interface CreateScheduleDto {
   workspaceId: string;
@@ -15,11 +16,14 @@ export interface CreateScheduleDto {
 export class CronService implements OnModuleInit {
   private readonly logger = new Logger(CronService.name);
   private timerHandle: NodeJS.Timeout | null = null;
+  private autoMemoryHandle: NodeJS.Timeout | null = null;
+  private autoMemoryIntervalMs = 5 * 60 * 1000; // 5 minutes
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly artifactService: ArtifactService,
     private readonly documentGenerator: DocumentGeneratorTool,
+    private readonly autoMemoryService: AutoMemoryService,
   ) {}
 
   onModuleInit() {
@@ -30,6 +34,16 @@ export class CronService implements OnModuleInit {
         this.logger.error(`Error in scheduler tick: ${err.message}`);
       });
     }, 60000);
+
+    // Start auto-memory distillation interval (every 5 minutes)
+    this.autoMemoryHandle = setInterval(() => {
+      this.runAutoMemoryDistillation().catch((err) => {
+        this.logger.error(`Error in auto-memory distillation: ${err.message}`);
+      });
+    }, this.autoMemoryIntervalMs);
+    this.logger.log(
+      `Auto-memory distillation scheduled every ${this.autoMemoryIntervalMs / 1000}s`,
+    );
   }
 
   /**
@@ -113,6 +127,46 @@ export class CronService implements OnModuleInit {
           `Failed to execute scheduled report "${job.name}": ${err.message}`,
         );
       }
+    }
+  }
+
+  /**
+   * Run auto-memory distillation across all workspaces.
+   * Called periodically (default: every 5 minutes).
+   */
+  private async runAutoMemoryDistillation(): Promise<void> {
+    try {
+      // Get all active workspaces
+      const workspaces = await this.prisma.workspace.findMany({
+        where: { status: 'ready' },
+        select: { id: true, businessType: true },
+      });
+
+      if (workspaces.length === 0) {
+        return;
+      }
+
+      this.logger.log(`Running auto-memory distillation for ${workspaces.length} workspaces...`);
+
+      for (const ws of workspaces) {
+        try {
+          const result = await this.autoMemoryService.checkAndDistill(
+            ws.id,
+            ws.businessType || 'generic',
+          );
+          if (result.distilled) {
+            this.logger.log(
+              `Auto-memory: distilled ${result.count} memories for workspace ${ws.id}`,
+            );
+          }
+        } catch (err: any) {
+          this.logger.warn(
+            `Auto-memory failed for workspace ${ws.id}: ${err.message}`,
+          );
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Auto-memory distillation sweep failed: ${err.message}`);
     }
   }
 

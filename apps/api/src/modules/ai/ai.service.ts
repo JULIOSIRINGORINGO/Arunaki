@@ -14,6 +14,7 @@ import {
   AutoPostureDetector,
   PostureDetectionResult,
 } from './auto-posture-detector.service.js';
+import { runWithModelFallback } from './model-fallback.js';
 
 export interface ToolCall {
   id: string;
@@ -302,174 +303,51 @@ export class AiService {
       body.tools = tools;
     }
 
-    // Pool state
-    const MAX_RETRIES_PER_PROVIDER = 3;
-    const MAX_ROTATIONS = 3;
-    let rotationCount = 0;
-    const triedProviders = new Set<string>([provider.id]);
-    const attempts: AiAttempt[] = [];
-    let lastError: string | undefined;
+    const result = await runWithModelFallback({
+      provider,
+      body,
+      makeRequest: (p, b) => this.makeRequest(p, b),
+      getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
+      classifyError: (statusCode, errorBody) =>
+        this.providerService.classifyError(statusCode, errorBody),
+      recordUsage: (id) => this.providerService.recordUsage(id),
+      recordError: (id, err) => this.providerService.recordError(id, err),
+      setCooldown: (id, seconds) => this.providerService.setCooldown(id, seconds),
+      logger: this.logger,
+    });
 
-    while (rotationCount <= MAX_ROTATIONS) {
-      let retryCount = 0;
-
-      // Retry loop for the same provider (5xx errors)
-      while (retryCount < MAX_RETRIES_PER_PROVIDER) {
-        try {
-          this.logger.log(
-            `[${provider.name}] Request attempt (retry=${retryCount}, rotation=${rotationCount})`,
-          );
-
-          const { response, statusCode } = await this.makeRequest(
-            provider,
-            body,
-          );
-
-          // Success
-          if (response.ok) {
-            // Record successful usage
-            if (provider.id !== 'env-fallback') {
-              await this.providerService
-                .recordUsage(provider.id)
-                .catch(() => {});
-            }
-
-            const data = await response.json();
-            const choice = data.choices?.[0];
-
-            if (!choice) {
-              throw new Error('No response from AI');
-            }
-
-            let content = choice.message?.content || '';
-            content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-            if (!content && choice.message?.tool_calls?.length === 0) {
-              content =
-                'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
-            }
-
-            attempts.push({
-              providerId: provider.id,
-              providerName: provider.name,
-              retry: retryCount,
-              rotation: rotationCount,
-              outcome: 'success',
-              statusCode,
-            });
-            return {
-              content,
-              model: data.model,
-              toolCalls: choice.message?.tool_calls || [],
-              usage: {
-                promptTokens: data.usage?.prompt_tokens || 0,
-                completionTokens: data.usage?.completion_tokens || 0,
-                totalTokens: data.usage?.total_tokens || 0,
-              },
-              attempts,
-            };
-          }
-
-          // Error — classify it
-          const errorBody = await response.text();
-          const classified = this.providerService.classifyError(
-            statusCode,
-            errorBody,
-          );
-
-          this.logger.warn(
-            `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
-          );
-          attempts.push({
-            providerId: provider.id,
-            providerName: provider.name,
-            retry: retryCount,
-            rotation: rotationCount,
-            outcome: classified.action,
-            statusCode,
-            error: classified.message,
-          });
-
-          // Record error for this provider
-          if (provider.id !== 'env-fallback') {
-            await this.providerService
-              .recordError(
-                provider.id,
-                `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
-              )
-              .catch(() => {});
-          }
-
-          if (classified.action === 'retry') {
-            // 5xx: retry same provider with backoff
-            retryCount++;
-            if (retryCount < MAX_RETRIES_PER_PROVIDER) {
-              await this.jitteredBackoff(retryCount);
-              continue;
-            }
-            // Exhausted retries for this provider → try rotation
-            break;
-          }
-
-          if (classified.action === 'rotate') {
-            // 429/402/401/403/503: rotate to next provider
-            if (provider.id !== 'env-fallback' && classified.cooldownSeconds) {
-              await this.providerService
-                .setCooldown(provider.id, classified.cooldownSeconds)
-                .catch(() => {});
-            }
-            break; // Exit retry loop, enter rotation
-          }
-
-          if (classified.action === 'fatal') {
-            throw new Error(classified.message);
-          }
-        } catch (err: any) {
-          // Network/timeout error
-          lastError = err.message;
-          this.logger.warn(`[${provider.name}] Network error: ${err.message}`);
-          attempts.push({
-            providerId: provider.id,
-            providerName: provider.name,
-            retry: retryCount,
-            rotation: rotationCount,
-            outcome: 'retry',
-            error: err.message,
-          });
-          retryCount++;
-          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
-            await this.jitteredBackoff(retryCount);
-            continue;
-          }
-          break;
-        }
-      }
-
-      // Try rotation — get next available provider
-      rotationCount++;
-      if (rotationCount > MAX_ROTATIONS) {
-        break;
-      }
-
-      const nextProvider = await this.providerService.getNextAvailable(
-        provider.id,
-      );
-      if (!nextProvider) {
-        this.logger.warn('No more available providers for rotation');
-        break;
-      }
-
-      this.logger.log(
-        `Rotating: ${provider.name} → ${nextProvider.name} (rotation ${rotationCount}/${MAX_ROTATIONS})`,
-      );
-      triedProviders.add(nextProvider.id);
-      provider = nextProvider;
+    const choice = result.data.choices?.[0];
+    if (!choice) {
+      throw new Error('No response from AI');
     }
 
-    // All providers exhausted
-    throw new Error(
-      `All providers exhausted after ${rotationCount} rotations. Last error: ${lastError || 'unknown'}`,
-    );
+    let content = choice.message?.content || '';
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    if (!content && choice.message?.tool_calls?.length === 0) {
+      content =
+        'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
+    }
+
+    return {
+      content,
+      model: result.model,
+      toolCalls: choice.message?.tool_calls || [],
+      usage: {
+        promptTokens: result.data.usage?.prompt_tokens || 0,
+        completionTokens: result.data.usage?.completion_tokens || 0,
+        totalTokens: result.data.usage?.total_tokens || 0,
+      },
+      attempts: result.attempts.map((a) => ({
+        providerId: a.providerId,
+        providerName: a.providerName,
+        retry: a.retry,
+        rotation: a.rotation,
+        outcome: a.outcome,
+        statusCode: a.statusCode,
+        error: a.error,
+      })),
+    };
   }
 
   /**

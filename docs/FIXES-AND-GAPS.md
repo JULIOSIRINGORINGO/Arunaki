@@ -59,9 +59,9 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 | C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | ✅ Done — merged ke chat/ + hapus ai/ orphan |
 | D | Session State Events | 7 | 🟡 P1 AUDIT | ✅ Done — session-state-events.service.ts + SQLite table + lifecycle wiring |
 | E | Harness Registry | 5 | 🟡 P1 PLUGIN | ✅ Done — harness-registry.service.ts + lifecycle hooks + agent-runner wiring |
-| F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | Fallback logic inline di AiService |
-| G | Heartbeat Tidak Jalan | 29 | 🟢 P2 INTEGRASI | `registerWorkspace()` gak dipanggil |
-| H | Auto Memory Bukan Cron | 25 | 🟢 P3 REAKTIF | Hanya berjalan pas chatting |
+| F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | ✅ Done — model-fallback.ts extracted with runWithModelFallback() factory function |
+| G | Heartbeat Tidak Jalan | 29 | 🟢 P2 INTEGRASI | ✅ Done — registerWorkspace() dipanggil dari WorkspaceService.connectFolder() |
+| H | Auto Memory Bukan Cron | 25 | 🟢 P3 REAKTIF | ✅ Done — CronService menjalankan auto-memory distillation setiap 5 menit |
 | I | LLM Stream Inline | 9d | 🟢 P3 MODULAR | Belum async generator reusable |
 
 ---

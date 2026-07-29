@@ -7,6 +7,7 @@ import { WorkspaceRepository } from './workspace.repository.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SourceService } from '../source/source.service.js';
+import { WorkspaceHeartbeatService, FileSnapshot } from '../ai/workspace-heartbeat.service.js';
 
 @Injectable()
 export class WorkspaceService extends BaseService<Workspace> {
@@ -15,6 +16,7 @@ export class WorkspaceService extends BaseService<Workspace> {
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly sourceService: SourceService,
+    private readonly heartbeatService: WorkspaceHeartbeatService,
   ) {
     super(repository);
   }
@@ -82,7 +84,36 @@ export class WorkspaceService extends BaseService<Workspace> {
 
     await this.updateStatus(id, 'ready');
 
+    // Register workspace for heartbeat monitoring
+    this.heartbeatService.registerWorkspace(id, async () => {
+      const snapshots: FileSnapshot[] = [];
+      await this.collectFileSnapshots(folderPath, snapshots);
+      return snapshots;
+    });
+
     return { success: true, sourceId: source.id };
+  }
+
+  private async collectFileSnapshots(dir: string, result: FileSnapshot[], relativePath = ''): Promise<void> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') ||
+          ['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', '.idea', '.vscode', 'coverage', '.cache'].includes(entry.name)) {
+        continue;
+      }
+      const fullPath = path.join(dir, entry.name);
+      const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await this.collectFileSnapshots(fullPath, result, relPath);
+      } else if (entry.isFile()) {
+        try {
+          const stats = await fs.stat(fullPath);
+          result.push({ path: relPath, sizeBytes: stats.size, lastModified: stats.mtimeMs });
+        } catch {
+          // skip unreadable
+        }
+      }
+    }
   }
 
   private async scanFolder(workspaceId: string, sourceId: string, folderPath: string) {

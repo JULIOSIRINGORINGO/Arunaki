@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 28 Complete ✅ — Phase 5 Fix Architecture Mistakes  
-**Next:** Phase 6 — Blueprint P2 Medium (runWithModelFallback, workspace heartbeat)  
+**Phase:** Phase 7 Complete ✅ — Blueprint P3 Low (Auto Memory Cron, LLM Stream Inline)  
+**Next:** Phase 8 — Blueprint P3 Low continued (LLM Stream Inline)  
 
 ---
 
@@ -656,17 +656,40 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-### 27.1 Fix tiktoken Encoding (#5) ✅
-- [x] `getEncodingForModel()` — tries exact model match first, falls back to cl100k_base (gpt-4)
-- [x] Constructor uses `getEncodingForModel(this.fallbackModel)` instead of hardcoded `'gpt-4'`
+## Phase 6: Blueprint P2 Medium ✅ DONE
 
-### 27.2 Disable LLM Summary in Compression (#7) ✅
-- [x] Changed `useLlmSummary: true` → `false` in AiService constructor
-- [x] Saves one LLM call per compression event
+**Goal:** Extract runWithModelFallback factory, wire workspace heartbeat into connectFolder().
 
-### 27.3 Fix StreamingContextScrubber Regex (#8) ✅
-- [x] Removed Chinese characters (记忆, 偏好, 偏好设置, 技能) from LEAK_PATTERNS
-- [x] Added Indonesian terms (memori, ingatan, catatan, kemampuan, keahlian)
+### F. runWithModelFallback (Layer 2) ✅
+- [x] Created `apps/api/src/modules/ai/model-fallback.ts` — exported `runWithModelFallback()` function with FallbackOptions interface
+- [x] Encapsulates retry (3x per provider, exponential backoff + jitter) + rotation (3 max, getNextAvailable)
+- [x] Accepts callbacks: makeRequest, getNextProvider, classifyError, recordUsage, recordError, setCooldown
+- [x] Refactored `AiService.chat()` to delegate fallback logic to runWithModelFallback
+- [x] Clean response parsing remains in AiService (content extraction, think-tag stripping, tool_calls extraction)
+
+### G. Wire Workspace Heartbeat (Layer 29) ✅
+- [x] Injected `WorkspaceHeartbeatService` into `WorkspaceService`
+- [x] Added `collectFileSnapshots()` private method — recursive file walker returning `FileSnapshot[]`
+- [x] Called `heartbeatService.registerWorkspace(id, callback)` at end of `connectFolder()`
+- [x] Excludes hidden files, node_modules, .git, build artifacts (same exclusions as scanFolder)
+
+---
+
+## Phase 7: Blueprint P3 Low ✅ DONE
+
+**Goal:** Auto Memory Cron (Layer 25) + LLM Stream Inline (Layer 9d).
+
+### H. Auto Memory Cron (Layer 25) ✅
+- [x] Injected `AutoMemoryService` into `CronService`
+- [x] Added `runAutoMemoryDistillation()` private method
+- [x] Queries all `ready` workspaces and calls `checkAndDistill(workspaceId, businessType)`
+- [x] Scheduled interval: every 5 minutes (300,000ms) via `setInterval` in `onModuleInit`
+- [x] Logs distillation results per workspace
+- [x] MemoryModule forwarded in CronModule imports (forwardRef)
+
+### I. LLM Stream Inline (Layer 9d) ⏳
+- [ ] Extract async generator for streaming response chunks
+- [ ] Reusable across chat, agent-runner, workspace-runner
 
 ---
 
