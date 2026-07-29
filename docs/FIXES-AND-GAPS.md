@@ -194,19 +194,27 @@ private readonly LEAK_PATTERNS: RegExp[] = [
 ];
 ```
 
-### 9. Approval Gate Returns Instead of Waiting ✅ SELESAI
+### 9. Approval Gate Returns Instead of Waiting ✅ SELESAI (sejak Phase 23)
+
+### 10. Separate Planning Call ✅ Already removed (no planner call exists)
+
+### 11. Separate Self-Evaluation Call ✅
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
-**Lines:** 567-599
 
-**Problem:** When a mutating tool requires approval, the function `return`s immediately, stopping the entire agent loop. It should wait for user response.
+**Fix applied:** Removed `selfEvaluationService.evaluate()` + `evaluateAndRetry()` block. Agent's natural flow handles quality via tool verification.
 
-**Solution Implemented:**
-- Queue-based approval: `waitForApproval()` returns Promise
-- `resolveApproval()` resolves the Promise when user approves/rejects
-- New `POST /workspaces/:id/agent/approve` endpoint
-- Frontend calls approve endpoint instead of re-creating stream
-- Removed `pausedRuns` Map and `resumeFromApproval()` method
+### 12. ModelRouter Adds Unnecessary System Prompt Bloat ✅
+
+**File:** `apps/api/src/modules/ai/model-router.service.ts`
+
+**Fix applied:** Removed model-specific switch/case blocks (claude, openai, gemini, etc.), kept only universal rules.
+
+### 13. AutoPostureDetector Runs on Every Chat Request ✅ (already implemented)
+
+**File:** `apps/api/src/modules/ai/ai.service.ts`
+
+**Fix applied:** Already had `mode === 'chat'` guard — workspace mode already skips posture detection.
     messages.push({
       role: 'tool',
       tool_call_id: toolCall.id,
@@ -219,9 +227,9 @@ private readonly LEAK_PATTERNS: RegExp[] = [
 
 ---
 
-## ARCHITECTURALLY WRONG Gaps (Design mistakes)
+## ✅ ARCHITECTURALLY WRONG Gaps (Design mistakes — fixed)
 
-### 10. Planning is Separate LLM Call, Not Integrated
+### 10. Planning is Separate LLM Call, Not Integrated ✅
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
 **Lines:** 204-228
@@ -241,7 +249,7 @@ private readonly LEAK_PATTERNS: RegExp[] = [
 // No separate planning LLM call needed
 ```
 
-### 11. Self-Evaluation is Separate LLM Call, Not Integrated
+### 11. Self-Evaluation is Separate LLM Call, Not Integrated ✅
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
 **Lines:** 253-294
@@ -260,7 +268,7 @@ private readonly LEAK_PATTERNS: RegExp[] = [
 // This is what the `prepareNextTurn` hook would do
 ```
 
-### 12. ModelRouter Adds Unnecessary System Prompt Bloat
+### 12. ModelRouter Adds Unnecessary System Prompt Bloat ✅
 
 **File:** `apps/api/src/modules/ai/model-router.service.ts`
 **Lines:** 320-387
@@ -282,7 +290,7 @@ getSystemPromptAdditions(modelName: string): string {
 }
 ```
 
-### 13. AutoPostureDetector Runs on Every Chat Request
+### 13. AutoPostureDetector Runs on Every Chat Request ✅
 
 **File:** `apps/api/src/modules/ai/ai.service.ts`
 **Lines:** 461-469
@@ -484,11 +492,11 @@ E. **Implement Harness Registry (Layer 5)** — Plugin system untuk agent harnes
 7. **Disable LLM summary in compression (#7)** ✅ — `useLlmSummary: false`
 8. **Fix StreamingContextScrubber patterns (#8)** ✅ — Chinese → Indonesian terms (memori, ingatan, kemampuan, keahlian)
 
-### Phase 5: Fix Architecture Mistakes
-9. Remove separate planning call (#10)
-10. Remove separate self-evaluation (#11)
-11. Simplify ModelRouter additions (#12)
-12. Skip posture detection in workspace mode (#13)
+### ✅ Phase 5: Fix Architecture Mistakes — **SELESAI**
+9. ~~Remove separate planning call (#10)~~ ✅ Already removed (no `plannerService.generatePlan()` call exists)
+10. **Remove separate self-evaluation (#11)** ✅ — Removed `evaluate()` + `evaluateAndRetry()` block from workspace-runner.service.ts
+11. **Simplify ModelRouter additions (#12)** ✅ — Removed model-specific switch/case, kept only universal rules
+12. ~~Skip posture detection in workspace mode (#13)~~ ✅ Already implemented (`getSystemPrompt` has `mode === 'chat'` guard)
 
 ### Phase 6: Blueprint P2 Medium
 F. **Extract runWithModelFallback (Layer 2)** — Factory function explicit dari AiService.inline

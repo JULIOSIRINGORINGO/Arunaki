@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 27 Complete ✅ — Phase 4 Fix Broken Functionality  
-**Next:** Phase 5 — Fix Architecture Mistakes (planning, self-eval, model router, posture)  
+**Phase:** Phase 28 Complete ✅ — Phase 5 Fix Architecture Mistakes  
+**Next:** Phase 6 — Blueprint P2 Medium (runWithModelFallback, workspace heartbeat)  
 
 ---
 
@@ -627,6 +627,34 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 ## Phase 27: Fix Broken Functionality ✅ DONE
 
 **Goal:** Fix 3 operational issues — tiktoken, LLM summary, scrubber regex.
+
+### 27.1 Fix tiktoken Encoding (#5) ✅
+- [x] `getEncodingForModel()` — tries exact model match first, falls back to cl100k_base (gpt-4)
+- [x] Constructor uses `getEncodingForModel(this.fallbackModel)` instead of hardcoded `'gpt-4'`
+
+### 27.2 Disable LLM Summary in Compression (#7) ✅
+- [x] Changed `useLlmSummary: true` → `false` in AiService constructor
+- [x] Saves one LLM call per compression event
+
+### 27.3 Fix StreamingContextScrubber Regex (#8) ✅
+- [x] Removed Chinese characters (记忆, 偏好, 偏好设置, 技能) from LEAK_PATTERNS
+- [x] Added Indonesian terms (memori, ingatan, catatan, kemampuan, keahlian)
+
+---
+
+## Phase 28: Fix Architecture Mistakes ✅ DONE
+
+**Goal:** Remove wasteful separate LLM calls — self-evaluation, simplify model router.
+
+### 28.1 Remove Separate Self-Evaluation Call (#11) ✅
+- [x] Removed `selfEvaluationService.evaluate()` + `evaluateAndRetry()` block from workspace-runner.service.ts
+- [x] Removed `SelfEvaluationService` import and injection
+
+### 28.2 Simplify ModelRouter Additions (#12) ✅
+- [x] Removed model-specific switch/case blocks (claude, openai, gemini, llama, mistral, deepseek, qwen)
+- [x] Kept only universal rules (no system prompt leak, no fabricated calls, wait for results)
+
+---
 
 ### 27.1 Fix tiktoken Encoding (#5) ✅
 - [x] `getEncodingForModel()` — tries exact model match first, falls back to cl100k_base (gpt-4)

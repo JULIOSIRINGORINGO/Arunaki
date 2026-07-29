@@ -4,7 +4,6 @@ import {
   ContextManager,
   StreamingContextScrubber,
 } from '../ai/context-manager.js';
-import { SelfEvaluationService } from '../ai/self-evaluation.service.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
@@ -115,7 +114,6 @@ export class WorkspaceRunnerService {
 
   constructor(
     private readonly aiService: AiService,
-    private readonly selfEvaluationService: SelfEvaluationService,
     private readonly toolRegistryService: ToolRegistryService,
     private readonly documentReaderTool: DocumentReaderTool,
     private readonly storageService: StorageService,
@@ -631,48 +629,6 @@ export class WorkspaceRunnerService {
 
           if (aiResponse.toolCalls.length === 0) {
             finalContent = this.scrubber.scrub(aiResponse.content);
-
-            // Self-evaluation: verify output against goal
-            try {
-              const evaluation = await this.selfEvaluationService.evaluate(
-                safeGoal,
-                finalContent,
-                workspaceContext,
-              );
-
-              if (!evaluation.passed) {
-                this.logger.log(
-                  `Self-evaluation: score ${evaluation.score}/10, issues: ${evaluation.issues.join('; ')}`,
-                );
-
-                const retryResult =
-                  await this.selfEvaluationService.evaluateAndRetry(
-                    safeGoal,
-                    finalContent,
-                    async (feedback) => {
-                      messages.push({
-                        role: 'user',
-                        content: `Self-evaluation feedback: ${feedback}\n\nPlease fix the issues and provide a better output.`,
-                      });
-                      const retryResponse = await this.aiService.chat(
-                        messages,
-                        tools,
-                      );
-                      return this.scrubber.scrub(retryResponse.content);
-                    },
-                    workspaceContext,
-                  );
-
-                finalContent = retryResult.output;
-                this.logger.log(
-                  `Self-evaluation retry: final score ${retryResult.evaluation.score}/10`,
-                );
-              }
-            } catch (err: any) {
-              this.logger.warn(
-                `Self-evaluation failed (non-critical): ${err.message}`,
-              );
-            }
 
             onEvent({ type: 'text_delta', data: finalContent });
             reachedMaxRounds = false;
