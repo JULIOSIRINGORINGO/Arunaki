@@ -191,7 +191,12 @@ export class WorkspaceToolsService {
 
     const targetPath = path.join(workspace.rootPath, filename);
 
-    switch (format) {
+    const ext = (filename.split('.').pop() || 'txt').toLowerCase();
+    const validFormats = ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'];
+    const inferredFormat = validFormats.includes(ext) ? (ext as any) : 'txt';
+    const targetFormat = format && validFormats.includes(format) ? format : inferredFormat;
+
+    switch (targetFormat) {
       case 'xlsx':
         return this.documentGeneratorTool.generateExcel(
           'Data',
