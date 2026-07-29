@@ -319,7 +319,11 @@ export class AiService {
 
     const choice = result.data.choices?.[0];
     if (!choice) {
-      throw new Error('No response from AI');
+      const providerError = result.data?.error?.message || result.data?.message;
+      const errorDetail = providerError
+        ? `: ${providerError}`
+        : ' (Penyedia AI memberikan respon kosong / server model gratis sedang sibuk)';
+      throw new Error(`Gagal menerima respon dari AI${errorDetail}`);
     }
 
     let content = choice.message?.content || '';

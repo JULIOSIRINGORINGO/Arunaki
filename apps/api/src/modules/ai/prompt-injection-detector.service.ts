@@ -107,17 +107,17 @@ export class PromptInjectionDetector {
 
     // Jailbreak patterns
     {
-      pattern: /DAN|do\s+anything\s+now/i,
+      pattern: /\bDAN\b|do\s+anything\s+now/i,
       severity: 'high',
       type: 'jailbreak',
     },
     {
-      pattern: /STAN|strive\s+to\s+avoid\s+norms/i,
+      pattern: /\bSTAN\b|strive\s+to\s+avoid\s+norms/i,
       severity: 'high',
       type: 'jailbreak',
     },
     {
-      pattern: /MONG|model\s+output\s+no\s+guardrails/i,
+      pattern: /\bMONG\b|model\s+output\s+no\s+guardrails/i,
       severity: 'high',
       type: 'jailbreak',
     },
