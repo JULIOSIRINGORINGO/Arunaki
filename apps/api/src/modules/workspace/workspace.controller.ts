@@ -161,6 +161,48 @@ export class WorkspaceController {
     }
   }
 
+  @Post(':id/agent/stream/generator')
+  async streamAgentGenerator(
+    @Param('id') id: string,
+    @Body()
+    body: { goal: string; historyMessages?: any[] },
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    try {
+      const workspace = await this.workspaceService.findById(id);
+      if (!workspace) {
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', data: { message: 'Workspace not found' } })}\n\n`,
+        );
+        return res.end();
+      }
+
+      const generator = this.workspaceRunnerService.runWorkspaceAgentGenerator({
+        workspaceId: id,
+        userGoal: body.goal,
+        historyMessages: body.historyMessages || [
+          { role: 'user', content: body.goal },
+        ],
+      });
+
+      for await (const event of generator) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+
+      res.end();
+    } catch (error) {
+      res.write(
+        `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
+      );
+      res.end();
+    }
+  }
+
   @Post(':id/agent/abort')
   async abortAgent(@Param('id') id: string) {
     try {

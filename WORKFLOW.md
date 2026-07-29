@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 23 Complete ✅ — Session Admission Queue, Idempotent Transcript, Input Provenance  
-**Next:** Phase 24 — Agent Loop Hardening (Dual-Loop, Abort, SelfHealing, PromptInjection)
+**Phase:** Phase 24 Complete ✅ — Agent Loop Hardening, Execution Phases, Streaming Modernization  
+**Next:** TBD
 
 ---
 
@@ -540,17 +540,47 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-## Phase 24: Agent Loop Hardening 🔴 CRITICAL (ACTIVE)
+## Phase 24: Agent Loop Hardening 🔴 CRITICAL ✅ DONE
 
 **Goal:** Fix critical architecture gaps — dual-loop agent with steering/abort, SelfHealing integration, PromptInjection scanning.
 
-**Source:** `docs/FIXES-AND-GAPS.md`
+**Source:** `docs/FIXES-AND-GAPS.md`  
+**Commit:** `2410c16`
 
-| Task | Effort | Status |
-|------|--------|--------|
-| Dual-loop agent (steering + abort/cancel) | 16h | 🔴 |
-| SelfHealingService integration | 6h | 🔴 |
-| PromptInjectionDetector integration | 4h | 🔴 |
+### 24.1 Dual-Loop Agent (Steering + Abort/Cancel) ✅
+- [x] Outer loop (max 5 turns): checks steering/follow-up queue between turns
+- [x] Inner loop (max 25 rounds): tool execution + AI chat
+- [x] `steeringQueue` Map with `addSteeringInput()` method
+- [x] `POST /workspaces/:id/agent/steer` endpoint
+- [x] Context refresh every 5 rounds via `prepareNextTurn()`
+
+### 24.2 SelfHealingService Integration ✅
+- [x] Read-only tools wrapped with `executeWithHealing()` (was mutating-only)
+- [x] Sequential execution with fallback per tool
+
+### 24.3 PromptInjectionDetector Integration ✅
+- [x] High severity → blocks execution with error
+- [x] Low/medium → sanitizes and continues
+
+### 24.4 Execution Phase Tracking ✅
+- [x] `ExecutionPhase` type: scanning → planning → reading → analyzing → generating → completed
+- [x] `phase_changed` SSE events with Indonesian labels
+- [x] Phase transitions at key points in agent loop
+
+### 24.5 Streaming Modernization ✅
+- [x] `runWorkspaceAgentGenerator()` async generator method
+- [x] `POST /workspaces/:id/agent/stream/generator` endpoint
+- [x] Backward compatible — callback-based method preserved
+
+---
+
+## AUTONOMY_ROADMAP Phase 7 ✅ DONE
+
+**Goal:** Advanced Intelligence — self-evaluation, skill self-improve, smart recall.
+- Self-evaluation ✅ — Already implemented in `self-evaluation.service.ts`
+- Skill self-improve ✅ — Already implemented, wired via `BackgroundReviewService`
+- Smart memory recall ✅ — Already implemented in `smart-recall.service.ts`
+- Background curator ⏳ — Deferred
 
 ---
 

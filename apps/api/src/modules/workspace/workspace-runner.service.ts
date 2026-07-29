@@ -29,12 +29,21 @@ export type AgentState =
   | 'completed'
   | 'failed';
 
+export type ExecutionPhase =
+  | 'scanning'
+  | 'planning'
+  | 'reading'
+  | 'analyzing'
+  | 'generating'
+  | 'completed';
+
 export interface WorkspaceRunState {
   workspaceId: string;
   state: AgentState;
   goal: string;
   startedAt: Date;
   round: number;
+  currentPhase: ExecutionPhase;
   abortController: AbortController;
 }
 
@@ -56,6 +65,7 @@ export interface WorkspaceStreamEvent {
     | 'tool_done'
     | 'text_delta'
     | 'state_changed'
+    | 'phase_changed'
     | 'steering'
     | 'done'
     | 'error';
@@ -185,6 +195,45 @@ export class WorkspaceRunnerService {
   }
 
   /**
+   * Run workspace agent stream as an async generator.
+   * Modern streaming pattern — alternative to callback-based onEvent.
+   */
+  async *runWorkspaceAgentGenerator(
+    params: WorkspaceRunParams,
+  ): AsyncGenerator<WorkspaceStreamEvent> {
+    const eventQueue: WorkspaceStreamEvent[] = [];
+    let resolveEvent: ((value: WorkspaceStreamEvent | null) => void) | null = null;
+    let done = false;
+
+    const onEvent = (event: WorkspaceStreamEvent) => {
+      if (resolveEvent) {
+        const resolve = resolveEvent;
+        resolveEvent = null;
+        resolve(event);
+      } else {
+        eventQueue.push(event);
+      }
+    };
+
+    const runPromise = this.runWorkspaceAgentStream(params, onEvent)
+      .then(() => { done = true; if (resolveEvent) resolveEvent(null); })
+      .catch((err) => { done = true; if (resolveEvent) resolveEvent(null); });
+
+    while (!done) {
+      if (eventQueue.length > 0) {
+        yield eventQueue.shift()!;
+      } else {
+        const event = await new Promise<WorkspaceStreamEvent | null>((resolve) => {
+          resolveEvent = resolve;
+        });
+        if (event) yield event;
+      }
+    }
+
+    await runPromise;
+  }
+
+  /**
    * Enqueue a request when workspace is busy.
    * Returns a Promise that resolves when it's the request's turn.
    */
@@ -268,6 +317,36 @@ export class WorkspaceRunnerService {
         this.logger.warn(`Context refresh failed (non-critical): ${err.message}`);
       }
     }
+  }
+
+  /** Map phase names to user-facing Indonesian labels */
+  private readonly PHASE_LABELS: Record<ExecutionPhase, string> = {
+    scanning: 'Memindai dokumen workspace...',
+    planning: 'Menyusun rencana analisis...',
+    reading: 'Membaca dan memahami file...',
+    analyzing: 'Menganalisis data...',
+    generating: 'Menghasilkan output...',
+    completed: 'Selesai',
+  };
+
+  private setPhase(
+    runState: WorkspaceRunState,
+    phase: ExecutionPhase,
+    onEvent: (event: WorkspaceStreamEvent) => void,
+  ): void {
+    const oldPhase = runState.currentPhase;
+    runState.currentPhase = phase;
+    this.logger.debug(`Phase: ${oldPhase} → ${phase} (workspace: ${runState.workspaceId})`);
+    onEvent({
+      type: 'phase_changed',
+      data: {
+        workspaceId: runState.workspaceId,
+        from: oldPhase,
+        to: phase,
+        label: this.PHASE_LABELS[phase],
+        round: runState.round,
+      },
+    });
   }
 
   private setState(
@@ -400,12 +479,14 @@ export class WorkspaceRunnerService {
       goal: userGoal,
       startedAt: new Date(),
       round: 0,
+      currentPhase: 'scanning',
       abortController,
     };
     this.activeRuns.set(workspaceId, runState);
 
     try {
       this.setState(runState, 'running', onEvent);
+      this.setPhase(runState, 'scanning', onEvent);
       onEvent({
         type: 'thinking',
         data: 'Memindai dokumen workspace dan menyusun rencana otonom...',
@@ -524,6 +605,8 @@ export class WorkspaceRunnerService {
       const MAX_ROUNDS = 25;
       let reachedMaxRounds = true;
 
+      this.setPhase(runState, 'planning', onEvent);
+
       // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
       for (let turn = 0; turn < 5; turn++) {
         // Inner loop: tool execution
@@ -541,6 +624,8 @@ export class WorkspaceRunnerService {
 
           // Context refresh every 5 rounds
           await this.prepareNextTurn(workspaceId, messages, runState.round);
+
+          if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
           const aiResponse = await this.aiService.chat(messages, tools);
 
@@ -602,6 +687,16 @@ export class WorkspaceRunnerService {
             content: aiResponse.content || null,
             tool_calls: aiResponse.toolCalls,
           });
+
+          // Update phase based on tool types
+          const hasReadTools = aiResponse.toolCalls.some((tc) =>
+            ['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(tc.function.name),
+          );
+          const hasWriteTools = aiResponse.toolCalls.some((tc) =>
+            ['write_workspace_file', 'generate_export', 'draft_communication'].includes(tc.function.name),
+          );
+          if (hasReadTools) this.setPhase(runState, 'reading', onEvent);
+          if (hasWriteTools) this.setPhase(runState, 'generating', onEvent);
 
           // Separate mutating vs read-only tools for parallel execution
           const mutatingTools = [
@@ -860,6 +955,7 @@ export class WorkspaceRunnerService {
         },
       });
 
+      this.setPhase(runState, 'completed', onEvent);
       this.setState(runState, 'completed', onEvent);
 
       // Persist analysis result to workspace (cached across sessions)
