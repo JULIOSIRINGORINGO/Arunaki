@@ -369,7 +369,7 @@ async recall(goal: string, workspaceId: string): Promise<string> {
 
 **Fix:** Lower priority — skills work for now. Focus on agent loop fixes first.
 
-### 17. Domain Config Has 15 Templates But No Usage
+### 17. Domain Config Has 15 Templates But No Usage ✅
 
 **File:** `apps/api/src/modules/domain/domain-registry.service.ts`
 
@@ -378,14 +378,18 @@ async recall(goal: string, workspaceId: string): Promise<string> {
 - Templates not injected into agent context
 - No domain-specific tool filtering
 
-**Fix:**
+**Fix applied:**
 ```typescript
 // In buildWorkspaceContext():
-const domainConfig = await this.domainRegistry.getDomain(workspace.businessType);
-if (domainConfig) {
-  context += `\n\n=== DOMAIN CONFIG ===\n${JSON.stringify(domainConfig, null, 2)}\n=== END DOMAIN ===`;
-}
+const domainConfig = this.domainRegistry.get(businessType);
+const domainTerminology = this.domainRegistry.getTerminology(businessType);
+const domainUnits = this.domainRegistry.getUnits(businessType, 'length') || [];
+const domainTemplates = this.domainRegistry.getTemplateCategories(businessType);
+const domainCommunication = this.domainRegistry.getCommunication(businessType);
+// Inject into context...
 ```
+
+**Status:** ✅ Done — DomainConfig now injected into `WorkspaceRunnerService.buildWorkspaceContext()` (terminology, units, templates, communication style).
 
 ### 18. Cron Scheduler Exists But Not Connected
 

@@ -19,6 +19,7 @@ import { SelfHealingService } from '../ai/self-healing.service.js';
 import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+import { DomainRegistryService } from '../domain/domain.registry.service.js';
 
 export type AgentState =
   | 'idle'
@@ -128,6 +129,7 @@ export class WorkspaceRunnerService {
     private readonly promptInjectionDetector: PromptInjectionDetector,
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
+    private readonly domainRegistry: DomainRegistryService,
   ) {}
 
   /** Get current state of a workspace run */
@@ -415,6 +417,13 @@ export class WorkspaceRunnerService {
         // fallback to generic
       }
 
+      // Get domain config for this business type
+      const domainConfig = this.domainRegistry.get(businessType);
+      const domainTerminology = this.domainRegistry.getTerminology(businessType);
+      const domainUnits = this.domainRegistry.getUnits(businessType, 'length') || [];
+      const domainTemplates = this.domainRegistry.getTemplateCategories(businessType);
+      const domainCommunication = this.domainRegistry.getCommunication(businessType);
+
       // Auto-inject relevant skills
       const skillsContext = await this.skillService.getSkillsContext(
         businessType,
@@ -439,6 +448,43 @@ export class WorkspaceRunnerService {
 
       if (memoryContext) {
         context += `\n\n=== MEMORY SNAPSHOT ===\n${memoryContext}\n=== END MEMORY ===`;
+      }
+
+      // Inject domain config (OpenClaw Layer 28)
+      const domainLines: string[] = [];
+      if (Object.keys(domainTerminology).length > 0) {
+        domainLines.push(
+          `=== DOMAIN TERMINOLOGY (${businessType}) ===`,
+          Object.entries(domainTerminology)
+            .map(([k, v]) => `- ${k}: ${v}`)
+            .join('\n'),
+          `=== END DOMAIN TERMINOLOGY ===`,
+        );
+      }
+      if (domainUnits.length > 0) {
+        domainLines.push(
+          `=== DOMAIN UNITS (${businessType}) ===`,
+          domainUnits.map((u) => `- ${u.name} (base: ${u.toBase}${u.label ? `, ${u.label}` : ''}`).join('\n'),
+          `=== END DOMAIN UNITS ===`,
+        );
+      }
+      if (domainTemplates.length > 0) {
+        domainLines.push(
+          `=== DOMAIN TEMPLATES (${businessType}) ===`,
+          domainTemplates.map((t) => `- ${t.name}${t.columns ? ` [${t.columns.join(', ')}]` : ''}`).join('\n'),
+          `=== END DOMAIN TEMPLATES ===`,
+        );
+      }
+      if (domainCommunication?.greetingTemplate) {
+        domainLines.push(
+          `=== DOMAIN COMMUNICATION (${businessType}) ===`,
+          `Greeting: ${domainCommunication.greetingTemplate}`,
+          `Formality: ${domainCommunication.formality}`,
+          `=== END DOMAIN COMMUNICATION ===`,
+        );
+      }
+      if (domainLines.length > 0) {
+        context += `\n\n${domainLines.join('\n\n')}`;
       }
 
       return context;
