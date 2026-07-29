@@ -101,9 +101,9 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 
 ---
 
-## BROKEN Gaps (Functionality broken)
+## ✅ BROKEN Gaps (Functionality fixed)
 
-### 5. tiktoken Hardcoded to gpt-4
+### 5. tiktoken Hardcoded to gpt-4 ✅
 
 **File:** `apps/api/src/modules/ai/ai.service.ts`
 **Line:** 77
@@ -126,7 +126,7 @@ private getEncodingForModel(model: string): ReturnType<typeof encoding_for_model
 }
 ```
 
-### 6. Context Compression Runs on Every chat() Call
+### 6. Context Compression Runs on Every chat() Call ✅
 
 **File:** `apps/api/src/modules/ai/ai.service.ts`
 **Line:** 252
@@ -149,7 +149,7 @@ async compress(messages: ChatMessage[]): Promise<ChatMessage[]> {
 }
 ```
 
-### 7. LLM Summary in Compression Wastes Tokens
+### 7. LLM Summary in Compression Wastes Tokens ✅
 
 **File:** `apps/api/src/modules/ai/context-manager.ts`
 **Lines:** 353-407
@@ -170,7 +170,7 @@ this.contextManager = new ContextManager(
 );
 ```
 
-### 8. StreamingContextScrubber Regex Issues
+### 8. StreamingContextScrubber Regex Issues ✅
 
 **File:** `apps/api/src/modules/ai/context-manager.ts`
 **Lines:** 494-510
@@ -478,11 +478,11 @@ E. **Implement Harness Registry (Layer 5)** — Plugin system untuk agent harnes
    - ✅ Wired into `agent-runner.service.ts` (sync + stream, tool start/result hooks)
    - ✅ Registered in `chat.module.ts`
 
-### Phase 4: Fix Broken Functionality
-5. Fix tiktoken encoding (#5)
-6. Add early exit to compression (#6)
-7. Disable LLM summary in compression (#7)
-8. Fix StreamingContextScrubber patterns (#8)
+### ✅ Phase 4: Fix Broken Functionality — **SELESAI**
+5. **Fix tiktoken encoding (#5)** ✅ — `getEncodingForModel()` tries exact match, falls back to cl100k_base
+6. ~~Add early exit to compression (#6)~~ ✅ Already implemented (`compress()` checks threshold before running)
+7. **Disable LLM summary in compression (#7)** ✅ — `useLlmSummary: false`
+8. **Fix StreamingContextScrubber patterns (#8)** ✅ — Chinese → Indonesian terms (memori, ingatan, kemampuan, keahlian)
 
 ### Phase 5: Fix Architecture Mistakes
 9. Remove separate planning call (#10)

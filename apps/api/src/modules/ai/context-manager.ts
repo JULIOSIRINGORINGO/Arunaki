@@ -493,8 +493,7 @@ export class StreamingContextScrubber {
   // Patterns that indicate internal context leaking
   private readonly LEAK_PATTERNS: RegExp[] = [
     // Memory blocks
-    /^## Context.*记忆[\s\S]*?(?=^## |\z)/m,
-    /^## User.*记忆[\s\S]*?(?=^## |\z)/m,
+    /^## Context[\s\S]*?(?=^## |\z)/m,
     /^## MEMORY[\s\S]*?(?=^## |\z)/m,
     // Skills blocks
     /^## Relevant Skills[\s\S]*?(?=^## |\z)/m,
@@ -504,9 +503,9 @@ export class StreamingContextScrubber {
     // System prompt fragments
     /^\[SYSTEM\]/m,
     /^<!--.*-->/m,
-    // Memory/skill references in text
-    /(?:memory|记忆|偏好|偏好设置)(?:\s*:|\s*#)/gi,
-    /(?:skill|技能)(?:\s*:|\s*#)/gi,
+    // Memory/skill references in Indonesian
+    /(?:memory|memori|ingatan|catatan)(?:\s*:|\s*#)/gi,
+    /(?:skill|kemampuan|keahlian)(?:\s*:|\s*#)/gi,
   ];
 
   /**

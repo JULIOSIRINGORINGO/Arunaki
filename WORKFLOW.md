@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 26 Complete ✅ — Blueprint P1 High: Session State Events + Harness Registry  
-**Next:** Phase 4 — Fix Broken Functionality (tiktoken, compression, scrubber)  
+**Phase:** Phase 27 Complete ✅ — Phase 4 Fix Broken Functionality  
+**Next:** Phase 5 — Fix Architecture Mistakes (planning, self-eval, model router, posture)  
 
 ---
 
@@ -621,6 +621,24 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Wired into `agent-runner.service.ts` — both sync and stream paths
 - [x] Tool execution hooks: onToolStart before, onToolResult after each tool call
 - [x] Registered in `chat.module.ts`
+
+---
+
+## Phase 27: Fix Broken Functionality ✅ DONE
+
+**Goal:** Fix 3 operational issues — tiktoken, LLM summary, scrubber regex.
+
+### 27.1 Fix tiktoken Encoding (#5) ✅
+- [x] `getEncodingForModel()` — tries exact model match first, falls back to cl100k_base (gpt-4)
+- [x] Constructor uses `getEncodingForModel(this.fallbackModel)` instead of hardcoded `'gpt-4'`
+
+### 27.2 Disable LLM Summary in Compression (#7) ✅
+- [x] Changed `useLlmSummary: true` → `false` in AiService constructor
+- [x] Saves one LLM call per compression event
+
+### 27.3 Fix StreamingContextScrubber Regex (#8) ✅
+- [x] Removed Chinese characters (记忆, 偏好, 偏好设置, 技能) from LEAK_PATTERNS
+- [x] Added Indonesian terms (memori, ingatan, catatan, kemampuan, keahlian)
 
 ---
 

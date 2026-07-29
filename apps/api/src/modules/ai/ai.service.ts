@@ -87,7 +87,7 @@ export class AiService {
     this.fallbackModel =
       this.config.get<string>('AI_MODEL') ||
       'nvidia/nemotron-3-ultra-550b-a55b:free';
-    this.enc = encoding_for_model('gpt-4');
+    this.enc = this.getEncodingForModel(this.fallbackModel);
 
     // Initialize services
     this.contextManager = new ContextManager(
@@ -95,7 +95,7 @@ export class AiService {
         contextLength: 128000,
         threshold: 0.5,
         targetRatio: 0.2,
-        useLlmSummary: true,
+        useLlmSummary: false,
       },
       { chat: this.chat.bind(this) },
     );
@@ -195,6 +195,20 @@ export class AiService {
     const delay = Math.floor(Math.random() * maxDelay) + baseMs;
     this.logger.log(`Backoff: waiting ${delay}ms (attempt ${attempt})`);
     await new Promise((r) => setTimeout(r, delay));
+  }
+
+  /**
+   * Get appropriate tiktoken encoding for a model.
+   * Defaults to cl100k_base (compatible with GPT-4, most modern models).
+   */
+  private getEncodingForModel(model: string): ReturnType<typeof encoding_for_model> {
+    try {
+      // Try exact model match first
+      return encoding_for_model(model as any);
+    } catch {
+      // Fallback: use cl100k_base for most modern models
+      return encoding_for_model('gpt-4');
+    }
   }
 
   /**
