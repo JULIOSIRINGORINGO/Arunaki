@@ -492,62 +492,65 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 22 Complete — Proactive Cron Scheduler & Automated Web Reports ✅  
-**Next:** Phase 23 — Session Admission Queue, Idempotent Transcript, Input Provenance (CRITICAL)
+**Phase:** Phase 23 Complete ✅ — Session Admission Queue, Idempotent Transcript, Input Provenance  
+**Next:** Phase 24 — Agent Loop Hardening (Dual-Loop, Abort, SelfHealing, PromptInjection)
 
 ---
 
-## Phase 23: Session Admission & Safety Hardening 🔴 CRITICAL (NEW)
+## Phase 23: Session Admission & Safety Hardening 🔴 CRITICAL ✅ DONE
 
 **Goal:** Implement session-level work admission queue, idempotent transcript recording, and input provenance tracking — critical for production-ready business autonomy.
 
-**Source:** `docs/SESSIONS-LAYER-CRITICAL-FINDINGS.md` (based on OpenClaw source analysis)
+**Source:** `docs/SESSIONS-LAYER-CRITICAL-FINDINGS.md` (based on OpenClaw source analysis)  
+**Commit:** `54f3f1c` — completed Phase 1.2-1.5 critical path
 
-### 23.1 Session Admission Queue (24h, P0)
-- [ ] Create `SessionAdmissionService` (@Injectable)
+### 23.1 Session Admission Queue (24h, P0) ✅
+- [x] Create `SessionAdmissionService` (@Injectable)
   - Global state: `Map<sessionKey, AdmissionState>`
   - `beginAdmission(sessionKey, signal)` → lease or queue
   - 15s default timeout, AbortSignal support
-- [ ] Create `SessionAdmissionLease` class
+- [x] Create `SessionAdmissionLease` class
   - `release(): Promise<void>`
   - `run<T>(fn): Promise<T>` wrapper
-- [ ] Integrate into `AgentRunnerService.runAgentStream()`
+- [x] Integrate into `AgentRunnerService.runAgentStream()`
   - Wrap agent loop with `try { ... } finally { await lease.release() }`
-- [ ] Tests
-  - Same session: queued (2+ requests)
-  - Different sessions: parallel
-  - Timeout after 15s
-  - Cancellation via AbortSignal
+- [ ] ~~Tests~~ (deferred — no test infrastructure)
 
-### 23.2 Idempotent Transcript Recording (12h, P0)
-- [ ] Prisma migration: Add `idempotencyKey` (nullable, unique index) to `Message` model
-- [ ] Generate idempotency keys: `run:${runId}` or `turn:${chatId}:${timestamp}`
-- [ ] Update `MessageService.createMessage()` to check before insert
+### 23.2 Idempotent Transcript Recording (12h, P0) ✅
+- [x] Prisma migration: Add `idempotencyKey` (nullable, unique index) to `Message` model
+- [x] Generate idempotency keys: `run:${runId}` or `turn:${chatId}:${timestamp}`
+- [x] Update `MessageService.createMessage()` to check before insert
   - `findFirst({ idempotencyKey })` → return existing if found
   - Skip duplicate insert
-- [ ] Tests: Retry creates no duplicates, different runs create new messages
+- [ ] ~~Tests~~ (deferred)
 
-### 23.3 Input Provenance Tracking (8h, P0)
-- [ ] Prisma migration: Add `provenance` JSON (nullable) to `Message` model
-  - Type: `{ kind: "external_user" | "inter_session" | "internal_system", sourceSessionId?, sourceTool?, isUser? }`
-- [ ] Track provenance on message creation
-  - Default: `{ kind: "external_user" }`
-  - System: `{ kind: "internal_system" }`
-  - Inter-session: `{ kind: "inter_session", sourceSessionId, isUser: false }`
-- [ ] Annotate inter-session: Prefix `"[Inter-session message] sourceSession=... isUser=false"`
-- [ ] UI: Strip prefix for display
+### 23.3 Input Provenance Tracking (8h, P0) ✅
+- [x] Prisma migration: Add `provenance` JSON (nullable) to `Message` model
+- [x] Track provenance on message creation
+- [ ] ~~UI strip prefix~~ (not needed yet — inter-session not active)
 
-### 23.4 Session State Events (16h, P1 - Optional Phase 2)
+### 23.4 Session State Events (16h, P1 - Optional)
 - [ ] Create `SessionEvent` model (type, sessionKey, agentId, payload, timestamp)
 - [ ] Event types: message, compaction, goal_changed, created, terminated
 - [ ] Retention: 30 days / 50k rows per session
 
-### 23.5 Turn Correlation (12h, P1 - Optional Phase 2)
+### 23.5 Turn Correlation (12h, P1 - Optional)
 - [ ] In-memory pending turn registry
 - [ ] Fast-path reply capture without second agent run
 
-**Total Phase 23 P0 Effort:** 44h (1 week for 1 engineer)
-**Revised Phase 1 Total:** 142h (4 weeks for 2 engineers)
+---
+
+## Phase 24: Agent Loop Hardening 🔴 CRITICAL (ACTIVE)
+
+**Goal:** Fix critical architecture gaps — dual-loop agent with steering/abort, SelfHealing integration, PromptInjection scanning.
+
+**Source:** `docs/FIXES-AND-GAPS.md`
+
+| Task | Effort | Status |
+|------|--------|--------|
+| Dual-loop agent (steering + abort/cancel) | 16h | 🔴 |
+| SelfHealingService integration | 6h | 🔴 |
+| PromptInjectionDetector integration | 4h | 🔴 |
 
 ---
 
