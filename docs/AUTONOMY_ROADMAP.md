@@ -117,7 +117,7 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 
 ---
 
-## Phase 7: Advanced Intelligence ✅ DONE (Commit 2410c16)
+## Phase 7: Advanced Intelligence ✅ SELESAI (Partial — 1 item ⏳)
 
 **Goal:** Agent yang benar-benar otonom — bisa rencanakan, eksekusi, dan evaluasi sendiri.
 
@@ -130,6 +130,9 @@ Tahapan Arunaki dari sekarang sampai bisa kerja otonom di workspace.
 | **Self-Healing (auto error recovery + tool fallback)** | ✅ |
 | **Workspace Heartbeat (proactive file change detection)** | ✅ |
 | **Auto Memory Distillation (compress + deduplicate memories)** | ✅ |
+| Dual-loop agent (steering + context refresh + abort) | ✅ (Phase 24) |
+| Execution phase tracking | ✅ (Phase 24) |
+| Prompt injection detection | ✅ (Phase 24) |
 | Self-evaluation (agent cek hasilnya sendiri) | ✅ |
 | Skill self-improve (skill update otomatis) | ✅ |
 | Smart memory recall (prefetch konteks relevan) | ✅ |
@@ -171,7 +174,7 @@ Phase 5: Context Compression ✅
     ↓
 Phase 6: Approval Gate ✅
     ↓
-Phase 7: Advanced Intelligence ⏳  ← SEKARANG
+Phase 7: Advanced Intelligence ✅ (Partial)  ← SEKARANG
     ↓
 Phase 8: Business Intelligence ⏳
     ↓

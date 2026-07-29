@@ -46,6 +46,20 @@ Always follow these documents, in this priority order:
 
 WORKFLOW.md is the **execution guide** — it defines what to build and in what order. Always check WORKFLOW.md first before starting any task to know the current phase and what's been completed.
 
+**Recommended reading order** untuk developer baru:
+```
+1. AGENTS.md (file ini)         → Mission, rules, workflow
+2. VISION.md                    → What & why
+3. docs/BOUNDARIES.md           → What's allowed / forbidden
+4. docs/OpenClaw-Blueprint.md   → Architecture reference (32 layer)
+5. docs/FIXES-AND-GAPS.md       → Gap tracker (apa yg perlu dikerjakan)
+6. WORKFLOW.md                  → Current phase + completed items
+7. docs/ARCHITECTURE.md         → Module boundaries
+8. Source code                  → Implementasi spesifik
+```
+
+`docs/FIXES-AND-GAPS.md` adalah **gap tracker utama** — semua gap dari audit 32-layer dicatat di sini dengan prioritas (P0/P1/P2). Setiap kali mau ngerjain sesuatu, cek dulu file ini.
+
 If a task requires something not covered by any document, do not invent a convention. Stop and ask, or propose an option and wait for confirmation.
 
 ---
@@ -88,7 +102,9 @@ If a requested task appears to require violating any of the above, treat it as a
 6. Run relevant tests (Vitest for unit/integration, Playwright for E2E where applicable). Add tests for new behavior when none exist.
 7. Verify the result against the original Goal, not just against "no errors."
 8. **Update WORKFLOW.md** — Mark completed items with ✅ and move to next phase.
-9. Update documentation if the change affects behavior, architecture, or public interfaces described in existing docs.
+9. **Update documentation** — Update file .md yang terdampak oleh perubahan (arsitektur, behavior, public interfaces).
+10. **Write dev-log** — Buat file di `docs/dev-logs/dev-log-YYYY-MM-DD-[task-name].md`.
+11. **Commit & push** — Setelah selesai 1 pekerjaan, selalu commit dan push ke GitHub. Jangan menumpuk banyak perubahan dalam 1 commit.
 
 ---
 
@@ -102,6 +118,49 @@ If a requested task appears to require violating any of the above, treat it as a
 - Keep changes within the requested scope. If you notice unrelated issues, report them separately instead of fixing them inline.
 - Never delete or overwrite existing data-affecting code paths without the Approval Gate step above.
 - Do not skip phases in WORKFLOW.md. Complete current phase before moving to next.
+
+---
+
+---
+
+## Multi-Agent Coordination
+
+Proyek ini dikerjakan oleh beberapa AI agent. Untuk menghindari double pengerjaan:
+
+### Checklist System
+- Setiap agent **WAJIB cek** `WORKFLOW.md` + `FIXES-AND-GAPS.md` sebelum mulai.
+- Item yang sudah di ✅ dianggap **selesai**. Jangan dikerjakan ulang.
+- Item yang belum di-✅ boleh dikerjakan. Tapi segera update checklist setelah mulai:
+
+### Protocol
+1. **Before start**: Baca `WORKFLOW.md` + `FIXES-AND-GAPS.md` — pastikan item belum di-✅
+2. **When starting**: Update checklist ke `🔄 [your_initials]` (tanda sedang dikerjakan)
+3. **When done**: Update ke `✅` dan tambah dev-log di `docs/dev-logs/`
+4. **Dev-log wajib**: Buat file `docs/dev-logs/dev-log-YYYY-MM-DD-[task-name].md` berisi:
+   - Apa yang dikerjakan
+   - File apa yang diubah
+   - Test yang dijalankan
+   - Status (pass/fail)
+
+### Template Dev-Log
+```markdown
+# Dev Log — [Task Name]
+
+**Date:** YYYY-MM-DD
+**Author:** [AI Agent Name]
+
+## What
+[Deskripsi singkat]
+
+## Files Changed
+- `path/to/file.ts` — apa yang diubah
+
+## Tests
+- `npx vitest run ...` — ✅ passed / ❌ failed
+
+## Notes
+[Issues, blockers, follow-ups]
+```
 
 ---
 

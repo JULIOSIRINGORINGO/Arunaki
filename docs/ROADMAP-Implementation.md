@@ -1,25 +1,33 @@
 ﻿# IMPLEMENTATION ROADMAP - Arunaki (REVISED)
 
 **Date:** 2026-07-28 (Updated after Sessions analysis)
-**Status:** Ready for Sprint Planning (REVISED)
+**Last Revised:** 2026-07-29 — Comprehensive 32-layer audit selesai. Lihat `FIXES-AND-GAPS.md` untuk gap tracker terkini.
+**Status:** Phase 23-24 ✅, fokus ke Blueprint P0 gaps
 **Vision Alignment:** ✅ All 6 principles covered
 
 ---
 
-## EXECUTIVE SUMMARY (REVISED)
+## EXECUTIVE SUMMARY (REVISED 2026-07-29)
 
-Arunaki architecture is **75% aligned** with OpenClaw patterns. Core systems (AI, tools, memory, skills) are well-implemented. Critical gaps:
+**Progress:** Phase 23-24 menyelesaikan 6 gap besar — Context Engine (proyeksi + refresh), Dual-loop agent, Execution phase, Streaming modernisasi, SelfHealing & PromptInjection integration.
 
-1. 🔴 **Context Engine** — Currently 4-phase compression; target is pluggable assembly system
-2. 🔴 **Model Fallback** — Provider pool works; needs explicit fallback chain integration
-3. 🔴 **Session Admission Queue** — CRITICAL: Workspace-level only; needs session-level work admission (prevents corruption)
-4. 🔴 **Idempotent Transcript** — CRITICAL: No idempotency keys; retry creates duplicates
-5. 🔴 **Input Provenance** — CRITICAL: No provenance tracking; security vulnerability
-6. 🟡 **Streaming** — SSE works; target is async generator pattern
+Arunaki architecture sekarang **~85% aligned** dengan OpenClaw patterns. Core systems (AI, tools, memory, skills, context engine, agent loop) sudah solid.
 
-**MAJOR UPDATE (2026-07-28):** Sessions layer analysis revealed **3 NEW CRITICAL GAPS** (admission queue, idempotent transcript, input provenance). Phase 1 effort increased from 118h → **162h** (4 weeks).
+**Gap Tersisa (dari audit 32-layer):**
 
-**Timeline:** Phase 1 (CRITICAL) 4 weeks | Phase 2 (modernization) 4-6 weeks | Phase 3 (optimization) optional
+| Prioritas | Gap | Layer | Status |
+|-----------|-----|-------|--------|
+| 🔴 P0 | Input Provenance | 9 | ❌ Belum ada |
+| 🔴 P0 | User Turn Transcript | 8 | ❌ Belum ada |
+| 🔴 P0 | Session Admission Duplikasi | 6 | ⚠️ 2 file beda API |
+| 🟡 P1 | Session State Events | 7 | ❌ Belum ada |
+| 🟡 P1 | Harness Registry | 5 | ❌ Belum ada |
+| 🟢 P2 | runWithModelFallback | 2 | 🔄 Inline di AiService |
+| 🟢 P2 | Heartbeat wiring | 29 | 🔄 No-op |
+| 🟢 P3 | Auto Memory cron | 25 | 🔄 Reaktif saja |
+| 🟢 P3 | LLM Stream modular | 9d | 🔄 Inline |
+
+Detail lengkap → `FIXES-AND-GAPS.md`
 
 ---
 

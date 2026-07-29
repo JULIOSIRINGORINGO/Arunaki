@@ -1,8 +1,9 @@
 ﻿# VERIFICATION CHECKLIST - OpenClaw Blueprint & Roadmap
 
 **Generated:** 2026-07-28
-**Status:** Ready for Team Review
-**Documents:** OpenClaw-Blueprint.md (20.49 KB) + ROADMAP-Implementation.md (13.76 KB)
+**Updated:** 2026-07-29 — Comprehensive 32-layer audit + Phase 24 completion
+**Status:** ACTIVE — Lihat `FIXES-AND-GAPS.md` untuk gap terkini
+**Documents:** OpenClaw-Blueprint.md (20.49 KB) + FIXES-AND-GAPS.md (gap tracker terkini)
 
 ---
 
@@ -13,7 +14,8 @@
 - [x] Master Table with status + relevance for Arunaki
 - [x] Layer-by-layer details (tujuan, struktur, fungsi, dependency, workflow)
 - [x] Fit-gap analysis vs Vision & PRD
-- [x] Critical gaps identified (3 🔴 + 2 🟡)
+- [x] Critical gaps identified (3 🔴 + 2 🟡) → **UPDATE:** 5 🔴/🟡 baru dari audit 32-layer (lihat FIXES-AND-GAPS.md)
+- [x] Comprehensive 32-layer code audit completed (2026-07-29) — setiap layer dicek ke file aktual
 
 ### Document Quality
 - [x] All exported functions listed
@@ -74,12 +76,12 @@
 - Gap: None (working well)
 - Status: ✅ SKIP
 
-### Context Management ✅ → 🔴 GAP
-- Current: 4-phase compression (linear pipeline)
-- Blueprint: Target is pluggable assembly (fresh per turn)
-- Gap: Context stale over 25 rounds
-- Status: 🔄 IMPLEMENT WITH MODIFICATION (Phase 1)
-- **Impact:** HIGH - affects conversation quality
+### Context Management ✅ → ✅ DONE
+- Current: ContextEngine registry (6 files) + projection assembly + quarantine + refresh per 5 rounds
+- Blueprint: Pluggable assembly fresh per turn
+- Gap: ✅ **RESOLVED** di Phase 24 — context refresh setiap 5 rounds via dual-loop prepareNextTurn()
+- Status: ✅ DONE
+- **Impact:** RESOLVED
 
 ### Tool System ✅
 - Current: 32 tools, registry, adapter pattern
@@ -87,25 +89,25 @@
 - Gap: None (implementation is solid)
 - Status: ✅ SKIP
 
-### Memory System ✅
-- Current: CRUD + FTS5 search + auto-learn + smart recall
+### Memory System ✅ → 🟡 Gap (Partial)
+- Current: CRUD + FTS5 search + auto-learn + smart recall + auto-distillation (reaktif)
 - Blueprint: Matches OpenClaw memory patterns
-- Gap: Auto-distillation not yet implemented
-- Status: ✅ SKIP (core), 📌 OPTIONAL (distillation in Phase 3)
+- Gap: Auto-distillation ada (reaktif via agent-runner) tapi belum cron-triggered
+- Status: 🟡 Ditracking di FIXES-AND-GAPS.md sebagai Gap H (P3)
 
-### Provider Management ✅ → 🔴 GAP
-- Current: Credential pool with retry/rotation via AiService
+### Provider Management ✅ → 🟡 GAP (Partial)
+- Current: Credential pool with retry/rotation via AiService (inline)
 - Blueprint: Target is explicit ModelFallback chain
-- Gap: Not leveraging runWithModelFallback() pattern
-- Status: ✅ IMPLEMENT (Phase 1)
-- **Impact:** MEDIUM - improves error recovery clarity
+- Gap: runWithModelFallback() belum diekstrak — fallback logic masih inline
+- Status: 🟡 Ditracking di FIXES-AND-GAPS.md sebagai Gap F (P2)
+- **Impact:** LOW — provider rotation works secara fungsional
 
-### Session Management ✅ → 🟡 GAP
-- Current: Workspace-level queue-based admission
+### Session Management ✅ → 🔴 GAP (Duplikasi)
+- Current: **DUA** implementasi — `ai/session-admission.service.ts` (beginAdmission) dan `chat/session-admission.service.ts` (acquireAdmission)
 - Blueprint: Target is session-level work admission lock
-- Gap: Limited to workspace scope, no recovery checkpointing
-- Status: 🔄 IMPLEMENT WITH MODIFICATION (Phase 1)
-- **Impact:** LOW-MEDIUM - prevents rare race conditions
+- Gap: API tidak kompatibel, tidak ada handoff token, tidak ada AsyncLocalStorage
+- Status: 🔴 Ditracking di FIXES-AND-GAPS.md sebagai Gap C (P0)
+- **Impact:** MEDIUM — potensi race condition + inkonsistensi
 
 ### Skills System ✅
 - Current: Domain-scoped, soft-delete, self-improve
@@ -115,44 +117,44 @@
 
 ---
 
-## DECISION MATRIX: Phase 1 vs Phase 2 vs Optional
+## DECISION MATRIX: Gap Priorities (2026-07-29 Update)
 
-### MUST DO (Phase 1, Critical Path)
-| Task | Why | Effort | Timeline |
-|------|-----|--------|----------|
-| Context Engine Migration | High impact, enables future optimization | 64h | Week 1-2 |
-| Model Fallback Integration | Aligns with OpenClaw, clarifies error handling | 34h | Week 2-3 |
-| Session Admission Enhancement | Prevents race conditions, future-proofs | 20h | Week 3 |
+### 🔴 MUST DO NOW (Blueprint P0 Security & Idempotency)
+| Task | Why | Layer |
+|------|-----|-------|
+| **Input Provenance** | Security — cross-session rawan prompt injection | Layer 9 |
+| **User Turn Transcript** | Idempotency — recording bisa duplikasi/korupsi | Layer 8 |
+| **Session Admission Merge** | Konsistensi — 2 API beda, potensi race condition | Layer 6 |
 
-### SHOULD DO (Phase 2, Modernization)
-| Task | Why | Effort | Timeline |
-|------|-----|--------|----------|
-| Execution Phase Tracking | Observability, better debugging | 18h | Week 4-5 |
-| Streaming Modernization | Type-safe, provider-agnostic | 24h | Week 5-6 |
+### 🟡 SHOULD DO NEXT (Blueprint P1 High)
+| Task | Why | Layer |
+|------|-----|-------|
+| Session State Events | Audit trail + version tracking | Layer 7 |
+| Harness Registry | Plugin system untuk agent extensions | Layer 5 |
 
-### NICE TO HAVE (Phase 3, Optional)
-| Task | Why | Effort | Timeline |
-|------|-----|--------|----------|
-| Auto Memory Distillation | Prevents memory bloat | 28h | Week 7-8 |
-| Workspace Heartbeat | Proactive file monitoring | 20h | Week 7-8 |
-| Projections Engine | Long-term optimization | 60-80h | Post-launch |
+### 🟢 COMPLETED (Phase 23-24)
+| Task | Status | Phase |
+|------|--------|-------|
+| Context Engine Migration | ✅ DONE (6 files, projection, quarantine) | Phase 24 |
+| Execution Phase Tracking | ✅ DONE (ExecutionPhase + SSE events) | Phase 24 |
+| Streaming Modernization | ✅ DONE (AsyncGenerator + generator endpoint) | Phase 24 |
+| Dual-Loop Agent | ✅ DONE (outer/inner loop, steering, abort) | Phase 24 |
+| SelfHealing Integration | ✅ DONE (read-only tools sequential fallback) | Phase 24 |
+| PromptInjection Integration | ✅ DONE (high=block, low/medium=sanitize) | Phase 24 |
+| Session Admission (Phase 23) | ✅ DONE (tapi duplikasi, perlu merge) | Phase 23 |
 
 ---
 
-## RECOMMENDATION: START WITH PHASE 1
+## RECOMMENDATION: TACKLE BLUEPRINT P0 GAPS
 
-**Rationale:**
-1. ✅ All 3 critical gaps addressed
-2. ✅ 118h effort is realistic for 2 engineers in 3 weeks
-3. ✅ High-impact items first (context engine, model fallback)
-4. ✅ Foundation for Phase 2 improvements
-5. ✅ Maintains schedule without overcommit
+**Status Update:** Phase 23-24 sudah menyelesaikan 6 gap besar (dual-loop, context refresh, execution phase, streaming, self-healing, prompt injection). Saat ini fokus ke **3 gap P0 sisa dari Blueprint**.
 
-**Recommended Timeline:**
-- **Week 1-2:** Context Engine (64h) — 2 engineers
-- **Week 2-3:** Model Fallback (34h) — 1 engineer (parallel)
-- **Week 3:** Session Admission (20h) — 1 engineer (parallel)
-- **Week 4-6:** Phase 2 (optional) — if time permits
+**Prioritas Sekarang:**
+1. 🔴 **Input Provenance (Layer 9)** — Security critical, cross-session safety
+2. 🔴 **User Turn Transcript (Layer 8)** — Idempotent recording
+3. 🔴 **Session Admission Merge (Layer 6)** — 2 file → 1 API konsisten
+4. 🟡 Session State Events (Layer 7) — Audit trail
+5. 🟡 Harness Registry (Layer 5) — Plugin system
 
 ---
 

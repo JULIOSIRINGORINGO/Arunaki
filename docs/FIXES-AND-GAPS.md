@@ -4,128 +4,100 @@
 
 This document lists every identified gap between OpenClaw and Arunaki, categorized by severity, with specific fix instructions and file references.
 
+**Terakhir diperbarui:** 2026-07-29 — Hasil audit komprehensif 32-layer OpenClaw vs kode aktual.
+
+## BLUEPRINT AUDIT — 32 Layer OpenClaw vs Realita
+
+Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` dengan implementasi aktual di `apps/api/src/`.
+
+| Layer | Nama | Blueprint | Realita | Keterangan |
+|-------|------|-----------|---------|------------|
+| 1 | Agent Command | 🔄 Web only | ❌ BELUM | Entry orchestration inline di controller |
+| 2 | Embedded Agent Entry | ✅ Core | ❌ BELUM | `runWithModelFallback()` tidak ada |
+| 3 | CLI Backend | ❌ CLI | ✅ SKIP | Tidak relevan |
+| 4 | Execution Phase | 📌 Opsional | ✅ DONE | Phase tracking sudah di Phase 24 |
+| 5 | **Harness Registry** | 🔄 Simplified | ❌ MISSING | Plugin system belum ada |
+| 6 | **Session Admission** | ✅ P0 | ⚠️ DUPLIKASI | 2 file: `ai/` vs `chat/` beda API |
+| 7 | **Session State Events** | 🔄 P1 | ❌ MISSING | Durable event log belum ada |
+| 8 | **User Turn Transcript** | ✅ P0 | ❌ KRITIS | Idempotent transcript belum ada |
+| 9 | **Input Provenance** | ✅ P0 Security | ❌ KRITIS | Cross-session markers belum ada |
+| 10 | Upstream Monitor | ❌ Multi | ✅ SKIP | |
+| 11 | Turn Correlation | 📌 P1 | ❌ BELUM | Fast-path reply capture |
+| 12 | Session Key Normalize | ❌ Multi | ✅ SKIP | |
+| 8d | Context Engine Registry | 🔄 Target | ✅ LENGKAP | 6 file, projection, quarantine |
+| 9d | LLM Stream | ✅ Core | ⚠️ INLINE | Belum diekstrak jadi modul |
+| 10d | Provider Registry | ✅ Core | ⚠️ INLINE | Belum model catalog |
+| 11d | Gateway Handler | ✅ Core | ⚠️ INLINE | Terikat ke AiService |
+| 12d | AI Service | ✅ Skip | ✅ LENGKAP | 593 lines, provider pool |
+| 13d | Context Manager | ✅ Skip | ✅ LENGKAP | 4-phase compression |
+| 14d | Model Router | ✅ Skip | ✅ LENGKAP | Model family detection |
+| 15d | Auto Posture | ✅ Skip | ✅ LENGKAP | 6 postur detection |
+| 16d | Self Evaluation | ✅ Skip | ✅ LENGKAP | Quality scoring 1-10 |
+| 17d | Self Healing | ✅ Skip | ✅ LENGKAP | 3 recovery strategies |
+| 18d | Prompt Injection | ✅ Skip | ✅ LENGKAP | Severity-based scanning |
+| 19d | Tool Registry | ✅ Skip | ✅ LENGKAP | 27+ tools |
+| 20d | Tool Adapter | ✅ Skip | ✅ LENGKAP | Wrapper pattern |
+| 21d | Memory Service | ✅ Skip | ✅ LENGKAP | CRUD + importance scoring |
+| 22d | Session Search | ✅ Skip | ✅ LENGKAP | FTS5 + triggers |
+| 23d | Background Review | ✅ Skip | ✅ LENGKAP | Auto-extract patterns |
+| 24d | Smart Recall | ✅ Skip | ✅ LENGKAP | Keyword + memory search |
+| 25d | Auto Memory | 📌 Opsional | ⚠️ REAKTIF | Hanya reaktif, belum cron |
+| 26d | Provider Service | ✅ Skip | ✅ LENGKAP | Credential pool |
+| 27d | Skills System | ✅ Skip | ✅ LENGKAP | Self-improve included |
+| 28d | Domain Registry | ✅ Skip | ✅ LENGKAP | 15 config JSON |
+| 29d | Workspace Service | ✅ Skip | ✅ LENGKAP | Plus runner + init |
+| 30d | Chat History | ✅ Skip | ✅ LENGKAP | Pin, title, scoping |
+| 31d | Agent Runner | ✅ Skip | ✅ LENGKAP | Multi-round SSE |
+| 32d | Artifact Service | ✅ Skip | ✅ LENGKAP | 10+ types |
+
+### Ringkasan Gap Signifikan dari Blueprint
+
+| # | Gap | Layer | Prioritas | Dampak |
+|---|-----|-------|-----------|--------|
+| A | Input Provenance | 9 | 🔴 P0 SECURITY | Cross-session rawan prompt injection |
+| B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | Recording bisa duplikasi/korupsi |
+| C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | 2 API beda, potensi race condition |
+| D | Session State Events | 7 | 🟡 P1 AUDIT | Tidak ada audit trail session |
+| E | Harness Registry | 5 | 🟡 P1 PLUGIN | Plugin system belum ada |
+| F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | Fallback logic inline di AiService |
+| G | Heartbeat Tidak Jalan | 29 | 🟢 P2 INTEGRASI | `registerWorkspace()` gak dipanggil |
+| H | Auto Memory Bukan Cron | 25 | 🟢 P3 REAKTIF | Hanya berjalan pas chatting |
+| I | LLM Stream Inline | 9d | 🟢 P3 MODULAR | Belum async generator reusable |
+
 ---
 
 ## CRITICAL Gaps (Architecture-breaking)
 
-### 1. Agent Loop is Single-Loop, Not Dual-Loop
+### 1. Agent Loop is Single-Loop, Not Dual-Loop ✅ DONE (Phase 24)
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
-**Lines:** 246-506
 
-**Problem:** Arunaki's `runWorkspaceAgentStream()` is a single `for` loop (25 rounds max). OpenClaw has an outer loop (steering/follow-up) and an inner loop (tool calls). This means:
-- No mid-run user input (steering)
-- No abort/cancel capability
-- No context refresh between turns
-- No lifecycle state management
+**Status:** ✅ **SELESAI — Dual-loop + steering queue + abort controller + execution phases sudah diimplementasikan di Phase 24.**
 
-**Fix:**
-```typescript
-// Add state machine
-enum AgentState { IDLE, RUNNING, STEERING, ABORTING, COMPLETED, FAILED }
+- Outer loop (steering, max 5 turns) + inner loop (tool calls, max 25 rounds)
+- `steeringQueue` Map with `addSteeringInput()` + `POST /workspaces/:id/agent/steer`
+- AbortController per workspace
+- `ExecutionPhase` tracking dengan SSE events (`phase_changed`)
+- Context refresh setiap 5 rounds via `prepareNextTurn()`
 
-// Add abort controller per workspace
-private activeRuns = new Map<string, AbortController>();
-
-// Add steering queue
-private steeringQueue = new Map<string, SteeringInput>();
-
-// Restructure loop:
-async runWorkspaceAgentStream(params, onEvent) {
-  const abortController = new AbortController();
-  this.activeRuns.set(params.workspaceId, abortController);
-
-  try {
-    // Outer loop: steering/follow-up
-    while (!abortController.signal.aborted) {
-      // Inner loop: tool calls
-      while (true) {
-        const response = await this.aiService.chat(messages, tools);
-        if (response.toolCalls.length === 0) break;
-        // Execute tools...
-      }
-
-      // Check for steering input
-      const steering = this.steeringQueue.get(params.workspaceId);
-      if (steering) {
-        messages.push({ role: 'user', content: steering.message });
-        this.steeringQueue.delete(params.workspaceId);
-        continue; // Re-enter inner loop
-      }
-
-      break; // No steering, exit outer loop
-    }
-  } finally {
-    this.activeRuns.delete(params.workspaceId);
-  }
-}
-```
-
-### 2. Context Built Once, Never Refreshed
+### 2. Context Built Once, Never Refreshed ✅ DONE (Phase 24)
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
-**Line:** 161
 
-**Problem:** `buildWorkspaceContext()` is called ONCE at the start. After 25 rounds of tool execution, files may have changed, new memories created, but context remains stale.
+**Status:** ✅ **SELESAI — `prepareNextTurn()` merefresh context setiap 5 rounds, dijalankan oleh inner loop dual-loop agent.**
 
-**Fix:**
-```typescript
-// Add prepareNextTurn hook
-async prepareNextTurn(workspaceId: string, messages: ChatMessage[], round: number) {
-  // Refresh context every 5 rounds or on significant changes
-  if (round % 5 === 0) {
-    const freshContext = await this.buildWorkspaceContext(workspaceId);
-    messages.push({
-      role: 'system',
-      content: `[Context Refreshed - Round ${round}]\n${freshContext}`,
-    });
-  }
-}
-```
-
-### 3. No Abort/Cancel Capability
+### 3. No Abort/Cancel Capability ✅ DONE (Phase 24)
 
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
-**Lines:** 246-506
 
-**Problem:** Once `runWorkspaceAgentStream()` starts, it runs to completion or error. User cannot cancel.
+**Status:** ✅ **SELESAI — AbortController per workspace sudah diimplementasikan, dual-loop mengecek `abortController.signal.aborted`.**
 
-**Fix:**
-```typescript
-// Add abort endpoint
-@Post(':id/abort')
-async abortWorkspaceRun(@Param('id') id: string) {
-  const controller = this.workspaceRunnerService.activeRuns.get(id);
-  if (controller) {
-    controller.abort('User cancelled');
-    return { success: true };
-  }
-  return { success: false, message: 'No active run' };
-}
-
-// In the loop, check abort signal
-if (abortController.signal.aborted) {
-  this.logger.log('Workspace run aborted by user');
-  break;
-}
-```
-
-### 4. SelfHealingService Exists But Never Used
+### 4. SelfHealingService Exists But Never Used ✅ DONE (Phase 24)
 
 **File:** `apps/api/src/modules/ai/self-healing.service.ts`
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
 
-**Problem:** `SelfHealingService` is defined but never called by the agent loop. The agent loop uses `toolRegistryService.executeTool()` directly.
-
-**Fix:**
-```typescript
-// In workspace-runner.service.ts, replace:
-result = await this.toolRegistryService.executeTool(funcName, enrichedArgs);
-
-// With:
-result = await this.selfHealingService.executeWithHealing(funcName, enrichedArgs);
-// Then extract: result.finalResult
-```
+**Status:** ✅ **SELESAI — SelfHealing sudah diintegrasikan di dual-loop untuk read-only tools: sequential execution dengan fallback per tool (retry → alternatif → skip + report).**
 
 ---
 
@@ -327,26 +299,12 @@ if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
 // Workspace mode: skip posture detection (workspace-rules.md handles this)
 ```
 
-### 14. PromptInjectionDetector Runs but Results Ignored
+### 14. PromptInjectionDetector Runs but Results Ignored ✅ DONE (Phase 24)
 
 **File:** `apps/api/src/modules/ai/prompt-injection-detector.service.ts`
 **File:** `apps/api/src/modules/workspace/workspace-runner.service.ts`
 
-**Problem:** `PromptInjectionDetector` exists but is never called in the agent loop. User input is not scanned for injection attempts.
-
-**Fix:**
-```typescript
-// In workspace-runner.service.ts, before processing userGoal:
-const injectionResult = this.promptInjectionDetector.scan(userGoal);
-if (injectionResult.detected && injectionResult.severity === 'high') {
-  onEvent({
-    type: 'error',
-    data: { message: 'Input contains potentially harmful content. Please rephrase.' },
-  });
-  return;
-}
-// If medium severity, sanitize and log but continue
-```
+**Status:** ✅ **SELESAI — PromptInjectionDetector sudah diintegrasikan di dual-loop: high severity block, low/medium sanitize.**
 
 ---
 
@@ -485,32 +443,45 @@ if (!resolvedPath.startsWith(workspace.rootPath)) {
 
 ## Priority Order
 
-### Phase 1: Fix Critical Architecture (Week 1)
-1. Add abort/cancel capability (#3)
-2. Add state machine (#1)
-3. Fix approval gate to wait (#9)
-4. Integrate SelfHealingService (#4)
+### ✅ Phase 1: Fix Critical Architecture (Week 1) — **SELESAI (Phase 23-24)**
+1. ~~Add abort/cancel capability (#3)~~ ✅ Done Phase 24
+2. ~~Add state machine (#1)~~ ✅ Done Phase 24  
+3. ~~Fix approval gate to wait (#9)~~ ✅ Done Phase 23
+4. ~~Integrate SelfHealingService (#4)~~ ✅ Done Phase 24
 
-### Phase 2: Fix Broken Functionality (Week 2)
+### Phase 2: Blueprint P0 Security (Sekarang)
+A. **Implement Input Provenance (Layer 9)** — Provenance tracking (`external_user`, `inter_session`, `internal_system`), inter-session safety prefixing
+B. **Implement User Turn Transcript (Layer 8)** — Idempotent transcript recording, runId deduplication, late media detection
+C. **Merge Session Admission Duplikasi (Layer 6)** — Satukan `ai/session-admission.service.ts` dan `chat/session-admission.service.ts`, tambah handoff token + AsyncLocalStorage
+
+### Phase 3: Blueprint P1 High (Next)
+D. **Implement Session State Events (Layer 7)** — Durable event log, CAS version heads, watch cursors
+E. **Implement Harness Registry (Layer 5)** — Plugin system untuk agent harness extensions
+
+### Phase 4: Fix Broken Functionality
 5. Fix tiktoken encoding (#5)
 6. Add early exit to compression (#6)
 7. Disable LLM summary in compression (#7)
 8. Fix StreamingContextScrubber patterns (#8)
 
-### Phase 3: Fix Architecture Mistakes (Week 3)
+### Phase 5: Fix Architecture Mistakes
 9. Remove separate planning call (#10)
 10. Remove separate self-evaluation (#11)
 11. Simplify ModelRouter additions (#12)
 12. Skip posture detection in workspace mode (#13)
-13. Integrate PromptInjectionDetector (#14)
 
-### Phase 4: Complete Incomplete Features (Week 4)
-14. Add context refresh per turn (#2)
-15. Add memory consolidation (#15)
+### Phase 6: Blueprint P2 Medium
+F. **Extract runWithModelFallback (Layer 2)** — Factory function explicit dari AiService.inline
+G. **Wire Workspace Heartbeat** — Panggil `heartbeatService.registerWorkspace()` dari `WorkspaceService.connectFolder()`
+
+### Phase 7: Complete Incomplete Features
+H. **Add cron-triggered Auto Memory Distillation** — Wiring ke CronService selain reaktif
+I. **Extract LLM Stream (Layer 9d)** — AsyncGenerator modular
+15. Add memory consolidation (#15) — merge similar memories via LLM
 16. Add domain config injection (#17)
 17. Add workspace isolation (#21)
 
-### Phase 5: Add Missing Features (Week 5+)
+### Phase 8: Add Missing Features (Phase 5+)
 18. Add event system (#19)
 19. Add streaming tool results (#20)
 20. Dynamic skills (#16)

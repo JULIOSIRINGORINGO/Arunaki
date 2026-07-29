@@ -565,6 +565,8 @@ All exhausted: throw error
 
 # FIT-GAP ANALYSIS vs VISION & PRD
 
+> **UPDATE 2026-07-29:** Audit komprehensif 32-layer selesai. Lihat `FIXES-AND-GAPS.md` untuk detail lengkap. Beberapa gap di bawah sudah diresolve di Phase 23-24.
+
 ## Vision Requirements
 ✅ **Goal First** — Workspace Agent understands goals, creates plans
   → Implemented: AutonomousPlannerService breaks goals into tasks
@@ -608,35 +610,56 @@ All exhausted: throw error
 
 ## Gaps Identified
 
-🔴 **CRITICAL GAPS:**
-1. **Context Assembly (Phase 4-target)** — Currently 4-phase compression; target is fresh assembly per turn
-   - Current: Build context once at start, stale over 25 rounds
-   - Target: Assemble fresh every turn with token budget
-   - Impact: Context accuracy degrades in long conversations
-   - Fix: Implement ContextEngine registry + projection system (LAYER 8)
+🔴 **CRITICAL GAPS (Blueprint Audit):**
+1. **Input Provenance (Layer 9)** ❌ P0 SECURITY — Cross-session rawan prompt injection
+   - Belum ada `input-provenance.ts`
+   - Tidak ada provenance metadata (`external_user`, `inter_session`, `internal_system`)
+   - Tidak ada inter-session safety prefixing
+   - Fix: Implementasi full provenance tracking + safety prefix injection
 
-2. **Model Fallback Clarity** — Run entry exists but integration point unclear
-   - Current: Provider pool via AiService
-   - Target: Explicit model fallback chain per OpenClaw
-   - Impact: Error handling works but not optimal
-   - Fix: Integrate runWithModelFallback() into AiService chat loop
+2. **User Turn Transcript (Layer 8)** ❌ P0 IDEMPOTEN — Recording bisa duplikasi/korupsi
+   - Belum ada `user-turn-transcript.ts`
+   - Tidak ada idempotent key + runId deduplication
+   - Tidak ada `markSentToProvider()` / `markRuntimePersisted()` / `persistApproved()`
+   - Fix: Implementasi full transcript recorder + late media detection
 
-🟡 **MEDIUM GAPS:**
-3. **Execution Phases** — Lifecycle milestones not tracked
-   - Impact: No execution progress visibility
-   - Fix: Add execution phase tracking (LAYER 4, optional)
+🟡 **HIGH GAPS (Blueprint Audit):**
+3. **Session Admission Duplikasi (Layer 6)** — 2 file beda API (`ai/` vs `chat/`)
+   - `beginAdmission()` vs `acquireAdmission()` — incompatible
+   - Tidak ada handoff token, cross-RPC handoff, AsyncLocalStorage tracking
+   - Fix: Merge + standardisasi API
 
-4. **Session Admission Queue** — Partially implemented
-   - Current: Queue per workspace
-   - Target: Full session-level work admission lock
-   - Fix: Enhance with session-scope locking
+4. **Session State Events (Layer 7)** ❌ P1 AUDIT — Durable event log belum ada
+   - Tidak ada signal log, version heads, watch cursors
+   - Fix: SQLite event log + CAS version tracking
 
-5. **Streaming Modernization** — SSE callbacks work but not true async generators
-   - Target: AsyncGenerator<ApiStreamChunk> pattern
-   - Fix: Modernize to proper async generator
+5. **Harness Registry (Layer 5)** ❌ P1 PLUGIN — Plugin system belum ada
+   - Tidak ada `harness/` directory
+   - Fix: Lightweight plugin registration mechanism
 
-🟢 **NICE-TO-HAVE (Phase 2+):**
-6. Auto memory distillation (currently not implemented)
+🟢 **MEDIUM GAPS (Blueprint Audit):**
+6. **runWithModelFallback (Layer 2)** — Fallback logic inline di AiService.chat()
+   - Tidak ada explicit model fallback chain
+   - Tidak ada behavior classification, terminal state builder
+   - Fix: Extract `runWithModelFallback()` factory function
+
+7. **Workspace Heartbeat Tidak Jalan** — `registerWorkspace()` gak pernah dipanggil
+   - WorkspaceHeartbeatService ada (255 lines) tapi jadi no-op
+   - Fix: Panggil dari `WorkspaceService.connectFolder()`
+
+8. **Auto Memory Distillation Hanya Reaktif** — Bukan cron, cuma jalan pas chatting
+   - Fix: Tambah cron trigger ke CronService
+
+9. **LLM Stream Inline** — Streaming di agent-runner.service.ts, bukan modul reusable
+   - Fix: Extract AsyncGenerator modular
+
+🐞 **LEGACY GAPS (dari versi sebelumnya — beberapa sudah diresolve):**
+- ~~Context Assembly~~ ✅ DONE: ContextEngine registry + projection system + refresh per 5 rounds (Phase 24)
+- ~~Model Fallback Clarity~~ 🟡 Partial: Provider rotation works, tapi belum explicit runWithModelFallback()
+- ~~Execution Phases~~ ✅ DONE: Phase tracking dengan SSE events (Phase 24)
+- ~~Session Admission Queue~~ 🟡 Partial: Ada tapi duplikasi (lihat gap #3 di atas)
+- ~~Streaming Modernization~~ ✅ DONE: AsyncGenerator + `POST .../agent/stream/generator` (Phase 24)
+- Auto memory distillation 🟡 Partial: Ada, reaktif (lihat gap #8 di atas)
 7. Autonomous planner reflection loop (basic planner exists)
 8. Workspace heartbeat monitoring (not wired)
 

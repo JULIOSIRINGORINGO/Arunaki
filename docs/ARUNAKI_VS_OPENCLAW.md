@@ -1,7 +1,7 @@
 # Arunaki vs OpenClaw: Enterprise-Ready Autonomous Workspace Agent
 
 **Author:** Arunaki Development Team  
-**Date:** 2025-07-27  
+**Date:** 2026-07-29 (updated from 2025-07-27)  
 **Status:** Analysis Document  
 **Based on:** Reverse-engineering OpenClaw architecture patterns for enterprise adaptation
 
@@ -94,7 +94,6 @@ Runs on server. Multi-tenant. Workspace sandbox.
 
 ### 🔄 In Progress (OpenClaw-advanced)
 - **Domain Config System** — User-defined business domains (replaces hardcoded 3)
-- **Chat Gateway** — WhatsApp/Telegram integration
 - **Proactive Scheduler** — Cron jobs for automated reports
 
 ### 📋 Planned (OpenClaw-community)
@@ -161,17 +160,16 @@ Arunaki **reads, analyzes, cross-references, generates, updates** — exactly li
 
 ---
 
-## 🚀 Next Implementation Priority
+## 🚀 Next Implementation Priority (Lihat FIXES-AND-GAPS.md untuk gap terkini)
 
-| # | Task | OpenClaw Pattern | Effort |
+| # | Task | OpenClaw Pattern | Prioritas |
 |---|---|---|---|
-| 1 | Domain Config Prisma Model + Registry Service | Plugin system | 2 days |
-| 2 | Seed 15+ Indonesian industry templates | Community skills | 1 day |
-| 3 | Wire Domain Config → Tools/Reports/Skills | Skill binding | 2 days |
-| 4 | Domain Config Builder UI (Knowledge page) | Skill marketplace UI | 3 days |
-| 5 | Chat-based config ("Tambah unit karung") | Self-writing skills | 2 days |
-| 6 | WhatsApp/Telegram Gateway | Chat-native interface | 3 days |
-| 7 | Cron Scheduler + Proactive Reports | Background tasks | 2 days |
+| 1 | Input Provenance (Layer 9) | Provenance tracking | 🔴 P0 SECURITY |
+| 2 | User Turn Transcript (Layer 8) | Idempotent recording | 🔴 P0 IDEMPOTEN |
+| 3 | Merge Session Admission (Layer 6) | Work admission lock | 🔴 P0 KONSISTENSI |
+| 4 | Session State Events (Layer 7) | Audit trail | 🟡 P1 AUDIT |
+| 5 | Harness Registry (Layer 5) | Plugin system | 🟡 P1 PLUGIN |
+| 6 | Cron Scheduler + Proactive Reports | Background tasks | 🟢 P2 |
 
 ---
 
@@ -191,7 +189,8 @@ Arunaki doesn't compete with OpenClaw. **Arunaki completes OpenClaw for the ente
 ## 📝 Related Files
 
 - `docs/VISION.md` — Core philosophy (Workspace First, Safety First, Goal First)
+- `docs/FIXES-AND-GAPS.md` — Gap tracker utama (Blueprint P0/P1/P2)
 - `docs/GAP_CHECKLIST.md` — 10/10 OpenClaw core patterns completed (Phase 1)
-- `apps/api/src/modules/domain/` — Domain Config implementation (in progress)
-- `apps/api/src/modules/workspace/workspace-runner.service.ts` — OpenClaw-equivalent executor
-- `apps/api/src/modules/tools/services/document-generator.tool.ts` — Business report templates
+- `apps/api/src/modules/domain/` — Domain Config implementation
+- `apps/api/src/modules/workspace/workspace-runner.service.ts` — Agent loop (dual-loop sejak Phase 24)
+- `apps/api/src/modules/ai/context/` — Context Engine Registry (6 files sejak Phase 24)

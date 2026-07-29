@@ -1,8 +1,17 @@
 # Context Engine — OpenClaw vs Arunaki
 
+> **UPDATE 2026-07-29:** Deskripsi Arunaki di bawah ini adalah keadaan **SEBELUM Phase 24**. Setelah Phase 24:
+> - Context Engine Registry sudah diimplementasikan (6 file: interface, registry, legacy wrapper, projection assembler, quarantine, module)
+> - `projection-assembler.service.ts` mengumpulkan context dari workspace/memory/skills/knowledge
+> - Context **direfresh setiap 5 rounds** via `prepareNextTurn()` di dual-loop agent
+> - `useLlmSummary` masih true (belum dimatikan)
+> - Belum ada token budget dinamis ala OpenClaw
+> 
+> **Dokumen ini tetap dipertahankan** sebagai referensi pola OpenClaw projection assembly untuk pengembangan ke depan.
+
 ## Executive Summary
 
-OpenClaw's context engine is a **registry-based assembly system** with quarantine, fallback, and token-budget-aware projection. Arunaki's is a **4-phase compression pipeline** that runs once at startup. The fundamental difference: OpenClaw assembles context fresh each turn; Arunaki compresses once and prays.
+OpenClaw's context engine is a **registry-based assembly system** with quarantine, fallback, and token-budget-aware projection. Pre-Phase 24, Arunaki's was a **4-phase compression pipeline** that ran once at startup. The fundamental difference: OpenClaw assembles context fresh each turn.
 
 ---
 
@@ -238,29 +247,31 @@ if (content.includes('data:image/')) {
 // Reassemble: system + head + summary + tail
 ```
 
-### What's Missing vs OpenClaw
+### What's Missing vs OpenClaw (Post-Phase 24)
 
-| Feature | OpenClaw | Arunaki | Impact |
-|---------|----------|---------|--------|
-| Registry | Modular projections | Monolithic pipeline | Can't add new context sources |
-| Token budget | Dynamic per-projection | Fixed 128k total | Inefficient allocation |
-| Quarantine | Graceful degradation | Crash or truncate | Poor error handling |
-| Fallback | Projection-specific | None | Single point of failure |
-| Ingest | Real-time event-driven | None (built once) | Stale context after round 1 |
-| Compact | On-demand + periodic | Only on startup | No mid-run compression |
-| Maintain | Periodic cleanup | None | Memory leaks over time |
-| Priority | Per-part priority | None | Important data lost equally |
-| Two modes | Full + minimal | One mode only | Can't do quick responses |
+| Feature | OpenClaw | Arunaki Sekarang | Impact |
+|---------|----------|-----------------|--------|
+| Registry | Modular projections | ✅ **Sudah** (context-registry.service.ts + 6 files) | Bisa register context sources baru |
+| Token budget | Dynamic per-projection | ⚠️ **Fixed 128k total** | Alokasi belum efisien |
+| Quarantine | Graceful degradation | ⚠️ **Ada** (context-quarantine.service.ts) | Partial — masih perlu fallback |
+| Fallback | Projection-specific | ❌ **Belum** | Single point of failure |
+| Ingest | Real-time event-driven | ✅ **Ada** — context refresh per 5 rounds | Tidak sereal time OpenClaw |
+| Compact | On-demand + periodic | ✅ **Ada** — compression tiap chat | Overhead CPU |
+| Maintain | Periodic cleanup | ❌ **Belum** | Potensi memory leak |
+| Priority | Per-part priority | ❌ **Belum** | Data penting hilang sama rata |
+| Two modes | Full + minimal | ⚠️ Satu mode | Belum bisa quick responses |
 
-### The Core Problem
+### The Core Problem (Pre-Phase 24)
 
-**Arunaki builds context ONCE at the start of `runWorkspaceAgentStream()`:**
+**Pre-Phase 24, Arunaki built context ONCE at the start of `runWorkspaceAgentStream()`:**
 
 ```typescript
-// workspace-runner.service.ts:161
+// workspace-runner.service.ts (old behavior)
 const workspaceContext = await this.buildWorkspaceContext(workspaceId);
-// ^ This is called ONCE. Never refreshed.
+// ^ This was called ONCE. Never refreshed.
 ```
+
+**Sekarang (Phase 24+):** Context direfresh setiap 5 rounds via `prepareNextTurn()` di dual-loop agent. Setiap refresh memanggil `contextRegistry.getActive().assemble()` melalui projection assembler yang mengumpulkan context terbaru dari workspace, memory, skills, dan knowledge sources.
 
 Then it enters a 25-round loop where the context gets progressively more stale:
 - Round 1: Fresh context, accurate file list

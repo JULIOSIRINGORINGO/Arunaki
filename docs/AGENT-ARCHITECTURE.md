@@ -1,8 +1,19 @@
 # Agent Architecture — OpenClaw vs Arunaki
 
+> **UPDATE 2026-07-29:** Deskripsi Arunaki di bawah ini adalah keadaan **SEBELUM Phase 24**. Setelah Phase 24, Arunaki sudah memiliki:
+> - Dual-loop agent (outer loop steering + inner loop tool calls)
+> - AbortController per workspace
+> - Steering queue (`addSteeringInput()` + `POST .../agent/steer`)
+> - Execution phase tracking (`ExecutionPhase` + SSE `phase_changed`)
+> - Context refresh setiap 5 rounds via `prepareNextTurn()`
+> - SelfHealing terintegrasi untuk read-only tools
+> - PromptInjection detection (high=block, low/medium=sanitize)
+> 
+> **Dokumen ini tetap dipertahankan** sebagai referensi pola OpenClaw untuk pengembangan ke depan.
+
 ## Executive Summary
 
-OpenClaw's agent is a **dual-loop state machine** with steering, abort handling, and event-driven communication. Arunaki's agent is a **single-loop tool caller** with no state management, no abort, and no steering. This document explains both designs and what Arunaki needs to implement.
+OpenClaw's agent is a **dual-loop state machine** with steering, abort handling, and event-driven communication. Pre-Phase 24, Arunaki's agent was a **single-loop tool caller** with no state management, no abort, and no steering. This document explains both designs for reference.
 
 ---
 
@@ -59,7 +70,7 @@ OpenClaw allows users to provide input **while the agent is running**:
 4. Agent injects the steering message into the conversation
 5. Agent continues with the new context
 
-**Arunaki equivalent:** Currently none. If user sends a message during workspace analysis, it's ignored until the 25-round loop finishes.
+**Arunaki equivalent (sekarang):** ✅ **Sudah ada.** Dual-loop dengan `steeringQueue` Map + `POST /workspaces/:id/agent/steer` endpoint. User bisa kirim steering input selama agent berjalan. Implementasi di Phase 24.
 
 ### Abort Handling
 
@@ -74,7 +85,7 @@ if (this.abortController.signal.aborted) {
 }
 ```
 
-**Arunaki equivalent:** None. The 25-round loop runs to completion or error. No way to cancel.
+**Arunaki equivalent (sekarang):** ✅ **Sudah ada.** AbortController per workspace. Dual-loop mengecek `abortController.signal.aborted` setiap iterasi. Implementasi di Phase 24.
 
 ### Event System
 

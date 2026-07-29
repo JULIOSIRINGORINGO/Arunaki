@@ -15,7 +15,7 @@ OpenClaw = **Event-driven, plugin-based AI agent platform** dengan:
 - Robust error recovery (quarantine + fallback)
 - Session isolation + work admission queue
 
-**Arunaki Alignment: 75%** — Core systems solid, 3 critical gaps identified.
+**Arunaki Alignment: 85%** — Core systems solid + Phase 23-24 resolved 6 gaps. Masih ada 5 gap signifikan dari audit 32-layer (lihat `FIXES-AND-GAPS.md`).
 
 ---
 
