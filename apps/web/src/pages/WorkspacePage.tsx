@@ -25,6 +25,7 @@ import {
   Square,
   Activity,
   Compass,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -53,6 +54,7 @@ export function WorkspacePage() {
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [activeToolAction, setActiveToolAction] = useState<{ toolName: string; args?: any } | null>(null);
 
   // VS Code-like: native folder tree from Electron IPC
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
@@ -172,17 +174,19 @@ export function WorkspacePage() {
                 ]);
                 break;
               case "tool_start":
+                setActiveToolAction({ toolName: event.data.toolName, args: event.data.args });
                 setAgentSteps((prev) => [
                   ...prev,
                   {
                     type: "tool",
-                    label: `Membaca: ${event.data.toolName}`,
+                    label: `Menjalankan: ${event.data.toolName}`,
                     detail: event.data.args?.filename || event.data.args?.query || "",
                     status: "running",
                   },
                 ]);
                 break;
               case "tool_done":
+                setActiveToolAction(null);
                 setAgentSteps((prev) =>
                   prev.map((s) =>
                     s.status === "running" ? { ...s, status: "done" as const } : s
@@ -194,6 +198,7 @@ export function WorkspacePage() {
                 setAnalysisResult(event.data);
                 break;
               case "done":
+                setActiveToolAction(null);
                 setAgentSteps((prev) =>
                   prev.map((s) =>
                     s.status === "running" ? { ...s, status: "done" as const } : s
@@ -205,6 +210,7 @@ export function WorkspacePage() {
                 queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
                 break;
               case "error":
+                setActiveToolAction(null);
                 setAgentSteps((prev) => [
                   ...prev,
                   {
@@ -794,6 +800,35 @@ export function WorkspacePage() {
                     </div>
                   )}
 
+                  {/* Live Visual AI Agent Action Banner */}
+                  {activeToolAction && isAnalyzing && (
+                    <div className="bg-gradient-to-r from-gray-900 to-amber-950 text-white rounded-2xl p-4 border border-amber-500/30 shadow-lg flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+                          <Bot className="w-5 h-5 text-amber-400 animate-bounce" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-amber-400 uppercase tracking-wider">Aksi Agen AI Otonom</span>
+                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                          </div>
+                          <p className="text-xs font-mono text-gray-200 truncate mt-0.5">
+                            {activeToolAction.toolName === 'write_workspace_file'
+                              ? `✏️ Menyunting/membuat file "${activeToolAction.args?.filename || 'dokumen'}" di Sandbox...`
+                              : activeToolAction.toolName === 'read_workspace_file'
+                              ? `📖 Membaca sel & isi dari "${activeToolAction.args?.filename || 'dokumen'}"...`
+                              : activeToolAction.toolName === 'generate_export'
+                              ? `📊 Menyusun spreadsheet/laporan baru "${activeToolAction.args?.filename || 'export.xlsx'}"...`
+                              : `🤖 Menjalankan tool ${activeToolAction.toolName}...`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-mono text-amber-300/80 bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-800/40 shrink-0 hidden sm:block">
+                        Live Execution
+                      </div>
+                    </div>
+                  )}
+
                   {/* Agent Progress */}
                   {agentSteps.length > 0 && (
                     <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 space-y-3">
@@ -978,6 +1013,7 @@ export function WorkspacePage() {
                   onDeletePath={handleDeletePath}
                   onRenamePath={handleRenamePath}
                   onAnalyzeFile={handleAnalyzeFile}
+                  activeAgentAction={activeToolAction}
                 />
               </div>
             )}

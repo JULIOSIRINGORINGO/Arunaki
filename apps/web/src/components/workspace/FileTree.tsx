@@ -144,6 +144,7 @@ function TreeNodeItem({
   onDeletePath,
   onRenameClick,
   onAnalyzeFile,
+  activeAgentAction,
 }: {
   node: TreeNode;
   depth: number;
@@ -151,8 +152,14 @@ function TreeNodeItem({
   onDeletePath?: (path: string, name: string) => void;
   onRenameClick?: (path: string, currentName: string) => void;
   onAnalyzeFile?: (name: string, path?: string) => void;
+  activeAgentAction?: { toolName: string; args?: any } | null;
 }) {
   const [open, setOpen] = useState(depth < 2);
+  const isAgentTarget = Boolean(
+    activeAgentAction?.args?.filename &&
+      (activeAgentAction.args.filename.endsWith(node.name) ||
+        node.name.endsWith(activeAgentAction.args.filename))
+  );
 
   if (node.isDir) {
     return (
@@ -224,6 +231,7 @@ function TreeNodeItem({
                 onDeletePath={onDeletePath}
                 onRenameClick={onRenameClick}
                 onAnalyzeFile={onAnalyzeFile}
+                activeAgentAction={activeAgentAction}
               />
             ))}
           </div>
@@ -247,12 +255,19 @@ function TreeNodeItem({
           ? onFileClick?.(node.nativePath, node.name)
           : onFileClick?.(node.name, node.name)
       }
-      className="group flex items-center justify-between py-[3px] px-1 hover:bg-gray-100/90 rounded-md transition-colors text-xs text-gray-600 select-none cursor-pointer"
+      className={`group flex items-center justify-between py-[3px] px-1 rounded-md transition-all text-xs text-gray-600 select-none cursor-pointer ${
+        isAgentTarget ? "bg-amber-100/90 text-amber-900 font-semibold ring-1 ring-amber-400 animate-pulse" : "hover:bg-gray-100/90"
+      }`}
       style={{ paddingLeft: `${depth * 14 + 4}px` }}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {getFileIcon(node.name)}
         <span className="truncate group-hover:text-gray-900 font-normal">{node.name}</span>
+        {isAgentTarget && (
+          <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[9px] font-bold shrink-0 animate-pulse">
+            🤖 AI Working...
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
@@ -318,6 +333,7 @@ interface FileTreeProps {
   onDeletePath?: (path: string, name: string) => void;
   onRenamePath?: (oldPath: string, oldName: string, newName: string) => void;
   onAnalyzeFile?: (name: string, path?: string) => void;
+  activeAgentAction?: { toolName: string; args?: any } | null;
 }
 
 export default function FileTree({
@@ -332,6 +348,7 @@ export default function FileTree({
   onDeletePath,
   onRenamePath,
   onAnalyzeFile,
+  activeAgentAction,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
   const [activeFile, setActiveFile] = useState<{ path: string; name: string; content: string } | null>(null);
@@ -591,6 +608,7 @@ export default function FileTree({
                 onDeletePath={onDeletePath}
                 onRenameClick={handleOpenRenameModal}
                 onAnalyzeFile={onAnalyzeFile}
+                activeAgentAction={activeAgentAction}
               />
             ))}
           </div>
