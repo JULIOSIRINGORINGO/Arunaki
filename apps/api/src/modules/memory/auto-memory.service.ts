@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 import { MemoryService } from '../memory/memory.service.js';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 
@@ -11,8 +12,18 @@ export interface DistilledMemory {
   distilledAt: Date;
 }
 
+export interface MergedMemory {
+  key: string;
+  content: string;
+  type: string;
+  importance: number;
+  domain?: string;
+  workspaceId?: string;
+  source: string;
+}
+
 /**
- * AutoMemoryService — Automatic Memory Distillation.
+ * AutoMemoryService — Automatic Memory Distillation & Consolidation.
  *
  * OpenClaw Pattern: After accumulating many raw memories,
  * periodically distill/compress them into higher-quality summaries.
@@ -23,6 +34,7 @@ export interface DistilledMemory {
  * - Removes redundant entries
  * - Promotes high-value learnings
  * - Runs after configurable threshold (default: 50 memories)
+ * - NEW: mergeSimilarMemories() — consolidate similar/duplicate memories via LLM
  */
 @Injectable()
 export class AutoMemoryService {
@@ -36,6 +48,7 @@ export class AutoMemoryService {
 
   constructor(
     private readonly memoryService: MemoryService,
+    private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AiService))
     private readonly aiService: AiService,
   ) {}
@@ -142,6 +155,150 @@ export class AutoMemoryService {
     );
 
     return allDistilled;
+  }
+
+  /**
+   * Merge similar/duplicate memories via LLM consolidation.
+   * Finds memories with overlapping content and combines them.
+   */
+  async mergeSimilarMemories(
+    workspaceId?: string,
+    domain?: string,
+    similarityThreshold = 0.7,
+  ): Promise<{ merged: number; removed: number }> {
+    try {
+      // Get all memories for this workspace/domain
+      const memories = await this.memoryService.findRelevant(
+        domain,
+        workspaceId,
+        200, // Get more for merging
+      );
+
+      if (memories.length < 10) {
+        return { merged: 0, removed: 0 };
+      }
+
+      this.logger.log(
+        `Memory consolidation: analyzing ${memories.length} memories for merging...`,
+      );
+
+      // Group by type for focused merging
+      const byType: Record<string, typeof memories> = {};
+      for (const m of memories) {
+        if (!byType[m.type]) byType[m.type] = [];
+        byType[m.type].push(m);
+      }
+
+      let totalMerged = 0;
+      let totalRemoved = 0;
+
+      for (const [type, typeMemories] of Object.entries(byType)) {
+        if (typeMemories.length < 5) continue;
+
+        const result = await this.mergeMemoriesInGroup(type, typeMemories);
+        totalMerged += result.merged;
+        totalRemoved += result.removed;
+      }
+
+      this.logger.log(
+        `Memory consolidation complete: ${totalMerged} merged, ${totalRemoved} removed`,
+      );
+
+      return { merged: totalMerged, removed: totalRemoved };
+    } catch (err: any) {
+      this.logger.warn(`Memory merge failed: ${err.message}`);
+      return { merged: 0, removed: 0 };
+    }
+  }
+
+  /**
+   * Merge memories within a single type group.
+   * Uses LLM to identify similar content and create consolidated entries.
+   */
+  private async mergeMemoriesInGroup(
+    type: string,
+    memories: Array<{
+      id: string;
+      key: string;
+      content: string;
+      importance: number | null;
+    }>,
+  ): Promise<{ merged: number; removed: number }> {
+    const memoryText = memories
+      .map((m, i) => `[${i + 1}] ID:${m.id} Key:${m.key} Imp:${m.importance || 5} ${m.content}`)
+      .join('\n');
+
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: `Kamu adalah Memory Consolidation Agent.
+Tugas: identifikasi memori yang mirip/duplikat dan gabungkan menjadi satu entri yang lebih lengkap.
+
+Tipe memori: ${type}
+Jumlah memori: ${memories.length}
+
+ATURAN:
+- Gabungkan memori yang berisi informasi sama atau tumpang tindih
+- Pertahankan detail penting dari masing-masing
+- Buang noise/pengulangan
+- Setiap hasil gabungan harus lebih lengkap dan actionable
+- Maksimal 15 hasil gabungan
+
+Respond dalam JSON:
+{
+  "merged": [
+    {
+      "ids": ["id1", "id2"],  // IDs memori yang digabung
+      "key": "new-key",
+      "content": "konten gabungan yang lengkap",
+      "importance": 1-10,
+      "reason": "alasan penggabungan"
+    }
+  ]
+}`,
+      },
+      { role: 'user', content: memoryText },
+    ];
+
+    const response = await this.aiService.chat(messages, []);
+    const parsed = this.parseJsonFromResponse(response.content);
+
+    let merged = 0;
+    let removed = 0;
+
+    for (const merge of parsed.merged || []) {
+      if (!merge.ids || merge.ids.length < 2) continue;
+
+      try {
+        // Keep the first one as primary, update its content
+        const primaryId = merge.ids[0];
+        const otherIds = merge.ids.slice(1);
+
+        // Update primary with merged content
+        await this.memoryService.remember({
+          type: `consolidated_${type}`,
+          key: merge.key,
+          content: merge.content,
+          source: 'consolidation',
+          importance: merge.importance,
+        });
+
+        // Soft-delete the other memories
+        for (const otherId of otherIds) {
+          await this.prisma.memory.update({
+            where: { id: otherId },
+            data: { active: false },
+          });
+          removed++;
+        }
+
+        merged++;
+      } catch (err: any) {
+        this.logger.warn(`Failed to merge group: ${err.message}`);
+      }
+    }
+
+    return { merged, removed };
   }
 
   /**

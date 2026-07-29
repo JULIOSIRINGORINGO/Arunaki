@@ -21,6 +21,8 @@ export class CronService implements OnModuleInit {
   private autoMemoryIntervalMs = 5 * 60 * 1000; // 5 minutes
   private backgroundCuratorHandle: NodeJS.Timeout | null = null;
   private backgroundCuratorIntervalMs = 60 * 60 * 1000; // 1 hour
+  private memoryConsolidationHandle: NodeJS.Timeout | null = null;
+  private memoryConsolidationIntervalMs = 6 * 60 * 60 * 1000; // 6 hours
 
   constructor(
     private readonly prisma: PrismaService,
@@ -57,6 +59,16 @@ export class CronService implements OnModuleInit {
     }, this.backgroundCuratorIntervalMs);
     this.logger.log(
       `Background curator scheduled every ${this.backgroundCuratorIntervalMs / 1000}s`,
+    );
+
+    // Start memory consolidation interval (every 6 hours)
+    this.memoryConsolidationHandle = setInterval(() => {
+      this.runMemoryConsolidation().catch((err) => {
+        this.logger.error(`Error in memory consolidation: ${err.message}`);
+      });
+    }, this.memoryConsolidationIntervalMs);
+    this.logger.log(
+      `Memory consolidation scheduled every ${this.memoryConsolidationIntervalMs / 1000 / 60}min`,
     );
   }
 
@@ -238,6 +250,50 @@ export class CronService implements OnModuleInit {
       this.logger.log('Background curator completed');
     } catch (err: any) {
       this.logger.error(`Background curator failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Run memory consolidation — merge similar/duplicate memories via LLM.
+   * Called periodically (default: every 6 hours).
+   */
+  private async runMemoryConsolidation(): Promise<void> {
+    try {
+      this.logger.log('Running memory consolidation...');
+
+      // Get all active workspaces
+      const workspaces = await this.prisma.workspace.findMany({
+        where: { status: 'ready' },
+        select: { id: true, businessType: true },
+      });
+
+      if (workspaces.length === 0) {
+        return;
+      }
+
+      this.logger.log(`Memory consolidation: processing ${workspaces.length} workspaces...`);
+
+      for (const ws of workspaces) {
+        try {
+          const result = await this.autoMemoryService.mergeSimilarMemories(
+            ws.id,
+            ws.businessType || 'generic',
+          );
+          if (result.merged > 0) {
+            this.logger.log(
+              `Memory consolidation: ${result.merged} merged, ${result.removed} removed for workspace ${ws.id}`,
+            );
+          }
+        } catch (err: any) {
+          this.logger.warn(
+            `Memory consolidation failed for workspace ${ws.id}: ${err.message}`,
+          );
+        }
+      }
+
+      this.logger.log('Memory consolidation completed');
+    } catch (err: any) {
+      this.logger.error(`Memory consolidation sweep failed: ${err.message}`);
     }
   }
 

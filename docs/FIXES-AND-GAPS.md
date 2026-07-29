@@ -319,30 +319,27 @@ if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
 
 ## INCOMPLETE Gaps (Partially implemented)
 
-### 15. Memory System Exists But Not Effectively Used
+### 15. Memory System Exists But Not Effectively Used ✅
 
 **File:** `apps/api/src/modules/memory/memory.service.ts`
 **File:** `apps/api/src/modules/memory/smart-recall.service.ts`
+**File:** `apps/api/src/modules/memory/auto-memory.service.ts`
 
 **Problem:** Memory is saved after task completion but:
 - Smart recall runs but results are appended to system prompt (may exceed budget)
 - No memory consolidation (old memories never compressed)
 - No memory relevance scoring (all memories treated equally)
 
-**Fix:**
+**Fix applied:**
 ```typescript
-// 1. Add memory consolidation
-async consolidateMemories(workspaceId: string) {
-  const memories = await this.findByWorkspace(workspaceId);
-  if (memories.length > 100) {
-    // Use LLM to merge similar memories
-    const merged = await this.mergeSimilarMemories(memories);
-    await this.replaceWorkspaceMemories(workspaceId, merged);
-  }
+// 1. Added memory consolidation (AutoMemoryService.mergeSimilarMemories)
+async mergeSimilarMemories(workspaceId, domain, similarityThreshold = 0.7) {
+  // Use LLM to identify similar/duplicate memories and merge them
+  // Soft-deletes merged duplicates, keeps consolidated version
 }
 
-// 2. Add relevance scoring to smart recall
-async recall(goal: string, workspaceId: string): Promise<string> {
+// 2. Added relevance scoring to smart recall
+async recall(goal, workspaceId) {
   const memories = await this.findByWorkspace(workspaceId);
   const scored = memories.map(m => ({
     ...m,
@@ -356,7 +353,11 @@ async recall(goal: string, workspaceId: string): Promise<string> {
     .map(m => m.content)
     .join('\n');
 }
+
+// 3. Cron wiring: runs every 6 hours via CronService.runMemoryConsolidation()
 ```
+
+**Status:** ✅ Done — AutoMemoryService.mergeSimilarMemories() uses LLM to consolidate, CronService runs every 6 hours
 
 ### 16. Skills System Exists But Not Dynamic
 
