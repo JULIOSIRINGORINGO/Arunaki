@@ -359,7 +359,7 @@ async recall(goal, workspaceId) {
 
 **Status:** ✅ Done — AutoMemoryService.mergeSimilarMemories() uses LLM to consolidate, CronService runs every 6 hours
 
-### 16. Skills System Exists But Not Dynamic
+### 16. Skills System Exists But Not Dynamic ✅
 
 **File:** `apps/api/src/modules/skills/skill.service.ts`
 
@@ -368,7 +368,25 @@ async recall(goal, workspaceId) {
 - No skill composition (can't combine skills)
 - No skill versioning
 
-**Fix:** Lower priority — skills work for now. Focus on agent loop fixes first.
+**Fix applied:**
+```typescript
+// 1. Runtime skill loading
+async loadSkill(name: string): Promise<Skill | null>
+async loadSkills(names: string[]): Promise<Skill[]>
+
+// 2. Skill composition via LLM
+async composeSkills(skillNames: string[], options) {
+  const skills = await this.loadSkills(skillNames);
+  const mergedContent = await this.mergeSkillContent(skills, options.description);
+  return this.createSkill({ ...options, content: mergedContent, sourceType: 'composed' });
+}
+
+// 3. Versioning
+async getSkillHistory(skillId: string): Promise<VersionInfo[]>
+async rollbackSkill(skillId: string, targetVersion: string): Promise<Skill | null>
+```
+
+**Status:** ✅ Done — Runtime loading, LLM composition, version history
 
 ### 17. Domain Config Has 15 Templates But No Usage ✅
 

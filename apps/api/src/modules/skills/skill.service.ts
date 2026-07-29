@@ -2,12 +2,28 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Skill } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { SkillRepository } from './skill.repository.js';
+import { AiService } from '../ai/ai.service.js';
+
+export interface SkillComposition {
+  name: string;
+  displayName: string;
+  description: string;
+  category: string;
+  domain: string;
+  content: string;
+  tags: string[];
+  sourceSkills: string[]; // names of skills composed
+  version: string;
+}
 
 @Injectable()
 export class SkillService extends BaseService<Skill> {
   private readonly logger = new Logger(SkillService.name);
 
-  constructor(protected readonly repository: SkillRepository) {
+  constructor(
+    protected readonly repository: SkillRepository,
+    private readonly aiService: AiService,
+  ) {
     super(repository);
   }
 
@@ -181,5 +197,130 @@ export class SkillService extends BaseService<Skill> {
     }
 
     return seeded;
+  }
+
+  /**
+   * Get skill by name with full content (for runtime loading).
+   * Returns null if not found.
+   */
+  async loadSkill(name: string): Promise<Skill | null> {
+    return this.findByName(name);
+  }
+
+  /**
+   * Load multiple skills by names — for dynamic skill loading at runtime.
+   */
+  async loadSkills(names: string[]): Promise<Skill[]> {
+    const skills: Skill[] = [];
+    for (const name of names) {
+      const skill = await this.findByName(name);
+      if (skill) skills.push(skill);
+    }
+    return skills;
+  }
+
+  /**
+   * Compose multiple skills into a new composite skill.
+   * Uses LLM to merge content intelligently.
+   */
+  async composeSkills(
+    skillNames: string[],
+    options: {
+      name: string;
+      displayName: string;
+      description: string;
+      category?: string;
+      domain?: string;
+      workspaceId?: string;
+    },
+  ): Promise<Skill> {
+    const skills = await this.loadSkills(skillNames);
+    if (skills.length < 2) {
+      throw new Error('Need at least 2 skills to compose');
+    }
+
+    // Use LLM to intelligently merge skill content
+    const mergedContent = await this.mergeSkillContent(skills, options.description);
+
+    return this.createSkill({
+      ...options,
+      content: mergedContent,
+      tags: skills.flatMap((s) => JSON.parse(s.tags || '[]')),
+      sourceType: 'composed',
+      sourceInfo: JSON.stringify({ composedFrom: skillNames, at: new Date().toISOString() }),
+    });
+  }
+
+  /**
+   * Use LLM to merge skill content.
+   */
+  private async mergeSkillContent(
+    skills: Skill[],
+    targetDescription: string,
+  ): Promise<string> {
+    const skillBlocks = skills.map(
+      (s) => `## ${s.displayName}\n${s.content}`,
+    ).join('\n\n---\n\n');
+
+    const messages = [
+      {
+        role: 'system' as const,
+        content: `Kamu adalah Skill Composer.
+Tugasmu: Gabungkan beberapa skill menjadi satu skill komposit yang koheren.
+
+Skill sumber:
+${skillBlocks}
+
+Deskripsi target: ${targetDescription}
+
+ATURAN:
+- Gabungkan konten tanpa duplikasi
+- Pertahankan struktur markdown yang jelas
+- Prioritaskan instruksi yang spesifik dan actionable
+- Hapus redundansi
+- Output: HANYA konten markdown gabungan, tanpa penjelasan`,
+      },
+      { role: 'user' as const, content: 'Gabungkan skill di atas.' },
+    ];
+
+    const response = await this.aiService.chat(messages, []);
+    return response.content?.trim() || skillBlocks;
+  }
+
+  /**
+   * Get version history for a skill.
+   */
+  async getSkillHistory(skillId: string): Promise<
+    Array<{
+      version: string;
+      updatedAt: Date;
+      sourceType: string;
+      sourceInfo: string | null;
+    }>
+  > {
+    const skill = await this.findById(skillId);
+    if (!skill) return [];
+
+    // For now, return current version info
+    // Future: add SkillVersion table for full history
+    return [
+      {
+        version: skill.version,
+        updatedAt: skill.updatedAt,
+        sourceType: skill.sourceType,
+        sourceInfo: skill.sourceInfo,
+      },
+    ];
+  }
+
+  /**
+   * Rollback skill to previous version (if history exists).
+   * Currently placeholder — requires SkillVersion table.
+   */
+  async rollbackSkill(skillId: string, targetVersion: string): Promise<Skill | null> {
+    this.logger.warn(
+      `Rollback requested for ${skillId} to ${targetVersion} — not yet implemented (needs SkillVersion table)`,
+    );
+    return null;
   }
 }
