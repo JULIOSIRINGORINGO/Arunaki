@@ -53,6 +53,14 @@ export default function DocumentEngineHost({
   }, []);
 
   useEffect(() => {
+    // Automatically launch actual file in OS native application (MS Excel / Word)
+    const desktop = (window as any).arunakiDesktop;
+    if (desktop?.openPath) {
+      desktop.openPath(filePath);
+    }
+  }, [filePath]);
+
+  useEffect(() => {
     let isMounted = true;
 
     const initUniver = async () => {
