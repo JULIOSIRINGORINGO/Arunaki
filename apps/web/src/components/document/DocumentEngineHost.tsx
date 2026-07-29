@@ -27,6 +27,25 @@ declare global {
   }
 }
 
+function base64ToBlob(base64: string, mimeType = "application/octet-stream") {
+  try {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: mimeType });
+  } catch {
+    return null;
+  }
+}
+
 export default function DocumentEngineHost({
   filePath,
   fileName,
@@ -38,7 +57,6 @@ export default function DocumentEngineHost({
   onOpenNativeOS,
 }: DocumentEngineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeServerUrl, setActiveServerUrl] = useState(onlyOfficeServerUrl);
   const [isLoading, setIsLoading] = useState(true);
   const [isServerReady, setIsServerReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -50,6 +68,13 @@ export default function DocumentEngineHost({
     let docEditorInstance: any = null;
     let isMounted = true;
 
+    // Safety timeout guard: stop loading spinner after 3.5 seconds
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        setIsLoading(false);
+      }
+    }, 3500);
+
     const initOnlyOffice = async () => {
       setIsLoading(true);
       setErrorMessage(null);
@@ -58,20 +83,20 @@ export default function DocumentEngineHost({
         // 1. Check if DocsAPI script is already loaded
         if (window.DocsAPI) {
           setIsServerReady(true);
-          createEditorInstance();
+          await createEditorInstance();
           return;
         }
 
         // 2. Load DocsAPI script dynamically from OnlyOffice Server endpoint
-        const scriptUrl = `${activeServerUrl.replace(/\/$/, "")}/web-apps/apps/api/documents/api.js`;
+        const scriptUrl = `${onlyOfficeServerUrl.replace(/\/$/, "")}/web-apps/apps/api/documents/api.js`;
         const script = document.createElement("script");
         script.src = scriptUrl;
         script.async = true;
 
-        script.onload = () => {
+        script.onload = async () => {
           if (!isMounted) return;
           setIsServerReady(true);
-          createEditorInstance();
+          await createEditorInstance();
         };
 
         script.onerror = () => {
@@ -79,7 +104,7 @@ export default function DocumentEngineHost({
           setIsLoading(false);
           setIsServerReady(false);
           setErrorMessage(
-            `Server OnlyOffice Document (` + activeServerUrl + `) tidak merespons. Pilih Server Online Gratis atau nyalakan Docker lokal.`
+            `Server OnlyOffice Document (` + onlyOfficeServerUrl + `) tidak merespons. Menampilkan pilihan membuka file di Microsoft Excel OS...`
           );
         };
 
@@ -91,20 +116,36 @@ export default function DocumentEngineHost({
       }
     };
 
-    const createEditorInstance = () => {
+    const createEditorInstance = async () => {
       if (!window.DocsAPI || !containerRef.current) {
         setIsLoading(false);
         return;
       }
 
       try {
+        let docStreamUrl = `file://${filePath}`;
+        const desktop = (window as any).arunakiDesktop;
+        
+        if (desktop?.readBinaryFile) {
+          const binRes = await desktop.readBinaryFile(filePath);
+          if (binRes?.success && binRes.base64) {
+            const mime = isSpreadsheet
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            const blob = base64ToBlob(binRes.base64, mime);
+            if (blob) {
+              docStreamUrl = URL.createObjectURL(blob);
+            }
+          }
+        }
+
         // Document config for OnlyOffice DocsAPI.DocEditor
         const config = {
           document: {
             fileType: fileType,
-            key: `doc_${fileName}_${Date.now()}`,
+            key: `doc_${fileName.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}`,
             title: fileName,
-            url: (window as any).arunakiDesktop?.getFileStreamUrl?.(filePath) || `file://${filePath}`,
+            url: docStreamUrl,
             permissions: {
               edit: true,
               download: true,
@@ -120,6 +161,21 @@ export default function DocumentEngineHost({
               autosave: true,
               compactHeader: true,
               toolbarNoTabs: false,
+            },
+          },
+          events: {
+            onAppReady: () => {
+              if (isMounted) setIsLoading(false);
+            },
+            onDocumentReady: () => {
+              if (isMounted) setIsLoading(false);
+            },
+            onError: (evt: any) => {
+              console.warn("OnlyOffice Event Error:", evt);
+              if (isMounted) {
+                setIsLoading(false);
+                setErrorMessage("Remote OnlyOffice Server membutuhkan URL HTTP publik atau Docker lokal port 8080.");
+              }
             },
           },
           height: "100%",
@@ -145,6 +201,7 @@ export default function DocumentEngineHost({
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
       if (docEditorInstance?.destroyEditor) {
         try {
           docEditorInstance.destroyEditor();
@@ -153,7 +210,7 @@ export default function DocumentEngineHost({
         }
       }
     };
-  }, [filePath, fileName, fileType, activeServerUrl]);
+  }, [filePath, fileName, fileType, onlyOfficeServerUrl]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
@@ -219,7 +276,7 @@ export default function DocumentEngineHost({
               onClick={onClose}
               className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl transition-colors"
             >
-              <X className="w-4.4 h-4.4" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -239,7 +296,7 @@ export default function DocumentEngineHost({
           {/* OnlyOffice DocsAPI Container Element */}
           <div ref={containerRef} className="w-full h-full flex-1" />
 
-          {/* Local Fallback View when OnlyOffice Server is Offline */}
+          {/* Fallback Card View when OnlyOffice Remote Server is Offline or Waiting */}
           {!isLoading && !isServerReady && (
             <div className="flex-1 bg-gray-900 text-gray-100 p-8 flex flex-col items-center justify-center text-center space-y-5">
               <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
@@ -253,7 +310,7 @@ export default function DocumentEngineHost({
               <div className="max-w-md space-y-2">
                 <h4 className="font-bold text-base text-white">{fileName}</h4>
                 <p className="text-xs text-gray-300 leading-relaxed">
-                  OnlyOffice Document Host Siap Digunakan. Anda dapat langsung mengedit file ini menggunakan OnlyOffice Server atau memprosesnya menggunakan Agen AI otonom Arunaki.
+                  OnlyOffice Document Host Siap Digunakan. Anda dapat langsung membukanya di Microsoft Excel atau memprosesnya menggunakan Agen AI otonom Arunaki.
                 </p>
                 {errorMessage && (
                   <p className="text-[11px] text-amber-400/90 font-mono bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40">
@@ -263,18 +320,6 @@ export default function DocumentEngineHost({
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveServerUrl("https://documentserver.onlyoffice.com");
-                    setIsLoading(true);
-                  }}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>🌐 Gunakan OnlyOffice Server Online Gratis</span>
-                </button>
-
                 {onOpenNativeOS && (
                   <button
                     type="button"
