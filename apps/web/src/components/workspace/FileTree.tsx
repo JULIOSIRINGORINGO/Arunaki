@@ -716,7 +716,7 @@ export default function FileTree({
         </div>
       )}
 
-      {/* OnlyOffice Document Engine Host Modal */}
+      {/* Univer Document Engine Host Modal */}
       {activeDocumentHost && (
         <DocumentEngineHost
           filePath={activeDocumentHost.path}
