@@ -7,6 +7,8 @@ import { MessageRepository } from './message.repository.js';
 import { AgentRunnerService } from './agent-runner.service.js';
 import { SessionAdmissionService } from './session-admission.service.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
+import { SessionStateEventsService } from './session-state-events.service.js';
+import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { AiModule } from '../ai/ai.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
@@ -32,7 +34,9 @@ import { MemoryModule } from '../memory/memory.module.js';
     AgentRunnerService,
     SessionAdmissionService,
     UserTurnTranscriptService,
+    SessionStateEventsService,
+    HarnessRegistryService,
   ],
-  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService],
+  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService, SessionStateEventsService, HarnessRegistryService],
 })
 export class ChatModule {}

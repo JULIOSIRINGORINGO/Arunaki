@@ -365,6 +365,22 @@ model DomainConfig {
 }
 
 // ScheduledReport - Proactive cron job for automated business reports
+// SessionEvent - Durable event log untuk audit trail session
+model SessionEvent {
+  id          String   @id @default(cuid())
+  type        String   // session_created, human_direct_message, agent_started, agent_completed, session_terminated
+  sessionKey  String   // chat session ID
+  agentId     String   // agent identifier
+  payload     String   @default("{}") // JSON stringified
+  sequence    Int      @default(0) // per-session monotonic sequence
+
+  createdAt   DateTime @default(now())
+
+  @@index([sessionKey, sequence])
+  @@index([sessionKey, createdAt])
+  @@map("session_events")
+}
+
 model ScheduledReport {
   id          String   @id @default(cuid())
   workspaceId String

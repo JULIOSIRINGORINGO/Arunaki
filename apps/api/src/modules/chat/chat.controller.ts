@@ -23,6 +23,7 @@ import {
   InputProvenanceFactory,
 } from '../ai/input-provenance.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
+import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
 import {
   successResponse,
   errorResponse,
@@ -39,6 +40,7 @@ export class ChatController {
     private readonly providerService: ProviderService,
     private readonly injectionDetector: PromptInjectionDetector,
     private readonly transcriptService: UserTurnTranscriptService,
+    private readonly sessionEvents: SessionStateEventsService,
   ) {}
 
   @Post()
@@ -113,6 +115,11 @@ export class ChatController {
   @Delete(':id')
   async deleteChat(@Param('id') id: string) {
     try {
+      this.sessionEvents.record(
+        SessionEventType.SESSION_TERMINATED,
+        id,
+        'user',
+      );
       await this.chatHistoryService.deleteChat(id);
       return successResponse({ deleted: true });
     } catch (error) {
@@ -263,6 +270,14 @@ export class ChatController {
         provenance: InputProvenanceFactory.externalUser(),
       });
 
+      // Record human message event
+      this.sessionEvents.record(
+        SessionEventType.HUMAN_DIRECT_MESSAGE,
+        id,
+        chat.mode,
+        { contentPreview: userContent.substring(0, 100) },
+      );
+
       // Update chat title if first message
       if (!chat.title) {
         const title =
@@ -293,6 +308,19 @@ export class ChatController {
         idempotencyKey: `run:${runId}:assistant`,
         provenance: InputProvenanceFactory.internalSystem(),
       });
+
+      // Record agent response event
+      this.sessionEvents.record(
+        SessionEventType.AGENT_RESPONSE,
+        id,
+        chat.mode,
+        {
+          runId,
+          contentPreview: agentResult.content.substring(0, 100),
+          toolCount: agentResult.toolOutputs.length,
+          artifactCount: agentResult.artifacts.length,
+        },
+      );
 
       return successResponse({
         message: assistantMessage,
@@ -358,6 +386,14 @@ export class ChatController {
         provenance: InputProvenanceFactory.externalUser(),
       });
 
+      // Record human message event
+      this.sessionEvents.record(
+        SessionEventType.HUMAN_DIRECT_MESSAGE,
+        id,
+        chat.mode,
+        { contentPreview: userContent.substring(0, 100) },
+      );
+
       // Update chat title if first message
       if (!chat.title) {
         const title =
@@ -392,6 +428,14 @@ export class ChatController {
         idempotencyKey: `run:${runId}:assistant`,
         provenance: InputProvenanceFactory.internalSystem(),
       });
+
+      // Record agent response event
+      this.sessionEvents.record(
+        SessionEventType.AGENT_RESPONSE,
+        id,
+        chat.mode,
+        { runId, contentPreview: finalContent.substring(0, 100) },
+      );
 
       res.end();
     } catch (error) {

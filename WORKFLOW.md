@@ -492,8 +492,8 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 24 Complete ✅ — Agent Loop Hardening, Execution Phases, Streaming Modernization  
-**Next:** TBD
+**Phase:** Phase 26 Complete ✅ — Blueprint P1 High: Session State Events + Harness Registry  
+**Next:** Phase 4 — Fix Broken Functionality (tiktoken, compression, scrubber)  
 
 ---
 
@@ -576,7 +576,7 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-## Phase 25: Blueprint P0 Security Gaps 🔴 CURRENT
+## Phase 25: Blueprint P0 Security Gaps 🔴 ✅ DONE
 
 **Goal:** Implement 3 P0 security/idempotency gaps dari audit 32-layer.
 
@@ -596,6 +596,31 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `chat/session-admission.service.ts` — merged with `run<T>()` helper + `OnModuleDestroy`
 - [x] Deleted orphaned `ai/session-admission.service.ts` (not imported anywhere)
 - [x] Added `isAdmitted()` + `getQueueLength()` methods
+
+---
+
+## Phase 26: Blueprint P1 High ✅ DONE
+
+**Goal:** Implement 2 P1 gaps from audit 32-layer — durable event log + plugin system.
+
+### 26.1 Session State Events (Layer 7) ✅
+- [x] `SessionEvent` model — SQLite table via raw SQL (CREATE TABLE IF NOT EXISTS)
+- [x] `session-state-events.service.ts` — record(), getVersion(), listSince(), cleanup()
+- [x] Event types: session_created, human_direct_message, agent_started, agent_completed, agent_response, session_terminated
+- [x] Best-effort append (try/catch, never fails originating action)
+- [x] Retention: 30 days or 50k rows per session (auto-cleanup every 100 records)
+- [x] Wired into chat-history.service.ts (session_created)
+- [x] Wired into chat.controller.ts (human_direct_message, agent_response, session_terminated)
+- [x] Wired into agent-runner.service.ts (agent_started, agent_completed)
+- [x] Registered in chat.module.ts
+
+### 26.2 Harness Registry (Layer 5) ✅
+- [x] Create `harness/` directory with `harness-plugin.interface.ts` + `harness-registry.service.ts`
+- [x] `HarnessPlugin` interface: onAgentStart, onToolStart, onToolResult, onAgentComplete, onAgentError
+- [x] `HarnessRegistryService` — register(), unregister(), getPlugins(), priority-based execution
+- [x] Wired into `agent-runner.service.ts` — both sync and stream paths
+- [x] Tool execution hooks: onToolStart before, onToolResult after each tool call
+- [x] Registered in `chat.module.ts`
 
 ---
 

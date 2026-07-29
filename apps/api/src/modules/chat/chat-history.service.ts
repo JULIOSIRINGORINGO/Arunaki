@@ -2,10 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { ChatHistory } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { ChatHistoryRepository } from './chat-history.repository.js';
+import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
 
 @Injectable()
 export class ChatHistoryService extends BaseService<ChatHistory> {
-  constructor(protected readonly repository: ChatHistoryRepository) {
+  constructor(
+    protected readonly repository: ChatHistoryRepository,
+    private readonly sessionEvents: SessionStateEventsService,
+  ) {
     super(repository);
   }
 
@@ -13,11 +17,20 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
     mode: 'chat' | 'workspace',
     workspaceId?: string,
   ): Promise<ChatHistory> {
-    return this.repository.create({
+    const chat = await this.repository.create({
       mode,
       workspaceId: workspaceId || null,
       title: null,
     });
+
+    this.sessionEvents.record(
+      SessionEventType.SESSION_CREATED,
+      chat.id,
+      mode,
+      { workspaceId: workspaceId || null, mode },
+    );
+
+    return chat;
   }
 
   async findByWorkspaceId(workspaceId: string): Promise<ChatHistory[]> {

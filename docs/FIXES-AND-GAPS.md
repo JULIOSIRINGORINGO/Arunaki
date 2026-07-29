@@ -57,8 +57,8 @@ Hasil perbandingan sistematis setiap layer di `docs/OpenClaw-Blueprint.md` denga
 | A | Input Provenance | 9 | 🔴 P0 SECURITY | ✅ Done — input-provenance.ts + factory + inter-session utils |
 | B | User Turn Transcript | 8 | 🔴 P0 IDEMPOTEN | ✅ Done — user-turn-transcript.service.ts + lifecycle + late media |
 | C | Session Admission Duplikasi | 6 | 🔴 P0 KONSISTENSI | ✅ Done — merged ke chat/ + hapus ai/ orphan |
-| D | Session State Events | 7 | 🟡 P1 AUDIT | Tidak ada audit trail session |
-| E | Harness Registry | 5 | 🟡 P1 PLUGIN | Plugin system belum ada |
+| D | Session State Events | 7 | 🟡 P1 AUDIT | ✅ Done — session-state-events.service.ts + SQLite table + lifecycle wiring |
+| E | Harness Registry | 5 | 🟡 P1 PLUGIN | ✅ Done — harness-registry.service.ts + lifecycle hooks + agent-runner wiring |
 | F | runWithModelFallback | 2 | 🟢 P2 REFACTOR | Fallback logic inline di AiService |
 | G | Heartbeat Tidak Jalan | 29 | 🟢 P2 INTEGRASI | `registerWorkspace()` gak dipanggil |
 | H | Auto Memory Bukan Cron | 25 | 🟢 P3 REAKTIF | Hanya berjalan pas chatting |
@@ -464,9 +464,19 @@ C. **Merge Session Admission Duplikasi (Layer 6)** — Satukan `ai/session-admis
    - ✅ `chat/session-admission.service.ts` ditingkatkan: tambah `run<T>()`, `isAdmitted()`, `getQueueLength()`, `OnModuleDestroy`
    - ✅ `ai/session-admission.service.ts` dihapus (orphaned — tidak diimport siapapun)
 
-### Phase 3: Blueprint P1 High (Next)
+### ✅ Phase 3: Blueprint P1 High — **SELESAI (D+E)**
 D. **Implement Session State Events (Layer 7)** — Durable event log, CAS version heads, watch cursors
+   - ✅ `session-state-events.service.ts` — record(), getVersion(), listSince(), cleanup()
+   - ✅ SQLite table via raw SQL (CREATE TABLE IF NOT EXISTS)
+   - ✅ 6 event types: session_created, human_direct_message, agent_started, agent_completed, agent_response, session_terminated
+   - ✅ Best-effort append + retention (30 days/50k rows)
+   - ✅ Wired: chat-history (created), controller (message/response/terminated), agent-runner (started/completed)
+   - ✅ Registered in chat.module.ts
 E. **Implement Harness Registry (Layer 5)** — Plugin system untuk agent harness extensions
+   - ✅ `harness-plugin.interface.ts` — lifecycle hooks (onAgentStart, onToolStart, onToolResult, onAgentComplete, onAgentError)
+   - ✅ `harness-registry.service.ts` — register(), unregister(), getPlugins(), priority-based execution
+   - ✅ Wired into `agent-runner.service.ts` (sync + stream, tool start/result hooks)
+   - ✅ Registered in `chat.module.ts`
 
 ### Phase 4: Fix Broken Functionality
 5. Fix tiktoken encoding (#5)

@@ -14,6 +14,8 @@ import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { SessionAdmissionService } from './session-admission.service.js';
 import { MessageService } from './message.service.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
+import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
+import { HarnessRegistryService } from './harness/harness-registry.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -63,6 +65,8 @@ export class AgentRunnerService {
     private readonly sessionAdmissionService: SessionAdmissionService,
     private readonly messageService: MessageService,
     private readonly transcriptService: UserTurnTranscriptService,
+    private readonly sessionEvents: SessionStateEventsService,
+    private readonly harnessRegistry: HarnessRegistryService,
   ) {}
 
   async getKnowledgeContext(): Promise<string> {
@@ -91,6 +95,18 @@ export class AgentRunnerService {
         }
       }
 
+      this.sessionEvents.record(
+        SessionEventType.AGENT_STARTED,
+        params.chatId,
+        params.chatMode || 'chat',
+        { runId, sync: true },
+      );
+      this.harnessRegistry.onAgentStart({
+        chatId: params.chatId,
+        runId,
+        userContent: params.userContent,
+      });
+
       const messages = await this.messageService.findByChatHistoryId(params.chatId);
       this.transcriptService.createTurn(runId, params.chatId, messages.length);
       this.transcriptService.markSentToProvider(runId);
@@ -101,7 +117,26 @@ export class AgentRunnerService {
       this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
       this.transcriptService.markApproved(runId);
 
+      this.sessionEvents.record(
+        SessionEventType.AGENT_COMPLETED,
+        params.chatId,
+        params.chatMode || 'chat',
+        { runId, sync: true, toolCount: result.toolOutputs.length },
+      );
+      this.harnessRegistry.onAgentComplete({
+        chatId: params.chatId,
+        runId,
+        result,
+      });
+
       return result;
+    } catch (error) {
+      this.harnessRegistry.onAgentError({
+        chatId: params.chatId,
+        runId,
+        error,
+      });
+      throw error;
     } finally {
       await lease.release();
     }
@@ -156,6 +191,13 @@ export class AgentRunnerService {
           args = {};
         }
 
+        this.harnessRegistry.onToolStart({
+          chatId,
+          runId: params.idempotencyKey || '',
+          toolName: funcName,
+          args,
+        });
+
         let result: ToolResult;
         try {
           result = await this.toolRegistryService.executeTool(funcName, args);
@@ -172,6 +214,14 @@ export class AgentRunnerService {
             error: { code: 'EXECUTION_FAILED', message: e.message },
           };
         }
+
+        this.harnessRegistry.onToolResult({
+          chatId,
+          runId: params.idempotencyKey || '',
+          toolName: funcName,
+          args,
+          result,
+        });
 
         if (result.status === 'success' && result.metadata?.contentBase64) {
           const artifact = await this.artifactService.createFromAgent({
@@ -262,6 +312,18 @@ export class AgentRunnerService {
         }
       }
 
+      this.sessionEvents.record(
+        SessionEventType.AGENT_STARTED,
+        params.chatId,
+        params.chatMode || 'chat',
+        { runId, sync: false },
+      );
+      this.harnessRegistry.onAgentStart({
+        chatId: params.chatId,
+        runId,
+        userContent: params.userContent,
+      });
+
       const messages = await this.messageService.findByChatHistoryId(params.chatId);
       this.transcriptService.createTurn(runId, params.chatId, messages.length);
       this.transcriptService.markSentToProvider(runId);
@@ -272,7 +334,26 @@ export class AgentRunnerService {
       this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
       this.transcriptService.markApproved(runId);
 
+      this.sessionEvents.record(
+        SessionEventType.AGENT_COMPLETED,
+        params.chatId,
+        params.chatMode || 'chat',
+        { runId, sync: false },
+      );
+      this.harnessRegistry.onAgentComplete({
+        chatId: params.chatId,
+        runId,
+        result,
+      });
+
       return result;
+    } catch (error) {
+      this.harnessRegistry.onAgentError({
+        chatId: params.chatId,
+        runId,
+        error,
+      });
+      throw error;
     } finally {
       await lease.release();
     }
@@ -336,6 +417,18 @@ export class AgentRunnerService {
             },
           });
 
+          // Notify harness of tool starts
+          for (const tc of aiResponse.toolCalls) {
+            let args: Record<string, any> = {};
+            try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
+            this.harnessRegistry.onToolStart({
+              chatId,
+              runId: params.idempotencyKey || '',
+              toolName: tc.function.name,
+              args,
+            });
+          }
+
           // Use self-healing wrapper for each tool call
           const healingPromises = aiResponse.toolCalls.map(async (toolCall) => {
             let args: Record<string, any> = {};
@@ -371,6 +464,13 @@ export class AgentRunnerService {
           const healedResults = await Promise.all(healingPromises);
 
           for (const { toolCall, result } of healedResults) {
+            this.harnessRegistry.onToolResult({
+              chatId,
+              runId: params.idempotencyKey || '',
+              toolName: toolCall.function.name,
+              args: (() => { try { return JSON.parse(toolCall.function.arguments || '{}'); } catch { return {}; } })(),
+              result,
+            });
             if (result.status === 'success' && result.metadata?.contentBase64) {
               const artifact = await this.artifactService.createFromAgent({
                 type: this.mapFormatToArtifactType(
