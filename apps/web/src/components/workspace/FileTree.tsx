@@ -19,6 +19,7 @@ import {
   FileCode,
   Sparkles,
   ExternalLink,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -415,20 +416,16 @@ export default function FileTree({
       // Check if Excel / CSV file
       if (isExcelFile(fileName)) {
         const desktop = (window as any).arunakiDesktop;
-        
+        let extractedRows: any[][] = [];
+        let sheetName = "Sheet1";
+
         // 1. Try desktop parseExcel IPC
         if (desktop?.parseExcel) {
           try {
             const res = await desktop.parseExcel(filePath);
             if (res?.success && res.rows && res.rows.length > 0) {
-              setExcelGrid({
-                path: filePath,
-                name: fileName,
-                sheetName: res.sheetName || "Sheet1",
-                rows: res.rows,
-              });
-              setActiveFile(null);
-              return;
+              extractedRows = res.rows;
+              sheetName = res.sheetName || "Sheet1";
             }
           } catch (e) {
             console.warn("Desktop parseExcel failed:", e);
@@ -436,35 +433,35 @@ export default function FileTree({
         }
 
         // 2. Try client-side XLSX parser via readBinaryFile (base64)
-        if (desktop?.readBinaryFile) {
+        if (extractedRows.length === 0 && desktop?.readBinaryFile) {
           try {
             const binRes = await desktop.readBinaryFile(filePath);
             if (binRes?.success && binRes.base64) {
               const wb = XLSX.read(binRes.base64, { type: "base64" });
-              const sName = wb.SheetNames[0] || "Sheet1";
-              const ws = wb.Sheets[sName];
-              const parsedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-              setExcelGrid({
-                path: filePath,
-                name: fileName,
-                sheetName: sName,
-                rows: parsedRows,
-              });
-              setActiveFile(null);
-              return;
+              sheetName = wb.SheetNames[0] || "Sheet1";
+              const ws = wb.Sheets[sheetName];
+              extractedRows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
             }
           } catch (e) {
             console.warn("Client XLSX read failed:", e);
           }
         }
 
-        // 3. Fallback binary card
-        setActiveFile({
+        // Always show Excel Grid Viewer (even if sheet is new/empty)
+        if (extractedRows.length === 0) {
+          extractedRows = [
+            ["Kolom A", "Kolom B", "Kolom C"],
+            ["", "", ""],
+          ];
+        }
+
+        setExcelGrid({
           path: filePath,
           name: fileName,
-          content: "",
+          sheetName,
+          rows: extractedRows,
         });
-        setIsEditing(false);
+        setActiveFile(null);
         return;
       }
 
@@ -815,6 +812,23 @@ export default function FileTree({
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>{isSaving ? "Menyimpan..." : "Simpan Perubahan"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const colsCount = Math.max(maxCols || 3, 3);
+                    const newRow = Array(colsCount).fill("");
+                    setExcelGrid({
+                      ...excelGrid,
+                      rows: [...excelGrid.rows, newRow],
+                    });
+                    toast.success("Baris baru berhasil ditambahkan!");
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-emerald-800 hover:bg-emerald-700 text-white rounded-lg font-medium transition-all shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Baris</span>
                 </button>
 
                 {onAnalyzeFile && (
