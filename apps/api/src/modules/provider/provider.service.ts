@@ -88,7 +88,7 @@ export class ProviderService extends BaseService<Provider> {
    * Classify an HTTP error code into an action.
    *
    * 5xx (except 503) → retry (same provider, backoff)
-   * 429, 402, 401, 403, 503 → rotate (switch provider, cooldown)
+   * 429, 402, 401, 403, 503, 404, 400 → rotate (switch provider/model, cooldown)
    * Other → fatal
    */
   classifyError(statusCode: number, body: string): ClassifiedError {
@@ -103,13 +103,13 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    // 429, 402, 401, 403, 503 → rotate to next provider
-    if ([429, 402, 401, 403, 503].includes(statusCode)) {
+    // 429, 402, 401, 403, 503, 404, 400 → rotate to next provider/model
+    if ([429, 402, 401, 403, 503, 404, 400].includes(statusCode)) {
       const cooldownKey = String(statusCode) as keyof typeof this.COOLDOWN;
       return {
         action: 'rotate',
         statusCode,
-        message,
+        message: `${message}: ${body.substring(0, 150)}`,
         cooldownSeconds: this.COOLDOWN[cooldownKey] || 60,
       };
     }
@@ -122,32 +122,59 @@ export class ProviderService extends BaseService<Provider> {
     };
   }
 
+  // Built-in fallback free models pool on OpenRouter
+  private static readonly FREE_MODEL_CANDIDATES = [
+    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'inclusionai/ling-3.0-flash:free',
+    'poolside/laguna-s-2.1:free',
+    'nvidia/nemotron-nano-9b-v2:free',
+  ];
+
   /**
-   * Get next available provider for rotation.
-   * Returns the first provider not in cooldown, or null if all are cooling down.
+   * Get next available provider/model for rotation.
+   * Returns the first provider not in cooldown, or falls back to next free model candidate pool.
    */
   async getNextAvailable(
     currentProviderId?: string,
   ): Promise<ProviderConfig | null> {
-    const available = await this.repository.findAvailable();
+    const available = await this.repository.findAvailable().catch(() => []);
 
     // Skip the current provider (we're rotating AWAY from it)
     const next = available.find((p) => p.id !== currentProviderId);
 
-    if (!next) {
-      this.logger.warn('No available providers for rotation (all in cooldown)');
+    if (next) {
+      return {
+        id: next.id,
+        name: next.name,
+        type: next.type,
+        baseUrl: next.baseUrl,
+        apiKey: next.apiKey,
+        model: next.model,
+        headerPrefix: next.headerPrefix || undefined,
+        headerTitle: next.headerTitle || undefined,
+      };
+    }
+
+    // Fallback: rotate across built-in free models on OpenRouter
+    const pool = ProviderService.FREE_MODEL_CANDIDATES;
+    const currentModelIndex = pool.findIndex(
+      (m) => m === currentProviderId || currentProviderId?.includes(m),
+    );
+    const nextModel = pool[(currentModelIndex + 1) % pool.length];
+
+    if (!nextModel || nextModel === currentProviderId) {
+      this.logger.warn('No available providers for rotation');
       return null;
     }
 
+    this.logger.log(`Rotating to alternate free model candidate: ${nextModel}`);
     return {
-      id: next.id,
-      name: next.name,
-      type: next.type,
-      baseUrl: next.baseUrl,
-      apiKey: next.apiKey,
-      model: next.model,
-      headerPrefix: next.headerPrefix || undefined,
-      headerTitle: next.headerTitle || undefined,
+      id: `fallback-${nextModel}`,
+      name: `OpenRouter Fallback (${nextModel})`,
+      type: 'openai-compatible',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKey: process.env.AI_API_KEY || '',
+      model: nextModel,
     };
   }
 
