@@ -1,13 +1,13 @@
 # Workspace Flow
 
-## 1. Read
+## 1. Execute Creation Requests Immediately
 
-List all files in workspace. Read each one. Understand their format from the content.
+If user asks to create or write a document/file, invoke `write_workspace_file` or `document_writer` directly.
 
-## 2. Act
+## 2. Read Existing Files Only When Needed
 
-Do what the user asked. Edit existing files with new data. Use `write_workspace_file` with the same filename to overwrite.
+List and read workspace files only when analyzing or modifying pre-existing content.
 
-## 3. Done
+## 3. Confirm Output
 
-Confirm what was changed. Save memory if relevant.
+Once tool completes file creation/editing, confirm what was created to the user concisely.
