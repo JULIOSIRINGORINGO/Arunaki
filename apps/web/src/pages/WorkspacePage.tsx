@@ -22,10 +22,7 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Square,
-  Activity,
-  Compass,
-  Bot,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -49,6 +46,7 @@ export function WorkspacePage() {
   const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
+  const excelHostRef = useRef<HTMLDivElement>(null);
 
   // Agent auto-analysis state
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
@@ -343,7 +341,18 @@ export function WorkspacePage() {
           return;
         }
 
-        // 5. Set native tree in state — displayed immediately like VS Code
+        // 5. Index files in backend for AI before marking the folder connected.
+        const connectRes = await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folderPath }),
+        });
+        const connectJson = await connectRes.json().catch(() => null);
+        if (!connectRes.ok || !connectJson?.data) {
+          throw new Error(connectJson?.error?.message || 'Backend gagal mengindeks folder');
+        }
+
+        // 6. Folder is readable by Electron and indexed by the backend.
         setNativeTree(scan.tree);
         setNativeFileCount(fileCount);
         setConnectedFolderPath(folderPath);
@@ -352,19 +361,8 @@ export function WorkspacePage() {
         setIsModalOpen(false);
         connectedWsRef.current = newId;
         localStorage.setItem('arunaki_workspace_id', newId);
+        await queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
         toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
-
-        // 6. Index files in backend for AI (await before analysis)
-        try {
-          await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folderPath }),
-          });
-          queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
-        } catch {
-          // Backend indexing failed — tree still visible
-        }
         triggerAutoAnalysis(newId);
       } catch (err: any) {
         console.error('Connect folder failed:', err);

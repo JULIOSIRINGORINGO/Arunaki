@@ -1,27 +1,26 @@
 import { useState, useMemo } from "react";
-import {
-  ChevronRight,
-  ChevronDown,
-  FileText,
-  FileImage,
-  FileSpreadsheet,
-  File,
-  Folder,
-  FolderOpen,
-  Search,
-  FilePlus,
-  FolderPlus,
-  RotateCw,
-  Trash2,
-  Edit3,
-  Save,
-  X,
-  FileCode,
-  Sparkles,
-  ExternalLink,
+import { 
+  ChevronRight, 
+  ChevronDown, 
+  FileText, 
+  FileImage, 
+  FileSpreadsheet, 
+  File, 
+  Folder, 
+  FolderOpen, 
+  Search, 
+  FilePlus, 
+  FolderPlus, 
+  RotateCw, 
+  Trash2, 
+  Edit3, 
+  Save, 
+  X, 
+  FileCode, 
+  Sparkles, 
+  ExternalLink 
 } from "lucide-react";
 import { toast } from "sonner";
-import DocumentEngineHost from "../document/DocumentEngineHost";
 
 interface FileItem {
   id: string;
@@ -346,13 +345,6 @@ export default function FileTree({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // OnlyOffice Document Engine Host State
-  const [activeDocumentHost, setActiveDocumentHost] = useState<{
-    path: string;
-    name: string;
-    ext: "xlsx" | "xlsm" | "xls" | "csv" | "docx" | "doc" | "pptx" | "ppt";
-  } | null>(null);
-
   // New File / Folder Prompt Modal
   const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
   const [newItemName, setNewItemName] = useState("");
@@ -405,16 +397,15 @@ export default function FileTree({
         onFileClick(filePath, fileName);
       }
 
-      const ext = (fileName.split(".").pop()?.toLowerCase() || "") as any;
-
-      // 1. Open in OnlyOffice Document Engine Host for Office/Excel files
+      // 1. Open natively in OS application
       if (isOfficeDocument(fileName)) {
-        setActiveDocumentHost({
-          path: filePath,
-          name: fileName,
-          ext: ext,
-        });
-        setActiveFile(null);
+        if ((window as any).arunakiDesktop?.openExcelNative) {
+          (window as any).arunakiDesktop.openExcelNative(filePath);
+        } else if ((window as any).arunakiDesktop?.openPath) {
+          (window as any).arunakiDesktop.openPath(filePath);
+        } else {
+          toast.info("Fitur buka native hanya tersedia di aplikasi desktop Arunaki.");
+        }
         return;
       }
 
@@ -714,24 +705,6 @@ export default function FileTree({
             </form>
           </div>
         </div>
-      )}
-
-      {/* Univer Document Engine Host Modal */}
-      {activeDocumentHost && (
-        <DocumentEngineHost
-          filePath={activeDocumentHost.path}
-          fileName={activeDocumentHost.name}
-          fileType={activeDocumentHost.ext}
-          onClose={() => setActiveDocumentHost(null)}
-          onSave={() => toast.success(`Menyimpan dokumen "${activeDocumentHost.name}"...`)}
-          onAnalyzeAI={() => {
-            const name = activeDocumentHost.name;
-            const path = activeDocumentHost.path;
-            setActiveDocumentHost(null);
-            if (onAnalyzeFile) onAnalyzeFile(name, path);
-          }}
-          onOpenNativeOS={() => (window as any).arunakiDesktop?.openPath?.(activeDocumentHost.path)}
-        />
       )}
 
       {/* VS Code Style Text Editor / Viewer Modal */}
