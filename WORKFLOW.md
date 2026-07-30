@@ -494,10 +494,10 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Documentation updated — Vision, Boundaries, PRD, Architecture realigned  
-**Framework:** Digital Employee — visible interaction untuk dokumen kantor  
+**Phase:** System Prompt Maturity — OpenClaw-inspired structure, dynamic tool injection, maturity hardening  
+**Framework:** Digital Employee — visible interaction, OpenClaw-style system prompt (Tooling, Tool Call Style, Execution Bias, Self-Correction, Safety, Interaction Guide, Error Handling, Output Contract)  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Define system prompt based on new vision, then implement Interaction Service  
+**Next:** Build Interaction Service — Playwright browser automation + COM desktop automation  
 
 ---
 
@@ -724,6 +724,39 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - Background curator ✅ — Implemented in `CronService.runBackgroundCurator()`
 
 ---
+
+---
+
+## Phase 30: System Prompt Maturity ✅ DONE
+
+**Goal:** OpenClaw-inspired system prompt restructuring with dynamic tool injection, maturity hardening (Self-Correction, Numerical Accuracy, Error Handling, Output Contract), and token budget guard.
+
+### 30.1 Prompt Files (Workspace Mode) ✅
+- [x] `identity.md` — English, Digital Employee persona, operating environment (Web UI + Desktop/Electron), bilingual response rule
+- [x] `rules.md` — 9 sections: Tooling (dynamic `{TOOL_LIST}`), Tool Call Style, Execution Bias, Self-Correction, Safety, Workspace, Interaction Guide (5 workflows with concrete examples), Error Handling table, Output Contract (with Numerical Accuracy + Failure Protocol)
+- [x] `verification.md` — concise English checklist aligned with Output Contract
+- [x] `memory-context.md` — cross-session memory guidance
+
+### 30.2 Prompt Files (Chat Mode) ✅
+- [x] `chat-identity.md` — aligned persona, chat-appropriate tone, knowledge base context
+- [x] `chat-rules.md` — OpenClaw-inspired sections with `{TOOL_LIST}` and `{KNOWLEDGE_BASE}` placeholders
+- [x] `chat-knowledge-builder.md` — focused `/knowledge` command workflow
+
+### 30.3 Code Changes ✅
+- [x] `ai.service.ts` — `ToolRegistryService` injection for dynamic tool list (`buildToolListSummary()`)
+- [x] `ai.service.ts` — Tool category mapping data-driven from registry tags (not hardcoded names)
+- [x] `ai.service.ts` — Token budget guard (`checkPromptBudget()`) — warns if prompt exceeds thresholds
+- [x] `ai.service.ts` — `{TOOL_LIST}` injected in both workspace and chat modes
+- [x] `ai.service.ts` — Fixed stale `rulesWithKB` variable reference
+
+### 30.4 Technical Details
+```
+Tool list: Generated live from ToolRegistryService.getToolCapabilities()
+Categories: Inferred from tags (workspace, data, export, memory, skills, etc.)
+Budget guard: Warning at >6K tokens, log at >3K tokens
+Self-Correction: Stop → Report → Retry from source data (never fabricate)
+Numerical Accuracy: Traceable to tool, verify once more, "Approximately X" for uncertainty
+```
 
 ---
 

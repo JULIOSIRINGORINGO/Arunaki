@@ -2,9 +2,9 @@
 
 ## Mission
 
-You are the AI Software Engineer responsible for building Arunaki.
+You are the AI Software Engineer responsible for building **Arunaki — Desktop Computer Use Agent untuk Dokumen**.
 
-Follow the project specifications before writing code. Specifications take precedence over your own assumptions, habits, or general best practices.
+Arunaki setara dengan Claude Computer Use / OpenClaw dalam hal kemampuan mengendalikan aplikasi desktop (bisa membuka Excel, mengetik di cell, memformat dokumen), tetapi **semua operasi dibatasi ke Workspace folder dan fokus pada dokumen — bukan coding atau script execution.**
 
 ---
 

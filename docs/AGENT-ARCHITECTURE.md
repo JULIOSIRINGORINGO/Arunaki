@@ -128,40 +128,60 @@ After each inner loop iteration, OpenClaw calls `prepareNextTurn()`:
 
 ---
 
-## Arunaki Agent Architecture (Current)
+## Arunaki Agent Architecture (Current — Sandboxed Computer Use)
 
-### Core Design: Single-Loop Tool Caller
+Arunaki adalah **sandboxed computer use agent**. Status saat ini:
+
+- ✅ Dual-loop (outer: steering, inner: tool execution)
+- ✅ State machine (idle → running → steering → aborting → completed/failed)
+- ✅ AbortController per workspace run
+- ✅ Steering queue (mid-run user input)
+- ✅ Approval gate for mutating tools
+- ✅ SelfHealing + path validation (`validateToolPaths()`)
+- ✅ Tool execution: read-only parallel, mutating sequential
+- ❌ Belum ada native shell/script execution tools (masih via tool abstraksi)
+
+### Core Design: Dual-Loop Agent (Current State)
 
 ```
-┌─────────────────────────────────────────┐
-│  runWorkspaceAgentStream()              │
-│  ┌─────────────────────────────────────┐ │
-│  │  buildWorkspaceContext()            │ │  ← Built ONCE at start
-│  │  plan = AI.generatePlan()           │ │  ← Separate LLM call
-│  │  for round = 0..25:                 │ │
-│  │    response = AI.chat(messages)     │ │
-│  │    if no tool_calls: break          │ │
-│  │    execute read-only (parallel)     │ │
-│  │    execute mutating (sequential)    │ │
-│  │    add results to messages          │ │
-│  │  selfEvaluationService.evaluate()   │ │
-│  │  save to DB                         │ │
-│  └─────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Outer Loop (Steering / Follow-up)          │
+│  ┌─────────────────────────────────────────┐│
+│  │  Inner Loop (Tool Calls)                ││
+│  │  ┌─────────────────────────────────────┐││
+│  │  │  AI.chat(messages, tools)           │││
+│  │  │  → Parse tool_calls                 │││
+│  │  │  → Read-only tools (parallel)       │││
+│  │  │  → Mutating tools (sequential)      │││
+│  │  │  → Add results to messages          │││
+│  │  │  → Loop if tool_calls present       │││
+│  │  └─────────────────────────────────────┘││
+│  │  prepareNextTurn() every 5 rounds       ││
+│  │  Check steering queue                   ││
+│  └─────────────────────────────────────────┘│
+└─────────────────────────────────────────────┘
 ```
 
-### What's Missing vs OpenClaw
+### What's Different vs OpenClaw (After Phase 24+)
 
-| Feature | OpenClaw | Arunaki | Impact |
-|---------|----------|---------|--------|
-| Dual-loop | Outer (steering) + Inner (tools) | Single loop | No mid-run user input |
-| State machine | 6 states with transitions | None (running/done) | No lifecycle management |
-| Abort/cancel | Graceful + forceful | None | Can't stop long runs |
-| Steering queue | User input during execution | Ignored until done | Poor UX for long tasks |
-| prepareNextTurn | Fresh context each iteration | Context built once | Stale data after round 10 |
-| Event system | Full lifecycle events | Basic progress only | No debugging/monitoring |
-| Token budget | Dynamic per-turn allocation | Fixed 128k total | Inefficient token use |
-| Error recovery | Retry with backoff | Fail and stop | Fragile execution |
+| Feature | OpenClaw (Full Access) | Arunaki (Document Focus) | Impact |
+|---------|----------------------|------------------------|--------|
+| **Scope** | Seluruh OS | Workspace folder only | Security |
+| **Tools** | 200+ (browser, shell, MCP, OS API, IDE) | ~20 (Excel COM, Word COM, file ops, search) | Dokumen saja |
+| **Computer Use** | Browser, terminal, any app | Excel, Word, PowerPoint via COM/OLE | Dokumen saja |
+| **Coding** | Yes — full dev environment | **No** — bukan coding agent | Fokus |
+| **Auth** | Multi-user, OAuth, multi-key | Single workspace, simple pool | Simpler |
+| **Concurrency** | Multi-agent, subagents, swarms | 1 agent per workspace | Simpler |
+| **Dual-loop** | Outer + Inner | ✅ Outer + Inner | Same |
+| **State machine** | 6 states | ✅ 6 states | Same |
+| **Abort/cancel** | Graceful + forceful | ✅ Graceful | Same |
+| **Steering** | Mid-run input | ✅ Mid-run input | Same |
+| **prepareNextTurn** | Fresh context every iteration | ✅ Every 5 rounds | Same |
+| **Event system** | Full lifecycle | ✅ Full lifecycle | Same |
+| **Approval gate** | For dangerous actions | ✅ For mutating tools | Same |
+| **Tool maturity** | Shell, browser, git, IDE — mature | Excel COM, file ops — masih berkembang | Gap |
+| **Path validation** | None needed | ✅ Must validate paths — `validateToolPaths()` | Extra safety |
+| **Shell/Script tools** | ✅ Full shell access | ❌ **Tidak ada** — bukan script runner | By design |
 
 ---
 
@@ -240,6 +260,26 @@ type WorkspaceStreamEvent =
 ```
 
 ---
+
+## Perbedaan Kunci
+
+### OpenClaw = General Computer Use (Unrestricted)
+- Akses penuh ke sistem operasi
+- Bisa install software, browse web, control browser
+- 200+ tools tanpa batasan
+- Multi-user, multi-session, swarms
+
+### Arunaki = Desktop Document Computer Use Agent
+- **Mengendalikan aplikasi desktop** (Excel, Word, PowerPoint) via COM/OLE
+- Bekerja dengan dokumen dalam sandbox workspace
+- Tools: file operations, COM automation, search, web research
+- **BUKAN** untuk coding, shell, atau script execution
+
+```
+OpenClaw: [Browser] [Shell]  [Git]  [IDE]  [MCP]  [OS API] → FULL SYSTEM
+Arunaki:  [Excel]   [Word]  [File] [Search] [Web]           → DOKUMEN SAJA
+           via COM   via COM   ops    konten    search
+```
 
 ## Key Insight
 

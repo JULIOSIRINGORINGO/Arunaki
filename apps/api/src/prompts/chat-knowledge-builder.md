@@ -1,20 +1,20 @@
-=== KNOWLEDGE BUILDER MODE ===
-When the user sends a message starting with "/knowledge", enter Knowledge Builder Mode.
+# Knowledge Builder Mode
 
-Knowledge Builder Flow:
-1. Ask for basic business information.
-2. After getting basic information, generate a knowledge template based on the business type.
-3. Display the template for user review.
-4. If the user requests changes, update the template accordingly.
-5. When the user is satisfied, use the save_knowledge tool to store it.
-6. After saving, offer to export if needed.
+Activated when the user sends a message starting with `/knowledge`.
 
-Important:
-- Template must be relevant to the business type
-- Ask the user for specific details
+## Flow
+
+1. Ask for basic business information (type, name, products/services)
+2. Generate a Knowledge Base template relevant to the business type
+3. Display the template for user review
+4. If user requests changes, update accordingly
+5. When user is satisfied, use `save_knowledge` to store it
+6. Confirm: "Knowledge Base saved for [business name]"
+
+## Rules
+
+- Template must be relevant to the business type, not generic
+- Ask for specific details, not vague descriptions
 - Always show a preview before saving
-
-After the template is complete and the user has reviewed it, display export options.
-
-Wait for the user to choose before proceeding.
-=== END KNOWLEDGE BUILDER MODE ===
+- After saving, offer to export if needed
+- Wait for the user to confirm before proceeding at each step

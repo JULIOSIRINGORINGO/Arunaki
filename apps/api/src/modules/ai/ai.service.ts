@@ -17,6 +17,7 @@ import {
 import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
 import { modelSupportsTools } from './model-capability.js';
+import { ToolRegistryService } from '../tools/tool-registry.service.js';
 
 export interface ToolCall {
   id: string;
@@ -82,6 +83,7 @@ export class AiService {
   constructor(
     private readonly config: ConfigService,
     private readonly providerService: ProviderService,
+    @Optional() private readonly toolRegistryService?: ToolRegistryService,
     @Optional() @Inject(ContextRegistry) private readonly contextRegistry?: ContextRegistry,
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
@@ -450,10 +452,13 @@ export class AiService {
       providerConfig?.model || this.fallbackModel,
     );
 
+    // Dynamic tool list from registry (used in both modes)
+    const toolList = this.buildToolListSummary();
+
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load prompt files
       const identity = this.loadPrompt('identity.md');
-      const rules = this.loadPrompt('rules.md');
+      let rules = this.loadPrompt('rules.md');
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
 
@@ -462,7 +467,10 @@ export class AiService {
         'workspace-context',
       );
 
-      return `${identity}
+      // Inject dynamic tool list into rules
+      rules = rules.replace('{TOOL_LIST}', toolList);
+
+      const prompt = `${identity}
 
 ${safeWorkspaceContext}
 
@@ -473,28 +481,36 @@ ${memoryContext}
 ${verification}
 
 ${modelAdditions}`;
+
+      this.checkPromptBudget(prompt, 'workspace');
+      return prompt;
     }
 
     // Chat mode — load 3 modular prompt files
     const identity = this.loadPrompt('chat-identity.md');
-    const rules = this.loadPrompt('chat-rules.md');
+    let rules = this.loadPrompt('chat-rules.md');
     const knowledgeBuilder = this.loadPrompt('chat-knowledge-builder.md');
 
     // Inject knowledge base into rules template
     const safeKnowledgeContext = knowledgeContext
       ? this.limitInjection(knowledgeContext, 'knowledge-base')
       : '(No active Knowledge Base)';
-    const rulesWithKB = rules.replace('{KNOWLEDGE_BASE}', safeKnowledgeContext);
+    rules = rules
+      .replace('{KNOWLEDGE_BASE}', safeKnowledgeContext)
+      .replace('{TOOL_LIST}', toolList);
 
-    return `${identity}
+    const prompt = `${identity}
 
-${rulesWithKB}
+${rules}
 
 ${knowledgeBuilder}
 
 ${modelAdditions}
 
 ${posturePrompt}`;
+
+    this.checkPromptBudget(prompt, 'chat');
+    return prompt;
   }
 
   /**
@@ -514,6 +530,96 @@ ${posturePrompt}`;
       };
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Build a dynamic tool list summary from the tool registry.
+   * Categories are inferred from tool tags, not hardcoded names.
+   */
+  private buildToolListSummary(): string {
+    const caps = this.toolRegistryService?.getToolCapabilities();
+    if (!caps || caps.length === 0) {
+      return 'No tools available.';
+    }
+
+    const tagCategory: Record<string, string> = {
+      files: 'Workspace', workspace: 'Workspace',
+      read: 'Workspace', write: 'Workspace',
+      search: 'Workspace', fts: 'Workspace',
+      extract: 'Data', data: 'Data',
+      calculate: 'Data', math: 'Data', sql: 'Data',
+      export: 'Export', document: 'Export',
+      pdf: 'Export', docx: 'Export', xlsx: 'Export',
+      knowledge: 'Knowledge',
+      memory: 'Memory', recall: 'Memory', history: 'Memory',
+      skills: 'Skills', workflow: 'Skills',
+      web: 'Web', internet: 'Web',
+      converter: 'Conversion', currency: 'Conversion', unit: 'Conversion',
+      draft: 'Communication', communication: 'Communication',
+      ocr: 'Vision', vision: 'Vision', image: 'Vision',
+    };
+
+    const categorized = new Map<string, { name: string; desc: string }[]>();
+    const other: { name: string; desc: string }[] = [];
+    const categoryOrder = ['Workspace', 'Data', 'Export', 'Knowledge', 'Memory', 'Skills', 'Vision', 'Web', 'Conversion', 'Communication'];
+
+    for (const cap of caps) {
+      const entry = {
+        name: cap.name,
+        desc: cap.description?.split('.')[0]?.trim() || '',
+      };
+      let placed = false;
+      for (const tag of cap.tags || []) {
+        const category = tagCategory[tag];
+        if (category) {
+          if (!categorized.has(category)) categorized.set(category, []);
+          categorized.get(category)!.push(entry);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) other.push(entry);
+    }
+
+    const lines: string[] = [];
+    for (const category of categoryOrder) {
+      const tools = categorized.get(category);
+      if (!tools || tools.length === 0) continue;
+      lines.push(`**${category}:**`);
+      for (const t of tools) lines.push(`- \`${t.name}\` — ${t.desc}`);
+      lines.push('');
+    }
+    if (other.length > 0) {
+      lines.push('**Other:**');
+      for (const t of other) lines.push(`- \`${t.name}\` — ${t.desc}`);
+    }
+
+    return lines.join('\n').trim() || 'No tools available.';
+  }
+
+  /**
+   * Log a warning if the system prompt exceeds the context budget.
+   * Free models typically have 8K-32K context; paid models 128K+.
+   */
+  private checkPromptBudget(prompt: string, contextLabel: string): void {
+    try {
+      const tokens = this.enc.encode(prompt).length;
+      if (tokens > 6000) {
+        this.logger.warn(
+          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 6K threshold. Consider reducing prompt size.`,
+        );
+      } else if (tokens > 3000) {
+        this.logger.log(
+          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — moderate size.`,
+        );
+      } else {
+        this.logger.debug(
+          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — within budget.`,
+        );
+      }
+    } catch {
+      // Token counting is best-effort
     }
   }
 }

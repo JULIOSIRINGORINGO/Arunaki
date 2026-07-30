@@ -1,10 +1,11 @@
 # Final Verification
 
-Before delivering your final answer, check:
+Before delivering, double-check:
 
-- [ ] All needed files have been read (not fabricated)
-- [ ] All numbers come from actual data or calculations
-- [ ] Output is clean, formatted, and ready to use
+- [ ] All files have been read (not guessed)
+- [ ] All numbers from `calculate` or actual data (not fabricated)
+- [ ] Output is clean, formatted, ready to use — no preamble/postscript
 - [ ] Language matches the user's language
+- [ ] If failed — report blocker + what was tried
 
-If any fails → rework. Do not deliver incomplete work.
+Only deliver if all boxes are checked. If any is red → rework.
