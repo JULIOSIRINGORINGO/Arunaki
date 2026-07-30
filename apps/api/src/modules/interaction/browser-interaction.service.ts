@@ -1,110 +1,251 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { chromium, Browser, Page } from 'playwright';
 
+interface BrowserSession {
+  page: Page;
+  createdAt: Date;
+}
+
 @Injectable()
 export class BrowserInteractionService implements OnModuleDestroy {
   private readonly logger = new Logger(BrowserInteractionService.name);
   private browser: Browser | null = null;
-  private page: Page | null = null;
+  private sessions = new Map<string, BrowserSession>();
+  private launchAttempted = false;
 
-  async launch(): Promise<void> {
+  async ensureBrowser(): Promise<void> {
     if (this.browser) return;
-    this.browser = await chromium.launch({
-      headless: false,
-      args: ['--start-maximized'],
-    });
-    const context = await this.browser.newContext({
+    if (this.launchAttempted) {
+      throw new Error(
+        'Browser previously failed to launch. Check that Chromium is installed ' +
+        '(run: npx playwright install chromium) and restart the server.',
+      );
+    }
+    this.launchAttempted = true;
+    try {
+      const executable = chromium.executablePath();
+      this.logger.log(`Chromium path: ${executable}`);
+    } catch {
+      throw new Error(
+        'Chromium browser not found. Install it with: npx playwright install chromium',
+      );
+    }
+    try {
+      this.browser = await chromium.launch({
+        headless: false,
+        args: ['--start-maximized', '--no-sandbox'],
+      });
+      this.logger.log('Browser launched successfully');
+    } catch (err) {
+      this.launchAttempted = false;
+      throw new Error(
+        `Failed to launch Chromium: ${err.message}. ` +
+        'Ensure Chrome/Chromium is installed and try again.',
+      );
+    }
+  }
+
+  private validateUrl(url: string): void {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new Error(`Invalid URL: "${url}"`);
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Blocked protocol: ${parsed.protocol} (only http/https allowed)`);
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const blocked = [
+      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+      /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/,
+      /^192\.168\.\d{1,3}\.\d{1,3}$/,
+      /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+      /^0\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,
+      /^localhost$/i,
+      /^::1$/,
+    ];
+    for (const pattern of blocked) {
+      if (pattern.test(hostname)) {
+        throw new Error(`Blocked URL: cannot navigate to private network address (${hostname})`);
+      }
+    }
+  }
+
+  private async getOrCreatePage(sessionId: string): Promise<Page> {
+    await this.ensureBrowser();
+    const existing = this.sessions.get(sessionId);
+    if (existing) {
+      try {
+        if (existing.page.isClosed()) {
+          this.sessions.delete(sessionId);
+        } else {
+          return existing.page;
+        }
+      } catch {
+        this.sessions.delete(sessionId);
+      }
+    }
+    const context = await this.browser!.newContext({
       viewport: { width: 1280, height: 800 },
       locale: 'id-ID',
     });
-    this.page = await context.newPage();
-    this.logger.log('Browser launched (headed, visible)');
+    const page = await context.newPage();
+    this.sessions.set(sessionId, { page, createdAt: new Date() });
+    this.logger.log(`New page created for session: ${sessionId}`);
+    return page;
   }
 
-  get isConnected(): boolean {
-    return this.browser !== null && this.page !== null;
+  async navigate(
+    url: string,
+    sessionId = 'default',
+  ): Promise<{ title: string; url: string }> {
+    this.validateUrl(url);
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    } catch (err) {
+      throw new Error(`Navigation failed: ${err.message}`);
+    }
+    return { title: await page.title(), url: page.url() };
   }
 
-  async navigate(url: string): Promise<{ title: string; url: string }> {
-    await this.ensurePage();
-    await this.page!.goto(url, { waitUntil: 'networkidle' });
-    return { title: await this.page!.title(), url: this.page!.url() };
+  async click(selector: string, sessionId = 'default'): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.click(selector, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `Cannot click "${selector}": ${err.message}. ` +
+        'Try browser_screenshot to see the current page state.',
+      );
+    }
   }
 
-  async click(selector: string): Promise<void> {
-    await this.ensurePage();
-    await this.page!.click(selector);
+  async type(selector: string, text: string, sessionId = 'default'): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.fill(selector, '');
+      await page.fill(selector, text);
+    } catch (err) {
+      throw new Error(
+        `Cannot type into "${selector}": ${err.message}. ` +
+        'Try browser_screenshot to see the current page state.',
+      );
+    }
   }
 
-  async type(selector: string, text: string): Promise<void> {
-    await this.ensurePage();
-    await this.page!.fill(selector, '');
-    await this.page!.fill(selector, text);
+  async typeSlowly(
+    selector: string,
+    text: string,
+    delayMs = 50,
+    sessionId = 'default',
+  ): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.click(selector);
+      await page.type(selector, text, { delay: delayMs });
+    } catch (err) {
+      throw new Error(
+        `Cannot type into "${selector}": ${err.message}. ` +
+        'Try browser_screenshot to see the current page state.',
+      );
+    }
   }
 
-  async typeSlowly(selector: string, text: string, delayMs = 50): Promise<void> {
-    await this.ensurePage();
-    await this.page!.click(selector);
-    await this.page!.type(selector, text, { delay: delayMs });
+  async pressKey(key: string, sessionId = 'default'): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.keyboard.press(key);
+    } catch (err) {
+      throw new Error(`Cannot press key "${key}": ${err.message}`);
+    }
   }
 
-  async pressKey(key: string): Promise<void> {
-    await this.ensurePage();
-    await this.page!.keyboard.press(key);
+  async screenshot(sessionId = 'default'): Promise<string> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      const buffer = await page.screenshot({ type: 'png' });
+      return buffer.toString('base64');
+    } catch (err) {
+      throw new Error(`Screenshot failed: ${err.message}`);
+    }
   }
 
-  async screenshot(): Promise<string> {
-    await this.ensurePage();
-    const buffer = await this.page!.screenshot({ type: 'png' });
-    return buffer.toString('base64');
+  async getContent(sessionId = 'default'): Promise<string> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      return page.evaluate(() => document.body.innerText);
+    } catch (err) {
+      throw new Error(`Cannot read page content: ${err.message}`);
+    }
   }
 
-  async getContent(): Promise<string> {
-    await this.ensurePage();
-    return this.page!.evaluate(() => document.body.innerText);
+  async getHtml(sessionId = 'default'): Promise<string> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      return page.content();
+    } catch (err) {
+      throw new Error(`Cannot read page HTML: ${err.message}`);
+    }
   }
 
-  async getHtml(): Promise<string> {
-    await this.ensurePage();
-    return this.page!.content();
+  async goBack(sessionId = 'default'): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.goBack({ waitUntil: 'networkidle', timeout: 15000 });
+    } catch (err) {
+      throw new Error(`Cannot go back: ${err.message}`);
+    }
   }
 
-  async goBack(): Promise<void> {
-    await this.ensurePage();
-    await this.page!.goBack({ waitUntil: 'networkidle' });
+  async goForward(sessionId = 'default'): Promise<void> {
+    const page = await this.getOrCreatePage(sessionId);
+    try {
+      await page.goForward({ waitUntil: 'networkidle', timeout: 15000 });
+    } catch (err) {
+      throw new Error(`Cannot go forward: ${err.message}`);
+    }
   }
 
-  async goForward(): Promise<void> {
-    await this.ensurePage();
-    await this.page!.goForward({ waitUntil: 'networkidle' });
+  async closeSession(sessionId: string): Promise<void> {
+    const existing = this.sessions.get(sessionId);
+    if (existing) {
+      try {
+        if (!existing.page.isClosed()) {
+          await existing.page.close();
+        }
+      } catch {
+        // page already closed or context disposed
+      }
+      this.sessions.delete(sessionId);
+      this.logger.log(`Session closed: ${sessionId}`);
+    }
   }
 
-  async waitForSelector(selector: string, timeoutMs = 5000): Promise<void> {
-    await this.ensurePage();
-    await this.page!.waitForSelector(selector, { timeout: timeoutMs });
-  }
-
-  async evaluate(fn: string): Promise<any> {
-    await this.ensurePage();
-    return this.page!.evaluate(fn);
+  async closeAllSessions(): Promise<void> {
+    for (const sessionId of this.sessions.keys()) {
+      await this.closeSession(sessionId);
+    }
   }
 
   async close(): Promise<void> {
+    await this.closeAllSessions();
     if (this.browser) {
-      await this.browser.close();
+      try {
+        await this.browser.close();
+      } catch {
+        // browser already closed
+      }
       this.browser = null;
-      this.page = null;
+      this.launchAttempted = false;
       this.logger.log('Browser closed');
     }
   }
 
   onModuleDestroy() {
-    this.close();
-  }
-
-  private async ensurePage(): Promise<void> {
-    if (!this.isConnected) {
-      await this.launch();
-    }
+    this.close().catch((err) => {
+      this.logger.error(`Error during browser cleanup: ${err.message}`);
+    });
   }
 }

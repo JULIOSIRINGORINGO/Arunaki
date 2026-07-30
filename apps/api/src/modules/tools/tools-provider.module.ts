@@ -50,7 +50,6 @@ import { BrowserInteractionService } from '../interaction/browser-interaction.se
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
-    BrowserInteractionService,
   ],
   exports: [
     ToolRegistryService,
@@ -69,7 +68,6 @@ import { BrowserInteractionService } from '../interaction/browser-interaction.se
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
-    BrowserInteractionService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -938,22 +936,35 @@ export class ToolsProviderModule implements OnModuleInit {
           'Membuka halaman web (Google Docs, Google Sheets, website) di browser yang terlihat. ' +
           'Gunakan untuk membuka dokumen online atau mencari informasi di web.',
         tags: ['browser', 'navigate', 'web', 'google-docs', 'google-sheets'],
-        handler: (args) =>
-          this.browserInteraction.navigate(args.url).then((r) => ({
-            status: 'success' as const,
-            data: { title: r.title, url: r.url },
-            preview: `Halaman terbuka: ${r.title}`,
-            metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
-          })),
+        handler: async (args) => {
+          try {
+            const r = await this.browserInteraction.navigate(args.url, args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: { title: r.title, url: r.url },
+              preview: `Halaman terbuka: ${r.title}`,
+              metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
+        },
         parameters: {
           type: 'object',
           properties: {
             url: { type: 'string', description: 'URL halaman web yang akan dibuka (https://...)' },
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
           required: ['url'],
         },
         estimatedLatency: 'medium',
-        timeoutMs: 30000,
+        timeoutMs: 35000,
       }),
     );
 
@@ -966,13 +977,23 @@ export class ToolsProviderModule implements OnModuleInit {
           'Gunakan untuk mengklik tombol, link, menu, atau cell di Google Docs/Sheets.',
         tags: ['browser', 'click', 'interact'],
         handler: async (args) => {
-          await this.browserInteraction.click(args.selector);
-          return {
-            status: 'success' as const,
-            data: { selector: args.selector },
-            preview: `Mengklik: ${args.selector}`,
-            metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
-          };
+          try {
+            await this.browserInteraction.click(args.selector, args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: { selector: args.selector },
+              preview: `Mengklik: ${args.selector}`,
+              metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
         parameters: {
           type: 'object',
@@ -981,10 +1002,11 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'string',
               description: 'CSS selector element yang akan diklik (contoh: "#id", ".class", "button")',
             },
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
           required: ['selector'],
         },
-        timeoutMs: 10000,
+        timeoutMs: 15000,
       }),
     );
 
@@ -997,17 +1019,27 @@ export class ToolsProviderModule implements OnModuleInit {
           'Gunakan untuk mengisi data di Google Sheets, mengetik di Google Docs, atau mengisi form.',
         tags: ['browser', 'type', 'input', 'form'],
         handler: async (args) => {
-          if (args.slowly) {
-            await this.browserInteraction.typeSlowly(args.selector, args.text);
-          } else {
-            await this.browserInteraction.type(args.selector, args.text);
+          try {
+            if (args.slowly) {
+              await this.browserInteraction.typeSlowly(args.selector, args.text, 50, args.workspaceId);
+            } else {
+              await this.browserInteraction.type(args.selector, args.text, args.workspaceId);
+            }
+            return {
+              status: 'success' as const,
+              data: { selector: args.selector, length: args.text.length },
+              preview: `Mengetik ${args.text.length} karakter di: ${args.selector}`,
+              metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
           }
-          return {
-            status: 'success' as const,
-            data: { selector: args.selector, length: args.text.length },
-            preview: `Mengetik ${args.text.length} karakter di: ${args.selector}`,
-            metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
-          };
         },
         parameters: {
           type: 'object',
@@ -1021,6 +1053,7 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'boolean',
               description: 'Ketik perlahan karakter per karakter (default: false)',
             },
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
           required: ['selector', 'text'],
         },
@@ -1034,20 +1067,32 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Screenshot Halaman',
         description:
           'Mengambil screenshot halaman web saat ini. Gambar dikembalikan sebagai base64. ' +
-          'Gunakan untuk melihat apa yang sedang tampil di browser.',
-        tags: ['browser', 'screenshot', 'view', 'capture'],
-        handler: async () => {
-          const base64 = await this.browserInteraction.screenshot();
-          return {
-            status: 'success' as const,
-            data: { screenshot: `data:image/png;base64,${base64}` },
-            preview: 'Screenshot diambil',
-            metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
-          };
+          'Gunakan untuk melihat apa yang sedang tampil di browser dan mendiagnosis masalah.',
+        tags: ['browser', 'screenshot', 'view', 'capture', 'diagnose'],
+        handler: async (args) => {
+          try {
+            const base64 = await this.browserInteraction.screenshot(args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: { screenshot: `data:image/png;base64,${base64}` },
+              preview: 'Screenshot halaman berhasil diambil',
+              metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
         parameters: {
           type: 'object',
-          properties: {},
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+          },
         },
         estimatedLatency: 'medium',
         timeoutMs: 15000,
@@ -1062,14 +1107,24 @@ export class ToolsProviderModule implements OnModuleInit {
           'Membaca teks yang terlihat di halaman web saat ini. ' +
           'Gunakan untuk membaca dokumen Google Docs, data Google Sheets, atau konten web.',
         tags: ['browser', 'read', 'content', 'text'],
-        handler: async () => {
-          const content = await this.browserInteraction.getContent();
-          return {
-            status: 'success' as const,
-            data: { content },
-            preview: `Membaca ${content.length} karakter dari halaman`,
-            metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
-          };
+        handler: async (args) => {
+          try {
+            const content = await this.browserInteraction.getContent(args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: { content },
+              preview: `Membaca ${content.length} karakter dari halaman`,
+              metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
         parameters: {
           type: 'object',
@@ -1078,6 +1133,7 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'number',
               description: 'Maksimal karakter yang dibaca (default: semua)',
             },
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
         },
         estimatedLatency: 'medium',
@@ -1091,16 +1147,27 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Tekan Tombol Keyboard',
         description:
           'Menekan tombol keyboard di halaman web. Gunakan untuk shortcut keyboard ' +
-          '(Ctrl+C, Enter, Tab, Escape, ArrowDown, dll).',
+          '(Ctrl+C untuk copy, Enter untuk submit, Tab pindah field, Escape tutup dialog, ' +
+          'ArrowDown/ArrowUp navigasi, dll).',
         tags: ['browser', 'keyboard', 'shortcut', 'interact'],
         handler: async (args) => {
-          await this.browserInteraction.pressKey(args.key);
-          return {
-            status: 'success' as const,
-            data: { key: args.key },
-            preview: `Menekan tombol: ${args.key}`,
-            metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
-          };
+          try {
+            await this.browserInteraction.pressKey(args.key, args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: { key: args.key },
+              preview: `Menekan tombol: ${args.key}`,
+              metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
         parameters: {
           type: 'object',
@@ -1109,6 +1176,7 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'string',
               description: 'Nama tombol (Enter, Tab, Escape, ArrowDown, ArrowUp, Control+a, dll)',
             },
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
           required: ['key'],
         },
@@ -1122,16 +1190,31 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Kembali Halaman',
         description: 'Navigasi kembali ke halaman sebelumnya di browser.',
         tags: ['browser', 'navigate', 'back'],
-        handler: async () => {
-          await this.browserInteraction.goBack();
-          return {
-            status: 'success' as const,
-            data: {},
-            preview: 'Kembali ke halaman sebelumnya',
-            metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
-          };
+        handler: async (args) => {
+          try {
+            await this.browserInteraction.goBack(args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: {},
+              preview: 'Kembali ke halaman sebelumnya',
+              metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
-        parameters: { type: 'object', properties: {} },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+          },
+        },
         timeoutMs: 15000,
       }),
     );
@@ -1142,16 +1225,31 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Maju Halaman',
         description: 'Navigasi maju ke halaman berikutnya di browser.',
         tags: ['browser', 'navigate', 'forward'],
-        handler: async () => {
-          await this.browserInteraction.goForward();
-          return {
-            status: 'success' as const,
-            data: {},
-            preview: 'Maju ke halaman berikutnya',
-            metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
-          };
+        handler: async (args) => {
+          try {
+            await this.browserInteraction.goForward(args.workspaceId);
+            return {
+              status: 'success' as const,
+              data: {},
+              preview: 'Maju ke halaman berikutnya',
+              metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
+              error: { code: 'BROWSER_ERROR', message: err.message },
+            };
+          }
         },
-        parameters: { type: 'object', properties: {} },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+          },
+        },
         timeoutMs: 15000,
       }),
     );
