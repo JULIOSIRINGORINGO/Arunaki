@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, Inject, Optional, forwardRef } from '@nestjs/common';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
@@ -26,6 +26,8 @@ import { BrowserInteractionService } from '../interaction/browser-interaction.se
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
+import { CronService } from '../cron/cron.service.js';
+import { CronModule } from '../cron/cron.module.js';
 
 import { AiModule } from '../ai/ai.module.js';
 
@@ -38,6 +40,7 @@ import { AiModule } from '../ai/ai.module.js';
     SkillsModule,
     MemoryModule,
     AiModule,
+    forwardRef(() => CronModule),
   ],
   providers: [
     ToolRegistryService,
@@ -101,6 +104,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly desktopBridge: DesktopBridgeService,
     private readonly docReconciliationService: DocumentReconciliationService,
     private readonly subAgentRunner: SubAgentRunnerService,
+    @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
   ) {}
 
   onModuleInit() {
@@ -1897,6 +1901,167 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['tasks'],
         },
         timeoutMs: 120000,
+      }),
+    );
+
+    // ─── Cron Scheduler Tools ────────────────────────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'schedule_cron_job',
+        displayName: 'Jadwalkan Laporan & Tugas Cron Berkala',
+        description:
+          'Menjadwalkan eksekusi laporan otomatis atau tugas agen berkala di background. ' +
+          'Mendukung ekspresi cron (contoh: "0 17 * * 5" untuk setiap Jumat jam 5 sore) atau teks frekuensi ("daily", "weekly", "monthly").',
+        tags: ['cron', 'scheduler', 'automation', 'recurring', 'report'],
+        handler: async (args) => {
+          try {
+            if (!this.cronService) {
+              return {
+                status: 'error' as const,
+                data: {},
+                preview: 'CronService tidak tersedia.',
+                metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+                error: { code: 'SERVICE_UNAVAILABLE', message: 'CronService not injected.' },
+              };
+            }
+
+            const schedule = await this.cronService.createSchedule({
+              workspaceId: args.workspaceId || 'default-workspace',
+              name: args.name || 'Laporan Otomatis Berkala',
+              reportType: args.reportType || 'laba_rugi',
+              cronExpr: args.cronExpr || '0 17 * * 5',
+              format: args.format || 'excel',
+              agentGoal: args.agentGoal,
+            });
+
+            return {
+              status: 'success' as const,
+              data: schedule,
+              preview: `Jadwal cron "${schedule.name}" berhasil dibuat (${schedule.cronExpr}, tipe: ${schedule.reportType})`,
+              metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Gagal membuat jadwal cron: ${err.message}`,
+              metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+              error: { code: 'SCHEDULE_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Nama jadwal laporan (contoh: "Rekap Omset Mingguan")' },
+            reportType: {
+              type: 'string',
+              description: 'Tipe laporan: "laba_rugi", "neraca", "rug", "stok", atau "agent_run"',
+            },
+            cronExpr: {
+              type: 'string',
+              description: 'Ekspresi cron atau frekuensi (contoh: "0 17 * * 5", "daily", "weekly")',
+            },
+            format: { type: 'string', description: 'Format file: "excel", "pdf", "csv"' },
+            agentGoal: { type: 'string', description: 'Instruksi/tujuan khusus jika reportType="agent_run"' },
+            workspaceId: { type: 'string', description: 'ID workspace' },
+          },
+          required: ['name'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'list_cron_jobs',
+        displayName: 'Daftar Jadwal Cron Berkala',
+        description: 'Melihat daftar jadwal laporan otomatis dan tugas agen berkala yang aktif.',
+        tags: ['cron', 'scheduler', 'list', 'recurring'],
+        handler: async (args) => {
+          try {
+            if (!this.cronService) {
+              return {
+                status: 'error' as const,
+                data: { schedules: [] },
+                preview: 'CronService tidak tersedia.',
+                metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+              };
+            }
+
+            const schedules = await this.cronService.getSchedules(args.workspaceId || 'default-workspace');
+            const summary = schedules.length > 0
+              ? schedules.map((s) => `- **${s.name}** (${s.cronExpr}, ${s.reportType}, active: ${s.active})`).join('\n')
+              : 'Tidak ada jadwal cron aktif.';
+
+            return {
+              status: 'success' as const,
+              data: { schedules, count: schedules.length },
+              preview: `Ditemukan ${schedules.length} jadwal cron:\n${summary}`,
+              metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: { schedules: [] },
+              preview: `Gagal mengambil daftar cron: ${err.message}`,
+              metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+              error: { code: 'LIST_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'ID workspace' },
+          },
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'delete_cron_job',
+        displayName: 'Hapus Jadwal Cron Berkala',
+        description: 'Menghapus jadwal laporan berkala dari sistem.',
+        tags: ['cron', 'scheduler', 'delete', 'remove'],
+        handler: async (args) => {
+          try {
+            if (!this.cronService) {
+              return {
+                status: 'error' as const,
+                data: {},
+                preview: 'CronService tidak tersedia.',
+                metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+              };
+            }
+
+            await this.cronService.deleteSchedule(args.id);
+            return {
+              status: 'success' as const,
+              data: { id: args.id },
+              preview: `Jadwal cron ${args.id} telah dihapus.`,
+              metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Gagal menghapus jadwal cron: ${err.message}`,
+              metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+              error: { code: 'DELETE_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', description: 'ID jadwal cron yang akan dihapus' },
+          },
+          required: ['id'],
+        },
+        timeoutMs: 15000,
       }),
     );
   }
