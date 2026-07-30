@@ -934,24 +934,10 @@ export function WorkspacePage() {
               </div>
 
               {isConnected && (
-                <div className="flex items-center gap-2">
-                  {/* Active Session Dropdown Chip */}
-                  <button
-                    type="button"
-                    onClick={() => setShowSlashMenu((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold border border-gray-200 cursor-pointer transition-colors"
-                    title="Klik untuk memilih atau membuat sesi percakapan"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
-                    <span className="max-w-[130px] truncate">{sessions.find((s) => s.id === activeSessionId)?.title || "Sesi Utama"}</span>
-                    <ChevronDown className="w-3 h-3 text-gray-500" />
-                  </button>
-
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {fileCount} Dokumen Aktif
-                  </span>
-                </div>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  {fileCount} Dokumen Aktif
+                </span>
               )}
             </div>
 
