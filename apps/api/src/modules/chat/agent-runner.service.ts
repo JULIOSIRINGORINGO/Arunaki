@@ -32,6 +32,7 @@ export interface AgentStreamEvent {
   type:
     | 'thinking'
     | 'tool_start'
+    | 'tool_live_status'
     | 'tool_done'
     | 'text_delta'
     | 'canvas_event'
@@ -492,6 +493,17 @@ export class AgentRunnerService {
               });
               createdArtifactIds.push(artifact.id);
             }
+
+            onEvent({
+              type: 'tool_live_status',
+              data: {
+                toolName: toolCall.function.name,
+                preview: result.preview,
+                screenshot: result.data?.screenshot,
+                data: result.data,
+                timestamp: new Date().toISOString(),
+              },
+            });
 
             onEvent({
               type: 'tool_done',

@@ -7,6 +7,8 @@ import { ChatMessages } from "../components/chat/ChatMessages";
 import { ChatInput } from "../components/chat/ChatInput";
 import type { CanvasData } from "../components/chat/CanvasPanel";
 import { CanvasPanel } from "../components/chat/CanvasPanel";
+import { LiveExecutionBadge, LiveStatusData } from "../components/chat/LiveExecutionBadge";
+import { LiveMirrorCard } from "../components/chat/LiveMirrorCard";
 import { cn } from "../lib/utils";
 import { API_BASE } from "../lib/api";
 
@@ -117,6 +119,8 @@ export function ChatPage() {
   } | null>(null);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [pendingChatId, setPendingChatId] = useState<string | null>(null);
+  const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
+  const [liveScreenshotUrl, setLiveScreenshotUrl] = useState<string | null>(null);
 
   // Clear local state whenever chatId URL parameter changes (e.g. switching chats or creating a new chat)
   useEffect(() => {
@@ -124,6 +128,8 @@ export function ChatPage() {
     setActiveCanvasData(null);
     setPendingDownload(null);
     setArtifacts([]);
+    setLiveStatus(null);
+    setLiveScreenshotUrl(null);
     if (!chatId) {
       setPendingChatId(null);
     }
@@ -236,7 +242,17 @@ export function ChatPage() {
             if (!msg.data) return;
             try {
               const event = JSON.parse(msg.data);
-              if (event.type === "text_delta" && typeof event.data === "string") {
+              if (event.type === "tool_live_status" && event.data) {
+                setLiveStatus({
+                  toolName: event.data.toolName,
+                  preview: event.data.preview,
+                  screenshot: event.data.screenshot,
+                  timestamp: event.data.timestamp,
+                });
+                if (event.data.screenshot) {
+                  setLiveScreenshotUrl(event.data.screenshot);
+                }
+              } else if (event.type === "text_delta" && typeof event.data === "string") {
                 fullStreamedContent += event.data;
                 setOptimisticMessages((prev) => {
                   const filtered = prev.filter((m) => m.id !== tempAssistantMsgId);
@@ -262,6 +278,9 @@ export function ChatPage() {
                   setCanvasOpen(true);
                 }
               } else if (event.type === "tool_done" && event.data?.result?.preview) {
+                if (event.data.result.data?.screenshot) {
+                  setLiveScreenshotUrl(event.data.result.data.screenshot);
+                }
                 setActiveCanvasData({
                   id: `canvas-tool-${Date.now()}`,
                   title: event.data.result.metadata?.displayName || event.data.toolName.replace(/_/g, " "),
@@ -374,9 +393,12 @@ export function ChatPage() {
 
       <div className="flex flex-col flex-1 h-full min-w-0 bg-white overflow-hidden">
         <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
-            Chat
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+              Chat
+            </h1>
+            <LiveExecutionBadge status={liveStatus} active={sendMessage.isPending} />
+          </div>
 
           <button
             onClick={() => setCanvasOpen(!canvasOpen)}
@@ -399,6 +421,9 @@ export function ChatPage() {
             onSelectPrompt={handleSend}
             onActionChipClick={handleSend}
           />
+          {liveScreenshotUrl && (
+            <LiveMirrorCard screenshotUrl={liveScreenshotUrl} />
+          )}
         </div>
 
         <div className="shrink-0">
@@ -415,6 +440,7 @@ export function ChatPage() {
         canvasData={activeCanvasData}
         pendingDownload={pendingDownload}
         artifacts={allArtifacts}
+        liveScreenshotUrl={liveScreenshotUrl}
         onSaveAndSendToAi={(updatedContent) =>
           handleSend(
             "Saya telah mengedit data di Canvas secara manual menjadi sebagai berikut:\n\n" +

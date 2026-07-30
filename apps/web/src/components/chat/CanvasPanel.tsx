@@ -48,6 +48,7 @@ interface CanvasPanelProps {
   canvasData?: CanvasData | null;
   pendingDownload?: PendingDownload | null;
   artifacts?: Artifact[];
+  liveScreenshotUrl?: string | null;
   onSaveAndSendToAi?: (updatedContent: string) => void;
 }
 
