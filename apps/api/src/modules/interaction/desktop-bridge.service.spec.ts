@@ -1,0 +1,94 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { DesktopBridgeService } from './desktop-bridge.service.js';
+import WebSocket from 'ws';
+
+describe('DesktopBridgeService', () => {
+  let service: DesktopBridgeService;
+
+  beforeEach(() => {
+    service = new DesktopBridgeService();
+    service.onModuleInit();
+  });
+
+  afterEach(() => {
+    service.onModuleDestroy();
+  });
+
+  it('should initialize with isConnected = false', () => {
+    expect(service.isConnected).toBe(false);
+  });
+
+  it('should reject sendCommand when desktop app is not connected', async () => {
+    await expect(service.sendCommand('ping')).rejects.toThrow(
+      'Desktop app tidak terhubung',
+    );
+  });
+
+  it('should connect client and handle sendCommand success', async () => {
+    const client = new WebSocket('ws://127.0.0.1:31524');
+
+    await new Promise<void>((resolve) => {
+      client.on('open', () => resolve());
+    });
+
+    expect(service.isConnected).toBe(true);
+
+    client.on('message', (raw) => {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === 'call' && msg.method === 'ping') {
+        client.send(
+          JSON.stringify({
+            type: 'result',
+            id: msg.id,
+            data: { pong: true },
+          }),
+        );
+      }
+    });
+
+    const res = await service.sendCommand('ping');
+    expect(res).toEqual({ pong: true });
+
+    client.close();
+  });
+
+  it('should handle desktop command errors', async () => {
+    const client = new WebSocket('ws://127.0.0.1:31524');
+
+    await new Promise<void>((resolve) => {
+      client.on('open', () => resolve());
+    });
+
+    client.on('message', (raw) => {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === 'call') {
+        client.send(
+          JSON.stringify({
+            type: 'result',
+            id: msg.id,
+            error: 'File not found',
+          }),
+        );
+      }
+    });
+
+    await expect(service.sendCommand('openFile', { path: '/invalid' })).rejects.toThrow(
+      'File not found',
+    );
+
+    client.close();
+  });
+
+  it('should reject pending requests if client disconnects', async () => {
+    const client = new WebSocket('ws://127.0.0.1:31524');
+
+    await new Promise<void>((resolve) => {
+      client.on('open', () => resolve());
+    });
+
+    const pendingCmd = service.sendCommand('longTask');
+    client.close();
+
+    await expect(pendingCmd).rejects.toThrow('Desktop disconnected');
+  });
+});

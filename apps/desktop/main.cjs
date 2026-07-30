@@ -294,7 +294,7 @@ app.whenReady().then(() => {
   let reconnectTimer = null;
 
   function connectToBackend() {
-    if (ws && ws.readyState === WebSocket.OPEN) return;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
     ws = new WebSocket('ws://127.0.0.1:31524');
     ws.on('open', () => console.log('[desktop-bridge] Connected to backend'));
@@ -315,34 +315,61 @@ app.whenReady().then(() => {
       let error = null;
 
       try {
+        const targetPath = msg.args && msg.args.path ? path.resolve(msg.args.path) : null;
+
         switch (msg.method) {
           case 'openFile': {
-            const r = await shell.openPath(msg.args.path);
+            if (!targetPath) { error = 'Path file tidak boleh kosong'; break; }
+            const r = await shell.openPath(targetPath);
             if (r) error = r;
             break;
           }
           case 'openExcel': {
-            const winax = require('winax');
-            const excel = new winax.Object('Excel.Application');
-            excel.Visible = true;
-            excel.Workbooks.Open(msg.args.path);
-            result = { hwnd: String(excel.Hwnd) };
+            if (!targetPath) { error = 'Path file Excel tidak boleh kosong'; break; }
+            try {
+              const winax = require('winax');
+              const excel = new winax.Object('Excel.Application');
+              excel.Visible = true;
+              excel.Workbooks.Open(targetPath);
+              result = { hwnd: String(excel.Hwnd) };
+            } catch {
+              // Fallback to shell openPath if winax / Office COM is unavailable
+              const r = await shell.openPath(targetPath);
+              if (r) error = r;
+              else result = { fallback: 'shell' };
+            }
             break;
           }
           case 'openWord': {
-            const winax = require('winax');
-            const word = new winax.Object('Word.Application');
-            word.Visible = true;
-            word.Documents.Open(msg.args.path);
-            result = {};
+            if (!targetPath) { error = 'Path file Word tidak boleh kosong'; break; }
+            try {
+              const winax = require('winax');
+              const word = new winax.Object('Word.Application');
+              word.Visible = true;
+              word.Documents.Open(targetPath);
+              result = { hwnd: String(word.Hwnd) };
+            } catch {
+              // Fallback to shell openPath
+              const r = await shell.openPath(targetPath);
+              if (r) error = r;
+              else result = { fallback: 'shell' };
+            }
             break;
           }
           case 'openPpt': {
-            const winax = require('winax');
-            const ppt = new winax.Object('PowerPoint.Application');
-            ppt.Visible = true;
-            ppt.Presentations.Open(msg.args.path);
-            result = {};
+            if (!targetPath) { error = 'Path file PowerPoint tidak boleh kosong'; break; }
+            try {
+              const winax = require('winax');
+              const ppt = new winax.Object('PowerPoint.Application');
+              ppt.Visible = true;
+              ppt.Presentations.Open(targetPath);
+              result = {};
+            } catch {
+              // Fallback to shell openPath
+              const r = await shell.openPath(targetPath);
+              if (r) error = r;
+              else result = { fallback: 'shell' };
+            }
             break;
           }
           case 'screenshot': {
