@@ -294,8 +294,12 @@ export function ChatPage() {
               // ignore parse errors
             }
           },
+          onclose() {
+            // Stream closed gracefully by server
+          },
           onerror(err) {
             console.error("SSE stream error:", err);
+            throw err; // Stop automatic retries
           },
         });
 
