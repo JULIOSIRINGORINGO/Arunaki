@@ -137,7 +137,11 @@ export class DocumentReaderTool {
           const texts: string[] = [];
           for (const text of page.Texts || []) {
             for (const r of text.R || []) {
-              texts.push(decodeURIComponent(r.T || ''));
+              try {
+                texts.push(decodeURIComponent(r.T || ''));
+              } catch {
+                texts.push(r.T || '');
+              }
             }
           }
           textParts.push(texts.join(' '));

@@ -74,12 +74,15 @@ export class DocumentReconciliationService {
         : '';
     };
 
-    sourceRows.forEach((r, idx) => {
+    const safeSourceRows = Array.isArray(sourceRows) ? sourceRows : [];
+    const safeTargetRows = Array.isArray(targetRows) ? targetRows : [];
+
+    safeSourceRows.forEach((r, idx) => {
       const keyVal = extractKey(r) || `row_${idx + 1}`;
       sourceMap.set(keyVal, r);
     });
 
-    targetRows.forEach((r, idx) => {
+    safeTargetRows.forEach((r, idx) => {
       const keyVal = extractKey(r) || `row_${idx + 1}`;
       targetMap.set(keyVal, r);
     });

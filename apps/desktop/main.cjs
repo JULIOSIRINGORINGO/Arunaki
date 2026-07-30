@@ -377,12 +377,22 @@ app.whenReady().then(() => {
               const winax = require('winax');
               const excel = new winax.Object('Excel.Application');
               excel.Visible = true;
-              if (excel.Workbooks.Count === 0) {
-                if (targetPath) {
-                  excel.Workbooks.Open(targetPath);
-                } else {
-                  excel.Workbooks.Add();
+              if (targetPath) {
+                let found = false;
+                for (let i = 1; i <= excel.Workbooks.Count; i++) {
+                  try {
+                    if (excel.Workbooks.Item(i).FullName.toLowerCase() === targetPath.toLowerCase()) {
+                      excel.Workbooks.Item(i).Activate();
+                      found = true;
+                      break;
+                    }
+                  } catch { /* ignore */ }
                 }
+                if (!found) {
+                  excel.Workbooks.Open(targetPath);
+                }
+              } else if (excel.Workbooks.Count === 0) {
+                excel.Workbooks.Add();
               }
               const targetCell = msg.args.cell || 'A1';
               excel.ActiveSheet.Range(targetCell).Value = msg.args.value;
@@ -397,12 +407,22 @@ app.whenReady().then(() => {
               const winax = require('winax');
               const excel = new winax.Object('Excel.Application');
               excel.Visible = true;
-              if (excel.Workbooks.Count === 0) {
-                if (targetPath) {
-                  excel.Workbooks.Open(targetPath);
-                } else {
-                  excel.Workbooks.Add();
+              if (targetPath) {
+                let found = false;
+                for (let i = 1; i <= excel.Workbooks.Count; i++) {
+                  try {
+                    if (excel.Workbooks.Item(i).FullName.toLowerCase() === targetPath.toLowerCase()) {
+                      excel.Workbooks.Item(i).Activate();
+                      found = true;
+                      break;
+                    }
+                  } catch { /* ignore */ }
                 }
+                if (!found) {
+                  excel.Workbooks.Open(targetPath);
+                }
+              } else if (excel.Workbooks.Count === 0) {
+                excel.Workbooks.Add();
               }
               const rangeStr = msg.args.range || 'A1';
               const rng = excel.ActiveSheet.Range(rangeStr);
