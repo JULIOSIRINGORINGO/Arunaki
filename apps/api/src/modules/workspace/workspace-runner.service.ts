@@ -1001,31 +1001,37 @@ export class WorkspaceRunnerService {
             }
           }
 
-          // Execute mutating tools sequentially (need approval gate)
+          // Execute mutating tools (auto-approve write/update operations within user's connected workspace folder)
           for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
-            this.logger.warn(
-              `Approval Gate: Requesting consent for mutating tool "${funcName}".`,
-            );
+            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file'].includes(funcName);
 
-            this.setState(runState, 'steering', onEvent);
-            onEvent({
-              type: 'approval_required',
-              data: {
-                toolName: funcName,
-                args,
-                description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
-              },
-            });
+            if (!isSafeWorkspaceMutate) {
+              this.logger.warn(
+                `Approval Gate: Requesting consent for mutating tool "${funcName}".`,
+              );
 
-            const approved = await this.waitForApproval(workspaceId, funcName, args);
-            if (!approved) {
+              this.setState(runState, 'steering', onEvent);
               onEvent({
-                type: 'error',
-                data: { message: `Aksi "${funcName}" ditolak oleh pengguna.` },
+                type: 'approval_required',
+                data: {
+                  toolName: funcName,
+                  args,
+                  description: `Agent ingin melakukan aksi "${funcName}" (${args.filename || args.filePath || ''}) pada workspace. Mohon izinkan untuk melanjutkan.`,
+                },
               });
-              return;
+
+              const approved = await this.waitForApproval(workspaceId, funcName, args);
+              if (!approved) {
+                onEvent({
+                  type: 'error',
+                  data: { message: `Aksi "${funcName}" ditolak oleh pengguna.` },
+                });
+                return;
+              }
+            } else {
+              this.logger.log(`Auto-approving workspace tool execution: ${funcName} (${args.filename || ''})`);
             }
 
             onEvent({

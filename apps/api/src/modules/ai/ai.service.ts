@@ -309,7 +309,42 @@ export class AiService {
     let content = choice.message?.content || '';
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
-    if (!content && choice.message?.tool_calls?.length === 0) {
+    let rawToolCalls = choice.message?.tool_calls || [];
+
+    // OpenClaw Text Tool Call Extractor: If model outputted tool call in content text instead of native tool_calls array
+    if (rawToolCalls.length === 0 && content) {
+      const jsonBlockMatch =
+        content.match(/```(?:json)?\s*(\{\s*"name"[\s\S]*?\})\s*```/i) ||
+        content.match(/(\{\s*"name"\s*:\s*"[^"]+"[\s\S]*?\})/i) ||
+        content.match(/(<tool_call>[\s\S]*?<\/tool_call>)/i);
+
+      if (jsonBlockMatch && jsonBlockMatch[1]) {
+        try {
+          const rawString = jsonBlockMatch[1].replace(/<\/?tool_call>/gi, '').trim();
+          const parsed = JSON.parse(rawString);
+          if (parsed.name || parsed.function) {
+            const name = parsed.name || (typeof parsed.function === 'string' ? parsed.function : parsed.function?.name);
+            const args = parsed.arguments || parsed.parameters || parsed.args || {};
+            if (name) {
+              rawToolCalls = [
+                {
+                  id: `extracted-tool-${Date.now()}`,
+                  type: 'function',
+                  function: {
+                    name,
+                    arguments: typeof args === 'string' ? args : JSON.stringify(args),
+                  },
+                },
+              ];
+            }
+          }
+        } catch {
+          // ignore parse failure
+        }
+      }
+    }
+
+    if (!content && rawToolCalls.length === 0) {
       content =
         'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
     }
@@ -317,12 +352,12 @@ export class AiService {
     return {
       content,
       model: result.model,
-      toolCalls: choice.message?.tool_calls || [],
+      toolCalls: rawToolCalls,
       usage: {
         promptTokens: result.data.usage?.prompt_tokens || 0,
         completionTokens: result.data.usage?.completion_tokens || 0,
         totalTokens: result.data.usage?.total_tokens || 0,
-},
+      },
       attempts: result.attempts.map((a) => ({
         providerId: a.providerId,
         providerName: a.providerName,
