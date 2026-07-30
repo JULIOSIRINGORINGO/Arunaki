@@ -36,6 +36,10 @@ async function runElectronUiE2eTest() {
   console.log('[3] Waiting for Electron BrowserWindow to load real Web UI...');
   const window = await app.firstWindow();
 
+  // Listen to browser console and page errors
+  window.on('console', (msg) => console.log(`   [PAGE CONSOLE ${msg.type()}]:`, msg.text()));
+  window.on('pageerror', (err) => console.error('   [PAGE ERROR]:', err.message));
+
   // Wait for real UI URL to load
   try {
     await window.waitForURL((url) => !url.href.includes('data:text/html'), { timeout: 10000 });
@@ -44,7 +48,7 @@ async function runElectronUiE2eTest() {
   }
 
   await window.waitForLoadState('domcontentloaded');
-  await new Promise((r) => setTimeout(r, 2000));
+  await new Promise((r) => setTimeout(r, 4000));
 
   const title = await window.title();
   console.log(`   -> Window Title: "${title}"`);
