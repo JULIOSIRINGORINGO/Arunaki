@@ -7,7 +7,9 @@
 
 ## Overview
 
-This document defines the **fixed development sequence** for Arunaki. Follow this order strictly. Do not skip phases or jump ahead without explicit approval.
+This document defines the **fixed development sequence** for Arunaki — **Sandboxed Computer Use Agent**. Setiap fase membangun Arunaki agar setara dengan OpenClaw dalam kapabilitas computer use, tetapi semua operasi dibatasi ke Workspace folder.
+
+Follow this order strictly. Do not skip phases or jump ahead without explicit approval.
 
 ---
 
@@ -492,8 +494,10 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ## Current Status
 
-**Phase:** Phase 9 Complete ✅ — Blueprint P4 (Background Curator)  
-**Next:** Phase 10 — Blueprint P4 (Business Intelligence)  
+**Phase:** Documentation updated — Vision, Boundaries, PRD, Architecture realigned  
+**Framework:** Digital Employee — visible interaction untuk dokumen kantor  
+**Model Default:** `openrouter/free` dengan capability-aware request  
+**Next:** Define system prompt based on new vision, then implement Interaction Service  
 
 ---
 

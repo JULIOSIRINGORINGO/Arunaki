@@ -24,11 +24,13 @@ Status: Draft
 # 2. High Level Architecture
 
 ```
-Frontend (React+Vite)
+Frontend (React+Vite) — user melihat proses kerja real-time
     ↓
 Backend API (NestJS)
     ↓
 Workspace / AI / Search / Parser / Storage / Artifact
+    ↓
+Interaction Layer — Desktop (COM/UI Automation) + Web (Browser Automation)
     ↓
 SQLite + Prisma
     ↓
@@ -70,20 +72,53 @@ flowchart TD
 - Storage Service
 - Artifact Service
 - Connector Service
+- **Interaction Service** (Desktop + Web automation — visible interaction)
 
 ## Tanggung Jawab per Modul
 
 | Modul | Tanggung Jawab | Tidak Boleh |
 |---|---|---|
-| Frontend | Render UI, kirim Goal ke Backend | Menyimpan business logic AI, akses DB/Storage langsung |
-| Backend API | Entry point, validasi, autentikasi, orkestrasi antar service | Menjalankan logic AI secara langsung |
+| Frontend | Render UI, tampilkan visible interaction real-time, kirim Goal ke Backend | Menyimpan business logic AI, akses DB/Storage langsung |
+| Backend API | Entry point, validasi, orkestrasi antar service | Menjalankan logic AI secara langsung |
 | Workspace Service | Kelola Workspace, Source, Metadata, Artifact, History | Melakukan parsing file mentah |
 | Parser Service | Ekstraksi teks/metadata dari PDF, DOCX, XLSX, CSV, TXT, MD | Menyimpan hasil parsing sendiri (harus lewat Storage/Workspace Service) |
 | Search Service | Metadata search, FTS5, (future) vector search | Mengubah data asal |
-| AI Engine | Orkestrasi Goal → Plan → Tool → Result | Mengakses Storage secara langsung |
+| AI Engine | Orkestrasi Goal → Plan → Tool → Result — termasuk visible interaction | Mengakses Storage secara langsung |
 | Storage Service | Baca/tulis file lokal | Mengetahui logic AI atau Workspace |
 | Artifact Service | Kelola output yang dihasilkan AI/pengguna | Mengubah Source asli |
 | Connector Service | Sinkronisasi sumber data eksternal (future) | Berjalan otomatis tanpa Workspace terkait |
+| **Interaction Service** | **Desktop automation** (COM/UI Automation) + **Web automation** (browser/MCP). Visible interaction: melihat layar, mengetik, klik, scroll | Mengakses file di luar workspace |
+
+---
+
+# 3a. Visible Interaction Layer
+
+Arunaki memiliki dua mode interaksi dengan aplikasi:
+
+### Desktop Automation (COM / UI Automation)
+- Untuk aplikasi desktop: Excel, Word, PowerPoint, PDF reader
+- Operasi: buka aplikasi, ketik teks, klik menu, scroll
+- Teknologi: COM/OLE (Windows), UI Automation (Windows)
+
+### Web Automation (Browser / MCP-like)
+- Untuk web apps: Google Docs, Google Sheets, Office 365
+- Operasi: buka URL, lihat element, ketik di field, klik tombol
+- Teknologi: Playwright/Puppeteer atau MCP browser tools
+
+### Alur Visible Interaction
+
+```
+AI Engine decides to type in Excel
+    ↓
+Interaction Service receives action
+    ├─ Desktop: COM → buka Excel → cari cell → ketik → format
+    └─ Web: Browser → buka Google Sheets → cari cell → ketik
+    ↓
+Proses dikirim ke Frontend sebagai streaming event
+User bisa lihat di layar: "Arunaki sedang mengetik di Cell B2..."
+    ↓
+Selesai → verifikasi → hasil ke user
+```
 
 ---
 

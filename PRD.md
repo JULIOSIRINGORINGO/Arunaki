@@ -1,14 +1,16 @@
 # PRD.md - Product Requirements Document (PRD)
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Status:** Draft  
-**Last Updated:** 2026
+**Last Updated:** 2026-07-30
 
 ---
 
 ## 1. Product Overview
 
-Arunaki adalah **Autonomous Workspace AI** yang membantu pengguna menyelesaikan pekerjaan berbasis dokumen melalui kombinasi **AI Assistant** dan **Workspace Agent**.
+Arunaki adalah **Digital Employee** — AI yang bekerja secara visible di layar untuk mengerjakan dokumen kantor dalam Workspace yang terisolasi.
+
+Berbeda dari AI assistant umum, Arunaki **mengoperasikan aplikasi secara langsung** — membuka Excel, mengetik di Word, mengisi form di browser — seperti karyawan tambahan yang bekerja di depan layar. Semua operasi terbatas ke **Workspace folder** yang dipilih pengguna.
 
 ### 1.1 Dua Mode Utama
 
@@ -17,20 +19,22 @@ Arunaki adalah **Autonomous Workspace AI** yang membantu pengguna menyelesaikan 
 - Mode default ketika aplikasi dibuka
 - Menggunakan Knowledge Base (Domain Knowledge) khusus AI Assistant untuk konsultasi & acuan referensi
 
-**Workspace Agent**
-- Untuk pekerjaan yang membutuhkan konteks Workspace
+**Workspace Agent (Digital Employee)**
+- Untuk pekerjaan dokumen yang membutuhkan visible interaction
 - Hanya aktif ketika pengguna berada di dalam Workspace
-- Dapat menggunakan Tools dan Planner
+- Dapat membaca, menulis, dan mengoperasikan aplikasi untuk mengerjakan dokumen
+- Semua operasi terbatas ke dalam folder Workspace
 
 ### 1.2 Definisi Workspace
 
-Workspace adalah ruang kerja terisolasi yang berisi kumpulan:
-- Dokumen digital (Word, PDF, Excel, PowerPoint, CSV, TXT, Markdown, JSON, XML, YAML, HTML, gambar, email)
+Workspace adalah **sandbox** — lingkungan kerja terisolasi yang berisi kumpulan:
+- Dokumen digital (Word, PDF, Excel, CSV, TXT, Markdown, JSON, XML, HTML)
+- Skrip dan kode (.js, .py, .sh, .bat, .ps1)
 - Folder dan subfolder
-- Metadata dari berbagai sumber data
+- Dataset, template, dan laporan
 - Konteks kerja yang spesifik
 
-Workspace dianalisis secara menyeluruh oleh AI sebelum pengguna mulai memberikan instruksi.
+Workspace adalah **batas mutlak** Arunaki. Tidak ada akses ke file atau sistem di luar folder ini.
 
 ---
 
@@ -39,11 +43,12 @@ Workspace dianalisis secara menyeluruh oleh AI sebelum pengguna mulai memberikan
 ### 2.1 Tujuan Utama
 
 1. **Menjadi AI Assistant terpercaya** untuk penggunaan sehari-hari (Chat Mode)
-2. **Menjadi Workspace Agent yang mandiri** untuk pekerjaan berbasis dokumen
-3. **Memahami Workspace secara holistik** sebelum menerima instruksi
-4. **Menyelesaikan pekerjaan secara bertahap** menggunakan Planner dan Tools
+2. **Menjadi Sandboxed Computer Use Agent yang mandiri** untuk pekerjaan dalam Workspace
+3. **Memahami Workspace secara holistik** sebagai lingkungan eksekusi terisolasi
+4. **Menyelesaikan pekerjaan secara bertahap** menggunakan Planner, Tools, Shell, dan Script
 5. **Menghasilkan output berkualitas** yang siap digunakan oleh pengguna
 6. **Meminimalkan intervensi manual** dengan automasi cerdas
+7. **Menjaga isolasi sandbox** — tidak ada operasi di luar Workspace
 
 ### 2.2 Value Proposition
 
@@ -491,13 +496,15 @@ Workspace
 
 | Source Type | Format | Keterangan |
 |-----------|--------|-----------|
-| **Folder Lokal** | Multiple | Scan seluruh folder & subfolder |
-| **Single File Upload** | .docx, .xlsx, .pdf, .pptx, .csv, .txt, .md, .json, .xml, .html | Upload 1 file |
+| **Folder Lokal** | Multiple | Scan seluruh folder & subfolder — semua file bisnis |
+| **Single File Upload** | .docx, .xlsx, .pptx, .pdf, .csv, .txt, .md, .json, .xml, .html, .xls, .ods | Upload 1 file |
 | **Batch Upload** | Multiple | Upload banyak file sekaligus |
-| **Google Drive** | All | Connect & sync (future: real-time) |
-| **OneDrive** | All | Connect & sync (future: real-time) |
-| **Website** | HTML, PDF | Scrape & convert to markdown (future) |
+| **Google Drive** | All | Connect & sync (future) |
+| **OneDrive** | All | Connect & sync (future) |
+| **Spreadsheet Online** | Google Sheets, Office 365 | Visible interaction via browser |
 | **SharePoint** | All | Enterprise integration (future) |
+
+> **Prinsip:** Semua format file yang digunakan orang kantoran — lokal maupun online.
 
 ### 8.2 Source Connection Process
 
@@ -673,6 +680,14 @@ Output + Citation (jika pakai Domain Knowledge)
 
 Workspace Agent hanya aktif di Workspace dan dapat:
 
+✅ **Visible Interaction**
+- **Mengoperasikan aplikasi desktop & web** secara langsung di layar
+- **Mengetik** di dokumen, cell, form, field — terlihat real-time
+- **Scroll, klik, navigasi** seperti manusia
+- **Membaca** apa yang tampil di layar (teks, element, cell)
+- **Memformat** dokumen secara visual
+- **Mengisi** form dan field di web apps (Google Docs/Sheets, Office 365)
+
 ✅ **Understanding**
 - Memahami seluruh Workspace secara holistik
 - Membaca semua file dalam Workspace
@@ -817,14 +832,26 @@ Task List:
 
 ### 13.1 Available Tools
 
+**Desktop Automation Tools**
+
+| Tool | Purpose | Contoh Penggunaan |
+|------|---------|------------------|
+| **Screen Reader** | Baca teks/element dari layar | Lihat isi cell Excel, baca teks di Word |
+| **Type/Input** | Ketik teks di aplikasi | Ketik laporan di Word, isi cell Excel |
+| **Click/Navigate** | Klik dan navigasi aplikasi | Klik menu, scroll halaman, pilih tab |
+| **Excel Controller** | Operasi Excel via COM/OLE | Buka file, ketik cell, format, grafik |
+| **Word Controller** | Operasi Word via COM/OLE | Edit dokumen, format paragraf |
+| **Browser Controller** | Operasi browser/web apps | Buka Google Docs, isi Google Sheets |
+| **PDF Reader** | Extract dari PDF | Read report.pdf |
+| **OCR** | Convert image→text | Scan dokumen.jpg |
+
 **Data & Information Tools**
 
 | Tool | Purpose | Contoh Penggunaan |
 |------|---------|------------------|
 | **Search** | Find files/content | Cari file yang berisi "penjualan" |
-| **PDF Reader** | Extract dari PDF | Read report.pdf |
-| **OCR** | Convert image→text | Scan document.jpg |
 | **Spreadsheet Reader** | Parse Excel/CSV | Read sales_data.xlsx |
+| **Web Search** | Cari informasi di internet | Riset referensi bisnis |
 
 **Processing Tools**
 
@@ -833,6 +860,7 @@ Task List:
 | **Data Comparator** | Compare datasets | Compare Q1 vs Q2 sales |
 | **Text Parser** | Extract structured data | Extract invoice numbers |
 | **Aggregator** | Combine multiple files | Merge all monthly reports |
+| **Calculator** | Numeric computation | Hitung total, persentase, tren |
 
 **Generation Tools**
 
@@ -840,15 +868,14 @@ Task List:
 |------|---------|------------------|
 | **Chart Generator** | Create visualizations | Generate sales chart |
 | **Report Generator** | Create formatted reports | Create executive summary |
-| **Dashboard Creator** | Create interactive dashboards | Create KPI dashboard |
+| **Document Creator** | Create new documents | Buat file Excel/Word baru |
 
 **Output Tools**
 
 | Tool | Purpose | Contoh Penggunaan |
 |------|---------|------------------|
-| **Markdown Writer** | Create .md files | Export as report.md |
-| **PDF Creator** | Generate PDF | Create report.pdf |
-| **HTML Generator** | Create web-ready format | Create dashboard.html |
+| **File Writer** | Create .xlsx/.docx/.pdf/.md | Export as report.xlsx |
+| **Artifact Saver** | Save to workspace | Simpan hasil ke artifact store |
 
 ### 13.2 Tool Selection Process
 
@@ -1177,17 +1204,17 @@ Studio dapat dikustomisasi:
 
 Arunaki BUKAN:
 
-❌ **IDE** - Tidak untuk development environment  
-❌ **Coding Agent penuh** - Hanya lightweight coding assistance  
-❌ **CAD Assistant** - Tidak untuk desain teknis  
-❌ **Video Editor** - Tidak untuk video processing  
-❌ **Image Editor** - Hanya image analysis, bukan editing  
-❌ **Operating System** - Hanya bekerja di dalam Workspace  
-❌ **Database Management** - Tidak untuk DB operations  
-❌ **Real-time Collaboration** (v1) - Future feature  
-❌ **Custom ML Training** - Tidak untuk model training  
+❌ **Coding Agent** - Tidak menulis kode program (.ts, .py, .js, .go, .rs)
+❌ **Script Runner** - Tidak untuk eksekusi script atau kode
+❌ **IDE** - Bukan integrated development environment
+❌ **Build System / Compiler / Deployment** - Tidak untuk CI/CD
+❌ **General Assistant** - Tidak untuk tugas non-dokumen (email, chat, social media)
+❌ **System Administration** - Tidak boleh mengubah konfigurasi OS
+❌ **CAD Assistant** - Tidak untuk desain teknis
+❌ **Video Editor** - Tidak untuk video processing
+❌ **Image Editor** - Hanya image analysis, bukan editing
 
-**Fokus Arunaki:** Autonomous Workspace AI untuk pekerjaan berbasis dokumen dan pengetahuan.
+**Fokus Arunaki:** Digital Employee untuk dokumen kantor — visible interaction di aplikasi desktop & web untuk menyelesaikan pekerjaan dokumen dalam sandbox workspace.
 
 ---
 

@@ -2,21 +2,93 @@
 
 # Arunaki Vision
 
-> **Arunaki adalah Autonomous Workspace Agent yang bekerja secara aman di dalam Workspace (Sandbox) pengguna untuk memahami tujuan, merencanakan pekerjaan, menggunakan tool yang tepat, dan menyelesaikan pekerjaan berbasis dokumen secara mandiri.**
+> **Arunaki adalah Digital Employee — asisten AI yang bekerja secara visible di layar untuk menyelesaikan pekerjaan dokumen kantor.**
+>
+> Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, Google Docs), mengetik, scroll, mengisi form — **kelihatan di layar seperti manusia bekerja**.
+> Semua operasi terbatas dalam Workspace folder yang dipilih pengguna.
+> Bukan coding agent. Bukan script runner. **Digital employee untuk dokumen kantor.**
 
 ---
 
 # Vision Statement
 
-Menjadi Autonomous Workspace Agent terbaik yang mampu membantu individu maupun organisasi menyelesaikan pekerjaan berbasis dokumen secara cerdas, aman, transparan, dan mandiri.
+Menjadi Digital Employee AI terbaik yang bekerja secara transparan di depan layar — membantu individu maupun organisasi menyelesaikan pekerjaan dokumen secara cerdas, aman, dan mandiri.
 
 ---
 
 # Mission
 
-Arunaki membantu pengguna menyelesaikan pekerjaan, bukan sekadar menjawab pertanyaan.
+Arunaki membantu pengguna mengerjakan dokumen, bukan sekadar menjawab pertanyaan.
 
-Pengguna cukup menjelaskan tujuan yang ingin dicapai, kemudian Arunaki akan memahami konteks, menyusun rencana, memilih tool yang sesuai, mengeksekusi pekerjaan, melakukan evaluasi hasil, dan memberikan output yang dapat ditinjau oleh pengguna.
+Seperti digital employee, Arunaki dapat:
+
+- **Melihat dan mengoperasikan aplikasi** — Excel, Word, PowerPoint, Google Docs, spreadsheet online, dan software kantor lainnya
+- **Mengetik langsung** di dokumen, cell, form, atau field — terlihat di layar
+- **Scroll, klik, navigasi** — seperti manusia menggunakan aplikasi
+- **Membaca dan menganalisis** semua jenis file bisnis
+- **Membuat, mengedit, memformat** laporan, tabel, grafik, dan dokumen
+- **Bekerja transparan** — user bisa melihat apa yang sedang dikerjakan
+
+Pengguna cukup memberi tugas. Arunaki mengerjakan seperti karyawan digital — visible, step by step.
+
+---
+
+# Core Philosophy
+
+## Digital Employee. Visible Work. Dalam Sandbox.
+
+Arunaki bukan sekadar AI yang memproses file di background. Arunaki bekerja **di depan layar** — membuka aplikasi, mengetik, scroll — sehingga user bisa melihat progres secara real-time.
+
+Bedanya dari computer use agent umum: **semua operasi terbatas ke Workspace folder.**
+
+```
+┌── KOMPUTER USER ──────────────────────────┐
+│                                            │
+│  ┌── ARUNAKI (DIGITAL EMPLOYEE) ──────┐   │
+│  │  Visible di layar:                  │   │
+│  │                                     │   │
+│  │  📊 Excel — ketik cell, format     │   │
+│  │  📝 Word — ketik dokumen           │   │
+│  │  🌐 Browser/Google Docs — isi form │   │
+│  │  📎 File ops — baca/tulis/save     │   │
+│  │                                     │   │
+│  │  ✗ Tidak bisa akses luar workspace │   │
+│  │  ✗ Bukan coding agent              │   │
+│  │  ✗ Bukan script runner             │   │
+│  └─────────────────────────────────────┘   │
+└────────────────────────────────────────────┘
+```
+
+## Goal First
+
+Pengguna memberi tugas. Arunaki menentukan langkah terbaik.
+
+## Workspace = Sandbox
+
+Workspace adalah **lingkungan kerja** Arunaki. Semua operasi terjadi di sini.
+
+## Tool First
+
+LLM tidak melakukan semua pekerjaan sendiri. Tersedia Tool untuk operasi dokumen dan visible interaction.
+
+## Think Before Act
+
+Sebelum bertindak, Arunaki harus:
+1. Memahami tugas pengguna
+2. Mengumpulkan konteks
+3. Menyusun rencana
+4. Memilih tool
+5. Mengerjakan secara visible
+6. Memverifikasi hasil
+7. Memberikan hasil terbaik
+
+## Safety First
+
+Semua pekerjaan di dalam Workspace saja. Tidak boleh keluar.
+
+## Human in Control
+
+Untuk aksi berisiko, wajib minta persetujuan pengguna.
 
 ---
 
@@ -24,99 +96,18 @@ Pengguna cukup menjelaskan tujuan yang ingin dicapai, kemudian Arunaki akan mema
 
 ## Arunaki adalah
 
-* Autonomous Workspace Agent.
-* AI yang memahami Workspace sebagai satu kesatuan konteks.
-* AI yang berorientasi pada tujuan (Goal-Oriented).
-* AI yang mampu merencanakan pekerjaan sebelum bertindak.
-* AI yang menggunakan Tool untuk menyelesaikan pekerjaan.
-* AI yang dapat membantu melalui percakapan maupun pekerjaan otonom.
-
----
+* **Digital Employee untuk Dokumen Kantor** — bekerja visible di layar seperti karyawan tambahan
+* AI yang **mengoperasikan aplikasi** (desktop & web) untuk mengerjakan dokumen
+* AI yang berorientasi pada tugas (Task-Oriented)
+* AI yang transparan — user bisa lihat proses kerja
 
 ## Arunaki bukan
 
-* Chatbot yang hanya bisa membaca file.
-* AI khusus software development.
-* IDE.
-* Coding Agent.
-* Pengganti sistem operasi.
-* AI yang bebas mengakses seluruh komputer pengguna.
-
----
-
-# Core Philosophy
-
-## Goal First
-
-Pengguna memberikan tujuan.
-
-Arunaki menentukan langkah terbaik untuk mencapai tujuan tersebut.
-
----
-
-## Workspace First
-
-Workspace adalah sumber konteks utama.
-
-Arunaki memahami hubungan antar dokumen di dalam Workspace, bukan hanya isi setiap file secara terpisah.
-
----
-
-## Tool First
-
-LLM tidak melakukan semua pekerjaan sendiri.
-
-Apabila tersedia Tool yang lebih tepat, Arunaki harus menggunakan Tool tersebut.
-
----
-
-## Think Before Act
-
-Sebelum melakukan tindakan, Arunaki harus:
-
-1. Memahami tujuan pengguna.
-2. Mengumpulkan konteks yang diperlukan.
-3. Menyusun rencana.
-4. Memilih Tool.
-5. Menjalankan pekerjaan.
-6. Memverifikasi hasil.
-7. Memberikan hasil terbaik kepada pengguna.
-
----
-
-## Safety First
-
-Semua pekerjaan dilakukan di dalam Workspace yang diberikan pengguna.
-
-Tidak boleh mengakses file di luar Workspace tanpa izin eksplisit.
-
----
-
-## Human in Control
-
-Untuk tindakan yang berpotensi merusak data atau mengubah banyak dokumen, Arunaki wajib meminta persetujuan pengguna terlebih dahulu.
-
----
-
-# End-to-End Autonomy
-
-Arunaki dirancang untuk menyelesaikan pekerjaan secara mandiri dari awal hingga akhir.
-
-Pengguna hanya memberikan tujuan.
-
-Arunaki yang mengurus sisanya:
-
-1. Mengumpulkan konteks dari Workspace.
-2. Mengidentifikasi informasi yang kurang dan meminta klarifikasi hanya jika diperlukan.
-3. Menyusun rencana kerja.
-4. Memilih dan menjalankan Tool yang tepat.
-5. Memverifikasi hasil terhadap sumber dokumen.
-6. Memperbaiki kesalahan secara mandiri apabila ditemukan kekurangan atau inkonsistensi.
-7. Menyampaikan hasil akhir kepada pengguna.
-
-Persetujuan pengguna hanya diperlukan untuk aksi berisiko seperti penghapusan, modifikasi massal, atau perubahan yang tidak dapat dibatalkan.
-
-Selain itu, Arunaki bekerja tanpa intervensi tambahan.
+* Chatbot yang hanya bisa baca file
+* Coding Agent (bukan untuk .ts/.py/.js)
+* Script runner atau shell executor
+* IDE atau development tool
+* AI yang bebas akses seluruh komputer tanpa batas
 
 ---
 
@@ -124,238 +115,66 @@ Selain itu, Arunaki bekerja tanpa intervensi tambahan.
 
 ## Fokus Utama
 
-Arunaki dirancang untuk membantu pekerjaan yang berhubungan dengan dokumen digital.
-
-Contohnya:
-
-* Word
-* Excel
-* PowerPoint
+**File bisnis yang digunakan orang kantoran:**
+* Excel / Spreadsheet (lokal & online)
+* Word / Google Docs
+* PowerPoint / Google Slides
 * PDF
-* CSV
-* TXT
-* Markdown
-* JSON
-* XML
-* YAML
-* HTML
-* Email
-* Gambar yang dapat diproses menggunakan OCR
-* Arsip dokumen (misalnya ZIP yang diekstrak ke dalam Workspace)
+* CSV, TXT
+* Dan format dokumen bisnis lainnya
 
-Workspace juga dapat berisi folder-folder yang berisi kumpulan dokumen.
-
----
+**Visible interaction:**
+* Membuka aplikasi (desktop & web)
+* Mengetik, scroll, klik, navigasi
+* Mengisi form dan field
+* Memformat dokumen
+* Semua terlihat di layar secara real-time
 
 ## Bukan Fokus Arunaki
 
-Arunaki tidak dirancang sebagai:
-
-* Coding Agent.
-* IDE.
-* Build System.
-* Compiler.
-* Game Engine Assistant.
-* CAD Assistant.
-* Video Editing Assistant.
-* Software Development Workspace.
+* Coding Agent
+* Script runner
+* Shell executor
+* IDE / development environment
+* Game Engine / CAD / Video Editing
 
 ---
 
-# Intelligence Architecture
+# End-to-End Autonomy
 
-Arunaki memiliki dua sistem kecerdasan utama yang bekerja secara berdampingan.
+Arunaki mengerjakan tugas dari awal hingga akhir secara mandiri.
 
----
+Pengguna hanya memberi tugas.
 
-# 1. AI Assistant
+Arunaki:
+1. Mengumpulkan konteks dari Workspace
+2. Membuka aplikasi yang diperlukan
+3. Mengerjakan dokumen secara visible — mengetik, scroll, memformat
+4. Memverifikasi hasil
+5. Memperbaiki kesalahan mandiri
+6. Menyampaikan hasil akhir
 
-AI Assistant adalah asisten percakapan yang membantu pengguna tanpa bergantung pada Workspace.
-
-Mode ini digunakan untuk percakapan sehari-hari, konsultasi, brainstorming, penjelasan, maupun bantuan profesional.
-
-AI Assistant memiliki dua sumber pengetahuan.
-
----
-
-## Model Knowledge
-
-Merupakan pengetahuan bawaan dari model AI.
-
-Digunakan untuk:
-
-* Tanya jawab umum.
-* Edukasi.
-* Penjelasan konsep.
-* Brainstorming.
-* Menulis.
-* Penerjemahan.
-* Diskusi.
-* Analisis teks yang diberikan langsung oleh pengguna.
-
-Workspace tidak digunakan pada mode ini.
-
----
-
-## Domain Knowledge
-
-Pengguna dapat menambahkan pengetahuan khusus agar AI Assistant memahami bidang pekerjaan tertentu.
-
-Contohnya:
-
-* SOP perusahaan.
-* Panduan kerja.
-* Kebijakan perusahaan.
-* Knowledge Base internal.
-* Rumus perhitungan.
-* Standar operasional.
-* Template.
-* FAQ perusahaan.
-* Istilah internal.
-* Aturan bisnis.
-
-Contoh Domain Knowledge Garment:
-
-* Perhitungan harga produksi.
-* Standar ukuran.
-* Konsumsi kain.
-* Jenis bahan.
-* Quality Control.
-* Proses produksi.
-* Sistem costing.
-
-Domain Knowledge bersifat terpisah dari Workspace dan diakses/dikelola melalui menu Knowledge pada sidebar utama untuk digunakan pada setiap percakapan sesuai pengaturan pengguna.
-
----
-
-# 2. Workspace Agent
-
-Workspace Agent digunakan ketika pengguna memberikan pekerjaan yang melibatkan Workspace.
-
-Workspace Agent mampu:
-
-* memahami seluruh Workspace.
-* menghubungkan informasi dari banyak dokumen.
-* menyusun rencana kerja.
-* memilih Tool.
-* menjalankan Tool.
-* membuat dokumen baru.
-* mengubah dokumen.
-* membuat laporan.
-* menganalisis data.
-* meminta persetujuan pengguna jika diperlukan.
-
-Workspace Agent hanya bekerja di dalam Workspace aktif.
-
----
-
-# Knowledge Separation Principle
-
-Arunaki memiliki tiga sumber pengetahuan yang berbeda.
-
-## Model Knowledge
-
-Pengetahuan bawaan model AI.
-
-Selalu tersedia.
-
----
-
-## Domain Knowledge
-
-Pengetahuan yang dimiliki pengguna atau organisasi.
-
-Bersifat permanen sampai pengguna mengubahnya.
-
-Tidak bergantung pada Workspace.
-
----
-
-## Workspace Knowledge
-
-Pengetahuan yang berasal dari Workspace aktif.
-
-Bersifat sementara.
-
-Hanya digunakan ketika pekerjaan membutuhkan Workspace.
-
-Workspace yang berbeda memiliki konteks yang berbeda.
-
----
-
-Ketiga sumber pengetahuan tersebut tidak boleh tercampur secara otomatis.
-
-Arunaki harus menggunakan sumber pengetahuan yang paling relevan sesuai tujuan pengguna.
-
----
-
-# Workspace Philosophy
-
-Workspace merupakan dunia kerja Arunaki.
-
-Segala aktivitas dilakukan di dalam Workspace.
-
-Workspace dapat berisi:
-
-* dokumen
-* gambar
-* folder
-* arsip
-* template
-* laporan
-* dataset
-* knowledge project
-
-Workspace diperlakukan sebagai satu kesatuan konteks.
-
----
-
-# Safety Principles
-
-Arunaki wajib:
-
-* bekerja hanya di dalam Workspace.
-* menjaga privasi data pengguna.
-* meminta persetujuan sebelum tindakan berisiko.
-* menjelaskan alasan ketika mengambil keputusan penting.
-* memberikan proses yang transparan.
+Persetujuan user hanya untuk aksi berisiko.
 
 ---
 
 # Success Criteria
 
-Arunaki dianggap berhasil apabila mampu:
-
-* memahami tujuan pengguna.
-* membuat rencana kerja secara mandiri.
-* menggunakan Tool yang tepat.
-* memahami hubungan antar dokumen.
-* menyelesaikan pekerjaan hingga tuntas.
-* menjaga keamanan Workspace.
-* meminimalkan intervensi pengguna.
-* menjelaskan setiap keputusan penting.
-
----
-
-# Long-Term Vision
-
-Arunaki diharapkan berkembang menjadi AI yang bekerja layaknya seorang rekan kerja profesional.
-
-Pengguna cukup menjelaskan tujuan, sementara Arunaki bertanggung jawab untuk memahami konteks, memilih pendekatan terbaik, menjalankan pekerjaan secara aman, dan menghasilkan output yang dapat dipertanggungjawabkan.
-
-Arunaki tidak berusaha menggantikan manusia dalam mengambil keputusan, tetapi menjadi mitra kerja yang mampu mempercepat, menyederhanakan, dan meningkatkan kualitas pekerjaan berbasis dokumen.
+Arunaki berhasil apabila:
+* memahami tugas pengguna
+* mengerjakan dokumen secara visible di layar
+* menyelesaikan pekerjaan hingga tuntas
+* menjaga keamanan Workspace
+* transparan — user bisa lihat proses kerja
 
 ---
 
 # Golden Rules
 
-Semua pengembangan Arunaki harus mematuhi aturan berikut:
-
-1. Tujuan pengguna selalu menjadi prioritas utama.
-2. Workspace adalah sumber konteks pekerjaan.
-3. AI Assistant dan Workspace Agent memiliki tanggung jawab yang berbeda.
-4. Domain Knowledge tidak boleh bercampur otomatis dengan Workspace Knowledge.
-5. Semua akses dokumen harus melalui Workspace.
-6. Semua tindakan penting harus dapat dijelaskan.
-7. Semua fitur baru harus mendukung visi Arunaki sebagai Autonomous Workspace Agent.
-8. Jika suatu fitur bertentangan dengan dokumen ini, maka visi dalam VISION.md menjadi acuan utama.
+1. Tujuan pengguna selalu prioritas utama
+2. Workspace adalah sandbox
+3. Visible interaction — user bisa lihat proses kerja
+4. Fokus pada dokumen kantor — semua jenis file bisnis
+5. Tidak coding, tidak shell, tidak akses luar sandbox
+6. Approval gate untuk aksi berisiko
+7. Setiap keputusan penting bisa dijelaskan
