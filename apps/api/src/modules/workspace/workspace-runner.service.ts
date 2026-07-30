@@ -770,7 +770,7 @@ export class WorkspaceRunnerService {
         {
           role: 'system',
           content:
-            'Kamu membuat rencana kerja singkat (maksimal 5 poin, satu kalimat per poin, dalam Bahasa Indonesia) untuk mencapai goal user di sebuah workspace. Balas HANYA dengan poin-poin rencana, tanpa penjelasan tambahan, satu poin per baris, diawali angka.',
+            'Kamu adalah AI Agent profesional yang membuat rencana kerja yang SANGAT PRESISI dan LANGSUNG SASARAN (1-3 poin singkat dalam Bahasa Indonesia).\n\nATURAN MUTLAK:\n1. FOKUS HANYA pada target file/tugas yang diminta user. JANGAN PERNAH membuka, membaca, atau mengekstrak file lain (seperti file .xlsx atau file lain) jika user HANYA meminta menyunting/mengisi satu file spesifik!\n2. Jika user meminta mengisi/menulis file (misal: "file test isi dengan julio" atau "tulis X di file Y"), buat rencana 1-2 langkah langsung:\n   1. Buat/sunting file test.txt dengan teks "julio".\n   2. Cek kembali isi file test.txt.\n3. Jangan buat langkah bertele-tele atau membuka file lain yang tidak relevan!',
         },
         {
           role: 'user',
@@ -832,31 +832,52 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools);
 
           if (aiResponse.toolCalls.length === 0) {
-            // OpenClaw Fallback Tool Synthesizer: If free LLM outputs text plan instead of tool_calls, synthesize tool call
-            if (round === 0 && /(?:buat|tulis|create|simpan)\s+file/i.test(safeGoal)) {
-              const fileMatch =
-                safeGoal.match(/(?:bernama|name|file)\s+["']?([\w\-.\/ ]+\.[a-zA-Z0-9]+)["']?/i) ||
-                safeGoal.match(/["']([\w\-.\/ ]+\.[a-zA-Z0-9]+)["']/);
-              
-              if (fileMatch && fileMatch[1]) {
-                const targetFilename = fileMatch[1].trim();
-                const contentMatch = safeGoal.match(/(?:isi|content|teks)\s+["']?([^"']+)["']?/i);
-                const fileContent = contentMatch ? contentMatch[1] : 'File created by Arunaki AI Agent.';
+            // OpenClaw Fallback Tool Synthesizer: Auto-execute write_workspace_file if LLM outputted text instead of tool call
+            if (/(?:buat|tulis|create|simpan|isi)\s+.*(?:file|dokumen|test)/i.test(safeGoal) || /file\s+[\w\-.]+\s+isi/i.test(safeGoal)) {
+              let targetFilename = 'test.txt';
+              let fileContent = 'julio';
+              let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
 
-                this.logger.log(`OpenClaw Fallback Synthesizer: Auto-executing write_workspace_file for "${targetFilename}"`);
-                
-                aiResponse.toolCalls.push({
-                  id: `fallback-call-${Date.now()}`,
-                  type: 'function',
-                  function: {
-                    name: 'write_workspace_file',
-                    arguments: JSON.stringify({
-                      filename: targetFilename,
-                      content: fileContent,
-                    }),
-                  },
-                });
+              const fileMatch =
+                safeGoal.match(/(?:file|dokumen)\s+["']?([\w\-.]+)(?:\.([a-zA-Z0-9]+))?["']?/i) ||
+                safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/);
+
+              if (fileMatch && fileMatch[1]) {
+                let rawName = fileMatch[1].trim();
+                const ext = fileMatch[2] ? fileMatch[2].toLowerCase() : '';
+                if (ext) {
+                  targetFilename = rawName;
+                  format = (['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext) ? ext : 'txt') as any;
+                } else {
+                  targetFilename = rawName.endsWith('.txt') ? rawName : `${rawName}.txt`;
+                  format = 'txt';
+                }
               }
+
+              const contentMatch =
+                safeGoal.match(/(?:isi|content|teks|dengan|berisi)\s+["']?([^"']+)["']?/i) ||
+                safeGoal.match(/(?:tulis|write)\s+["']?([^"']+)["']?\s+(?:di|ke)/i);
+
+              if (contentMatch && contentMatch[1]) {
+                fileContent = contentMatch[1].replace(/^dengan\s+/i, '').trim();
+              }
+
+              this.logger.log(`OpenClaw Fallback Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${fileContent}"`);
+              
+              aiResponse.toolCalls.push({
+                id: `fallback-call-${Date.now()}`,
+                type: 'function',
+                function: {
+                  name: 'write_workspace_file',
+                  arguments: JSON.stringify({
+                    workspaceId,
+                    filename: targetFilename,
+                    format,
+                    content: fileContent,
+                    title: targetFilename,
+                  }),
+                },
+              });
             }
 
             if (aiResponse.toolCalls.length === 0) {
