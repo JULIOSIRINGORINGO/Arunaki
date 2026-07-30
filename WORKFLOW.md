@@ -492,12 +492,56 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 31: Browser Interaction Service ✅ DONE
+
+**Goal:** Visible browser interaction — Playwright-based browser automation with CDP connection for Google Docs/Sheets and web navigation.
+
+### 31.1 Backend - Interaction Module & Browser Service
+- [x] Installed `playwright` v1.61.1 in `apps/api/package.json` — previously only in root devDependencies
+- [x] Created `InteractionModule` (`@Global()`) with `BrowserInteractionService`
+- [x] `BrowserInteractionService` — manages headed Chromium lifecycle, provides core methods:
+  - `launch()` — launch visible Chromium
+  - `navigate(url)` — go to URL, return title + url
+  - `click(selector)` — click element via CSS selector
+  - `type(selector, text)` / `typeSlowly()` — type text into element
+  - `screenshot()` — return PNG as base64
+  - `getContent()` / `getHtml()` — read page text/HTML
+  - `pressKey(key)` — keyboard shortcuts
+  - `goBack()` / `goForward()` — navigation
+  - `onModuleDestroy()` — cleanup
+- [x] Wired into `ToolsModule` (provider list + exports)
+- [x] Wired into `AppModule` (imports)
+
+### 31.2 Browser Interaction Tools (8 tools)
+- [x] `browser_navigate` — open web page (Google Docs, Sheets, etc.)
+- [x] `browser_click` — click element by CSS selector
+- [x] `browser_type` — fill text (with optional `slowly` mode)
+- [x] `browser_screenshot` — capture visible page as base64 image
+- [x] `browser_get_content` — read visible text from page
+- [x] `browser_press_key` — keyboard shortcuts (Enter, Tab, Ctrl+C, etc.)
+- [x] `browser_go_back` — navigate back
+- [x] `browser_go_forward` — navigate forward
+
+### 31.3 Prompt Updates
+- [x] `rules.md` — Updated Section 7.4 with Google Sheet example + tool names
+- [x] `rules.md` — Updated Error Handling table (browser diagnostic + recovery)
+- [x] `chat-rules.md` — Added Section 6.5 Visible Web Interaction
+- [x] Tools auto-injected via `{TOOL_LIST}` (Phase 30 dynamic injection)
+
+### 31.4 Technical Details
+- [x] Build passes (`npx nest build` — 0 errors)
+- [x] Pattern follows OpenClaw's architecture (pure function tools, CDP connection)
+- [x] Uses `playwright` full package (includes Chromium browser binary)
+- [x] Limited to browser automation — desktop COM follows in next iteration
+
+---
+
 ## Current Status
 
-**Phase:** System Prompt Maturity — OpenClaw-inspired structure, dynamic tool injection, maturity hardening  
-**Framework:** Digital Employee — visible interaction, OpenClaw-style system prompt (Tooling, Tool Call Style, Execution Bias, Self-Correction, Safety, Interaction Guide, Error Handling, Output Contract)  
+**Phase:** 31 — Browser Interaction Service (visible browser automation)  
+**Framework:** Digital Employee — dapat berinteraksi visible di browser (Google Docs/Sheets) + backend tools  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Build Interaction Service — Playwright browser automation + COM desktop automation  
+**Next:** Desktop COM Automation — Excel/Word/PowerPoint via Electron bridge + winax  
 
 ---
 

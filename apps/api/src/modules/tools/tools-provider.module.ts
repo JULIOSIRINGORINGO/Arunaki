@@ -22,6 +22,7 @@ import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
+import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { MemoryTool } from './services/memory.tool.js';
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
+    BrowserInteractionService,
   ],
   exports: [
     ToolRegistryService,
@@ -67,6 +69,7 @@ import { MemoryTool } from './services/memory.tool.js';
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
+    BrowserInteractionService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -87,6 +90,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly workspaceToolsService: WorkspaceToolsService,
     private readonly skillsTool: SkillsTool,
     private readonly memoryTool: MemoryTool,
+    private readonly browserInteraction: BrowserInteractionService,
   ) {}
 
   onModuleInit() {
@@ -922,6 +926,233 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['query'],
         },
         timeoutMs: 5000,
+      }),
+    );
+
+    // ─── Browser Interaction ───────────────────────────────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_navigate',
+        displayName: 'Buka Halaman Web',
+        description:
+          'Membuka halaman web (Google Docs, Google Sheets, website) di browser yang terlihat. ' +
+          'Gunakan untuk membuka dokumen online atau mencari informasi di web.',
+        tags: ['browser', 'navigate', 'web', 'google-docs', 'google-sheets'],
+        handler: (args) =>
+          this.browserInteraction.navigate(args.url).then((r) => ({
+            status: 'success' as const,
+            data: { title: r.title, url: r.url },
+            preview: `Halaman terbuka: ${r.title}`,
+            metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
+          })),
+        parameters: {
+          type: 'object',
+          properties: {
+            url: { type: 'string', description: 'URL halaman web yang akan dibuka (https://...)' },
+          },
+          required: ['url'],
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 30000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_click',
+        displayName: 'Klik Element',
+        description:
+          'Mengklik element di halaman web menggunakan CSS selector. ' +
+          'Gunakan untuk mengklik tombol, link, menu, atau cell di Google Docs/Sheets.',
+        tags: ['browser', 'click', 'interact'],
+        handler: async (args) => {
+          await this.browserInteraction.click(args.selector);
+          return {
+            status: 'success' as const,
+            data: { selector: args.selector },
+            preview: `Mengklik: ${args.selector}`,
+            metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            selector: {
+              type: 'string',
+              description: 'CSS selector element yang akan diklik (contoh: "#id", ".class", "button")',
+            },
+          },
+          required: ['selector'],
+        },
+        timeoutMs: 10000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_type',
+        displayName: 'Ketik Teks',
+        description:
+          'Mengetik teks ke dalam form field, cell spreadsheet, atau editor dokumen. ' +
+          'Gunakan untuk mengisi data di Google Sheets, mengetik di Google Docs, atau mengisi form.',
+        tags: ['browser', 'type', 'input', 'form'],
+        handler: async (args) => {
+          if (args.slowly) {
+            await this.browserInteraction.typeSlowly(args.selector, args.text);
+          } else {
+            await this.browserInteraction.type(args.selector, args.text);
+          }
+          return {
+            status: 'success' as const,
+            data: { selector: args.selector, length: args.text.length },
+            preview: `Mengetik ${args.text.length} karakter di: ${args.selector}`,
+            metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            selector: {
+              type: 'string',
+              description: 'CSS selector element yang akan diisi teks',
+            },
+            text: { type: 'string', description: 'Teks yang akan diketik' },
+            slowly: {
+              type: 'boolean',
+              description: 'Ketik perlahan karakter per karakter (default: false)',
+            },
+          },
+          required: ['selector', 'text'],
+        },
+        timeoutMs: 30000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_screenshot',
+        displayName: 'Screenshot Halaman',
+        description:
+          'Mengambil screenshot halaman web saat ini. Gambar dikembalikan sebagai base64. ' +
+          'Gunakan untuk melihat apa yang sedang tampil di browser.',
+        tags: ['browser', 'screenshot', 'view', 'capture'],
+        handler: async () => {
+          const base64 = await this.browserInteraction.screenshot();
+          return {
+            status: 'success' as const,
+            data: { screenshot: `data:image/png;base64,${base64}` },
+            preview: 'Screenshot diambil',
+            metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_get_content',
+        displayName: 'Baca Konten Halaman',
+        description:
+          'Membaca teks yang terlihat di halaman web saat ini. ' +
+          'Gunakan untuk membaca dokumen Google Docs, data Google Sheets, atau konten web.',
+        tags: ['browser', 'read', 'content', 'text'],
+        handler: async () => {
+          const content = await this.browserInteraction.getContent();
+          return {
+            status: 'success' as const,
+            data: { content },
+            preview: `Membaca ${content.length} karakter dari halaman`,
+            metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            maxChars: {
+              type: 'number',
+              description: 'Maksimal karakter yang dibaca (default: semua)',
+            },
+          },
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 10000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_press_key',
+        displayName: 'Tekan Tombol Keyboard',
+        description:
+          'Menekan tombol keyboard di halaman web. Gunakan untuk shortcut keyboard ' +
+          '(Ctrl+C, Enter, Tab, Escape, ArrowDown, dll).',
+        tags: ['browser', 'keyboard', 'shortcut', 'interact'],
+        handler: async (args) => {
+          await this.browserInteraction.pressKey(args.key);
+          return {
+            status: 'success' as const,
+            data: { key: args.key },
+            preview: `Menekan tombol: ${args.key}`,
+            metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            key: {
+              type: 'string',
+              description: 'Nama tombol (Enter, Tab, Escape, ArrowDown, ArrowUp, Control+a, dll)',
+            },
+          },
+          required: ['key'],
+        },
+        timeoutMs: 5000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_go_back',
+        displayName: 'Kembali Halaman',
+        description: 'Navigasi kembali ke halaman sebelumnya di browser.',
+        tags: ['browser', 'navigate', 'back'],
+        handler: async () => {
+          await this.browserInteraction.goBack();
+          return {
+            status: 'success' as const,
+            data: {},
+            preview: 'Kembali ke halaman sebelumnya',
+            metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
+          };
+        },
+        parameters: { type: 'object', properties: {} },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'browser_go_forward',
+        displayName: 'Maju Halaman',
+        description: 'Navigasi maju ke halaman berikutnya di browser.',
+        tags: ['browser', 'navigate', 'forward'],
+        handler: async () => {
+          await this.browserInteraction.goForward();
+          return {
+            status: 'success' as const,
+            data: {},
+            preview: 'Maju ke halaman berikutnya',
+            metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
+          };
+        },
+        parameters: { type: 'object', properties: {} },
+        timeoutMs: 15000,
       }),
     );
   }

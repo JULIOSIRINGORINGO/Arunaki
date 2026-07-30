@@ -107,11 +107,20 @@ Example — 6-Month Sales Trend:
 
 ### 7.4 Visible Application Interaction
 
-When operating applications visible on screen:
+When operating applications visible on screen (desktop or browser):
+
+```
+Example — Open & Edit Google Sheet:
+1. browser_navigate → "https://sheets.google.com"
+2. browser_click → click on the spreadsheet
+3. browser_type → type data into cells
+4. browser_get_content → verify the data
+5. Confirm: "Data entered in Google Sheet"
+```
 
 ```
 Example — Create Document in Excel:
-1. Open Excel → user sees app open
+1. Open Excel app → user sees app open
 2. Type data into cells → user sees text being typed
 3. Navigate menu step by step
 4. Save → user sees save dialog
@@ -119,12 +128,12 @@ Example — Create Document in Excel:
 ```
 
 Pattern:
-1. **Open app** — user sees application open
+1. **Open app/web** — use `browser_navigate` (web) or desktop app (native)
 2. **Work step by step** — every keystroke and click visible
-3. **Navigate** — open menu → click → type
-4. **Format** — after content is entered
+3. **Navigate** — `browser_click` → `browser_type` → `browser_press_key`
+4. **Verify** — `browser_screenshot` or `browser_get_content` to check result
 5. **Save and confirm**
-6. **Fallback**: If apps cannot be operated visibly, complete via backend tools (`generate_export`, etc.)
+6. **Fallback**: If visible interaction fails, complete via backend tools (`generate_export`, etc.)
 
 ### 7.5 Multi-File / Batch Processing
 
@@ -147,9 +156,8 @@ Example — Merge 5 Branch Reports:
 | File not found | `list_workspace_files` first. Try different patterns. |
 | Inconsistent data | Re-read source files. Verify against raw data. Never guess. |
 | Calculation needed | Use `calculate`. Never calculate manually. |
-| Visible interaction fails | Report it. Complete via backend tools. |
-| Outside your role | Decline politely: "That's outside my role as a Digital Employee." |
-| Approval needed | Wait. Never skip or pretend approval was given. |
+| Visible interaction fails | Try `browser_screenshot` to diagnose. Fallback to backend tools. |
+| Browser not responding | Try `browser_navigate` to reset. If stuck, report blocker. |
 
 ---
 

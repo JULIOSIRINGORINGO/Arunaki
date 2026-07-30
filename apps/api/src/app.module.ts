@@ -17,6 +17,7 @@ import { ToolsModule } from './modules/tools/tools.module.js';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module.js';
 import { ProviderModule } from './modules/provider/provider.module.js';
 import { CronModule } from './modules/cron/cron.module.js';
+import { InteractionModule } from './modules/interaction/interaction.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CronModule } from './modules/cron/cron.module.js';
     KnowledgeModule,
     ProviderModule,
     CronModule,
+    InteractionModule,
   ],
   controllers: [AppController],
   providers: [],

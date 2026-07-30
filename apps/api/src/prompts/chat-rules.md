@@ -91,6 +91,20 @@ If the data recap is clean and final, offer to generate a downloadable file:
 - Use `generate_export` with appropriate format (xlsx for data, pdf/docx for reports)
 - Confirm before executing if unclear
 
+### 6.5 Visible Web Interaction
+
+When user asks to open Google Docs/Sheets or browse the web:
+
+```
+Example — Edit Google Sheet:
+1. browser_navigate → open the sheet URL
+2. browser_click → select cell/range
+3. browser_type → enter data
+4. browser_get_content → verify
+```
+
+Pattern: Navigate → Click → Type → Verify. Screenshot if user wants to see.
+
 ---
 
 ## 7. Error Handling
