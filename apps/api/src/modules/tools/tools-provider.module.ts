@@ -24,6 +24,7 @@ import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
 import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
+import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
+    DocumentReconciliationService,
   ],
   exports: [
     ToolRegistryService,
@@ -69,6 +71,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     WorkspaceToolsService,
     SkillsTool,
     MemoryTool,
+    DocumentReconciliationService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -91,6 +94,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly memoryTool: MemoryTool,
     private readonly browserInteraction: BrowserInteractionService,
     private readonly desktopBridge: DesktopBridgeService,
+    private readonly docReconciliationService: DocumentReconciliationService,
   ) {}
 
   onModuleInit() {
@@ -1670,6 +1674,111 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['keys'],
         },
         timeoutMs: 10000,
+      }),
+    );
+
+    // ─── Multi-Document Reconciliation & Cross-Reference ─────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'doc_reconcile',
+        displayName: 'Audit & Rekonsiliasi Dokumen',
+        description:
+          'Membandingkan 2 kumpulan data terstruktur (Excel, PDF, Word, CSV) untuk merekonsiliasi entri, mencatat selisih nilai, dan mendeteksi data yang hilang.',
+        tags: ['audit', 'reconcile', 'reconciliation', 'compare', 'matrix'],
+        handler: async (args) => {
+          try {
+            const report = this.docReconciliationService.reconcileDocuments(
+              args.sourceName || 'Dokumen A',
+              args.sourceRows || [],
+              args.targetName || 'Dokumen B',
+              args.targetRows || [],
+              args.matchKey || 'id',
+            );
+            return {
+              status: 'success' as const,
+              data: report,
+              preview: report.formattedTableMarkdown,
+              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Rekonsiliasi Dokumen', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Gagal merekonsiliasi dokumen: ${err.message}`,
+              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Rekonsiliasi Dokumen', executionTime: 0 },
+              error: { code: 'RECONCILE_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            sourceName: { type: 'string', description: 'Nama dokumen acuan utama (contoh: "Invoices.xlsx")' },
+            sourceRows: { type: 'array', items: { type: 'object' }, description: 'Baris data dari dokumen acuan utama' },
+            targetName: { type: 'string', description: 'Nama dokumen pembanding (contoh: "Receipts.pdf")' },
+            targetRows: { type: 'array', items: { type: 'object' }, description: 'Baris data dari dokumen pembanding' },
+            matchKey: { type: 'string', description: 'Kunci acuan pencocokan (contoh: "id", "invoiceNo", "tanggal")' },
+          },
+          required: ['sourceName', 'sourceRows', 'targetName', 'targetRows'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'doc_cross_reference',
+        displayName: 'Pencarian Silang Dokumen Workspace',
+        description:
+          'Mencari keterkaitan entitas, nomor invoice, atau kata kunci tertentu di seluruh teks dokumen workspace.',
+        tags: ['cross_reference', 'search', 'audit', 'workspace'],
+        handler: async (args) => {
+          try {
+            const matches = this.docReconciliationService.crossReference(
+              args.query || '',
+              args.documents || [],
+            );
+            const summary = matches.length > 0
+              ? `Ditemukan ${matches.length} dokumen yang memuat "${args.query}":\n` +
+                matches.map((m) => `- **${m.documentName}** (${m.occurrenceCount} kali): "${m.contextSnippet}"`).join('\n')
+              : `Teks "${args.query}" tidak ditemukan di dokumen yang diperiksa.`;
+
+            return {
+              status: 'success' as const,
+              data: { query: args.query, matches },
+              preview: summary,
+              metadata: { toolName: 'doc_cross_reference', displayName: 'Pencarian Silang Dokumen Workspace', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Gagal melakukan pencarian silang: ${err.message}`,
+              metadata: { toolName: 'doc_cross_reference', displayName: 'Pencarian Silang Dokumen Workspace', executionTime: 0 },
+              error: { code: 'CROSS_REF_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Kata kunci/nomor invoice/kode yang dicari secara silang' },
+            documents: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  content: { type: 'string' },
+                },
+                required: ['name', 'content'],
+              },
+              description: 'Daftar dokumen beserta konten teksnya untuk diperiksa',
+            },
+          },
+          required: ['query', 'documents'],
+        },
+        timeoutMs: 15000,
       }),
     );
   }

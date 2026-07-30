@@ -622,14 +622,34 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Dev log `docs/dev-logs/dev-log-2026-07-30-desktop-live-mirror.md` created using template in `AGENTS.md`
 - [x] Build passes (`npx nest build` — 0 errors) & Vitest tests pass (`npx vitest run`)
 
+## Phase 35: Multi-Document Cross-Referencing & Batch Reconciliation Engine ✅ DONE
+
+**Goal:** Cross-document intelligence — Audit and reconcile structured data across Excel, PDF, Word, and CSV files in the workspace, flagging discrepancies and generating audit reconciliation matrices.
+
+### 35.1 Backend — DocumentReconciliationService
+- [x] Create `DocumentReconciliationService` (`doc-reconciliation.service.ts`)
+- [x] Implement `reconcileDocuments()` — cross-reference fields (Amount, Date, ID, Items) across multiple files
+- [x] Implement discrepancy matrix calculation (missing entries, value variances, match confidence)
+
+### 35.2 Reconciliation Tools
+- [x] `doc_reconcile` — Compare & audit 2 or more workspace documents (Excel vs PDF vs Word)
+- [x] `doc_cross_reference` — Find entity/invoice occurrences across all workspace files
+
+### 35.3 Prompt Updates & Canvas Integration
+- [x] Update `rules.md` & `chat-rules.md` with batch document audit workflow
+- [x] Format reconciliation audit reports with `[CANVAS]` markdown tables for live Canvas rendering
+- [x] Unit tests `document-reconciliation.service.spec.ts`
+- [x] Dev log `docs/dev-logs/dev-log-2026-07-30-document-reconciliation.md` created using template in `AGENTS.md`
+- [x] Build passes (`npx nest build` — 0 errors) & Vitest tests pass (`npx vitest run`)
+
 ---
 
 ## Current Status
 
-**Phase:** 34 — Live Execution Feedback & Canvas Mirroring UI 🔄 [AI]  
-**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + live Web UI mirroring & status feedback  
+**Phase:** 35 — Multi-Document Cross-Referencing & Batch Reconciliation Engine ✅ DONE  
+**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + multi-document audit & reconciliation engine  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Multi-Document Cross-Referencing & Batch Reconciliation Engine  
+**Next:** Native Desktop Mouse Coordinate Input (`desktop_click_coordinate`)  
 
 ---
 

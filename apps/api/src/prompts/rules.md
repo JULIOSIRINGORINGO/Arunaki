@@ -156,15 +156,16 @@ Pattern:
 5. **Save and confirm**
 6. **Fallback**: If visible interaction fails, complete via backend tools (`generate_export`, etc.)
 
-### 7.5 Multi-File / Batch Processing
+### 7.6 Document Reconciliation & Cross-Referencing
+
+- `doc_reconcile` — compare 2 structured document datasets, compute accuracy %, find mismatches & missing entries
+- `doc_cross_reference` — search entity/invoice occurrences across text files in workspace
 
 ```
-Example — Merge 5 Branch Reports:
-1. list_workspace_files → find all report files
-2. read_workspace_file (parallel) → read all files
-3. calculate → aggregate data
-4. generate_export → create consolidated report
-5. save_memory → store aggregate facts for future sessions
+Example — Reconcile Invoice Excel vs PDF Receipts:
+1. read_workspace_file → extract rows from Invoices.xlsx and Receipts.pdf
+2. doc_reconcile → compare datasets on key "id" or "invoiceNo"
+3. Render audit matrix in [CANVAS] table with match percentage
 ```
 
 ---
