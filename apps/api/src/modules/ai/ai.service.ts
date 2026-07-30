@@ -451,11 +451,9 @@ export class AiService {
     );
 
     if (mode === 'workspace' && workspaceContext) {
-      // Workspace mode — load 6 modular prompt files
+      // Workspace mode — load prompt files
       const identity = this.loadPrompt('identity.md');
       const rules = this.loadPrompt('rules.md');
-      const workspaceRules = this.loadPrompt('workspace-rules.md');
-      const workspaceFlow = this.loadPrompt('workspace-flow.md');
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
 
@@ -469,10 +467,6 @@ export class AiService {
 ${safeWorkspaceContext}
 
 ${rules}
-
-${workspaceRules}
-
-${workspaceFlow}
 
 ${memoryContext}
 
