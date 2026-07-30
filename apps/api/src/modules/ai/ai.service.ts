@@ -16,6 +16,7 @@ import {
 } from './auto-posture-detector.service.js';
 import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
+import { modelSupportsTools } from './model-capability.js';
 
 export interface ToolCall {
   id: string;
@@ -88,7 +89,7 @@ export class AiService {
       this.config.get<string>('AI_BASE_URL') || 'https://openrouter.ai/api/v1';
     this.fallbackModel =
       this.config.get<string>('AI_MODEL') ||
-      'nvidia/nemotron-3-ultra-550b-a55b:free';
+      'openrouter/free';
     this.enc = this.getEncodingForModel(this.fallbackModel);
 
     // Initialize services
@@ -242,47 +243,23 @@ export class AiService {
   }
 
   /**
-   * Prepare messages for API call using 4-phase context compression.
-   *
-   * Phase 1: Prune old tool results (keep last 3 unpruned)
-   * Phase 2: Strip old images
-   * Phase 3: Sanitize orphaned tool_call/tool_result pairs
-   * Phase 4: Token-aware tail protection + structured summary (LLM or template)
-   */
-  async prepareMessages(
-    messages: ChatMessage[],
-    maxContextTokens?: number,
-  ): Promise<ChatMessage[]> {
-    if (this.contextRegistry) {
-      return this.contextRegistry.getActive().compress(messages);
-    }
-
-    if (maxContextTokens && maxContextTokens !== 128000) {
-      // Allow override — create temporary ContextManager
-      const tempManager = new ContextManager(
-        { contextLength: maxContextTokens },
-        { chat: this.chat.bind(this) },
-      );
-      return tempManager.compress(messages);
-    }
-    return this.contextManager.compress(messages);
-  }
-
-  /**
    * Main chat method with credential pool + error classification.
    *
    * Flow:
    * 1. Get active provider
-   * 2. Make request
-   * 3. On error: classify → retry (same provider) or rotate (next provider)
-   * 4. Max 3 retries per provider, max 3 provider rotations
+   * 2. (Light) trim messages if needed — skip 4-phase compression for free models
+   * 3. Make request
+   * 4. On error: classify → retry (same provider) or rotate (next provider)
+   * 5. Max 3 retries per provider, max 3 provider rotations
    */
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): Promise<AiResponse> {
-    // Apply context management: prune large outputs + truncate if needed
-    const preparedMessages = await this.prepareMessages(messages);
+    // Light trim: keep last 40 messages, skip 4-phase compression
+    const trimmedMessages = messages.length > 40
+      ? messages.slice(-40)
+      : messages;
 
     // Get starting provider
     let provider = await this.getProviderConfig();
@@ -295,12 +272,13 @@ export class AiService {
 
     const body: Record<string, any> = {
       model: provider.model,
-      messages: preparedMessages,
+      messages: trimmedMessages,
       temperature: 0.7,
       max_tokens: 4096,
     };
 
-    if (tools && tools.length > 0) {
+    const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
+    if (canUseTools) {
       body.tools = tools;
     }
 
@@ -363,7 +341,10 @@ export class AiService {
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): AsyncGenerator<StreamChunk> {
-    const preparedMessages = await this.prepareMessages(messages);
+    // Light trim, skip heavy 4-phase compression
+    const trimmedMessages = messages.length > 40
+      ? messages.slice(-40)
+      : messages;
 
     const provider = await this.getProviderConfig();
     if (!provider.apiKey) {
@@ -374,11 +355,12 @@ export class AiService {
 
     const body: Record<string, any> = {
       model: provider.model,
-      messages: preparedMessages,
+      messages: trimmedMessages,
       temperature: 0.7,
       max_tokens: 4096,
     };
-    if (tools && tools.length > 0) {
+    const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
+    if (canUseTools) {
       body.tools = tools;
     }
 

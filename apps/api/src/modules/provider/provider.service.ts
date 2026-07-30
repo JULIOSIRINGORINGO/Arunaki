@@ -124,10 +124,11 @@ export class ProviderService extends BaseService<Provider> {
 
   // Built-in fallback free models pool on OpenRouter
   private static readonly FREE_MODEL_CANDIDATES = [
+    'openrouter/free',
+    'google/gemma-4-31b-it:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'openai/gpt-oss-20b:free',
     'nvidia/nemotron-3-nano-30b-a3b:free',
-    'inclusionai/ling-3.0-flash:free',
-    'poolside/laguna-s-2.1:free',
-    'nvidia/nemotron-nano-9b-v2:free',
   ];
 
   /**
