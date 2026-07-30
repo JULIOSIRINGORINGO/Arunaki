@@ -18,6 +18,9 @@ import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
+import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
+import { CompactionService } from '../ai/compaction.service.js';
+import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
@@ -129,6 +132,8 @@ export class WorkspaceRunnerService {
     private readonly skillService: SkillService,
     private readonly selfHealingService: SelfHealingService,
     private readonly promptInjectionDetector: PromptInjectionDetector,
+    private readonly toolLoopDetector: ToolLoopDetectorService,
+    private readonly compactionService: CompactionService,
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
     private readonly domainRegistry: DomainRegistryService,
@@ -937,6 +942,16 @@ export class WorkspaceRunnerService {
               args = {};
             }
 
+            // Circuit Breaker: Check for tool loop violation (OpenClaw resolveToolLoopDetectionConfig)
+            const loopCheck = this.toolLoopDetector.checkAndRecord(workspaceId, funcName, args);
+            if (loopCheck.isLooping) {
+              this.logger.warn(`Tool Loop Breaker triggered for ${funcName}. Stopping round.`);
+              finalContent = loopCheck.message || `Eksekusi dihentikan karena pemanggilan tool ${funcName} berulang.`;
+              onEvent({ type: 'text_delta', data: finalContent });
+              reachedMaxRounds = false;
+              break;
+            }
+
             if (mutatingTools.includes(funcName)) {
               mutatingCalls.push({ toolCall, args });
             } else {
@@ -1001,7 +1016,7 @@ export class WorkspaceRunnerService {
               messages.push({
                 role: 'tool',
                 tool_call_id: toolCall.id,
-                content: JSON.stringify(result),
+                content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
               });
             }
           }
@@ -1104,7 +1119,7 @@ export class WorkspaceRunnerService {
             messages.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: JSON.stringify(result),
+              content: ToolResultFormatter.formatForLlm(funcName, result),
             });
 
             // Immediately terminate loop upon successful write_workspace_file execution
@@ -1114,6 +1129,15 @@ export class WorkspaceRunnerService {
               onEvent({ type: 'text_delta', data: finalContent });
               reachedMaxRounds = false;
               break;
+            }
+          }
+
+          // Compact history if context length grows (OpenClaw compaction.ts)
+          if (messages.length > 20) {
+            const compactResult = this.compactionService.compactHistory(messages);
+            if (compactResult.wasCompacted) {
+              messages.length = 0;
+              messages.push(...compactResult.compactedMessages);
             }
           }
         }

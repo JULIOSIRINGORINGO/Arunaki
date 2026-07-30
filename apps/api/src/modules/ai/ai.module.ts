@@ -8,6 +8,8 @@ import { AutoPostureDetector } from './auto-posture-detector.service.js';
 import { AutonomousPlannerService } from './autonomous-planner.service.js';
 import { SelfHealingService } from './self-healing.service.js';
 import { WorkspaceHeartbeatService } from './workspace-heartbeat.service.js';
+import { ToolLoopDetectorService } from './tool-loop-detector.service.js';
+import { CompactionService } from './compaction.service.js';
 import { ProviderModule } from '../provider/provider.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
@@ -30,6 +32,8 @@ import { ContextModule } from './context/context.module.js';
     AutonomousPlannerService,
     SelfHealingService,
     WorkspaceHeartbeatService,
+    ToolLoopDetectorService,
+    CompactionService,
   ],
   exports: [
     AiService,
@@ -41,6 +45,8 @@ import { ContextModule } from './context/context.module.js';
     AutonomousPlannerService,
     SelfHealingService,
     WorkspaceHeartbeatService,
+    ToolLoopDetectorService,
+    CompactionService,
     ContextModule,
   ],
 })
