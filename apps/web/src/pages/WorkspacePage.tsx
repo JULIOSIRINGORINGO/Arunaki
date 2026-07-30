@@ -25,6 +25,8 @@ import {
   ChevronDown,
   ChevronRight,
   Brain,
+  Trash2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -35,6 +37,22 @@ interface AgentStep {
   label: string;
   detail?: string;
   status: "running" | "done" | "error";
+}
+
+interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  analysisResult?: string | null;
 }
 
 export function WorkspacePage() {
@@ -48,6 +66,11 @@ export function WorkspacePage() {
   const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
+
+  // Multi-Session Chat & Slash Command State
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>("session_default");
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
 
   // Agent auto-analysis state
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
@@ -64,6 +87,120 @@ export function WorkspacePage() {
   // Workspace Heartbeat & Proactive Monitor State (OpenClaw Layer 10 & 29)
   const [heartbeatAlert, setHeartbeatAlert] = useState<string | null>(null);
   const previousFileCountRef = useRef<number>(0);
+
+  // Session Persistence & Helpers
+  useEffect(() => {
+    if (!workspaceId) return;
+    try {
+      const stored = localStorage.getItem(`arunaki_sessions_${workspaceId}`);
+      if (stored) {
+        const parsed: ChatSession[] = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          setSessions(parsed);
+          const lastActive = localStorage.getItem(`arunaki_active_session_${workspaceId}`);
+          if (lastActive && parsed.some((s) => s.id === lastActive)) {
+            setActiveSessionId(lastActive);
+            const activeSess = parsed.find((s) => s.id === lastActive);
+            if (activeSess?.analysisResult) {
+              setAnalysisResult(activeSess.analysisResult);
+            }
+          } else {
+            setActiveSessionId(parsed[0].id);
+          }
+          return;
+        }
+      }
+    } catch {
+      // ignore parse error
+    }
+
+    // Default initial session
+    const defaultSession: ChatSession = {
+      id: "session_default",
+      title: "Sesi Utama",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    setSessions([defaultSession]);
+    setActiveSessionId("session_default");
+  }, [workspaceId]);
+
+  const addMessageToActiveSession = useCallback((msg: ChatMessage, newAnalysisResult?: string | null) => {
+    if (!workspaceId) return;
+    setSessions((prevSessions) => {
+      const updated = prevSessions.map((session) => {
+        if (session.id === activeSessionId) {
+          const updatedMessages = [...session.messages, msg];
+          return {
+            ...session,
+            messages: updatedMessages,
+            analysisResult: newAnalysisResult !== undefined ? newAnalysisResult : session.analysisResult,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return session;
+      });
+      localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
+      return updated;
+    });
+  }, [activeSessionId, workspaceId]);
+
+  const createNewSession = useCallback((customTitle?: string) => {
+    if (!workspaceId) return;
+    const newSessionId = `session_${Date.now()}`;
+    const count = sessions.length + 1;
+    const newSession: ChatSession = {
+      id: newSessionId,
+      title: customTitle || `Sesi Percakapan #${count}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: [],
+    };
+    const updatedSessions = [newSession, ...sessions];
+    setSessions(updatedSessions);
+    setActiveSessionId(newSessionId);
+    setAnalysisResult(null);
+    setAgentSteps([]);
+    localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updatedSessions));
+    localStorage.setItem(`arunaki_active_session_${workspaceId}`, newSessionId);
+    setShowSlashMenu(false);
+    setPromptInput("");
+    toast.success(`Sesi baru "${newSession.title}" dibuat!`);
+  }, [sessions, workspaceId]);
+
+  const switchSession = useCallback((sessionId: string) => {
+    if (!workspaceId) return;
+    const target = sessions.find((s) => s.id === sessionId);
+    if (!target) return;
+    setActiveSessionId(sessionId);
+    localStorage.setItem(`arunaki_active_session_${workspaceId}`, sessionId);
+    setAnalysisResult(target.analysisResult || null);
+    setShowSlashMenu(false);
+    setPromptInput("");
+    toast.info(`Beralih ke "${target.title}"`);
+  }, [sessions, workspaceId]);
+
+  const deleteSession = useCallback((sessionId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (sessions.length <= 1) {
+      toast.error("Minimal harus ada 1 sesi percakapan.");
+      return;
+    }
+    const updated = sessions.filter((s) => s.id !== sessionId);
+    setSessions(updated);
+    if (workspaceId) {
+      localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
+    }
+    if (activeSessionId === sessionId) {
+      const fallback = updated[0];
+      setActiveSessionId(fallback.id);
+      if (workspaceId) {
+        localStorage.setItem(`arunaki_active_session_${workspaceId}`, fallback.id);
+      }
+    }
+    toast.success("Sesi percakapan dihapus.");
+  }, [activeSessionId, sessions, workspaceId]);
 
   // Restore last connected workspace on mount
   useEffect(() => {
@@ -219,6 +356,13 @@ export function WorkspacePage() {
                 );
                 if (event.data?.content) {
                   setAnalysisResult(event.data.content);
+                  const aiMsg: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: "assistant",
+                    content: event.data.content,
+                    timestamp: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+                  };
+                  addMessageToActiveSession(aiMsg, event.data.content);
                 }
                 queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
                 break;
@@ -615,6 +759,53 @@ export function WorkspacePage() {
     }
   }, [workspaceId, promptInput, isAnalyzing]);
 
+  const handleSendChat = useCallback(async () => {
+    if (!isConnected || !workspaceId || !promptInput.trim() || isAnalyzing) return;
+    const input = promptInput.trim();
+
+    // Handle slash commands
+    if (input.startsWith("/")) {
+      const lower = input.toLowerCase();
+      if (lower === "/session new" || lower === "/new") {
+        createNewSession();
+        return;
+      }
+      if (lower === "/clear") {
+        setSessions((prev) => {
+          const updated = prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s));
+          localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
+          return updated;
+        });
+        setPromptInput("");
+        setShowSlashMenu(false);
+        toast.info("Riwayat pesan di sesi ini dibersihkan.");
+        return;
+      }
+    }
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input,
+      timestamp: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    addMessageToActiveSession(userMsg);
+
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    if (activeSession && activeSession.messages.length === 0) {
+      const shortTitle = input.length > 25 ? input.substring(0, 25) + "..." : input;
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, title: shortTitle } : s))
+      );
+    }
+
+    setPromptInput("");
+    setShowSlashMenu(false);
+
+    await triggerAutoAnalysis(workspaceId, input);
+  }, [activeSessionId, addMessageToActiveSession, createNewSession, isAnalyzing, isConnected, promptInput, sessions, triggerAutoAnalysis, workspaceId]);
+
   // Periodic Workspace Heartbeat & Background Monitor (Layer 10 & 29 OpenClaw)
   useEffect(() => {
     if (!isConnected || !workspaceId) return;
@@ -645,12 +836,8 @@ export function WorkspacePage() {
     return () => clearInterval(interval);
   }, [isConnected, workspaceId, connectedFolderPath, workspace?.rootPath]);
 
-  const handleSendChat = useCallback(() => {
-    if (!isConnected || !promptInput.trim() || isAnalyzing) return;
-    const goal = promptInput.trim();
-    setPromptInput("");
-    triggerAutoAnalysis(workspaceId!, goal);
-  }, [isConnected, promptInput, isAnalyzing, workspaceId, triggerAutoAnalysis]);
+  // Active Session helper
+  const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
 
   const handleDisconnectFolder = () => {
     setIsConnected(false);
@@ -747,10 +934,24 @@ export function WorkspacePage() {
               </div>
 
               {isConnected && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {fileCount} Dokumen Aktif
-                </span>
+                <div className="flex items-center gap-2">
+                  {/* Active Session Dropdown Chip */}
+                  <button
+                    type="button"
+                    onClick={() => setShowSlashMenu((prev) => !prev)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold border border-gray-200 cursor-pointer transition-colors"
+                    title="Klik untuk memilih atau membuat sesi percakapan"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="max-w-[130px] truncate">{sessions.find((s) => s.id === activeSessionId)?.title || "Sesi Utama"}</span>
+                    <ChevronDown className="w-3 h-3 text-gray-500" />
+                  </button>
+
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {fileCount} Dokumen Aktif
+                  </span>
+                </div>
               )}
             </div>
 
@@ -776,6 +977,50 @@ export function WorkspacePage() {
                   </div>
                 ) : (
                   <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
+                    {/* Persistent Chat History Messages */}
+                    {activeSession?.messages && activeSession.messages.length > 0 && (
+                      <div className="space-y-4 pb-2">
+                        {activeSession.messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex flex-col space-y-1 ${
+                              msg.role === "user" ? "items-end" : "items-start"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium px-1">
+                              <span>{msg.role === "user" ? "Anda" : "Arunaki AI"}</span>
+                              <span>•</span>
+                              <span>{msg.timestamp}</span>
+                            </div>
+                            <div
+                              className={`rounded-2xl p-4 text-xs sm:text-sm shadow-2xs max-w-[92%] sm:max-w-[85%] break-words ${
+                                msg.role === "user"
+                                  ? "bg-gray-900 text-white font-medium rounded-tr-2xs"
+                                  : "bg-[#F8F9FA] text-gray-800 border border-gray-100 rounded-tl-2xs space-y-2"
+                              }`}
+                              style={{ overflowWrap: "anywhere" }}
+                            >
+                              {msg.role === "user" ? (
+                                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                              ) : (
+                                <Markdown
+                                  components={{
+                                    strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
+                                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                                    ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 my-2.5">{children}</ol>,
+                                    ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 my-2.5">{children}</ul>,
+                                    li: ({ children }) => <li className="text-gray-800 leading-relaxed">{children}</li>,
+                                  }}
+                                >
+                                  {msg.content}
+                                </Markdown>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Proactive Heartbeat Alert Banner */}
                     {heartbeatAlert && (
                       <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs animate-in fade-in duration-200">
@@ -958,7 +1203,80 @@ export function WorkspacePage() {
               </div>
 
               {/* Bottom Actions */}
-              <div className="space-y-4 pt-2 shrink-0 border-t border-gray-100">
+              <div className="space-y-4 pt-2 shrink-0 border-t border-gray-100 relative">
+                {/* Interactive Floating Slash Menu Popover */}
+                {showSlashMenu && (
+                  <div className="absolute bottom-full mb-3 left-0 right-0 z-40 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-bold text-gray-900">Sesi Percakapan & Perintah Slash (`/`)</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-mono">Pilih / Buat Sesi</span>
+                    </div>
+
+                    {/* New Session Button */}
+                    <button
+                      type="button"
+                      onClick={() => createNewSession()}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200/60 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-3.5 h-3.5 text-amber-600" />
+                        <span>+ Buat Sesi Percakapan Baru</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-700 bg-amber-200/50 px-2 py-0.5 rounded">/session new</span>
+                    </button>
+
+                    {/* Sessions List */}
+                    <div className="max-h-48 overflow-y-auto space-y-1 pr-0.5">
+                      {sessions.map((s) => {
+                        const isActive = s.id === activeSessionId;
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={() => switchSession(s.id)}
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+                              isActive
+                                ? "bg-gray-900 text-white font-semibold shadow-2xs"
+                                : "bg-gray-50 hover:bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-400" : "text-gray-400"}`} />
+                              <span className="truncate">{s.title}</span>
+                              <span className={`text-[10px] font-mono shrink-0 px-1.5 py-0.2 rounded ${isActive ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-600"}`}>
+                                {s.messages.length} pesan
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isActive ? (
+                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/40">✓ Aktif</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => deleteSession(s.id, e)}
+                                  className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
+                                  title="Hapus Sesi Ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Quick Commands Bar */}
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 px-2 font-mono">
+                      <span>Ketik <strong>/new</strong> atau <strong>/clear</strong></span>
+                      <button type="button" onClick={() => setShowSlashMenu(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                        Tutup (Esc)
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <div className={`bg-white border border-gray-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs focus-within:border-gray-300 focus-within:shadow-sm transition-all ${!isConnected ? "bg-gray-50/50" : ""}`}>
@@ -972,7 +1290,15 @@ export function WorkspacePage() {
                       type="text"
                       value={promptInput}
                       disabled={!isConnected}
-                      onChange={(e) => setPromptInput(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPromptInput(val);
+                        if (val.startsWith("/")) {
+                          setShowSlashMenu(true);
+                        } else {
+                          setShowSlashMenu(false);
+                        }
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
