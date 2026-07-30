@@ -68,7 +68,7 @@ process.on('SIGTERM', () => {
 
   // 2. Wait until API is reachable
   console.log('[dev-app] Menunggu API di port 3000...');
-  const ready = await waitForApi('http://localhost:3000/api/v1/health', 30000);
+  const ready = await waitForApi('http://127.0.0.1:3000/api/v1/health', 45000);
   if (!ready) {
     console.error('[dev-app] API tidak merespon setelah 30 detik. Melanjutkan tetap...');
   } else {

@@ -304,12 +304,14 @@ app.whenReady().then(() => {
     ws = new WebSocket('ws://127.0.0.1:31524');
     ws.on('open', () => console.log('[desktop-bridge] Connected to backend'));
     ws.on('close', () => {
-      console.log('[desktop-bridge] Disconnected, reconnecting in 5s...');
       ws = null;
-      reconnectTimer = setTimeout(connectToBackend, 5000);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connectToBackend, 3000);
     });
     ws.on('error', (err) => {
-      console.error('[desktop-bridge] Error:', err.message);
+      if (!err.message?.includes('ECONNREFUSED')) {
+        console.error('[desktop-bridge] Error:', err.message);
+      }
     });
     ws.on('message', async (raw) => {
       let msg;
