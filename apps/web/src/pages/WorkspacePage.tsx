@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import Markdown from "react-markdown";
 import {
   Folder,
   FolderCheck,
@@ -926,8 +927,20 @@ export function WorkspacePage() {
                     {/* Analysis Result */}
                     {analysisResult && (
                       <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2 overflow-hidden min-w-0">
-                        <p className="font-bold text-gray-900 text-base">Hasil Analisis AI</p>
-                        <div className="text-gray-600 leading-relaxed whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{analysisResult}</div>
+                        <p className="font-bold text-gray-900 text-base mb-3">Hasil Analisis AI</p>
+                        <div className="text-gray-800 leading-relaxed break-words max-w-none" style={{ overflowWrap: 'anywhere' }}>
+                          <Markdown
+                            components={{
+                              strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
+                              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                              ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 my-2.5">{children}</ol>,
+                              ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 my-2.5">{children}</ul>,
+                              li: ({ children }) => <li className="text-gray-800 leading-relaxed">{children}</li>,
+                            }}
+                          >
+                            {analysisResult}
+                          </Markdown>
+                        </div>
                       </div>
                     )}
 
