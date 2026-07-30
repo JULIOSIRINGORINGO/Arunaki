@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { chromium, Browser, Page } from 'playwright';
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
 
 interface BrowserSession {
+  context: BrowserContext;
   page: Page;
   createdAt: Date;
 }
@@ -91,7 +92,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
       locale: 'id-ID',
     });
     const page = await context.newPage();
-    this.sessions.set(sessionId, { page, createdAt: new Date() });
+    this.sessions.set(sessionId, { context, page, createdAt: new Date() });
     this.logger.log(`New page created for session: ${sessionId}`);
     return page;
   }
@@ -216,7 +217,12 @@ export class BrowserInteractionService implements OnModuleDestroy {
           await existing.page.close();
         }
       } catch {
-        // page already closed or context disposed
+        // page already closed
+      }
+      try {
+        await existing.context.close();
+      } catch {
+        // context already disposed
       }
       this.sessions.delete(sessionId);
       this.logger.log(`Session closed: ${sessionId}`);
