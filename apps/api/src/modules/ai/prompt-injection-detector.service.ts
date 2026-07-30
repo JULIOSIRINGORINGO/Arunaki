@@ -107,7 +107,7 @@ export class PromptInjectionDetector {
 
     // Jailbreak patterns
     {
-      pattern: /\bDAN\b|do\s+anything\s+now/i,
+      pattern: /\bDAN\s+mode\b|\bdo\s+anything\s+now\b/i,
       severity: 'high',
       type: 'jailbreak',
     },
