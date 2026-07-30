@@ -832,54 +832,57 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools);
 
           if (aiResponse.toolCalls.length === 0) {
-            // OpenClaw Fallback Tool Synthesizer: Run ONLY on round 0 to prevent infinite looping
-            if (round === 0 && (/(?:buat|tulis|create|simpan|isi)\s+.*(?:file|dokumen|test)/i.test(safeGoal) || /file\s+[\w\-.]+\s+(?:isi|dangan|dengan)/i.test(safeGoal))) {
-              let targetFilename = 'test.txt';
-              let fileContent = 'julio';
-              let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
+            // OpenClaw Dynamic Tool Synthesizer: Fully generic NLP parser for any filename and content (0% hardcode)
+            if (round === 0) {
+              const fileMentionRegex = /(?:file|berkas|dokumen|catatan)\s+["']?([\w\-.]+)(?:\.([a-zA-Z0-9]+))?["']?/i;
+              const writeIntentRegex = /(?:buat|tulis|create|simpan|isi|update)\s+/i;
 
-              const fileMatch =
-                safeGoal.match(/(?:file|dokumen)\s+["']?([\w\-.]+)(?:\.([a-zA-Z0-9]+))?["']?/i) ||
-                safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/);
+              if (writeIntentRegex.test(safeGoal) || fileMentionRegex.test(safeGoal)) {
+                let targetFilename = '';
+                let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
 
-              if (fileMatch && fileMatch[1]) {
-                let rawName = fileMatch[1].trim();
-                const ext = fileMatch[2] ? fileMatch[2].toLowerCase() : '';
-                if (ext) {
-                  targetFilename = rawName;
-                  format = (['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext) ? ext : 'txt') as any;
-                } else {
-                  targetFilename = rawName.endsWith('.txt') ? rawName : `${rawName}.txt`;
-                  format = 'txt';
+                const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
+                if (fileMatch && fileMatch[1]) {
+                  const rawName = fileMatch[1].trim();
+                  const ext = fileMatch[2] ? fileMatch[2].toLowerCase() : (rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() : '');
+                  if (ext && ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext)) {
+                    targetFilename = rawName;
+                    format = ext as any;
+                  } else {
+                    targetFilename = rawName.includes('.') ? rawName : `${rawName}.txt`;
+                    format = 'txt';
+                  }
+                }
+
+                if (targetFilename) {
+                  // Dynamically extract content payload by stripping file references & action verbs
+                  const baseName = targetFilename.replace(/\.[^.]+$/, '');
+                  let extractedContent = safeGoal;
+                  extractedContent = extractedContent.replace(new RegExp(`(?:file|berkas|dokumen|catatan)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
+                  extractedContent = extractedContent.replace(/(?:buat|tulis|create|simpan|isi|berisi|update)\s+(?:dengan|teks|konten|isi)?/gi, '');
+                  extractedContent = extractedContent.replace(/(?:di|ke|pada)\s+(?:file|berkas|dokumen)?/gi, '');
+                  extractedContent = extractedContent.replace(/^dengan\s+/gi, '').trim();
+
+                  const finalContent = extractedContent || `Dokumen ${targetFilename} telah dibuat oleh Arunaki AI.`;
+
+                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${finalContent}"`);
+                  
+                  aiResponse.toolCalls.push({
+                    id: `dynamic-call-${Date.now()}`,
+                    type: 'function',
+                    function: {
+                      name: 'write_workspace_file',
+                      arguments: JSON.stringify({
+                        workspaceId,
+                        filename: targetFilename,
+                        format,
+                        content: finalContent,
+                        title: targetFilename,
+                      }),
+                    },
+                  });
                 }
               }
-
-              // Extract STRICT content ONLY (e.g. "file test isi dengan julio" -> "julio")
-              let extracted = safeGoal;
-              const baseName = targetFilename.replace(/\.[^.]+$/, '');
-              extracted = extracted.replace(new RegExp(`(?:file|dokumen)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
-              extracted = extracted.replace(/(?:buat|tulis|create|simpan|isi|berisi|dangan|dengan)\s*/gi, '');
-              extracted = extracted.replace(/(?:di|ke)\s+(?:file|dokumen)?/gi, '');
-              extracted = extracted.trim();
-
-              fileContent = extracted || 'julio';
-
-              this.logger.log(`OpenClaw Fallback Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${fileContent}"`);
-              
-              aiResponse.toolCalls.push({
-                id: `fallback-call-${Date.now()}`,
-                type: 'function',
-                function: {
-                  name: 'write_workspace_file',
-                  arguments: JSON.stringify({
-                    workspaceId,
-                    filename: targetFilename,
-                    format,
-                    content: fileContent,
-                    title: targetFilename,
-                  }),
-                },
-              });
             }
 
             if (aiResponse.toolCalls.length === 0) {
