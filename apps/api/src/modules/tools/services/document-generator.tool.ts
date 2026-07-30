@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as xlsx from 'xlsx';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import {
@@ -41,6 +43,7 @@ export class DocumentGeneratorTool {
     sheetName: string,
     rows: Array<Record<string, any>>,
     filename: string = 'export.xlsx',
+    outputPath?: string,
   ): ToolResult {
     const startTime = Date.now();
     const safeFilename = filename.endsWith('.xlsx')
@@ -54,6 +57,18 @@ export class DocumentGeneratorTool {
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       const contentBase64 = buffer.toString('base64');
 
+      // Write directly to disk if outputPath or filename is a file path
+      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      if (targetWritePath) {
+        const resolvedTarget = path.resolve(targetWritePath);
+        const parentDir = path.dirname(resolvedTarget);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+        fs.writeFileSync(resolvedTarget, buffer);
+        this.logger.log(`Wrote Excel file physically to disk: ${resolvedTarget}`);
+      }
+
       const preview =
         rows.length > 0
           ? `${sheetName}: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
@@ -65,6 +80,8 @@ export class DocumentGeneratorTool {
           sheetName,
           rowCount: rows.length,
           columns: rows.length > 0 ? Object.keys(rows[0]) : [],
+          writtenToDisk: !!targetWritePath,
+          filePath: targetWritePath ? path.resolve(targetWritePath) : undefined,
         },
         preview,
         metadata: {
@@ -78,7 +95,7 @@ export class DocumentGeneratorTool {
           contentBase64,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
@@ -87,10 +104,8 @@ export class DocumentGeneratorTool {
           toolName: 'generate_export',
           displayName: 'Dokumen Export',
           executionTime: Date.now() - startTime,
-          format: 'xlsx',
-          filename: safeFilename,
         },
-        error: { code: 'XLSX_FAILED', message: e.message },
+        error: { code: 'EXCEL_GEN_FAILED', message: e.message },
       };
     }
   }
