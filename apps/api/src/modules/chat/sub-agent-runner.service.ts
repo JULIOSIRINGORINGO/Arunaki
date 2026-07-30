@@ -1,0 +1,379 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { AiService, ChatMessage } from '../ai/ai.service.js';
+import { ToolRegistryService } from '../tools/tool-registry.service.js';
+import { SelfHealingService } from '../ai/self-healing.service.js';
+import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+
+/**
+ * SubAgentRunnerService — Isolated sub-agent execution engine.
+ *
+ * Spawns independent sub-agents that run in parallel with their own
+ * tool-scoped execution loop. Each sub-agent receives a task description,
+ * a restricted set of allowed tools, and returns an aggregated result
+ * back to the parent agent.
+ *
+ * Design:
+ * - Sub-agents do NOT share chat history with the parent agent.
+ * - Sub-agents have their own isolated message context.
+ * - Sub-agents are scoped to a subset of tools (security boundary).
+ * - Multiple sub-agents can run concurrently via Promise.all().
+ */
+
+export interface SubAgentTask {
+  /** Unique identifier for this sub-agent task */
+  taskId: string;
+  /** Human-readable name for the task (shown in UI) */
+  taskName: string;
+  /** Detailed task description / instruction for the sub-agent */
+  taskDescription: string;
+  /** List of allowed tool names (empty = all tools allowed) */
+  allowedTools?: string[];
+  /** Maximum execution rounds for the sub-agent (default: 5) */
+  maxRounds?: number;
+  /** Additional context to inject into the sub-agent's system prompt */
+  additionalContext?: string;
+}
+
+export interface SubAgentResult {
+  taskId: string;
+  taskName: string;
+  status: 'success' | 'error' | 'timeout';
+  /** Final text response from the sub-agent */
+  content: string;
+  /** Tool outputs produced during execution */
+  toolOutputs: Array<{
+    toolName: string;
+    args: Record<string, any>;
+    preview: string;
+    status: string;
+  }>;
+  /** Execution metadata */
+  metadata: {
+    rounds: number;
+    startedAt: string;
+    completedAt: string;
+    durationMs: number;
+  };
+  /** Error message if status is 'error' */
+  error?: string;
+}
+
+export type SubAgentProgressCallback = (event: {
+  taskId: string;
+  taskName: string;
+  type: 'spawned' | 'tool_start' | 'tool_done' | 'completed' | 'error';
+  data?: any;
+}) => void;
+
+@Injectable()
+export class SubAgentRunnerService {
+  private readonly logger = new Logger(SubAgentRunnerService.name);
+
+  constructor(
+    private readonly aiService: AiService,
+    private readonly toolRegistryService: ToolRegistryService,
+    private readonly selfHealingService: SelfHealingService,
+  ) {}
+
+  /**
+   * Spawn a single sub-agent that runs an isolated execution loop.
+   */
+  async spawnSubAgent(
+    task: SubAgentTask,
+    onProgress?: SubAgentProgressCallback,
+  ): Promise<SubAgentResult> {
+    const startedAt = new Date();
+    this.logger.log(`Sub-agent spawned: [${task.taskId}] ${task.taskName}`);
+
+    onProgress?.({
+      taskId: task.taskId,
+      taskName: task.taskName,
+      type: 'spawned',
+      data: { description: task.taskDescription },
+    });
+
+    try {
+      const result = await this.executeSubAgentLoop(task, onProgress);
+
+      const completedAt = new Date();
+      const durationMs = completedAt.getTime() - startedAt.getTime();
+
+      this.logger.log(
+        `Sub-agent completed: [${task.taskId}] ${task.taskName} (${durationMs}ms, ${result.toolOutputs.length} tools used)`,
+      );
+
+      onProgress?.({
+        taskId: task.taskId,
+        taskName: task.taskName,
+        type: 'completed',
+        data: { content: result.content, durationMs },
+      });
+
+      return {
+        taskId: task.taskId,
+        taskName: task.taskName,
+        status: 'success',
+        content: result.content,
+        toolOutputs: result.toolOutputs,
+        metadata: {
+          rounds: result.rounds,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+          durationMs,
+        },
+      };
+    } catch (error: any) {
+      const completedAt = new Date();
+      const durationMs = completedAt.getTime() - startedAt.getTime();
+
+      this.logger.error(
+        `Sub-agent failed: [${task.taskId}] ${task.taskName} — ${error.message}`,
+      );
+
+      onProgress?.({
+        taskId: task.taskId,
+        taskName: task.taskName,
+        type: 'error',
+        data: { error: error.message },
+      });
+
+      return {
+        taskId: task.taskId,
+        taskName: task.taskName,
+        status: 'error',
+        content: '',
+        toolOutputs: [],
+        metadata: {
+          rounds: 0,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+          durationMs,
+        },
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Spawn multiple sub-agents in parallel and wait for all to complete.
+   */
+  async spawnParallel(
+    tasks: SubAgentTask[],
+    onProgress?: SubAgentProgressCallback,
+  ): Promise<SubAgentResult[]> {
+    this.logger.log(
+      `Spawning ${tasks.length} sub-agents in parallel: ${tasks.map((t) => t.taskName).join(', ')}`,
+    );
+
+    const results = await Promise.allSettled(
+      tasks.map((task) => this.spawnSubAgent(task, onProgress)),
+    );
+
+    return results.map((r, i) => {
+      if (r.status === 'fulfilled') {
+        return r.value;
+      }
+      return {
+        taskId: tasks[i].taskId,
+        taskName: tasks[i].taskName,
+        status: 'error' as const,
+        content: '',
+        toolOutputs: [],
+        metadata: {
+          rounds: 0,
+          startedAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          durationMs: 0,
+        },
+        error: r.reason?.message || 'Unknown error',
+      };
+    });
+  }
+
+  /**
+   * Internal isolated execution loop for a sub-agent.
+   * Similar to AgentRunnerService.runAgentSyncInternal but with:
+   * - Isolated message context (no chat history sharing)
+   * - Tool scoping (only allowed tools)
+   * - Custom system prompt for sub-agent delegation
+   */
+  private async executeSubAgentLoop(
+    task: SubAgentTask,
+    onProgress?: SubAgentProgressCallback,
+  ): Promise<{
+    content: string;
+    toolOutputs: Array<{
+      toolName: string;
+      args: Record<string, any>;
+      preview: string;
+      status: string;
+    }>;
+    rounds: number;
+  }> {
+    const maxRounds = task.maxRounds || 5;
+
+    // Build scoped tool definitions
+    const allTools = this.toolRegistryService.getToolDefinitions();
+    const tools =
+      task.allowedTools && task.allowedTools.length > 0
+        ? allTools.filter((t: any) =>
+            task.allowedTools!.includes(t.function?.name || t.name),
+          )
+        : allTools;
+
+    // Build isolated sub-agent system prompt
+    const systemPrompt = this.buildSubAgentSystemPrompt(task);
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: task.taskDescription },
+    ];
+
+    const toolOutputs: Array<{
+      toolName: string;
+      args: Record<string, any>;
+      preview: string;
+      status: string;
+    }> = [];
+    let finalContent = '';
+    let rounds = 0;
+
+    for (let round = 0; round < maxRounds; round++) {
+      rounds = round + 1;
+
+      const aiResponse = await this.aiService.chat(messages, tools);
+
+      if (aiResponse.toolCalls.length === 0) {
+        finalContent = aiResponse.content;
+        break;
+      }
+
+      messages.push({
+        role: 'assistant',
+        content: aiResponse.content || null,
+        tool_calls: aiResponse.toolCalls,
+      });
+
+      for (const toolCall of aiResponse.toolCalls) {
+        const funcName = toolCall.function.name;
+        let args: Record<string, any> = {};
+        try {
+          args = JSON.parse(toolCall.function.arguments || '{}');
+        } catch {
+          args = {};
+        }
+
+        // Security: reject tool calls outside allowed scope
+        if (
+          task.allowedTools &&
+          task.allowedTools.length > 0 &&
+          !task.allowedTools.includes(funcName)
+        ) {
+          const blockedResult: ToolResult = {
+            status: 'error',
+            data: {},
+            preview: `Tool "${funcName}" tidak diizinkan untuk sub-agent ini.`,
+            metadata: {
+              toolName: funcName,
+              displayName: funcName,
+              executionTime: 0,
+            },
+            error: {
+              code: 'TOOL_NOT_ALLOWED',
+              message: `Sub-agent "${task.taskName}" tidak memiliki akses ke tool "${funcName}".`,
+            },
+          };
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(blockedResult),
+          });
+
+          toolOutputs.push({
+            toolName: funcName,
+            args,
+            preview: blockedResult.preview,
+            status: 'blocked',
+          });
+
+          continue;
+        }
+
+        onProgress?.({
+          taskId: task.taskId,
+          taskName: task.taskName,
+          type: 'tool_start',
+          data: { toolName: funcName, args },
+        });
+
+        // Execute with self-healing
+        const healResult = await this.selfHealingService.executeWithHealing(
+          funcName,
+          args,
+        );
+
+        const result = healResult.finalResult;
+
+        onProgress?.({
+          taskId: task.taskId,
+          taskName: task.taskName,
+          type: 'tool_done',
+          data: {
+            toolName: funcName,
+            preview: result.preview,
+            status: result.status,
+          },
+        });
+
+        toolOutputs.push({
+          toolName: funcName,
+          args,
+          preview: result.preview,
+          status: result.status,
+        });
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
+    }
+
+    if (!finalContent) {
+      finalContent = `Sub-agent "${task.taskName}" telah menyelesaikan tugasnya.`;
+    }
+
+    return { content: finalContent, toolOutputs, rounds };
+  }
+
+  /**
+   * Build a focused system prompt for a sub-agent.
+   */
+  private buildSubAgentSystemPrompt(task: SubAgentTask): string {
+    const parts = [
+      'Kamu adalah Sub-Agent dari Arunaki — Digital Employee untuk Dokumen.',
+      `Tugas spesifik yang harus kamu kerjakan: "${task.taskName}".`,
+      '',
+      'Instruksi:',
+      '- Kerjakan HANYA tugas yang diminta, jangan mengerjakan hal lain.',
+      '- Gunakan tool yang tersedia untuk menyelesaikan tugas.',
+      '- Berikan hasil akhir dalam format yang jelas dan ringkas.',
+      '- Jika tugas tidak bisa diselesaikan, jelaskan alasannya.',
+    ];
+
+    if (task.additionalContext) {
+      parts.push('', 'Konteks tambahan:', task.additionalContext);
+    }
+
+    if (task.allowedTools && task.allowedTools.length > 0) {
+      parts.push(
+        '',
+        `Tool yang diizinkan: ${task.allowedTools.join(', ')}`,
+      );
+    }
+
+    return parts.join('\n');
+  }
+}

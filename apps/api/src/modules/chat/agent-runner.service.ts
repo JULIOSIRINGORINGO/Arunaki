@@ -39,6 +39,8 @@ export interface AgentStreamEvent {
     | 'plan_created'
     | 'plan_step'
     | 'self_heal'
+    | 'sub_agent_spawned'
+    | 'sub_agent_completed'
     | 'done'
     | 'error';
   data: any;

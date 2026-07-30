@@ -25,6 +25,9 @@ import { MemoryTool } from './services/memory.tool.js';
 import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
+import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
+
+import { AiModule } from '../ai/ai.module.js';
 
 @Module({
   imports: [
@@ -34,6 +37,7 @@ import { DocumentReconciliationService } from '../document/doc-reconciliation.se
     FileModule,
     SkillsModule,
     MemoryModule,
+    AiModule,
   ],
   providers: [
     ToolRegistryService,
@@ -53,6 +57,7 @@ import { DocumentReconciliationService } from '../document/doc-reconciliation.se
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
+    SubAgentRunnerService,
   ],
   exports: [
     ToolRegistryService,
@@ -95,6 +100,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly browserInteraction: BrowserInteractionService,
     private readonly desktopBridge: DesktopBridgeService,
     private readonly docReconciliationService: DocumentReconciliationService,
+    private readonly subAgentRunner: SubAgentRunnerService,
   ) {}
 
   onModuleInit() {
@@ -1786,6 +1792,111 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['query', 'documents'],
         },
         timeoutMs: 15000,
+      }),
+    );
+
+    // ─── Sub-Agent Delegation Tool ───────────────────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'agent_spawn',
+        displayName: 'Delegasi Sub-Agent',
+        description:
+          'Mendelegasikan sub-tugas ke sub-agent independen yang berjalan secara paralel di background. ' +
+          'Gunakan untuk memecah pekerjaan besar menjadi beberapa sub-tugas yang dikerjakan bersamaan ' +
+          '(contoh: baca 3 file PDF secara paralel, atau proses Excel sambil baca Word). ' +
+          'Setiap sub-agent memiliki konteks terisolasi dan tool yang dibatasi.',
+        tags: ['agent', 'delegation', 'parallel', 'spawn', 'sub-agent'],
+        handler: async (args) => {
+          try {
+            const tasks = (args.tasks || []).map((t: any, i: number) => ({
+              taskId: t.taskId || `sub_${Date.now()}_${i}`,
+              taskName: t.taskName || `Sub-tugas ${i + 1}`,
+              taskDescription: t.taskDescription || t.description || '',
+              allowedTools: t.allowedTools || [],
+              maxRounds: t.maxRounds || 5,
+              additionalContext: t.additionalContext || '',
+            }));
+
+            if (tasks.length === 0) {
+              return {
+                status: 'error' as const,
+                data: {},
+                preview: 'Tidak ada sub-tugas yang didefinisikan.',
+                metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: 0 },
+                error: { code: 'NO_TASKS', message: 'Array tasks kosong.' },
+              };
+            }
+
+            const results = await this.subAgentRunner.spawnParallel(tasks);
+
+            const successCount = results.filter((r) => r.status === 'success').length;
+            const totalDurationMs = Math.max(...results.map((r) => r.metadata.durationMs), 0);
+
+            const summary = results
+              .map((r) => {
+                const icon = r.status === 'success' ? '✅' : '❌';
+                const toolInfo = r.toolOutputs.length > 0
+                  ? ` (${r.toolOutputs.length} tools digunakan)`
+                  : '';
+                return `${icon} **${r.taskName}**: ${r.status === 'success' ? r.content.substring(0, 200) : r.error}${toolInfo}`;
+              })
+              .join('\n');
+
+            return {
+              status: 'success' as const,
+              data: {
+                results: results.map((r) => ({
+                  taskId: r.taskId,
+                  taskName: r.taskName,
+                  status: r.status,
+                  content: r.content,
+                  toolCount: r.toolOutputs.length,
+                  durationMs: r.metadata.durationMs,
+                  error: r.error,
+                })),
+                successCount,
+                totalCount: results.length,
+                totalDurationMs,
+              },
+              preview: `${successCount}/${results.length} sub-agent selesai (${totalDurationMs}ms):\n${summary}`,
+              metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: totalDurationMs },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Gagal menjalankan sub-agent: ${err.message}`,
+              metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: 0 },
+              error: { code: 'SPAWN_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            tasks: {
+              type: 'array',
+              description: 'Daftar sub-tugas yang akan didelegasikan ke sub-agent paralel',
+              items: {
+                type: 'object',
+                properties: {
+                  taskName: { type: 'string', description: 'Nama singkat sub-tugas (contoh: "Baca PDF Tagihan")' },
+                  taskDescription: { type: 'string', description: 'Instruksi detail untuk sub-agent' },
+                  allowedTools: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Nama tool yang diizinkan (kosongkan untuk mengizinkan semua)',
+                  },
+                  maxRounds: { type: 'number', description: 'Maks putaran eksekusi (default: 5)' },
+                  additionalContext: { type: 'string', description: 'Konteks tambahan opsional' },
+                },
+                required: ['taskName', 'taskDescription'],
+              },
+            },
+          },
+          required: ['tasks'],
+        },
+        timeoutMs: 120000,
       }),
     );
   }

@@ -657,12 +657,32 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 37: Sub-Agent Delegation & Parallel Task Execution (`agent_spawn`) ✅ DONE
+
+**Goal:** Sub-Agent Delegation Engine — Enable primary agent to spawn background sub-agents (`agent_spawn`) for parallel execution of complex sub-tasks, boosting multi-document and multi-source processing speed.
+
+### 37.1 Backend — SubAgentRunnerService
+- [x] Create `SubAgentRunnerService` (`sub-agent-runner.service.ts`)
+- [x] Implement `spawnSubAgent()` — isolated execution loop with custom tool scoping and result aggregation
+
+### 37.2 Sub-Agent Tool Registration
+- [x] `agent_spawn` — tool for delegating sub-tasks (task description, task name, allowed tool list)
+
+### 37.3 Prompt Updates & Web UI SSE Events
+- [x] Update `rules.md` & `chat-rules.md` with sub-agent delegation guidelines
+- [x] Emit SSE events `sub_agent_spawned` & `sub_agent_completed` for real-time Web UI progress tracking
+- [x] Unit tests `sub-agent-runner.service.spec.ts` (6 tests passed)
+- [x] Dev log `docs/dev-logs/dev-log-2026-07-30-sub-agent-delegation.md` created using template in `AGENTS.md`
+- [x] Build passes (`npx nest build` — 0 errors) & Vitest tests pass (`npx vitest run` — 16/16)
+
+---
+
 ## Current Status
 
-**Phase:** 36 — Native Desktop Mouse Coordinate Input 🔄 [AI]  
-**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps (COM & OS mouse coordinate click) + multi-document engine  
+**Phase:** 37 — Sub-Agent Delegation & Parallel Task Execution (`agent_spawn`) 🔄 [AI]  
+**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + multi-agent parallel delegation  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Production Deployment & Packaging Verification  
+**Next:** Multi-Model Auto-Failover & Production Packaging  
 
 ---
 
