@@ -23,6 +23,7 @@ import { WorkspaceToolsService } from './services/workspace-tools.service.js';
 import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
 import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
+import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly skillsTool: SkillsTool,
     private readonly memoryTool: MemoryTool,
     private readonly browserInteraction: BrowserInteractionService,
+    private readonly desktopBridge: DesktopBridgeService,
   ) {}
 
   onModuleInit() {
@@ -1250,6 +1252,210 @@ export class ToolsProviderModule implements OnModuleInit {
             workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
           },
         },
+        timeoutMs: 15000,
+      }),
+    );
+
+    // ─── Desktop Interaction ──────────────────────────────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_open_file',
+        displayName: 'Buka File di Desktop',
+        description:
+          'Membuka file di aplikasi default desktop (PDF di PDF viewer, ' +
+          'TXT di Notepad, CSV di Excel, gambar di Photo viewer, dll). ' +
+          'File akan terbuka visible di layar pengguna. Gunakan untuk semua jenis file ' +
+          'yang perlu dilihat/diedit langsung di desktop.',
+        tags: ['desktop', 'open', 'file', 'visible'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.sendCommand('openFile', { path: args.path });
+            return {
+              status: 'success' as const,
+              data: { path: args.path },
+              preview: `Membuka file: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_file', displayName: 'Buka File di Desktop', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_open_file', displayName: 'Buka File di Desktop', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Path lengkap file yang akan dibuka di aplikasi default desktop',
+            },
+          },
+          required: ['path'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_open_excel',
+        displayName: 'Buka Excel',
+        description:
+          'Membuka file Excel (.xlsx, .xls) di aplikasi Microsoft Excel desktop ' +
+          'via COM. File akan terbuka visible di layar pengguna.',
+        tags: ['desktop', 'excel', 'com', 'visible'],
+        handler: async (args) => {
+          try {
+            const r = await this.desktopBridge.sendCommand('openExcel', { path: args.path });
+            return {
+              status: 'success' as const,
+              data: { path: args.path, hwnd: r.hwnd },
+              preview: `Membuka Excel: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_excel', displayName: 'Buka Excel', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_open_excel', displayName: 'Buka Excel', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Path lengkap file Excel yang akan dibuka',
+            },
+          },
+          required: ['path'],
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 20000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_open_word',
+        displayName: 'Buka Word',
+        description:
+          'Membuka file Word (.docx, .doc) di aplikasi Microsoft Word desktop ' +
+          'via COM. File akan terbuka visible di layar pengguna.',
+        tags: ['desktop', 'word', 'com', 'visible'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.sendCommand('openWord', { path: args.path });
+            return {
+              status: 'success' as const,
+              data: { path: args.path },
+              preview: `Membuka Word: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_word', displayName: 'Buka Word', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_open_word', displayName: 'Buka Word', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Path lengkap file Word yang akan dibuka',
+            },
+          },
+          required: ['path'],
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 20000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_open_ppt',
+        displayName: 'Buka PowerPoint',
+        description:
+          'Membuka file PowerPoint (.pptx, .ppt) di aplikasi Microsoft PowerPoint desktop ' +
+          'via COM. File akan terbuka visible di layar pengguna.',
+        tags: ['desktop', 'ppt', 'com', 'visible'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.sendCommand('openPpt', { path: args.path });
+            return {
+              status: 'success' as const,
+              data: { path: args.path },
+              preview: `Membuka PowerPoint: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_ppt', displayName: 'Buka PowerPoint', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_open_ppt', displayName: 'Buka PowerPoint', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'Path lengkap file PowerPoint yang akan dibuka',
+            },
+          },
+          required: ['path'],
+        },
+        estimatedLatency: 'medium',
+        timeoutMs: 20000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_screenshot',
+        displayName: 'Screenshot Desktop',
+        description:
+          'Mengambil screenshot layar desktop saat ini. ' +
+          'Gunakan untuk melihat apa yang sedang tampil di layar pengguna, ' +
+          'memverifikasi hasil operasi desktop, atau mendiagnosis masalah.',
+        tags: ['desktop', 'screenshot', 'view', 'capture', 'diagnose'],
+        handler: async () => {
+          try {
+            const r = await this.desktopBridge.sendCommand('screenshot', {}, 15000);
+            return {
+              status: 'success' as const,
+              data: { screenshot: r.screenshot },
+              preview: 'Screenshot desktop berhasil diambil',
+              metadata: { toolName: 'desktop_screenshot', displayName: 'Screenshot Desktop', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_screenshot', displayName: 'Screenshot Desktop', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: { type: 'object', properties: {} },
+        estimatedLatency: 'medium',
         timeoutMs: 15000,
       }),
     );

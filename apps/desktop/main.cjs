@@ -1,7 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer } = require('electron');
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const WebSocket = require('ws');
 
 const WEB_URL = process.env.ARUNAKI_WEB_URL || 'http://127.0.0.1:5173';
 const WAIT_TIMEOUT_MS = 30000;
@@ -288,6 +289,94 @@ app.whenReady().then(() => {
     }
   });
 
+  // ─── Backend Bridge (WebSocket client) ─────────────────────────
+  let ws = null;
+  let reconnectTimer = null;
+
+  function connectToBackend() {
+    if (ws && ws.readyState === WebSocket.OPEN) return;
+
+    ws = new WebSocket('ws://127.0.0.1:31524');
+    ws.on('open', () => console.log('[desktop-bridge] Connected to backend'));
+    ws.on('close', () => {
+      console.log('[desktop-bridge] Disconnected, reconnecting in 5s...');
+      ws = null;
+      reconnectTimer = setTimeout(connectToBackend, 5000);
+    });
+    ws.on('error', (err) => {
+      console.error('[desktop-bridge] Error:', err.message);
+    });
+    ws.on('message', async (raw) => {
+      let msg;
+      try { msg = JSON.parse(raw.toString()); } catch { return; }
+      if (msg.type !== 'call' || !msg.id || !msg.method) return;
+
+      let result = {};
+      let error = null;
+
+      try {
+        switch (msg.method) {
+          case 'openFile': {
+            const r = await shell.openPath(msg.args.path);
+            if (r) error = r;
+            break;
+          }
+          case 'openExcel': {
+            const winax = require('winax');
+            const excel = new winax.Object('Excel.Application');
+            excel.Visible = true;
+            excel.Workbooks.Open(msg.args.path);
+            result = { hwnd: String(excel.Hwnd) };
+            break;
+          }
+          case 'openWord': {
+            const winax = require('winax');
+            const word = new winax.Object('Word.Application');
+            word.Visible = true;
+            word.Documents.Open(msg.args.path);
+            result = {};
+            break;
+          }
+          case 'openPpt': {
+            const winax = require('winax');
+            const ppt = new winax.Object('PowerPoint.Application');
+            ppt.Visible = true;
+            ppt.Presentations.Open(msg.args.path);
+            result = {};
+            break;
+          }
+          case 'screenshot': {
+            const sources = await desktopCapturer.getSources({
+              types: ['screen'],
+              thumbnailSize: { width: 1920, height: 1080 },
+            });
+            if (sources.length > 0) {
+              const img = sources[0].thumbnail.toDataURL();
+              result = { screenshot: img };
+            } else {
+              error = 'No screen sources found';
+            }
+            break;
+          }
+          case 'ping': {
+            result = { pong: true };
+            break;
+          }
+          default:
+            error = `Unknown method: ${msg.method}`;
+        }
+      } catch (err) {
+        error = err.message;
+      }
+
+      try {
+        ws.send(JSON.stringify({ type: 'result', id: msg.id, data: result, error }));
+      } catch { /* ignore */ }
+    });
+  }
+
+  connectToBackend();
+
   createWindow();
 
   app.on('activate', () => {
@@ -298,6 +387,8 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  if (ws) { try { ws.close(); } catch {} }
   if (process.platform !== 'darwin') {
     app.quit();
   }

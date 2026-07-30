@@ -1,0 +1,125 @@
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { WebSocketServer, WebSocket, RawData } from 'ws';
+
+interface PendingRequest {
+  resolve: (value: any) => void;
+  reject: (reason: Error) => void;
+  timer: NodeJS.Timeout;
+}
+
+@Injectable()
+export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(DesktopBridgeService.name);
+  private wss: WebSocketServer | null = null;
+  private desktop: WebSocket | null = null;
+  private pending = new Map<string, PendingRequest>();
+  private nextId = 0;
+
+  get isConnected(): boolean {
+    return this.desktop !== null && this.desktop.readyState === WebSocket.OPEN;
+  }
+
+  onModuleInit() {
+    this.startServer();
+  }
+
+  onModuleDestroy() {
+    this.stopServer();
+  }
+
+  private startServer() {
+    try {
+      this.wss = new WebSocketServer({ port: 31524, host: '127.0.0.1' });
+      this.wss.on('connection', (ws: WebSocket) => {
+        this.desktop = ws;
+        this.logger.log('Desktop app connected');
+
+        ws.on('message', (raw: RawData) => {
+          try {
+            const msg = JSON.parse(raw.toString());
+            this.handleMessage(msg);
+          } catch {
+            this.logger.warn(`Invalid message from desktop: ${raw.toString().slice(0, 200)}`);
+          }
+        });
+
+        ws.on('close', () => {
+          this.logger.warn('Desktop app disconnected');
+          this.desktop = null;
+          this.rejectAllPending(new Error('Desktop disconnected'));
+        });
+
+        ws.on('error', (err: Error) => {
+          this.logger.error(`Desktop WebSocket error: ${err.message}`);
+        });
+      });
+
+      this.wss.on('error', (err: Error) => {
+        this.logger.error(`Desktop WebSocket server error: ${err.message}`);
+      });
+
+      this.logger.log('Desktop bridge listening on ws://127.0.0.1:31524');
+    } catch (err) {
+      this.logger.error(`Failed to start desktop bridge: ${err.message}`);
+    }
+  }
+
+  private stopServer() {
+    this.rejectAllPending(new Error('Server shutting down'));
+    if (this.desktop) {
+      try { this.desktop.close(); } catch { /* ignore */ }
+      this.desktop = null;
+    }
+    if (this.wss) {
+      try { this.wss.close(); } catch { /* ignore */ }
+      this.wss = null;
+    }
+  }
+
+  private handleMessage(msg: any) {
+    if (msg.type === 'result' && msg.id) {
+      const pending = this.pending.get(msg.id);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.pending.delete(msg.id);
+        if (msg.error) {
+          pending.reject(new Error(msg.error));
+        } else {
+          pending.resolve(msg.data ?? {});
+        }
+      }
+    }
+  }
+
+  sendCommand(method: string, args: Record<string, any> = {}, timeoutMs = 15000): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!this.isConnected) {
+        reject(new Error('Desktop app tidak terhubung. Jalankan aplikasi desktop Arunaki.'));
+        return;
+      }
+
+      const id = `dsk_${++this.nextId}`;
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`Desktop command "${method}" timeout setelah ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      this.pending.set(id, { resolve, reject, timer });
+      this.desktop!.send(JSON.stringify({ type: 'call', id, method, args }), (err?: Error | undefined) => {
+        if (err) {
+          clearTimeout(timer);
+          this.pending.delete(id);
+          reject(new Error(`Send failed: ${err.message}`));
+        }
+      });
+    });
+  }
+
+  private rejectAllPending(err: Error) {
+    for (const [id, pending] of this.pending) {
+      clearTimeout(pending.timer);
+      pending.reject(err);
+    }
+    this.pending.clear();
+  }
+}

@@ -105,6 +105,21 @@ Example — Edit Google Sheet:
 
 Pattern: Navigate → Click → Type → Verify. Screenshot if user wants to see.
 
+### 6.6 Desktop Application Interaction
+
+When user asks to open files in desktop applications (Excel, Word, PowerPoint):
+
+```
+Example — Open Excel file:
+1. desktop_open_excel → open .xlsx in Microsoft Excel via COM
+2. desktop_screenshot → verify the file opened correctly
+3. User edits directly in the visible app
+```
+
+Available tools: `desktop_open_file` (any file in default app), `desktop_open_excel`, `desktop_open_word`, `desktop_open_ppt`, `desktop_screenshot` (capture screen).
+
+Desktop bridge connects via WebSocket `ws://127.0.0.1:31524`. If not connected, tell user to start the desktop app.
+
 ---
 
 ## 7. Error Handling

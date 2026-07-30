@@ -109,6 +109,15 @@ Example — 6-Month Sales Trend:
 
 When operating applications visible on screen (desktop or browser):
 
+**Web (Browser Interaction):**
+- `browser_navigate` — open web page (Google Docs/Sheets, etc.)
+- `browser_click` — click element by CSS selector
+- `browser_type` — type text (use `slowly: true` for delicate fields)
+- `browser_get_content` — read visible text
+- `browser_screenshot` — capture page as image
+- `browser_press_key` — keyboard shortcuts (Enter, Tab, Escape, Ctrl+C, etc.)
+- `browser_go_back` / `browser_go_forward` — navigation
+
 ```
 Example — Open & Edit Google Sheet:
 1. browser_navigate → "https://sheets.google.com"
@@ -118,20 +127,26 @@ Example — Open & Edit Google Sheet:
 5. Confirm: "Data entered in Google Sheet"
 ```
 
+**Desktop (Native Apps):**
+- `desktop_open_file` — open any file in default desktop app
+- `desktop_open_excel` — open `.xlsx`/`.xls` in Microsoft Excel via COM
+- `desktop_open_word` — open `.docx`/`.doc` in Microsoft Word via COM
+- `desktop_open_ppt` — open `.pptx`/`.ppt` in Microsoft PowerPoint via COM
+- `desktop_screenshot` — capture full desktop screenshot
+
 ```
 Example — Create Document in Excel:
-1. Open Excel app → user sees app open
-2. Type data into cells → user sees text being typed
-3. Navigate menu step by step
-4. Save → user sees save dialog
-5. Confirm: "File saved as filename.xlsx"
+1. desktop_open_file → open existing .xlsx (or use backend generate_export)
+2. desktop_screenshot → verify document opened correctly
+3. Work via Excel visible on screen
+4. Confirm: "File opened in Excel — edit directly in the app"
 ```
 
 Pattern:
-1. **Open app/web** — use `browser_navigate` (web) or desktop app (native)
+1. **Open app/web** — use `browser_navigate` (web) or desktop tools (native)
 2. **Work step by step** — every keystroke and click visible
 3. **Navigate** — `browser_click` → `browser_type` → `browser_press_key`
-4. **Verify** — `browser_screenshot` or `browser_get_content` to check result
+4. **Verify** — `desktop_screenshot` or `browser_screenshot` to check result
 5. **Save and confirm**
 6. **Fallback**: If visible interaction fails, complete via backend tools (`generate_export`, etc.)
 
@@ -156,8 +171,9 @@ Example — Merge 5 Branch Reports:
 | File not found | `list_workspace_files` first. Try different patterns. |
 | Inconsistent data | Re-read source files. Verify against raw data. Never guess. |
 | Calculation needed | Use `calculate`. Never calculate manually. |
-| Visible interaction fails | Try `browser_screenshot` to diagnose. Fallback to backend tools. |
+| Visible interaction fails | Try `browser_screenshot` / `desktop_screenshot` to diagnose. Fallback to backend tools. |
 | Browser not responding | Try `browser_navigate` to reset. If stuck, report blocker. |
+| Desktop app not connected | Start the desktop Electron app. Desktop bridge listens on `ws://127.0.0.1:31524`. |
 
 ---
 

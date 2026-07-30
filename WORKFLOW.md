@@ -536,12 +536,46 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 32: Desktop Bridge Service ✅ DONE
+
+**Goal:** Desktop COM Automation — Excel/Word/PowerPoint via Electron bridge + WebSocket.
+
+### 32.1 Backend — DesktopBridgeService
+- [x] `DesktopBridgeService` — WebSocket server (`ws://127.0.0.1:31524`) with request/response pattern
+- [x] `sendCommand(method, args, timeout)` — Promise-based with timeout, auto-reject on disconnect/shutdown
+- [x] `@Global()` `InteractionModule` provides both `BrowserInteractionService` + `DesktopBridgeService`
+- [x] `@types/ws` installed for TypeScript types
+
+### 32.2 Desktop Electron Client
+- [x] `main.cjs` — WebSocket client with auto-reconnect (5s interval)
+- [x] Command handlers: `openFile` (shell.openPath), `openExcel`/`openWord`/`openPpt` (COM via winax), `screenshot` (desktopCapturer)
+- [x] Cleanup on `window-all-closed`
+
+### 32.3 Desktop Interaction Tools (5 tools)
+- [x] `desktop_open_file` — open any file in default desktop app
+- [x] `desktop_open_excel` — open `.xlsx`/`.xls` in Microsoft Excel via COM
+- [x] `desktop_open_word` — open `.docx`/`.doc` in Microsoft Word via COM
+- [x] `desktop_open_ppt` — open `.pptx`/`.ppt` in Microsoft PowerPoint via COM
+- [x] `desktop_screenshot` — capture full desktop screen via Electron `desktopCapturer`
+
+### 32.4 Prompt Updates
+- [x] `rules.md` — Updated Section 7.4 with desktop tool list + examples + error handling
+- [x] `chat-rules.md` — Added Section 6.6 Desktop Application Interaction
+
+### 32.5 Technical Details
+- [x] Build passes (`npx nest build` — 0 errors)
+- [x] Protocol: `{ type: 'call', id, method, args }` ↔ `{ type: 'result', id, data, error }`
+- [x] `ws` v8.21.1 installed in both `apps/api` and `apps/desktop`
+- [x] Desktop bridge auto-reconnects every 5s; tools return clear "not connected" error if Electron is down
+
+---
+
 ## Current Status
 
-**Phase:** 31 — Browser Interaction Service (visible browser automation)  
-**Framework:** Digital Employee — dapat berinteraksi visible di browser (Google Docs/Sheets) + backend tools  
+**Phase:** 32 — Desktop Bridge Service (Electron + COM for Excel/Word/PowerPoint)  
+**Framework:** Digital Employee — dapat berinteraksi visible di browser (web) + desktop apps (Excel/Word/PPT via Electron) + backend tools  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Desktop COM Automation — Excel/Word/PowerPoint via Electron bridge + winax  
+**Next:** Enhanced Desktop Automation — type/click/scroll di desktop apps (beyond just opening files)  
 
 ---
 
