@@ -377,8 +377,12 @@ app.whenReady().then(() => {
               const winax = require('winax');
               const excel = new winax.Object('Excel.Application');
               excel.Visible = true;
-              if (targetPath && excel.Workbooks.Count === 0) {
-                excel.Workbooks.Open(targetPath);
+              if (excel.Workbooks.Count === 0) {
+                if (targetPath) {
+                  excel.Workbooks.Open(targetPath);
+                } else {
+                  excel.Workbooks.Add();
+                }
               }
               const targetCell = msg.args.cell || 'A1';
               excel.ActiveSheet.Range(targetCell).Value = msg.args.value;
@@ -393,6 +397,13 @@ app.whenReady().then(() => {
               const winax = require('winax');
               const excel = new winax.Object('Excel.Application');
               excel.Visible = true;
+              if (excel.Workbooks.Count === 0) {
+                if (targetPath) {
+                  excel.Workbooks.Open(targetPath);
+                } else {
+                  excel.Workbooks.Add();
+                }
+              }
               const rangeStr = msg.args.range || 'A1';
               const rng = excel.ActiveSheet.Range(rangeStr);
               if (msg.args.bold !== undefined) rng.Font.Bold = msg.args.bold;
@@ -432,6 +443,9 @@ app.whenReady().then(() => {
               const winax = require('winax');
               const word = new winax.Object('Word.Application');
               word.Visible = true;
+              if (word.Documents.Count === 0) {
+                word.Documents.Add();
+              }
               const sel = word.Selection;
               if (msg.args.style) sel.Style = msg.args.style;
               if (msg.args.bold !== undefined) sel.Font.Bold = msg.args.bold ? 1 : 0;
@@ -445,6 +459,10 @@ app.whenReady().then(() => {
           }
           case 'sendKeys': {
             try {
+              if (!msg.args.keys) {
+                error = 'Shortcut keyboard (keys) tidak boleh kosong';
+                break;
+              }
               const winax = require('winax');
               const sh = new winax.Object('WScript.Shell');
               sh.SendKeys(msg.args.keys);
