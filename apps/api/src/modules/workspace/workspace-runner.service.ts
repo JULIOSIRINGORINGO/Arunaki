@@ -832,8 +832,8 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools);
 
           if (aiResponse.toolCalls.length === 0) {
-            // OpenClaw Fallback Tool Synthesizer: Auto-execute write_workspace_file if LLM outputted text instead of tool call
-            if (/(?:buat|tulis|create|simpan|isi)\s+.*(?:file|dokumen|test)/i.test(safeGoal) || /file\s+[\w\-.]+\s+isi/i.test(safeGoal)) {
+            // OpenClaw Fallback Tool Synthesizer: Run ONLY on round 0 to prevent infinite looping
+            if (round === 0 && (/(?:buat|tulis|create|simpan|isi)\s+.*(?:file|dokumen|test)/i.test(safeGoal) || /file\s+[\w\-.]+\s+(?:isi|dangan|dengan)/i.test(safeGoal))) {
               let targetFilename = 'test.txt';
               let fileContent = 'julio';
               let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
@@ -854,13 +854,15 @@ export class WorkspaceRunnerService {
                 }
               }
 
-              const contentMatch =
-                safeGoal.match(/(?:isi|content|teks|dengan|berisi)\s+["']?([^"']+)["']?/i) ||
-                safeGoal.match(/(?:tulis|write)\s+["']?([^"']+)["']?\s+(?:di|ke)/i);
+              // Extract STRICT content ONLY (e.g. "file test isi dengan julio" -> "julio")
+              let extracted = safeGoal;
+              const baseName = targetFilename.replace(/\.[^.]+$/, '');
+              extracted = extracted.replace(new RegExp(`(?:file|dokumen)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
+              extracted = extracted.replace(/(?:buat|tulis|create|simpan|isi|berisi|dangan|dengan)\s*/gi, '');
+              extracted = extracted.replace(/(?:di|ke)\s+(?:file|dokumen)?/gi, '');
+              extracted = extracted.trim();
 
-              if (contentMatch && contentMatch[1]) {
-                fileContent = contentMatch[1].replace(/^dengan\s+/i, '').trim();
-              }
+              fileContent = extracted || 'julio';
 
               this.logger.log(`OpenClaw Fallback Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${fileContent}"`);
               
@@ -1101,6 +1103,15 @@ export class WorkspaceRunnerService {
               tool_call_id: toolCall.id,
               content: JSON.stringify(result),
             });
+
+            // Immediately terminate loop upon successful write_workspace_file execution
+            if (result.status === 'success' && funcName === 'write_workspace_file') {
+              this.logger.log(`write_workspace_file completed successfully for "${args.filename}". Terminating agent loop.`);
+              finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content}".`;
+              onEvent({ type: 'text_delta', data: finalContent });
+              reachedMaxRounds = false;
+              break;
+            }
           }
         }
 
