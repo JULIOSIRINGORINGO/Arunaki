@@ -636,20 +636,33 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `doc_cross_reference` — Find entity/invoice occurrences across all workspace files
 
 ### 35.3 Prompt Updates & Canvas Integration
-- [x] Update `rules.md` & `chat-rules.md` with batch document audit workflow
-- [x] Format reconciliation audit reports with `[CANVAS]` markdown tables for live Canvas rendering
-- [x] Unit tests `document-reconciliation.service.spec.ts`
-- [x] Dev log `docs/dev-logs/dev-log-2026-07-30-document-reconciliation.md` created using template in `AGENTS.md`
+
+## Phase 36: Smooth Live Typing & Visual Desktop Execution Stream ✅ DONE
+
+**Goal:** Transparent Digital Employee — Render real-time live typing animations in Word & sequential cell population in Excel via COM API background streaming without touching user mouse/keyboard.
+
+### 36.1 Desktop Electron Client (`main.cjs`)
+- [x] Handler `wordType` — Add `smoothStream` & `delayMs` support for realistic word-by-word live typing in active Word window
+- [x] Handler `excelWriteCell` — Add sequential row/cell fill animation support for Excel tables
+
+### 36.2 Backend & Interactive Desktop Tools (`apps/api`)
+- [x] Update `DesktopBridgeService.wordType()` to pass `smoothStream` and `delayMs` parameters
+- [x] Update `desktop_word_type` tool parameters in `ToolsProviderModule`
+
+### 36.3 Testing & Documentation
+- [x] Update `rules.md` & `chat-rules.md` with live desktop typing guidelines
+- [x] Unit tests in `desktop-bridge.service.spec.ts`
+- [x] Dev log `docs/dev-logs/dev-log-2026-07-30-desktop-smooth-live-typing.md` created using template in `AGENTS.md`
 - [x] Build passes (`npx nest build` — 0 errors) & Vitest tests pass (`npx vitest run`)
 
 ---
 
 ## Current Status
 
-**Phase:** 35 — Multi-Document Cross-Referencing & Batch Reconciliation Engine ✅ DONE  
-**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + multi-document audit & reconciliation engine  
+**Phase:** 36 — Native Desktop Mouse Coordinate Input 🔄 [AI]  
+**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps (COM & OS mouse coordinate click) + multi-document engine  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Native Desktop Mouse Coordinate Input (`desktop_click_coordinate`)  
+**Next:** Production Deployment & Packaging Verification  
 
 ---
 

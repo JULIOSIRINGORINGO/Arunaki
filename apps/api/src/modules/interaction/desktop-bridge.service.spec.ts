@@ -78,8 +78,8 @@ describe('DesktopBridgeService', () => {
     const formatRes = await service.excelSetFormat(undefined, 'A1:B1', { bold: true });
     expect(formatRes).toEqual({ success: true, method: 'excelSetFormat', args: { range: 'A1:B1', bold: true } });
 
-    const wordRes = await service.wordType('Paragraph text', true);
-    expect(wordRes).toEqual({ success: true, method: 'wordType', args: { text: 'Paragraph text', addNewline: true } });
+    const wordRes = await service.wordType('Paragraph text', true, true, 20);
+    expect(wordRes).toEqual({ success: true, method: 'wordType', args: { text: 'Paragraph text', addNewline: true, smoothStream: true, delayMs: 20 } });
 
     const wordFmtRes = await service.wordFormat({ style: 'Heading 1' });
     expect(wordFmtRes).toEqual({ success: true, method: 'wordFormat', args: { style: 'Heading 1' } });

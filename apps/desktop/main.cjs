@@ -430,9 +430,22 @@ app.whenReady().then(() => {
                 word.Documents.Add();
               }
               const sel = word.Selection;
-              sel.TypeText(msg.args.text || '');
+              const rawText = msg.args.text || '';
+              if (msg.args.smoothStream) {
+                const words = rawText.split(' ');
+                const delay = msg.args.delayMs || 25;
+                for (let i = 0; i < words.length; i++) {
+                  const chunk = i < words.length - 1 ? words[i] + ' ' : words[i];
+                  sel.TypeText(chunk);
+                  if (delay > 0) {
+                    await new Promise((r) => setTimeout(r, delay));
+                  }
+                }
+              } else {
+                sel.TypeText(rawText);
+              }
               if (msg.args.addNewline) sel.TypeParagraph();
-              result = { success: true, textLength: (msg.args.text || '').length };
+              result = { success: true, textLength: rawText.length, smoothStream: !!msg.args.smoothStream };
             } catch (err) {
               error = `Gagal mengetik di Word: ${err.message}`;
             }
@@ -469,6 +482,31 @@ app.whenReady().then(() => {
               result = { success: true, keys: msg.args.keys };
             } catch (err) {
               error = `Gagal mengirim shortcut keyboard: ${err.message}`;
+            }
+            break;
+          }
+          case 'clickCoordinate': {
+            try {
+              const x = parseInt(msg.args.x, 10);
+              const y = parseInt(msg.args.y, 10);
+              if (isNaN(x) || isNaN(y)) {
+                error = 'Koordinat x dan y harus berupa angka valid';
+                break;
+              }
+              const clickType = msg.args.clickType || 'left';
+              const { execSync } = require('child_process');
+              let flags = '0x02,0,0,0,0; [Win32Utils.Win32]::mouse_event(0x04,0,0,0,0)';
+              if (clickType === 'right') {
+                flags = '0x08,0,0,0,0; [Win32Utils.Win32]::mouse_event(0x10,0,0,0,0)';
+              }
+              let psCmd = `Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y); [DllImport("user32.dll")] public static extern void mouse_event(int dwFlags, int dx, int dy, int dwData, int dwExtraInfo);' -Name Win32 -Namespace Win32Utils; [Win32Utils.Win32]::SetCursorPos(${x}, ${y}); [Win32Utils.Win32]::mouse_event(${flags})`;
+              if (clickType === 'double') {
+                psCmd += `; Start-Sleep -Milliseconds 50; [Win32Utils.Win32]::mouse_event(${flags})`;
+              }
+              execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psCmd.replace(/"/g, '`"')}"`);
+              result = { success: true, x, y, clickType };
+            } catch (err) {
+              error = `Gagal mengeklik koordinat mouse (${msg.args.x}, ${msg.args.y}): ${err.message}`;
             }
             break;
           }

@@ -1563,11 +1563,16 @@ export class ToolsProviderModule implements OnModuleInit {
         tags: ['desktop', 'word', 'type', 'text', 'interactive'],
         handler: async (args) => {
           try {
-            await this.desktopBridge.wordType(args.text, args.addNewline);
+            await this.desktopBridge.wordType(
+              args.text,
+              args.addNewline,
+              args.smoothStream,
+              args.delayMs,
+            );
             return {
               status: 'success' as const,
-              data: { length: (args.text || '').length },
-              preview: `Mengetik ${(args.text || '').length} karakter di Word`,
+              data: { length: (args.text || '').length, smoothStream: !!args.smoothStream },
+              preview: `Mengetik ${(args.text || '').length} karakter di Word${args.smoothStream ? ' (live stream)' : ''}`,
               metadata: { toolName: 'desktop_word_type', displayName: 'Ketik Teks Word', executionTime: 0 },
             };
           } catch (err) {
@@ -1585,6 +1590,8 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             text: { type: 'string', description: 'Teks yang akan diketik di Word' },
             addNewline: { type: 'boolean', description: 'Tambah paragraf baru setelah mengetik (default: false)' },
+            smoothStream: { type: 'boolean', description: 'Tampilkan animasi pengetikan live kata-demi-kata di layar Word' },
+            delayMs: { type: 'number', description: 'Jeda waktu per kata dalam milidetik (default: 25ms)' },
           },
           required: ['text'],
         },

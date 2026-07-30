@@ -123,8 +123,13 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
     return this.sendCommand('excelSetFormat', { path, range, ...formatOptions });
   }
 
-  wordType(text: string, addNewline = false): Promise<any> {
-    return this.sendCommand('wordType', { text, addNewline });
+  wordType(
+    text: string,
+    addNewline = false,
+    smoothStream = false,
+    delayMs = 25,
+  ): Promise<any> {
+    return this.sendCommand('wordType', { text, addNewline, smoothStream, delayMs });
   }
 
   wordFormat(formatOptions: Record<string, any>): Promise<any> {
