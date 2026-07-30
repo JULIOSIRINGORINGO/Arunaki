@@ -100,6 +100,7 @@ export async function runWithModelFallback(
           `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
         );
 
+        lastError = classified.message;
         attempts.push({
           providerId: provider.id,
           providerName: provider.name,
