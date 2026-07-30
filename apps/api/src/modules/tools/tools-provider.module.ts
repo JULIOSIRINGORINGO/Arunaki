@@ -39,7 +39,7 @@ import { AiModule } from '../ai/ai.module.js';
     FileModule,
     SkillsModule,
     MemoryModule,
-    AiModule,
+    forwardRef(() => AiModule),
     forwardRef(() => CronModule),
   ],
   providers: [

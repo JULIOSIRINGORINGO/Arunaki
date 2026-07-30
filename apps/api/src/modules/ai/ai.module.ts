@@ -16,7 +16,7 @@ import { ContextModule } from './context/context.module.js';
 @Module({
   imports: [
     ProviderModule,
-    ToolsModule,
+    forwardRef(() => ToolsModule),
     forwardRef(() => MemoryModule),
     ContextModule,
   ],

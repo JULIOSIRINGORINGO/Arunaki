@@ -8,7 +8,7 @@ import { MemoryModule } from '../memory/memory.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
 
 @Module({
-  imports: [StorageModule, ArtifactModule, ToolsModule, forwardRef(() => MemoryModule), forwardRef(() => SkillsModule)],
+  imports: [StorageModule, ArtifactModule, forwardRef(() => ToolsModule), forwardRef(() => MemoryModule), forwardRef(() => SkillsModule)],
   controllers: [CronController],
   providers: [CronService],
   exports: [CronService],
