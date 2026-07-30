@@ -21,6 +21,7 @@ import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
+import * as path from 'path';
 
 export type AgentState =
   | 'idle'
@@ -391,36 +392,73 @@ export class WorkspaceRunnerService {
     });
   }
 
-  async buildWorkspaceContext(workspaceId: string): Promise<string> {
+  async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
     try {
-      const files = await this.fileService.findByWorkspaceId(workspaceId);
-      const fileList =
-        files.length > 0
-          ? files
-              .map(
-                (f) =>
-                  `- ${f.name} (Tipe: ${f.type || 'file'}, Ukuran: ${Math.round(f.size / 1024)} KB)`,
-              )
-              .join('\n')
-          : 'Belum ada file di workspace ini.';
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
 
-      // Auto-read top 5 files to give AI actual content
-      const previews: string[] = [];
-      const maxPreviews = Math.min(files.length, 5);
-      for (let i = 0; i < maxPreviews; i++) {
-        const f = files[i];
-        try {
-          const result = await this.documentReaderTool.readDocument(f.path);
-          if (result.status === 'success' && result.data?.text) {
-            const truncated = (result.data.text as string).substring(0, 2000);
-            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
-          }
-        } catch {
-          // skip unreadable files
-        }
+      if (!workspace?.rootPath) return;
+
+      const fsPromises = await import('fs/promises');
+      let entries: any[] = [];
+      try {
+        entries = await fsPromises.readdir(workspace.rootPath, { withFileTypes: true });
+      } catch {
+        return;
       }
 
-      // Get workspace business type for domain-aware skills
+      let source = await this.prisma.source.findFirst({
+        where: { workspaceId },
+      });
+      if (!source) {
+        source = await this.prisma.source.create({
+          data: {
+            workspaceId,
+            name: 'Local Directory',
+            type: 'local',
+            status: 'ready',
+          },
+        });
+      }
+
+      const existingDbFiles = await this.fileService.findByWorkspaceId(workspaceId);
+      const existingPaths = new Set(existingDbFiles.map((f) => f.path.toLowerCase()));
+      const existingNames = new Set(existingDbFiles.map((f) => f.name.toLowerCase()));
+
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const fullPath = path.join(workspace.rootPath, entry.name);
+        if (entry.isFile()) {
+          const lowerPath = fullPath.toLowerCase();
+          const lowerName = entry.name.toLowerCase();
+          if (!existingPaths.has(lowerPath) && !existingNames.has(lowerName)) {
+            try {
+              const stat = await fsPromises.stat(fullPath);
+              const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+              await this.fileService.createFile({
+                sourceId: source.id,
+                name: entry.name,
+                path: fullPath,
+                type: ext || 'file',
+                size: stat.size,
+              });
+              this.logger.log(`Synced new physical file to DB: ${entry.name}`);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.debug(`syncWorkspacePhysicalFiles failed: ${err.message}`);
+    }
+  }
+
+  async buildWorkspaceContext(workspaceId: string): Promise<string> {
+    try {
+      await this.syncWorkspacePhysicalFiles(workspaceId);
       let businessType = 'generic';
       let rootPath: string | null = null;
       try {
@@ -436,6 +474,69 @@ export class WorkspaceRunnerService {
         }
       } catch {
         // fallback to generic
+      }
+
+      // Read physical directory directly if rootPath is specified and accessible
+      let filesToDescribe: { name: string; type: string; size: number; path: string }[] = [];
+      if (rootPath) {
+        try {
+          const fsPromises = await import('fs/promises');
+          const entries = await fsPromises.readdir(rootPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
+              const fullPath = path.join(rootPath, entry.name);
+              if (entry.isFile()) {
+                const stat = await fsPromises.stat(fullPath);
+                const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+                filesToDescribe.push({
+                  name: entry.name,
+                  type: ext || 'file',
+                  size: stat.size,
+                  path: fullPath,
+                });
+              }
+            }
+          }
+        } catch {
+          // ignore physical scan failure
+        }
+      }
+
+      // Fallback to database files if physical scan yielded no files or rootPath is unreadable
+      if (filesToDescribe.length === 0) {
+        const dbFiles = await this.fileService.findByWorkspaceId(workspaceId);
+        filesToDescribe = dbFiles.map((f) => ({
+          name: f.name,
+          type: f.type || 'file',
+          size: f.size,
+          path: f.path,
+        }));
+      }
+
+      const fileList =
+        filesToDescribe.length > 0
+          ? filesToDescribe
+              .map(
+                (f) =>
+                  `- ${f.name} (Tipe: ${f.type}, Ukuran: ${Math.round(f.size / 1024)} KB)`,
+              )
+              .join('\n')
+          : 'Belum ada file di workspace ini.';
+
+      // Auto-read top 5 files to give AI actual content
+      const previews: string[] = [];
+      const maxPreviews = Math.min(filesToDescribe.length, 5);
+      for (let i = 0; i < maxPreviews; i++) {
+        const f = filesToDescribe[i];
+        try {
+          const result = await this.documentReaderTool.readDocument(f.path);
+          if (result.status === 'success' && result.data?.text) {
+            const truncated = (result.data.text as string).substring(0, 2000);
+            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
+          }
+        } catch {
+          // skip unreadable files
+        }
       }
 
       // Get domain config for this business type
@@ -562,7 +663,7 @@ export class WorkspaceRunnerService {
 
       onEvent({
         type: 'thinking',
-        data: 'Memindai dokumen workspace dan menyusun rencana otonom...',
+        data: 'Membaca konteks workspace dan memproses permintaan...',
       });
 
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);

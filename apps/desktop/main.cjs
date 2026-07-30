@@ -2,10 +2,11 @@ const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer } = require(
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const WebSocket = require('ws');
 
 const WEB_URL = process.env.ARUNAKI_WEB_URL || 'http://127.0.0.1:5173';
-const WAIT_TIMEOUT_MS = 2000;
+const WAIT_TIMEOUT_MS = 15000;
 const WAIT_INTERVAL_MS = 500;
 
 function wait(ms) {
@@ -68,11 +69,14 @@ function createWindow() {
       return;
     }
     const distIndexPath = path.join(__dirname, '../web/dist/index.html');
-    if (fs.existsSync(distIndexPath)) {
+    if (fsSync.existsSync(distIndexPath)) {
       void win.loadFile(distIndexPath);
       return;
     }
     void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent('<html><body style="margin:0;display:grid;place-items:center;background:#111;color:#fff;font:16px system-ui"><div>Arunaki Web belum aktif. Jalankan npm run dev:web lalu buka ulang desktop.</div></body></html>')}`);
+  }).catch((err) => {
+    console.error('[main] Error loading web app:', err);
+    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<html><body style="margin:0;display:grid;place-items:center;background:#111;color:#ff6b6b;font:16px system-ui"><div>Gagal memuat aplikasi: ${err.message}</div></body></html>`)}`);
   });
 }
 
