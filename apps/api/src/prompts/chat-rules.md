@@ -85,11 +85,12 @@ When user requests format changes or new business rules:
 3. Confirm: "Knowledge Base updated with [summary of change]"
 ```
 
-### 6.4 Export Recommendation
+### 6.4 File Creation and Export Intent (CRITICAL)
 
-If the data recap is clean and final, offer to generate a downloadable file:
-- Use `generate_export` with appropriate format (xlsx for data, pdf/docx for reports)
-- Confirm before executing if unclear
+- **If user asks to CREATE or EDIT a file** (e.g., "buatkan file excel", "buatkan laporan", "export data", "tambahkan baris di file"):
+  - **IMMEDIATELY CALL TOOL**: Call `generate_export` or `write_workspace_file` or COM desktop tools (`desktop_excel_write_cell`, `desktop_word_type`) IN THE SAME RESPONSE.
+  - **DO NOT** default to just reading/analyzing existing files or asking for confirmation when the user explicitly asked to CREATE or EDIT a file!
+  - Always write or export the physical file directly to the workspace as requested.
 
 ### 6.5 Visible Web Interaction
 

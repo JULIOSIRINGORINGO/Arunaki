@@ -114,7 +114,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
               reader.onerror = reject;
               reader.readAsDataURL(attachedFile);
             });
-            const textIntro = finalPrompt || `Tolong baca dan analisis file terlampir ini (${attachedFile.name}).`;
+            const textIntro = finalPrompt || `Berikut file terlampir (${attachedFile.name}):`;
             finalPrompt = `${textIntro}\n\n[Dokumen/Gambar Terlampir (${attachedFile.name})]: ${base64Data}`;
           } else {
             const textContent = await new Promise<string>((resolve, reject) => {
