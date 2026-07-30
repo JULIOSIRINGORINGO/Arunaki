@@ -107,16 +107,18 @@ Pattern: Navigate → Click → Type → Verify. Screenshot if user wants to see
 
 ### 6.6 Desktop Application Interaction
 
-When user asks to open files in desktop applications (Excel, Word, PowerPoint):
+When user asks to open or edit files in desktop applications (Excel, Word, PowerPoint):
 
 ```
-Example — Open Excel file:
+Example — Open & Edit Excel file:
 1. desktop_open_excel → open .xlsx in Microsoft Excel via COM
-2. desktop_screenshot → verify the file opened correctly
-3. User edits directly in the visible app
+2. desktop_excel_write_cell → write data to cell A1, B1, C1
+3. desktop_excel_set_format → set bold and formatting on header
+4. desktop_send_keys → send "^s" to save file
+5. desktop_screenshot → verify the file on screen
 ```
 
-Available tools: `desktop_open_file` (any file in default app), `desktop_open_excel`, `desktop_open_word`, `desktop_open_ppt`, `desktop_screenshot` (capture screen).
+Available tools: `desktop_open_file` (any file in default app), `desktop_open_excel`, `desktop_open_word`, `desktop_open_ppt`, `desktop_excel_write_cell`, `desktop_excel_set_format`, `desktop_word_type`, `desktop_word_format`, `desktop_send_keys`, `desktop_screenshot` (capture screen).
 
 Desktop bridge connects via WebSocket `ws://127.0.0.1:31524`. If not connected, tell user to start the desktop app.
 

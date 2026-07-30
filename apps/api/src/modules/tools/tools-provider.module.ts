@@ -1459,6 +1459,219 @@ export class ToolsProviderModule implements OnModuleInit {
         timeoutMs: 15000,
       }),
     );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_excel_write_cell',
+        displayName: 'Tulis Cell Excel',
+        description:
+          'Menulis nilai atau formula ke cell Excel tertentu (contoh: "A1", "B5") ' +
+          'di aplikasi Excel desktop yang terbuka secara visible.',
+        tags: ['desktop', 'excel', 'write', 'cell', 'interactive'],
+        handler: async (args) => {
+          try {
+            const r = await this.desktopBridge.excelWriteCell(args.path, args.cell, args.value);
+            return {
+              status: 'success' as const,
+              data: { cell: args.cell, value: args.value },
+              preview: `Menulis "${args.value}" ke cell ${args.cell} di Excel`,
+              metadata: { toolName: 'desktop_excel_write_cell', displayName: 'Tulis Cell Excel', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_excel_write_cell', displayName: 'Tulis Cell Excel', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Path file Excel (opsional jika sudah terbuka)' },
+            cell: { type: 'string', description: 'Alamat cell (contoh: "A1", "B5")' },
+            value: { type: 'string', description: 'Nilai atau formula (contoh: "100", "=SUM(A1:A5)")' },
+          },
+          required: ['cell', 'value'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_excel_set_format',
+        displayName: 'Format Cell Excel',
+        description:
+          'Memformat cell Excel (bold, warna background, alignment, ukuran font) ' +
+          'di aplikasi Excel desktop yang terbuka secara visible.',
+        tags: ['desktop', 'excel', 'format', 'style', 'interactive'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.excelSetFormat(args.path, args.range, {
+              bold: args.bold,
+              italic: args.italic,
+              fontSize: args.fontSize,
+              bgColor: args.bgColor,
+              alignment: args.alignment,
+            });
+            return {
+              status: 'success' as const,
+              data: { range: args.range },
+              preview: `Memformat range ${args.range} di Excel`,
+              metadata: { toolName: 'desktop_excel_set_format', displayName: 'Format Cell Excel', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_excel_set_format', displayName: 'Format Cell Excel', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            path: { type: 'string', description: 'Path file Excel (opsional jika sudah terbuka)' },
+            range: { type: 'string', description: 'Range cell (contoh: "A1", "A1:D1")' },
+            bold: { type: 'boolean', description: 'Cetak tebal' },
+            italic: { type: 'boolean', description: 'Cetak miring' },
+            fontSize: { type: 'number', description: 'Ukuran font' },
+            bgColor: { type: 'number', description: 'Index warna background (contoh: 6 untuk kuning, 4 untuk hijau)' },
+            alignment: { type: 'string', enum: ['left', 'center', 'right'], description: 'Rata teks' },
+          },
+          required: ['range'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_word_type',
+        displayName: 'Ketik Teks Word',
+        description:
+          'Mengetik teks atau paragraf langsung di dokumen Word desktop yang sedang aktif.',
+        tags: ['desktop', 'word', 'type', 'text', 'interactive'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.wordType(args.text, args.addNewline);
+            return {
+              status: 'success' as const,
+              data: { length: (args.text || '').length },
+              preview: `Mengetik ${(args.text || '').length} karakter di Word`,
+              metadata: { toolName: 'desktop_word_type', displayName: 'Ketik Teks Word', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_word_type', displayName: 'Ketik Teks Word', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'Teks yang akan diketik di Word' },
+            addNewline: { type: 'boolean', description: 'Tambah paragraf baru setelah mengetik (default: false)' },
+          },
+          required: ['text'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_word_format',
+        displayName: 'Format Dokumen Word',
+        description:
+          'Memformat teks/seleksi di dokumen Word (Heading 1, Heading 2, Bold, Font Size).',
+        tags: ['desktop', 'word', 'format', 'style', 'interactive'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.wordFormat({
+              style: args.style,
+              bold: args.bold,
+              italic: args.italic,
+              fontSize: args.fontSize,
+            });
+            return {
+              status: 'success' as const,
+              data: { style: args.style },
+              preview: 'Memformat teks di Word',
+              metadata: { toolName: 'desktop_word_format', displayName: 'Format Dokumen Word', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_word_format', displayName: 'Format Dokumen Word', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            style: { type: 'string', description: 'Style paragraf (contoh: "Heading 1", "Heading 2", "Normal")' },
+            bold: { type: 'boolean', description: 'Cetak tebal' },
+            italic: { type: 'boolean', description: 'Cetak miring' },
+            fontSize: { type: 'number', description: 'Ukuran font' },
+          },
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'desktop_send_keys',
+        displayName: 'Kirim Shortcut Keyboard Desktop',
+        description:
+          'Menekan kombinasi tombol/shortcut keyboard di jendela aplikasi desktop yang aktif ' +
+          '(contoh: "^s" untuk Ctrl+S, "{ENTER}", "{TAB}", "^z").',
+        tags: ['desktop', 'keyboard', 'shortcut', 'sendkeys', 'interactive'],
+        handler: async (args) => {
+          try {
+            await this.desktopBridge.sendKeys(args.keys);
+            return {
+              status: 'success' as const,
+              data: { keys: args.keys },
+              preview: `Mengirim shortcut keyboard: ${args.keys}`,
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+            };
+          } catch (err) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: err.message,
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+              error: { code: 'DESKTOP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            keys: {
+              type: 'string',
+              description: 'String shortcut WScript.SendKeys (contoh: "^s" untuk Ctrl+S, "{ENTER}", "{TAB}")',
+            },
+          },
+          required: ['keys'],
+        },
+        timeoutMs: 10000,
+      }),
+    );
   }
 
   private async handleGenerateExport(args: Record<string, any>): Promise<any> {

@@ -570,12 +570,45 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 33: Enhanced Desktop Interactive Automation ✅ DONE
+
+**Goal:** Interactive Desktop Computer Use — Write cells in Excel, format cells, type text in Word, format Word documents, and send keyboard shortcuts to active desktop windows.
+
+### 33.1 Backend — DesktopBridgeService Helpers
+- [x] `excelWriteCell` — Write value/formula to Excel cell (`A1`, `B2`)
+- [x] `excelSetFormat` — Format Excel cells (bold, color, alignment)
+- [x] `wordType` — Type text in Word document
+- [x] `wordFormat` — Apply heading or formatting in Word
+- [x] `sendKeys` — Send keyboard shortcuts (`Ctrl+S`, `Enter`, `Tab`)
+
+### 33.2 Desktop Electron Client (`main.cjs`)
+- [x] Handler `excelWriteCell` — COM manipulation via `winax`
+- [x] Handler `excelSetFormat` — COM formatting via `winax`
+- [x] Handler `wordType` — COM document typing via `winax`
+- [x] Handler `wordFormat` — COM document formatting via `winax`
+- [x] Handler `sendKeys` — Keyboard automation via WScript.Shell SendKeys / Electron
+
+### 33.3 Interactive Desktop Tools (5 tools)
+- [x] `desktop_excel_write_cell` — write value/formula to Excel cell
+- [x] `desktop_excel_set_format` — set formatting on Excel cell
+- [x] `desktop_word_type` — type text in Word document
+- [x] `desktop_word_format` — set heading/formatting in Word
+- [x] `desktop_send_keys` — send keyboard shortcut to focused desktop app
+
+### 33.4 Prompt Updates & Testing
+- [x] `rules.md` — Section 7.4 updated with interactive desktop tools
+- [x] `chat-rules.md` — Section 6.6 updated with interactive desktop tools
+- [x] `desktop-bridge.service.spec.ts` — unit tests for interactive desktop commands
+- [x] Build passes (`npx nest build` — 0 errors) & Vitest tests pass (`npx vitest run`)
+
+---
+
 ## Current Status
 
-**Phase:** 32 — Desktop Bridge Service (Electron + COM for Excel/Word/PowerPoint)  
-**Framework:** Digital Employee — dapat berinteraksi visible di browser (web) + desktop apps (Excel/Word/PPT via Electron) + backend tools  
+**Phase:** 33 — Enhanced Desktop Interactive Automation 🔄 [AI]  
+**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps (Excel/Word/PPT via Electron COM & keyboard) + backend tools  
 **Model Default:** `openrouter/free` dengan capability-aware request  
-**Next:** Enhanced Desktop Automation — type/click/scroll di desktop apps (beyond just opening files)  
+**Next:** Canvas & Live Desktop Execution Feedback UI  
 
 ---
 

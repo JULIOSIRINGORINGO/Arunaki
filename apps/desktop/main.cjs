@@ -372,6 +372,88 @@ app.whenReady().then(() => {
             }
             break;
           }
+          case 'excelWriteCell': {
+            try {
+              const winax = require('winax');
+              const excel = new winax.Object('Excel.Application');
+              excel.Visible = true;
+              if (targetPath && excel.Workbooks.Count === 0) {
+                excel.Workbooks.Open(targetPath);
+              }
+              const targetCell = msg.args.cell || 'A1';
+              excel.ActiveSheet.Range(targetCell).Value = msg.args.value;
+              result = { success: true, cell: targetCell, value: msg.args.value };
+            } catch (err) {
+              error = `Gagal menulis cell Excel: ${err.message}`;
+            }
+            break;
+          }
+          case 'excelSetFormat': {
+            try {
+              const winax = require('winax');
+              const excel = new winax.Object('Excel.Application');
+              excel.Visible = true;
+              const rangeStr = msg.args.range || 'A1';
+              const rng = excel.ActiveSheet.Range(rangeStr);
+              if (msg.args.bold !== undefined) rng.Font.Bold = msg.args.bold;
+              if (msg.args.italic !== undefined) rng.Font.Italic = msg.args.italic;
+              if (msg.args.fontSize) rng.Font.Size = msg.args.fontSize;
+              if (msg.args.bgColor) rng.Interior.ColorIndex = msg.args.bgColor;
+              if (msg.args.alignment) {
+                if (msg.args.alignment === 'center') rng.HorizontalAlignment = -4108;
+                else if (msg.args.alignment === 'right') rng.HorizontalAlignment = -4152;
+                else if (msg.args.alignment === 'left') rng.HorizontalAlignment = -4131;
+              }
+              result = { success: true, range: rangeStr };
+            } catch (err) {
+              error = `Gagal memformat cell Excel: ${err.message}`;
+            }
+            break;
+          }
+          case 'wordType': {
+            try {
+              const winax = require('winax');
+              const word = new winax.Object('Word.Application');
+              word.Visible = true;
+              if (word.Documents.Count === 0) {
+                word.Documents.Add();
+              }
+              const sel = word.Selection;
+              sel.TypeText(msg.args.text || '');
+              if (msg.args.addNewline) sel.TypeParagraph();
+              result = { success: true, textLength: (msg.args.text || '').length };
+            } catch (err) {
+              error = `Gagal mengetik di Word: ${err.message}`;
+            }
+            break;
+          }
+          case 'wordFormat': {
+            try {
+              const winax = require('winax');
+              const word = new winax.Object('Word.Application');
+              word.Visible = true;
+              const sel = word.Selection;
+              if (msg.args.style) sel.Style = msg.args.style;
+              if (msg.args.bold !== undefined) sel.Font.Bold = msg.args.bold ? 1 : 0;
+              if (msg.args.italic !== undefined) sel.Font.Italic = msg.args.italic ? 1 : 0;
+              if (msg.args.fontSize) sel.Font.Size = msg.args.fontSize;
+              result = { success: true };
+            } catch (err) {
+              error = `Gagal memformat dokumen Word: ${err.message}`;
+            }
+            break;
+          }
+          case 'sendKeys': {
+            try {
+              const winax = require('winax');
+              const sh = new winax.Object('WScript.Shell');
+              sh.SendKeys(msg.args.keys);
+              result = { success: true, keys: msg.args.keys };
+            } catch (err) {
+              error = `Gagal mengirim shortcut keyboard: ${err.message}`;
+            }
+            break;
+          }
           case 'screenshot': {
             const sources = await desktopCapturer.getSources({
               types: ['screen'],

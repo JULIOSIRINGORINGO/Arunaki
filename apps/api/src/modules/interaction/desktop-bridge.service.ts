@@ -115,6 +115,26 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  excelWriteCell(path: string | undefined, cell: string, value: any): Promise<any> {
+    return this.sendCommand('excelWriteCell', { path, cell, value });
+  }
+
+  excelSetFormat(path: string | undefined, range: string, formatOptions: Record<string, any>): Promise<any> {
+    return this.sendCommand('excelSetFormat', { path, range, ...formatOptions });
+  }
+
+  wordType(text: string, addNewline = false): Promise<any> {
+    return this.sendCommand('wordType', { text, addNewline });
+  }
+
+  wordFormat(formatOptions: Record<string, any>): Promise<any> {
+    return this.sendCommand('wordFormat', formatOptions);
+  }
+
+  sendKeys(keys: string): Promise<any> {
+    return this.sendCommand('sendKeys', { keys });
+  }
+
   private rejectAllPending(err: Error) {
     for (const [id, pending] of this.pending) {
       clearTimeout(pending.timer);

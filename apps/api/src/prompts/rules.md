@@ -132,14 +132,20 @@ Example — Open & Edit Google Sheet:
 - `desktop_open_excel` — open `.xlsx`/`.xls` in Microsoft Excel via COM
 - `desktop_open_word` — open `.docx`/`.doc` in Microsoft Word via COM
 - `desktop_open_ppt` — open `.pptx`/`.ppt` in Microsoft PowerPoint via COM
+- `desktop_excel_write_cell` — write value or formula to Excel cell (e.g., "A1", "B5")
+- `desktop_excel_set_format` — format Excel cell (bold, background color, font size, alignment)
+- `desktop_word_type` — type text or paragraph in active Word document
+- `desktop_word_format` — apply heading or formatting in Word
+- `desktop_send_keys` — send keyboard shortcut (e.g., "^s" for Ctrl+S, "{ENTER}", "{TAB}") to active window
 - `desktop_screenshot` — capture full desktop screenshot
 
 ```
-Example — Create Document in Excel:
-1. desktop_open_file → open existing .xlsx (or use backend generate_export)
-2. desktop_screenshot → verify document opened correctly
-3. Work via Excel visible on screen
-4. Confirm: "File opened in Excel — edit directly in the app"
+Example — Create & Edit Document in Excel:
+1. desktop_open_excel → open target .xlsx
+2. desktop_excel_write_cell → fill data into cell A1, B1, C1
+3. desktop_excel_set_format → set bold and background color on header
+4. desktop_send_keys → send "^s" to save file
+5. desktop_screenshot → verify document on screen
 ```
 
 Pattern:

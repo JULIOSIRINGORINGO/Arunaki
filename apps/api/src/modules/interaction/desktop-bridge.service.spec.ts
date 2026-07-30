@@ -52,6 +52,44 @@ describe('DesktopBridgeService', () => {
     client.close();
   });
 
+  it('should handle interactive desktop helper methods', async () => {
+    const client = new WebSocket('ws://127.0.0.1:31524');
+
+    await new Promise<void>((resolve) => {
+      client.on('open', () => resolve());
+    });
+
+    client.on('message', (raw) => {
+      const msg = JSON.parse(raw.toString());
+      if (msg.type === 'call') {
+        client.send(
+          JSON.stringify({
+            type: 'result',
+            id: msg.id,
+            data: { success: true, method: msg.method, args: msg.args },
+          }),
+        );
+      }
+    });
+
+    const excelRes = await service.excelWriteCell(undefined, 'A1', 'Hello Excel');
+    expect(excelRes).toEqual({ success: true, method: 'excelWriteCell', args: { cell: 'A1', value: 'Hello Excel' } });
+
+    const formatRes = await service.excelSetFormat(undefined, 'A1:B1', { bold: true });
+    expect(formatRes).toEqual({ success: true, method: 'excelSetFormat', args: { range: 'A1:B1', bold: true } });
+
+    const wordRes = await service.wordType('Paragraph text', true);
+    expect(wordRes).toEqual({ success: true, method: 'wordType', args: { text: 'Paragraph text', addNewline: true } });
+
+    const wordFmtRes = await service.wordFormat({ style: 'Heading 1' });
+    expect(wordFmtRes).toEqual({ success: true, method: 'wordFormat', args: { style: 'Heading 1' } });
+
+    const keysRes = await service.sendKeys('^s');
+    expect(keysRes).toEqual({ success: true, method: 'sendKeys', args: { keys: '^s' } });
+
+    client.close();
+  });
+
   it('should handle desktop command errors', async () => {
     const client = new WebSocket('ws://127.0.0.1:31524');
 
