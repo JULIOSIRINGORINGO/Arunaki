@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { Tool } from '../interfaces/tool.interface.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 
@@ -14,31 +15,41 @@ export interface ToolMiddlewareOptions {
 /**
  * 1. Workspace Isolation Wrapper
  * Prevents file paths from escaping the target workspace directory.
+ * Uses path.resolve containment check for cross-platform efficiency (Windows & POSIX).
  */
 export function wrapWorkspaceIsolation(tool: Tool, workspaceDir?: string): Tool {
   if (!workspaceDir) return tool;
 
   const originalExecute = tool.execute.bind(tool);
+  const normalizedRoot = path.resolve(workspaceDir);
 
   return {
     ...tool,
     execute: async (args: Record<string, any>): Promise<ToolResult> => {
       const pathArg = args.filePath || args.path || args.file || args.targetPath;
-      if (typeof pathArg === 'string' && pathArg.includes('..')) {
-        return {
-          status: 'error',
-          data: {},
-          preview: `Akses ditolak: Path "${pathArg}" mencoba keluar dari workspace.`,
-          metadata: {
-            toolName: tool.name,
-            displayName: tool.capability?.displayName || tool.name,
-            executionTime: 0,
-          },
-          error: {
-            code: 'WORKSPACE_ISOLATION_VIOLATION',
-            message: `Path traversal denied for path "${pathArg}" outside workspace root "${workspaceDir}"`,
-          },
-        };
+
+      if (typeof pathArg === 'string') {
+        const resolvedPath = path.resolve(normalizedRoot, pathArg);
+        const relativePath = path.relative(normalizedRoot, resolvedPath);
+
+        const isOutside = relativePath.startsWith('..') || path.isAbsolute(relativePath);
+
+        if (isOutside) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Akses ditolak: Path "${pathArg}" mencoba keluar dari workspace.`,
+            metadata: {
+              toolName: tool.name,
+              displayName: tool.capability?.displayName || tool.name,
+              executionTime: 0,
+            },
+            error: {
+              code: 'WORKSPACE_ISOLATION_VIOLATION',
+              message: `Path traversal denied for path "${pathArg}" outside workspace root "${workspaceDir}"`,
+            },
+          };
+        }
       }
 
       return originalExecute(args);

@@ -5,6 +5,7 @@ import * as path from 'node:path';
 export interface VerificationRule {
   mustExist?: boolean;
   minSizeBytes?: number;
+  maxSizeBytes?: number;
   mustContainRegex?: RegExp;
   validFormat?: 'json' | 'csv' | 'txt' | 'any';
 }
@@ -20,6 +21,8 @@ export interface ProgrammaticVerificationResult {
     formatValid: boolean;
   };
 }
+
+const MAX_VERIFICATION_READ_BYTES = 2 * 1024 * 1024; // 2MB safety buffer limit
 
 /**
  * ProgrammaticVerifierService — Fast 0-token verifier engine.
@@ -68,7 +71,7 @@ export class ProgrammaticVerifierService {
       };
     }
 
-    // Size check
+    // Min Size check
     if (exists && defaultRule.minSizeBytes !== undefined) {
       if (sizeBytes >= defaultRule.minSizeBytes) {
         checksPassed.push('MIN_SIZE_CHECK');
@@ -77,10 +80,26 @@ export class ProgrammaticVerifierService {
       }
     }
 
+    // Max Size check
+    if (exists && defaultRule.maxSizeBytes !== undefined) {
+      if (sizeBytes <= defaultRule.maxSizeBytes) {
+        checksPassed.push('MAX_SIZE_CHECK');
+      } else {
+        checksFailed.push('MAX_SIZE_CHECK');
+      }
+    }
+
     // Format & Content checks if file exists and has size
-    if (exists && sizeBytes > 0) {
+    if (exists && sizeBytes > 0 && (defaultRule.mustContainRegex || defaultRule.validFormat !== 'any')) {
       try {
-        const content = await fs.readFile(filePath, 'utf-8');
+        // Read bounded buffer to avoid memory overflow on huge binary files
+        const readLength = Math.min(sizeBytes, MAX_VERIFICATION_READ_BYTES);
+        const handle = await fs.open(filePath, 'r');
+        const buffer = Buffer.alloc(readLength);
+        await handle.read(buffer, 0, readLength, 0);
+        await handle.close();
+
+        const content = buffer.toString('utf-8');
 
         if (defaultRule.mustContainRegex) {
           if (defaultRule.mustContainRegex.test(content)) {
