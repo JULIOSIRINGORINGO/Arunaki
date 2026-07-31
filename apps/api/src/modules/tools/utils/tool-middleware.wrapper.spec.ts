@@ -4,7 +4,7 @@ import {
   wrapActionableError,
   applyToolMiddlewarePipeline,
 } from './tool-middleware.wrapper.js';
-import { Tool } from '../interfaces/index.js';
+import { Tool } from '../interfaces/tool.interface.js';
 
 describe('ToolMiddlewareWrapper', () => {
   const mockTool: Tool = {
@@ -40,16 +40,20 @@ describe('ToolMiddlewareWrapper', () => {
     expect(mockTool.execute).toHaveBeenCalledWith({ filePath: 'file.txt' });
   });
 
-  it('should block path traversal outside workspace', async () => {
+  it('should block path traversal outside workspace across path keys (filePath, path, targetPath)', async () => {
     const wrapped = wrapWorkspaceIsolation(mockTool, '/workspace');
-    const res = await wrapped.execute({ filePath: '../etc/passwd' });
+    
+    const res1 = await wrapped.execute({ filePath: '../etc/passwd' });
+    expect(res1.status).toBe('error');
+    expect(res1.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
+    expect(res1.preview).toContain('Akses ditolak');
 
-    expect(res.status).toBe('error');
-    expect(res.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
-    expect(res.preview).toContain('Akses ditolak');
+    const res2 = await wrapped.execute({ targetPath: '../../secret.key' });
+    expect(res2.status).toBe('error');
+    expect(res2.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
   });
 
-  it('should enrich error results with actionable suggestions', async () => {
+  it('should enrich error results with actionable suggestions for FILE_NOT_FOUND', async () => {
     const failingTool: Tool = {
       ...mockTool,
       execute: vi.fn().mockResolvedValue({
@@ -66,6 +70,25 @@ describe('ToolMiddlewareWrapper', () => {
 
     expect(res.status).toBe('error');
     expect(res.data.suggested_action).toContain('search_workspace');
+  });
+
+  it('should enrich error results with actionable suggestions for INVALID_ARGS', async () => {
+    const invalidArgsTool: Tool = {
+      ...mockTool,
+      execute: vi.fn().mockResolvedValue({
+        status: 'error',
+        data: {},
+        preview: 'Invalid arguments',
+        metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 2 },
+        error: { code: 'INVALID_ARGS', message: 'Field "path" wajib diisi' },
+      }),
+    };
+
+    const wrapped = wrapActionableError(invalidArgsTool);
+    const res = await wrapped.execute({});
+
+    expect(res.status).toBe('error');
+    expect(res.data.suggested_action).toContain('skema parameter');
   });
 
   it('should apply full pipeline wrapper correctly', async () => {
