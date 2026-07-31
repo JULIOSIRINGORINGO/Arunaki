@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Provider } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { ProviderRepository } from './provider.repository.js';
+import { ProviderCatalogService } from './provider-catalog.service.js';
 
 export interface ProviderConfig {
   id: string;
@@ -38,8 +39,14 @@ export class ProviderService extends BaseService<Provider> {
     '503': 20,
   };
 
-  constructor(protected readonly repository: ProviderRepository) {
+  private readonly catalogService: ProviderCatalogService;
+
+  constructor(
+    protected readonly repository: ProviderRepository,
+    @Optional() catalogService?: ProviderCatalogService,
+  ) {
     super(repository);
+    this.catalogService = catalogService || new ProviderCatalogService();
   }
 
   async findActive(): Promise<Provider | null> {
@@ -106,16 +113,11 @@ export class ProviderService extends BaseService<Provider> {
     };
   }
 
-  private static readonly FREE_MODEL_CANDIDATES = [
-    'openrouter/free',
-    'openrouter/auto',
-  ];
-
   async getNextAvailable(
     currentProviderId?: string,
   ): Promise<ProviderConfig | null> {
+    // 1. Check active database providers not in cooldown
     const available: Provider[] = await this.repository.findAvailable().catch(() => []);
-
     const next = available.find((p) => p.id !== currentProviderId);
 
     if (next) {
@@ -131,66 +133,39 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    // 1. Check enabled providers in DB for OpenRouter key or alternate provider
+    // 2. Check enabled database providers for registered fallback credentials
     const allProviders = await this.repository.findAllEnabled().catch(() => []);
     const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
-    
+
     if (openrouterProv) {
-      const pool = ProviderService.FREE_MODEL_CANDIDATES;
-      const currentModelIndex = pool.findIndex(
-        (m) => m === currentProviderId || currentProviderId?.includes(m),
-      );
-      const nextModel = pool[(currentModelIndex + 1) % pool.length];
+      const preset = this.catalogService.detectPreset(openrouterProv.apiKey, openrouterProv.baseUrl);
+      const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
 
       this.logger.log(`Rotating to OpenRouter database candidate: ${nextModel}`);
       return {
         id: `fallback-${nextModel}`,
         name: `OpenRouter Fallback (${nextModel})`,
         type: 'openai-compatible',
-        baseUrl: 'https://openrouter.ai/api/v1',
+        baseUrl: openrouterProv.baseUrl,
         apiKey: openrouterProv.apiKey,
         model: nextModel,
       };
     }
 
-    // 2. Fallback to process.env AI_API_KEY (Groq or OpenRouter)
+    // 3. Fallback to process.env credential rotation using ProviderCatalogService
     const envKey = process.env.AI_API_KEY || '';
-    const envBaseUrl = process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1';
+    const envBaseUrl = process.env.AI_BASE_URL || '';
 
-    if (envKey.startsWith('gsk_') || envBaseUrl.includes('groq.com')) {
-      const groqPool = [
-        'llama-3.3-70b-versatile',
-        'llama-3.1-8b-instant',
-        'deepseek-r1-distill-llama-70b',
-        'mixtral-8x7b-32768',
-      ];
-      const currentModelIndex = groqPool.findIndex((m) => currentProviderId?.includes(m));
-      const nextModel = groqPool[(currentModelIndex + 1) % groqPool.length];
+    if (envKey) {
+      const preset = this.catalogService.detectPreset(envKey, envBaseUrl);
+      const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
 
-      this.logger.log(`Rotating Groq fallback model to: ${nextModel}`);
+      this.logger.log(`Rotating ${preset.name} fallback candidate to: ${nextModel}`);
       return {
-        id: `fallback-groq-${nextModel}`,
-        name: `Groq Fallback (${nextModel})`,
+        id: `fallback-${preset.id}-${nextModel}`,
+        name: `${preset.name} Fallback (${nextModel})`,
         type: 'openai-compatible',
-        baseUrl: envBaseUrl,
-        apiKey: envKey,
-        model: nextModel,
-      };
-    }
-
-    if (envKey.startsWith('sk-or-')) {
-      const pool = ProviderService.FREE_MODEL_CANDIDATES;
-      const currentModelIndex = pool.findIndex(
-        (m) => m === currentProviderId || currentProviderId?.includes(m),
-      );
-      const nextModel = pool[(currentModelIndex + 1) % pool.length];
-
-      this.logger.log(`Rotating to OpenRouter env candidate: ${nextModel}`);
-      return {
-        id: `fallback-${nextModel}`,
-        name: `OpenRouter Fallback (${nextModel})`,
-        type: 'openai-compatible',
-        baseUrl: 'https://openrouter.ai/api/v1',
+        baseUrl: preset.baseUrl,
         apiKey: envKey,
         model: nextModel,
       };
