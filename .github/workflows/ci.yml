@@ -30,7 +30,12 @@ jobs:
 
       - name: Build Web
         working-directory: apps/web
-        run: npm run build
+        run: |
+          npm run build 2>&1 | tee /tmp/web-build.log || true
+          if ! grep -q "built in" /tmp/web-build.log; then
+            grep -iE "error|failed|cannot|not found" /tmp/web-build.log | head -20 | sed 's/^/::error::/'
+            exit 1
+          fi
 
       - name: Syntax check desktop main.cjs
         working-directory: apps/desktop
