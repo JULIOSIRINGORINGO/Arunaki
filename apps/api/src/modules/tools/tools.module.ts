@@ -7,6 +7,7 @@ import { SearchModule } from '../search/search.module.js';
 import { FileModule } from '../file/file.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
+import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
 
 /**
  * ToolsModule — module boundary for tool system.
@@ -25,6 +26,6 @@ import { MemoryModule } from '../memory/memory.module.js';
     MemoryModule,
     ToolsProviderModule,
   ],
-  exports: [ToolsProviderModule],
+  exports: [ToolsProviderModule, ProgrammaticVerifierService],
 })
 export class ToolsModule {}

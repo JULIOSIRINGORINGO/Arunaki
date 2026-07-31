@@ -1,0 +1,76 @@
+import { describe, it, expect, vi } from 'vitest';
+import {
+  wrapWorkspaceIsolation,
+  wrapActionableError,
+  applyToolMiddlewarePipeline,
+} from './tool-middleware.wrapper.js';
+import { Tool } from '../interfaces/index.js';
+
+describe('ToolMiddlewareWrapper', () => {
+  const mockTool: Tool = {
+    name: 'test_tool',
+    definition: {
+      type: 'function',
+      function: {
+        name: 'test_tool',
+        description: 'Test tool',
+        parameters: { type: 'object', properties: {} },
+      },
+    },
+    capability: {
+      name: 'test_tool',
+      displayName: 'Test Tool',
+      description: 'Test tool capability',
+      category: 'workspace',
+      tags: ['test'],
+    },
+    execute: vi.fn().mockResolvedValue({
+      status: 'success',
+      data: { result: 'ok' },
+      preview: 'OK',
+      metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 10 },
+    }),
+  };
+
+  it('should allow valid path under workspace isolation wrapper', async () => {
+    const wrapped = wrapWorkspaceIsolation(mockTool, '/workspace');
+    const res = await wrapped.execute({ filePath: 'file.txt' });
+
+    expect(res.status).toBe('success');
+    expect(mockTool.execute).toHaveBeenCalledWith({ filePath: 'file.txt' });
+  });
+
+  it('should block path traversal outside workspace', async () => {
+    const wrapped = wrapWorkspaceIsolation(mockTool, '/workspace');
+    const res = await wrapped.execute({ filePath: '../etc/passwd' });
+
+    expect(res.status).toBe('error');
+    expect(res.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
+    expect(res.preview).toContain('Akses ditolak');
+  });
+
+  it('should enrich error results with actionable suggestions', async () => {
+    const failingTool: Tool = {
+      ...mockTool,
+      execute: vi.fn().mockResolvedValue({
+        status: 'error',
+        data: {},
+        preview: 'File not found',
+        metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 5 },
+        error: { code: 'FILE_NOT_FOUND', message: 'File /test.txt not found' },
+      }),
+    };
+
+    const wrapped = wrapActionableError(failingTool);
+    const res = await wrapped.execute({ path: 'test.txt' });
+
+    expect(res.status).toBe('error');
+    expect(res.data.suggested_action).toContain('search_workspace');
+  });
+
+  it('should apply full pipeline wrapper correctly', async () => {
+    const pipeline = applyToolMiddlewarePipeline(mockTool, { workspaceDir: '/workspace' });
+    const res = await pipeline.execute({ filePath: 'valid.txt' });
+    expect(res.status).toBe('success');
+  });
+});

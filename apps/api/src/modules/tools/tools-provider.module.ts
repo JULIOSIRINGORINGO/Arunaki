@@ -28,6 +28,7 @@ import { DocumentReconciliationService } from '../document/doc-reconciliation.se
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { CronService } from '../cron/cron.service.js';
 import { CronModule } from '../cron/cron.module.js';
+import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
 
 import { AiModule } from '../ai/ai.module.js';
 
@@ -61,6 +62,7 @@ import { AiModule } from '../ai/ai.module.js';
     MemoryTool,
     DocumentReconciliationService,
     SubAgentRunnerService,
+    ProgrammaticVerifierService,
   ],
   exports: [
     ToolRegistryService,
@@ -80,6 +82,7 @@ import { AiModule } from '../ai/ai.module.js';
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
+    ProgrammaticVerifierService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
