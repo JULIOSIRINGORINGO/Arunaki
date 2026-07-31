@@ -284,12 +284,18 @@ export function WorkspacePage() {
     agentAbortRef.current = abortController;
 
     try {
+      const activeSession = sessions.find((s) => s.id === activeSessionId);
+      const historyMessages = (activeSession?.messages ?? [])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.content }));
+
       await fetchEventSource(`${API_BASE}/workspaces/${wsId}/agent/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: abortController.signal,
         body: JSON.stringify({
           goal: goal || "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
+          historyMessages,
         }),
         openWhenHidden: true,
         onmessage(ev) {
@@ -414,7 +420,7 @@ export function WorkspacePage() {
     } finally {
       agentAbortRef.current = null;
     }
-  }, [addMessageToActiveSession]);
+  }, [addMessageToActiveSession, sessions, activeSessionId]);
 
   const doConnect = useCallback(async (files: File[], folderName: string, businessType: string = "generic") => {
     setIsCreating(true);

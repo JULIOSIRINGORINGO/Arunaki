@@ -20,37 +20,37 @@ describe('ProviderService — Failover & Error Classification', () => {
   });
 
   describe('classifyError', () => {
-    it('should classify HTTP 429 (Rate Limit) as rotate with 60s cooldown', () => {
-      const classified = service.classifyError(429, 'Rate limit exceeded for model openrouter/free');
+    it('should classify HTTP 429 (Rate Limit) as rotate with 20s cooldown', () => {
+      const classified = service.classifyError(429, 'Rate limit exceeded');
 
       expect(classified.action).toBe('rotate');
       expect(classified.statusCode).toBe(429);
-      expect(classified.cooldownSeconds).toBe(60);
+      expect(classified.cooldownSeconds).toBe(20);
       expect(classified.message).toContain('HTTP 429');
     });
 
-    it('should classify HTTP 401 (Unauthorized) as rotate with 600s cooldown', () => {
+    it('should classify HTTP 401 (Unauthorized) as rotate with 300s cooldown', () => {
       const classified = service.classifyError(401, 'Invalid API Key');
 
       expect(classified.action).toBe('rotate');
       expect(classified.statusCode).toBe(401);
-      expect(classified.cooldownSeconds).toBe(600);
+      expect(classified.cooldownSeconds).toBe(300);
     });
 
-    it('should classify HTTP 403 (Forbidden) as rotate with 600s cooldown', () => {
+    it('should classify HTTP 403 (Forbidden) as rotate with 300s cooldown', () => {
       const classified = service.classifyError(403, 'Access denied for model');
 
       expect(classified.action).toBe('rotate');
       expect(classified.statusCode).toBe(403);
-      expect(classified.cooldownSeconds).toBe(600);
+      expect(classified.cooldownSeconds).toBe(300);
     });
 
-    it('should classify HTTP 503 (Service Unavailable) as rotate with 60s cooldown', () => {
+    it('should classify HTTP 503 (Service Unavailable) as rotate with 20s cooldown', () => {
       const classified = service.classifyError(503, 'Model server overloaded');
 
       expect(classified.action).toBe('rotate');
       expect(classified.statusCode).toBe(503);
-      expect(classified.cooldownSeconds).toBe(60);
+      expect(classified.cooldownSeconds).toBe(20);
     });
 
     it('should classify HTTP 500 (Internal Server Error) as retry with backoff', () => {
@@ -98,13 +98,23 @@ describe('ProviderService — Failover & Error Classification', () => {
 
     it('should rotate to free candidate pool if no database provider available', async () => {
       mockRepository.findAvailable.mockResolvedValue([]);
+      mockRepository.findAllEnabled.mockResolvedValue([
+        {
+          id: 'openrouter',
+          name: 'OpenRouter',
+          type: 'openai-compatible',
+          baseUrl: 'https://openrouter.ai/api/v1',
+          apiKey: 'sk-or-test-key',
+          model: 'openrouter/auto',
+        },
+      ]);
 
       const next = await service.getNextAvailable('openrouter/free');
 
       expect(next).not.toBeNull();
       expect(next?.id).toContain('fallback-');
       expect(next?.baseUrl).toBe('https://openrouter.ai/api/v1');
-      expect(next?.model).toBe('google/gemma-4-31b-it:free');
+      expect(next?.model).toBe('openrouter/auto');
     });
 
     it('should set cooldown for provider on rotate error', async () => {
