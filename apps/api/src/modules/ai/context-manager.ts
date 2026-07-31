@@ -20,11 +20,11 @@ export interface ContextConfig {
 
 const DEFAULT_CONFIG: ContextConfig = {
   contextLength: 128000,
-  threshold: 0.5,
+  threshold: 0.25, // Aggressive compression trigger at 25% budget (32k tokens)
   targetRatio: 0.2,
-  toolPruneChars: 2000,
-  toolPreviewChars: 500,
-  injectionMaxChars: 7000,
+  toolPruneChars: 1000, // Keep tool outputs under 1000 chars
+  toolPreviewChars: 250, // Lightweight tool preview
+  injectionMaxChars: 2000, // Compact memory/knowledge injection budget
   useLlmSummary: false,
 };
 

@@ -98,8 +98,11 @@ export class AiService {
     this.contextManager = new ContextManager(
       {
         contextLength: 128000,
-        threshold: 0.5,
+        threshold: 0.25,
         targetRatio: 0.2,
+        toolPruneChars: 1000,
+        toolPreviewChars: 250,
+        injectionMaxChars: 2000,
         useLlmSummary: false,
       },
       { chat: this.chat.bind(this) },
