@@ -27,15 +27,15 @@ export class SessionSearchService implements OnModuleInit {
   private async initializeFTS5() {
     try {
       // Create FTS5 virtual table for messages
+      // ponytail: regular FTS5 (self-contained) — external content (content=messages)
+      // failed because FTS columns must match real `messages` column names exactly
       await this.prisma.$executeRawUnsafe(`
         CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
           message_id,
           chat_history_id,
           workspace_id,
           role,
-          content,
-          content=messages,
-          content_rowid=rowid
+          content
         )
       `);
 
