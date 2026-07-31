@@ -158,7 +158,12 @@ export class ProviderService extends BaseService<Provider> {
     const envBaseUrl = process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1';
 
     if (envKey.startsWith('gsk_') || envBaseUrl.includes('groq.com')) {
-      const groqPool = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'gemma2-9b-it'];
+      const groqPool = [
+        'llama-3.3-70b-versatile',
+        'llama-3.1-8b-instant',
+        'deepseek-r1-distill-llama-70b',
+        'mixtral-8x7b-32768',
+      ];
       const currentModelIndex = groqPool.findIndex((m) => currentProviderId?.includes(m));
       const nextModel = groqPool[(currentModelIndex + 1) % groqPool.length];
 
@@ -200,7 +205,7 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async createProvider(data: Partial<Provider> & { name: string; baseUrl: string; apiKey: string; model: string }): Promise<Provider> {
-    return this.repository.create({
+    const provider = await this.repository.create({
       name: data.name,
       type: data.type || 'openai-compatible',
       baseUrl: data.baseUrl,
@@ -211,5 +216,25 @@ export class ProviderService extends BaseService<Provider> {
       headerPrefix: data.headerPrefix || null,
       headerTitle: data.headerTitle || null,
     });
+
+    if (data.active) {
+      await this.setActive(provider.id);
+    }
+
+    return provider;
+  }
+
+  async updateProvider(
+    id: string,
+    data: Partial<Provider>,
+  ): Promise<Provider> {
+    if (data.apiKey === '') {
+      delete data.apiKey;
+    }
+    return this.repository.update(id, data);
+  }
+
+  async findAllForPool(): Promise<Provider[]> {
+    return this.repository.findAllForPool();
   }
 }
