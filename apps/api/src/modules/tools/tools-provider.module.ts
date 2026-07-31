@@ -658,6 +658,34 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     );
 
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'delete_workspace_file',
+        displayName: 'Hapus File Workspace',
+        description:
+          'Menghapus file dari folder Workspace dan memperbarui indeks workspace.',
+        tags: ['delete', 'remove', 'unlink', 'workspace', 'file'],
+        handler: (args) =>
+          this.workspaceToolsService.deleteWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'ID Workspace (wajib)' },
+            filename: {
+              type: 'string',
+              description: 'Nama file yang akan dihapus (contoh: julio.txt)',
+            },
+          },
+          required: ['workspaceId', 'filename'],
+        },
+        estimatedLatency: 'fast',
+        timeoutMs: 5000,
+      }),
+    );
+
     // ─── Skills ─────────────────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({

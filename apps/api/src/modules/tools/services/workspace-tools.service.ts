@@ -202,19 +202,22 @@ export class WorkspaceToolsService {
           'Data',
           rows,
           targetPath,
+          targetPath,
         );
       case 'csv':
-        return this.documentGeneratorTool.generateCsv(rows, targetPath);
+        return this.documentGeneratorTool.generateCsv(rows, targetPath, targetPath);
       case 'pdf':
         return this.documentGeneratorTool.generatePdf(
           title,
           content,
+          targetPath,
           targetPath,
         );
       case 'docx':
         return this.documentGeneratorTool.generateDocx(
           title,
           content,
+          targetPath,
           targetPath,
         );
       case 'txt':
@@ -250,6 +253,156 @@ export class WorkspaceToolsService {
           };
         }
       }
+    }
+  }
+
+  /**
+   * Delete a file from workspace directory and database index.
+   */
+  async deleteWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+  }): Promise<ToolResult> {
+    let { workspaceId, filename } = params;
+    const startTime = Date.now();
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    // Clean up filename (e.g. "julio nya" -> "julio")
+    const cleanName = filename.replace(/\s+nya$/i, '').trim();
+    const PRONOUNS = ['itu', 'ini', 'tersebut', 'tadi', 'barusan', 'terakhir'];
+
+    if (PRONOUNS.includes(cleanName.toLowerCase())) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Mohon sebutkan nama file secara spesifik yang ingin dihapus.',
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'AMBIGUOUS_FILENAME', message: 'Pronoun filename not resolved' },
+      };
+    }
+
+    let targetPath = path.join(workspace.rootPath, cleanName);
+
+    const fsPromises = await import('fs/promises');
+    let fileExists = false;
+    try {
+      await fsPromises.access(targetPath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
+    }
+
+    // Fuzzy search in workspace files if exact path does not exist
+    if (!fileExists) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === cleanName.toLowerCase() ||
+            f.name.toLowerCase().startsWith(cleanName.toLowerCase() + '.') ||
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') === cleanName.toLowerCase(),
+        );
+        if (match) {
+          targetPath = match.path;
+          filename = match.name;
+        } else {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
+            metadata: {
+              toolName: 'delete_workspace_file',
+              displayName: 'Hapus File Workspace',
+              executionTime: Date.now() - startTime,
+            },
+            error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
+          };
+        }
+      } catch {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
+          metadata: {
+            toolName: 'delete_workspace_file',
+            displayName: 'Hapus File Workspace',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
+        };
+      }
+    } else {
+      filename = cleanName;
+    }
+
+    try {
+      // 1. Delete physical file from disk
+      try {
+        await fsPromises.unlink(targetPath);
+      } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+
+      // 2. Remove file from database index
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) => f.name.toLowerCase() === filename.toLowerCase() || f.path.toLowerCase() === targetPath.toLowerCase(),
+        );
+        if (match) {
+          await this.fileService.delete(match.id);
+        }
+      } catch {
+        // DB index cleanup optional
+      }
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename },
+        preview: `File "${filename}" berhasil dihapus dari workspace.`,
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+          filename,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal menghapus file "${filename}": ${e.message}`,
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'DELETE_FAILED', message: e.message },
+      };
     }
   }
 }

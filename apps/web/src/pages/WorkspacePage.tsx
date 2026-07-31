@@ -8,7 +8,7 @@ import {
   Settings,
   Info,
   FileSpreadsheet,
-  FileCode,
+  FileText,
   ShieldCheck,
   MessageSquare,
   Paperclip,
@@ -273,6 +273,8 @@ export function WorkspacePage() {
     }
   }, [isRestoring, workspaceId]);
 
+  const refreshFolderRef = useRef<(wsId: string) => void>(() => {});
+
   const triggerAutoAnalysis = useCallback(async (wsId: string, goal?: string) => {
     setIsAnalyzing(true);
     setAgentSteps([]);
@@ -349,13 +351,14 @@ export function WorkspacePage() {
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
                 );
-                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+                refreshFolderRef.current(wsId);
                 break;
               case "text_delta":
                 setAnalysisResult(event.data);
                 break;
               case "done":
                 setActiveToolAction(null);
+                setIsAnalyzing(false);
                 setAgentSteps((prev) =>
                   prev.map((s) =>
                     s.status === "running" ? { ...s, status: "done" as const } : s
@@ -371,10 +374,12 @@ export function WorkspacePage() {
                   };
                   addMessageToActiveSession(aiMsg, event.data.content);
                 }
-                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+                refreshFolderRef.current(wsId);
+                abortController.abort();
                 break;
               case "error":
                 setActiveToolAction(null);
+                setIsAnalyzing(false);
                 setAgentSteps((prev) => [
                   ...prev,
                   {
@@ -383,6 +388,7 @@ export function WorkspacePage() {
                     status: "error",
                   },
                 ]);
+                abortController.abort();
                 break;
             }
           } catch {
@@ -391,15 +397,15 @@ export function WorkspacePage() {
         },
         onerror(err) {
           console.error("Agent stream error:", err);
-          setAgentSteps((prev) => [
-            ...prev,
-            { type: "error", label: "Koneksi stream terputus", status: "error" },
-          ]);
           setIsAnalyzing(false);
+          setActiveToolAction(null);
+          abortController.abort();
           throw err;
         },
         onclose() {
           setIsAnalyzing(false);
+          setActiveToolAction(null);
+          abortController.abort();
         },
       });
     } catch (err) {
@@ -635,7 +641,7 @@ export function WorkspacePage() {
     enabled: !!workspaceId,
   });
 
-  const handleRefreshFolder = useCallback(async () => {
+  const refreshFolderQuietly = useCallback(async (wsId: string) => {
     const rootPath = connectedFolderPath || workspace?.rootPath;
     const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
     if (desktop?.getFolderTree && rootPath) {
@@ -646,14 +652,24 @@ export function WorkspacePage() {
           const countFiles = (nodes: any[]): number =>
             nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
           setNativeFileCount(countFiles(scan.tree));
-          toast.success("Struktur folder diperbarui!");
         }
       } catch {
-        toast.error("Gagal memindai folder.");
+        // ignore
       }
     }
-    queryClient.invalidateQueries({ queryKey: ["wsFiles", workspaceId] });
-  }, [connectedFolderPath, workspace?.rootPath, workspaceId, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+  }, [connectedFolderPath, workspace?.rootPath, queryClient]);
+
+  useEffect(() => {
+    refreshFolderRef.current = refreshFolderQuietly;
+  }, [refreshFolderQuietly]);
+
+  const handleRefreshFolder = useCallback(async () => {
+    if (workspaceId) {
+      await refreshFolderQuietly(workspaceId);
+    }
+    toast.success("Struktur folder diperbarui!");
+  }, [refreshFolderQuietly, workspaceId]);
 
   const handleCreateFile = useCallback(async (fileName: string) => {
     const rootPath = connectedFolderPath || workspace?.rootPath;
@@ -1520,12 +1536,13 @@ export function WorkspacePage() {
                     const Icon = ["xlsx", "xls", "csv"].includes(ext)
                       ? FileSpreadsheet
                       : ["docx", "doc"].includes(ext)
-                      ? FileCode
+                      ? FileText
                       : ShieldCheck;
+                    const iconColor = ["docx", "doc"].includes(ext) ? "text-blue-600" : "text-gray-400";
                     return (
                       <div key={file.id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-100 last:border-0">
                         <div className="flex items-center gap-2.5 text-gray-700 min-w-0 flex-1">
-                          <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
                           <span className="truncate font-medium">{file.name}</span>
                         </div>
                         <span className="text-[11px] text-emerald-600 font-mono shrink-0 ml-2">terbuka</span>

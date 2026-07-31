@@ -44,9 +44,10 @@ export async function* streamWithFallback(
 
     while (retryCount < MAX_RETRIES_PER_PROVIDER) {
       try {
+        const requestBody = { ...options.body, model: provider.model, stream: true };
         const { response, statusCode } = await options.makeRequest(
           provider,
-          { ...options.body, stream: true },
+          requestBody,
         );
 
         if (response.ok) {
@@ -70,6 +71,7 @@ export async function* streamWithFallback(
 
         const errorBody = await response.text();
         const classified = options.classifyError(statusCode, errorBody);
+        lastError = classified.message || `HTTP ${statusCode}: ${errorBody.substring(0, 150)}`;
 
         if (provider.id !== 'env-fallback' && options.recordError) {
           await options.recordError(

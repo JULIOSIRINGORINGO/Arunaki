@@ -35,13 +35,14 @@ export class ProviderService extends BaseService<Provider> {
 
   // Cooldown durations per error type (seconds)
   private readonly COOLDOWN = {
-    '429': 60, // Rate limit: 1 minute cooldown
+    '429': 20, // Rate limit: 20 seconds cooldown
     '402': 300, // Payment required: 5 minutes
-    '401': 600, // Auth error: 10 minutes
-    '403': 600, // Forbidden: 10 minutes
-    '500': 30, // Server error: 30 seconds (will retry anyway)
-    '502': 30, // Bad gateway: 30 seconds
-    '503': 60, // Service unavailable: 1 minute
+    '401': 300, // Auth error: 5 minutes
+    '403': 300, // Forbidden: 5 minutes
+    '400': 5, // Bad request: 5 seconds (quick retry)
+    '500': 10, // Server error: 10 seconds
+    '502': 10, // Bad gateway: 10 seconds
+    '503': 20, // Service unavailable: 20 seconds
   };
 
   constructor(protected readonly repository: ProviderRepository) {
@@ -88,7 +89,7 @@ export class ProviderService extends BaseService<Provider> {
    * Classify an HTTP error code into an action.
    *
    * 5xx (except 503) → retry (same provider, backoff)
-   * 429, 402, 401, 403, 503, 404, 400 → rotate (switch provider/model, cooldown)
+   * 429, 413, 402, 401, 403, 503, 404, 400 → rotate (switch provider/model, cooldown)
    * Other → fatal
    */
   classifyError(statusCode: number, body: string): ClassifiedError {
@@ -103,14 +104,14 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    // 429, 402, 401, 403, 503, 404, 400 → rotate to next provider/model
-    if ([429, 402, 401, 403, 503, 404, 400].includes(statusCode)) {
+    // 429, 413, 402, 401, 403, 503, 404, 400 → rotate to next provider/model
+    if ([429, 413, 402, 401, 403, 503, 404, 400].includes(statusCode)) {
       const cooldownKey = String(statusCode) as keyof typeof this.COOLDOWN;
       return {
         action: 'rotate',
         statusCode,
         message: `${message}: ${body.substring(0, 150)}`,
-        cooldownSeconds: this.COOLDOWN[cooldownKey] || 60,
+        cooldownSeconds: this.COOLDOWN[cooldownKey] || 30,
       };
     }
 
@@ -122,13 +123,10 @@ export class ProviderService extends BaseService<Provider> {
     };
   }
 
-  // Built-in fallback free models pool on OpenRouter
+  // Built-in fallback free models pool on OpenRouter (100% verified active free models)
   private static readonly FREE_MODEL_CANDIDATES = [
     'openrouter/free',
-    'google/gemma-4-31b-it:free',
-    'nvidia/nemotron-3-super-120b-a12b:free',
-    'openai/gpt-oss-20b:free',
-    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'openrouter/auto',
   ];
 
   /**
@@ -168,13 +166,24 @@ export class ProviderService extends BaseService<Provider> {
       return null;
     }
 
+    const allProviders = await this.repository.findAllEnabled().catch(() => []);
+    const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
+    const openrouterKey =
+      openrouterProv?.apiKey ||
+      (process.env.AI_API_KEY?.startsWith('sk-or-') ? process.env.AI_API_KEY : '');
+
+    if (!openrouterKey) {
+      this.logger.warn('No OpenRouter key available for fallback candidate rotation');
+      return null;
+    }
+
     this.logger.log(`Rotating to alternate free model candidate: ${nextModel}`);
     return {
       id: `fallback-${nextModel}`,
       name: `OpenRouter Fallback (${nextModel})`,
       type: 'openai-compatible',
       baseUrl: 'https://openrouter.ai/api/v1',
-      apiKey: process.env.AI_API_KEY || '',
+      apiKey: openrouterKey,
       model: nextModel,
     };
   }

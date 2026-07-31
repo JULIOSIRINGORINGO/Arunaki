@@ -207,3 +207,10 @@ If the task cannot be completed:
 1. Report what was tried and what succeeded so far
 2. Name the blocker clearly
 3. State what is needed to continue (e.g., "Need approval to write file," "Need a different file format")
+
+---
+
+## 10. Contextual Pronouns & File Reference Resolution
+
+- When user says "file itu", "file tersebut", "file ini", or "file tadi", ALWAYS inspect the chat history turns and resolve the pronoun to the EXACT filename created, modified, or discussed in the last assistant turn.
+- NEVER delete or modify an arbitrary file from the workspace list if the user used a pronoun. If the target file cannot be determined with 100% certainty, ask the user for clarification before executing any tool.

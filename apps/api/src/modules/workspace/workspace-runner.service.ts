@@ -544,16 +544,19 @@ export class WorkspaceRunnerService {
               .join('\n')
           : 'Belum ada file di workspace ini.';
 
-      // Auto-read top 5 files to give AI actual content
+      // Lightweight preview for top 3 files (max 250 chars each) to prevent token bloat
       const previews: string[] = [];
-      const maxPreviews = Math.min(filesToDescribe.length, 5);
+      const maxPreviews = Math.min(filesToDescribe.length, 3);
       for (let i = 0; i < maxPreviews; i++) {
         const f = filesToDescribe[i];
         try {
           const result = await this.documentReaderTool.readDocument(f.path);
           if (result.status === 'success' && result.data?.text) {
-            const truncated = (result.data.text as string).substring(0, 2000);
-            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
+            const textStr = (result.data.text as string).trim();
+            if (textStr.length > 0) {
+              const truncated = textStr.substring(0, 250);
+              previews.push(`--- ${f.name} ---\n${truncated}${textStr.length > 250 ? '\n...[truncated]' : ''}`);
+            }
           }
         } catch {
           // skip unreadable files
@@ -787,29 +790,37 @@ export class WorkspaceRunnerService {
         });
         return;
       }
-      const planningMessages: ChatMessage[] = [
-        {
-          role: 'system',
-          content:
-            'Kamu adalah AI Agent profesional yang membuat rencana kerja yang SANGAT PRESISI dan LANGSUNG SASARAN (1-3 poin singkat dalam Bahasa Indonesia).\n\nATURAN MUTLAK:\n1. FOKUS HANYA pada target file/tugas yang diminta user. JANGAN PERNAH membuka, membaca, atau mengekstrak file lain (seperti file .xlsx atau file lain) jika user HANYA meminta menyunting/mengisi satu file spesifik!\n2. Jika user meminta mengisi/menulis file (misal: "file test isi dengan julio" atau "tulis X di file Y"), buat rencana 1-2 langkah langsung:\n   1. Buat/sunting file test.txt dengan teks "julio".\n   2. Cek kembali isi file test.txt.\n3. Jangan buat langkah bertele-tele atau membuka file lain yang tidak relevan!',
-        },
-        {
-          role: 'user',
-          content: `Goal: ${safeGoal}\n\nKonteks workspace:\n${workspaceContext}`,
-        },
-      ];
+      const isDeleteIntent = /(?:hapus|delete|remove|hilangkan|bersihkan)\s+/i.test(safeGoal);
+      const isWriteIntent = /(?:buat|tulis|create|simpan|isi|update)\s+/i.test(safeGoal);
 
       let steps: string[] = [];
-      try {
-        const planResponse = await this.aiService.chat(planningMessages, []);
-        if (planResponse.content) {
-          steps = planResponse.content
-            .split('\n')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0);
+      if (isDeleteIntent) {
+        steps = ['Aksi Langsung: Hapus berkas dari workspace'];
+      } else if (isWriteIntent) {
+        steps = ['Aksi Langsung: Buat/sunting berkas di workspace'];
+      } else {
+        const planningMessages: ChatMessage[] = [
+          {
+            role: 'system',
+            content:
+              'Kamu adalah AI Agent profesional yang membuat rencana kerja yang SANGAT PRESISI dan LANGSUNG SASARAN (1-3 poin singkat dalam Bahasa Indonesia).\n\nATURAN MUTLAK:\n1. FOKUS HANYA pada target file/tugas yang diminta user.\n2. Buat rencana 1-2 langkah langsung.',
+          },
+          {
+            role: 'user',
+            content: `Goal: ${safeGoal}\n\nKonteks workspace:\n${workspaceContext}`,
+          },
+        ];
+        try {
+          const planResponse = await this.aiService.chat(planningMessages, []);
+          if (planResponse.content) {
+            steps = planResponse.content
+              .split('\n')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+          }
+        } catch (e) {
+          this.logger.warn(`AI plan generation failed: ${e.message}`);
         }
-      } catch (e) {
-        this.logger.warn(`AI plan generation failed: ${e.message}`);
       }
 
       onEvent({
@@ -819,7 +830,7 @@ export class WorkspaceRunnerService {
           steps:
             steps.length > 0
               ? steps
-              : ['Menyusun rencana berdasarkan goal Anda...'],
+              : ['Memproses aksi file...'],
         },
       });
 
@@ -856,24 +867,88 @@ export class WorkspaceRunnerService {
           if (aiResponse.toolCalls.length === 0) {
             // OpenClaw Dynamic Tool Synthesizer: Fully generic NLP parser for any filename and content (0% hardcode)
             if (round === 0) {
-              const fileMentionRegex = /(?:file|berkas|dokumen|catatan)\s+["']?([\w\-.]+)(?:\.([a-zA-Z0-9]+))?["']?/i;
+              const fileMentionRegex = /(?:file|berkas|dokumen|catatan)\s+["']?([\w\-.\s]+?)(?:\s+nya|\s*$|["'])/i;
               const writeIntentRegex = /(?:buat|tulis|create|simpan|isi|update)\s+/i;
+              const deleteIntentRegex = /(?:hapus|delete|remove|hilangkan|bersihkan)\s+/i;
 
-              if (writeIntentRegex.test(safeGoal) || fileMentionRegex.test(safeGoal)) {
+              const isDeleteIntent = deleteIntentRegex.test(safeGoal);
+              const isWriteIntent = writeIntentRegex.test(safeGoal);
+
+              if (isDeleteIntent) {
+                const PRONOUNS = ['itu', 'ini', 'tersebut', 'tadi', 'barusan', 'terakhir'];
                 let targetFilename = '';
-                let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
+                const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
+                if (fileMatch && fileMatch[1]) {
+                  targetFilename = fileMatch[1].trim();
+                }
+
+                // Check if targetFilename is missing or a pronoun (e.g. "hapus file itu")
+                if (!targetFilename || PRONOUNS.includes(targetFilename.toLowerCase())) {
+                  for (let i = messages.length - 1; i >= 0; i--) {
+                    const msg = messages[i];
+                    if (msg.content) {
+                      const found =
+                        msg.content.match(/(?:berkas|file|dokumen)\s+\*\*([^*]+)\*\*/i) ||
+                        msg.content.match(/(?:berkas|file|dokumen)\s+["']?([^"'\n]+\.[a-zA-Z0-9]+)["']?/i) ||
+                        msg.content.match(/([\w\s\-.]+\.(?:docx|doc|xlsx|xls|pdf|txt|md|csv|json))/i);
+                      if (found && found[1]) {
+                        targetFilename = found[1].trim();
+                        this.logger.log(`Pronoun Resolution: Resolved "${safeGoal}" -> "${targetFilename}" from chat history.`);
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                if (targetFilename && !PRONOUNS.includes(targetFilename.toLowerCase())) {
+                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing delete_workspace_file for "${targetFilename}"`);
+                  aiResponse.toolCalls.push({
+                    id: `dynamic-call-${Date.now()}`,
+                    type: 'function',
+                    function: {
+                      name: 'delete_workspace_file',
+                      arguments: JSON.stringify({
+                        workspaceId,
+                        filename: targetFilename,
+                      }),
+                    },
+                  });
+                }
+              } else if (isWriteIntent) {
+                let targetFilename = '';
+                let format: 'txt' | 'xlsx' | 'docx' | 'pdf' | 'csv' | 'json' = 'txt';
+
+                // Format keyword detection
+                if (/\b(?:word|docx|doc)\b/i.test(safeGoal)) {
+                  format = 'docx';
+                } else if (/\b(?:excel|xlsx|xls|xlsm|spreadsheet)\b/i.test(safeGoal)) {
+                  format = 'xlsx';
+                } else if (/\b(?:pdf)\b/i.test(safeGoal)) {
+                  format = 'pdf';
+                } else if (/\b(?:csv)\b/i.test(safeGoal)) {
+                  format = 'csv';
+                }
 
                 const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
                 if (fileMatch && fileMatch[1]) {
-                  const rawName = fileMatch[1].trim();
-                  const ext = fileMatch[2] ? fileMatch[2].toLowerCase() : (rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() : '');
+                  let rawName = fileMatch[1].trim();
+                  // Strip format keywords like "word", "excel", "pdf" if captured as filename
+                  rawName = rawName.replace(/^(?:word|excel|pdf|docx|xlsx)\s+/i, '');
+                  const ext = rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() : '';
                   if (ext && ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext)) {
                     targetFilename = rawName;
                     format = ext as any;
                   } else {
-                    targetFilename = rawName.includes('.') ? rawName : `${rawName}.txt`;
-                    format = 'txt';
+                    targetFilename = `${rawName}.${format}`;
                   }
+                } else {
+                  // Fallback filename generation
+                  const sanitizeName = safeGoal
+                    .replace(/(?:buat|tulis|create|simpan|isi|update|file|berkas|dokumen|word|excel|pdf)\s+/gi, '')
+                    .trim()
+                    .replace(/\s+/g, '_')
+                    .substring(0, 30);
+                  targetFilename = `dokumen_${sanitizeName || Date.now()}.${format}`;
                 }
 
                 if (targetFilename) {
@@ -881,13 +956,13 @@ export class WorkspaceRunnerService {
                   const baseName = targetFilename.replace(/\.[^.]+$/, '');
                   let extractedContent = safeGoal;
                   extractedContent = extractedContent.replace(new RegExp(`(?:file|berkas|dokumen|catatan)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
-                  extractedContent = extractedContent.replace(/(?:buat|tulis|create|simpan|isi|berisi|update)\s+(?:dengan|teks|konten|isi)?/gi, '');
+                  extractedContent = extractedContent.replace(/(?:buat|tulis|create|simpan|isi|berisi|update|word|excel|pdf)\s+(?:dengan|teks|konten|isi)?/gi, '');
                   extractedContent = extractedContent.replace(/(?:di|ke|pada)\s+(?:file|berkas|dokumen)?/gi, '');
                   extractedContent = extractedContent.replace(/^dengan\s+/gi, '').trim();
 
                   const finalContent = extractedContent || `Dokumen ${targetFilename} telah dibuat oleh Arunaki AI.`;
 
-                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${finalContent}"`);
+                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" (${format}) with content "${finalContent}"`);
                   
                   aiResponse.toolCalls.push({
                     id: `dynamic-call-${Date.now()}`,
@@ -1042,7 +1117,7 @@ export class WorkspaceRunnerService {
           for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
-            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file'].includes(funcName);
+            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file', 'delete_workspace_file'].includes(funcName);
 
             if (!isSafeWorkspaceMutate) {
               this.logger.warn(
@@ -1139,10 +1214,14 @@ export class WorkspaceRunnerService {
               content: ToolResultFormatter.formatForLlm(funcName, result),
             });
 
-            // Immediately terminate loop upon successful write_workspace_file execution
-            if (result.status === 'success' && funcName === 'write_workspace_file') {
-              this.logger.log(`write_workspace_file completed successfully for "${args.filename}". Terminating agent loop.`);
-              finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content}".`;
+            // Immediately terminate loop upon successful write_workspace_file or delete_workspace_file execution
+            if (result.status === 'success' && (funcName === 'write_workspace_file' || funcName === 'delete_workspace_file')) {
+              this.logger.log(`${funcName} completed successfully for "${args.filename}". Terminating agent loop.`);
+              if (funcName === 'delete_workspace_file') {
+                finalContent = `Berkas **${args.filename}** berhasil dihapus dari workspace.`;
+              } else {
+                finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content || ''}".`;
+              }
               onEvent({ type: 'text_delta', data: finalContent });
               reachedMaxRounds = false;
               fileWritten = true;

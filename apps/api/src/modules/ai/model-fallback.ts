@@ -65,9 +65,10 @@ export async function runWithModelFallback(
           `[${provider.name}] Request attempt (retry=${retryCount}, rotation=${rotationCount})`,
         );
 
+        const requestBody = { ...options.body, model: provider.model };
         const { response, statusCode } = await options.makeRequest(
           provider,
-          options.body,
+          requestBody,
         );
 
         if (response.ok) {
@@ -95,6 +96,7 @@ export async function runWithModelFallback(
 
         const errorBody = await response.text();
         const classified = options.classifyError(statusCode, errorBody);
+        lastError = classified.message || `HTTP ${statusCode}: ${errorBody.substring(0, 150)}`;
 
         log.warn(
           `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,

@@ -105,6 +105,8 @@ function nativeToTreeNodes(nodes: NativeNode[]): TreeNode[] {
 
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (["docx", "doc"].includes(ext))
+    return <FileText className="w-4 h-4 text-blue-600 shrink-0 font-bold" />;
   if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
   if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext))
     return <FileImage className="w-4 h-4 text-blue-500 shrink-0" />;
@@ -390,12 +392,13 @@ export default function FileTree({
   const handleItemClick = async (filePath: string, fileName: string) => {
     try {
       const ext = fileName.split('.').pop()?.toLowerCase() || '';
-      if (['xlsx', 'xlsm', 'xls'].includes(ext)) {
-        if ((window as any).arunakiDesktop?.openExcelNative) {
+      if (['docx', 'doc', 'pdf', 'pptx', 'ppt', 'xlsx', 'xlsm', 'xls'].includes(ext)) {
+        if (['xlsx', 'xlsm', 'xls'].includes(ext) && (window as any).arunakiDesktop?.openExcelNative) {
           (window as any).arunakiDesktop.openExcelNative(filePath);
           toast.info(`Membuka "${fileName}" di Microsoft Excel Desktop...`);
         } else if ((window as any).arunakiDesktop?.openPath) {
           (window as any).arunakiDesktop.openPath(filePath);
+          toast.info(`Membuka "${fileName}" di aplikasi OS bawaan...`);
         } else {
           toast.info("Fitur buka native hanya tersedia di aplikasi desktop Arunaki.");
         }
