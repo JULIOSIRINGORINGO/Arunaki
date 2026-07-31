@@ -1,3 +1,5 @@
+import { AgentRuntimeModule } from '../agent-runtime/agent-runtime.module.js';
+import { AgentRuntime } from '../agent-runtime/agent-runtime.service.js';
 import { Module, forwardRef } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { WorkspaceController } from './workspace.controller.js';
@@ -31,14 +33,15 @@ import { SourceModule } from '../source/source.module.js';
     SkillsModule,
     SourceModule,
     EventEmitterModule.forRoot(),
+    AgentRuntimeModule,
   ],
-  controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
     WorkspaceRepository,
     WorkspaceInitService,
     WorkspaceRunnerService,
+    AgentRuntime,
   ],
-  exports: [WorkspaceService, WorkspaceInitService, WorkspaceRunnerService],
+  exports: [WorkspaceService, WorkspaceInitService, WorkspaceRunnerService, AgentRuntime],
 })
 export class WorkspaceModule {}

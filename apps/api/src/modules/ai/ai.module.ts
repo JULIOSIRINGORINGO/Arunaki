@@ -1,3 +1,4 @@
+import { AgentRuntimeModule } from '../agent-runtime/agent-runtime.module.js';
 import { Module, forwardRef } from '@nestjs/common';
 import { AiService } from './ai.service.js';
 import { ContextManager } from './context-manager.js';
@@ -21,6 +22,7 @@ import { ContextModule } from './context/context.module.js';
     forwardRef(() => ToolsModule),
     forwardRef(() => MemoryModule),
     ContextModule,
+    AgentRuntimeModule,
   ],
   providers: [
     AiService,
@@ -48,6 +50,7 @@ import { ContextModule } from './context/context.module.js';
     ToolLoopDetectorService,
     CompactionService,
     ContextModule,
+    AgentRuntimeModule,
   ],
 })
 export class AiModule {}
