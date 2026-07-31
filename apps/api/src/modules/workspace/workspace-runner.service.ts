@@ -865,132 +865,13 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools);
 
           if (aiResponse.toolCalls.length === 0) {
-            // OpenClaw Dynamic Tool Synthesizer: Fully generic NLP parser for any filename and content (0% hardcode)
-            if (round === 0) {
-              const fileMentionRegex = /(?:file|berkas|dokumen|catatan)\s+["']?([\w\-.\s]+?)(?:\s+nya|\s*$|["'])/i;
-              const writeIntentRegex = /(?:buat|tulis|create|simpan|isi|update)\s+/i;
-              const deleteIntentRegex = /(?:hapus|delete|remove|hilangkan|bersihkan)\s+/i;
-
-              const isDeleteIntent = deleteIntentRegex.test(safeGoal);
-              const isWriteIntent = writeIntentRegex.test(safeGoal);
-
-              if (isDeleteIntent) {
-                const PRONOUNS = ['itu', 'ini', 'tersebut', 'tadi', 'barusan', 'terakhir'];
-                let targetFilename = '';
-                const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
-                if (fileMatch && fileMatch[1]) {
-                  targetFilename = fileMatch[1].trim();
-                }
-
-                // Check if targetFilename is missing or a pronoun (e.g. "hapus file itu")
-                if (!targetFilename || PRONOUNS.includes(targetFilename.toLowerCase())) {
-                  for (let i = messages.length - 1; i >= 0; i--) {
-                    const msg = messages[i];
-                    if (msg.content) {
-                      const found =
-                        msg.content.match(/(?:berkas|file|dokumen)\s+\*\*([^*]+)\*\*/i) ||
-                        msg.content.match(/(?:berkas|file|dokumen)\s+["']?([^"'\n]+\.[a-zA-Z0-9]+)["']?/i) ||
-                        msg.content.match(/([\w\s\-.]+\.(?:docx|doc|xlsx|xls|pdf|txt|md|csv|json))/i);
-                      if (found && found[1]) {
-                        targetFilename = found[1].trim();
-                        this.logger.log(`Pronoun Resolution: Resolved "${safeGoal}" -> "${targetFilename}" from chat history.`);
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                if (targetFilename && !PRONOUNS.includes(targetFilename.toLowerCase())) {
-                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing delete_workspace_file for "${targetFilename}"`);
-                  aiResponse.toolCalls.push({
-                    id: `dynamic-call-${Date.now()}`,
-                    type: 'function',
-                    function: {
-                      name: 'delete_workspace_file',
-                      arguments: JSON.stringify({
-                        workspaceId,
-                        filename: targetFilename,
-                      }),
-                    },
-                  });
-                }
-              } else if (isWriteIntent) {
-                let targetFilename = '';
-                let format: 'txt' | 'xlsx' | 'docx' | 'pdf' | 'csv' | 'json' = 'txt';
-
-                // Format keyword detection
-                if (/\b(?:word|docx|doc)\b/i.test(safeGoal)) {
-                  format = 'docx';
-                } else if (/\b(?:excel|xlsx|xls|xlsm|spreadsheet)\b/i.test(safeGoal)) {
-                  format = 'xlsx';
-                } else if (/\b(?:pdf)\b/i.test(safeGoal)) {
-                  format = 'pdf';
-                } else if (/\b(?:csv)\b/i.test(safeGoal)) {
-                  format = 'csv';
-                }
-
-                const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
-                if (fileMatch && fileMatch[1]) {
-                  let rawName = fileMatch[1].trim();
-                  // Strip format keywords like "word", "excel", "pdf" if captured as filename
-                  rawName = rawName.replace(/^(?:word|excel|pdf|docx|xlsx)\s+/i, '');
-                  const ext = rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() : '';
-                  if (ext && ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext)) {
-                    targetFilename = rawName;
-                    format = ext as any;
-                  } else {
-                    targetFilename = `${rawName}.${format}`;
-                  }
-                } else {
-                  // Fallback filename generation
-                  const sanitizeName = safeGoal
-                    .replace(/(?:buat|tulis|create|simpan|isi|update|file|berkas|dokumen|word|excel|pdf)\s+/gi, '')
-                    .trim()
-                    .replace(/\s+/g, '_')
-                    .substring(0, 30);
-                  targetFilename = `dokumen_${sanitizeName || Date.now()}.${format}`;
-                }
-
-                if (targetFilename) {
-                  // Dynamically extract content payload by stripping file references & action verbs
-                  const baseName = targetFilename.replace(/\.[^.]+$/, '');
-                  let extractedContent = safeGoal;
-                  extractedContent = extractedContent.replace(new RegExp(`(?:file|berkas|dokumen|catatan)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
-                  extractedContent = extractedContent.replace(/(?:buat|tulis|create|simpan|isi|berisi|update|word|excel|pdf)\s+(?:dengan|teks|konten|isi)?/gi, '');
-                  extractedContent = extractedContent.replace(/(?:di|ke|pada)\s+(?:file|berkas|dokumen)?/gi, '');
-                  extractedContent = extractedContent.replace(/^dengan\s+/gi, '').trim();
-
-                  const finalContent = extractedContent || `Dokumen ${targetFilename} telah dibuat oleh Arunaki AI.`;
-
-                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" (${format}) with content "${finalContent}"`);
-                  
-                  aiResponse.toolCalls.push({
-                    id: `dynamic-call-${Date.now()}`,
-                    type: 'function',
-                    function: {
-                      name: 'write_workspace_file',
-                      arguments: JSON.stringify({
-                        workspaceId,
-                        filename: targetFilename,
-                        format,
-                        content: finalContent,
-                        title: targetFilename,
-                      }),
-                    },
-                  });
-                }
-              }
-            }
-
-            if (aiResponse.toolCalls.length === 0) {
-              finalContent = this.scrubber.scrub(aiResponse.content);
-              onEvent({ type: 'text_delta', data: finalContent });
-              reachedMaxRounds = false;
-              this.logger.log(
-                'Workspace agent finished goal execution within round limit.',
-              );
-              break;
-            }
+            finalContent = this.scrubber.scrub(aiResponse.content);
+            onEvent({ type: 'text_delta', data: finalContent });
+            reachedMaxRounds = false;
+            this.logger.log(
+              'Workspace agent finished goal execution within round limit.',
+            );
+            break;
           }
 
           messages.push({
