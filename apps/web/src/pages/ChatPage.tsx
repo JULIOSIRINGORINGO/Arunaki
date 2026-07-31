@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { ChatMessages } from "../components/chat/ChatMessages";
 import { ChatInput } from "../components/chat/ChatInput";
 import type { CanvasData } from "../components/chat/CanvasPanel";
@@ -146,9 +147,12 @@ export function ChatPage() {
           body: JSON.stringify({ mode: "chat" }),
         });
         const data = await res.json();
+        if (!data.data?.id) {
+          throw new Error("Gagal membuat chat");
+        }
         return data.data.id;
-      } catch {
-        return `chat-${Date.now()}`;
+      } catch (e) {
+        throw e; // no fabricated id — surface the failure instead of sending to a dead chat
       }
     },
     onSuccess: (id) => {
@@ -323,7 +327,8 @@ export function ChatPage() {
 
   const serverContentSet = new Set(serverMessages.map((m) => m.content));
   const filteredOptimistic = optimisticMessages.filter(
-    (m) => !serverContentSet.has(m.content),
+    // ponytail: dedupe on temp-id prefix, not content, so identical sends don't hide each other
+    (m) => m.id.startsWith("temp-") && !serverContentSet.has(m.content),
   );
   const messages = [...serverMessages, ...filteredOptimistic];
 
@@ -335,7 +340,21 @@ export function ChatPage() {
   ];
 
   const handleSend = (content: string) => {
-    sendMessage.mutate(content);
+    if (sendMessage.isPending) return; // no double-send while a turn is in flight
+    sendMessage.mutate(content, {
+      onError: (err) => {
+        try {
+          const parsed = JSON.parse(err.message);
+          if (parsed?.error?.code === "TURN_IN_PROGRESS") {
+            toast.error("Agent masih bekerja, tunggu sampai selesai.");
+            return;
+          }
+        } catch {
+          // plain message
+        }
+        toast.error(err.message || "Gagal mengirim pesan.");
+      },
+    });
   };
 
   const [isDraggingFile, setIsDraggingFile] = useState(false);

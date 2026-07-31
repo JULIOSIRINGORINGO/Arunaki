@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { API_BASE } from "../lib/api";
+import { toast } from "sonner";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },
@@ -124,25 +125,34 @@ export function SettingsPage() {
   // Create or update provider
   const handleSave = async () => {
     try {
+      let res: Response;
       if (editingId) {
         // Update
-        await fetch(`${API_BASE}/providers/${editingId}`, {
+        res = await fetch(`${API_BASE}/providers/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
       } else {
         // Create
-        await fetch(`${API_BASE}/providers`, {
+        res = await fetch(`${API_BASE}/providers`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...form, active: providers.length === 0 }),
         });
       }
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        const message = json?.error?.message || `Gagal menyimpan (${res.status})`;
+        toast.error(message);
+        return;
+      }
+      toast.success("Provider tersimpan!");
       resetForm();
       fetchProviders();
     } catch (err) {
       console.error("Failed to save provider:", err);
+      toast.error("Gagal menyimpan provider.");
     }
   };
 

@@ -139,6 +139,7 @@ export class AgentRunnerService {
         runId,
         error,
       });
+      this.transcriptService.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -170,12 +171,14 @@ export class AgentRunnerService {
     const createdArtifactIds: string[] = [];
 
     const MAX_ROUNDS = 5;
+    let reachedMaxRounds = true;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const aiResponse = await this.aiService.chat(messages, tools);
       usage = aiResponse.usage;
 
       if (aiResponse.toolCalls.length === 0) {
         finalContent = aiResponse.content;
+        reachedMaxRounds = false;
         break;
       }
 
@@ -258,7 +261,9 @@ export class AgentRunnerService {
     }
 
     if (!finalContent) {
-      finalContent = 'Pekerjaan telah selesai.';
+      finalContent = reachedMaxRounds
+        ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
+        : 'Pekerjaan telah selesai.';
     }
 
     const artifactRecords = await Promise.all(
@@ -356,6 +361,7 @@ export class AgentRunnerService {
         runId,
         error,
       });
+      this.transcriptService.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -394,11 +400,13 @@ export class AgentRunnerService {
       const createdArtifactIds: string[] = [];
 
       const MAX_ROUNDS = 5;
+      let reachedMaxRounds = true;
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const aiResponse = await this.aiService.chat(messages, tools);
 
         if (aiResponse.toolCalls.length === 0) {
           finalContent = aiResponse.content;
+          reachedMaxRounds = false;
           onEvent({ type: 'text_delta', data: finalContent });
           break;
         }
@@ -526,7 +534,9 @@ export class AgentRunnerService {
       }
 
       if (!finalContent) {
-        finalContent = 'Pekerjaan telah selesai.';
+        finalContent = reachedMaxRounds
+          ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
+          : 'Pekerjaan telah selesai.';
       }
 
       const artifactRecords = await Promise.all(

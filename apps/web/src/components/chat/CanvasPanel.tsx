@@ -146,6 +146,7 @@ export function CanvasPanel({
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    setTimeout(() => URL.revokeObjectURL(element.href), 1000);
   };
 
   const handleDownloadCsv = () => {
@@ -160,6 +161,7 @@ export function CanvasPanel({
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    setTimeout(() => URL.revokeObjectURL(element.href), 1000);
   };
 
   return (

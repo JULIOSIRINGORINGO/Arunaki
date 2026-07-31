@@ -180,6 +180,7 @@ export function WorkspaceDetailPage() {
         },
         onerror(err) {
           console.error("Workspace agent stream error:", err);
+          throw err; // stop fetch-event-source infinite retry
         },
       });
     } catch (e) {

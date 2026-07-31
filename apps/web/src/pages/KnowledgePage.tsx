@@ -76,8 +76,11 @@ export function KnowledgePage() {
   const toggleActive = async (id: string) => {
     try {
       const res = await fetch(`${API_BASE}/knowledge/${id}/toggle`, { method: "PATCH" });
+      if (!res.ok) return;
       const data = await res.json();
-      setDocs((prev) => prev.map((d) => (d.id === id ? data.data : d)));
+      if (data.data) {
+        setDocs((prev) => prev.map((d) => (d.id === id ? data.data : d)));
+      }
     } catch {
       // ignore
     }
@@ -85,7 +88,8 @@ export function KnowledgePage() {
 
   const deleteDoc = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/knowledge/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/knowledge/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
       setDocs((prev) => prev.filter((d) => d.id !== id));
     } catch {
       // ignore

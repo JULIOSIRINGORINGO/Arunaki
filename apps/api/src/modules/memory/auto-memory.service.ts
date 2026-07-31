@@ -130,7 +130,8 @@ export class AutoMemoryService {
       }
     }
 
-    // Store distilled memories
+    // Store distilled memories and retire their sources so the raw count converges
+    const consumedKeys: string[] = [];
     for (const dm of allDistilled) {
       try {
         await this.memoryService.remember({
@@ -147,6 +148,20 @@ export class AutoMemoryService {
         if (!err.message?.includes('duplicate') && err.code !== 'P2002') {
           this.logger.warn(`Failed to store distilled memory: ${err.message}`);
         }
+      }
+    }
+
+    // Deactivate raw memories that were distilled (group >= 3 members only)
+    if (allDistilled.length > 0) {
+      for (const [type, groupMemories] of Object.entries(groups)) {
+        if (groupMemories.length < 3) continue;
+        consumedKeys.push(...groupMemories.map((m) => m.key));
+      }
+      if (consumedKeys.length > 0) {
+        await this.prisma.memory.updateMany({
+          where: { key: { in: consumedKeys }, active: true },
+          data: { active: false },
+        });
       }
     }
 
@@ -270,17 +285,19 @@ Respond dalam JSON:
       if (!merge.ids || merge.ids.length < 2) continue;
 
       try {
-        // Keep the first one as primary, update its content
+        // Keep the first one as primary, update its content in place
         const primaryId = merge.ids[0];
         const otherIds = merge.ids.slice(1);
 
-        // Update primary with merged content
-        await this.memoryService.remember({
-          type: `consolidated_${type}`,
-          key: merge.key,
-          content: merge.content,
-          source: 'consolidation',
-          importance: merge.importance,
+        // Update primary with merged content (deactivate others so count converges)
+        await this.prisma.memory.update({
+          where: { id: primaryId },
+          data: {
+            content: merge.content,
+            key: merge.key,
+            importance: merge.importance,
+            type: `consolidated_${type}`,
+          },
         });
 
         // Soft-delete the other memories

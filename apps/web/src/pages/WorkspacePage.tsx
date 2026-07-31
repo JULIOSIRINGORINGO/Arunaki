@@ -67,6 +67,7 @@ export function WorkspacePage() {
   const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
+  const agentAbortRef = useRef<AbortController | null>(null);
 
   // Multi-Session Chat & Slash Command State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -277,10 +278,14 @@ export function WorkspacePage() {
     setAgentSteps([]);
     setAnalysisResult(null);
 
+    const abortController = new AbortController();
+    agentAbortRef.current = abortController;
+
     try {
       await fetchEventSource(`${API_BASE}/workspaces/${wsId}/agent/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abortController.signal,
         body: JSON.stringify({
           goal: goal || "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
         }),
@@ -400,8 +405,10 @@ export function WorkspacePage() {
     } catch (err) {
       console.error("Agent analysis failed:", err);
       setIsAnalyzing(false);
+    } finally {
+      agentAbortRef.current = null;
     }
-  }, []);
+  }, [addMessageToActiveSession]);
 
   const doConnect = useCallback(async (files: File[], folderName: string, businessType: string = "generic") => {
     setIsCreating(true);
@@ -632,13 +639,17 @@ export function WorkspacePage() {
     const rootPath = connectedFolderPath || workspace?.rootPath;
     const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
     if (desktop?.getFolderTree && rootPath) {
-      const scan = await desktop.getFolderTree(rootPath);
-      if (scan?.tree) {
-        setNativeTree(scan.tree);
-        const countFiles = (nodes: any[]): number =>
-          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-        setNativeFileCount(countFiles(scan.tree));
-        toast.success("Struktur folder diperbarui!");
+      try {
+        const scan = await desktop.getFolderTree(rootPath);
+        if (scan?.tree) {
+          setNativeTree(scan.tree);
+          const countFiles = (nodes: any[]): number =>
+            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+          setNativeFileCount(countFiles(scan.tree));
+          toast.success("Struktur folder diperbarui!");
+        }
+      } catch {
+        toast.error("Gagal memindai folder.");
       }
     }
     queryClient.invalidateQueries({ queryKey: ["wsFiles", workspaceId] });
@@ -721,13 +732,15 @@ export function WorkspacePage() {
 
   const handleAbortAgent = useCallback(async () => {
     if (!workspaceId) return;
+    agentAbortRef.current?.abort();
+    agentAbortRef.current = null;
     try {
       await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/abort`, { method: "POST" });
       toast.info("Permintaan pembatalan analisis dikirim.");
-      setIsAnalyzing(false);
     } catch {
       toast.error("Gagal membatalkan agen.");
     }
+    setIsAnalyzing(false);
   }, [workspaceId]);
 
   const handleSteerAgent = useCallback(async () => {
@@ -817,20 +830,24 @@ export function WorkspacePage() {
       const rootPath = connectedFolderPath || workspace?.rootPath;
 
       if (desktop?.getFolderTree && rootPath) {
-        const scan = await desktop.getFolderTree(rootPath);
-        if (scan?.tree) {
-          const countFiles = (nodes: any[]): number =>
-            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-          const currentCount = countFiles(scan.tree);
+        try {
+          const scan = await desktop.getFolderTree(rootPath);
+          if (scan?.tree) {
+            const countFiles = (nodes: any[]): number =>
+              nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+            const currentCount = countFiles(scan.tree);
 
-          if (previousFileCountRef.current > 0 && currentCount > previousFileCountRef.current) {
-            const diff = currentCount - previousFileCountRef.current;
-            toast.info(`📁 Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace!`);
-            setNativeTree(scan.tree);
-            setNativeFileCount(currentCount);
-            setHeartbeatAlert(`Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace. Klik untuk memicu pemindaian ingatan AI.`);
+            if (previousFileCountRef.current > 0 && currentCount > previousFileCountRef.current) {
+              const diff = currentCount - previousFileCountRef.current;
+              toast.info(`📁 Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace!`);
+              setNativeTree(scan.tree);
+              setNativeFileCount(currentCount);
+              setHeartbeatAlert(`Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace. Klik untuk memicu pemindaian ingatan AI.`);
+            }
+            previousFileCountRef.current = currentCount;
           }
-          previousFileCountRef.current = currentCount;
+        } catch {
+          // desktop IPC can fail (app closed); heartbeat keeps running
         }
       }
     }, 12000);
@@ -1021,7 +1038,7 @@ export function WorkspacePage() {
                             type="button"
                             onClick={() => {
                               setHeartbeatAlert(null);
-                              if (workspaceId) triggerAutoAnalysis(workspaceId, "Lakukan pemindaian cepat terhadap file/dokumen baru yang ditambahkan di workspace.");
+                              if (workspaceId && !isAnalyzing) triggerAutoAnalysis(workspaceId, "Lakukan pemindaian cepat terhadap file/dokumen baru yang ditambahkan di workspace.");
                             }}
                             className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
                           >

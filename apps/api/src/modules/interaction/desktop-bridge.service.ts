@@ -31,7 +31,12 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
     try {
       this.wss = new WebSocketServer({ port: 31524, host: '127.0.0.1' });
       this.wss.on('connection', (ws: WebSocket) => {
+        const previous = this.desktop;
         this.desktop = ws;
+        if (previous && previous !== ws && previous.readyState === WebSocket.OPEN) {
+          this.logger.warn('Desktop reconnected; closing stale socket');
+          previous.close();
+        }
         this.logger.log('Desktop app connected');
 
         ws.on('message', (raw: RawData) => {
@@ -44,9 +49,13 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
         });
 
         ws.on('close', () => {
-          this.logger.warn('Desktop app disconnected');
-          this.desktop = null;
-          this.rejectAllPending(new Error('Desktop disconnected'));
+          if (this.desktop === ws) {
+            this.logger.warn('Desktop app disconnected');
+            this.desktop = null;
+            this.rejectAllPending(new Error('Desktop disconnected'));
+          } else {
+            this.logger.warn('Stale desktop socket closed');
+          }
         });
 
         ws.on('error', (err: Error) => {

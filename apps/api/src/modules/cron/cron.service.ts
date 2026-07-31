@@ -4,6 +4,7 @@ import { ArtifactService } from '../artifact/artifact.service.js';
 import { DocumentGeneratorTool } from '../tools/services/document-generator.tool.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { SkillService } from '../skills/skill.service.js';
+import { WorkspaceRunnerService } from '../workspace/workspace-runner.service.js';
 
 export interface CreateScheduleDto {
   workspaceId: string;
@@ -24,6 +25,7 @@ export class CronService implements OnModuleInit {
   private backgroundCuratorIntervalMs = 60 * 60 * 1000; // 1 hour
   private memoryConsolidationHandle: NodeJS.Timeout | null = null;
   private memoryConsolidationIntervalMs = 6 * 60 * 60 * 1000; // 6 hours
+  private runningJobs = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -31,6 +33,7 @@ export class CronService implements OnModuleInit {
     private readonly documentGenerator: DocumentGeneratorTool,
     private readonly autoMemoryService: AutoMemoryService,
     private readonly skillService: SkillService,
+    private readonly workspaceRunner: WorkspaceRunnerService,
   ) {}
 
   onModuleInit() {
@@ -149,6 +152,9 @@ export class CronService implements OnModuleInit {
     });
 
     for (const job of dueJobs) {
+      // ponytail: in-memory claim set; per-job row lock or queue if multiple instances matter
+      if (this.runningJobs.has(job.id)) continue;
+      this.runningJobs.add(job.id);
       try {
         if (job.reportType === 'agent_run') {
           await this.executeAgentRun(job);
@@ -159,6 +165,8 @@ export class CronService implements OnModuleInit {
         this.logger.error(
           `Failed to execute scheduled job "${job.name}": ${err.message}`,
         );
+      } finally {
+        this.runningJobs.delete(job.id);
       }
     }
   }
@@ -389,11 +397,15 @@ export class CronService implements OnModuleInit {
       `Executing scheduled agent run "${job.name}" for workspace ${job.workspaceId}...`,
     );
 
-    // TODO: Proper DI injection for WorkspaceRunnerService
-    // For now, log the goal and mark as completed
     const goal = job.goal || 'No goal specified';
-    this.logger.log(
-      `Scheduled agent run "${job.name}" triggered for workspace ${job.workspaceId} (goal: ${goal})`,
+
+    await this.workspaceRunner.runWorkspaceAgentStream(
+      {
+        workspaceId: job.workspaceId,
+        userGoal: goal,
+        historyMessages: [],
+      },
+      () => {}, // scheduled runs are headless; events are discarded
     );
 
     // Update lastRunAt and nextRunAt

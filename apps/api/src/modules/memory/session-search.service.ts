@@ -140,7 +140,10 @@ export class SessionSearchService implements OnModuleInit {
         FROM message_fts
         WHERE message_fts MATCH ?
       `;
-      const params: any[] = [query];
+      // ponytail: wrap query in an FTS5 phrase so user-supplied operators
+      // (", OR, NEAR, etc.) can't break the MATCH or change semantics
+      const ftsQuery = `"${query.replace(/"/g, '""')}"`;
+      const params: any[] = [ftsQuery];
 
       if (options?.workspaceId) {
         sql += ` AND workspace_id = ?`;
@@ -252,7 +255,7 @@ export class SessionSearchService implements OnModuleInit {
     const contextLines = results.map((r) => {
       const preview = r.snippet
         .replace(/>>>/g, '')
-        .replace(/<<<>/g, '')
+        .replace(/<<</g, '')
         .substring(0, 150);
       return `- [${r.role}] ${preview}`;
     });

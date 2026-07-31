@@ -4,7 +4,8 @@ export type TranscriptState =
   | 'created'
   | 'sent_to_provider'
   | 'runtime_persisted'
-  | 'approved';
+  | 'approved'
+  | 'failed';
 
 export interface TurnTranscript {
   runId: string;
@@ -78,13 +79,28 @@ export class UserTurnTranscriptService {
     return t;
   }
 
+  markFailed(runId: string): TurnTranscript | null {
+    const t = this.transcripts.get(runId);
+    if (!t) {
+      this.logger.warn(`markFailed: turn ${runId} not found`);
+      return null;
+    }
+    // 'failed' releases the active-turn lock (hasActiveTurn only blocks non-terminal states)
+    t.state = 'failed';
+    return t;
+  }
+
   findByRunId(runId: string): TurnTranscript | undefined {
     return this.transcripts.get(runId);
   }
 
   hasActiveTurn(sessionKey: string): TurnTranscript | null {
     for (const t of this.transcripts.values()) {
-      if (t.sessionKey === sessionKey && t.state !== 'approved') {
+      if (
+        t.sessionKey === sessionKey &&
+        t.state !== 'approved' &&
+        t.state !== 'failed'
+      ) {
         if (Date.now() - t.createdAt > this.TURN_TIMEOUT_MS) {
           this.transcripts.delete(t.runId);
           continue;

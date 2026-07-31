@@ -177,10 +177,21 @@ export class WorkspaceRunnerService {
     workspaceId: string,
     toolName: string,
     args: Record<string, any>,
+    timeoutMs = 120000,
   ): Promise<boolean> {
     return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (this.approvalQueue.get(workspaceId)?.toolName === toolName) {
+          this.approvalQueue.delete(workspaceId);
+          this.logger.warn(`Approval for ${toolName} timed out after ${timeoutMs}ms, rejecting`);
+          resolve(false);
+        }
+      }, timeoutMs);
       this.approvalQueue.set(workspaceId, {
-        resolve,
+        resolve: (approved: boolean) => {
+          clearTimeout(timer);
+          resolve(approved);
+        },
         toolName,
         args,
         timestamp: new Date(),
@@ -225,7 +236,12 @@ export class WorkspaceRunnerService {
 
     const runPromise = this.runWorkspaceAgentStream(params, onEvent)
       .then(() => { done = true; if (resolveEvent) resolveEvent(null); })
-      .catch((err) => { done = true; if (resolveEvent) resolveEvent(null); });
+      .catch((err) => {
+        done = true;
+        if (resolveEvent) resolveEvent(null);
+        this.logger.error(`Workspace agent stream failed: ${err.message}`);
+        onEvent({ type: 'error', data: { message: err.message } } as any);
+      });
 
     while (!done) {
       if (eventQueue.length > 0) {
@@ -811,13 +827,14 @@ export class WorkspaceRunnerService {
       const createdArtifactIds: string[] = [];
       const MAX_ROUNDS = 25;
       let reachedMaxRounds = true;
+      let fileWritten = false;
 
       this.setPhase(runState, 'planning', onEvent);
 
       // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
-      for (let turn = 0; turn < 5; turn++) {
+      for (let turn = 0; turn < 5 && !fileWritten; turn++) {
         // Inner loop: tool execution
-        for (let round = 0; round < MAX_ROUNDS; round++) {
+        for (let round = 0; round < MAX_ROUNDS && !fileWritten; round++) {
           // Check abort before each round
           if (abortController.signal.aborted) {
             this.setState(runState, 'aborting', onEvent);
@@ -1128,6 +1145,7 @@ export class WorkspaceRunnerService {
               finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content}".`;
               onEvent({ type: 'text_delta', data: finalContent });
               reachedMaxRounds = false;
+              fileWritten = true;
               break;
             }
           }

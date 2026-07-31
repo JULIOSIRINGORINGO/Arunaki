@@ -26,15 +26,40 @@ export class DataQueryTool {
 
     const normalizedSql = sql.trim().toUpperCase();
 
+    // Strip SQL comments and find the main statement verb.
+    // ponytail: naive startsWith() guard was bypassable via `WITH ... DELETE` (SQLite
+    // allows mutation verbs after a CTE block). The main verb is the LAST keyword
+    // match — CTE bodies may contain earlier SELECTs (e.g. `WITH x AS (SELECT 1) DELETE ...`).
+    const strippedSql = normalizedSql
+      .replace(/--.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .trim();
+    const verbMatches = strippedSql.match(
+      /\b(SELECT|INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER|ATTACH|DETACH|VACUUM|PRAGMA|REINDEX)\b/g,
+    );
+    const mainVerb = verbMatches ? verbMatches[verbMatches.length - 1] : undefined;
+
+    const forbiddenVerbs = [
+      'INSERT',
+      'UPDATE',
+      'DELETE',
+      'REPLACE',
+      'DROP',
+      'ALTER',
+      'CREATE',
+      'ATTACH',
+      'DETACH',
+      'VACUUM',
+      'PRAGMA',
+      'REINDEX',
+    ];
+
     if (
-      normalizedSql.startsWith('INSERT') ||
-      normalizedSql.startsWith('UPDATE') ||
-      normalizedSql.startsWith('DELETE') ||
-      normalizedSql.startsWith('DROP') ||
-      normalizedSql.startsWith('ALTER') ||
-      normalizedSql.startsWith('CREATE') ||
+      !mainVerb ||
+      forbiddenVerbs.includes(mainVerb) ||
+      normalizedSql.includes(';') ||
       normalizedSql.includes('--') ||
-      normalizedSql.includes(';')
+      normalizedSql.includes('/*')
     ) {
       return {
         status: 'error',
@@ -131,6 +156,20 @@ export class DataQueryTool {
     const startTime = Date.now();
 
     try {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName)) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Nama tabel tidak valid: ${tableName}`,
+          metadata: {
+            toolName: 'data_query',
+            displayName: 'Query Database',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'INVALID_TABLE_NAME', message: 'Invalid table name' },
+        };
+      }
+
       const result = await this.prisma.$queryRawUnsafe(
         `PRAGMA table_info(${tableName})`,
       );

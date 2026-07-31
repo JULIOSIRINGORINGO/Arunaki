@@ -70,17 +70,18 @@ export class SessionStateEventsService implements OnModuleInit {
     payload?: Record<string, any>,
   ): Promise<void> {
     try {
-      const nextSeq = await this.getNextSequence(sessionKey);
       const id = randomUUID();
       const now = new Date().toISOString();
+      // ponytail: atomic MAX+1 inside INSERT so concurrent record() calls can't
+      // produce duplicate sequences for the same sessionKey
       await this.prisma.$executeRawUnsafe(
-        `INSERT INTO "${TABLE}" ("id", "type", "sessionKey", "agentId", "payload", "sequence", "createdAt") VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO "${TABLE}" ("id", "type", "sessionKey", "agentId", "payload", "sequence", "createdAt") VALUES (?, ?, ?, ?, ?, COALESCE((SELECT MAX("sequence") + 1 FROM "${TABLE}" WHERE "sessionKey" = ?), 1), ?)`,
         id,
         type,
         sessionKey,
         agentId,
         JSON.stringify(payload || {}),
-        nextSeq,
+        sessionKey,
         now,
       );
 
@@ -182,14 +183,6 @@ export class SessionStateEventsService implements OnModuleInit {
       this.logger.debug(`Cleanup error: ${err.message}`);
       return { deleted: 0 };
     }
-  }
-
-  private async getNextSequence(sessionKey: string): Promise<number> {
-    const rows = await this.prisma.$queryRawUnsafe<{ maxSeq: number }[]>(
-      `SELECT COALESCE(MAX("sequence"), 0) as "maxSeq" FROM "${TABLE}" WHERE "sessionKey" = ?`,
-      sessionKey,
-    );
-    return Number(rows[0]?.maxSeq ?? 0) + 1;
   }
 
   private mapRow(row: any): SessionEventRecord {
