@@ -16,7 +16,7 @@ export class ProjectionAssembler {
     this.add(projections, 'skills', 'Skills', 'skills', params.skillsContext, 70, 5000);
 
     for (const projection of params.additionalProjections || []) {
-      if (projection.content.trim()) {
+      if (typeof projection?.content === 'string' && projection.content.trim()) {
         projections.push(projection);
       }
     }
@@ -31,12 +31,13 @@ export class ProjectionAssembler {
     for (const projection of projections) {
       if (remainingChars <= 0) break;
       const limit = Math.min(projection.maxTokens * 4, remainingChars);
-      const content = projection.content.length > limit
-        ? `${projection.content.slice(0, limit)}\n[Projection truncated]`
-        : projection.content;
+      const content = String(projection.content);
+      const outputStr = content.length > limit
+        ? `${content.slice(0, limit)}\n[Projection truncated]`
+        : content;
 
-      sections.push(`## ${projection.name}\n${content}`);
-      remainingChars -= content.length;
+      sections.push(`## ${projection.name}\n${outputStr}`);
+      remainingChars -= outputStr.length;
     }
 
     return sections.join('\n\n');
@@ -47,11 +48,11 @@ export class ProjectionAssembler {
     id: string,
     name: string,
     source: ContextProjection['source'],
-    content: string | undefined,
+    content: any,
     priority: number,
     maxTokens: number,
   ): void {
-    if (!content?.trim()) return;
+    if (typeof content !== 'string' || !content.trim()) return;
     projections.push({ id, name, source, content, priority, maxTokens });
   }
 }
