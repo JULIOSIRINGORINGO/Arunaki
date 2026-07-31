@@ -36,6 +36,7 @@ interface AgentStep {
   type: "thinking" | "plan" | "tool" | "result" | "error";
   label: string;
   detail?: string;
+  planList?: string[];
   status: "running" | "done" | "error";
 }
 
@@ -304,8 +305,9 @@ export function WorkspacePage() {
                   ...prev,
                   {
                     type: "plan",
-                    label: `Rencana: ${event.data.steps?.length || 0} langkah`,
+                    label: `Rencana Otonom: ${event.data.steps?.length || 0} Langkah Kerja (Sub-Agents)`,
                     detail: event.data.steps?.join(" | "),
+                    planList: event.data.steps || [],
                     status: "done",
                   },
                 ]);
@@ -1122,34 +1124,56 @@ export function WorkspacePage() {
                             </button>
                           )}
                         </div>
-
                         {/* Expandable Step List Timeline */}
                         {isStepsExpanded && (
                           <div className="pt-3 border-t border-gray-100 space-y-2 relative pl-1">
-                            {agentSteps.map((step, i) => (
-                              <div
-                                key={i}
-                                className={`flex items-start gap-2.5 text-xs p-2 rounded-xl transition-all ${
-                                  step.status === 'running'
-                                    ? 'bg-amber-50/70 border border-amber-200/60 shadow-2xs'
-                                    : 'hover:bg-gray-50/80'
-                                }`}
-                              >
-                                <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
-                                  {getStepIcon(step)}
-                                </div>
-                                <div className="min-w-0 flex-1 break-words">
-                                  <span className={`font-medium ${step.status === 'running' ? 'text-amber-900 font-semibold' : 'text-gray-800'}`}>
-                                    {step.label}
-                                  </span>
-                                  {step.detail && (
-                                    <span className="text-gray-500 text-[11px] block mt-0.5 break-words font-mono bg-gray-50/80 px-2 py-0.5 rounded border border-gray-100 w-fit max-w-full">
-                                      {step.detail}
+                            {agentSteps.map((step, i) => {
+                              const planItems = step.planList && step.planList.length > 0
+                                ? step.planList
+                                : step.type === 'plan' && step.detail && step.detail.includes('|')
+                                ? step.detail.split('|').map((s) => s.trim())
+                                : null;
+
+                              return (
+                                <div
+                                  key={i}
+                                  className={`flex items-start gap-2.5 text-xs p-2 rounded-xl transition-all ${
+                                    step.status === 'running'
+                                      ? 'bg-amber-50/70 border border-amber-200/60 shadow-2xs'
+                                      : 'hover:bg-gray-50/80'
+                                  }`}
+                                >
+                                  <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
+                                    {getStepIcon(step)}
+                                  </div>
+                                  <div className="min-w-0 flex-1 break-words">
+                                    <span className={`font-medium ${step.status === 'running' ? 'text-amber-900 font-semibold' : 'text-gray-800'}`}>
+                                      {step.label}
                                     </span>
-                                  )}
+                                    {planItems ? (
+                                      <div className="mt-1.5 space-y-1">
+                                        {planItems.map((itemText, idx) => (
+                                          <div key={idx} className="flex items-start gap-1.5">
+                                            <span className="w-4 h-4 rounded-full bg-gray-900 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                                              {idx + 1}
+                                            </span>
+                                            <p className="text-gray-800 leading-relaxed font-medium break-words">
+                                              {itemText.replace(/^\d+\.\s*/, '')}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      step.detail && (
+                                        <span className="text-gray-500 text-[11px] block mt-0.5 break-words font-mono bg-gray-50/80 px-2 py-0.5 rounded border border-gray-100 w-fit max-w-full">
+                                          {step.detail}
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
