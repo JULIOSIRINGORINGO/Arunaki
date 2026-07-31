@@ -82,6 +82,12 @@ export class WorkspaceRunnerService {
   private readonly logger = new Logger(WorkspaceRunnerService.name);
   private readonly scrubber = new StreamingContextScrubber();
 
+   /** Track modified files per workspace session */
+  private readonly modifiedFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+
+  /** Track read files per workspace session */
+  private readonly readFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+
   /** Active workspace runs — enables abort and state tracking */
   private readonly activeRuns = new Map<string, WorkspaceRunState>();
 
@@ -629,14 +635,22 @@ export class WorkspaceRunnerService {
           `=== END DOMAIN COMMUNICATION ===`,
         );
       }
-      if (domainLines.length > 0) {
-        context += `\n\n${domainLines.join('\n\n')}`;
-      }
+       if (domainLines.length > 0) {
+         context += `\n\n${domainLines.join('\n\n')}`;
+       }
 
-      return context;
-    } catch {
-      return '';
-    }
+       const modified = this.modifiedFiles.get(workspaceId) || [];
+       if (modified.length > 0) {
+         const recent = modified.slice(-10);
+         context += `\n\n=== FILES MODIFIED IN THIS RUN ===
+${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')})`).join('\n')}
+=== END MODIFIED FILES ===`;
+       }
+
+       return context;
+     } catch {
+       return '';
+     }
   }
 
   async runWorkspaceAgentStream(
@@ -674,9 +688,11 @@ export class WorkspaceRunnerService {
     };
     this.activeRuns.set(workspaceId, runState);
 
-    try {
-      this.setState(runState, 'running', onEvent);
-      this.setPhase(runState, 'scanning', onEvent);
+   try {
+       this.setState(runState, 'running', onEvent);
+       this.setPhase(runState, 'scanning', onEvent);
+       this.modifiedFiles.delete(workspaceId);
+       this.readFiles.delete(workspaceId);
       
       // Emit agent started event
       this.eventEmitter.emit('workspace.agent.started', {
@@ -834,18 +850,17 @@ export class WorkspaceRunnerService {
         },
       });
 
-      let finalContent = '';
-      const createdArtifactIds: string[] = [];
-      const MAX_ROUNDS = 25;
-      let reachedMaxRounds = true;
-      let fileWritten = false;
+       let finalContent = '';
+       const createdArtifactIds: string[] = [];
+       const MAX_ROUNDS = 25;
+       let reachedMaxRounds = true;
 
-      this.setPhase(runState, 'planning', onEvent);
+       this.setPhase(runState, 'planning', onEvent);
 
-      // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
-      for (let turn = 0; turn < 5 && !fileWritten; turn++) {
-        // Inner loop: tool execution
-        for (let round = 0; round < MAX_ROUNDS && !fileWritten; round++) {
+       // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
+       for (let turn = 0; turn < 5; turn++) {
+         // Inner loop: tool execution
+         for (let round = 0; round < MAX_ROUNDS; round++) {
           // Check abort before each round
           if (abortController.signal.aborted) {
             this.setState(runState, 'aborting', onEvent);
@@ -986,13 +1001,20 @@ export class WorkspaceRunnerService {
                 },
               });
 
-              messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
-              });
-            }
-          }
+               // Track file reads
+               if (['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(toolCall.function.name)) {
+                 const current = this.readFiles.get(workspaceId) || [];
+                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
+                 this.readFiles.set(workspaceId, current.slice(-30));
+               }
+
+               messages.push({
+                 role: 'tool',
+                 tool_call_id: toolCall.id,
+                 content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
+               });
+             }
+           }
 
           // Execute mutating tools (auto-approve write/update operations within user's connected workspace folder)
           for (const { toolCall, args } of mutatingCalls) {
@@ -1080,39 +1102,33 @@ export class WorkspaceRunnerService {
               createdArtifactIds.push(artifact.id);
             }
 
-            onEvent({
-              type: 'tool_done',
-              data: {
-                toolName: funcName,
-                result,
-                timestamp: new Date().toISOString(),
-              },
-            });
+             onEvent({
+               type: 'tool_done',
+               data: {
+                 toolName: funcName,
+                 result,
+                 timestamp: new Date().toISOString(),
+               },
+             });
 
-            messages.push({
-              role: 'tool',
-              tool_call_id: toolCall.id,
-              content: ToolResultFormatter.formatForLlm(funcName, result),
-            });
+             // Track modified files
+             if (result.status === 'success') {
+               const filename = args.filename || args.path || 'unknown';
+               const current = this.modifiedFiles.get(workspaceId) || [];
+               current.push({ filename, timestamp: new Date() });
+               this.modifiedFiles.set(workspaceId, current.slice(-30));
+             }
 
-            // Immediately terminate loop upon successful write_workspace_file or delete_workspace_file execution
-            if (result.status === 'success' && (funcName === 'write_workspace_file' || funcName === 'delete_workspace_file')) {
-              this.logger.log(`${funcName} completed successfully for "${args.filename}". Terminating agent loop.`);
-              if (funcName === 'delete_workspace_file') {
-                finalContent = `Berkas **${args.filename}** berhasil dihapus dari workspace.`;
-              } else {
-                finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content || ''}".`;
-              }
-              onEvent({ type: 'text_delta', data: finalContent });
-              reachedMaxRounds = false;
-              fileWritten = true;
-              break;
-            }
-          }
+             messages.push({
+               role: 'tool',
+               tool_call_id: toolCall.id,
+               content: ToolResultFormatter.formatForLlm(funcName, result),
+             });
+           }
 
           // Compact history if context length grows (OpenClaw compaction.ts)
           if (messages.length > 20) {
-            const compactResult = this.compactionService.compactHistory(messages);
+            const compactResult = await this.compactionService.compactHistory(messages);
             if (compactResult.wasCompacted) {
               messages.length = 0;
               messages.push(...compactResult.compactedMessages);
@@ -1231,6 +1247,26 @@ export class WorkspaceRunnerService {
           `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
           saveDomain,
         );
+
+        // Save structured interaction memory (OpenClaw memory/YYYY-MM-DD.md pattern)
+        const modified = this.modifiedFiles.get(workspaceId) || [];
+        const memoryDetails = {
+          goal: userGoal,
+          result: finalContent.substring(0, 500),
+          modifiedFiles: modified.map((f) => f.filename),
+          totalRounds: runState.round,
+          timestamp: new Date().toISOString(),
+        };
+        await this.memoryService.remember({
+          type: 'run_summary',
+          key: `run_${workspaceId}_${Date.now()}`,
+          content: JSON.stringify(memoryDetails),
+          source: 'auto',
+          importance: 6,
+          domain: saveDomain,
+          workspaceId,
+        });
+
         this.logger.log(
           `Auto-saved workspace history memory for workspace ${workspaceId}`,
         );
