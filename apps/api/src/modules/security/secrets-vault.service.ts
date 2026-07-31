@@ -31,9 +31,14 @@ export class SecretsVaultService {
 
   constructor() {
     const secretSource =
-      process.env.ARUNAKI_VAULT_KEY ||
-      process.env.APP_SECRET ||
-      'arunaki-enterprise-secrets-vault-master-key-2026';
+      process.env.ARUNAKI_VAULT_KEY || process.env.APP_SECRET;
+
+    if (!secretSource) {
+      throw new Error(
+        'SecretsVaultService memerlukan env ARUNAKI_VAULT_KEY atau APP_SECRET (32+ karakter). ' +
+          'Tanpa itu, kunci master tidak aman (hardcoded fallback telah dihapus).',
+      );
+    }
 
     // Derive a consistent 256-bit key via SHA-256
     this.masterKey = crypto.createHash('sha256').update(secretSource).digest();
