@@ -808,13 +808,11 @@ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')}
       }
       const isDeleteIntent = /(?:hapus|delete|remove|hilangkan|bersihkan)\s+/i.test(safeGoal);
       const isWriteIntent = /(?:buat|tulis|create|simpan|isi|update)\s+/i.test(safeGoal);
+      const isReadIntent = /(?:baca|lihat|buka|search|cari|read|view)\s+/i.test(safeGoal);
+      const isDirectIntent = isDeleteIntent || isWriteIntent || isReadIntent;
 
       let steps: string[] = [];
-      if (isDeleteIntent) {
-        steps = ['Aksi Langsung: Hapus berkas dari workspace'];
-      } else if (isWriteIntent) {
-        steps = ['Aksi Langsung: Buat/sunting berkas di workspace'];
-      } else {
+      if (!isDirectIntent) {
         const planningMessages: ChatMessage[] = [
           {
             role: 'system',
@@ -837,25 +835,27 @@ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')}
         } catch (e) {
           this.logger.warn(`AI plan generation failed: ${e.message}`);
         }
-      }
 
-      onEvent({
-        type: 'plan_created',
-        data: {
-          goal: safeGoal,
-          steps:
-            steps.length > 0
-              ? steps
-              : ['Memproses aksi file...'],
-        },
-      });
+        onEvent({
+          type: 'plan_created',
+          data: {
+            goal: safeGoal,
+            steps:
+              steps.length > 0
+                ? steps
+                : ['Memproses aksi file...'],
+          },
+        });
+
+        this.setPhase(runState, 'planning', onEvent);
+      } else {
+        this.setPhase(runState, isReadIntent ? 'reading' : 'generating', onEvent);
+      }
 
        let finalContent = '';
        const createdArtifactIds: string[] = [];
        const MAX_ROUNDS = 25;
        let reachedMaxRounds = true;
-
-       this.setPhase(runState, 'planning', onEvent);
 
        // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
        for (let turn = 0; turn < 5; turn++) {
