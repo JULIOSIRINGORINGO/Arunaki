@@ -2121,7 +2121,7 @@ const ChatInputForm = memo(function ChatInputForm({
         type="text"
         value={localInput}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder="Tanyakan analisis dokumen, korelasi data... (ketik @ untuk lampirkan file)"
+        placeholder="Tanyakan apa pun — @ untuk memilih file, / untuk aksi"
         className="flex-1 bg-gray-50/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:outline-none focus:bg-white focus:border-gray-900 placeholder:text-gray-400 transition-all shadow-2xs"
       />
 
