@@ -72,7 +72,9 @@ export class AgentRunnerService {
     private readonly harnessRegistry: HarnessRegistryService,
   ) {}
 
-  async getKnowledgeContext(): Promise<string> {
+  async getKnowledgeContext(userContent: string = ''): Promise<string> {
+    const isKnowledgeQuery = /(?:pengetahuan|knowledge|aturan|kebijakan|prosedur|hukum|standar|sop|domain|referensi)/i.test(userContent);
+    if (!isKnowledgeQuery) return '';
     try {
       return await this.knowledgeService.getActiveContext();
     } catch {
@@ -149,7 +151,7 @@ export class AgentRunnerService {
   private async runAgentSyncInternal(params: AgentRunParams) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
-    const knowledgeContext = await this.getKnowledgeContext();
+    const knowledgeContext = await this.getKnowledgeContext(params.userContent);
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,
       undefined,
@@ -380,7 +382,7 @@ export class AgentRunnerService {
         data: 'Memproses pesan dan mengumpulkan konteks...',
       });
 
-      const knowledgeContext = await this.getKnowledgeContext();
+      const knowledgeContext = await this.getKnowledgeContext(params.userContent);
       const systemPrompt = this.aiService.getSystemPrompt(
         chatMode,
         undefined,
