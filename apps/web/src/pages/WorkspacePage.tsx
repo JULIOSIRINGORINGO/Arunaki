@@ -29,6 +29,8 @@ import {
   Sparkles,
   Edit3,
   Save,
+  Minus,
+  Maximize2,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -101,6 +103,8 @@ export function WorkspacePage() {
   } | null>(null);
 
   const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 380, y: 120 });
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   const isDraggingChatRef = useRef(false);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -1040,18 +1044,38 @@ export function WorkspacePage() {
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
           <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6 overflow-hidden min-w-0">
             {/* Top Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0 select-none">
               <div className="flex items-center gap-2.5">
                 <MessageSquare className="w-5 h-5 text-gray-900" />
                 <h3 className="font-bold text-base text-gray-900">Asisten Intelijen Arunaki AI</h3>
               </div>
 
-              {isConnected && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {fileCount} Dokumen Aktif
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {isConnected && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {fileCount} Dokumen Aktif
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsChatExpanded(!isChatExpanded)}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                  title={isChatExpanded ? "Ukuran Standar" : "Besarkan Ukuran Chat"}
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsChatMinimized(!isChatMinimized)}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+                  title={isChatMinimized ? "Buka Chat" : "Sembunyikan Chat (Minimize)"}
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
               {/* Middle Message Area */}
@@ -1719,65 +1743,97 @@ export function WorkspacePage() {
 
       {/* Floating Draggable Chat Box (when file is open in editor) */}
       {openEditorFile && (
-        <div
-          style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
-          className="fixed z-40 w-96 max-w-[90vw] bg-white border border-gray-200/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in"
-        >
-          {/* Drag Handle Header */}
+        isChatMinimized ? (
           <div
-            onMouseDown={handleStartDragChat}
-            className="px-4 py-3 bg-gray-900 text-white flex items-center justify-between cursor-move select-none shrink-0"
+            style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
+            className="fixed z-40 bg-gray-900 text-white rounded-2xl px-4 py-2.5 shadow-2xl flex items-center gap-3 cursor-pointer select-none animate-fade-in border border-gray-700 hover:bg-black transition-all"
+            onClick={() => setIsChatMinimized(false)}
           >
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-xs text-white">Arunaki AI (Geser Chat)</span>
-            </div>
-            <span className="text-[10px] text-gray-400 font-mono">⠿ Drag Header</span>
+            <Bot className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-semibold">Arunaki AI Chat</span>
+            <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-mono">Minimised</span>
+            <Maximize2 className="w-3.5 h-3.5 text-gray-300 ml-1" />
           </div>
-
-          {/* Chat Messages */}
-          <div className="p-3 max-h-56 overflow-y-auto space-y-2 text-xs bg-gray-50/50">
-            {activeSession?.messages && activeSession.messages.length > 0 ? (
-              activeSession.messages.slice(-4).map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`p-2.5 rounded-xl text-xs ${
-                    msg.role === 'user'
-                      ? 'bg-gray-900 text-white ml-6 font-medium'
-                      : 'bg-white border border-gray-200 text-gray-800 mr-6 shadow-2xs'
-                  }`}
-                >
-                  <p className="font-semibold text-[10px] text-gray-400 mb-0.5">
-                    {msg.role === 'user' ? 'Anda' : 'Arunaki AI'}
-                  </p>
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-[11px] text-gray-400 text-center py-3">
-                Ketik pertanyaan di bawah untuk berdiskusi dengan AI tentang file ini.
-              </p>
-            )}
-          </div>
-
-          {/* Chat Prompt Input Bar */}
-          <form onSubmit={handleSendChat} className="p-2 border-t border-gray-100 bg-white flex items-center gap-2 shrink-0">
-            <input
-              type="text"
-              value={promptInput}
-              onChange={(e) => setPromptInput(e.target.value)}
-              placeholder="Tanyakan analisis AI tentang file ini..."
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-gray-400 placeholder:text-gray-400"
-            />
-            <button
-              type="submit"
-              disabled={!promptInput.trim() || isAnalyzing}
-              className="p-2 rounded-xl bg-gray-900 hover:bg-black text-white disabled:opacity-30 cursor-pointer shrink-0 transition-colors shadow-2xs"
+        ) : (
+          <div
+            style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
+            className={`fixed z-40 bg-white border border-gray-200/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in transition-all ${
+              isChatExpanded ? "w-[540px] max-w-[95vw] h-[480px]" : "w-96 max-w-[90vw]"
+            }`}
+          >
+            {/* Drag Handle Header */}
+            <div
+              onMouseDown={handleStartDragChat}
+              className="px-4 py-3 bg-gray-900 text-white flex items-center justify-between cursor-move select-none shrink-0"
             >
-              <ArrowUp className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-emerald-400" />
+                <span className="font-semibold text-xs text-white">Arunaki AI (Geser Chat)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setIsChatExpanded(!isChatExpanded)}
+                  className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
+                  title={isChatExpanded ? "Ukuran Standar" : "Besarkan Chat"}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsChatMinimized(true)}
+                  className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
+                  title="Sembunyikan Chat (Minimize)"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Messages */}
+            <div className={`p-3 overflow-y-auto space-y-2 text-xs bg-gray-50/50 ${isChatExpanded ? "flex-1" : "max-h-56"}`}>
+              {activeSession?.messages && activeSession.messages.length > 0 ? (
+                activeSession.messages.slice(isChatExpanded ? -10 : -4).map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`p-2.5 rounded-xl text-xs ${
+                      msg.role === 'user'
+                        ? 'bg-gray-900 text-white ml-6 font-medium'
+                        : 'bg-white border border-gray-200 text-gray-800 mr-6 shadow-2xs'
+                    }`}
+                  >
+                    <p className="font-semibold text-[10px] text-gray-400 mb-0.5">
+                      {msg.role === 'user' ? 'Anda' : 'Arunaki AI'}
+                    </p>
+                    <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[11px] text-gray-400 text-center py-3">
+                  Ketik pertanyaan di bawah untuk berdiskusi dengan AI tentang file ini.
+                </p>
+              )}
+            </div>
+
+            {/* Chat Prompt Input Bar */}
+            <form onSubmit={handleSendChat} className="p-2 border-t border-gray-100 bg-white flex items-center gap-2 shrink-0">
+              <input
+                type="text"
+                value={promptInput}
+                onChange={(e) => setPromptInput(e.target.value)}
+                placeholder="Tanyakan analisis AI tentang file ini..."
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-gray-400 placeholder:text-gray-400"
+              />
+              <button
+                type="submit"
+                disabled={!promptInput.trim() || isAnalyzing}
+                className="p-2 rounded-xl bg-gray-900 hover:bg-black text-white disabled:opacity-30 cursor-pointer shrink-0 transition-colors shadow-2xs"
+              >
+                <ArrowUp className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          </div>
+        )
       )}
     </div>
   );
