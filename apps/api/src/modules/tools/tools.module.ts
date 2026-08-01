@@ -26,6 +26,7 @@ import { ProgrammaticVerifierService } from './services/programmatic-verifier.se
     MemoryModule,
     ToolsProviderModule,
   ],
+  providers: [ProgrammaticVerifierService],
   exports: [ToolsProviderModule, ProgrammaticVerifierService],
 })
 export class ToolsModule {}

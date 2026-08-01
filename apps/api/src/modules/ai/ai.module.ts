@@ -22,7 +22,7 @@ import { ContextModule } from './context/context.module.js';
     forwardRef(() => ToolsModule),
     forwardRef(() => MemoryModule),
     ContextModule,
-    AgentRuntimeModule,
+    forwardRef(() => AgentRuntimeModule),
   ],
   providers: [
     AiService,
@@ -50,7 +50,6 @@ import { ContextModule } from './context/context.module.js';
     ToolLoopDetectorService,
     CompactionService,
     ContextModule,
-    AgentRuntimeModule,
   ],
 })
 export class AiModule {}

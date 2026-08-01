@@ -35,13 +35,13 @@ import { SourceModule } from '../source/source.module.js';
     EventEmitterModule.forRoot(),
     AgentRuntimeModule,
   ],
+  controllers: [WorkspaceController],
   providers: [
     WorkspaceService,
     WorkspaceRepository,
     WorkspaceInitService,
     WorkspaceRunnerService,
-    AgentRuntime,
   ],
-  exports: [WorkspaceService, WorkspaceInitService, WorkspaceRunnerService, AgentRuntime],
+  exports: [WorkspaceService, WorkspaceInitService, WorkspaceRunnerService, AgentRuntimeModule],
 })
 export class WorkspaceModule {}

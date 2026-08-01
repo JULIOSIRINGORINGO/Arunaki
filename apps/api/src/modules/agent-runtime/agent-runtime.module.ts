@@ -9,8 +9,13 @@ import { ChatModule } from '../chat/chat.module.js';
 import { ContextModule } from '../ai/context/context.module.js';
 
 @Module({
-  imports: [AiModule, ToolsModule, ChatModule, ContextModule],
+  imports: [
+    forwardRef(() => AiModule),
+    forwardRef(() => ToolsModule),
+    forwardRef(() => ChatModule),
+    ContextModule,
+  ],
   providers: [AgentRuntime, TaskClassifier, PlannerService, VerifierService, RecoveryManager],
-  exports: [AgentRuntime],
+  exports: [AgentRuntime, TaskClassifier, PlannerService, VerifierService, RecoveryManager],
 })
 export class AgentRuntimeModule {}
