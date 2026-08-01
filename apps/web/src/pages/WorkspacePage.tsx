@@ -76,8 +76,6 @@ export function WorkspacePage() {
   // Multi-Session Chat & Slash Command State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("session_default");
-  const [showSlashMenu, setShowSlashMenu] = useState(false);
-  const toggleSlashMenu = useCallback(() => setShowSlashMenu((prev) => !prev), []);
 
   // Agent auto-analysis state
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
@@ -387,7 +385,6 @@ export function WorkspacePage() {
     setAgentSteps([]);
     localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updatedSessions));
     localStorage.setItem(`arunaki_active_session_${workspaceId}`, newSessionId);
-    setShowSlashMenu(false);
     toast.success(`Sesi baru "${newSession.title}" dibuat!`);
   }, [sessions, workspaceId]);
 
@@ -399,7 +396,6 @@ export function WorkspacePage() {
     localStorage.setItem(`arunaki_active_session_${workspaceId}`, sessionId);
     setAnalysisResult(target.analysisResult || null);
     setAgentSteps(target.steps || []);
-    setShowSlashMenu(false);
     toast.info(`Beralih ke "${target.title}"`);
   }, [sessions, workspaceId]);
 
@@ -1053,8 +1049,7 @@ export function WorkspacePage() {
         if (workspaceId) localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
         return updated;
       });
-      setShowSlashMenu(false);
-      toast.info("Riwayat pesan di sesi ini dibersihkan.");
+        toast.info("Riwayat pesan di sesi ini dibersihkan.");
       return;
     }
   }, [activeSessionId, createNewSession, workspaceId]);
@@ -1090,7 +1085,6 @@ export function WorkspacePage() {
       );
     }
 
-    setShowSlashMenu(false);
 
     await triggerAutoAnalysis(workspaceId, input);
   }, [activeSessionId, addMessageToActiveSession, createNewSession, isAnalyzing, isConnected, sessions, triggerAutoAnalysis, workspaceId]);
@@ -1797,65 +1791,18 @@ export function WorkspacePage() {
 
             {/* Chat Prompt Input Bar */}
             <div className="p-3 sm:p-3.5 pr-7 border-t border-gray-100 bg-white relative shrink-0">
-              {/* Slash Menu Popover */}
-              {showSlashMenu && (
-                <div className="absolute bottom-full mb-2 left-3 right-3 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="flex items-center justify-between px-1 pb-1 border-b border-gray-100 text-[11px] font-bold text-gray-900">
-                    <span>Sesi Percakapan & Perintah Slash (`/`)</span>
-                    <button type="button" onClick={() => setShowSlashMenu(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => createNewSession()}
-                    className="w-full text-left px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <span>+ Buat Sesi Percakapan Baru</span>
-                    <span className="text-[9px] font-mono bg-amber-200/60 px-1.5 py-0.5 rounded">/session new</span>
-                  </button>
-
-                  {/* Sessions List */}
-                  <div className="max-h-36 overflow-y-auto space-y-1 pt-1">
-                    {sessions.map((s) => {
-                      const isActive = s.id === activeSessionId;
-                      return (
-                        <div
-                          key={s.id}
-                          onClick={() => switchSession(s.id)}
-                          className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-all ${
-                            isActive ? "bg-gray-900 text-white font-semibold" : "bg-gray-50 hover:bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          <span className="truncate flex-1 pr-2">{s.title}</span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isActive ? (
-                              <span className="text-[9px] text-emerald-400 font-mono">✓ Aktif</span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={(e) => deleteSession(s.id, e)}
-                                className="text-gray-400 hover:text-red-500 p-0.5 transition-colors"
-                                title="Hapus Sesi"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               <ChatInputForm
                 onSend={handleSendChat}
                 onSteer={handleSteerAgent}
                 isAnalyzing={isAnalyzing}
                 isConnected={isConnected}
-                onToggleSlashMenu={toggleSlashMenu}
                 onSlashCommand={handleSlashCommand}
                 files={files}
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onNewSession={createNewSession}
+                onSwitchSession={switchSession}
+                onDeleteSession={deleteSession}
               />
             </div>
 
@@ -1914,9 +1861,13 @@ interface ChatInputFormProps {
   onSteer: (text: string) => void;
   isAnalyzing: boolean;
   isConnected: boolean;
-  onToggleSlashMenu: () => void;
   onSlashCommand: (command: string) => void;
   files: { name: string }[];
+  sessions: { id: string; title: string }[];
+  activeSessionId: string;
+  onNewSession: () => void;
+  onSwitchSession: (id: string) => void;
+  onDeleteSession: (id: string, e?: React.MouseEvent) => void;
 }
 
 const ChatInputForm = memo(function ChatInputForm({
@@ -1924,9 +1875,13 @@ const ChatInputForm = memo(function ChatInputForm({
   onSteer,
   isAnalyzing,
   isConnected,
-  onToggleSlashMenu,
   onSlashCommand,
   files,
+  sessions,
+  activeSessionId,
+  onNewSession,
+  onSwitchSession,
+  onDeleteSession,
 }: ChatInputFormProps) {
   const [localInput, setLocalInput] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -2085,6 +2040,49 @@ const ChatInputForm = memo(function ChatInputForm({
               ))}
             </div>
           )}
+
+          {/* Sessions list */}
+          <div className="border-t border-gray-100">
+            <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 flex items-center justify-between">
+              <span>Sesi Percakapan</span>
+              <button
+                type="button"
+                onClick={onNewSession}
+                className="text-amber-700 font-semibold hover:underline cursor-pointer"
+                title="Buat Sesi Baru"
+              >
+                + Baru
+              </button>
+            </div>
+            <div className="max-h-36 overflow-y-auto">
+              {sessions.map((s) => {
+                const isActive = s.id === activeSessionId;
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => onSwitchSession(s.id)}
+                    className={`flex items-center justify-between px-3 py-2 text-[11px] cursor-pointer transition-all ${
+                      isActive ? "bg-amber-50 text-amber-900 font-semibold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="truncate flex-1 pr-2">{s.title}</span>
+                    {isActive ? (
+                      <span className="text-[9px] text-emerald-600 font-mono shrink-0">✓</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => onDeleteSession(s.id, e)}
+                        className="text-gray-400 hover:text-red-500 p-0.5 transition-colors shrink-0"
+                        title="Hapus Sesi"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -2118,15 +2116,6 @@ const ChatInputForm = memo(function ChatInputForm({
       )}
 
       <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onToggleSlashMenu}
-        className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-xl text-xs font-mono font-bold shrink-0 transition-colors cursor-pointer border border-gray-200/80"
-        title="Tampilkan Menu Perintah Slash (/)"
-      >
-        /
-      </button>
-
       <input
         ref={inputRef}
         type="text"
