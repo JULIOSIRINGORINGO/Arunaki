@@ -226,17 +226,20 @@ export class WorkspaceToolsService {
       default: {
         const startTime = Date.now();
         try {
+          const existedBefore = await this.storageService.exists(targetPath);
           await this.storageService.writeFile(targetPath, content);
+          const actionLabel = existedBefore ? 'berhasil diperbarui' : 'berhasil dibuat';
           return {
             status: 'success',
-            data: { path: targetPath, filename, format },
-            preview: `File ${filename} berhasil dibuat di folder workspace.`,
+            data: { path: targetPath, filename, format, created: !existedBefore },
+            preview: `File ${filename} ${actionLabel} di folder workspace.`,
             metadata: {
               toolName: 'write_workspace_file',
               displayName: 'Buat File Workspace',
               executionTime: Date.now() - startTime,
               filename,
               format,
+              created: !existedBefore,
             },
           };
         } catch (e) {
