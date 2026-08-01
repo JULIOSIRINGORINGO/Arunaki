@@ -784,9 +784,13 @@ export class WorkspaceRunnerService {
             break;
           }
 
-          // plan_created dari tool call LLM aktual (bukan planner terpisah).
-          // Hanya round pertama; konten = tool yang benar-benar dipilih LLM.
-          if (runState.round === 1) {
+          // plan_created hanya untuk task multi-step (round > 1 atau >1 tool
+          // dalam satu round). Single tool pada round-1 = eksekusi langsung,
+          // tidak perlu event plan — UI langsung menampilkan tool_start.
+          const isSingleStep =
+            runState.round === 1 &&
+            aiResponse.toolCalls.length === 1;
+          if (!isSingleStep && runState.round === 1) {
             const planSteps = aiResponse.toolCalls.map((tc) => {
               let argSummary = '';
               try {
