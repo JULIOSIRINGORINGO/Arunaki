@@ -548,11 +548,21 @@ export function WorkspacePage() {
               }
               case "tool_done": {
                 setActiveToolAction(null);
+                const toolName = event.data?.toolName || "";
+                const metaFilename = event.data?.result?.metadata?.filename;
+                const preview = event.data?.result?.preview;
+                // read/search tools return the file content as preview — never
+                // put that into the timeline. Use a short action label instead.
+                const isContentTool =
+                  toolName.includes("read_workspace_file") ||
+                  toolName.includes("search_workspace") ||
+                  toolName.includes("document_reader");
                 const doneLabel =
-                  event.data?.result?.preview ||
-                  (event.data?.result?.status === "success"
-                    ? `Selesai: ${event.data.toolName}`
-                    : `Gagal: ${event.data.toolName}`);
+                  event.data?.result?.status === "success"
+                    ? isContentTool
+                      ? `Selesai: ${toolName}${metaFilename ? ` → ${metaFilename}` : ""}`
+                      : preview || `Selesai: ${toolName}`
+                    : `Gagal: ${toolName}`;
                 const doneStatus = event.data?.result?.status === "success" ? ("done" as const) : ("error" as const);
                 setAgentSteps((prev) => {
                   const idx = prev.map((s) => s.type).lastIndexOf("tool");
