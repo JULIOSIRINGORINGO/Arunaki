@@ -110,6 +110,8 @@ export class FileController {
     } catch (error) {
       return errorResponse('NOT_FOUND', error.message);
     }
+  }
+
   @Get(':id/content')
   async getContent(@Param('id') id: string) {
     try {

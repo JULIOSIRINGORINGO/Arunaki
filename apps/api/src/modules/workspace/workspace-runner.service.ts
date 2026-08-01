@@ -806,51 +806,10 @@ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')}
         });
         return;
       }
-      const isDeleteIntent = /(?:hapus|delete|remove|hilangkan|bersihkan)\s+/i.test(safeGoal);
-      const isWriteIntent = /(?:buat|tulis|create|simpan|isi|update)\s+/i.test(safeGoal);
-      const isReadIntent = /(?:baca|lihat|buka|search|cari|read|view)\s+/i.test(safeGoal);
-      const isDirectIntent = isDeleteIntent || isWriteIntent || isReadIntent;
-
-      let steps: string[] = [];
-      if (!isDirectIntent) {
-        const planningMessages: ChatMessage[] = [
-          {
-            role: 'system',
-            content:
-              'Kamu adalah AI Agent profesional yang membuat rencana kerja yang SANGAT PRESISI dan LANGSUNG SASARAN (1-3 poin singkat dalam Bahasa Indonesia).\n\nATURAN MUTLAK:\n1. FOKUS HANYA pada target file/tugas yang diminta user.\n2. Buat rencana 1-2 langkah langsung.',
-          },
-          {
-            role: 'user',
-            content: `Goal: ${safeGoal}\n\nKonteks workspace:\n${workspaceContext}`,
-          },
-        ];
-        try {
-          const planResponse = await this.aiService.chat(planningMessages, []);
-          if (planResponse.content) {
-            steps = planResponse.content
-              .split('\n')
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0);
-          }
-        } catch (e) {
-          this.logger.warn(`AI plan generation failed: ${e.message}`);
-        }
-
-        onEvent({
-          type: 'plan_created',
-          data: {
-            goal: safeGoal,
-            steps:
-              steps.length > 0
-                ? steps
-                : ['Memproses aksi file...'],
-          },
-        });
-
-        this.setPhase(runState, 'planning', onEvent);
-      } else {
-        this.setPhase(runState, isReadIntent ? 'reading' : 'generating', onEvent);
-      }
+      // OpenClaw pattern: no regex intent routing, no separate planner call.
+      // LLM loop below drives everything via native Function Calling —
+      // simple tasks resolve in 1-2 rounds without extra LLM planning roundtrip.
+      this.setPhase(runState, 'analyzing', onEvent);
 
        let finalContent = '';
        const createdArtifactIds: string[] = [];
@@ -887,6 +846,28 @@ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')}
               'Workspace agent finished goal execution within round limit.',
             );
             break;
+          }
+
+          // plan_created dari tool call LLM aktual (bukan planner terpisah).
+          // Hanya round pertama; konten = tool yang benar-benar dipilih LLM.
+          if (runState.round === 1) {
+            const planSteps = aiResponse.toolCalls.map((tc) => {
+              let argSummary = '';
+              try {
+                const args = JSON.parse(tc.function.arguments || '{}');
+                argSummary = args.filename || args.path || args.query || '';
+              } catch {
+                argSummary = '';
+              }
+              return `${tc.function.name}${argSummary ? ` → ${argSummary}` : ''}`;
+            });
+            onEvent({
+              type: 'plan_created',
+              data: {
+                goal: safeGoal,
+                steps: planSteps.length > 0 ? planSteps : ['Memproses permintaan...'],
+              },
+            });
           }
 
           messages.push({

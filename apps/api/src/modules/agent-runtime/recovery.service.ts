@@ -23,12 +23,11 @@ export class RecoveryManager {
     const isFilenameIssue =
       toolError?.code === 'AMBIGUOUS_FILENAME' ||
       toolError?.code === 'FILE_NOT_FOUND' ||
-      /filename|path|tidak ditemukan|ambigu/i.test(toolError?.message || '');
+      toolError?.code === 'WRITE_FAILED';
 
     const isPermissionIssue =
       toolError?.code === 'ACCESS_DENIED' ||
-      toolError?.code === 'NO_ROOT_PATH' ||
-      /access|permission|dilarang|di luar workspace/i.test(toolError?.message || '');
+      toolError?.code === 'NO_ROOT_PATH';
 
     if (isFilenameIssue) {
       return {
