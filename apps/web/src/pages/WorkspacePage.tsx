@@ -77,6 +77,7 @@ export function WorkspacePage() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("session_default");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const toggleSlashMenu = useCallback(() => setShowSlashMenu((prev) => !prev), []);
 
   // Agent auto-analysis state
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
@@ -129,6 +130,9 @@ export function WorkspacePage() {
   });
   const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const rafIdRef = useRef<number | null>(null);
+  // Direct DOM write during drag/resize — avoids re-rendering the whole
+  // WorkspacePage tree on every mousemove frame (heavy: file tree, sessions).
+  const chatPanelRef = useRef<HTMLDivElement | null>(null);
 
   const handleStartDragChat = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -189,10 +193,15 @@ export function WorkspacePage() {
       if (isDraggingChatRef.current) {
         if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = requestAnimationFrame(() => {
-          setChatPosition({
-            x: Math.max(10, Math.min(window.innerWidth - 120, e.clientX - dragOffsetRef.current.x)),
-            y: Math.max(10, Math.min(window.innerHeight - 60, e.clientY - dragOffsetRef.current.y)),
-          });
+          const nextX = Math.max(10, Math.min(window.innerWidth - 120, e.clientX - dragOffsetRef.current.x));
+          const nextY = Math.max(10, Math.min(window.innerHeight - 60, e.clientY - dragOffsetRef.current.y));
+          const panel = chatPanelRef.current;
+          if (panel) {
+            panel.style.left = `${nextX}px`;
+            panel.style.top = `${nextY}px`;
+          } else {
+            setChatPosition({ x: nextX, y: nextY });
+          }
         });
       } else if (isResizingChatRef.current && resizeDirRef.current) {
         if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
@@ -231,8 +240,16 @@ export function WorkspacePage() {
             newY = bottomEdge - clampedH;
           }
 
-          setChatSize({ width: newW, height: newH });
-          setChatPosition({ x: newX, y: newY });
+          const panel = chatPanelRef.current;
+          if (panel) {
+            panel.style.width = `${newW}px`;
+            panel.style.height = `${newH}px`;
+            panel.style.left = `${newX}px`;
+            panel.style.top = `${newY}px`;
+          } else {
+            setChatSize({ width: newW, height: newH });
+            setChatPosition({ x: newX, y: newY });
+          }
         });
       }
     };
@@ -242,6 +259,13 @@ export function WorkspacePage() {
         isDraggingChatRef.current = false;
         isResizingChatRef.current = false;
         resizeDirRef.current = null;
+        // Commit final position/size to React state so future drags and
+        // renders (e.g. minimize toggle) use the updated values.
+        const panel = chatPanelRef.current;
+        if (panel) {
+          setChatPosition({ x: panel.offsetLeft, y: panel.offsetTop });
+          setChatSize({ width: panel.offsetWidth, height: panel.offsetHeight });
+        }
         setIsDraggingChat(false);
         setIsResizingChat(false);
       }
@@ -1520,6 +1544,7 @@ export function WorkspacePage() {
           </div>
         ) : (
           <div
+            ref={chatPanelRef}
             onMouseDown={handleStartDragChat}
             style={{
               left: `${chatPosition.x}px`,
@@ -1819,7 +1844,7 @@ export function WorkspacePage() {
                 onSteer={handleSteerAgent}
                 isAnalyzing={isAnalyzing}
                 isConnected={isConnected}
-                onToggleSlashMenu={() => setShowSlashMenu((prev) => !prev)}
+                onToggleSlashMenu={toggleSlashMenu}
               />
             </div>
 
