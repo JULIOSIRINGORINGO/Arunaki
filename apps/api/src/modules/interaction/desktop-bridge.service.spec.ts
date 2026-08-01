@@ -4,9 +4,13 @@ import WebSocket from 'ws';
 
 describe('DesktopBridgeService', () => {
   let service: DesktopBridgeService;
+  let port: number;
+  let testIndex = 0;
 
   beforeEach(() => {
-    service = new DesktopBridgeService();
+    // Unique port per test avoids collision with a live API holding 31524.
+    port = 32524 + testIndex++;
+    service = new DesktopBridgeService(port);
     service.onModuleInit();
   });
 
@@ -25,7 +29,7 @@ describe('DesktopBridgeService', () => {
   });
 
   it('should connect client and handle sendCommand success', async () => {
-    const client = new WebSocket('ws://127.0.0.1:31524');
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
 
     await new Promise<void>((resolve) => {
       client.on('open', () => resolve());
@@ -53,7 +57,7 @@ describe('DesktopBridgeService', () => {
   });
 
   it('should handle interactive desktop helper methods', async () => {
-    const client = new WebSocket('ws://127.0.0.1:31524');
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
 
     await new Promise<void>((resolve) => {
       client.on('open', () => resolve());
@@ -91,7 +95,7 @@ describe('DesktopBridgeService', () => {
   });
 
   it('should handle desktop command errors', async () => {
-    const client = new WebSocket('ws://127.0.0.1:31524');
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
 
     await new Promise<void>((resolve) => {
       client.on('open', () => resolve());
@@ -118,7 +122,7 @@ describe('DesktopBridgeService', () => {
   });
 
   it('should reject pending requests if client disconnects', async () => {
-    const client = new WebSocket('ws://127.0.0.1:31524');
+    const client = new WebSocket(`ws://127.0.0.1:${port}`);
 
     await new Promise<void>((resolve) => {
       client.on('open', () => resolve());

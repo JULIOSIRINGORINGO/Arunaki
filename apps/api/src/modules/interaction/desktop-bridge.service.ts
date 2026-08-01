@@ -14,6 +14,11 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
   private desktop: WebSocket | null = null;
   private pending = new Map<string, PendingRequest>();
   private nextId = 0;
+  private readonly port: number;
+
+  constructor(port = 31524) {
+    this.port = port;
+  }
 
   get isConnected(): boolean {
     return this.desktop !== null && this.desktop.readyState === WebSocket.OPEN;
@@ -29,7 +34,7 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
 
   private startServer() {
     try {
-      this.wss = new WebSocketServer({ port: 31524, host: '127.0.0.1' });
+      this.wss = new WebSocketServer({ port: this.port, host: '127.0.0.1' });
       this.wss.on('connection', (ws: WebSocket) => {
         const previous = this.desktop;
         this.desktop = ws;
@@ -67,7 +72,7 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Desktop WebSocket server error: ${err.message}`);
       });
 
-      this.logger.log('Desktop bridge listening on ws://127.0.0.1:31524');
+      this.logger.log(`Desktop bridge listening on ws://127.0.0.1:${this.port}`);
     } catch (err) {
       this.logger.error(`Failed to start desktop bridge: ${err.message}`);
     }
