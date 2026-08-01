@@ -1041,27 +1041,36 @@ export function WorkspacePage() {
     }
   }, [workspaceId, isAnalyzing]);
 
+  const executeSlashCommand = useCallback((command: string) => {
+    const lower = command.toLowerCase().trim();
+    if (lower === "/session new" || lower === "/new") {
+      createNewSession();
+      return;
+    }
+    if (lower === "/clear") {
+      setSessions((prev) => {
+        const updated = prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s));
+        if (workspaceId) localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
+        return updated;
+      });
+      setShowSlashMenu(false);
+      toast.info("Riwayat pesan di sesi ini dibersihkan.");
+      return;
+    }
+  }, [activeSessionId, createNewSession, workspaceId]);
+
+  const handleSlashCommand = useCallback((command: string) => {
+    executeSlashCommand(command);
+  }, [executeSlashCommand]);
+
   const handleSendChat = useCallback(async (inputText: string) => {
     if (!isConnected || !workspaceId || !inputText.trim() || isAnalyzing) return;
     const input = inputText.trim();
 
     // Handle slash commands
     if (input.startsWith("/")) {
-      const lower = input.toLowerCase();
-      if (lower === "/session new" || lower === "/new") {
-        createNewSession();
-        return;
-      }
-      if (lower === "/clear") {
-        setSessions((prev) => {
-          const updated = prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s));
-          localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
-          return updated;
-        });
-        setShowSlashMenu(false);
-        toast.info("Riwayat pesan di sesi ini dibersihkan.");
-        return;
-      }
+      executeSlashCommand(input);
+      return;
     }
 
     const userMsg: ChatMessage = {
@@ -1845,6 +1854,7 @@ export function WorkspacePage() {
                 isAnalyzing={isAnalyzing}
                 isConnected={isConnected}
                 onToggleSlashMenu={toggleSlashMenu}
+                onSlashCommand={handleSlashCommand}
                 files={files}
               />
             </div>
@@ -1905,6 +1915,7 @@ interface ChatInputFormProps {
   isAnalyzing: boolean;
   isConnected: boolean;
   onToggleSlashMenu: () => void;
+  onSlashCommand: (command: string) => void;
   files: { name: string }[];
 }
 
@@ -1914,12 +1925,21 @@ const ChatInputForm = memo(function ChatInputForm({
   isAnalyzing,
   isConnected,
   onToggleSlashMenu,
+  onSlashCommand,
   files,
 }: ChatInputFormProps) {
   const [localInput, setLocalInput] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [slashQuery, setSlashQuery] = useState<string | null>(null);
+  const [slashIndex, setSlashIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const SLASH_COMMANDS = [
+    { command: "/session new", label: "+ Buat Sesi Percakapan Baru" },
+    { command: "/new", label: "+ Buat Sesi Baru (singkatan)" },
+    { command: "/clear", label: "✕ Bersihkan Riwayat Pesan Sesi Ini" },
+  ];
 
   // Filter files by the text after the last "@".
   const mentionResults = useMemo(() => {
@@ -1934,6 +1954,13 @@ const ChatInputForm = memo(function ChatInputForm({
 
   const handleChange = (value: string) => {
     setLocalInput(value);
+    // Slash command detection: input starts with "/" and has no space yet.
+    if (value.startsWith("/") && !value.includes(" ")) {
+      setSlashQuery(value.slice(1).toLowerCase());
+      setMentionQuery(null);
+    } else {
+      setSlashQuery(null);
+    }
     const atIndex = value.lastIndexOf("@");
     if (atIndex !== -1 && atIndex === value.length - 1) {
       setMentionQuery("");
@@ -1950,6 +1977,21 @@ const ChatInputForm = memo(function ChatInputForm({
     }
   };
 
+  const slashResults = useMemo(() => {
+    if (slashQuery === null) return [];
+    return SLASH_COMMANDS.filter((c) => c.command.toLowerCase().includes(`/${slashQuery}`));
+  }, [slashQuery]);
+
+  // Reset slash selection index when results change.
+  useEffect(() => setSlashIndex(0), [slashResults.length, slashQuery]);
+
+  const runSlashCommand = (command: string) => {
+    onSlashCommand(command);
+    setLocalInput("");
+    setSlashQuery(null);
+    setMentionQuery(null);
+  };
+
   const insertMention = (fileName: string) => {
     if (mentionQuery === null) return;
     const atIndex = localInput.lastIndexOf("@");
@@ -1964,7 +2006,29 @@ const ChatInputForm = memo(function ChatInputForm({
     });
   };
 
-  const handleMentionKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Slash command navigation takes priority when the slash popup is open.
+    if (slashQuery !== null && slashResults.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashIndex((i) => (i + 1) % slashResults.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashIndex((i) => (i - 1 + slashResults.length) % slashResults.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        runSlashCommand(slashResults[slashIndex].command);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSlashQuery(null);
+        return;
+      }
+    }
     if (mentionQuery === null || mentionResults.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -1990,10 +2054,40 @@ const ChatInputForm = memo(function ChatInputForm({
     }
     setLocalInput("");
     setMentionQuery(null);
+    setSlashQuery(null);
   };
 
   return (
     <div className="relative">
+      {/* Slash Command Popup */}
+      {slashQuery !== null && (
+        <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 border-b border-gray-100">
+            Perintah Slash
+          </div>
+          {slashResults.length === 0 ? (
+            <div className="px-3 py-2.5 text-[11px] text-gray-400">Tidak ada perintah yang cocok</div>
+          ) : (
+            <div className="max-h-44 overflow-y-auto">
+              {slashResults.map((cmd, i) => (
+                <button
+                  key={cmd.command}
+                  type="button"
+                  onMouseEnter={() => setSlashIndex(i)}
+                  onClick={() => runSlashCommand(cmd.command)}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors ${
+                    i === slashIndex ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="font-mono text-amber-700">{cmd.command}</span>
+                  <span className="ml-2 text-gray-500">{cmd.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* File Mention Popup */}
       {mentionQuery !== null && (
         <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
@@ -2023,7 +2117,7 @@ const ChatInputForm = memo(function ChatInputForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} onKeyDown={handleMentionKeyDown} className="flex items-center gap-2">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex items-center gap-2">
       <button
         type="button"
         onClick={onToggleSlashMenu}
