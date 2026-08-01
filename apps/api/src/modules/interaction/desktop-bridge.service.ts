@@ -1,5 +1,7 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional, Inject } from '@nestjs/common';
 import { WebSocketServer, WebSocket, RawData } from 'ws';
+
+export const DESKTOP_BRIDGE_PORT = 'DESKTOP_BRIDGE_PORT';
 
 interface PendingRequest {
   resolve: (value: any) => void;
@@ -14,11 +16,10 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
   private desktop: WebSocket | null = null;
   private pending = new Map<string, PendingRequest>();
   private nextId = 0;
-  private readonly port: number;
 
-  constructor(port = 31524) {
-    this.port = port;
-  }
+  constructor(
+    @Optional() @Inject(DESKTOP_BRIDGE_PORT) private readonly port: number = 31524,
+  ) {}
 
   get isConnected(): boolean {
     return this.desktop !== null && this.desktop.readyState === WebSocket.OPEN;

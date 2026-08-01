@@ -7,7 +7,6 @@ import {
 } from '../ai/context-manager.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
-import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
@@ -127,7 +126,6 @@ export class WorkspaceRunnerService {
   constructor(
     private readonly aiService: AiService,
     private readonly toolRegistryService: ToolRegistryService,
-    private readonly documentReaderTool: DocumentReaderTool,
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
@@ -550,25 +548,6 @@ export class WorkspaceRunnerService {
               .join('\n')
           : 'Belum ada file di workspace ini.';
 
-      // Lightweight preview for top 3 files (max 250 chars each) to prevent token bloat
-      const previews: string[] = [];
-      const maxPreviews = Math.min(filesToDescribe.length, 3);
-      for (let i = 0; i < maxPreviews; i++) {
-        const f = filesToDescribe[i];
-        try {
-          const result = await this.documentReaderTool.readDocument(f.path);
-          if (result.status === 'success' && result.data?.text) {
-            const textStr = (result.data.text as string).trim();
-            if (textStr.length > 0) {
-              const truncated = textStr.substring(0, 250);
-              previews.push(`--- ${f.name} ---\n${truncated}${textStr.length > 250 ? '\n...[truncated]' : ''}`);
-            }
-          }
-        } catch {
-          // skip unreadable files
-        }
-      }
-
       // Get domain config for this business type
       const domainConfig = this.domainRegistry.get(businessType);
       const domainTerminology = this.domainRegistry.getTerminology(businessType);
@@ -589,10 +568,6 @@ export class WorkspaceRunnerService {
       );
 
       let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
-
-      if (previews.length > 0) {
-        context += `\n\n=== ISI FILE (Preview) ===\n${previews.join('\n\n')}\n=== END ISI FILE ===`;
-      }
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;

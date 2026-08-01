@@ -689,6 +689,39 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     );
 
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'rename_workspace_file',
+        displayName: 'Ganti Nama File Workspace',
+        description:
+          'Mengganti nama file yang sudah ada di dalam folder Workspace. File asli dipindahkan ke nama baru, indeks workspace diperbarui.',
+        tags: ['rename', 'move', 'workspace', 'file'],
+        handler: (args) =>
+          this.workspaceToolsService.renameWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename,
+            newFilename: args.newFilename,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'ID Workspace (wajib)' },
+            filename: {
+              type: 'string',
+              description: 'Nama file yang akan diganti namanya (contoh: test.txt)',
+            },
+            newFilename: {
+              type: 'string',
+              description: 'Nama file baru (contoh: test2.txt)',
+            },
+          },
+          required: ['workspaceId', 'filename', 'newFilename'],
+        },
+        estimatedLatency: 'fast',
+        timeoutMs: 5000,
+      }),
+    );
+
     // ─── Skills ─────────────────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({

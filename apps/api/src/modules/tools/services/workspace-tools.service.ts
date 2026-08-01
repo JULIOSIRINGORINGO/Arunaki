@@ -257,6 +257,156 @@ export class WorkspaceToolsService {
   }
 
   /**
+   * Rename a file inside workspace directory.
+   * Automatically resolves rootPath from workspace DB record and updates DB index.
+   */
+  async renameWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+    newFilename: string;
+  }): Promise<ToolResult> {
+    let { workspaceId, filename, newFilename } = params;
+    const startTime = Date.now();
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    filename = filename.replace(/\s+nya$/i, '').trim();
+    newFilename = newFilename.replace(/\s+nya$/i, '').trim();
+
+    if (!filename || !newFilename || filename.toLowerCase() === newFilename.toLowerCase()) {
+      return {
+        status: 'error',
+        data: { filename, newFilename },
+        preview: 'Nama file sumber dan target tidak valid atau sama.',
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'INVALID_FILENAME', message: 'Source and target filenames must differ and be non-empty' },
+      };
+    }
+
+    let sourcePath = path.join(workspace.rootPath, filename);
+    const targetPath = path.join(workspace.rootPath, newFilename);
+
+    const fsPromises = await import('fs/promises');
+
+    // Resolve source file if exact path does not exist (extension-less matching)
+    let fileExists = false;
+    try {
+      await fsPromises.access(sourcePath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
+    }
+
+    if (!fileExists) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === filename.toLowerCase() ||
+            f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
+        );
+        if (match) {
+          sourcePath = match.path;
+          filename = match.name;
+        } else {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
+            metadata: {
+              toolName: 'rename_workspace_file',
+              displayName: 'Ganti Nama File Workspace',
+              executionTime: Date.now() - startTime,
+            },
+            error: { code: 'FILE_NOT_FOUND', message: `File ${filename} not found` },
+          };
+        }
+      } catch {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
+          metadata: {
+            toolName: 'rename_workspace_file',
+            displayName: 'Ganti Nama File Workspace',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'FILE_NOT_FOUND', message: `File ${filename} not found` },
+        };
+      }
+    }
+
+    try {
+      // 1. Rename physical file on disk
+      await fsPromises.rename(sourcePath, targetPath);
+
+      // 2. Update database index path + name
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === filename.toLowerCase() ||
+            f.path.toLowerCase() === sourcePath.toLowerCase(),
+        );
+        if (match) {
+          await this.fileService.update(match.id, {
+            name: newFilename,
+            path: targetPath,
+          });
+        }
+      } catch {
+        // DB index update optional — disk rename is the source of truth
+      }
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename, newFilename },
+        preview: `Berkas "${filename}" berhasil diganti nama menjadi "${newFilename}".`,
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+          filename: newFilename,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal mengganti nama file "${filename}": ${e.message}`,
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'RENAME_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
    * Delete a file from workspace directory and database index.
    */
   async deleteWorkspaceFile(params: {
