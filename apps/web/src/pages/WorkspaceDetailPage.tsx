@@ -126,12 +126,16 @@ export function WorkspaceDetailPage() {
               ]);
             } else if (event.type === "plan_created") {
               setCurrentPlan(event.data.steps || []);
+              const steps = event.data.steps || [];
+              const planMsg = steps.length > 1
+                ? `Langkah eksekusi disusun (${steps.length} langkah)`
+                : `Eksekusi: ${steps[0] || "Mengerjakan permintaan"}`;
               setAgentLogs((prev) => [
                 ...prev,
                 {
                   id: Date.now().toString(),
                   type: "plan",
-                  message: `Rencana otonom disusun (${event.data.steps?.length || 0} langkah)`,
+                  message: planMsg,
                   timestamp: time,
                 },
               ]);

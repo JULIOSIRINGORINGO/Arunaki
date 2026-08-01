@@ -510,31 +510,31 @@ export function WorkspacePage() {
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
                 );
-                setAgentSteps((prev) => [
-                  ...prev,
-                  {
-                    type: "plan",
-                    label: `Rencana Otonom: ${event.data.steps?.length || 0} Langkah Kerja (Sub-Agents)`,
-                    detail: event.data.steps?.join(" | "),
-                    planList: event.data.steps || [],
-                    status: "done",
-                  },
-                ]);
+                {
+                  const steps = event.data.steps || [];
+                  const isMultiStep = steps.length > 1;
+                  const label = isMultiStep
+                    ? `Langkah Eksekusi: ${steps.length} Langkah`
+                    : `Eksekusi: ${steps[0] || "Mengerjakan permintaan"}`;
+                  setAgentSteps((prev) => [
+                    ...prev,
+                    {
+                      type: "plan",
+                      label,
+                      detail: steps.join(" | "),
+                      planList: steps,
+                      status: "done",
+                    },
+                  ]);
+                }
                 break;
               case "tool_start": {
                 setActiveToolAction({ toolName: event.data.toolName, args: event.data.args });
                 const toolName = event.data.toolName;
                 const targetName = event.data.args?.filename || event.data.args?.path || event.data.args?.query || "";
-                let friendlyLabel = `Menjalankan ${toolName}`;
-                if (toolName === 'write_workspace_file' || toolName === 'document_writer') {
-                  friendlyLabel = targetName ? `Menyunting/Membuat file "${targetName}"` : 'Menyunting/Membuat dokumen';
-                } else if (toolName === 'read_workspace_file' || toolName === 'document_reader') {
-                  friendlyLabel = targetName ? `Membaca isi file "${targetName}"` : 'Membaca dokumen';
-                } else if (toolName === 'generate_export') {
-                  friendlyLabel = targetName ? `Membuat laporan spreadsheet "${targetName}"` : 'Menyusun laporan';
-                } else if (toolName === 'web_search' || toolName === 'tavily_search') {
-                  friendlyLabel = targetName ? `Mencari informasi: "${targetName}"` : 'Mencari di internet';
-                }
+                const friendlyLabel = targetName
+                  ? `Menjalankan ${toolName} → ${targetName}`
+                  : `Menjalankan ${toolName}`;
                 setAgentSteps((prev) => [
                   ...prev,
                   {
@@ -546,15 +546,30 @@ export function WorkspacePage() {
                 ]);
                 break;
               }
-              case "tool_done":
+              case "tool_done": {
                 setActiveToolAction(null);
-                setAgentSteps((prev) =>
-                  prev.map((s) =>
-                    s.status === "running" ? { ...s, status: "done" as const } : s
-                  )
-                );
+                const doneLabel =
+                  event.data?.result?.preview ||
+                  (event.data?.result?.status === "success"
+                    ? `Selesai: ${event.data.toolName}`
+                    : `Gagal: ${event.data.toolName}`);
+                const doneStatus = event.data?.result?.status === "success" ? ("done" as const) : ("error" as const);
+                setAgentSteps((prev) => {
+                  const idx = prev.map((s) => s.type).lastIndexOf("tool");
+                  const lastTool = idx >= 0 ? prev[idx] : null;
+                  if (lastTool && lastTool.status === "running") {
+                    const updated = [...prev];
+                    updated[idx] = { ...lastTool, label: doneLabel, status: doneStatus };
+                    return updated;
+                  }
+                  return [
+                    ...prev,
+                    { type: "tool", label: doneLabel, status: doneStatus },
+                  ];
+                });
                 refreshFolderRef.current(wsId);
                 break;
+              }
               case "text_delta":
                 setAnalysisResult(event.data);
                 break;
