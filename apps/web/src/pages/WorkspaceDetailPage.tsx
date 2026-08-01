@@ -64,6 +64,7 @@ export function WorkspaceDetailPage() {
     queryKey: ["workspace", id],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/workspaces/${id}`);
+      if (!res.ok) return null;
       const data = await res.json();
       return data.data;
     },
@@ -74,6 +75,7 @@ export function WorkspaceDetailPage() {
     queryKey: ["files", id],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/files/workspace/${id}`);
+      if (!res.ok) return [];
       const data = await res.json();
       return data.data || [];
     },
@@ -85,6 +87,7 @@ export function WorkspaceDetailPage() {
       const res = await fetch(`${API_BASE}/workspaces/${id}/initialize`, {
         method: "POST",
       });
+      if (!res.ok) throw new Error("Initialize failed");
       return res.json();
     },
     onSuccess: () => {
@@ -216,11 +219,12 @@ export function WorkspaceDetailPage() {
   const handleApprove = async () => {
     if (!approvalRequest || !id) return;
     try {
-      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
+      if (!res.ok) throw new Error("Approve failed");
       setApprovalRequest(null);
     } catch (e) {
       console.error("Failed to approve:", e);
@@ -230,11 +234,12 @@ export function WorkspaceDetailPage() {
   const handleReject = async () => {
     if (!approvalRequest || !id) return;
     try {
-      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: false }),
       });
+      if (!res.ok) throw new Error("Reject failed");
       setApprovalRequest(null);
     } catch (e) {
       console.error("Failed to reject:", e);
