@@ -69,11 +69,12 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
   const currentChatId = searchParams.get("chat");
   const queryClient = useQueryClient();
 
-  const { data: fetchedChats = [] } = useQuery<Chat[]>({
+  const { data: fetchedChats = [], isLoading: chatsLoading } = useQuery<Chat[]>({
     queryKey: ["chats"],
     queryFn: async () => {
       try {
         const res = await fetch(`${API_BASE}/chat`);
+        if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
       } catch (e) {
@@ -215,9 +216,50 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3.5 space-y-1 min-h-0">
-          {pinnedChats.length > 0 && (
+          {chatsLoading ? (
+            <div className="px-3.5 py-6 space-y-2.5">
+              <div className="h-9 rounded-xl bg-gray-200/50 animate-pulse" />
+              <div className="h-9 rounded-xl bg-gray-200/40 animate-pulse" />
+              <div className="h-9 rounded-xl bg-gray-200/30 animate-pulse" />
+            </div>
+          ) : displayChats.length === 0 ? (
+            <div className="px-3.5 py-8 text-center">
+              <div className="w-10 h-10 mx-auto rounded-xl bg-gray-200/60 flex items-center justify-center mb-3">
+                <MessageSquare className="w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-600">Belum ada chat</p>
+              <p className="text-xs text-gray-400 mt-1">Mulai percakapan baru untuk melihat riwayatnya di sini.</p>
+              <button
+                type="button"
+                onClick={() => createChat.mutate()}
+                disabled={createChat.isPending}
+                className="mt-4 px-4 py-2 rounded-xl bg-gray-900 text-white text-xs font-semibold hover:bg-gray-700 transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {createChat.isPending ? "Membuat..." : "+ Chat Baru"}
+              </button>
+            </div>
+          ) : (
             <>
-              {pinnedChats.map((chat) => (
+              {pinnedChats.length > 0 && (
+                <>
+                  {pinnedChats.map((chat) => (
+                    <ChatItem
+                      key={chat.id}
+                      chat={chat}
+                      isActive={currentChatId === chat.id}
+                      title={getChatTitle(chat)}
+                      onClose={onClose}
+                      onDelete={() => deleteChat.mutate(chat.id)}
+                      onTogglePin={() => togglePin.mutate(chat.id)}
+                    />
+                  ))}
+                  <div className="px-3.5 py-1">
+                    <div className="border-t border-gray-200/60" />
+                  </div>
+                </>
+              )}
+
+              {unpinnedChats.map((chat) => (
                 <ChatItem
                   key={chat.id}
                   chat={chat}
@@ -228,23 +270,8 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
                   onTogglePin={() => togglePin.mutate(chat.id)}
                 />
               ))}
-              <div className="px-3.5 py-1">
-                <div className="border-t border-gray-200/60" />
-              </div>
             </>
           )}
-
-          {unpinnedChats.map((chat) => (
-            <ChatItem
-              key={chat.id}
-              chat={chat}
-              isActive={currentChatId === chat.id}
-              title={getChatTitle(chat)}
-              onClose={onClose}
-              onDelete={() => deleteChat.mutate(chat.id)}
-              onTogglePin={() => togglePin.mutate(chat.id)}
-            />
-          ))}
         </div>
       </div>
 

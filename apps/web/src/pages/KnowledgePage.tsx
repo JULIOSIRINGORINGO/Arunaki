@@ -49,6 +49,7 @@ export function KnowledgePage() {
   const fetchDocs = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/knowledge`);
+      if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setDocs(data.data || []);
     } catch {
@@ -61,6 +62,7 @@ export function KnowledgePage() {
   const fetchDomains = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/domains`);
+      if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setDomains(data.data || []);
     } catch {
@@ -111,6 +113,7 @@ export function KnowledgePage() {
         method: "POST",
         body: formData,
       });
+      if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
 
       setExtractStep("saving");

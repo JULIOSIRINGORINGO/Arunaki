@@ -81,6 +81,7 @@ export function SettingsPage() {
   const fetchProviders = async () => {
     try {
       const res = await fetch(`${API_BASE}/providers`);
+      if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setProviders(data.data || []);
     } catch (err) {
@@ -133,6 +134,7 @@ export function SettingsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
         });
+        if (!res.ok) throw new Error("Update failed");
       } else {
         // Create
         res = await fetch(`${API_BASE}/providers`, {
@@ -140,6 +142,7 @@ export function SettingsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...form, active: providers.length === 0 }),
         });
+        if (!res.ok) throw new Error("Create failed");
       }
       if (!res.ok) {
         const json = await res.json().catch(() => null);
@@ -170,6 +173,7 @@ export function SettingsPage() {
           model: provider.model,
         }),
       });
+      if (!res.ok) throw new Error("Test failed");
       const data = await res.json();
       setTestResult(data.data);
     } catch (err: any) {
@@ -182,7 +186,8 @@ export function SettingsPage() {
   // Activate provider
   const handleActivate = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/providers/${id}/activate`, { method: "PATCH" });
+      const res = await fetch(`${API_BASE}/providers/${id}/activate`, { method: "PATCH" });
+      if (!res.ok) throw new Error("Activate failed");
       fetchProviders();
     } catch (err) {
       console.error("Failed to activate provider:", err);
@@ -193,7 +198,8 @@ export function SettingsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus provider ini?")) return;
     try {
-      await fetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
       fetchProviders();
     } catch (err) {
       console.error("Failed to delete provider:", err);

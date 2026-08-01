@@ -409,15 +409,16 @@ export default function FileTree({
       } else {
         const targetFile = files.find((f) => f.name.endsWith(fileName) || fileName.endsWith(f.name));
         if (targetFile?.id) {
-          try {
-            const res = await fetch(`${API_BASE}/files/${targetFile.id}/content`);
-            const data = await res.json();
-            if (data.data?.content) {
-              fileContent = data.data.content;
+try {
+              const res = await fetch(`${API_BASE}/files/${targetFile.id}/content`);
+              if (!res.ok) throw new Error("Failed to fetch");
+              const data = await res.json();
+              if (data.data?.content) {
+                fileContent = data.data.content;
+              }
+            } catch {
+              // ignore
             }
-          } catch {
-            // ignore
-          }
         }
       }
 
