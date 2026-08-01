@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import Markdown from "react-markdown";
@@ -1845,6 +1845,7 @@ export function WorkspacePage() {
                 isAnalyzing={isAnalyzing}
                 isConnected={isConnected}
                 onToggleSlashMenu={toggleSlashMenu}
+                files={files}
               />
             </div>
 
@@ -1904,6 +1905,7 @@ interface ChatInputFormProps {
   isAnalyzing: boolean;
   isConnected: boolean;
   onToggleSlashMenu: () => void;
+  files: { name: string }[];
 }
 
 const ChatInputForm = memo(function ChatInputForm({
@@ -1912,8 +1914,71 @@ const ChatInputForm = memo(function ChatInputForm({
   isAnalyzing,
   isConnected,
   onToggleSlashMenu,
+  files,
 }: ChatInputFormProps) {
   const [localInput, setLocalInput] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Filter files by the text after the last "@".
+  const mentionResults = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    const names = files.map((f) => f.name).filter((n) => n.toLowerCase().includes(q));
+    return names.slice(0, 12);
+  }, [mentionQuery, files]);
+
+  // Reset selection index when results change.
+  useEffect(() => setMentionIndex(0), [mentionResults.length, mentionQuery]);
+
+  const handleChange = (value: string) => {
+    setLocalInput(value);
+    const atIndex = value.lastIndexOf("@");
+    if (atIndex !== -1 && atIndex === value.length - 1) {
+      setMentionQuery("");
+    } else if (atIndex !== -1) {
+      const query = value.slice(atIndex + 1);
+      // Only trigger mention when no whitespace/other symbol follows @.
+      if (/^[\w.\- ]*$/.test(query)) {
+        setMentionQuery(query);
+        return;
+      }
+      setMentionQuery(null);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const insertMention = (fileName: string) => {
+    if (mentionQuery === null) return;
+    const atIndex = localInput.lastIndexOf("@");
+    const before = localInput.slice(0, atIndex);
+    const next = `${before}@${fileName} `;
+    setLocalInput(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      const len = next.length;
+      inputRef.current?.setSelectionRange(len, len);
+    });
+  };
+
+  const handleMentionKeyDown = (e: React.KeyboardEvent) => {
+    if (mentionQuery === null || mentionResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % mentionResults.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertMention(mentionResults[mentionIndex]);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1924,10 +1989,41 @@ const ChatInputForm = memo(function ChatInputForm({
       onSend(localInput);
     }
     setLocalInput("");
+    setMentionQuery(null);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center gap-2">
+    <div className="relative">
+      {/* File Mention Popup */}
+      {mentionQuery !== null && (
+        <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 border-b border-gray-100">
+            Pilih file untuk dilampirkan
+          </div>
+          {mentionResults.length === 0 ? (
+            <div className="px-3 py-2.5 text-[11px] text-gray-400">Tidak ada file yang cocok</div>
+          ) : (
+            <div className="max-h-44 overflow-y-auto">
+              {mentionResults.map((name, i) => (
+                <button
+                  key={name}
+                  type="button"
+                  onMouseEnter={() => setMentionIndex(i)}
+                  onClick={() => insertMention(name)}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors ${
+                    i === mentionIndex ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 inline mr-1.5 text-gray-400 -mt-0.5" />
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} onKeyDown={handleMentionKeyDown} className="flex items-center gap-2">
       <button
         type="button"
         onClick={onToggleSlashMenu}
@@ -1938,10 +2034,11 @@ const ChatInputForm = memo(function ChatInputForm({
       </button>
 
       <input
+        ref={inputRef}
         type="text"
         value={localInput}
-        onChange={(e) => setLocalInput(e.target.value)}
-        placeholder="Tanyakan analisis dokumen, korelasi data..."
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="Tanyakan analisis dokumen, korelasi data... (ketik @ untuk lampirkan file)"
         className="flex-1 bg-gray-50/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:outline-none focus:bg-white focus:border-gray-900 placeholder:text-gray-400 transition-all shadow-2xs"
       />
 
@@ -1970,5 +2067,6 @@ const ChatInputForm = memo(function ChatInputForm({
         </button>
       )}
     </form>
+    </div>
   );
 });
