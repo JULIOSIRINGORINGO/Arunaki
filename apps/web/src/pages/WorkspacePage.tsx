@@ -58,6 +58,7 @@ interface ChatSession {
   updatedAt: string;
   messages: ChatMessage[];
   analysisResult?: string | null;
+  steps?: AgentStep[];
 }
 
 export function WorkspacePage() {
@@ -83,6 +84,10 @@ export function WorkspacePage() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [activeToolAction, setActiveToolAction] = useState<{ toolName: string; args?: any } | null>(null);
   const [isStepsExpanded, setIsStepsExpanded] = useState(true);
+
+  // Mirror of agentSteps for use inside SSE handlers (closure staleness).
+  const agentStepsRef = useRef<AgentStep[]>([]);
+  agentStepsRef.current = agentSteps;
 
   // VS Code-like: native folder tree from Electron IPC
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
@@ -296,6 +301,7 @@ export function WorkspacePage() {
             if (activeSess?.analysisResult) {
               setAnalysisResult(activeSess.analysisResult);
             }
+            setAgentSteps(activeSess?.steps || []);
           } else {
             setActiveSessionId(parsed[0].id);
           }
@@ -318,7 +324,7 @@ export function WorkspacePage() {
     setActiveSessionId("session_default");
   }, [workspaceId]);
 
-  const addMessageToActiveSession = useCallback((msg: ChatMessage, newAnalysisResult?: string | null) => {
+  const addMessageToActiveSession = useCallback((msg: ChatMessage, newAnalysisResult?: string | null, newSteps?: AgentStep[]) => {
     if (!workspaceId) return;
     setSessions((prevSessions) => {
       const updated = prevSessions.map((session) => {
@@ -328,6 +334,7 @@ export function WorkspacePage() {
             ...session,
             messages: updatedMessages,
             analysisResult: newAnalysisResult !== undefined ? newAnalysisResult : session.analysisResult,
+            steps: newSteps !== undefined ? newSteps : session.steps,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -367,6 +374,7 @@ export function WorkspacePage() {
     setActiveSessionId(sessionId);
     localStorage.setItem(`arunaki_active_session_${workspaceId}`, sessionId);
     setAnalysisResult(target.analysisResult || null);
+    setAgentSteps(target.steps || []);
     setShowSlashMenu(false);
     toast.info(`Beralih ke "${target.title}"`);
   }, [sessions, workspaceId]);
@@ -558,6 +566,9 @@ export function WorkspacePage() {
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
                 );
+                const finalSteps = agentStepsRef.current.map((s) =>
+                  s.status === "running" ? { ...s, status: "done" as const } : s
+                );
                 if (event.data?.content) {
                   setAnalysisResult(event.data.content);
                   const aiMsg: ChatMessage = {
@@ -566,7 +577,7 @@ export function WorkspacePage() {
                     content: event.data.content,
                     timestamp: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
                   };
-                  addMessageToActiveSession(aiMsg, event.data.content);
+                  addMessageToActiveSession(aiMsg, event.data.content, finalSteps);
                 }
                 refreshFolderRef.current(wsId);
                 abortController.abort();
