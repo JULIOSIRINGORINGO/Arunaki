@@ -168,6 +168,7 @@ export function ChatPage() {
       if (!effectiveChatId) return [];
       try {
         const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/messages`);
+        if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
       } catch {
@@ -207,6 +208,7 @@ export function ChatPage() {
       if (!effectiveChatId) return [];
       try {
         const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/artifacts`);
+        if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
       } catch {
