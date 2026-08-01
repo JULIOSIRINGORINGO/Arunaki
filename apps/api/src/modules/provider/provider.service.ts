@@ -73,6 +73,22 @@ export class ProviderService extends BaseService<Provider> {
     };
   }
 
+  async getById(id: string): Promise<ProviderConfig | null> {
+    const provider = await this.repository.findById(id);
+    if (!provider) return null;
+
+    return {
+      id: provider.id,
+      name: provider.name,
+      type: provider.type,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+      model: provider.model,
+      headerPrefix: provider.headerPrefix || undefined,
+      headerTitle: provider.headerTitle || undefined,
+    };
+  }
+
   async setActive(id: string): Promise<void> {
     await this.repository.setActive(id);
   }

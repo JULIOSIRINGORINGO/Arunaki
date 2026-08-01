@@ -22,6 +22,7 @@ import { CompactionService } from '../ai/compaction.service.js';
 import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+import { ProviderService } from '../provider/provider.service.js';
 import * as path from 'path';
 
 export type AgentState =
@@ -140,6 +141,7 @@ export class WorkspaceRunnerService {
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
     private readonly eventEmitter: EventEmitter2,
+    private readonly providerService: ProviderService,
   ) {}
 
   /** Get current state of a workspace run */
@@ -751,15 +753,24 @@ export class WorkspaceRunnerService {
        const createdArtifactIds: string[] = [];
        const MAX_ROUNDS = 25;
        let reachedMaxRounds = true;
+       let mutationsApplied = 0;
+       let logicalFailoverUsed = false;
+       let activeProviderId: string | undefined;
+
+       // Verifier (post-hoc, NOT tool routing): goal meminta modifikasi file.
+       // Hanya dipakai untuk mendeteksi "klaim sukses tanpa eksekusi" lalu
+       // memicu failover model — bukan untuk memilih tool.
+       const VERIFY_MUTATION_GOAL =
+         /(?:buat|tulis|isi|ubah|edit|ganti|hapus|rename|delete|create|update|simpan|tambah|kurang|perbarui)/i.test(safeGoal);
 
        // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
        for (let turn = 0; turn < 5; turn++) {
          // Inner loop: tool execution
          for (let round = 0; round < MAX_ROUNDS; round++) {
-          // Check abort before each round
-          if (abortController.signal.aborted) {
-            this.setState(runState, 'aborting', onEvent);
-            onEvent({
+           // Check abort before each round
+           if (abortController.signal.aborted) {
+             this.setState(runState, 'aborting', onEvent);
+             onEvent({
               type: 'error',
               data: { message: 'Analisis dibatalkan oleh pengguna.' },
             });
@@ -772,9 +783,43 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
-          const aiResponse = await this.aiService.chat(messages, tools);
+          const aiResponse = await this.aiService.chat(messages, tools, {
+            preferredProviderId: activeProviderId,
+          });
 
           if (aiResponse.toolCalls.length === 0) {
+            // Logical failover: goal butuh modifikasi, belum ada mutation,
+            // tapi model langsung jawab (klaim sukses tanpa eksekusi).
+            // Putar ke provider lain, ulangi turn sekali.
+            const claimsSuccess =
+              VERIFY_MUTATION_GOAL &&
+              mutationsApplied === 0 &&
+              /(?:berhasil|sukses|selesai|telah|sudah|done|success)/i.test(
+                aiResponse.content || '',
+              );
+            if (claimsSuccess && !logicalFailoverUsed) {
+              const next = await this.providerService
+                .getNextAvailable(activeProviderId)
+                .catch(() => null);
+              if (next) {
+                logicalFailoverUsed = true;
+                activeProviderId = next.id;
+                this.logger.warn(
+                  `Logical failover: model jawab tanpa eksekusi untuk goal modifikasi. Beralih ke provider ${next.name} (${next.model}).`,
+                );
+                onEvent({
+                  type: 'thinking',
+                  data: `Mencoba ulang dengan model lain (${next.name})...`,
+                });
+                messages.push({
+                  role: 'user',
+                  content:
+                    'Catatan: Tugas sebelumnya belum dieksekusi. Lakukan operasi file yang diminta pengguna dengan tool yang sesuai — jangan hanya menjawab teks.',
+                });
+                continue;
+              }
+            }
+
             finalContent = this.scrubber.scrub(aiResponse.content);
             onEvent({ type: 'text_delta', data: finalContent });
             reachedMaxRounds = false;
@@ -1034,6 +1079,7 @@ export class WorkspaceRunnerService {
 
              // Track modified files
              if (result.status === 'success') {
+               mutationsApplied++;
                const filename = args.filename || args.path || 'unknown';
                const current = this.modifiedFiles.get(workspaceId) || [];
                current.push({ filename, timestamp: new Date() });

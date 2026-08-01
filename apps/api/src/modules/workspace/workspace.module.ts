@@ -16,6 +16,7 @@ import { ArtifactModule } from '../artifact/artifact.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
 import { SourceModule } from '../source/source.module.js';
+import { ProviderModule } from '../provider/provider.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SourceModule } from '../source/source.module.js';
     MemoryModule,
     SkillsModule,
     SourceModule,
+    ProviderModule,
     EventEmitterModule.forRoot(),
   ],
   controllers: [WorkspaceController],

@@ -260,14 +260,20 @@ export class AiService {
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
+    options?: { preferredProviderId?: string },
   ): Promise<AiResponse> {
     // Light trim: keep last 40 messages, skip 4-phase compression
     const trimmedMessages = messages.length > 40
       ? messages.slice(-40)
       : messages;
 
-    // Get starting provider
-    let provider = await this.getProviderConfig();
+    // Get starting provider (optionally pinned for logical failover retries)
+    let provider = options?.preferredProviderId
+      ? await this.providerService.getById(options.preferredProviderId)
+      : null;
+    if (!provider) {
+      provider = await this.getProviderConfig();
+    }
 
     if (!provider.apiKey) {
       throw new Error(
