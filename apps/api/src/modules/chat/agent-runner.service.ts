@@ -4,10 +4,6 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
-import {
-  AutonomousPlannerService,
-  ExecutionPlan,
-} from '../ai/autonomous-planner.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -62,7 +58,6 @@ export class AgentRunnerService {
     private readonly knowledgeService: KnowledgeService,
     private readonly artifactService: ArtifactService,
     private readonly backgroundReviewService: BackgroundReviewService,
-    private readonly plannerService: AutonomousPlannerService,
     private readonly selfHealingService: SelfHealingService,
     private readonly autoMemoryService: AutoMemoryService,
     private readonly sessionAdmissionService: SessionAdmissionService,
