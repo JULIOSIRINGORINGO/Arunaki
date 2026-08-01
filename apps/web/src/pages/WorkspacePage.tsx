@@ -27,6 +27,8 @@ import {
   Brain,
   Trash2,
   Sparkles,
+  Edit3,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -89,6 +91,76 @@ export function WorkspacePage() {
   // Workspace Heartbeat & Proactive Monitor State (OpenClaw Layer 10 & 29)
   const [heartbeatAlert, setHeartbeatAlert] = useState<string | null>(null);
   const previousFileCountRef = useRef<number>(0);
+
+  // VS Code Central Workspace File Editor & Floating Draggable Chat State
+  const [openEditorFile, setOpenEditorFile] = useState<{
+    path: string;
+    name: string;
+    content: string;
+    isEditing?: boolean;
+  } | null>(null);
+
+  const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 380, y: 120 });
+  const isDraggingChatRef = useRef(false);
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleStartDragChat = (e: React.MouseEvent) => {
+    isDraggingChatRef.current = true;
+    dragOffsetRef.current = {
+      x: e.clientX - chatPosition.x,
+      y: e.clientY - chatPosition.y,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingChatRef.current) return;
+      setChatPosition({
+        x: Math.max(10, Math.min(window.innerWidth - 400, e.clientX - dragOffsetRef.current.x)),
+        y: Math.max(10, Math.min(window.innerHeight - 200, e.clientY - dragOffsetRef.current.y)),
+      });
+    };
+
+    const handleMouseUp = () => {
+      isDraggingChatRef.current = false;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  const handleOpenFileInEditor = (path: string, name: string, content?: string) => {
+    setOpenEditorFile({
+      path,
+      name,
+      content: content || "",
+      isEditing: false,
+    });
+  };
+
+  const handleSaveEditorContent = async () => {
+    if (!openEditorFile) return;
+    try {
+      if ((window as any).arunakiDesktop?.writeFile) {
+        const res = await (window as any).arunakiDesktop.writeFile(openEditorFile.path, openEditorFile.content);
+        if (res?.error) {
+          toast.error(`Gagal menyimpan file: ${res.error}`);
+        } else {
+          toast.success(`File "${openEditorFile.name}" berhasil disimpan!`);
+          setOpenEditorFile({ ...openEditorFile, isEditing: false });
+        }
+      } else {
+        toast.info("Penyimpanan file fisik memerlukan mode Desktop Electron.");
+        setOpenEditorFile({ ...openEditorFile, isEditing: false });
+      }
+    } catch (err: any) {
+      toast.error(`Gagal menyimpan file: ${err.message}`);
+    }
+  };
 
   // Session Persistence & Helpers
   useEffect(() => {
@@ -1002,6 +1074,78 @@ export function WorkspacePage() {
                       </button>
                     </div>
                   </div>
+                ) : openEditorFile ? (
+                  /* VS CODE CENTER WORKSPACE EDITOR */
+                  <div className="flex-1 flex flex-col bg-gray-950 text-gray-100 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden min-h-[520px] h-full animate-fade-in">
+                    {/* Tab & Action Bar */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-900 border-b border-gray-800 text-white shrink-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                        <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+                        <span className="font-semibold text-xs text-white truncate">{openEditorFile.name}</span>
+                        <span className="text-[10px] text-gray-400 font-mono truncate hidden sm:inline">{openEditorFile.path}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!openEditorFile.isEditing ? (
+                          <button
+                            type="button"
+                            onClick={() => setOpenEditorFile({ ...openEditorFile, isEditing: true })}
+                            className="flex items-center gap-1.5 px-3 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg border border-gray-700 font-medium transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Edit Content</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleSaveEditorContent}
+                            className="flex items-center gap-1.5 px-3 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold transition-colors shadow-xs cursor-pointer"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            <span>Simpan</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setOpenEditorFile(null)}
+                          className="p-1.5 hover:bg-gray-800 text-gray-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                          title="Tutup Editor File"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actual File Content View */}
+                    <div className="flex-1 p-4 font-mono text-xs overflow-auto bg-gray-950 text-gray-100 min-h-0">
+                      {openEditorFile.isEditing ? (
+                        <textarea
+                          value={openEditorFile.content}
+                          onChange={(e) => setOpenEditorFile({ ...openEditorFile, content: e.target.value })}
+                          className="w-full h-full bg-transparent text-gray-100 resize-none outline-none font-mono text-xs leading-relaxed"
+                          spellCheck={false}
+                        />
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-200">
+                          {openEditorFile.content || "(File ini kosong)"}
+                        </pre>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-4 py-2 bg-gray-900 border-t border-gray-800 text-[11px] text-gray-400 flex items-center justify-between font-mono shrink-0">
+                      <span>{openEditorFile.isEditing ? "Mode Sunting (Aktif)" : "Mode Pratinjau Terbuka (Read-Only)"}</span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenEditorFile(null)}
+                        className="hover:text-white text-emerald-400 underline cursor-pointer"
+                      >
+                        Tutup Editor File
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
                     {/* Persistent Chat History Messages */}
@@ -1410,6 +1554,7 @@ export function WorkspacePage() {
                   workspaceName={workspace?.name || "Workspace"}
                   workspaceFolderPath={connectedFolderPath || workspace?.rootPath}
                   nativeTree={nativeTree ?? undefined}
+                  onFileClick={handleOpenFileInEditor}
                   onRefresh={handleRefreshFolder}
                   onCreateFile={handleCreateFile}
                   onCreateFolder={handleCreateFolder}
@@ -1569,6 +1714,69 @@ export function WorkspacePage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Draggable Chat Box (when file is open in editor) */}
+      {openEditorFile && (
+        <div
+          style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
+          className="fixed z-40 w-96 max-w-[90vw] bg-white border border-gray-200/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in"
+        >
+          {/* Drag Handle Header */}
+          <div
+            onMouseDown={handleStartDragChat}
+            className="px-4 py-3 bg-gray-900 text-white flex items-center justify-between cursor-move select-none shrink-0"
+          >
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-emerald-400" />
+              <span className="font-semibold text-xs text-white">Arunaki AI (Geser Chat)</span>
+            </div>
+            <span className="text-[10px] text-gray-400 font-mono">⠿ Drag Header</span>
+          </div>
+
+          {/* Chat Messages */}
+          <div className="p-3 max-h-56 overflow-y-auto space-y-2 text-xs bg-gray-50/50">
+            {activeSession?.messages && activeSession.messages.length > 0 ? (
+              activeSession.messages.slice(-4).map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`p-2.5 rounded-xl text-xs ${
+                    msg.role === 'user'
+                      ? 'bg-gray-900 text-white ml-6 font-medium'
+                      : 'bg-white border border-gray-200 text-gray-800 mr-6 shadow-2xs'
+                  }`}
+                >
+                  <p className="font-semibold text-[10px] text-gray-400 mb-0.5">
+                    {msg.role === 'user' ? 'Anda' : 'Arunaki AI'}
+                  </p>
+                  <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-[11px] text-gray-400 text-center py-3">
+                Ketik pertanyaan di bawah untuk berdiskusi dengan AI tentang file ini.
+              </p>
+            )}
+          </div>
+
+          {/* Chat Prompt Input Bar */}
+          <form onSubmit={handleSendChat} className="p-2 border-t border-gray-100 bg-white flex items-center gap-2 shrink-0">
+            <input
+              type="text"
+              value={promptInput}
+              onChange={(e) => setPromptInput(e.target.value)}
+              placeholder="Tanyakan analisis AI tentang file ini..."
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-900 focus:outline-none focus:border-gray-400 placeholder:text-gray-400"
+            />
+            <button
+              type="submit"
+              disabled={!promptInput.trim() || isAnalyzing}
+              className="p-2 rounded-xl bg-gray-900 hover:bg-black text-white disabled:opacity-30 cursor-pointer shrink-0 transition-colors shadow-2xs"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+          </form>
         </div>
       )}
     </div>
