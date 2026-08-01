@@ -22,7 +22,6 @@ import { CompactionService } from '../ai/compaction.service.js';
 import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
-import { DomainRegistryService } from '../domain/domain.registry.service.js';
 import * as path from 'path';
 
 export type AgentState =
@@ -140,7 +139,6 @@ export class WorkspaceRunnerService {
     private readonly compactionService: CompactionService,
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
-    private readonly domainRegistry: DomainRegistryService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -549,13 +547,9 @@ export class WorkspaceRunnerService {
           : 'Belum ada file di workspace ini.';
 
       // Get domain config for this business type
-      const domainConfig = this.domainRegistry.get(businessType);
-      const domainTerminology = this.domainRegistry.getTerminology(businessType);
-      const domainUnits = this.domainRegistry.getUnits(businessType, 'length') || [];
-      const domainTemplates = this.domainRegistry.getTemplateCategories(businessType);
-      const domainCommunication = this.domainRegistry.getCommunication(businessType);
+      const businessDomain = businessType !== 'generic' ? businessType : '';
 
-      // Auto-inject relevant skills
+      // Auto-inject relevant skills (already filtered by domain in getSkillsContext)
       const skillsContext = await this.skillService.getSkillsContext(
         businessType,
         workspaceId,
@@ -577,49 +571,16 @@ export class WorkspaceRunnerService {
         context += `\n\n=== MEMORY SNAPSHOT ===\n${memoryContext}\n=== END MEMORY ===`;
       }
 
-      // Inject domain config (OpenClaw Layer 28)
-      const domainLines: string[] = [];
-      if (Object.keys(domainTerminology).length > 0) {
-        domainLines.push(
-          `=== DOMAIN TERMINOLOGY (${businessType}) ===`,
-          Object.entries(domainTerminology)
-            .map(([k, v]) => `- ${k}: ${v}`)
-            .join('\n'),
-          `=== END DOMAIN TERMINOLOGY ===`,
-        );
+      if (businessDomain) {
+        context += `\n\n=== DOMAIN ===\nDomain bisnis: ${businessDomain}\nGunakan list_skills / search_memories bila perlu detail domain.\n=== END DOMAIN ===`;
       }
-      if (domainUnits.length > 0) {
-        domainLines.push(
-          `=== DOMAIN UNITS (${businessType}) ===`,
-          domainUnits.map((u) => `- ${u.name} (base: ${u.toBase}${u.label ? `, ${u.label}` : ''}`).join('\n'),
-          `=== END DOMAIN UNITS ===`,
-        );
-      }
-      if (domainTemplates.length > 0) {
-        domainLines.push(
-          `=== DOMAIN TEMPLATES (${businessType}) ===`,
-          domainTemplates.map((t) => `- ${t.name}${t.columns ? ` [${t.columns.join(', ')}]` : ''}`).join('\n'),
-          `=== END DOMAIN TEMPLATES ===`,
-        );
-      }
-      if (domainCommunication?.greetingTemplate) {
-        domainLines.push(
-          `=== DOMAIN COMMUNICATION (${businessType}) ===`,
-          `Greeting: ${domainCommunication.greetingTemplate}`,
-          `Formality: ${domainCommunication.formality}`,
-          `=== END DOMAIN COMMUNICATION ===`,
-        );
-      }
-       if (domainLines.length > 0) {
-         context += `\n\n${domainLines.join('\n\n')}`;
-       }
 
        const modified = this.modifiedFiles.get(workspaceId) || [];
        if (modified.length > 0) {
          const recent = modified.slice(-10);
          context += `\n\n=== FILES MODIFIED IN THIS RUN ===
-${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')})`).join('\n')}
-=== END MODIFIED FILES ===`;
+ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')})`).join('\n')}
+ === END MODIFIED FILES ===`;
        }
 
        return context;
