@@ -526,8 +526,6 @@ export class AiService {
 
  ${this.buildWorkspaceMemorySection()}
 
- ${this.buildProjectContextSection()}
-
  ${this.buildTemporalContextSection()}
 
  ${modelAdditions}`;
@@ -673,35 +671,12 @@ ${posturePrompt}`;
     }
   }
 
-  private buildWorkspaceToolingSection(): string {
-    if (!this.toolRegistryService) return '';
-    const tools = this.toolRegistryService.getToolDefinitions();
-    const lines: string[] = ['=== TOOLING AVAILABLE ==='];
-    for (const t of tools) {
-      const desc = t.function.description?.split('.')[0]?.trim() || 'No description';
-      lines.push(`- \`${t.function.name}\` — ${desc}`);
-    }
-    lines.push('=== END TOOLING ===');
-    return lines.join('\n');
-  }
-
   private buildWorkspaceMemorySection(): string {
     return [
       '=== MEMORY (from prior sessions) ===',
       'Use memory_search tool to recall relevant facts, preferences, decisions, and patterns from past interactions with this workspace.',
       'Memory is automatically saved after each workspace run.',
       '=== END MEMORY ===',
-    ].join('\n');
-  }
-
-  private buildProjectContextSection(): string {
-    const files = ['AGENTS.md', 'SOUL.md', 'IDENTITY.md', 'USER.md', 'MEMORY.md'];
-    return [
-      '=== PROJECT CONTEXT ===',
-      'Important files in the workspace root (read with read_workspace_file if needed):',
-      ...files.map((f) => `- ${f}`),
-      'Inject relevant content from these files into your reasoning when making decisions about the workspace.',
-      '=== END PROJECT CONTEXT ===',
     ].join('\n');
   }
 
