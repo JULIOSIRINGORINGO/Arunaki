@@ -14,3 +14,9 @@ coverage/
 Thumbs.db
 apps/api/prisma/dev.db
 apps/api/workspace-data/
+
+# Ignored experimental / local files
+REKAPAN TERBARU2.txt
+REKAPAN TERBARU2 buatan Arunaki.txt
+apps/api/scripts/add-kenari.ts
+apps/api/scripts/test-kenari.ts
