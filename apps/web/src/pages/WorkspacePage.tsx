@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiFetch } from "../lib/api";
 
 interface AgentStep {
   type: "thinking" | "plan" | "tool" | "result" | "error";
@@ -425,7 +425,7 @@ export function WorkspacePage() {
     let cancelled = false;
     const restore = async () => {
       try {
-        const res = await fetch(`${API_BASE}/workspaces`);
+        const res = await apiFetch(`${API_BASE}/workspaces`);
         const json = await res.json();
         const workspaces = json.data || [];
 
@@ -442,7 +442,7 @@ export function WorkspacePage() {
 
           // Load cached analysis result (if available from previous session)
           try {
-            const analysisRes = await fetch(`${API_BASE}/workspaces/${connected.id}/analysis`);
+            const analysisRes = await apiFetch(`${API_BASE}/workspaces/${connected.id}/analysis`);
             const analysisJson = await analysisRes.json();
             if (analysisJson.data?.analysisResult && !cancelled) {
               setAnalysisResult(analysisJson.data.analysisResult);
@@ -506,6 +506,7 @@ export function WorkspacePage() {
         .map((m) => ({ role: m.role, content: m.content }));
 
       await fetchEventSource(`${API_BASE}/workspaces/${wsId}/agent/stream`, {
+        fetch: apiFetch,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: abortController.signal,
@@ -670,7 +671,7 @@ export function WorkspacePage() {
     setIsCreating(true);
     try {
       // 1. Create workspace
-      const wsRes = await fetch(`${API_BASE}/workspaces`, {
+      const wsRes = await apiFetch(`${API_BASE}/workspaces`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: folderName, businessType }),
@@ -694,7 +695,7 @@ export function WorkspacePage() {
         });
         formData.append("relativePaths", JSON.stringify(relativePaths));
 
-        const uploadRes = await fetch(`${API_BASE}/files/upload`, {
+        const uploadRes = await apiFetch(`${API_BASE}/files/upload`, {
           method: "POST",
           body: formData,
         });
@@ -754,7 +755,7 @@ export function WorkspacePage() {
         const fileCount = countFiles(scan.tree);
 
         // 4. Register workspace in backend (rootPath stored — API can read files by path)
-        const wsRes = await fetch(`${API_BASE}/workspaces`, {
+        const wsRes = await apiFetch(`${API_BASE}/workspaces`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: 'generic' }),
@@ -768,7 +769,7 @@ export function WorkspacePage() {
         }
 
         // 5. Index files in backend for AI before marking the folder connected.
-        const connectRes = await fetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+        const connectRes = await apiFetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folderPath }),
@@ -874,7 +875,7 @@ export function WorkspacePage() {
   const { data: workspace } = useQuery({
     queryKey: ["workspace", workspaceId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}`);
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}`);
       const json = await res.json();
       return json.data;
     },
@@ -884,7 +885,7 @@ export function WorkspacePage() {
   const { data: files = [] } = useQuery<any[]>({
     queryKey: ["wsFiles", workspaceId],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/files/workspace/${workspaceId}`);
+      const res = await apiFetch(`${API_BASE}/files/workspace/${workspaceId}`);
       const json = await res.json();
       return json.data || [];
     },
@@ -1000,7 +1001,7 @@ export function WorkspacePage() {
     agentAbortRef.current?.abort();
     agentAbortRef.current = null;
     try {
-      await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/abort`, { method: "POST" });
+      await apiFetch(`${API_BASE}/workspaces/${workspaceId}/agent/abort`, { method: "POST" });
       toast.info("Permintaan pembatalan analisis dikirim.");
     } catch {
       toast.error("Gagal membatalkan agen.");
@@ -1012,7 +1013,7 @@ export function WorkspacePage() {
     if (!workspaceId || !steerText.trim() || !isAnalyzing) return;
     const steerMessage = steerText.trim();
     try {
-      const res = await fetch(`${API_BASE}/agent/steer`, {
+      const res = await apiFetch(`${API_BASE}/agent/steer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workspaceId, steerMessage }),

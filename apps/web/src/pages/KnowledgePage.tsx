@@ -14,7 +14,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiFetch } from "../lib/api";
 
 interface KnowledgeDoc {
   id: string;
@@ -48,7 +48,7 @@ export function KnowledgePage() {
 
   const fetchDocs = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/knowledge`);
+      const res = await apiFetch(`${API_BASE}/knowledge`);
       if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setDocs(data.data || []);
@@ -61,7 +61,7 @@ export function KnowledgePage() {
 
   const fetchDomains = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/domains`);
+      const res = await apiFetch(`${API_BASE}/domains`);
       if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setDomains(data.data || []);
@@ -77,7 +77,7 @@ export function KnowledgePage() {
 
   const toggleActive = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/knowledge/${id}/toggle`, { method: "PATCH" });
+      const res = await apiFetch(`${API_BASE}/knowledge/${id}/toggle`, { method: "PATCH" });
       if (!res.ok) return;
       const data = await res.json();
       if (data.data) {
@@ -90,7 +90,7 @@ export function KnowledgePage() {
 
   const deleteDoc = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/knowledge/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${API_BASE}/knowledge/${id}`, { method: "DELETE" });
       if (!res.ok) return;
       setDocs((prev) => prev.filter((d) => d.id !== id));
     } catch {
@@ -109,7 +109,7 @@ export function KnowledgePage() {
 
       const formData = new FormData();
       formData.append("file", selectedFile);
-      const res = await fetch(`${API_BASE}/knowledge/upload`, {
+      const res = await apiFetch(`${API_BASE}/knowledge/upload`, {
         method: "POST",
         body: formData,
       });

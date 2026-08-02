@@ -1,7 +1,7 @@
 /* Hallmark · component: file-upload-zone · genre: atmospheric · theme: Studio */
 import { useState, useCallback, useRef } from "react";
 import { Upload, FileText, CheckCircle, AlertCircle, X } from "lucide-react";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 interface UploadedFile {
   id: string;
@@ -44,7 +44,7 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
     });
 
     try {
-      const res = await fetch(`${API_BASE}/files/upload`, {
+      const res = await apiFetch(`${API_BASE}/files/upload`, {
         method: "POST",
         body: formData,
       });

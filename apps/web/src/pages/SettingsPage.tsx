@@ -5,7 +5,7 @@ import {
   Zap, Palette, Info,
 } from "lucide-react";
 import { cn } from "../lib/utils";
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiFetch } from "../lib/api";
 import { toast } from "sonner";
 
 const tabs = [
@@ -80,7 +80,7 @@ export function SettingsPage() {
   // Fetch providers
   const fetchProviders = async () => {
     try {
-      const res = await fetch(`${API_BASE}/providers`);
+      const res = await apiFetch(`${API_BASE}/providers`);
       if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setProviders(data.data || []);
@@ -129,7 +129,7 @@ export function SettingsPage() {
       let res: Response;
       if (editingId) {
         // Update
-        res = await fetch(`${API_BASE}/providers/${editingId}`, {
+        res = await apiFetch(`${API_BASE}/providers/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form),
@@ -137,7 +137,7 @@ export function SettingsPage() {
         if (!res.ok) throw new Error("Update failed");
       } else {
         // Create
-        res = await fetch(`${API_BASE}/providers`, {
+        res = await apiFetch(`${API_BASE}/providers`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...form, active: providers.length === 0 }),
@@ -164,7 +164,7 @@ export function SettingsPage() {
     setTestingId(provider.id);
     setTestResult(null);
     try {
-      const res = await fetch(`${API_BASE}/providers/test`, {
+      const res = await apiFetch(`${API_BASE}/providers/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -186,7 +186,7 @@ export function SettingsPage() {
   // Activate provider
   const handleActivate = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/providers/${id}/activate`, { method: "PATCH" });
+      const res = await apiFetch(`${API_BASE}/providers/${id}/activate`, { method: "PATCH" });
       if (!res.ok) throw new Error("Activate failed");
       fetchProviders();
     } catch (err) {
@@ -198,7 +198,7 @@ export function SettingsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus provider ini?")) return;
     try {
-      const res = await fetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       fetchProviders();
     } catch (err) {

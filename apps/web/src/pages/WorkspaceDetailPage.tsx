@@ -19,7 +19,7 @@ import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { toast } from "sonner";
 import { FileUploadZone } from "../components/workspace/FileUploadZone";
 import { ScheduledReportsPanel } from "../components/workspace/ScheduledReportsPanel";
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiFetch } from "../lib/api";
 
 const fileTypeColors: Record<string, string> = {
   pdf: "text-error",
@@ -63,7 +63,7 @@ export function WorkspaceDetailPage() {
   const { data: workspace } = useQuery({
     queryKey: ["workspace", id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/workspaces/${id}`);
+      const res = await apiFetch(`${API_BASE}/workspaces/${id}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data.data;
@@ -74,7 +74,7 @@ export function WorkspaceDetailPage() {
   const { data: filesData } = useQuery({
     queryKey: ["files", id],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE}/files/workspace/${id}`);
+      const res = await apiFetch(`${API_BASE}/files/workspace/${id}`);
       if (!res.ok) return [];
       const data = await res.json();
       return data.data || [];
@@ -84,7 +84,7 @@ export function WorkspaceDetailPage() {
 
   const initWorkspace = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${API_BASE}/workspaces/${id}/initialize`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${id}/initialize`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Initialize failed");
@@ -106,6 +106,7 @@ export function WorkspaceDetailPage() {
 
     try {
       await fetchEventSource(`${API_BASE}/workspaces/${id}/agent/stream`, {
+        fetch: apiFetch,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -219,7 +220,7 @@ export function WorkspaceDetailPage() {
   const handleApprove = async () => {
     if (!approvalRequest || !id) return;
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
@@ -234,7 +235,7 @@ export function WorkspaceDetailPage() {
   const handleReject = async () => {
     if (!approvalRequest || !id) return;
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: false }),

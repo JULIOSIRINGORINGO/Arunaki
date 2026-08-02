@@ -19,7 +19,7 @@ import {
   Sparkles 
 } from "lucide-react";
 import { toast } from "sonner";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 interface FileItem {
   id: string;
@@ -410,7 +410,7 @@ export default function FileTree({
         const targetFile = files.find((f) => f.name.endsWith(fileName) || fileName.endsWith(f.name));
         if (targetFile?.id) {
 try {
-              const res = await fetch(`${API_BASE}/files/${targetFile.id}/content`);
+              const res = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
               if (!res.ok) throw new Error("Failed to fetch");
               const data = await res.json();
               if (data.data?.content) {

@@ -11,7 +11,7 @@ import { CanvasPanel } from "../components/chat/CanvasPanel";
 import { LiveExecutionBadge, LiveStatusData } from "../components/chat/LiveExecutionBadge";
 import { LiveMirrorCard } from "../components/chat/LiveMirrorCard";
 import { cn } from "../lib/utils";
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiFetch } from "../lib/api";
 
 interface Message {
   id: string;
@@ -141,7 +141,7 @@ export function ChatPage() {
   const createChat = useMutation({
     mutationFn: async () => {
       try {
-        const res = await fetch(`${API_BASE}/chat`, {
+        const res = await apiFetch(`${API_BASE}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: "chat" }),
@@ -167,7 +167,7 @@ export function ChatPage() {
     queryFn: async () => {
       if (!effectiveChatId) return [];
       try {
-        const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/messages`);
+        const res = await apiFetch(`${API_BASE}/chat/${effectiveChatId}/messages`);
         if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
@@ -207,7 +207,7 @@ export function ChatPage() {
     queryFn: async () => {
       if (!effectiveChatId) return [];
       try {
-        const res = await fetch(`${API_BASE}/chat/${effectiveChatId}/artifacts`);
+        const res = await apiFetch(`${API_BASE}/chat/${effectiveChatId}/artifacts`);
         if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
@@ -241,6 +241,7 @@ export function ChatPage() {
         let fullStreamedContent = "";
 
         await fetchEventSource(`${API_BASE}/chat/${activeId}/stream`, {
+        fetch: apiFetch,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),

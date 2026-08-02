@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Clock, Plus, Play, Trash2, Calendar, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 interface ScheduledReport {
   id: string;
@@ -33,7 +33,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
   const fetchSchedules = useCallback(async () => {
     if (!workspaceId) return;
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/schedules`);
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}/schedules`);
       const data = await res.json();
       setSchedules(data.data || []);
     } catch (err) {
@@ -53,7 +53,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
     if (!name.trim()) return;
 
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/schedules`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}/schedules`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -79,7 +79,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
 
   const handleToggle = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}/toggle`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}/toggle`, {
         method: "PATCH",
       });
       if (res.ok) {
@@ -92,7 +92,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -107,7 +107,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
   const handleManualRun = async (id: string, reportName: string) => {
     setRunningId(id);
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}/run`, {
+      const res = await apiFetch(`${API_BASE}/workspaces/${workspaceId}/schedules/${id}/run`, {
         method: "POST",
       });
       if (res.ok) {

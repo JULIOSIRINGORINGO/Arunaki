@@ -15,7 +15,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { API_BASE } from "../../lib/api";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 interface Chat {
   id: string;
@@ -73,7 +73,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
     queryKey: ["chats"],
     queryFn: async () => {
       try {
-        const res = await fetch(`${API_BASE}/chat`);
+        const res = await apiFetch(`${API_BASE}/chat`);
         if (!res.ok) return [];
         const data = await res.json();
         return data.data || [];
@@ -88,7 +88,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
   const createChat = useMutation({
     mutationFn: async () => {
       try {
-        const res = await fetch(`${API_BASE}/chat`, {
+        const res = await apiFetch(`${API_BASE}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: "chat" }),
@@ -108,7 +108,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
 
   const deleteChat = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`${API_BASE}/chat/${id}`, { method: "DELETE" });
+      await apiFetch(`${API_BASE}/chat/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
@@ -120,7 +120,7 @@ function SidebarContent({ onClose }: { onClose: () => void }) {
 
   const togglePin = useMutation({
     mutationFn: async (id: string) => {
-      await fetch(`${API_BASE}/chat/${id}/pin`, { method: "PATCH" });
+      await apiFetch(`${API_BASE}/chat/${id}/pin`, { method: "PATCH" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });

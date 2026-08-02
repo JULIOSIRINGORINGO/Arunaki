@@ -57,7 +57,8 @@ export class ProviderService extends BaseService<Provider> {
     try {
       const payload = this.vaultService.encryptSecret(key);
       return JSON.stringify(payload);
-    } catch {
+    } catch (error: any) {
+      this.logger.warn(`Failed to encrypt API key, storing as plaintext: ${error.message}`);
       return key;
     }
   }
