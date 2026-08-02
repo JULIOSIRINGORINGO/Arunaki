@@ -6,6 +6,7 @@ describe('ProviderService — Failover & Error Classification', () => {
   let mockRepository: any;
 
   beforeEach(() => {
+    process.env.APP_SECRET = '01234567890123456789012345678901';
     mockRepository = {
       findActive: vi.fn(),
       findAllEnabled: vi.fn(),

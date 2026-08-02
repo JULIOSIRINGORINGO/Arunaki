@@ -731,6 +731,20 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 41: Security Audit Fixes (Layers 1-5) ✅ DONE
+
+**Goal:** Address critical architecture and security gaps identified in the comprehensive 32-layer audit.
+
+### 41.1 Layer 4: Persistence & Auth
+- [x] Wire `SecretsVaultService` into `ProviderService` to encrypt API keys (Audit 4.1).
+- [x] Implement Global `AuthGuard` for all API controllers (Audit 4.2).
+
+### 41.2 Layer 5: Desktop Bridge Auth
+- [x] Implement WebSocket connection validation with `token` on backend (Audit 5.4).
+- [x] Send token via query parameter from Electron frontend.
+
+---
+
 ## Current Status
 
 **Phase:** 40 — Autonomous Recurring Report Cron & Background Task Scheduler 🔄 [AI]  

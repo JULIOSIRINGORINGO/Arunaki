@@ -36,7 +36,18 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
   private startServer() {
     try {
       this.wss = new WebSocketServer({ port: this.port, host: '127.0.0.1' });
-      this.wss.on('connection', (ws: WebSocket) => {
+      this.wss.on('connection', (ws: WebSocket, req: any) => {
+        // Validate token
+        const expectedKey = process.env.ARUNAKI_API_KEY;
+        const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
+        const token = url.searchParams.get('token');
+        
+        if (expectedKey && token !== expectedKey) {
+          this.logger.warn('Unauthorized desktop connection attempt');
+          ws.close(1008, 'Unauthorized');
+          return;
+        }
+
         const previous = this.desktop;
         this.desktop = ws;
         if (previous && previous !== ws && previous.readyState === WebSocket.OPEN) {

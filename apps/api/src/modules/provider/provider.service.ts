@@ -3,6 +3,7 @@ import { Provider } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { ProviderRepository } from './provider.repository.js';
 import { ProviderCatalogService } from './provider-catalog.service.js';
+import { SecretsVaultService } from '../security/secrets-vault.service.js';
 
 export interface ProviderConfig {
   id: string;
@@ -44,9 +45,34 @@ export class ProviderService extends BaseService<Provider> {
   constructor(
     protected readonly repository: ProviderRepository,
     @Optional() catalogService?: ProviderCatalogService,
+    @Optional() private readonly vaultService?: SecretsVaultService,
   ) {
     super(repository);
     this.catalogService = catalogService || new ProviderCatalogService();
+    this.vaultService = vaultService || new SecretsVaultService();
+  }
+
+  private encryptApiKey(key: string): string {
+    if (!key || !this.vaultService) return key;
+    try {
+      const payload = this.vaultService.encryptSecret(key);
+      return JSON.stringify(payload);
+    } catch {
+      return key;
+    }
+  }
+
+  private decryptApiKey(key: string): string {
+    if (!key || !this.vaultService) return key;
+    try {
+      const payload = JSON.parse(key);
+      if (payload && payload.cipherText && payload.iv) {
+        return this.vaultService.decryptSecret(payload);
+      }
+    } catch {
+      // Return plaintext for legacy keys
+    }
+    return key;
   }
 
   async findActive(): Promise<Provider | null> {
@@ -66,7 +92,7 @@ export class ProviderService extends BaseService<Provider> {
       name: provider.name,
       type: provider.type,
       baseUrl: provider.baseUrl,
-      apiKey: provider.apiKey,
+      apiKey: this.decryptApiKey(provider.apiKey),
       model: provider.model,
       headerPrefix: provider.headerPrefix || undefined,
       headerTitle: provider.headerTitle || undefined,
@@ -82,7 +108,7 @@ export class ProviderService extends BaseService<Provider> {
       name: provider.name,
       type: provider.type,
       baseUrl: provider.baseUrl,
-      apiKey: provider.apiKey,
+      apiKey: this.decryptApiKey(provider.apiKey),
       model: provider.model,
       headerPrefix: provider.headerPrefix || undefined,
       headerTitle: provider.headerTitle || undefined,
@@ -142,7 +168,7 @@ export class ProviderService extends BaseService<Provider> {
         name: next.name,
         type: next.type,
         baseUrl: next.baseUrl,
-        apiKey: next.apiKey,
+        apiKey: this.decryptApiKey(next.apiKey),
         model: next.model,
         headerPrefix: next.headerPrefix || undefined,
         headerTitle: next.headerTitle || undefined,
@@ -163,7 +189,7 @@ export class ProviderService extends BaseService<Provider> {
         name: `OpenRouter Fallback (${nextModel})`,
         type: 'openai-compatible',
         baseUrl: openrouterProv.baseUrl,
-        apiKey: openrouterProv.apiKey,
+        apiKey: this.decryptApiKey(openrouterProv.apiKey),
         model: nextModel,
       };
     }
@@ -200,7 +226,7 @@ export class ProviderService extends BaseService<Provider> {
       name: data.name,
       type: data.type || 'openai-compatible',
       baseUrl: data.baseUrl,
-      apiKey: data.apiKey,
+      apiKey: this.encryptApiKey(data.apiKey),
       model: data.model,
       priority: data.priority ?? 0,
       active: data.active ?? false,
@@ -221,6 +247,8 @@ export class ProviderService extends BaseService<Provider> {
   ): Promise<Provider> {
     if (data.apiKey === '') {
       delete data.apiKey;
+    } else if (data.apiKey) {
+      data.apiKey = this.encryptApiKey(data.apiKey);
     }
     return this.repository.update(id, data);
   }

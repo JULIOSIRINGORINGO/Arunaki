@@ -58,8 +58,8 @@ Ditambah satu temuan independen yang serius: **tidak ada autentikasi sama sekali
 
 | # | Temuan | Dampak |
 |---|---|---|
-| 4.1 | **`SecretsVaultService` (AES-256-GCM, implementasi benar) tidak diimpor oleh satu file pun** selain dirinya sendiri | `Provider.apiKey` (API key OpenAI/Anthropic/OpenRouter dll) tersimpan **plaintext** di database, meski komentar schema bilang "encrypted in future" |
-| 4.2 | **Nol `@UseGuards`/`AuthGuard` di seluruh 10 controller API** | Semua endpoint (baca/tulis/hapus file workspace, lihat/ubah API key provider, jadwalkan cron, chat) terbuka tanpa autentikasi apa pun |
+| 4.1 | ~~**`SecretsVaultService` (AES-256-GCM, implementasi benar) tidak diimpor oleh satu file pun** selain dirinya sendiri~~ | ~~`Provider.apiKey` (API key OpenAI/Anthropic/OpenRouter dll) tersimpan **plaintext** di database, meski komentar schema bilang "encrypted in future"~~ ✅ (Fixed: Wired to ProviderService) |
+| 4.2 | ~~**Nol `@UseGuards`/`AuthGuard` di seluruh 10 controller API**~~ | ~~Semua endpoint (baca/tulis/hapus file workspace, lihat/ubah API key provider, jadwalkan cron, chat) terbuka tanpa autentikasi apa pun~~ ✅ (Fixed: Added Global AuthGuard) |
 | 4.3 | Server listen di `0.0.0.0` (semua interface); CORS default cuma proteksi origin browser, tidak menahan panggilan langsung (curl/Postman/server lain) | Kalau port ini pernah ter-expose di luar localhost (Docker tanpa reverse proxy, port forwarding), API sepenuhnya terbuka |
 | 4.4 | Model `Workspace` tidak punya kolom `userId`/`tenantId` sama sekali | Arsitektur masih single-admin murni di level DB; perlu direstrukturisasi dulu sebelum multi-tenant/multi-agent-routing bisa diimplementasikan dengan aman |
 
@@ -74,7 +74,7 @@ Ditambah satu temuan independen yang serius: **tidak ada autentikasi sama sekali
 | 5.1 | **`desktop_send_keys`** — tool yang benar-benar wired ke agent (bukan orphan) — meneruskan `args.keys` mentah tanpa validasi/sanitasi apa pun ke `desktopBridge.sendKeys()` | LLM bisa mengirim kombinasi keyboard apa saja (sintaks SendKeys: `^`, `%`, `{ENTER}`, dst) ke jendela aplikasi apa pun yang sedang fokus di desktop pengguna |
 | 5.2 | Konfirmasi sisi Electron (`main.cjs`): `sh.SendKeys(msg.args.keys)` via COM object `WScript.Shell` — **tidak ada lapisan sanitasi kedua**, string diteruskan langsung ke API SendKeys Windows | Tidak ada pengaman di titik mana pun sepanjang jalur |
 | 5.3 | `desktop_send_keys`, `desktop_excel_write_cell`, `desktop_word_type` **tidak termasuk** dalam `mutatingTools` di harness (Lapisan 2) — jadi dikategorikan sebagai *read-only* dan dieksekusi tanpa gerbang approval sama sekali, bahkan lebih longgar dari `write_workspace_file` | Kemampuan kontrol fisik desktop pengguna adalah yang paling minim pengawasan di seluruh sistem |
-| 4/5.4 | Koneksi WebSocket bridge (`ws://127.0.0.1:31524`) antara desktop app dan backend tidak punya token/handshake auth, meski dibatasi localhost | Defense-in-depth lemah, meski risiko utama tetap di titik #5.1–5.3 |
+| 5.4 | ~~Koneksi WebSocket bridge (`ws://127.0.0.1:31524`) antara desktop app dan backend tidak punya token/handshake auth, meski dibatasi localhost~~ | ~~Defense-in-depth lemah, meski risiko utama tetap di titik #5.1–5.3~~ ✅ (Fixed: Token verify) |
 | 5.5 | `clickCoordinate` (kontrol mouse) ada di sisi Electron dengan validasi numerik yang cukup baik (`parseInt` + `isNaN` check mencegah injeksi command PowerShell), tapi **belum** di-expose sebagai tool agent | Bukan risiko aktif saat ini, tapi patut diawasi kalau nanti di-wire |
 
 **Perbaikan prioritas tertinggi dari seluruh laporan ini:** pindahkan tiga tool desktop ke kategori risiko terpisah (`highRiskTools`) yang **selalu** wajib approval, dan terapkan whitelist kombinasi tombol yang benar-benar dibutuhkan (Ctrl+S, Ctrl+Z, Enter, Tab) alih-alih menerima string bebas.
