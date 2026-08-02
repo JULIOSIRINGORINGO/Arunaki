@@ -605,6 +605,7 @@ ${safeKnowledgeContext}`;
       knowledge: 'Knowledge',
       memory: 'Memory', recall: 'Memory', history: 'Memory',
       skills: 'Skills', workflow: 'Skills',
+      browser: 'Interactive', desktop: 'Interactive', interactive: 'Interactive',
       web: 'Web', internet: 'Web',
       converter: 'Conversion', currency: 'Conversion', unit: 'Conversion',
       draft: 'Communication', communication: 'Communication',
@@ -613,7 +614,7 @@ ${safeKnowledgeContext}`;
 
     const categorized = new Map<string, { name: string; desc: string }[]>();
     const other: { name: string; desc: string }[] = [];
-    const categoryOrder = ['Workspace', 'Data', 'Export', 'Knowledge', 'Memory', 'Skills', 'Vision', 'Web', 'Conversion', 'Communication'];
+    const categoryOrder = ['Workspace', 'Data', 'Export', 'Knowledge', 'Memory', 'Skills', 'Vision', 'Web', 'Conversion', 'Communication', 'Interactive'];
 
     for (const cap of caps) {
       const entry = {
