@@ -1298,7 +1298,10 @@ export class WorkspaceRunnerService {
       });
 
       this.logger.error(`Workspace stream execution failed: ${error.message}`);
-      onEvent({ type: 'error', data: { message: error.message } });
+      const friendly = /rate limit|429|free-models-per-day/i.test(error.message)
+        ? 'Server AI sedang terkena rate limit (HTTP 429). Coba lagi setelah beberapa menit atau gunakan API key berbayar.'
+        : error.message;
+      onEvent({ type: 'error', data: { message: friendly, code: 'AI_PROVIDER_ERROR' } });
       throw error;
     } finally {
       this.activeRuns.delete(workspaceId);
