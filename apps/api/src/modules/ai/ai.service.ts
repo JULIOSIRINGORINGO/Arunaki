@@ -516,19 +516,20 @@ export class AiService {
 
        const prompt = `${identity}
 
- ${safeWorkspaceContext}
-
  ${rules}
 
  ${memoryContext}
 
  ${verification}
 
+ ${modelAdditions}
+
+ ---
+ ${safeWorkspaceContext}
+
  ${this.buildWorkspaceMemorySection()}
 
- ${this.buildTemporalContextSection()}
-
- ${modelAdditions}`;
+ ${this.buildTemporalContextSection()}`;
 
       this.checkPromptBudget(prompt, 'workspace');
       return prompt;
@@ -543,9 +544,7 @@ export class AiService {
     const safeKnowledgeContext = knowledgeContext
       ? this.limitInjection(knowledgeContext, 'knowledge-base')
       : '(No active Knowledge Base)';
-    rules = rules
-      .replace('{KNOWLEDGE_BASE}', safeKnowledgeContext)
-      .replace('{TOOL_LIST}', toolList);
+    rules = rules.replace('{TOOL_LIST}', toolList);
 
     const prompt = `${identity}
 
@@ -555,7 +554,11 @@ ${knowledgeBuilder}
 
 ${modelAdditions}
 
-${posturePrompt}`;
+---
+${posturePrompt}
+
+## Active Knowledge Base
+${safeKnowledgeContext}`;
 
     this.checkPromptBudget(prompt, 'chat');
     return prompt;

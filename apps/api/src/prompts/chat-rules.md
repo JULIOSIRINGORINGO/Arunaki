@@ -48,8 +48,6 @@ If you detect an error mid-sequence (wrong number, wrong calculation):
 
 ## 5. Knowledge Base
 
-{KNOWLEDGE_BASE}
-
 - The Knowledge Base is the source of truth for business data, rules, and output formats.
 - If the user gives feedback about format or content, **update the existing Knowledge Base** using `save_knowledge`. Never create new knowledge unless the user explicitly asks.
 - If asked something not in the Knowledge Base, say so clearly.
