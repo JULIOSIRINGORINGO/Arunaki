@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { WorkspaceRunnerService } from './workspace-runner.service.js';
+import { extractMentionedFilenames, WorkspaceRunnerService } from './workspace-runner.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
@@ -20,6 +20,16 @@ import { CompactionService } from '../ai/compaction.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
+
+describe('extractMentionedFilenames', () => {
+  it('extracts an explicit file reference', () => {
+    expect(extractMentionedFilenames('@REKAPAN TERBARU2.txt tambahkan pemasukan')).toEqual(['REKAPAN TERBARU2.txt']);
+  });
+
+  it('ignores ordinary @ text', () => {
+    expect(extractMentionedFilenames('hubungi @agus besok')).toEqual([]);
+  });
+});
 
 describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
   let runnerService: WorkspaceRunnerService;

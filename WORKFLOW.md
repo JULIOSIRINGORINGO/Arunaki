@@ -745,9 +745,21 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 42: Referenced File Safety ✅ DONE
+
+**Goal:** Make `@filename` a mandatory read-before-update reference instead of plain prompt text.
+
+- [x] Detect explicit `@filename.ext` references before the LLM tool loop.
+- [x] Read referenced document content and inject it as structured agent context.
+- [x] Block writes to a different file during a referenced-file run.
+- [x] Block saving raw `@filename` instructions as document content.
+- [x] Add mention extraction unit tests and verify API build.
+
+---
+
 ## Current Status
 
-**Phase:** 41 — Security Audit Fixes (Layers 1-5) ✅ [AI]  
+**Phase:** 42 — Referenced File Safety ✅ [AI]
 **Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security (fail-safe auth, DoS protection, path traversal protection).
 **Model Default:** `openrouter/free` dengan capability-aware request  
 **Next:** Voice Interaction & Desktop Packaging  

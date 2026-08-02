@@ -60,6 +60,12 @@ export interface WorkspaceRunParams {
   }>;
 }
 
+export function extractMentionedFilenames(text: string): string[] {
+  return [...text.matchAll(/@([^\n@]+?\.[A-Za-z0-9]{1,10})(?=\s|$|[.,;:!?])/g)]
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+}
+
 export interface WorkspaceStreamEvent {
   type:
     | 'thinking'
@@ -86,6 +92,8 @@ export class WorkspaceRunnerService {
 
   /** Track read files per workspace session */
   private readonly readFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+
+  private readonly mentionedFiles = new Map<string, Set<string>>();
 
   /** Active workspace runs — enables abort and state tracking */
   private readonly activeRuns = new Map<string, WorkspaceRunState>();
@@ -143,6 +151,27 @@ export class WorkspaceRunnerService {
     private readonly eventEmitter: EventEmitter2,
     private readonly providerService: ProviderService,
   ) {}
+
+  private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
+    const mentioned = new Set<string>();
+    for (const filename of extractMentionedFilenames(goal)) {
+      const { finalResult } = await this.selfHealingService.executeWithHealing(
+        'read_workspace_file',
+        { workspaceId, filePath: filename },
+        workspaceId,
+      );
+      if (finalResult.status !== 'success') {
+        throw new Error(`File yang dirujuk tidak dapat dibaca: ${filename}`);
+      }
+      mentioned.add(filename);
+      const text = (finalResult.data as Record<string, unknown>).text;
+      const content = typeof text === 'string'
+        ? text.slice(0, 12000)
+        : ToolResultFormatter.formatForLlm('read_workspace_file', finalResult);
+      messages.push({ role: 'system', content: `=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+    }
+    return mentioned;
+  }
 
   /** Get current state of a workspace run */
   getRunState(workspaceId: string): WorkspaceRunState | undefined {
@@ -631,7 +660,9 @@ export class WorkspaceRunnerService {
        this.setPhase(runState, 'scanning', onEvent);
        this.modifiedFiles.delete(workspaceId);
        this.readFiles.delete(workspaceId);
-      
+        this.mentionedFiles.delete(workspaceId);
+
+
       // Emit agent started event
       this.eventEmitter.emit('workspace.agent.started', {
         workspaceId,
@@ -715,6 +746,8 @@ export class WorkspaceRunnerService {
       const safeGoal = injectionResult.detected
         ? injectionResult.sanitized
         : userGoal;
+      const mentionedFiles = await this.readMentionedFiles(workspaceId, safeGoal, messages);
+      this.mentionedFiles.set(workspaceId, mentionedFiles);
 
       // Crucial fix: Append current user goal to messages array so LLM knows what tool to call!
       const hasGoalInMessages = messages.some(
@@ -1009,6 +1042,14 @@ export class WorkspaceRunnerService {
 
             let result: ToolResult;
             try {
+              const mentionedFiles = this.mentionedFiles.get(workspaceId) || new Set<string>();
+              const filename = String(args.filename || '');
+              if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && ![...mentionedFiles].some((name) => name.toLowerCase() === filename.toLowerCase())) {
+                throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
+              }
+              if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
+                throw new Error('Konten masih berisi referensi @file mentah dan tidak boleh disimpan.');
+              }
               const enrichedArgs = { ...args, workspaceId };
               const healResult = await this.selfHealingService.executeWithHealing(
                 funcName,
