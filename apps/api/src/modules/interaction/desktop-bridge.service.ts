@@ -42,7 +42,7 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
         const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
         const token = url.searchParams.get('token');
         
-        if (expectedKey && token !== expectedKey) {
+        if (!expectedKey || token !== expectedKey) {
           this.logger.warn('Unauthorized desktop connection attempt');
           ws.close(1008, 'Unauthorized');
           return;

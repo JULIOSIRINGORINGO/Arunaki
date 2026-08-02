@@ -10,8 +10,8 @@ export class AuthGuard implements CanActivate {
     
     const expectedKey = process.env.ARUNAKI_API_KEY;
     if (!expectedKey) {
-      this.logger.warn('ARUNAKI_API_KEY is not set in environment. API is unsecured.');
-      return true; // For development convenience, we'll allow it if not set, but warn heavily.
+      this.logger.error('ARUNAKI_API_KEY is not set in environment. Access DENIED.');
+      throw new UnauthorizedException('Server configuration error: Missing API Key');
     }
 
     const apiKey = request.headers['x-api-key'] || request.headers['authorization']?.replace('Bearer ', '');
