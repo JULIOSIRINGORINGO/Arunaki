@@ -119,4 +119,8 @@ export class FileService extends BaseService<File> {
   async updateStatus(id: string, status: string): Promise<File> {
     return this.repository.update(id, { status });
   }
+
+  async update(id: string, data: Partial<{ name: string; path: string }>): Promise<File> {
+    return this.repository.update(id, data);
+  }
 }

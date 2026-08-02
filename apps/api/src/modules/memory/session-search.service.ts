@@ -27,15 +27,15 @@ export class SessionSearchService implements OnModuleInit {
   private async initializeFTS5() {
     try {
       // Create FTS5 virtual table for messages
+      // ponytail: regular FTS5 (self-contained) — external content (content=messages)
+      // failed because FTS columns must match real `messages` column names exactly
       await this.prisma.$executeRawUnsafe(`
         CREATE VIRTUAL TABLE IF NOT EXISTS message_fts USING fts5(
           message_id,
           chat_history_id,
           workspace_id,
           role,
-          content,
-          content=messages,
-          content_rowid=rowid
+          content
         )
       `);
 
@@ -140,7 +140,10 @@ export class SessionSearchService implements OnModuleInit {
         FROM message_fts
         WHERE message_fts MATCH ?
       `;
-      const params: any[] = [query];
+      // ponytail: wrap query in an FTS5 phrase so user-supplied operators
+      // (", OR, NEAR, etc.) can't break the MATCH or change semantics
+      const ftsQuery = `"${query.replace(/"/g, '""')}"`;
+      const params: any[] = [ftsQuery];
 
       if (options?.workspaceId) {
         sql += ` AND workspace_id = ?`;
@@ -252,7 +255,7 @@ export class SessionSearchService implements OnModuleInit {
     const contextLines = results.map((r) => {
       const preview = r.snippet
         .replace(/>>>/g, '')
-        .replace(/<<<>/g, '')
+        .replace(/<<</g, '')
         .substring(0, 150);
       return `- [${r.role}] ${preview}`;
     });

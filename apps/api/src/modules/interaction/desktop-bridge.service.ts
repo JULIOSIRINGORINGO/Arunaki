@@ -1,5 +1,7 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional, Inject } from '@nestjs/common';
 import { WebSocketServer, WebSocket, RawData } from 'ws';
+
+export const DESKTOP_BRIDGE_PORT = 'DESKTOP_BRIDGE_PORT';
 
 interface PendingRequest {
   resolve: (value: any) => void;
@@ -15,6 +17,10 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
   private pending = new Map<string, PendingRequest>();
   private nextId = 0;
 
+  constructor(
+    @Optional() @Inject(DESKTOP_BRIDGE_PORT) private readonly port: number = 31524,
+  ) {}
+
   get isConnected(): boolean {
     return this.desktop !== null && this.desktop.readyState === WebSocket.OPEN;
   }
@@ -29,9 +35,14 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
 
   private startServer() {
     try {
-      this.wss = new WebSocketServer({ port: 31524, host: '127.0.0.1' });
+      this.wss = new WebSocketServer({ port: this.port, host: '127.0.0.1' });
       this.wss.on('connection', (ws: WebSocket) => {
+        const previous = this.desktop;
         this.desktop = ws;
+        if (previous && previous !== ws && previous.readyState === WebSocket.OPEN) {
+          this.logger.warn('Desktop reconnected; closing stale socket');
+          previous.close();
+        }
         this.logger.log('Desktop app connected');
 
         ws.on('message', (raw: RawData) => {
@@ -44,9 +55,13 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
         });
 
         ws.on('close', () => {
-          this.logger.warn('Desktop app disconnected');
-          this.desktop = null;
-          this.rejectAllPending(new Error('Desktop disconnected'));
+          if (this.desktop === ws) {
+            this.logger.warn('Desktop app disconnected');
+            this.desktop = null;
+            this.rejectAllPending(new Error('Desktop disconnected'));
+          } else {
+            this.logger.warn('Stale desktop socket closed');
+          }
         });
 
         ws.on('error', (err: Error) => {
@@ -58,7 +73,7 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Desktop WebSocket server error: ${err.message}`);
       });
 
-      this.logger.log('Desktop bridge listening on ws://127.0.0.1:31524');
+      this.logger.log(`Desktop bridge listening on ws://127.0.0.1:${this.port}`);
     } catch (err) {
       this.logger.error(`Failed to start desktop bridge: ${err.message}`);
     }

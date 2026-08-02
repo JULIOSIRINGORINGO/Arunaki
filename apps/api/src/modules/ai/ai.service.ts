@@ -98,8 +98,11 @@ export class AiService {
     this.contextManager = new ContextManager(
       {
         contextLength: 128000,
-        threshold: 0.5,
+        threshold: 0.25,
         targetRatio: 0.2,
+        toolPruneChars: 1000,
+        toolPreviewChars: 250,
+        injectionMaxChars: 2000,
         useLlmSummary: false,
       },
       { chat: this.chat.bind(this) },
@@ -257,14 +260,20 @@ export class AiService {
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
+    options?: { preferredProviderId?: string },
   ): Promise<AiResponse> {
     // Light trim: keep last 40 messages, skip 4-phase compression
     const trimmedMessages = messages.length > 40
       ? messages.slice(-40)
       : messages;
 
-    // Get starting provider
-    let provider = await this.getProviderConfig();
+    // Get starting provider (optionally pinned for logical failover retries)
+    let provider = options?.preferredProviderId
+      ? await this.providerService.getById(options.preferredProviderId)
+      : null;
+    if (!provider) {
+      provider = await this.getProviderConfig();
+    }
 
     if (!provider.apiKey) {
       throw new Error(
@@ -505,17 +514,25 @@ export class AiService {
       // Inject dynamic tool list into rules
       rules = rules.replace('{TOOL_LIST}', toolList);
 
-      const prompt = `${identity}
+       const prompt = `${identity}
 
-${safeWorkspaceContext}
+ ${safeWorkspaceContext}
 
-${rules}
+ ${rules}
 
-${memoryContext}
+ ${memoryContext}
 
-${verification}
+ ${verification}
 
-${modelAdditions}`;
+ ${this.buildWorkspaceToolingSection()}
+
+ ${this.buildWorkspaceMemorySection()}
+
+ ${this.buildProjectContextSection()}
+
+ ${this.buildTemporalContextSection()}
+
+ ${modelAdditions}`;
 
       this.checkPromptBudget(prompt, 'workspace');
       return prompt;
@@ -656,5 +673,51 @@ ${posturePrompt}`;
     } catch {
       // Token counting is best-effort
     }
+  }
+
+  private buildWorkspaceToolingSection(): string {
+    if (!this.toolRegistryService) return '';
+    const tools = this.toolRegistryService.getToolDefinitions();
+    const lines: string[] = ['=== TOOLING AVAILABLE ==='];
+    for (const t of tools) {
+      const desc = t.function.description?.split('.')[0]?.trim() || 'No description';
+      lines.push(`- \`${t.function.name}\` — ${desc}`);
+    }
+    lines.push('=== END TOOLING ===');
+    return lines.join('\n');
+  }
+
+  private buildWorkspaceMemorySection(): string {
+    return [
+      '=== MEMORY (from prior sessions) ===',
+      'Use memory_search tool to recall relevant facts, preferences, decisions, and patterns from past interactions with this workspace.',
+      'Memory is automatically saved after each workspace run.',
+      '=== END MEMORY ===',
+    ].join('\n');
+  }
+
+  private buildProjectContextSection(): string {
+    const files = ['AGENTS.md', 'SOUL.md', 'IDENTITY.md', 'USER.md', 'MEMORY.md'];
+    return [
+      '=== PROJECT CONTEXT ===',
+      'Important files in the workspace root (read with read_workspace_file if needed):',
+      ...files.map((f) => `- ${f}`),
+      'Inject relevant content from these files into your reasoning when making decisions about the workspace.',
+      '=== END PROJECT CONTEXT ===',
+    ].join('\n');
+  }
+
+  private buildTemporalContextSection(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
+    return [
+      '=== TEMPORAL CONTEXT ===',
+      `Current date: ${dateStr}`,
+      `Current time: ${timeStr}`,
+      'Always reference dates and times relative to the current date.',
+      '=== END TEMPORAL CONTEXT ===',
+    ].join('\n');
   }
 }

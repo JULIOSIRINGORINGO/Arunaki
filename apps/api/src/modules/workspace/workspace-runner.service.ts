@@ -7,7 +7,6 @@ import {
 } from '../ai/context-manager.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
-import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SearchService } from '../search/search.service.js';
@@ -23,7 +22,7 @@ import { CompactionService } from '../ai/compaction.service.js';
 import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
-import { DomainRegistryService } from '../domain/domain.registry.service.js';
+import { ProviderService } from '../provider/provider.service.js';
 import * as path from 'path';
 
 export type AgentState =
@@ -82,6 +81,12 @@ export class WorkspaceRunnerService {
   private readonly logger = new Logger(WorkspaceRunnerService.name);
   private readonly scrubber = new StreamingContextScrubber();
 
+   /** Track modified files per workspace session */
+  private readonly modifiedFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+
+  /** Track read files per workspace session */
+  private readonly readFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+
   /** Active workspace runs — enables abort and state tracking */
   private readonly activeRuns = new Map<string, WorkspaceRunState>();
 
@@ -121,7 +126,6 @@ export class WorkspaceRunnerService {
   constructor(
     private readonly aiService: AiService,
     private readonly toolRegistryService: ToolRegistryService,
-    private readonly documentReaderTool: DocumentReaderTool,
     private readonly storageService: StorageService,
     private readonly fileService: FileService,
     private readonly searchService: SearchService,
@@ -136,8 +140,8 @@ export class WorkspaceRunnerService {
     private readonly compactionService: CompactionService,
     private readonly prisma: PrismaService,
     private readonly contextRegistry: ContextRegistry,
-    private readonly domainRegistry: DomainRegistryService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly providerService: ProviderService,
   ) {}
 
   /** Get current state of a workspace run */
@@ -177,10 +181,21 @@ export class WorkspaceRunnerService {
     workspaceId: string,
     toolName: string,
     args: Record<string, any>,
+    timeoutMs = 120000,
   ): Promise<boolean> {
     return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (this.approvalQueue.get(workspaceId)?.toolName === toolName) {
+          this.approvalQueue.delete(workspaceId);
+          this.logger.warn(`Approval for ${toolName} timed out after ${timeoutMs}ms, rejecting`);
+          resolve(false);
+        }
+      }, timeoutMs);
       this.approvalQueue.set(workspaceId, {
-        resolve,
+        resolve: (approved: boolean) => {
+          clearTimeout(timer);
+          resolve(approved);
+        },
         toolName,
         args,
         timestamp: new Date(),
@@ -225,7 +240,12 @@ export class WorkspaceRunnerService {
 
     const runPromise = this.runWorkspaceAgentStream(params, onEvent)
       .then(() => { done = true; if (resolveEvent) resolveEvent(null); })
-      .catch((err) => { done = true; if (resolveEvent) resolveEvent(null); });
+      .catch((err) => {
+        done = true;
+        if (resolveEvent) resolveEvent(null);
+        this.logger.error(`Workspace agent stream failed: ${err.message}`);
+        onEvent({ type: 'error', data: { message: err.message } } as any);
+      });
 
     while (!done) {
       if (eventQueue.length > 0) {
@@ -528,30 +548,10 @@ export class WorkspaceRunnerService {
               .join('\n')
           : 'Belum ada file di workspace ini.';
 
-      // Auto-read top 5 files to give AI actual content
-      const previews: string[] = [];
-      const maxPreviews = Math.min(filesToDescribe.length, 5);
-      for (let i = 0; i < maxPreviews; i++) {
-        const f = filesToDescribe[i];
-        try {
-          const result = await this.documentReaderTool.readDocument(f.path);
-          if (result.status === 'success' && result.data?.text) {
-            const truncated = (result.data.text as string).substring(0, 2000);
-            previews.push(`--- ${f.name} ---\n${truncated}${(result.data.text as string).length > 2000 ? '\n...[truncated]' : ''}`);
-          }
-        } catch {
-          // skip unreadable files
-        }
-      }
-
       // Get domain config for this business type
-      const domainConfig = this.domainRegistry.get(businessType);
-      const domainTerminology = this.domainRegistry.getTerminology(businessType);
-      const domainUnits = this.domainRegistry.getUnits(businessType, 'length') || [];
-      const domainTemplates = this.domainRegistry.getTemplateCategories(businessType);
-      const domainCommunication = this.domainRegistry.getCommunication(businessType);
+      const businessDomain = businessType !== 'generic' ? businessType : '';
 
-      // Auto-inject relevant skills
+      // Auto-inject relevant skills (already filtered by domain in getSkillsContext)
       const skillsContext = await this.skillService.getSkillsContext(
         businessType,
         workspaceId,
@@ -565,10 +565,6 @@ export class WorkspaceRunnerService {
 
       let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
-      if (previews.length > 0) {
-        context += `\n\n=== ISI FILE (Preview) ===\n${previews.join('\n\n')}\n=== END ISI FILE ===`;
-      }
-
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
       }
@@ -577,47 +573,22 @@ export class WorkspaceRunnerService {
         context += `\n\n=== MEMORY SNAPSHOT ===\n${memoryContext}\n=== END MEMORY ===`;
       }
 
-      // Inject domain config (OpenClaw Layer 28)
-      const domainLines: string[] = [];
-      if (Object.keys(domainTerminology).length > 0) {
-        domainLines.push(
-          `=== DOMAIN TERMINOLOGY (${businessType}) ===`,
-          Object.entries(domainTerminology)
-            .map(([k, v]) => `- ${k}: ${v}`)
-            .join('\n'),
-          `=== END DOMAIN TERMINOLOGY ===`,
-        );
-      }
-      if (domainUnits.length > 0) {
-        domainLines.push(
-          `=== DOMAIN UNITS (${businessType}) ===`,
-          domainUnits.map((u) => `- ${u.name} (base: ${u.toBase}${u.label ? `, ${u.label}` : ''}`).join('\n'),
-          `=== END DOMAIN UNITS ===`,
-        );
-      }
-      if (domainTemplates.length > 0) {
-        domainLines.push(
-          `=== DOMAIN TEMPLATES (${businessType}) ===`,
-          domainTemplates.map((t) => `- ${t.name}${t.columns ? ` [${t.columns.join(', ')}]` : ''}`).join('\n'),
-          `=== END DOMAIN TEMPLATES ===`,
-        );
-      }
-      if (domainCommunication?.greetingTemplate) {
-        domainLines.push(
-          `=== DOMAIN COMMUNICATION (${businessType}) ===`,
-          `Greeting: ${domainCommunication.greetingTemplate}`,
-          `Formality: ${domainCommunication.formality}`,
-          `=== END DOMAIN COMMUNICATION ===`,
-        );
-      }
-      if (domainLines.length > 0) {
-        context += `\n\n${domainLines.join('\n\n')}`;
+      if (businessDomain) {
+        context += `\n\n=== DOMAIN ===\nDomain bisnis: ${businessDomain}\nGunakan list_skills / search_memories bila perlu detail domain.\n=== END DOMAIN ===`;
       }
 
-      return context;
-    } catch {
-      return '';
-    }
+       const modified = this.modifiedFiles.get(workspaceId) || [];
+       if (modified.length > 0) {
+         const recent = modified.slice(-10);
+         context += `\n\n=== FILES MODIFIED IN THIS RUN ===
+ ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')})`).join('\n')}
+ === END MODIFIED FILES ===`;
+       }
+
+       return context;
+     } catch {
+       return '';
+     }
   }
 
   async runWorkspaceAgentStream(
@@ -655,9 +626,11 @@ export class WorkspaceRunnerService {
     };
     this.activeRuns.set(workspaceId, runState);
 
-    try {
-      this.setState(runState, 'running', onEvent);
-      this.setPhase(runState, 'scanning', onEvent);
+   try {
+       this.setState(runState, 'running', onEvent);
+       this.setPhase(runState, 'scanning', onEvent);
+       this.modifiedFiles.delete(workspaceId);
+       this.readFiles.delete(workspaceId);
       
       // Emit agent started event
       this.eventEmitter.emit('workspace.agent.started', {
@@ -771,57 +744,33 @@ export class WorkspaceRunnerService {
         });
         return;
       }
-      const planningMessages: ChatMessage[] = [
-        {
-          role: 'system',
-          content:
-            'Kamu adalah AI Agent profesional yang membuat rencana kerja yang SANGAT PRESISI dan LANGSUNG SASARAN (1-3 poin singkat dalam Bahasa Indonesia).\n\nATURAN MUTLAK:\n1. FOKUS HANYA pada target file/tugas yang diminta user. JANGAN PERNAH membuka, membaca, atau mengekstrak file lain (seperti file .xlsx atau file lain) jika user HANYA meminta menyunting/mengisi satu file spesifik!\n2. Jika user meminta mengisi/menulis file (misal: "file test isi dengan julio" atau "tulis X di file Y"), buat rencana 1-2 langkah langsung:\n   1. Buat/sunting file test.txt dengan teks "julio".\n   2. Cek kembali isi file test.txt.\n3. Jangan buat langkah bertele-tele atau membuka file lain yang tidak relevan!',
-        },
-        {
-          role: 'user',
-          content: `Goal: ${safeGoal}\n\nKonteks workspace:\n${workspaceContext}`,
-        },
-      ];
+      // OpenClaw pattern: no regex intent routing, no separate planner call.
+      // LLM loop below drives everything via native Function Calling —
+      // simple tasks resolve in 1-2 rounds without extra LLM planning roundtrip.
+      this.setPhase(runState, 'analyzing', onEvent);
 
-      let steps: string[] = [];
-      try {
-        const planResponse = await this.aiService.chat(planningMessages, []);
-        if (planResponse.content) {
-          steps = planResponse.content
-            .split('\n')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0);
-        }
-      } catch (e) {
-        this.logger.warn(`AI plan generation failed: ${e.message}`);
-      }
+       let finalContent = '';
+       const createdArtifactIds: string[] = [];
+       const MAX_ROUNDS = 25;
+       let reachedMaxRounds = true;
+       let mutationsApplied = 0;
+       let logicalFailoverUsed = false;
+       let activeProviderId: string | undefined;
 
-      onEvent({
-        type: 'plan_created',
-        data: {
-          goal: safeGoal,
-          steps:
-            steps.length > 0
-              ? steps
-              : ['Menyusun rencana berdasarkan goal Anda...'],
-        },
-      });
+       // Verifier (post-hoc, NOT tool routing): goal meminta modifikasi file.
+       // Hanya dipakai untuk mendeteksi "klaim sukses tanpa eksekusi" lalu
+       // memicu failover model — bukan untuk memilih tool.
+       const VERIFY_MUTATION_GOAL =
+         /(?:buat|tulis|isi|ubah|edit|ganti|hapus|rename|delete|create|update|simpan|tambah|kurang|perbarui)/i.test(safeGoal);
 
-      let finalContent = '';
-      const createdArtifactIds: string[] = [];
-      const MAX_ROUNDS = 25;
-      let reachedMaxRounds = true;
-
-      this.setPhase(runState, 'planning', onEvent);
-
-      // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
-      for (let turn = 0; turn < 5; turn++) {
-        // Inner loop: tool execution
-        for (let round = 0; round < MAX_ROUNDS; round++) {
-          // Check abort before each round
-          if (abortController.signal.aborted) {
-            this.setState(runState, 'aborting', onEvent);
-            onEvent({
+       // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
+       for (let turn = 0; turn < 5; turn++) {
+         // Inner loop: tool execution
+         for (let round = 0; round < MAX_ROUNDS; round++) {
+           // Check abort before each round
+           if (abortController.signal.aborted) {
+             this.setState(runState, 'aborting', onEvent);
+             onEvent({
               type: 'error',
               data: { message: 'Analisis dibatalkan oleh pengguna.' },
             });
@@ -834,71 +783,76 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
-          const aiResponse = await this.aiService.chat(messages, tools);
+          const aiResponse = await this.aiService.chat(messages, tools, {
+            preferredProviderId: activeProviderId,
+          });
 
           if (aiResponse.toolCalls.length === 0) {
-            // OpenClaw Dynamic Tool Synthesizer: Fully generic NLP parser for any filename and content (0% hardcode)
-            if (round === 0) {
-              const fileMentionRegex = /(?:file|berkas|dokumen|catatan)\s+["']?([\w\-.]+)(?:\.([a-zA-Z0-9]+))?["']?/i;
-              const writeIntentRegex = /(?:buat|tulis|create|simpan|isi|update)\s+/i;
-
-              if (writeIntentRegex.test(safeGoal) || fileMentionRegex.test(safeGoal)) {
-                let targetFilename = '';
-                let format: 'txt' | 'xlsx' | 'docx' | 'csv' | 'json' = 'txt';
-
-                const fileMatch = safeGoal.match(fileMentionRegex) || safeGoal.match(/["']?([\w\-.]+\.([a-zA-Z0-9]+))["']?/i);
-                if (fileMatch && fileMatch[1]) {
-                  const rawName = fileMatch[1].trim();
-                  const ext = fileMatch[2] ? fileMatch[2].toLowerCase() : (rawName.includes('.') ? rawName.split('.').pop()?.toLowerCase() : '');
-                  if (ext && ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'].includes(ext)) {
-                    targetFilename = rawName;
-                    format = ext as any;
-                  } else {
-                    targetFilename = rawName.includes('.') ? rawName : `${rawName}.txt`;
-                    format = 'txt';
-                  }
-                }
-
-                if (targetFilename) {
-                  // Dynamically extract content payload by stripping file references & action verbs
-                  const baseName = targetFilename.replace(/\.[^.]+$/, '');
-                  let extractedContent = safeGoal;
-                  extractedContent = extractedContent.replace(new RegExp(`(?:file|berkas|dokumen|catatan)?\\s*["']?(?:${baseName}|${targetFilename})["']?`, 'gi'), '');
-                  extractedContent = extractedContent.replace(/(?:buat|tulis|create|simpan|isi|berisi|update)\s+(?:dengan|teks|konten|isi)?/gi, '');
-                  extractedContent = extractedContent.replace(/(?:di|ke|pada)\s+(?:file|berkas|dokumen)?/gi, '');
-                  extractedContent = extractedContent.replace(/^dengan\s+/gi, '').trim();
-
-                  const finalContent = extractedContent || `Dokumen ${targetFilename} telah dibuat oleh Arunaki AI.`;
-
-                  this.logger.log(`OpenClaw Dynamic Synthesizer: Auto-executing write_workspace_file for "${targetFilename}" with content "${finalContent}"`);
-                  
-                  aiResponse.toolCalls.push({
-                    id: `dynamic-call-${Date.now()}`,
-                    type: 'function',
-                    function: {
-                      name: 'write_workspace_file',
-                      arguments: JSON.stringify({
-                        workspaceId,
-                        filename: targetFilename,
-                        format,
-                        content: finalContent,
-                        title: targetFilename,
-                      }),
-                    },
-                  });
-                }
+            // Logical failover: goal butuh modifikasi, belum ada mutation,
+            // tapi model langsung jawab (klaim sukses tanpa eksekusi).
+            // Putar ke provider lain, ulangi turn sekali.
+            const claimsSuccess =
+              VERIFY_MUTATION_GOAL &&
+              mutationsApplied === 0 &&
+              /(?:berhasil|sukses|selesai|telah|sudah|done|success)/i.test(
+                aiResponse.content || '',
+              );
+            if (claimsSuccess && !logicalFailoverUsed) {
+              const next = await this.providerService
+                .getNextAvailable(activeProviderId)
+                .catch(() => null);
+              if (next) {
+                logicalFailoverUsed = true;
+                activeProviderId = next.id;
+                this.logger.warn(
+                  `Logical failover: model jawab tanpa eksekusi untuk goal modifikasi. Beralih ke provider ${next.name} (${next.model}).`,
+                );
+                onEvent({
+                  type: 'thinking',
+                  data: `Mencoba ulang dengan model lain (${next.name})...`,
+                });
+                messages.push({
+                  role: 'user',
+                  content:
+                    'Catatan: Tugas sebelumnya belum dieksekusi. Lakukan operasi file yang diminta pengguna dengan tool yang sesuai — jangan hanya menjawab teks.',
+                });
+                continue;
               }
             }
 
-            if (aiResponse.toolCalls.length === 0) {
-              finalContent = this.scrubber.scrub(aiResponse.content);
-              onEvent({ type: 'text_delta', data: finalContent });
-              reachedMaxRounds = false;
-              this.logger.log(
-                'Workspace agent finished goal execution within round limit.',
-              );
-              break;
-            }
+            finalContent = this.scrubber.scrub(aiResponse.content);
+            onEvent({ type: 'text_delta', data: finalContent });
+            reachedMaxRounds = false;
+            this.logger.log(
+              'Workspace agent finished goal execution within round limit.',
+            );
+            break;
+          }
+
+          // plan_created hanya untuk task multi-step (round > 1 atau >1 tool
+          // dalam satu round). Single tool pada round-1 = eksekusi langsung,
+          // tidak perlu event plan — UI langsung menampilkan tool_start.
+          const isSingleStep =
+            runState.round === 1 &&
+            aiResponse.toolCalls.length === 1;
+          if (!isSingleStep && runState.round === 1) {
+            const planSteps = aiResponse.toolCalls.map((tc) => {
+              let argSummary = '';
+              try {
+                const args = JSON.parse(tc.function.arguments || '{}');
+                argSummary = args.filename || args.path || args.query || '';
+              } catch {
+                argSummary = '';
+              }
+              return `${tc.function.name}${argSummary ? ` → ${argSummary}` : ''}`;
+            });
+            onEvent({
+              type: 'plan_created',
+              data: {
+                goal: safeGoal,
+                steps: planSteps.length > 0 ? planSteps : ['Memproses permintaan...'],
+              },
+            });
           }
 
           messages.push({
@@ -1013,19 +967,26 @@ export class WorkspaceRunnerService {
                 },
               });
 
-              messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
-              });
-            }
-          }
+               // Track file reads
+               if (['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(toolCall.function.name)) {
+                 const current = this.readFiles.get(workspaceId) || [];
+                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
+                 this.readFiles.set(workspaceId, current.slice(-30));
+               }
+
+               messages.push({
+                 role: 'tool',
+                 tool_call_id: toolCall.id,
+                 content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
+               });
+             }
+           }
 
           // Execute mutating tools (auto-approve write/update operations within user's connected workspace folder)
           for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
-            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file'].includes(funcName);
+            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file', 'delete_workspace_file'].includes(funcName);
 
             if (!isSafeWorkspaceMutate) {
               this.logger.warn(
@@ -1107,34 +1068,34 @@ export class WorkspaceRunnerService {
               createdArtifactIds.push(artifact.id);
             }
 
-            onEvent({
-              type: 'tool_done',
-              data: {
-                toolName: funcName,
-                result,
-                timestamp: new Date().toISOString(),
-              },
-            });
+             onEvent({
+               type: 'tool_done',
+               data: {
+                 toolName: funcName,
+                 result,
+                 timestamp: new Date().toISOString(),
+               },
+             });
 
-            messages.push({
-              role: 'tool',
-              tool_call_id: toolCall.id,
-              content: ToolResultFormatter.formatForLlm(funcName, result),
-            });
+             // Track modified files
+             if (result.status === 'success') {
+               mutationsApplied++;
+               const filename = args.filename || args.path || 'unknown';
+               const current = this.modifiedFiles.get(workspaceId) || [];
+               current.push({ filename, timestamp: new Date() });
+               this.modifiedFiles.set(workspaceId, current.slice(-30));
+             }
 
-            // Immediately terminate loop upon successful write_workspace_file execution
-            if (result.status === 'success' && funcName === 'write_workspace_file') {
-              this.logger.log(`write_workspace_file completed successfully for "${args.filename}". Terminating agent loop.`);
-              finalContent = `Berkas **${args.filename}** berhasil dibuat/disunting dengan isi: "${args.content}".`;
-              onEvent({ type: 'text_delta', data: finalContent });
-              reachedMaxRounds = false;
-              break;
-            }
-          }
+             messages.push({
+               role: 'tool',
+               tool_call_id: toolCall.id,
+               content: ToolResultFormatter.formatForLlm(funcName, result),
+             });
+           }
 
           // Compact history if context length grows (OpenClaw compaction.ts)
           if (messages.length > 20) {
-            const compactResult = this.compactionService.compactHistory(messages);
+            const compactResult = await this.compactionService.compactHistory(messages);
             if (compactResult.wasCompacted) {
               messages.length = 0;
               messages.push(...compactResult.compactedMessages);
@@ -1253,6 +1214,26 @@ export class WorkspaceRunnerService {
           `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
           saveDomain,
         );
+
+        // Save structured interaction memory (OpenClaw memory/YYYY-MM-DD.md pattern)
+        const modified = this.modifiedFiles.get(workspaceId) || [];
+        const memoryDetails = {
+          goal: userGoal,
+          result: finalContent.substring(0, 500),
+          modifiedFiles: modified.map((f) => f.filename),
+          totalRounds: runState.round,
+          timestamp: new Date().toISOString(),
+        };
+        await this.memoryService.remember({
+          type: 'run_summary',
+          key: `run_${workspaceId}_${Date.now()}`,
+          content: JSON.stringify(memoryDetails),
+          source: 'auto',
+          importance: 6,
+          domain: saveDomain,
+          workspaceId,
+        });
+
         this.logger.log(
           `Auto-saved workspace history memory for workspace ${workspaceId}`,
         );

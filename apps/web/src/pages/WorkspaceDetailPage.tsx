@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { toast } from "sonner";
 import { FileUploadZone } from "../components/workspace/FileUploadZone";
 import { ScheduledReportsPanel } from "../components/workspace/ScheduledReportsPanel";
 import { API_BASE } from "../lib/api";
@@ -63,6 +64,7 @@ export function WorkspaceDetailPage() {
     queryKey: ["workspace", id],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/workspaces/${id}`);
+      if (!res.ok) return null;
       const data = await res.json();
       return data.data;
     },
@@ -73,6 +75,7 @@ export function WorkspaceDetailPage() {
     queryKey: ["files", id],
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/files/workspace/${id}`);
+      if (!res.ok) return [];
       const data = await res.json();
       return data.data || [];
     },
@@ -84,6 +87,7 @@ export function WorkspaceDetailPage() {
       const res = await fetch(`${API_BASE}/workspaces/${id}/initialize`, {
         method: "POST",
       });
+      if (!res.ok) throw new Error("Initialize failed");
       return res.json();
     },
     onSuccess: () => {
@@ -118,14 +122,23 @@ export function WorkspaceDetailPage() {
                 ...prev,
                 { id: Date.now().toString(), type: "thinking", message: event.data, timestamp: time },
               ]);
+            } else if (event.type === "phase_changed" && event.data?.label) {
+              setAgentLogs((prev) => [
+                ...prev,
+                { id: Date.now().toString(), type: "phase", message: event.data.label, timestamp: time },
+              ]);
             } else if (event.type === "plan_created") {
               setCurrentPlan(event.data.steps || []);
+              const steps = event.data.steps || [];
+              const planMsg = steps.length > 1
+                ? `Langkah eksekusi disusun (${steps.length} langkah)`
+                : `Eksekusi: ${steps[0] || "Mengerjakan permintaan"}`;
               setAgentLogs((prev) => [
                 ...prev,
                 {
                   id: Date.now().toString(),
                   type: "plan",
-                  message: `Rencana otonom disusun (${event.data.steps?.length || 0} langkah)`,
+                  message: planMsg,
                   timestamp: time,
                 },
               ]);
@@ -162,12 +175,19 @@ export function WorkspaceDetailPage() {
               ]);
             } else if (event.type === "text_delta") {
               setAgentResultText((prev) => prev + event.data);
+            } else if (event.type === "error" || event.type === "agent_error") {
+              const errorMsg = event.data?.message || event.data?.error || "Terjadi kesalahan pada Agent";
+              setAgentLogs((prev) => [
+                ...prev,
+                { id: Date.now().toString(), type: "error", message: `ERROR: ${errorMsg}`, timestamp: time },
+              ]);
+              toast.error(errorMsg);
             } else if (event.type === "done") {
               if (event.data?.artifacts) {
                 setAgentArtifacts((prev) => [...prev, ...event.data.artifacts]);
               }
               if (event.data?.content) {
-                setAgentResultText(event.data.content);
+                setAgentResultText((prev) => (prev ? prev : event.data.content));
               }
               setAgentLogs((prev) => [
                 ...prev,
@@ -180,10 +200,16 @@ export function WorkspaceDetailPage() {
         },
         onerror(err) {
           console.error("Workspace agent stream error:", err);
+          const msg = err?.message || "Gagal terhubung ke AI Agent";
+          toast.error(msg);
+          throw err; // stop fetch-event-source infinite retry
         },
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      if (e?.message) {
+        toast.error(e.message);
+      }
     } finally {
       setIsAgentRunning(false);
       queryClient.invalidateQueries({ queryKey: ["files", id] });
@@ -193,11 +219,12 @@ export function WorkspaceDetailPage() {
   const handleApprove = async () => {
     if (!approvalRequest || !id) return;
     try {
-      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: true }),
       });
+      if (!res.ok) throw new Error("Approve failed");
       setApprovalRequest(null);
     } catch (e) {
       console.error("Failed to approve:", e);
@@ -207,11 +234,12 @@ export function WorkspaceDetailPage() {
   const handleReject = async () => {
     if (!approvalRequest || !id) return;
     try {
-      await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
+      const res = await fetch(`${API_BASE}/workspaces/${id}/agent/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved: false }),
       });
+      if (!res.ok) throw new Error("Reject failed");
       setApprovalRequest(null);
     } catch (e) {
       console.error("Failed to reject:", e);

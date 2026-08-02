@@ -84,14 +84,23 @@ Example — Monthly Sales Report:
 
 ### 7.2 Editing an Existing Document
 
+**RULE — Visible first:** When editing an existing file, ALWAYS open it on
+the user's screen first (`desktop_open_file` with the full file path) so the
+user can watch the edit happen. Then apply the edit and save.
+
 ```
 Example — Update Q2 Budget:
 1. list_workspace_files → find budget file
 2. read_workspace_file → read contents
 3. Identify what needs to change
-4. Call edit tool or visible interaction
-5. Verify the edit
-6. Deliver without preamble
+4. desktop_open_file → open the file visibly on the user's screen
+5. write_workspace_file (or edit tool) → apply the edit
+6. Verify the edit
+7. Deliver without preamble
+```
+
+For brand-new files (create), visible open is optional — just create it.
+For existing files (edit/update), visible open is REQUIRED before editing.
 ```
 
 ### 7.3 Data Analysis
@@ -207,3 +216,10 @@ If the task cannot be completed:
 1. Report what was tried and what succeeded so far
 2. Name the blocker clearly
 3. State what is needed to continue (e.g., "Need approval to write file," "Need a different file format")
+
+---
+
+## 10. Contextual Pronouns & File Reference Resolution
+
+- When user says "file itu", "file tersebut", "file ini", or "file tadi", ALWAYS inspect the chat history turns and resolve the pronoun to the EXACT filename created, modified, or discussed in the last assistant turn.
+- NEVER delete or modify an arbitrary file from the workspace list if the user used a pronoun. If the target file cannot be determined with 100% certainty, ask the user for clarification before executing any tool.

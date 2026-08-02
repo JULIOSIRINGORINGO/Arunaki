@@ -19,6 +19,10 @@ export class ProviderRepository extends PrismaBaseRepository<Provider> {
     });
   }
 
+  async findById(id: string): Promise<Provider | null> {
+    return this.prisma.provider.findUnique({ where: { id } });
+  }
+
   async findAllEnabled(): Promise<Provider[]> {
     return this.prisma.provider.findMany({
       where: { active: true },

@@ -113,6 +113,7 @@ export class DocumentGeneratorTool {
   generateCsv(
     rows: Array<Record<string, any>>,
     filename: string = 'export.csv',
+    outputPath?: string,
   ): ToolResult {
     const startTime = Date.now();
     const safeFilename = filename.endsWith('.csv')
@@ -124,6 +125,17 @@ export class DocumentGeneratorTool {
       const csvContent = xlsx.utils.sheet_to_csv(worksheet);
       const contentBase64 = Buffer.from(csvContent, 'utf-8').toString('base64');
 
+      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      if (targetWritePath) {
+        const resolvedTarget = path.resolve(targetWritePath);
+        const parentDir = path.dirname(resolvedTarget);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+        fs.writeFileSync(resolvedTarget, csvContent, 'utf-8');
+        this.logger.log(`Wrote CSV file physically to disk: ${resolvedTarget}`);
+      }
+
       const preview =
         rows.length > 0
           ? `CSV: ${rows.length} baris data\nKolom: ${Object.keys(rows[0]).join(', ')}`
@@ -134,6 +146,8 @@ export class DocumentGeneratorTool {
         data: {
           rowCount: rows.length,
           columns: rows.length > 0 ? Object.keys(rows[0]) : [],
+          writtenToDisk: !!targetWritePath,
+          filePath: targetWritePath ? path.resolve(targetWritePath) : undefined,
         },
         preview,
         metadata: {
@@ -167,6 +181,7 @@ export class DocumentGeneratorTool {
     title: string,
     content: string,
     filename: string = 'document.pdf',
+    outputPath?: string,
   ): Promise<ToolResult> {
     const startTime = Date.now();
     const safeFilename = filename.endsWith('.pdf')
@@ -278,9 +293,26 @@ export class DocumentGeneratorTool {
       const contentBase64 = Buffer.from(pdfBytes).toString('base64');
       const pageCount = pdfDoc.getPageCount();
 
+      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      if (targetWritePath) {
+        const resolvedTarget = path.resolve(targetWritePath);
+        const parentDir = path.dirname(resolvedTarget);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+        fs.writeFileSync(resolvedTarget, pdfBytes);
+        this.logger.log(`Wrote PDF file physically to disk: ${resolvedTarget}`);
+      }
+
       return {
         status: 'success',
-        data: { title, pageCount, size: pdfBytes.length },
+        data: {
+          title,
+          pageCount,
+          size: pdfBytes.length,
+          writtenToDisk: !!targetWritePath,
+          filePath: targetWritePath ? path.resolve(targetWritePath) : undefined,
+        },
         preview: `${title} — ${pageCount} halaman, ${this.formatBytes(pdfBytes.length)}`,
         metadata: {
           toolName: 'generate_export',
@@ -313,6 +345,7 @@ export class DocumentGeneratorTool {
     title: string,
     content: string,
     filename: string = 'document.docx',
+    outputPath?: string,
   ): Promise<ToolResult> {
     const startTime = Date.now();
     const safeFilename = filename.endsWith('.docx')
@@ -419,9 +452,26 @@ export class DocumentGeneratorTool {
       const buffer = await Packer.toBuffer(doc);
       const contentBase64 = buffer.toString('base64');
 
+      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      if (targetWritePath) {
+        const resolvedTarget = path.resolve(targetWritePath);
+        const parentDir = path.dirname(resolvedTarget);
+        if (!fs.existsSync(parentDir)) {
+          fs.mkdirSync(parentDir, { recursive: true });
+        }
+        fs.writeFileSync(resolvedTarget, buffer);
+        this.logger.log(`Wrote DOCX file physically to disk: ${resolvedTarget}`);
+      }
+
       return {
         status: 'success',
-        data: { title, paragraphCount: children.length, size: buffer.length },
+        data: {
+          title,
+          paragraphCount: children.length,
+          size: buffer.length,
+          writtenToDisk: !!targetWritePath,
+          filePath: targetWritePath ? path.resolve(targetWritePath) : undefined,
+        },
         preview: `${title} — ${children.length} blok konten, ${this.formatBytes(buffer.length)}`,
         metadata: {
           toolName: 'generate_export',

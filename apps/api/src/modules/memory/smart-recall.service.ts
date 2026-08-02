@@ -225,7 +225,7 @@ export class SmartRecallService {
     const lines = results.map((r) => {
       const preview = r.snippet
         .replace(/>>>/g, '')
-        .replace(/<<<>/g, '')
+        .replace(/<<</g, '')
         .substring(0, 100);
       return `- ${preview}`;
     });

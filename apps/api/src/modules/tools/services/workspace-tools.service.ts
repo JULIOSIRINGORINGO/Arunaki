@@ -202,19 +202,22 @@ export class WorkspaceToolsService {
           'Data',
           rows,
           targetPath,
+          targetPath,
         );
       case 'csv':
-        return this.documentGeneratorTool.generateCsv(rows, targetPath);
+        return this.documentGeneratorTool.generateCsv(rows, targetPath, targetPath);
       case 'pdf':
         return this.documentGeneratorTool.generatePdf(
           title,
           content,
+          targetPath,
           targetPath,
         );
       case 'docx':
         return this.documentGeneratorTool.generateDocx(
           title,
           content,
+          targetPath,
           targetPath,
         );
       case 'txt':
@@ -223,17 +226,20 @@ export class WorkspaceToolsService {
       default: {
         const startTime = Date.now();
         try {
+          const existedBefore = await this.storageService.exists(targetPath);
           await this.storageService.writeFile(targetPath, content);
+          const actionLabel = existedBefore ? 'berhasil diperbarui' : 'berhasil dibuat';
           return {
             status: 'success',
-            data: { path: targetPath, filename, format },
-            preview: `File ${filename} berhasil dibuat di folder workspace.`,
+            data: { path: targetPath, filename, format, created: !existedBefore },
+            preview: `File ${filename} ${actionLabel} di folder workspace.`,
             metadata: {
               toolName: 'write_workspace_file',
               displayName: 'Buat File Workspace',
               executionTime: Date.now() - startTime,
               filename,
               format,
+              created: !existedBefore,
             },
           };
         } catch (e) {
@@ -250,6 +256,306 @@ export class WorkspaceToolsService {
           };
         }
       }
+    }
+  }
+
+  /**
+   * Rename a file inside workspace directory.
+   * Automatically resolves rootPath from workspace DB record and updates DB index.
+   */
+  async renameWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+    newFilename: string;
+  }): Promise<ToolResult> {
+    let { workspaceId, filename, newFilename } = params;
+    const startTime = Date.now();
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    filename = filename.replace(/\s+nya$/i, '').trim();
+    newFilename = newFilename.replace(/\s+nya$/i, '').trim();
+
+    if (!filename || !newFilename || filename.toLowerCase() === newFilename.toLowerCase()) {
+      return {
+        status: 'error',
+        data: { filename, newFilename },
+        preview: 'Nama file sumber dan target tidak valid atau sama.',
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'INVALID_FILENAME', message: 'Source and target filenames must differ and be non-empty' },
+      };
+    }
+
+    let sourcePath = path.join(workspace.rootPath, filename);
+    const targetPath = path.join(workspace.rootPath, newFilename);
+
+    const fsPromises = await import('fs/promises');
+
+    // Resolve source file if exact path does not exist (extension-less matching)
+    let fileExists = false;
+    try {
+      await fsPromises.access(sourcePath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
+    }
+
+    if (!fileExists) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === filename.toLowerCase() ||
+            f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
+        );
+        if (match) {
+          sourcePath = match.path;
+          filename = match.name;
+        } else {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
+            metadata: {
+              toolName: 'rename_workspace_file',
+              displayName: 'Ganti Nama File Workspace',
+              executionTime: Date.now() - startTime,
+            },
+            error: { code: 'FILE_NOT_FOUND', message: `File ${filename} not found` },
+          };
+        }
+      } catch {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
+          metadata: {
+            toolName: 'rename_workspace_file',
+            displayName: 'Ganti Nama File Workspace',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'FILE_NOT_FOUND', message: `File ${filename} not found` },
+        };
+      }
+    }
+
+    try {
+      // 1. Rename physical file on disk
+      await fsPromises.rename(sourcePath, targetPath);
+
+      // 2. Update database index path + name
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === filename.toLowerCase() ||
+            f.path.toLowerCase() === sourcePath.toLowerCase(),
+        );
+        if (match) {
+          await this.fileService.update(match.id, {
+            name: newFilename,
+            path: targetPath,
+          });
+        }
+      } catch {
+        // DB index update optional — disk rename is the source of truth
+      }
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename, newFilename },
+        preview: `Berkas "${filename}" berhasil diganti nama menjadi "${newFilename}".`,
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+          filename: newFilename,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal mengganti nama file "${filename}": ${e.message}`,
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'RENAME_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Delete a file from workspace directory and database index.
+   */
+  async deleteWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+  }): Promise<ToolResult> {
+    let { workspaceId, filename } = params;
+    const startTime = Date.now();
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    // Clean up filename (e.g. "julio nya" -> "julio")
+    const cleanName = filename.replace(/\s+nya$/i, '').trim();
+    const PRONOUNS = ['itu', 'ini', 'tersebut', 'tadi', 'barusan', 'terakhir'];
+
+    if (PRONOUNS.includes(cleanName.toLowerCase())) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Mohon sebutkan nama file secara spesifik yang ingin dihapus.',
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'AMBIGUOUS_FILENAME', message: 'Pronoun filename not resolved' },
+      };
+    }
+
+    let targetPath = path.join(workspace.rootPath, cleanName);
+
+    const fsPromises = await import('fs/promises');
+    let fileExists = false;
+    try {
+      await fsPromises.access(targetPath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
+    }
+
+    // Fuzzy search in workspace files if exact path does not exist
+    if (!fileExists) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === cleanName.toLowerCase() ||
+            f.name.toLowerCase().startsWith(cleanName.toLowerCase() + '.') ||
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') === cleanName.toLowerCase(),
+        );
+        if (match) {
+          targetPath = match.path;
+          filename = match.name;
+        } else {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
+            metadata: {
+              toolName: 'delete_workspace_file',
+              displayName: 'Hapus File Workspace',
+              executionTime: Date.now() - startTime,
+            },
+            error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
+          };
+        }
+      } catch {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
+          metadata: {
+            toolName: 'delete_workspace_file',
+            displayName: 'Hapus File Workspace',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
+        };
+      }
+    } else {
+      filename = cleanName;
+    }
+
+    try {
+      // 1. Delete physical file from disk
+      try {
+        await fsPromises.unlink(targetPath);
+      } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+          throw err;
+        }
+      }
+
+      // 2. Remove file from database index
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) => f.name.toLowerCase() === filename.toLowerCase() || f.path.toLowerCase() === targetPath.toLowerCase(),
+        );
+        if (match) {
+          await this.fileService.delete(match.id);
+        }
+      } catch {
+        // DB index cleanup optional
+      }
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename },
+        preview: `File "${filename}" berhasil dihapus dari workspace.`,
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+          filename,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal menghapus file "${filename}": ${e.message}`,
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'DELETE_FAILED', message: e.message },
+      };
     }
   }
 }

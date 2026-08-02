@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { SkillService } from './skill.service.js';
 
-@Controller('api/v1/skills')
+@Controller('skills')
 export class SkillsController {
   constructor(private readonly skillService: SkillService) {}
 

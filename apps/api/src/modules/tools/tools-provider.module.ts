@@ -28,6 +28,7 @@ import { DocumentReconciliationService } from '../document/doc-reconciliation.se
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { CronService } from '../cron/cron.service.js';
 import { CronModule } from '../cron/cron.module.js';
+import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
 
 import { AiModule } from '../ai/ai.module.js';
 
@@ -61,6 +62,7 @@ import { AiModule } from '../ai/ai.module.js';
     MemoryTool,
     DocumentReconciliationService,
     SubAgentRunnerService,
+    ProgrammaticVerifierService,
   ],
   exports: [
     ToolRegistryService,
@@ -80,6 +82,7 @@ import { AiModule } from '../ai/ai.module.js';
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
+    ProgrammaticVerifierService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -118,7 +121,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'extract_structured_data',
         displayName: 'Ekstraksi Data',
         description:
-          'Validasi dan normalisasi data terstruktur dari dokumen. Kirim data yang sudah diekstrak, bukan teks mentah.',
+          'Validates and normalizes structured data from documents. Send already-extracted data, not raw text.',
         tags: ['extract', 'data', 'validate'],
         handler: (args) =>
           this.textExtractorTool.extractStructuredData({
@@ -131,8 +134,8 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            documentType: { type: 'string', description: 'Jenis dokumen' },
-            title: { type: 'string', description: 'Judul atau nama sumber' },
+            documentType: { type: 'string', description: 'Document type' },
+            title: { type: 'string', description: 'Title or source name' },
             items: {
               type: 'array',
               items: {
@@ -166,7 +169,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'document_reader',
         displayName: 'Pembaca Dokumen',
-        description: 'Membaca file dokumen dan mengekstrak teks mentahnya.',
+        description: 'Reads document files and extracts their raw text.',
         tags: [
           'read',
           'document',
@@ -181,7 +184,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            filePath: { type: 'string', description: 'Path ke file dokumen' },
+            filePath: { type: 'string', description: 'Path to the document file' },
           },
           required: ['filePath'],
         },
@@ -193,7 +196,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'data_query',
         displayName: 'Query Database',
-        description: 'Query database real-time. Hanya SELECT query.',
+        description: 'Real-time database query. SELECT queries only.',
         tags: ['database', 'query', 'sql', 'realtime'],
         handler: async (args) => {
           if (args.action === 'list_tables')
@@ -209,12 +212,12 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'string',
               enum: ['query', 'list_tables', 'describe_table'],
               description:
-                'Aksi: query (jalankan SQL), list_tables, describe_table',
+                'Action: query (run SQL), list_tables, describe_table',
             },
             sql: { type: 'string', description: 'SQL SELECT query' },
             tableName: {
               type: 'string',
-              description: 'Nama table (untuk describe_table)',
+              description: 'Table name (for describe_table)',
             },
           },
           required: ['action'],
@@ -227,17 +230,17 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'image_ocr',
         displayName: 'OCR Gambar',
-        description: 'Membaca teks dari gambar menggunakan OCR.',
+        description: 'Reads text from images using OCR.',
         tags: ['image', 'ocr', 'text', 'recognition'],
         handler: (args) =>
           this.imageOcrTool.recognizeText(args.filePath, args.language),
         parameters: {
           type: 'object',
           properties: {
-            filePath: { type: 'string', description: 'Path ke file gambar' },
+            filePath: { type: 'string', description: 'Path to the image file' },
             language: {
               type: 'string',
-              description: 'Bahasa OCR (default: eng)',
+              description: 'OCR language (default: eng)',
             },
           },
           required: ['filePath'],
@@ -252,16 +255,16 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'doc_search',
         displayName: 'Pencarian Dokumen',
         description:
-          'Mencari dokumen, knowledge, dan pesan berdasarkan kata kunci.',
+          'Searches documents, knowledge, and messages by keyword.',
         tags: ['search', 'document', 'knowledge', 'find'],
         handler: (args) =>
           this.docSearchTool.searchDocuments(args.query, args.limit),
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID Workspace' },
-            query: { type: 'string', description: 'Kata kunci pencarian' },
-            limit: { type: 'number', description: 'Batas hasil (default: 10)' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
+            query: { type: 'string', description: 'Search keyword' },
+            limit: { type: 'number', description: 'Result limit (default: 10)' },
           },
           required: ['workspaceId', 'query'],
         },
@@ -275,7 +278,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'calculate',
         displayName: 'Kalkulasi Harga',
         description:
-          'Melakukan kalkulasi numerik — subtotal, pajak, diskon, total, atau operasi matematika apapun.',
+          'Performs numeric calculations — subtotal, tax, discount, total, or any math operation.',
         tags: ['calculate', 'math', 'finance', 'tax', 'discount', 'total'],
         handler: (args) =>
           this.calculatorTool.calculateFinancials(
@@ -312,7 +315,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'generate_export',
         displayName: 'Dokumen Export',
         description:
-          'Mengonversi data terstruktur menjadi file siap download — Excel (xlsx), CSV, PDF, Word (docx), atau PowerPoint (pptx).',
+          'Converts structured data into ready-to-download files — Excel (xlsx), CSV, PDF, Word (docx), or PowerPoint (pptx).',
         tags: [
           'export',
           'document',
@@ -333,19 +336,19 @@ export class ToolsProviderModule implements OnModuleInit {
             format: {
               type: 'string',
               enum: ['xlsx', 'csv', 'pdf', 'docx', 'pptx'],
-              description: 'Format output file',
+              description: 'Output file format',
             },
-            title: { type: 'string', description: 'Judul dokumen' },
+            title: { type: 'string', description: 'Document title' },
             content: {
               type: 'string',
               description:
-                'Isi dokumen dalam bentuk teks/markdown (untuk pdf, docx)',
+                'Document content in text/markdown form (for pdf, docx)',
             },
             sheetName: {
               type: 'string',
-              description: 'Nama sheet (untuk xlsx/csv)',
+              description: 'Sheet name (for xlsx/csv)',
             },
-            rows: { type: 'array', description: 'Data baris (untuk xlsx/csv)' },
+            rows: { type: 'array', description: 'Row data (for xlsx/csv)' },
             slides: {
               type: 'array',
               items: {
@@ -355,9 +358,9 @@ export class ToolsProviderModule implements OnModuleInit {
                   content: { type: 'string' },
                 },
               },
-              description: 'Slide data (untuk pptx)',
+              description: 'Slide data (for pptx)',
             },
-            filename: { type: 'string', description: 'Nama file output' },
+            filename: { type: 'string', description: 'Output file name' },
           },
           required: ['format'],
         },
@@ -373,7 +376,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'save_knowledge',
         displayName: 'Simpan Knowledge',
         description:
-          'Menyimpan atau memperbarui Knowledge Base. Gunakan saat user ingin membuat atau mengupdate knowledge.',
+          'Saves or updates the Knowledge Base. Use when the user wants to create or update knowledge.',
         tags: ['knowledge', 'save', 'create', 'update', 'base'],
         handler: (args) =>
           this.knowledgeBuilderTool.saveKnowledge(
@@ -386,15 +389,15 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             title: {
               type: 'string',
-              description: 'Judul knowledge (nama bisnis/perusahaan)',
+              description: 'Knowledge title (business/company name)',
             },
             content: {
               type: 'string',
-              description: 'Isi knowledge dalam format markdown',
+              description: 'Knowledge content in markdown format',
             },
             type: {
               type: 'string',
-              description: 'Tipe knowledge berdasarkan domain bisnis',
+              description: 'Knowledge type based on business domain',
             },
           },
           required: ['title', 'content'],
@@ -409,7 +412,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'web_search',
         displayName: 'Pencarian Web',
         description:
-          'Mencari informasi real-time di internet (harga bahan, berita pasar, kurs, kompetitor, dll).',
+          'Searches the internet for real-time information (material prices, market news, exchange rates, competitors, etc.).',
         tags: ['search', 'web', 'internet', 'realtime', 'google', 'tavily'],
         handler: (args) =>
           this.webSearchTool.searchWeb(args.query, args.searchDepth),
@@ -419,13 +422,13 @@ export class ToolsProviderModule implements OnModuleInit {
             query: {
               type: 'string',
               description:
-                'Kata kunci atau pertanyaan yang ingin dicari di internet',
+                'Keyword or question to search for on the internet',
             },
             searchDepth: {
               type: 'string',
               enum: ['basic', 'advanced'],
               description:
-                'Kedalaman pencarian: basic (cepat) atau advanced (mendalam)',
+                'Search depth: basic (fast) or advanced (deep)',
             },
           },
           required: ['query'],
@@ -440,7 +443,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'vision_ai',
         displayName: 'Vision AI',
         description:
-          'Menganalisis gambar/foto (struk belanja, nota lecek, kwitansi, tulisan tangan, gambar produk) menggunakan Vision AI.',
+          'Analyzes images/photos (shopping receipts, crumpled notes, invoices, handwriting, product images) using Vision AI.',
         tags: ['vision', 'ocr', 'image', 'receipt', 'nota', 'foto', 'struk'],
         handler: (args) =>
           this.visionAiTool.analyzeImage(args.imageSource, args.prompt),
@@ -449,12 +452,12 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             imageSource: {
               type: 'string',
-              description: 'Path file gambar lokal atau URL gambar',
+              description: 'Local image file path or image URL',
             },
             prompt: {
               type: 'string',
               description:
-                'Instruksi spesifik apa yang ingin diekstrak dari gambar',
+                'Specific instructions on what to extract from the image',
             },
           },
           required: ['imageSource'],
@@ -470,7 +473,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'unit_converter',
         displayName: 'Konverter Satuan & Mata Uang',
         description:
-          'Mengonversi nilai antara berbagai satuan (yard, meter, cm, roll, kg, gram, lusin, kodi) atau mata uang (usd, idr, eur, sgd).',
+          'Converts values between various units (yard, meter, cm, roll, kg, gram, dozen, kodi) or currencies (usd, idr, eur, sgd).',
         tags: ['converter', 'unit', 'currency', 'domain-config'],
         handler: (args) =>
           this.unitConverterTool.convert({
@@ -484,13 +487,13 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             value: {
               type: 'number',
-              description: 'Nilai yang akan dikonversi',
+              description: 'Value to convert',
             },
-            from: { type: 'string', description: 'Satuan asal' },
-            to: { type: 'string', description: 'Satuan tujuan' },
+            from: { type: 'string', description: 'Source unit' },
+            to: { type: 'string', description: 'Target unit' },
             domain: {
               type: 'string',
-              description: 'Tipe bisnis untuk unit spesifik',
+              description: 'Business type for specific units',
             },
           },
           required: ['value', 'from', 'to'],
@@ -504,7 +507,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'draft_communication',
         displayName: 'Pembuat Draf Pesan & Email',
         description:
-          'Membuat draf pesan profesional untuk WhatsApp, Email formal, Penawaran Harga (Quotation), atau Pengingat Tagihan (Invoice Reminder).',
+          'Creates professional message drafts for WhatsApp, formal Email, Price Quote (Quotation), or Invoice Reminder.',
         tags: [
           'draft',
           'whatsapp',
@@ -526,17 +529,17 @@ export class ToolsProviderModule implements OnModuleInit {
             type: {
               type: 'string',
               enum: ['whatsapp', 'email', 'quotation', 'invoice_reminder'],
-              description: 'Jenis draf komunikasi',
+              description: 'Type of communication draft',
             },
             recipientName: {
               type: 'string',
-              description: 'Nama penerima / klien',
+              description: 'Recipient / client name',
             },
-            topic: { type: 'string', description: 'Topik atau perihal pesan' },
+            topic: { type: 'string', description: 'Message topic or subject' },
             keyPoints: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Poin-poin penting yang ingin disampaikan',
+              description: 'Key points to convey',
             },
           },
           required: ['type', 'recipientName', 'topic'],
@@ -551,7 +554,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'search_workspace',
         displayName: 'Pencarian Workspace',
         description:
-          'Mencari kata kunci, topik, atau data di seluruh dokumen di dalam Workspace aktif.',
+          'Searches for keywords, topics, or data across all documents in the active Workspace.',
         tags: ['search', 'fts', 'workspace', 'query', 'files'],
         handler: (args) =>
           this.workspaceToolsService.searchWorkspace(
@@ -561,8 +564,8 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID Workspace' },
-            query: { type: 'string', description: 'Kata kunci pencarian' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
+            query: { type: 'string', description: 'Search keyword' },
           },
           required: ['workspaceId', 'query'],
         },
@@ -575,14 +578,14 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'list_workspace_files',
         displayName: 'Daftar Berkas Workspace',
         description:
-          'Memindai daftar seluruh file dan folder yang ada di dalam Workspace aktif.',
+          'Lists all files and folders inside the active Workspace.',
         tags: ['files', 'list', 'workspace', 'directory'],
         handler: (args) =>
           this.workspaceToolsService.listWorkspaceFiles(args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID Workspace' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
         },
         timeoutMs: 5000,
@@ -594,7 +597,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'read_workspace_file',
         displayName: 'Pembaca Berkas Workspace',
         description:
-          'Membaca isi lengkap file dokumen (PDF, Word, Excel, CSV, TXT) di dalam workspace.',
+          'Reads the full content of a document file (PDF, Word, Excel, CSV, TXT) inside the workspace.',
         tags: ['read', 'pdf', 'docx', 'xlsx', 'csv', 'workspace'],
         handler: (args) =>
           this.workspaceToolsService.readWorkspaceFile(
@@ -606,9 +609,9 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             filePath: {
               type: 'string',
-              description: 'Nama file atau path lengkap file dokumen',
+              description: 'File name or full path of the document file',
             },
-            workspaceId: { type: 'string', description: 'ID Workspace' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
           required: ['workspaceId', 'filePath'],
         },
@@ -622,7 +625,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'write_workspace_file',
         displayName: 'Buat File Workspace',
         description:
-          'Membuat file laporan/dokumen baru (Excel, PDF, Word, TXT, JSON) di dalam folder Workspace. Path folder otomatis diambil dari database.',
+          'Creates a new report/document file (Excel, PDF, Word, TXT, JSON) inside the Workspace folder. Folder path is taken automatically from the database.',
         tags: ['write', 'create', 'export', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.writeWorkspaceFile({
@@ -636,19 +639,19 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID Workspace (wajib)' },
+            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
             filename: {
               type: 'string',
-              description: 'Nama file yang akan dibuat',
+              description: 'File name to create',
             },
             format: {
               type: 'string',
               enum: ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'],
-              description: 'Format dokumen',
+              description: 'Document format',
             },
-            content: { type: 'string', description: 'Isi teks/markdown' },
-            rows: { type: 'array', description: 'Baris data untuk Excel/CSV' },
-            title: { type: 'string', description: 'Judul dokumen' },
+            content: { type: 'string', description: 'Text/markdown content' },
+            rows: { type: 'array', description: 'Data rows for Excel/CSV' },
+            title: { type: 'string', description: 'Document title' },
           },
           required: ['workspaceId', 'filename', 'format'],
         },
@@ -658,13 +661,74 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     );
 
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'delete_workspace_file',
+        displayName: 'Hapus File Workspace',
+        description:
+          'Deletes a file from the Workspace folder and updates the workspace index.',
+        tags: ['delete', 'remove', 'unlink', 'workspace', 'file'],
+        handler: (args) =>
+          this.workspaceToolsService.deleteWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            filename: {
+              type: 'string',
+              description: 'File name to delete (e.g. julio.txt)',
+            },
+          },
+          required: ['workspaceId', 'filename'],
+        },
+        estimatedLatency: 'fast',
+        timeoutMs: 5000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'rename_workspace_file',
+        displayName: 'Ganti Nama File Workspace',
+        description:
+          'Renames an existing file inside the Workspace folder. The original file is moved to the new name, and the workspace index is updated.',
+        tags: ['rename', 'move', 'workspace', 'file'],
+        handler: (args) =>
+          this.workspaceToolsService.renameWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename,
+            newFilename: args.newFilename,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            filename: {
+              type: 'string',
+              description: 'File name to rename (e.g. test.txt)',
+            },
+            newFilename: {
+              type: 'string',
+              description: 'New file name (e.g. test2.txt)',
+            },
+          },
+          required: ['workspaceId', 'filename', 'newFilename'],
+        },
+        estimatedLatency: 'fast',
+        timeoutMs: 5000,
+      }),
+    );
+
     // ─── Skills ─────────────────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({
         name: 'list_skills',
         displayName: 'Daftar Skills',
         description:
-          'Melihat semua skill workflow yang tersimpan. Skill adalah template workflow yang bisa dipakai ulang.',
+          'Lists all stored workflow skills. A skill is a reusable workflow template.',
         tags: ['skills', 'list', 'workflow', 'template'],
         handler: () => this.skillsTool.listSkills(),
         parameters: { type: 'object', properties: {} },
@@ -677,13 +741,13 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'view_skill',
         displayName: 'Lihat Skill',
         description:
-          'Melihat detail skill workflow — termasuk instruksi lengkap untuk diikuti.',
+          'Views workflow skill details — including the full instructions to follow.',
         tags: ['skills', 'view', 'workflow', 'template'],
         handler: (args) => this.skillsTool.viewSkill(args.name),
         parameters: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'Nama skill (snake_case)' },
+            name: { type: 'string', description: 'Skill name (snake_case)' },
           },
           required: ['name'],
         },
@@ -695,7 +759,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'create_skill',
         displayName: 'Buat Skill',
-        description: 'Menyimpan workflow yang berhasil sebagai skill baru.',
+        description: 'Saves a successful workflow as a new skill.',
         tags: ['skills', 'create', 'workflow', 'template', 'save'],
         handler: (args) =>
           this.skillsTool.createSkill({
@@ -711,26 +775,26 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             name: {
               type: 'string',
-              description: 'Nama skill dalam snake_case',
+              description: 'Skill name in snake_case',
             },
-            displayName: { type: 'string', description: 'Nama tampilan skill' },
+            displayName: { type: 'string', description: 'Skill display name' },
             description: {
               type: 'string',
-              description: 'Deskripsi singkat skill',
+              description: 'Short skill description',
             },
             category: {
               type: 'string',
               enum: ['general', 'data-processing', 'reporting', 'integration'],
-              description: 'Kategori skill',
+              description: 'Skill category',
             },
             content: {
               type: 'string',
-              description: 'Instruksi lengkap skill dalam format markdown',
+              description: 'Full skill instructions in markdown format',
             },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Tag untuk pencarian',
+              description: 'Tags for searching',
             },
           },
           required: ['name', 'displayName', 'description', 'content'],
@@ -743,13 +807,13 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'search_skills',
         displayName: 'Cari Skills',
-        description: 'Mencari skill berdasarkan kata kunci.',
+        description: 'Searches for skills by keyword.',
         tags: ['skills', 'search', 'find', 'workflow'],
         handler: (args) => this.skillsTool.searchSkills(args.query),
         parameters: {
           type: 'object',
           properties: {
-            query: { type: 'string', description: 'Kata kunci pencarian' },
+            query: { type: 'string', description: 'Search keyword' },
           },
           required: ['query'],
         },
@@ -762,7 +826,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'update_skill',
         displayName: 'Update Skill',
         description:
-          'Memperbarui skill yang sudah ada (konten, deskripsi, tags). Versi otomatis diincrement.',
+          'Updates an existing skill (content, description, tags). Version is incremented automatically.',
         tags: ['skills', 'update', 'edit', 'workflow'],
         handler: (args) =>
           this.skillsTool.updateSkill(args.name, {
@@ -776,15 +840,15 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             name: {
               type: 'string',
-              description: 'Nama skill yang akan diupdate',
+              description: 'Name of the skill to update',
             },
-            displayName: { type: 'string', description: 'Nama tampilan baru' },
-            description: { type: 'string', description: 'Deskripsi baru' },
-            content: { type: 'string', description: 'Konten markdown baru' },
+            displayName: { type: 'string', description: 'New display name' },
+            description: { type: 'string', description: 'New description' },
+            content: { type: 'string', description: 'New markdown content' },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Tags baru',
+              description: 'New tags',
             },
           },
           required: ['name'],
@@ -798,7 +862,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'delete_skill',
         displayName: 'Hapus Skill',
         description:
-          'Menonaktifkan skill (soft delete). Skill tidak akan muncul di list tapi masih ada di database.',
+          'Deactivates a skill (soft delete). The skill no longer appears in the list but still exists in the database.',
         tags: ['skills', 'delete', 'remove', 'workflow'],
         handler: (args) => this.skillsTool.deleteSkill(args.name),
         parameters: {
@@ -806,7 +870,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             name: {
               type: 'string',
-              description: 'Nama skill yang akan dinonaktifkan',
+              description: 'Name of the skill to deactivate',
             },
           },
           required: ['name'],
@@ -821,13 +885,13 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'list_memories',
         displayName: 'Daftar Memory',
         description:
-          'Melihat semua memory (preferensi, konteks, riwayat) yang tersimpan.',
+          'Lists all stored memories (preferences, context, history).',
         tags: ['memory', 'list', 'context', 'preferences'],
         handler: (args) => this.memoryTool.listMemories(args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID Workspace' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
         },
         timeoutMs: 5000,
@@ -838,7 +902,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'save_memory',
         displayName: 'Simpan Memory',
-        description: 'Menyimpan informasi penting sebagai memory lintas sesi.',
+        description: 'Saves important information as cross-session memory.',
         tags: ['memory', 'save', 'remember', 'preference', 'context', 'domain'],
         handler: (args) =>
           this.memoryTool.saveMemory({
@@ -862,16 +926,16 @@ export class ToolsProviderModule implements OnModuleInit {
                 'context',
                 'interaction',
               ],
-              description: 'Jenis memory',
+              description: 'Memory type',
             },
-            key: { type: 'string', description: 'Kunci unik memory' },
-            content: { type: 'string', description: 'Isi memory' },
+            key: { type: 'string', description: 'Unique memory key' },
+            content: { type: 'string', description: 'Memory content' },
             importance: {
               type: 'number',
-              description: 'Tingkat kepentingan 1-10',
+              description: 'Importance level 1-10',
             },
-            domain: { type: 'string', description: 'Domain bisnis' },
-            workspaceId: { type: 'string', description: 'ID Workspace' },
+            domain: { type: 'string', description: 'Business domain' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
           required: ['type', 'key', 'content'],
         },
@@ -883,13 +947,13 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'search_memories',
         displayName: 'Cari Memory',
-        description: 'Mencari memory berdasarkan kata kunci.',
+        description: 'Searches for memories by keyword.',
         tags: ['memory', 'search', 'find', 'recall'],
         handler: (args) => this.memoryTool.searchMemories(args.query),
         parameters: {
           type: 'object',
           properties: {
-            query: { type: 'string', description: 'Kata kunci pencarian' },
+            query: { type: 'string', description: 'Search keyword' },
           },
           required: ['query'],
         },
@@ -901,14 +965,14 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'delete_memory',
         displayName: 'Hapus Memory',
-        description: 'Menghapus memory berdasarkan jenis dan kunci.',
+        description: 'Deletes a memory by type and key.',
         tags: ['memory', 'delete', 'remove'],
         handler: (args) => this.memoryTool.deleteMemory(args.type, args.key),
         parameters: {
           type: 'object',
           properties: {
-            type: { type: 'string', description: 'Jenis memory' },
-            key: { type: 'string', description: 'Kunci memory' },
+            type: { type: 'string', description: 'Memory type' },
+            key: { type: 'string', description: 'Memory key' },
           },
           required: ['type', 'key'],
         },
@@ -949,8 +1013,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_navigate',
         displayName: 'Buka Halaman Web',
         description:
-          'Membuka halaman web (Google Docs, Google Sheets, website) di browser yang terlihat. ' +
-          'Gunakan untuk membuka dokumen online atau mencari informasi di web.',
+          'Opens a web page (Google Docs, Google Sheets, website) in the visible browser. ' +
+          'Use to open online documents or search for information on the web.',
         tags: ['browser', 'navigate', 'web', 'google-docs', 'google-sheets'],
         handler: async (args) => {
           try {
@@ -974,8 +1038,8 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            url: { type: 'string', description: 'URL halaman web yang akan dibuka (https://...)' },
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            url: { type: 'string', description: 'URL of the web page to open (https://...)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
           required: ['url'],
         },
@@ -989,8 +1053,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_click',
         displayName: 'Klik Element',
         description:
-          'Mengklik element di halaman web menggunakan CSS selector. ' +
-          'Gunakan untuk mengklik tombol, link, menu, atau cell di Google Docs/Sheets.',
+          'Clicks an element on the web page using a CSS selector. ' +
+          'Use to click buttons, links, menus, or cells in Google Docs/Sheets.',
         tags: ['browser', 'click', 'interact'],
         handler: async (args) => {
           try {
@@ -1016,9 +1080,9 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             selector: {
               type: 'string',
-              description: 'CSS selector element yang akan diklik (contoh: "#id", ".class", "button")',
+              description: 'CSS selector of the element to click (e.g. "#id", ".class", "button")',
             },
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
           required: ['selector'],
         },
@@ -1031,8 +1095,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_type',
         displayName: 'Ketik Teks',
         description:
-          'Mengetik teks ke dalam form field, cell spreadsheet, atau editor dokumen. ' +
-          'Gunakan untuk mengisi data di Google Sheets, mengetik di Google Docs, atau mengisi form.',
+          'Types text into a form field, spreadsheet cell, or document editor. ' +
+          'Use to fill data in Google Sheets, type in Google Docs, or fill forms.',
         tags: ['browser', 'type', 'input', 'form'],
         handler: async (args) => {
           try {
@@ -1062,14 +1126,14 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             selector: {
               type: 'string',
-              description: 'CSS selector element yang akan diisi teks',
+              description: 'CSS selector of the element to fill with text',
             },
-            text: { type: 'string', description: 'Teks yang akan diketik' },
+            text: { type: 'string', description: 'Text to type' },
             slowly: {
               type: 'boolean',
-              description: 'Ketik perlahan karakter per karakter (default: false)',
+              description: 'Type slowly, character by character (default: false)',
             },
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
           required: ['selector', 'text'],
         },
@@ -1082,8 +1146,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_screenshot',
         displayName: 'Screenshot Halaman',
         description:
-          'Mengambil screenshot halaman web saat ini. Gambar dikembalikan sebagai base64. ' +
-          'Gunakan untuk melihat apa yang sedang tampil di browser dan mendiagnosis masalah.',
+          'Takes a screenshot of the current web page. The image is returned as base64. ' +
+          'Use to see what is currently displayed in the browser and diagnose problems.',
         tags: ['browser', 'screenshot', 'view', 'capture', 'diagnose'],
         handler: async (args) => {
           try {
@@ -1107,7 +1171,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
         },
         estimatedLatency: 'medium',
@@ -1120,8 +1184,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_get_content',
         displayName: 'Baca Konten Halaman',
         description:
-          'Membaca teks yang terlihat di halaman web saat ini. ' +
-          'Gunakan untuk membaca dokumen Google Docs, data Google Sheets, atau konten web.',
+          'Reads the visible text on the current web page. ' +
+          'Use to read Google Docs documents, Google Sheets data, or web content.',
         tags: ['browser', 'read', 'content', 'text'],
         handler: async (args) => {
           try {
@@ -1147,9 +1211,9 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             maxChars: {
               type: 'number',
-              description: 'Maksimal karakter yang dibaca (default: semua)',
+              description: 'Maximum characters to read (default: all)',
             },
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
         },
         estimatedLatency: 'medium',
@@ -1162,9 +1226,9 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'browser_press_key',
         displayName: 'Tekan Tombol Keyboard',
         description:
-          'Menekan tombol keyboard di halaman web. Gunakan untuk shortcut keyboard ' +
-          '(Ctrl+C untuk copy, Enter untuk submit, Tab pindah field, Escape tutup dialog, ' +
-          'ArrowDown/ArrowUp navigasi, dll).',
+          'Presses a keyboard key on the web page. Use for keyboard shortcuts ' +
+          '(Ctrl+C to copy, Enter to submit, Tab to move fields, Escape to close dialogs, ' +
+          'ArrowDown/ArrowUp to navigate, etc.).',
         tags: ['browser', 'keyboard', 'shortcut', 'interact'],
         handler: async (args) => {
           try {
@@ -1190,9 +1254,9 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             key: {
               type: 'string',
-              description: 'Nama tombol (Enter, Tab, Escape, ArrowDown, ArrowUp, Control+a, dll)',
+              description: 'Key name (Enter, Tab, Escape, ArrowDown, ArrowUp, Control+a, etc.)',
             },
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
           required: ['key'],
         },
@@ -1204,7 +1268,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'browser_go_back',
         displayName: 'Kembali Halaman',
-        description: 'Navigasi kembali ke halaman sebelumnya di browser.',
+        description: 'Navigates back to the previous page in the browser.',
         tags: ['browser', 'navigate', 'back'],
         handler: async (args) => {
           try {
@@ -1228,7 +1292,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
         },
         timeoutMs: 15000,
@@ -1239,7 +1303,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'browser_go_forward',
         displayName: 'Maju Halaman',
-        description: 'Navigasi maju ke halaman berikutnya di browser.',
+        description: 'Navigates forward to the next page in the browser.',
         tags: ['browser', 'navigate', 'forward'],
         handler: async (args) => {
           try {
@@ -1263,7 +1327,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID untuk isolasi sesi (opsional)' },
+            workspaceId: { type: 'string', description: 'Workspace ID for session isolation (optional)' },
           },
         },
         timeoutMs: 15000,
@@ -1276,10 +1340,10 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_open_file',
         displayName: 'Buka File di Desktop',
         description:
-          'Membuka file di aplikasi default desktop (PDF di PDF viewer, ' +
-          'TXT di Notepad, CSV di Excel, gambar di Photo viewer, dll). ' +
-          'File akan terbuka visible di layar pengguna. Gunakan untuk semua jenis file ' +
-          'yang perlu dilihat/diedit langsung di desktop.',
+          'Opens a file in the default desktop application (PDF in a PDF viewer, ' +
+          'TXT in Notepad, CSV in Excel, images in a Photo viewer, etc.). ' +
+          'The file opens visible on the user screen. Use for any file type ' +
+          'that needs to be viewed/edited directly on the desktop.',
         tags: ['desktop', 'open', 'file', 'visible'],
         handler: async (args) => {
           try {
@@ -1305,7 +1369,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             path: {
               type: 'string',
-              description: 'Path lengkap file yang akan dibuka di aplikasi default desktop',
+              description: 'Full path of the file to open in the default desktop application',
             },
           },
           required: ['path'],
@@ -1319,8 +1383,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_open_excel',
         displayName: 'Buka Excel',
         description:
-          'Membuka file Excel (.xlsx, .xls) di aplikasi Microsoft Excel desktop ' +
-          'via COM. File akan terbuka visible di layar pengguna.',
+          'Opens an Excel file (.xlsx, .xls) in the Microsoft Excel desktop application ' +
+          'via COM. The file opens visible on the user screen.',
         tags: ['desktop', 'excel', 'com', 'visible'],
         handler: async (args) => {
           try {
@@ -1346,7 +1410,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             path: {
               type: 'string',
-              description: 'Path lengkap file Excel yang akan dibuka',
+              description: 'Full path of the Excel file to open',
             },
           },
           required: ['path'],
@@ -1361,8 +1425,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_open_word',
         displayName: 'Buka Word',
         description:
-          'Membuka file Word (.docx, .doc) di aplikasi Microsoft Word desktop ' +
-          'via COM. File akan terbuka visible di layar pengguna.',
+          'Opens a Word file (.docx, .doc) in the Microsoft Word desktop application ' +
+          'via COM. The file opens visible on the user screen.',
         tags: ['desktop', 'word', 'com', 'visible'],
         handler: async (args) => {
           try {
@@ -1388,7 +1452,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             path: {
               type: 'string',
-              description: 'Path lengkap file Word yang akan dibuka',
+              description: 'Full path of the Word file to open',
             },
           },
           required: ['path'],
@@ -1403,8 +1467,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_open_ppt',
         displayName: 'Buka PowerPoint',
         description:
-          'Membuka file PowerPoint (.pptx, .ppt) di aplikasi Microsoft PowerPoint desktop ' +
-          'via COM. File akan terbuka visible di layar pengguna.',
+          'Opens a PowerPoint file (.pptx, .ppt) in the Microsoft PowerPoint desktop application ' +
+          'via COM. The file opens visible on the user screen.',
         tags: ['desktop', 'ppt', 'com', 'visible'],
         handler: async (args) => {
           try {
@@ -1430,7 +1494,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             path: {
               type: 'string',
-              description: 'Path lengkap file PowerPoint yang akan dibuka',
+              description: 'Full path of the PowerPoint file to open',
             },
           },
           required: ['path'],
@@ -1445,9 +1509,9 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_screenshot',
         displayName: 'Screenshot Desktop',
         description:
-          'Mengambil screenshot layar desktop saat ini. ' +
-          'Gunakan untuk melihat apa yang sedang tampil di layar pengguna, ' +
-          'memverifikasi hasil operasi desktop, atau mendiagnosis masalah.',
+          'Takes a screenshot of the current desktop screen. ' +
+          'Use to see what is currently displayed on the user screen, ' +
+          'verify the results of desktop operations, or diagnose problems.',
         tags: ['desktop', 'screenshot', 'view', 'capture', 'diagnose'],
         handler: async () => {
           try {
@@ -1479,8 +1543,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_excel_write_cell',
         displayName: 'Tulis Cell Excel',
         description:
-          'Menulis nilai atau formula ke cell Excel tertentu (contoh: "A1", "B5") ' +
-          'di aplikasi Excel desktop yang terbuka secara visible.',
+          'Writes a value or formula to a specific Excel cell (e.g. "A1", "B5") ' +
+          'in the desktop Excel application that is open visibly.',
         tags: ['desktop', 'excel', 'write', 'cell', 'interactive'],
         handler: async (args) => {
           try {
@@ -1504,9 +1568,9 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Path file Excel (opsional jika sudah terbuka)' },
-            cell: { type: 'string', description: 'Alamat cell (contoh: "A1", "B5")' },
-            value: { type: 'string', description: 'Nilai atau formula (contoh: "100", "=SUM(A1:A5)")' },
+            path: { type: 'string', description: 'Excel file path (optional if already open)' },
+            cell: { type: 'string', description: 'Cell address (e.g. "A1", "B5")' },
+            value: { type: 'string', description: 'Value or formula (e.g. "100", "=SUM(A1:A5)")' },
           },
           required: ['cell', 'value'],
         },
@@ -1519,8 +1583,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_excel_set_format',
         displayName: 'Format Cell Excel',
         description:
-          'Memformat cell Excel (bold, warna background, alignment, ukuran font) ' +
-          'di aplikasi Excel desktop yang terbuka secara visible.',
+          'Formats Excel cells (bold, background color, alignment, font size) ' +
+          'in the desktop Excel application that is open visibly.',
         tags: ['desktop', 'excel', 'format', 'style', 'interactive'],
         handler: async (args) => {
           try {
@@ -1550,13 +1614,13 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Path file Excel (opsional jika sudah terbuka)' },
-            range: { type: 'string', description: 'Range cell (contoh: "A1", "A1:D1")' },
-            bold: { type: 'boolean', description: 'Cetak tebal' },
-            italic: { type: 'boolean', description: 'Cetak miring' },
-            fontSize: { type: 'number', description: 'Ukuran font' },
-            bgColor: { type: 'number', description: 'Index warna background (contoh: 6 untuk kuning, 4 untuk hijau)' },
-            alignment: { type: 'string', enum: ['left', 'center', 'right'], description: 'Rata teks' },
+            path: { type: 'string', description: 'Excel file path (optional if already open)' },
+            range: { type: 'string', description: 'Cell range (e.g. "A1", "A1:D1")' },
+            bold: { type: 'boolean', description: 'Bold' },
+            italic: { type: 'boolean', description: 'Italic' },
+            fontSize: { type: 'number', description: 'Font size' },
+            bgColor: { type: 'number', description: 'Background color index (e.g. 6 for yellow, 4 for green)' },
+            alignment: { type: 'string', enum: ['left', 'center', 'right'], description: 'Text alignment' },
           },
           required: ['range'],
         },
@@ -1569,7 +1633,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_word_type',
         displayName: 'Ketik Teks Word',
         description:
-          'Mengetik teks atau paragraf langsung di dokumen Word desktop yang sedang aktif.',
+          'Types text or paragraphs directly into the active desktop Word document.',
         tags: ['desktop', 'word', 'type', 'text', 'interactive'],
         handler: async (args) => {
           try {
@@ -1598,10 +1662,10 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            text: { type: 'string', description: 'Teks yang akan diketik di Word' },
-            addNewline: { type: 'boolean', description: 'Tambah paragraf baru setelah mengetik (default: false)' },
-            smoothStream: { type: 'boolean', description: 'Tampilkan animasi pengetikan live kata-demi-kata di layar Word' },
-            delayMs: { type: 'number', description: 'Jeda waktu per kata dalam milidetik (default: 25ms)' },
+            text: { type: 'string', description: 'Text to type in Word' },
+            addNewline: { type: 'boolean', description: 'Add a new paragraph after typing (default: false)' },
+            smoothStream: { type: 'boolean', description: 'Show live word-by-word typing animation on the Word screen' },
+            delayMs: { type: 'number', description: 'Delay per word in milliseconds (default: 25ms)' },
           },
           required: ['text'],
         },
@@ -1614,7 +1678,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_word_format',
         displayName: 'Format Dokumen Word',
         description:
-          'Memformat teks/seleksi di dokumen Word (Heading 1, Heading 2, Bold, Font Size).',
+          'Formats text/selection in a Word document (Heading 1, Heading 2, Bold, Font Size).',
         tags: ['desktop', 'word', 'format', 'style', 'interactive'],
         handler: async (args) => {
           try {
@@ -1643,10 +1707,10 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            style: { type: 'string', description: 'Style paragraf (contoh: "Heading 1", "Heading 2", "Normal")' },
-            bold: { type: 'boolean', description: 'Cetak tebal' },
-            italic: { type: 'boolean', description: 'Cetak miring' },
-            fontSize: { type: 'number', description: 'Ukuran font' },
+            style: { type: 'string', description: 'Paragraph style (e.g. "Heading 1", "Heading 2", "Normal")' },
+            bold: { type: 'boolean', description: 'Bold' },
+            italic: { type: 'boolean', description: 'Italic' },
+            fontSize: { type: 'number', description: 'Font size' },
           },
         },
         timeoutMs: 15000,
@@ -1658,8 +1722,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'desktop_send_keys',
         displayName: 'Kirim Shortcut Keyboard Desktop',
         description:
-          'Menekan kombinasi tombol/shortcut keyboard di jendela aplikasi desktop yang aktif ' +
-          '(contoh: "^s" untuk Ctrl+S, "{ENTER}", "{TAB}", "^z").',
+          'Presses keyboard key combinations/shortcuts in the active desktop application window ' +
+          '(e.g. "^s" for Ctrl+S, "{ENTER}", "{TAB}", "^z").',
         tags: ['desktop', 'keyboard', 'shortcut', 'sendkeys', 'interactive'],
         handler: async (args) => {
           try {
@@ -1685,7 +1749,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             keys: {
               type: 'string',
-              description: 'String shortcut WScript.SendKeys (contoh: "^s" untuk Ctrl+S, "{ENTER}", "{TAB}")',
+              description: 'WScript.SendKeys shortcut string (e.g. "^s" for Ctrl+S, "{ENTER}", "{TAB}")',
             },
           },
           required: ['keys'],
@@ -1700,7 +1764,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'doc_reconcile',
         displayName: 'Audit & Rekonsiliasi Dokumen',
         description:
-          'Membandingkan 2 kumpulan data terstruktur (Excel, PDF, Word, CSV) untuk merekonsiliasi entri, mencatat selisih nilai, dan mendeteksi data yang hilang.',
+          'Compares 2 sets of structured data (Excel, PDF, Word, CSV) to reconcile entries, note value differences, and detect missing data.',
         tags: ['audit', 'reconcile', 'reconciliation', 'compare', 'matrix'],
         handler: async (args) => {
           try {
@@ -1730,11 +1794,11 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            sourceName: { type: 'string', description: 'Nama dokumen acuan utama (contoh: "Invoices.xlsx")' },
-            sourceRows: { type: 'array', items: { type: 'object' }, description: 'Baris data dari dokumen acuan utama' },
-            targetName: { type: 'string', description: 'Nama dokumen pembanding (contoh: "Receipts.pdf")' },
-            targetRows: { type: 'array', items: { type: 'object' }, description: 'Baris data dari dokumen pembanding' },
-            matchKey: { type: 'string', description: 'Kunci acuan pencocokan (contoh: "id", "invoiceNo", "tanggal")' },
+            sourceName: { type: 'string', description: 'Name of the main reference document (e.g. "Invoices.xlsx")' },
+            sourceRows: { type: 'array', items: { type: 'object' }, description: 'Data rows from the main reference document' },
+            targetName: { type: 'string', description: 'Name of the comparison document (e.g. "Receipts.pdf")' },
+            targetRows: { type: 'array', items: { type: 'object' }, description: 'Data rows from the comparison document' },
+            matchKey: { type: 'string', description: 'Matching reference key (e.g. "id", "invoiceNo", "date")' },
           },
           required: ['sourceName', 'sourceRows', 'targetName', 'targetRows'],
         },
@@ -1747,7 +1811,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'doc_cross_reference',
         displayName: 'Pencarian Silang Dokumen Workspace',
         description:
-          'Mencari keterkaitan entitas, nomor invoice, atau kata kunci tertentu di seluruh teks dokumen workspace.',
+          'Searches for entity relationships, invoice numbers, or specific keywords across all workspace document text.',
         tags: ['cross_reference', 'search', 'audit', 'workspace'],
         handler: async (args) => {
           try {
@@ -1779,7 +1843,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            query: { type: 'string', description: 'Kata kunci/nomor invoice/kode yang dicari secara silang' },
+            query: { type: 'string', description: 'Keyword/invoice number/code to search cross-referentially' },
             documents: {
               type: 'array',
               items: {
@@ -1790,7 +1854,7 @@ export class ToolsProviderModule implements OnModuleInit {
                 },
                 required: ['name', 'content'],
               },
-              description: 'Daftar dokumen beserta konten teksnya untuk diperiksa',
+              description: 'List of documents with their text content to examine',
             },
           },
           required: ['query', 'documents'],
@@ -1805,10 +1869,10 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'agent_spawn',
         displayName: 'Delegasi Sub-Agent',
         description:
-          'Mendelegasikan sub-tugas ke sub-agent independen yang berjalan secara paralel di background. ' +
-          'Gunakan untuk memecah pekerjaan besar menjadi beberapa sub-tugas yang dikerjakan bersamaan ' +
-          '(contoh: baca 3 file PDF secara paralel, atau proses Excel sambil baca Word). ' +
-          'Setiap sub-agent memiliki konteks terisolasi dan tool yang dibatasi.',
+          'Delegates sub-tasks to independent sub-agents that run in parallel in the background. ' +
+          'Use to break large work into several sub-tasks done simultaneously ' +
+          '(e.g. read 3 PDF files in parallel, or process Excel while reading Word). ' +
+          'Each sub-agent has isolated context and restricted tools.',
         tags: ['agent', 'delegation', 'parallel', 'spawn', 'sub-agent'],
         handler: async (args) => {
           try {
@@ -1880,19 +1944,19 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             tasks: {
               type: 'array',
-              description: 'Daftar sub-tugas yang akan didelegasikan ke sub-agent paralel',
+              description: 'List of sub-tasks to delegate to parallel sub-agents',
               items: {
                 type: 'object',
                 properties: {
-                  taskName: { type: 'string', description: 'Nama singkat sub-tugas (contoh: "Baca PDF Tagihan")' },
-                  taskDescription: { type: 'string', description: 'Instruksi detail untuk sub-agent' },
+                  taskName: { type: 'string', description: 'Short sub-task name (e.g. "Read Invoice PDF")' },
+                  taskDescription: { type: 'string', description: 'Detailed instructions for the sub-agent' },
                   allowedTools: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Nama tool yang diizinkan (kosongkan untuk mengizinkan semua)',
+                    description: 'Allowed tool names (leave empty to allow all)',
                   },
-                  maxRounds: { type: 'number', description: 'Maks putaran eksekusi (default: 5)' },
-                  additionalContext: { type: 'string', description: 'Konteks tambahan opsional' },
+                  maxRounds: { type: 'number', description: 'Max execution rounds (default: 5)' },
+                  additionalContext: { type: 'string', description: 'Optional additional context' },
                 },
                 required: ['taskName', 'taskDescription'],
               },
@@ -1910,8 +1974,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'schedule_cron_job',
         displayName: 'Jadwalkan Laporan & Tugas Cron Berkala',
         description:
-          'Menjadwalkan eksekusi laporan otomatis atau tugas agen berkala di background. ' +
-          'Mendukung ekspresi cron (contoh: "0 17 * * 5" untuk setiap Jumat jam 5 sore) atau teks frekuensi ("daily", "weekly", "monthly").',
+          'Schedules automatic report execution or recurring agent tasks in the background. ' +
+          'Supports cron expressions (e.g. "0 17 * * 5" for every Friday at 5 PM) or frequency text ("daily", "weekly", "monthly").',
         tags: ['cron', 'scheduler', 'automation', 'recurring', 'report'],
         handler: async (args) => {
           try {
@@ -1953,18 +2017,18 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            name: { type: 'string', description: 'Nama jadwal laporan (contoh: "Rekap Omset Mingguan")' },
+            name: { type: 'string', description: 'Report schedule name (e.g. "Weekly Revenue Summary")' },
             reportType: {
               type: 'string',
-              description: 'Tipe laporan: "laba_rugi", "neraca", "rug", "stok", atau "agent_run"',
+              description: 'Report type: "laba_rugi", "neraca", "rug", "stok", or "agent_run"',
             },
             cronExpr: {
               type: 'string',
-              description: 'Ekspresi cron atau frekuensi (contoh: "0 17 * * 5", "daily", "weekly")',
+              description: 'Cron expression or frequency (e.g. "0 17 * * 5", "daily", "weekly")',
             },
-            format: { type: 'string', description: 'Format file: "excel", "pdf", "csv"' },
-            agentGoal: { type: 'string', description: 'Instruksi/tujuan khusus jika reportType="agent_run"' },
-            workspaceId: { type: 'string', description: 'ID workspace' },
+            format: { type: 'string', description: 'File format: "excel", "pdf", "csv"' },
+            agentGoal: { type: 'string', description: 'Special instruction/goal if reportType="agent_run"' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
           required: ['name'],
         },
@@ -1976,7 +2040,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'list_cron_jobs',
         displayName: 'Daftar Jadwal Cron Berkala',
-        description: 'Melihat daftar jadwal laporan otomatis dan tugas agen berkala yang aktif.',
+        description: 'Lists active automatic report schedules and recurring agent tasks.',
         tags: ['cron', 'scheduler', 'list', 'recurring'],
         handler: async (args) => {
           try {
@@ -2013,7 +2077,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'ID workspace' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
         },
         timeoutMs: 15000,
@@ -2024,7 +2088,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'delete_cron_job',
         displayName: 'Hapus Jadwal Cron Berkala',
-        description: 'Menghapus jadwal laporan berkala dari sistem.',
+        description: 'Deletes a recurring report schedule from the system.',
         tags: ['cron', 'scheduler', 'delete', 'remove'],
         handler: async (args) => {
           try {
@@ -2057,7 +2121,7 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            id: { type: 'string', description: 'ID jadwal cron yang akan dihapus' },
+            id: { type: 'string', description: 'ID of the cron schedule to delete' },
           },
           required: ['id'],
         },

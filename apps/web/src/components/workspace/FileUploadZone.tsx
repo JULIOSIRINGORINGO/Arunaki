@@ -48,7 +48,7 @@ export function FileUploadZone({ workspaceId, onUploadComplete }: FileUploadZone
         method: "POST",
         body: formData,
       });
-
+      if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
 
       if (data.error) {

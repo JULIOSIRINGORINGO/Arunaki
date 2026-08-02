@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import Markdown from "react-markdown";
@@ -8,10 +8,9 @@ import {
   Settings,
   Info,
   FileSpreadsheet,
-  FileCode,
+  FileText,
   ShieldCheck,
   MessageSquare,
-  Paperclip,
   ArrowUp,
   X,
   Plus,
@@ -21,12 +20,17 @@ import {
   Activity,
   Bot,
   Square,
-  Compass,
   ChevronDown,
   ChevronRight,
   Brain,
-  Trash2,
-  Sparkles,
+  Edit3,
+  Save,
+  Minus,
+  Maximize2,
+  FolderOpen,
+  RotateCw,
+  GripHorizontal,
+  Move,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
@@ -36,6 +40,7 @@ interface AgentStep {
   type: "thinking" | "plan" | "tool" | "result" | "error";
   label: string;
   detail?: string;
+  planList?: string[];
   status: "running" | "done" | "error";
 }
 
@@ -53,6 +58,7 @@ interface ChatSession {
   updatedAt: string;
   messages: ChatMessage[];
   analysisResult?: string | null;
+  steps?: AgentStep[];
 }
 
 export function WorkspacePage() {
@@ -60,17 +66,16 @@ export function WorkspacePage() {
   const [isConnected, setIsConnected] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-  const [promptInput, setPromptInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const connectedWsRef = useRef<string | null>(null);
+  const agentAbortRef = useRef<AbortController | null>(null);
 
   // Multi-Session Chat & Slash Command State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("session_default");
-  const [showSlashMenu, setShowSlashMenu] = useState(false);
 
   // Agent auto-analysis state
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>([]);
@@ -78,6 +83,10 @@ export function WorkspacePage() {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [activeToolAction, setActiveToolAction] = useState<{ toolName: string; args?: any } | null>(null);
   const [isStepsExpanded, setIsStepsExpanded] = useState(true);
+
+  // Mirror of agentSteps for use inside SSE handlers (closure staleness).
+  const agentStepsRef = useRef<AgentStep[]>([]);
+  agentStepsRef.current = agentSteps;
 
   // VS Code-like: native folder tree from Electron IPC
   const [nativeTree, setNativeTree] = useState<any[] | null>(null);
@@ -87,6 +96,216 @@ export function WorkspacePage() {
   // Workspace Heartbeat & Proactive Monitor State (OpenClaw Layer 10 & 29)
   const [heartbeatAlert, setHeartbeatAlert] = useState<string | null>(null);
   const previousFileCountRef = useRef<number>(0);
+
+  // VS Code Central Workspace File Editor & Floating Draggable Chat State
+  const [openEditorFile, setOpenEditorFile] = useState<{
+    path: string;
+    name: string;
+    content: string;
+    isEditing?: boolean;
+  } | null>(null);
+
+  type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+  const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 260, y: 70 });
+  const [chatSize, setChatSize] = useState<{ width: number; height: number }>({ width: 540, height: 560 });
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
+  const [isDraggingChat, setIsDraggingChat] = useState(false);
+  const [isResizingChat, setIsResizingChat] = useState(false);
+
+  const isDraggingChatRef = useRef(false);
+  const isResizingChatRef = useRef(false);
+  const resizeDirRef = useRef<ResizeDirection | null>(null);
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const resizeStartRef = useRef<{ startX: number; startY: number; startW: number; startH: number; startXPos: number; startYPos: number }>({
+    startX: 0,
+    startY: 0,
+    startW: 540,
+    startH: 560,
+    startXPos: 260,
+    startYPos: 70,
+  });
+  const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const rafIdRef = useRef<number | null>(null);
+  // Direct DOM write during drag/resize — avoids re-rendering the whole
+  // WorkspacePage tree on every mousemove frame (heavy: file tree, sessions).
+  const chatPanelRef = useRef<HTMLDivElement | null>(null);
+
+  const handleStartDragChat = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('form') ||
+      target.closest('a') ||
+      target.closest('[class*="cursor-n-"]') ||
+      target.closest('[class*="cursor-s-"]') ||
+      target.closest('[class*="cursor-w-"]') ||
+      target.closest('[class*="cursor-e-"]') ||
+      target.closest('[class*="cursor-ne-"]') ||
+      target.closest('[class*="cursor-nw-"]') ||
+      target.closest('[class*="cursor-se-"]') ||
+      target.closest('[class*="cursor-sw-"]')
+    ) {
+      return;
+    }
+    if (window.getSelection() && window.getSelection()?.toString().length! > 0) {
+      return;
+    }
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isDraggingChatRef.current = true;
+    setIsDraggingChat(true);
+    dragOffsetRef.current = {
+      x: e.clientX - chatPosition.x,
+      y: e.clientY - chatPosition.y,
+    };
+  };
+
+  const handlePillClick = (e: React.MouseEvent) => {
+    const dx = Math.abs(e.clientX - dragStartPosRef.current.x);
+    const dy = Math.abs(e.clientY - dragStartPosRef.current.y);
+    if (dx < 5 && dy < 5) {
+      setIsChatMinimized(false);
+    }
+  };
+
+  const handleStartResizeChat = (dir: ResizeDirection, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizingChatRef.current = true;
+    resizeDirRef.current = dir;
+    setIsResizingChat(true);
+    resizeStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: chatSize.width,
+      startH: chatSize.height,
+      startXPos: chatPosition.x,
+      startYPos: chatPosition.y,
+    };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingChatRef.current) {
+        if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = requestAnimationFrame(() => {
+          const nextX = Math.max(10, Math.min(window.innerWidth - 120, e.clientX - dragOffsetRef.current.x));
+          const nextY = Math.max(10, Math.min(window.innerHeight - 60, e.clientY - dragOffsetRef.current.y));
+          const panel = chatPanelRef.current;
+          if (panel) {
+            panel.style.left = `${nextX}px`;
+            panel.style.top = `${nextY}px`;
+          } else {
+            setChatPosition({ x: nextX, y: nextY });
+          }
+        });
+      } else if (isResizingChatRef.current && resizeDirRef.current) {
+        if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = requestAnimationFrame(() => {
+          const dir = resizeDirRef.current!;
+          const deltaX = e.clientX - resizeStartRef.current.startX;
+          const deltaY = e.clientY - resizeStartRef.current.startY;
+
+          let newW = resizeStartRef.current.startW;
+          let newH = resizeStartRef.current.startH;
+          let newX = resizeStartRef.current.startXPos;
+          let newY = resizeStartRef.current.startYPos;
+
+          // East (Right)
+          if (dir.includes('e')) {
+            newW = Math.max(240, Math.min(window.innerWidth - newX - 10, resizeStartRef.current.startW + deltaX));
+          }
+          // West (Left)
+          if (dir.includes('w')) {
+            const rightEdge = resizeStartRef.current.startXPos + resizeStartRef.current.startW;
+            const rawW = resizeStartRef.current.startW - deltaX;
+            const clampedW = Math.max(240, Math.min(rightEdge - 10, rawW));
+            newW = clampedW;
+            newX = rightEdge - clampedW;
+          }
+          // South (Bottom)
+          if (dir.includes('s')) {
+            newH = Math.max(180, Math.min(window.innerHeight - newY - 10, resizeStartRef.current.startH + deltaY));
+          }
+          // North (Top)
+          if (dir.includes('n')) {
+            const bottomEdge = resizeStartRef.current.startYPos + resizeStartRef.current.startH;
+            const rawH = resizeStartRef.current.startH - deltaY;
+            const clampedH = Math.max(180, Math.min(bottomEdge - 10, rawH));
+            newH = clampedH;
+            newY = bottomEdge - clampedH;
+          }
+
+          const panel = chatPanelRef.current;
+          if (panel) {
+            panel.style.width = `${newW}px`;
+            panel.style.height = `${newH}px`;
+            panel.style.left = `${newX}px`;
+            panel.style.top = `${newY}px`;
+          } else {
+            setChatSize({ width: newW, height: newH });
+            setChatPosition({ x: newX, y: newY });
+          }
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingChatRef.current || isResizingChatRef.current) {
+        isDraggingChatRef.current = false;
+        isResizingChatRef.current = false;
+        resizeDirRef.current = null;
+        // Commit final position/size to React state so future drags and
+        // renders (e.g. minimize toggle) use the updated values.
+        const panel = chatPanelRef.current;
+        if (panel) {
+          setChatPosition({ x: panel.offsetLeft, y: panel.offsetTop });
+          setChatSize({ width: panel.offsetWidth, height: panel.offsetHeight });
+        }
+        setIsDraggingChat(false);
+        setIsResizingChat(false);
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    };
+  }, []);
+
+  const handleOpenFileInEditor = (path: string, name: string, content?: string) => {
+    setOpenEditorFile({
+      path,
+      name,
+      content: content || "",
+      isEditing: false,
+    });
+  };
+
+  const handleSaveEditorContent = async () => {
+    if (!openEditorFile) return;
+    try {
+      if ((window as any).arunakiDesktop?.writeFile) {
+        const res = await (window as any).arunakiDesktop.writeFile(openEditorFile.path, openEditorFile.content);
+        if (res?.error) {
+          toast.error(`Gagal menyimpan file: ${res.error}`);
+        } else {
+          toast.success(`File "${openEditorFile.name}" berhasil disimpan!`);
+          setOpenEditorFile({ ...openEditorFile, isEditing: false });
+        }
+      } else {
+        toast.info("Penyimpanan file fisik memerlukan mode Desktop Electron.");
+        setOpenEditorFile({ ...openEditorFile, isEditing: false });
+      }
+    } catch (err: any) {
+      toast.error(`Gagal menyimpan file: ${err.message}`);
+    }
+  };
 
   // Session Persistence & Helpers
   useEffect(() => {
@@ -104,6 +323,7 @@ export function WorkspacePage() {
             if (activeSess?.analysisResult) {
               setAnalysisResult(activeSess.analysisResult);
             }
+            setAgentSteps(activeSess?.steps || []);
           } else {
             setActiveSessionId(parsed[0].id);
           }
@@ -126,7 +346,7 @@ export function WorkspacePage() {
     setActiveSessionId("session_default");
   }, [workspaceId]);
 
-  const addMessageToActiveSession = useCallback((msg: ChatMessage, newAnalysisResult?: string | null) => {
+  const addMessageToActiveSession = useCallback((msg: ChatMessage, newAnalysisResult?: string | null, newSteps?: AgentStep[]) => {
     if (!workspaceId) return;
     setSessions((prevSessions) => {
       const updated = prevSessions.map((session) => {
@@ -136,6 +356,7 @@ export function WorkspacePage() {
             ...session,
             messages: updatedMessages,
             analysisResult: newAnalysisResult !== undefined ? newAnalysisResult : session.analysisResult,
+            steps: newSteps !== undefined ? newSteps : session.steps,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -164,8 +385,6 @@ export function WorkspacePage() {
     setAgentSteps([]);
     localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updatedSessions));
     localStorage.setItem(`arunaki_active_session_${workspaceId}`, newSessionId);
-    setShowSlashMenu(false);
-    setPromptInput("");
     toast.success(`Sesi baru "${newSession.title}" dibuat!`);
   }, [sessions, workspaceId]);
 
@@ -176,8 +395,7 @@ export function WorkspacePage() {
     setActiveSessionId(sessionId);
     localStorage.setItem(`arunaki_active_session_${workspaceId}`, sessionId);
     setAnalysisResult(target.analysisResult || null);
-    setShowSlashMenu(false);
-    setPromptInput("");
+    setAgentSteps(target.steps || []);
     toast.info(`Beralih ke "${target.title}"`);
   }, [sessions, workspaceId]);
 
@@ -271,17 +489,29 @@ export function WorkspacePage() {
     }
   }, [isRestoring, workspaceId]);
 
+  const refreshFolderRef = useRef<(wsId: string) => void>(() => {});
+
   const triggerAutoAnalysis = useCallback(async (wsId: string, goal?: string) => {
     setIsAnalyzing(true);
     setAgentSteps([]);
     setAnalysisResult(null);
 
+    const abortController = new AbortController();
+    agentAbortRef.current = abortController;
+
     try {
+      const activeSession = sessions.find((s) => s.id === activeSessionId);
+      const historyMessages = (activeSession?.messages ?? [])
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.content }));
+
       await fetchEventSource(`${API_BASE}/workspaces/${wsId}/agent/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abortController.signal,
         body: JSON.stringify({
           goal: goal || "Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.",
+          historyMessages,
         }),
         openWhenHidden: true,
         onmessage(ev) {
@@ -300,30 +530,31 @@ export function WorkspacePage() {
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
                 );
-                setAgentSteps((prev) => [
-                  ...prev,
-                  {
-                    type: "plan",
-                    label: `Rencana: ${event.data.steps?.length || 0} langkah`,
-                    detail: event.data.steps?.join(" | "),
-                    status: "done",
-                  },
-                ]);
+                {
+                  const steps = event.data.steps || [];
+                  const isMultiStep = steps.length > 1;
+                  const label = isMultiStep
+                    ? `Langkah Eksekusi: ${steps.length} Langkah`
+                    : `Eksekusi: ${steps[0] || "Mengerjakan permintaan"}`;
+                  setAgentSteps((prev) => [
+                    ...prev,
+                    {
+                      type: "plan",
+                      label,
+                      detail: steps.join(" | "),
+                      planList: steps,
+                      status: "done",
+                    },
+                  ]);
+                }
                 break;
               case "tool_start": {
                 setActiveToolAction({ toolName: event.data.toolName, args: event.data.args });
                 const toolName = event.data.toolName;
                 const targetName = event.data.args?.filename || event.data.args?.path || event.data.args?.query || "";
-                let friendlyLabel = `Menjalankan ${toolName}`;
-                if (toolName === 'write_workspace_file' || toolName === 'document_writer') {
-                  friendlyLabel = targetName ? `Menyunting/Membuat file "${targetName}"` : 'Menyunting/Membuat dokumen';
-                } else if (toolName === 'read_workspace_file' || toolName === 'document_reader') {
-                  friendlyLabel = targetName ? `Membaca isi file "${targetName}"` : 'Membaca dokumen';
-                } else if (toolName === 'generate_export') {
-                  friendlyLabel = targetName ? `Membuat laporan spreadsheet "${targetName}"` : 'Menyusun laporan';
-                } else if (toolName === 'web_search' || toolName === 'tavily_search') {
-                  friendlyLabel = targetName ? `Mencari informasi: "${targetName}"` : 'Mencari di internet';
-                }
+                const friendlyLabel = targetName
+                  ? `Menjalankan ${toolName} → ${targetName}`
+                  : `Menjalankan ${toolName}`;
                 setAgentSteps((prev) => [
                   ...prev,
                   {
@@ -335,24 +566,53 @@ export function WorkspacePage() {
                 ]);
                 break;
               }
-              case "tool_done":
+              case "tool_done": {
                 setActiveToolAction(null);
-                setAgentSteps((prev) =>
-                  prev.map((s) =>
-                    s.status === "running" ? { ...s, status: "done" as const } : s
-                  )
-                );
-                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+                const toolName = event.data?.toolName || "";
+                const metaFilename = event.data?.result?.metadata?.filename;
+                const preview = event.data?.result?.preview;
+                // read/search tools return the file content as preview — never
+                // put that into the timeline. Use a short action label instead.
+                const isContentTool =
+                  toolName.includes("read_workspace_file") ||
+                  toolName.includes("search_workspace") ||
+                  toolName.includes("document_reader");
+                const doneLabel =
+                  event.data?.result?.status === "success"
+                    ? isContentTool
+                      ? `Selesai: ${toolName}${metaFilename ? ` → ${metaFilename}` : ""}`
+                      : preview || `Selesai: ${toolName}`
+                    : `Gagal: ${toolName}`;
+                const doneStatus = event.data?.result?.status === "success" ? ("done" as const) : ("error" as const);
+                setAgentSteps((prev) => {
+                  const idx = prev.map((s) => s.type).lastIndexOf("tool");
+                  const lastTool = idx >= 0 ? prev[idx] : null;
+                  if (lastTool && lastTool.status === "running") {
+                    const updated = [...prev];
+                    updated[idx] = { ...lastTool, label: doneLabel, status: doneStatus };
+                    return updated;
+                  }
+                  return [
+                    ...prev,
+                    { type: "tool", label: doneLabel, status: doneStatus },
+                  ];
+                });
+                refreshFolderRef.current(wsId);
                 break;
+              }
               case "text_delta":
                 setAnalysisResult(event.data);
                 break;
               case "done":
                 setActiveToolAction(null);
+                setIsAnalyzing(false);
                 setAgentSteps((prev) =>
                   prev.map((s) =>
                     s.status === "running" ? { ...s, status: "done" as const } : s
                   )
+                );
+                const finalSteps = agentStepsRef.current.map((s) =>
+                  s.status === "running" ? { ...s, status: "done" as const } : s
                 );
                 if (event.data?.content) {
                   setAnalysisResult(event.data.content);
@@ -362,12 +622,14 @@ export function WorkspacePage() {
                     content: event.data.content,
                     timestamp: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
                   };
-                  addMessageToActiveSession(aiMsg, event.data.content);
+                  addMessageToActiveSession(aiMsg, event.data.content, finalSteps);
                 }
-                queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+                refreshFolderRef.current(wsId);
+                abortController.abort();
                 break;
               case "error":
                 setActiveToolAction(null);
+                setIsAnalyzing(false);
                 setAgentSteps((prev) => [
                   ...prev,
                   {
@@ -376,6 +638,7 @@ export function WorkspacePage() {
                     status: "error",
                   },
                 ]);
+                abortController.abort();
                 break;
             }
           } catch {
@@ -384,22 +647,24 @@ export function WorkspacePage() {
         },
         onerror(err) {
           console.error("Agent stream error:", err);
-          setAgentSteps((prev) => [
-            ...prev,
-            { type: "error", label: "Koneksi stream terputus", status: "error" },
-          ]);
           setIsAnalyzing(false);
+          setActiveToolAction(null);
+          abortController.abort();
           throw err;
         },
         onclose() {
           setIsAnalyzing(false);
+          setActiveToolAction(null);
+          abortController.abort();
         },
       });
     } catch (err) {
       console.error("Agent analysis failed:", err);
       setIsAnalyzing(false);
+    } finally {
+      agentAbortRef.current = null;
     }
-  }, []);
+  }, [addMessageToActiveSession, sessions, activeSessionId]);
 
   const doConnect = useCallback(async (files: File[], folderName: string, businessType: string = "generic") => {
     setIsCreating(true);
@@ -626,21 +891,35 @@ export function WorkspacePage() {
     enabled: !!workspaceId,
   });
 
-  const handleRefreshFolder = useCallback(async () => {
+  const refreshFolderQuietly = useCallback(async (wsId: string) => {
     const rootPath = connectedFolderPath || workspace?.rootPath;
     const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
     if (desktop?.getFolderTree && rootPath) {
-      const scan = await desktop.getFolderTree(rootPath);
-      if (scan?.tree) {
-        setNativeTree(scan.tree);
-        const countFiles = (nodes: any[]): number =>
-          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-        setNativeFileCount(countFiles(scan.tree));
-        toast.success("Struktur folder diperbarui!");
+      try {
+        const scan = await desktop.getFolderTree(rootPath);
+        if (scan?.tree) {
+          setNativeTree(scan.tree);
+          const countFiles = (nodes: any[]): number =>
+            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+          setNativeFileCount(countFiles(scan.tree));
+        }
+      } catch {
+        // ignore
       }
     }
-    queryClient.invalidateQueries({ queryKey: ["wsFiles", workspaceId] });
-  }, [connectedFolderPath, workspace?.rootPath, workspaceId, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ["wsFiles", wsId] });
+  }, [connectedFolderPath, workspace?.rootPath, queryClient]);
+
+  useEffect(() => {
+    refreshFolderRef.current = refreshFolderQuietly;
+  }, [refreshFolderQuietly]);
+
+  const handleRefreshFolder = useCallback(async () => {
+    if (workspaceId) {
+      await refreshFolderQuietly(workspaceId);
+    }
+    toast.success("Struktur folder diperbarui!");
+  }, [refreshFolderQuietly, workspaceId]);
 
   const handleCreateFile = useCallback(async (fileName: string) => {
     const rootPath = connectedFolderPath || workspace?.rootPath;
@@ -713,31 +992,30 @@ export function WorkspacePage() {
   const handleAnalyzeFile = useCallback((fileName: string) => {
     if (!workspaceId || isAnalyzing) return;
     const goal = `Baca dan analisis file "${fileName}" secara mendalam. Ekstrak data penting, identifikasi informasi utama, dan berikan ringkasan komprehensif.`;
-    setPromptInput(goal);
     triggerAutoAnalysis(workspaceId, goal);
   }, [workspaceId, isAnalyzing, triggerAutoAnalysis]);
 
   const handleAbortAgent = useCallback(async () => {
     if (!workspaceId) return;
+    agentAbortRef.current?.abort();
+    agentAbortRef.current = null;
     try {
       await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/abort`, { method: "POST" });
       toast.info("Permintaan pembatalan analisis dikirim.");
-      setIsAnalyzing(false);
     } catch {
       toast.error("Gagal membatalkan agen.");
     }
+    setIsAnalyzing(false);
   }, [workspaceId]);
 
-  const handleSteerAgent = useCallback(async () => {
-    if (!workspaceId || !promptInput.trim() || !isAnalyzing) return;
-    const steerMessage = promptInput.trim();
-    setPromptInput("");
-
+  const handleSteerAgent = useCallback(async (steerText: string) => {
+    if (!workspaceId || !steerText.trim() || !isAnalyzing) return;
+    const steerMessage = steerText.trim();
     try {
-      const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/steer`, {
+      const res = await fetch(`${API_BASE}/agent/steer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: steerMessage }),
+        body: JSON.stringify({ workspaceId, steerMessage }),
       });
       const json = await res.json();
       if (json.success) {
@@ -757,30 +1035,37 @@ export function WorkspacePage() {
     } catch (err: any) {
       toast.error(`Gagal mengirim steering: ${err.message}`);
     }
-  }, [workspaceId, promptInput, isAnalyzing]);
+  }, [workspaceId, isAnalyzing]);
 
-  const handleSendChat = useCallback(async () => {
-    if (!isConnected || !workspaceId || !promptInput.trim() || isAnalyzing) return;
-    const input = promptInput.trim();
+  const executeSlashCommand = useCallback((command: string) => {
+    const lower = command.toLowerCase().trim();
+    if (lower === "/session new" || lower === "/new") {
+      createNewSession();
+      return;
+    }
+    if (lower === "/clear") {
+      setSessions((prev) => {
+        const updated = prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s));
+        if (workspaceId) localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
+        return updated;
+      });
+        toast.info("Riwayat pesan di sesi ini dibersihkan.");
+      return;
+    }
+  }, [activeSessionId, createNewSession, workspaceId]);
+
+  const handleSlashCommand = useCallback((command: string) => {
+    executeSlashCommand(command);
+  }, [executeSlashCommand]);
+
+  const handleSendChat = useCallback(async (inputText: string) => {
+    if (!isConnected || !workspaceId || !inputText.trim() || isAnalyzing) return;
+    const input = inputText.trim();
 
     // Handle slash commands
     if (input.startsWith("/")) {
-      const lower = input.toLowerCase();
-      if (lower === "/session new" || lower === "/new") {
-        createNewSession();
-        return;
-      }
-      if (lower === "/clear") {
-        setSessions((prev) => {
-          const updated = prev.map((s) => (s.id === activeSessionId ? { ...s, messages: [] } : s));
-          localStorage.setItem(`arunaki_sessions_${workspaceId}`, JSON.stringify(updated));
-          return updated;
-        });
-        setPromptInput("");
-        setShowSlashMenu(false);
-        toast.info("Riwayat pesan di sesi ini dibersihkan.");
-        return;
-      }
+      executeSlashCommand(input);
+      return;
     }
 
     const userMsg: ChatMessage = {
@@ -800,11 +1085,9 @@ export function WorkspacePage() {
       );
     }
 
-    setPromptInput("");
-    setShowSlashMenu(false);
 
     await triggerAutoAnalysis(workspaceId, input);
-  }, [activeSessionId, addMessageToActiveSession, createNewSession, isAnalyzing, isConnected, promptInput, sessions, triggerAutoAnalysis, workspaceId]);
+  }, [activeSessionId, addMessageToActiveSession, createNewSession, isAnalyzing, isConnected, sessions, triggerAutoAnalysis, workspaceId]);
 
   // Periodic Workspace Heartbeat & Background Monitor (Layer 10 & 29 OpenClaw)
   useEffect(() => {
@@ -815,20 +1098,24 @@ export function WorkspacePage() {
       const rootPath = connectedFolderPath || workspace?.rootPath;
 
       if (desktop?.getFolderTree && rootPath) {
-        const scan = await desktop.getFolderTree(rootPath);
-        if (scan?.tree) {
-          const countFiles = (nodes: any[]): number =>
-            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-          const currentCount = countFiles(scan.tree);
+        try {
+          const scan = await desktop.getFolderTree(rootPath);
+          if (scan?.tree) {
+            const countFiles = (nodes: any[]): number =>
+              nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+            const currentCount = countFiles(scan.tree);
 
-          if (previousFileCountRef.current > 0 && currentCount > previousFileCountRef.current) {
-            const diff = currentCount - previousFileCountRef.current;
-            toast.info(`📁 Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace!`);
-            setNativeTree(scan.tree);
-            setNativeFileCount(currentCount);
-            setHeartbeatAlert(`Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace. Klik untuk memicu pemindaian ingatan AI.`);
+            if (previousFileCountRef.current > 0 && currentCount > previousFileCountRef.current) {
+              const diff = currentCount - previousFileCountRef.current;
+              toast.info(`📁 Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace!`);
+              setNativeTree(scan.tree);
+              setNativeFileCount(currentCount);
+              setHeartbeatAlert(`Heartbeat Monitor: Terdeteksi ${diff} file baru di Workspace. Klik untuk memicu pemindaian ingatan AI.`);
+            }
+            previousFileCountRef.current = currentCount;
           }
-          previousFileCountRef.current = currentCount;
+        } catch {
+          // desktop IPC can fail (app closed); heartbeat keeps running
         }
       }
     }, 12000);
@@ -923,413 +1210,130 @@ export function WorkspacePage() {
 
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 overflow-hidden">
-        {/* Left - Chat / Document Viewer Area */}
+        {/* Left Column - Clean Workspace Canvas / VS Code Central Editor */}
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
-          <div className="bg-white rounded-2xl border border-gray-200/90 p-6 shadow-2xs flex-1 flex flex-col justify-between space-y-6 overflow-hidden min-w-0">
-            {/* Top Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <MessageSquare className="w-5 h-5 text-gray-900" />
-                <h3 className="font-bold text-base text-gray-900">Asisten Intelijen Arunaki AI</h3>
-              </div>
+          {openEditorFile ? (
+            /* VS CODE CENTER WORKSPACE EDITOR (Clean White Theme) */
+            <div className="flex-1 flex flex-col bg-white text-gray-900 rounded-2xl border border-gray-200/90 shadow-2xs overflow-hidden h-full animate-fade-in">
+              {/* Editor Header Toolbar */}
+              <div className="flex items-center justify-between px-4 py-3 bg-gray-50/80 border-b border-gray-200/80 text-gray-900 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span className="font-semibold text-xs text-gray-900 truncate">{openEditorFile.name}</span>
+                  <span className="text-[11px] text-gray-500 font-mono truncate hidden sm:inline">{openEditorFile.path}</span>
+                </div>
 
-              {isConnected && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-200/60">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {fileCount} Dokumen Aktif
-                </span>
-              )}
-            </div>
-
-              {/* Middle Message Area */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 py-2">
-                {!isConnected ? (
-                  <div className="bg-[#F8F9FA] border border-gray-200/70 rounded-2xl p-6 text-xs sm:text-sm text-gray-700 space-y-3.5 max-w-2xl">
-                    <div className="flex items-center gap-2 text-gray-900 font-bold text-base sm:text-lg">
-                      <span>Selamat Datang di Workspace Arunaki!</span>
-                    </div>
-                    <p className="text-gray-600 leading-relaxed">
-                      Belum ada direktori folder yang terhubung ke workspace ini. Hubungkan folder bisnis Anda untuk mulai mengindeks dokumen, menganalisis risiko, serta mengekstrak informasi secara otomatis.
-                    </p>
-                    <div className="pt-2">
-                      <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="inline-flex items-center gap-2 bg-black text-white hover:bg-gray-800 px-5 py-3 rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs active:scale-98"
-                      >
-                        <Folder className="w-4 h-4" />
-                        <span>Hubungkan Folder Sekarang</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-w-2xl animate-fade-in overflow-hidden min-w-0">
-                    {/* Persistent Chat History Messages */}
-                    {activeSession?.messages && activeSession.messages.length > 0 && (
-                      <div className="space-y-4 pb-2">
-                        {activeSession.messages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`flex flex-col space-y-1 ${
-                              msg.role === "user" ? "items-end" : "items-start"
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium px-1">
-                              <span>{msg.role === "user" ? "Anda" : "Arunaki AI"}</span>
-                              <span>•</span>
-                              <span>{msg.timestamp}</span>
-                            </div>
-                            <div
-                              className={`rounded-2xl p-4 text-xs sm:text-sm shadow-2xs max-w-[92%] sm:max-w-[85%] break-words ${
-                                msg.role === "user"
-                                  ? "bg-gray-900 text-white font-medium rounded-tr-2xs"
-                                  : "bg-[#F8F9FA] text-gray-800 border border-gray-100 rounded-tl-2xs space-y-2"
-                              }`}
-                              style={{ overflowWrap: "anywhere" }}
-                            >
-                              {msg.role === "user" ? (
-                                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                              ) : (
-                                <Markdown
-                                  components={{
-                                    strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
-                                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                                    ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 my-2.5">{children}</ol>,
-                                    ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 my-2.5">{children}</ul>,
-                                    li: ({ children }) => <li className="text-gray-800 leading-relaxed">{children}</li>,
-                                  }}
-                                >
-                                  {msg.content}
-                                </Markdown>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Proactive Heartbeat Alert Banner */}
-                    {heartbeatAlert && (
-                      <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs text-amber-900 shadow-2xs animate-in fade-in duration-200">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <Activity className="w-4 h-4 text-amber-600 animate-pulse shrink-0" />
-                          <span className="font-medium truncate">{heartbeatAlert}</span>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setHeartbeatAlert(null);
-                              if (workspaceId) triggerAutoAnalysis(workspaceId, "Lakukan pemindaian cepat terhadap file/dokumen baru yang ditambahkan di workspace.");
-                            }}
-                            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
-                          >
-                            Pindai Dokumen Baru
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setHeartbeatAlert(null)}
-                            className="text-amber-500 hover:text-amber-700 p-1"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Live Visual AI Agent Action Banner */}
-                    {activeToolAction && isAnalyzing && (
-                      <div className="bg-gradient-to-r from-gray-900 to-amber-950 text-white rounded-2xl p-4 border border-amber-500/30 shadow-lg flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
-                            <Bot className="w-5 h-5 text-amber-400 animate-bounce" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-amber-400 uppercase tracking-wider">Aksi Agen AI Otonom</span>
-                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                            </div>
-                            <p className="text-xs font-mono text-gray-200 truncate mt-0.5">
-                              {activeToolAction.toolName === 'write_workspace_file'
-                                ? `✏️ Menyunting/membuat file "${activeToolAction.args?.filename || 'dokumen'}" di Sandbox...`
-                                : activeToolAction.toolName === 'read_workspace_file'
-                                ? `📖 Membaca sel & isi dari "${activeToolAction.args?.filename || 'dokumen'}"...`
-                                : activeToolAction.toolName === 'generate_export'
-                                ? `📊 Menyusun spreadsheet/laporan baru "${activeToolAction.args?.filename || 'export.xlsx'}"...`
-                                : `🤖 Menjalankan tool ${activeToolAction.toolName}...`}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-[10px] font-mono text-amber-300/80 bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-800/40 shrink-0 hidden sm:block">
-                          Live Execution
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Agent Progress & Thinking Drawer */}
-                    {agentSteps.length > 0 && (
-                      <div className="bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs transition-all">
-                        <div className="flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => setIsStepsExpanded((prev) => !prev)}
-                            className="flex items-center gap-2.5 cursor-pointer text-left hover:opacity-85 transition-opacity min-w-0 flex-1 pr-2"
-                          >
-                            <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shrink-0">
-                              {isAnalyzing ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
-                              ) : (
-                                <Brain className="w-4 h-4 text-emerald-600" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                  {isAnalyzing ? "Proses Eksekusi Agen AI Otonom" : "Eksekusi Agen Selesai"}
-                                </span>
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
-                                  {agentSteps.filter((s) => s.status === 'done').length}/{agentSteps.length} langkah
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                {isAnalyzing ? (
-                                  activeToolAction ? (
-                                    activeToolAction.toolName === 'write_workspace_file' || activeToolAction.toolName === 'document_writer'
-                                      ? `✏️ Menyunting file "${activeToolAction.args?.filename || activeToolAction.args?.path || ''}"`
-                                      : activeToolAction.toolName === 'read_workspace_file' || activeToolAction.toolName === 'document_reader'
-                                      ? `📖 Membaca file "${activeToolAction.args?.filename || activeToolAction.args?.path || ''}"`
-                                      : `🤖 Menjalankan ${activeToolAction.toolName}`
-                                  ) : (
-                                    agentSteps[agentSteps.length - 1]?.label || "Sedang memproses..."
-                                  )
-                                ) : (
-                                  "Seluruh langkah berhasil dieksekusi secara otonom."
-                                )}
-                              </p>
-                            </div>
-                            <div className="text-gray-400 shrink-0 ml-1">
-                              {isStepsExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                            </div>
-                          </button>
-
-                          {isAnalyzing && (
-                            <button
-                              type="button"
-                              onClick={handleAbortAgent}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-700 rounded-xl border border-red-200 font-semibold transition-colors cursor-pointer shrink-0 ml-2 shadow-2xs active:scale-98"
-                            >
-                              <Square className="w-3 h-3 text-red-600 fill-red-600" />
-                              <span>Hentikan AI</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Expandable Step List Timeline */}
-                        {isStepsExpanded && (
-                          <div className="pt-3 border-t border-gray-100 space-y-2 relative pl-1">
-                            {agentSteps.map((step, i) => (
-                              <div
-                                key={i}
-                                className={`flex items-start gap-2.5 text-xs p-2 rounded-xl transition-all ${
-                                  step.status === 'running'
-                                    ? 'bg-amber-50/70 border border-amber-200/60 shadow-2xs'
-                                    : 'hover:bg-gray-50/80'
-                                }`}
-                              >
-                                <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
-                                  {getStepIcon(step)}
-                                </div>
-                                <div className="min-w-0 flex-1 break-words">
-                                  <span className={`font-medium ${step.status === 'running' ? 'text-amber-900 font-semibold' : 'text-gray-800'}`}>
-                                    {step.label}
-                                  </span>
-                                  {step.detail && (
-                                    <span className="text-gray-500 text-[11px] block mt-0.5 break-words font-mono bg-gray-50/80 px-2 py-0.5 rounded border border-gray-100 w-fit max-w-full">
-                                      {step.detail}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Analysis Result */}
-                    {analysisResult && (
-                      <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-2 overflow-hidden min-w-0">
-                        <p className="font-bold text-gray-900 text-base mb-3">Hasil Analisis AI</p>
-                        <div className="text-gray-800 leading-relaxed break-words max-w-none" style={{ overflowWrap: 'anywhere' }}>
-                          <Markdown
-                            components={{
-                              strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
-                              p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                              ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1.5 my-2.5">{children}</ol>,
-                              ul: ({ children }) => <ul className="list-disc pl-5 space-y-1.5 my-2.5">{children}</ul>,
-                              li: ({ children }) => <li className="text-gray-800 leading-relaxed">{children}</li>,
-                            }}
-                          >
-                            {analysisResult}
-                          </Markdown>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Waiting / connected but no analysis yet */}
-                    {!isAnalyzing && agentSteps.length === 0 && (
-                      <div className="bg-[#F8F9FA] border border-gray-100 rounded-2xl p-5 text-xs sm:text-sm text-gray-800 space-y-3.5">
-                        <p className="font-bold text-gray-900 text-base">Workspace Berhasil Diinisialisasi!</p>
-                        <p className="text-gray-600 leading-relaxed">
-                          AI akan segera membaca dan menganalisis <strong className="font-semibold text-gray-900">{fileCount} berkas</strong> dari direktori terhubung ({workspace?.name}).
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Actions */}
-              <div className="space-y-4 pt-2 shrink-0 border-t border-gray-100 relative">
-                {/* Interactive Floating Slash Menu Popover */}
-                {showSlashMenu && (
-                  <div className="absolute bottom-full mb-3 left-0 right-0 z-40 bg-white border border-gray-200 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                    <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-500" />
-                        <span className="text-xs font-bold text-gray-900">Sesi Percakapan & Perintah Slash (`/`)</span>
-                      </div>
-                      <span className="text-[10px] text-gray-400 font-mono">Pilih / Buat Sesi</span>
-                    </div>
-
-                    {/* New Session Button */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {!openEditorFile.isEditing ? (
                     <button
                       type="button"
-                      onClick={() => createNewSession()}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100/80 text-amber-900 border border-amber-200/60 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+                      onClick={() => setOpenEditorFile({ ...openEditorFile, isEditing: true })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white hover:bg-gray-100 text-gray-800 rounded-xl border border-gray-200/90 font-semibold shadow-2xs transition-colors cursor-pointer"
                     >
-                      <div className="flex items-center gap-2">
-                        <Plus className="w-3.5 h-3.5 text-amber-600" />
-                        <span>+ Buat Sesi Percakapan Baru</span>
-                      </div>
-                      <span className="text-[10px] font-mono text-amber-700 bg-amber-200/50 px-2 py-0.5 rounded">/session new</span>
+                      <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Edit Content</span>
                     </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveEditorContent}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan</span>
+                    </button>
+                  )}
 
-                    {/* Sessions List */}
-                    <div className="max-h-48 overflow-y-auto space-y-1 pr-0.5">
-                      {sessions.map((s) => {
-                        const isActive = s.id === activeSessionId;
-                        return (
-                          <div
-                            key={s.id}
-                            onClick={() => switchSession(s.id)}
-                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
-                              isActive
-                                ? "bg-gray-900 text-white font-semibold shadow-2xs"
-                                : "bg-gray-50 hover:bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-                              <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-400" : "text-gray-400"}`} />
-                              <span className="truncate">{s.title}</span>
-                              <span className={`text-[10px] font-mono shrink-0 px-1.5 py-0.2 rounded ${isActive ? "bg-gray-800 text-gray-300" : "bg-gray-200 text-gray-600"}`}>
-                                {s.messages.length} pesan
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {isActive ? (
-                                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/40">✓ Aktif</span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => deleteSession(s.id, e)}
-                                  className="p-1 text-gray-400 hover:text-red-500 rounded transition-colors"
-                                  title="Hapus Sesi Ini"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Quick Commands Bar */}
-                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500 px-2 font-mono">
-                      <span>Ketik <strong>/new</strong> atau <strong>/clear</strong></span>
-                      <button type="button" onClick={() => setShowSlashMenu(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
-                        Tutup (Esc)
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <div className={`bg-white border border-gray-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs focus-within:border-gray-300 focus-within:shadow-sm transition-all ${!isConnected ? "bg-gray-50/50" : ""}`}>
-                    <div className="flex items-center gap-2 pl-1">
-                      <button disabled={!isConnected} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40" title="Lampirkan Dokumen">
-                        <Paperclip className="w-4.5 h-4.5" />
-                      </button>
-                    </div>
-
-                    <input
-                      type="text"
-                      value={promptInput}
-                      disabled={!isConnected}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPromptInput(val);
-                        if (val.startsWith("/")) {
-                          setShowSlashMenu(true);
-                        } else {
-                          setShowSlashMenu(false);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          if (isAnalyzing) handleSteerAgent();
-                          else handleSendChat();
-                        }
-                      }}
-                      placeholder={
-                        !isConnected
-                          ? "Hubungkan folder direktori terlebih dahulu untuk mulai bertanya..."
-                          : isAnalyzing
-                          ? "🎯 Kirim arahan/instruksi tambahan (Mid-Run Steering) ke agen..."
-                          : "Tanyakan analisis dokumen, korelasi data, atau draf laporan bisnis..."
-                      }
-                      className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:ring-0 px-2 disabled:cursor-not-allowed"
-                    />
-
-                    {isAnalyzing ? (
-                      <button
-                        type="button"
-                        onClick={handleSteerAgent}
-                        disabled={!promptInput.trim()}
-                        className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Kirim Mid-Run Steering ke Agen AI"
-                      >
-                        <Compass className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
-                        <span>Steer AI</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleSendChat}
-                        disabled={!isConnected || !promptInput.trim()}
-                        className="w-10 h-10 rounded-full bg-black text-white hover:bg-gray-800 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <ArrowUp className="w-4.5 h-4.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-gray-400 text-center mt-2.5">
-                    Arunaki AI memproses dokumen secara terenkripsi. Selalu verifikasi data krusial sebelum pengambilan keputusan.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setOpenEditorFile(null)}
+                    className="p-1.5 hover:bg-gray-200/70 text-gray-500 hover:text-gray-900 rounded-xl transition-colors cursor-pointer"
+                    title="Tutup Editor File"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
+
+              {/* Editor Text Content */}
+              <div className="flex-1 p-5 font-mono text-xs overflow-auto bg-white text-gray-900 min-h-0 leading-relaxed">
+                {openEditorFile.isEditing ? (
+                  <textarea
+                    value={openEditorFile.content}
+                    onChange={(e) => setOpenEditorFile({ ...openEditorFile, content: e.target.value })}
+                    className="w-full h-full bg-transparent text-gray-900 resize-none outline-none font-mono text-xs leading-relaxed"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-900">
+                    {openEditorFile.content || "(File ini kosong)"}
+                  </pre>
+                )}
+              </div>
+
+              {/* Editor Footer */}
+              <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/80 text-[11px] text-gray-600 flex items-center justify-between font-mono shrink-0">
+                <span>{openEditorFile.isEditing ? "Mode Sunting (Aktif)" : "Mode Pratinjau Terbuka (Read-Only)"}</span>
+                <button
+                  type="button"
+                  onClick={() => setOpenEditorFile(null)}
+                  className="hover:text-gray-900 text-emerald-600 font-semibold underline cursor-pointer"
+                >
+                  Tutup Editor File & Kembali ke Workspace Overview
+                </button>
+              </div>
             </div>
+          ) : (
+            /* CLEAN SPACIOUS WORKSPACE CANVAS (No embedded chat in middle!) */
+            <div className="bg-white rounded-2xl border border-gray-200/90 p-8 shadow-2xs flex-1 h-full flex flex-col justify-between overflow-hidden min-w-0">
+              <div className="space-y-6 max-w-xl mx-auto flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center mx-auto text-amber-600 shadow-2xs">
+                  <FolderOpen className="w-8 h-8" />
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {workspace?.name || "Workspace Arunaki AI"}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
+                    {!isConnected
+                      ? "Belum ada folder terhubung. Hubungkan folder bisnis Anda untuk mengaktifkan AI Document Agent."
+                      : `Terhubung dengan ${fileCount} file dokumen. Klik file dari Explorer kanan untuk membuka editor di tengah.`}
+                  </p>
+                </div>
+
+                {!isConnected ? (
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs active:scale-98"
+                  >
+                    <Folder className="w-4 h-4" />
+                    <span>Hubungkan Folder Komputer</span>
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    <button
+                      onClick={() => setIsChatMinimized(false)}
+                      className="px-5 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                      <span>Buka Popup Arunaki AI Chat 💬</span>
+                    </button>
+
+                    <button
+                      onClick={handleRefreshFolder}
+                      className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <RotateCw className="w-4 h-4 text-gray-600" />
+                      <span>Refresh Folder</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar - Focused File Tree Explorer */}
@@ -1347,6 +1351,7 @@ export function WorkspacePage() {
                   workspaceName={workspace?.name || "Workspace"}
                   workspaceFolderPath={connectedFolderPath || workspace?.rootPath}
                   nativeTree={nativeTree ?? undefined}
+                  onFileClick={handleOpenFileInEditor}
                   onRefresh={handleRefreshFolder}
                   onCreateFile={handleCreateFile}
                   onCreateFolder={handleCreateFolder}
@@ -1479,12 +1484,13 @@ export function WorkspacePage() {
                     const Icon = ["xlsx", "xls", "csv"].includes(ext)
                       ? FileSpreadsheet
                       : ["docx", "doc"].includes(ext)
-                      ? FileCode
+                      ? FileText
                       : ShieldCheck;
+                    const iconColor = ["docx", "doc"].includes(ext) ? "text-blue-600" : "text-gray-400";
                     return (
                       <div key={file.id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-100 last:border-0">
                         <div className="flex items-center gap-2.5 text-gray-700 min-w-0 flex-1">
-                          <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />
                           <span className="truncate font-medium">{file.name}</span>
                         </div>
                         <span className="text-[11px] text-emerald-600 font-mono shrink-0 ml-2">terbuka</span>
@@ -1507,6 +1513,643 @@ export function WorkspacePage() {
           </div>
         </div>
       )}
+
+      {/* Floating Chat Viewport Overlay (Decoupled from page grid flow) */}
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+        {isChatMinimized ? (
+          <div
+            onMouseDown={handleStartDragChat}
+            onClick={handlePillClick}
+            style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
+            className={`pointer-events-auto absolute bg-gray-900 text-white rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 cursor-move select-none border border-gray-700 hover:bg-black transition-none ${
+              isDraggingChat ? "shadow-amber-500/40 ring-2 ring-amber-400/50 scale-102" : ""
+            }`}
+          >
+            <Move className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+            <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="text-xs font-semibold shrink-0">Arunaki AI Assistant</span>
+            {isConnected && (
+              <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+                {fileCount} Dokumen
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsChatMinimized(false);
+              }}
+              className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-full transition-colors cursor-pointer ml-0.5 shrink-0"
+              title="Buka Jendela Chat"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div
+            ref={chatPanelRef}
+            onMouseDown={handleStartDragChat}
+            style={{
+              left: `${chatPosition.x}px`,
+              top: `${chatPosition.y}px`,
+              width: `${chatSize.width}px`,
+              height: `${chatSize.height}px`,
+            }}
+            className={`pointer-events-auto absolute bg-white border border-gray-200/90 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-none ${
+              isDraggingChat || isResizingChat ? "select-none shadow-amber-500/20" : ""
+            }`}
+          >
+            {/* Drag Handle Header */}
+            <div
+              onMouseDown={handleStartDragChat}
+              className="px-4 py-3 bg-gray-900 text-white flex items-center justify-between cursor-move select-none shrink-0"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Move className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="font-semibold text-xs text-white truncate">Asisten Intelijen Arunaki AI</span>
+                {isConnected && (
+                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+                    {fileCount} Dokumen
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatPosition({ x: 260, y: 70 });
+                    setChatSize({ width: 540, height: 560 });
+                    setIsChatExpanded(false);
+                    toast.success("Posisi & ukuran chat telah di-reset ke standar.");
+                  }}
+                  className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
+                  title="Reset Posisi & Ukuran Chat ke Standar"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isChatExpanded) {
+                      setChatSize({ width: 540, height: 560 });
+                      setIsChatExpanded(false);
+                    } else {
+                      setChatSize({
+                        width: Math.min(680, window.innerWidth - 60),
+                        height: Math.min(580, window.innerHeight - 80),
+                      });
+                      setIsChatExpanded(true);
+                    }
+                  }}
+                  className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
+                  title={isChatExpanded ? "Ukuran Standar" : "Besarkan Chat"}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsChatMinimized(true)}
+                  className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
+                  title="Sembunyikan Chat (Minimize)"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Messages Timeline (Drag supported on empty background areas) */}
+            <div
+              onMouseDown={handleStartDragChat}
+              className="p-3.5 overflow-y-auto flex-1 space-y-3 text-xs bg-gray-50/40 min-h-0"
+            >
+              {activeSession?.messages && activeSession.messages.length > 0 ? (
+                activeSession.messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col space-y-1 ${
+                      msg.role === "user" ? "items-end" : "items-start"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium px-1">
+                      <span>{msg.role === "user" ? "Anda" : "Arunaki AI"}</span>
+                      <span>•</span>
+                      <span>{msg.timestamp}</span>
+                    </div>
+                    <div
+                      className={`rounded-2xl p-3 text-xs shadow-2xs max-w-[90%] break-words ${
+                        msg.role === "user"
+                          ? "bg-gray-900 text-white font-medium rounded-tr-2xs"
+                          : "bg-white text-gray-800 border border-gray-200/90 rounded-tl-2xs space-y-2"
+                      }`}
+                      style={{ overflowWrap: "anywhere" }}
+                    >
+                      {msg.role === "user" ? (
+                        <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      ) : (
+                        <Markdown
+                          components={{
+                            strong: ({ children }) => <strong className="font-bold text-gray-900">{children}</strong>,
+                            p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
+                            ol: ({ children }) => <ol className="list-decimal pl-4 space-y-1 my-2">{children}</ol>,
+                            ul: ({ children }) => <ul className="list-disc pl-4 space-y-1 my-2">{children}</ul>,
+                            li: ({ children }) => <li className="text-gray-800 leading-relaxed">{children}</li>,
+                          }}
+                        >
+                          {msg.content}
+                        </Markdown>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-400 space-y-2">
+                  <Bot className="w-8 h-8 text-gray-300 mx-auto" />
+                  <p className="text-xs">Ketik pertanyaan di bawah untuk berdiskusi dengan Arunaki AI.</p>
+                </div>
+              )}
+
+              {/* Proactive Heartbeat Alert Banner */}
+              {heartbeatAlert && (
+                <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-3 flex items-center justify-between gap-2 text-xs text-amber-900 shadow-2xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Activity className="w-3.5 h-3.5 text-amber-600 animate-pulse shrink-0" />
+                    <span className="font-medium truncate text-[11px]">{heartbeatAlert}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHeartbeatAlert(null);
+                      if (workspaceId && !isAnalyzing) triggerAutoAnalysis(workspaceId, "Lakukan pemindaian cepat dokumen baru.");
+                    }}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-[10px] shrink-0 cursor-pointer"
+                  >
+                    Pindai Dokumen
+                  </button>
+                </div>
+              )}
+
+              {/* Live Visual AI Agent Action Banner */}
+              {activeToolAction && isAnalyzing && (
+                <div className="bg-gradient-to-r from-gray-900 to-amber-950 text-white rounded-xl p-3 border border-amber-500/30 shadow-md flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Bot className="w-4 h-4 text-amber-400 animate-bounce shrink-0" />
+                    <p className="text-[11px] font-mono text-gray-200 truncate">
+                      {activeToolAction?.toolName === 'write_workspace_file'
+                        ? `✏️ Menyunting "${activeToolAction?.args?.filename || 'dokumen'}"...`
+                        : activeToolAction?.toolName === 'read_workspace_file'
+                        ? `📖 Membaca "${activeToolAction?.args?.filename || 'dokumen'}"...`
+                        : `🤖 Menjalankan ${activeToolAction?.toolName || 'tool'}...`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Progress & Thinking Drawer */}
+              {agentSteps.length > 0 && (
+                <div className="bg-white border border-gray-200/90 rounded-xl p-3 space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setIsStepsExpanded((prev) => !prev)}
+                      className="flex items-center gap-2 cursor-pointer text-left hover:opacity-85 transition-opacity min-w-0 flex-1 pr-1"
+                    >
+                      <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shrink-0">
+                        {isAnalyzing ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                        ) : (
+                          <Brain className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-900 truncate">
+                            {isAnalyzing ? "Proses Eksekusi Agen AI" : "Eksekusi Selesai"}
+                          </span>
+                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
+                            {agentSteps.filter((s) => s.status === 'done').length}/{agentSteps.length}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-gray-400 shrink-0">
+                        {isStepsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </div>
+                    </button>
+
+                    {isAnalyzing && (
+                      <button
+                        type="button"
+                        onClick={handleAbortAgent}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 font-semibold cursor-pointer shrink-0 ml-1"
+                      >
+                        <Square className="w-2.5 h-2.5 text-red-600 fill-red-600" />
+                        <span>Hentikan</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Expandable Step List Timeline */}
+                  {isStepsExpanded && (
+                    <div className="pt-2 border-t border-gray-100 space-y-1.5 max-h-48 overflow-y-auto">
+                      {agentSteps.map((step, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-2 text-[11px] p-1.5 rounded-lg ${
+                            step.status === 'running' ? 'bg-amber-50/80 border border-amber-200/60' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
+                            {getStepIcon(step)}
+                          </div>
+                          <div className="min-w-0 flex-1 break-words">
+                            <span className={`font-medium ${step.status === 'running' ? 'text-amber-900 font-semibold' : 'text-gray-800'}`}>
+                              {step.label}
+                            </span>
+                            {step.detail && (
+                              <span className="text-gray-500 text-[10px] block mt-0.5 font-mono truncate">
+                                {step.detail}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Analysis Result */}
+              {analysisResult && (
+                <div className="bg-white border border-gray-200 rounded-xl p-3 text-xs text-gray-800 space-y-1.5 shadow-2xs">
+                  <p className="font-bold text-gray-900 text-xs">Hasil Analisis AI</p>
+                  <div className="text-gray-700 leading-relaxed text-[11px]" style={{ overflowWrap: 'anywhere' }}>
+                    <Markdown>{analysisResult}</Markdown>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Prompt Input Bar */}
+            <div className="p-3 sm:p-3.5 pr-7 border-t border-gray-100 bg-white relative shrink-0">
+              <ChatInputForm
+                onSend={handleSendChat}
+                onSteer={handleSteerAgent}
+                isAnalyzing={isAnalyzing}
+                isConnected={isConnected}
+                onSlashCommand={handleSlashCommand}
+                files={files}
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onNewSession={createNewSession}
+                onSwitchSession={switchSession}
+                onDeleteSession={deleteSession}
+              />
+            </div>
+
+            {/* 8-Directional Edge & Corner Resize Handles */}
+            <div
+              onMouseDown={(e) => handleStartResizeChat('n', e)}
+              className="absolute top-0 left-3 right-3 h-2 cursor-n-resize z-50 hover:bg-amber-400/30 transition-colors"
+              title="Tarik Atas (Resize Height)"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('s', e)}
+              className="absolute bottom-0 left-3 right-3 h-2 cursor-s-resize z-50 hover:bg-amber-400/30 transition-colors"
+              title="Tarik Bawah (Resize Height)"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('w', e)}
+              className="absolute top-3 bottom-3 left-0 w-2 cursor-w-resize z-50 hover:bg-amber-400/30 transition-colors"
+              title="Tarik Kiri (Resize Width)"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('e', e)}
+              className="absolute top-3 bottom-3 right-0 w-2 cursor-e-resize z-50 hover:bg-amber-400/30 transition-colors"
+              title="Tarik Kanan (Resize Width)"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('nw', e)}
+              className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-50 hover:bg-amber-400/50 rounded-tl-2xl transition-colors"
+              title="Tarik Sudut Kiri Atas"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('ne', e)}
+              className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-50 hover:bg-amber-400/50 rounded-tr-2xl transition-colors"
+              title="Tarik Sudut Kanan Atas"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('sw', e)}
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50 hover:bg-amber-400/50 rounded-bl-2xl transition-colors"
+              title="Tarik Sudut Kiri Bawah"
+            />
+            <div
+              onMouseDown={(e) => handleStartResizeChat('se', e)}
+              className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize flex items-center justify-center text-gray-400 hover:text-gray-900 z-50 select-none group"
+              title="Tarik Sudut Kanan Bawah"
+            >
+              <GripHorizontal className="w-3 h-3 text-gray-400 group-hover:text-gray-900 transition-colors rotate-45" />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+interface ChatInputFormProps {
+  onSend: (text: string) => void;
+  onSteer: (text: string) => void;
+  isAnalyzing: boolean;
+  isConnected: boolean;
+  onSlashCommand: (command: string) => void;
+  files: { name: string }[];
+  sessions: { id: string; title: string }[];
+  activeSessionId: string;
+  onNewSession: () => void;
+  onSwitchSession: (id: string) => void;
+  onDeleteSession: (id: string, e?: React.MouseEvent) => void;
+}
+
+const ChatInputForm = memo(function ChatInputForm({
+  onSend,
+  onSteer,
+  isAnalyzing,
+  isConnected,
+  onSlashCommand,
+  files,
+  sessions,
+  activeSessionId,
+  onNewSession,
+  onSwitchSession,
+  onDeleteSession,
+}: ChatInputFormProps) {
+  const [localInput, setLocalInput] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [slashQuery, setSlashQuery] = useState<string | null>(null);
+  const [slashIndex, setSlashIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const SLASH_COMMANDS = [
+    { command: "/session new", label: "+ Buat Sesi Percakapan Baru" },
+    { command: "/new", label: "+ Buat Sesi Baru (singkatan)" },
+    { command: "/clear", label: "✕ Bersihkan Riwayat Pesan Sesi Ini" },
+  ];
+
+  // Filter files by the text after the last "@".
+  const mentionResults = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    const names = files.map((f) => f.name).filter((n) => n.toLowerCase().includes(q));
+    return names.slice(0, 12);
+  }, [mentionQuery, files]);
+
+  // Reset selection index when results change.
+  useEffect(() => setMentionIndex(0), [mentionResults.length, mentionQuery]);
+
+  const handleChange = (value: string) => {
+    setLocalInput(value);
+    // Slash command detection: input starts with "/" and has no space yet.
+    if (value.startsWith("/") && !value.includes(" ")) {
+      setSlashQuery(value.slice(1).toLowerCase());
+      setMentionQuery(null);
+    } else {
+      setSlashQuery(null);
+    }
+    const atIndex = value.lastIndexOf("@");
+    if (atIndex !== -1 && atIndex === value.length - 1) {
+      setMentionQuery("");
+    } else if (atIndex !== -1) {
+      const query = value.slice(atIndex + 1);
+      // Only trigger mention when no whitespace/other symbol follows @.
+      if (/^[\w.\- ]*$/.test(query)) {
+        setMentionQuery(query);
+        return;
+      }
+      setMentionQuery(null);
+    } else {
+      setMentionQuery(null);
+    }
+  };
+
+  const slashResults = useMemo(() => {
+    if (slashQuery === null) return [];
+    return SLASH_COMMANDS.filter((c) => c.command.toLowerCase().includes(`/${slashQuery}`));
+  }, [slashQuery]);
+
+  // Reset slash selection index when results change.
+  useEffect(() => setSlashIndex(0), [slashResults.length, slashQuery]);
+
+  const runSlashCommand = (command: string) => {
+    onSlashCommand(command);
+    setLocalInput("");
+    setSlashQuery(null);
+    setMentionQuery(null);
+  };
+
+  const insertMention = (fileName: string) => {
+    if (mentionQuery === null) return;
+    const atIndex = localInput.lastIndexOf("@");
+    const before = localInput.slice(0, atIndex);
+    const next = `${before}@${fileName} `;
+    setLocalInput(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      const len = next.length;
+      inputRef.current?.setSelectionRange(len, len);
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Slash command navigation takes priority when the slash popup is open.
+    if (slashQuery !== null && slashResults.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashIndex((i) => (i + 1) % slashResults.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashIndex((i) => (i - 1 + slashResults.length) % slashResults.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        runSlashCommand(slashResults[slashIndex].command);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSlashQuery(null);
+        return;
+      }
+    }
+    if (mentionQuery === null || mentionResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % mentionResults.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      insertMention(mentionResults[mentionIndex]);
+    } else if (e.key === "Escape") {
+      setMentionQuery(null);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!localInput.trim()) return;
+    if (isAnalyzing) {
+      onSteer(localInput);
+    } else {
+      onSend(localInput);
+    }
+    setLocalInput("");
+    setMentionQuery(null);
+    setSlashQuery(null);
+  };
+
+  return (
+    <div className="relative">
+      {/* Slash Command Popup */}
+      {slashQuery !== null && (
+        <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 border-b border-gray-100">
+            Perintah Slash
+          </div>
+          {slashResults.length === 0 ? (
+            <div className="px-3 py-2.5 text-[11px] text-gray-400">Tidak ada perintah yang cocok</div>
+          ) : (
+            <div className="max-h-44 overflow-y-auto">
+              {slashResults.map((cmd, i) => (
+                <button
+                  key={cmd.command}
+                  type="button"
+                  onMouseEnter={() => setSlashIndex(i)}
+                  onClick={() => runSlashCommand(cmd.command)}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors ${
+                    i === slashIndex ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="font-mono text-amber-700">{cmd.command}</span>
+                  <span className="ml-2 text-gray-500">{cmd.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Sessions list */}
+          <div className="border-t border-gray-100">
+            <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 flex items-center justify-between">
+              <span>Sesi Percakapan</span>
+              <button
+                type="button"
+                onClick={onNewSession}
+                className="text-amber-700 font-semibold hover:underline cursor-pointer"
+                title="Buat Sesi Baru"
+              >
+                + Baru
+              </button>
+            </div>
+            <div className="max-h-36 overflow-y-auto">
+              {sessions.map((s) => {
+                const isActive = s.id === activeSessionId;
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => onSwitchSession(s.id)}
+                    className={`flex items-center justify-between px-3 py-2 text-[11px] cursor-pointer transition-all ${
+                      isActive ? "bg-amber-50 text-amber-900 font-semibold" : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="truncate flex-1 pr-2">{s.title}</span>
+                    {isActive ? (
+                      <span className="text-[9px] text-emerald-600 font-mono shrink-0">✓</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => onDeleteSession(s.id, e)}
+                        className="text-gray-400 hover:text-red-500 p-0.5 transition-colors shrink-0"
+                        title="Hapus Sesi"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Mention Popup */}
+      {mentionQuery !== null && (
+        <div className="absolute bottom-full mb-2 left-0 right-0 z-50 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] font-bold text-gray-500 bg-gray-50 border-b border-gray-100">
+            Pilih file untuk dilampirkan
+          </div>
+          {mentionResults.length === 0 ? (
+            <div className="px-3 py-2.5 text-[11px] text-gray-400">Tidak ada file yang cocok</div>
+          ) : (
+            <div className="max-h-44 overflow-y-auto">
+              {mentionResults.map((name, i) => (
+                <button
+                  key={name}
+                  type="button"
+                  onMouseEnter={() => setMentionIndex(i)}
+                  onClick={() => insertMention(name)}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors ${
+                    i === mentionIndex ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 inline mr-1.5 text-gray-400 -mt-0.5" />
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex items-center gap-2">
+      <input
+        ref={inputRef}
+        type="text"
+        value={localInput}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="Tanyakan apa pun — @ untuk memilih file, / untuk aksi"
+        className="flex-1 bg-gray-50/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:outline-none focus:bg-white focus:border-gray-900 placeholder:text-gray-400 transition-all shadow-2xs"
+      />
+
+      {isAnalyzing ? (
+        <button
+          type="button"
+          onClick={() => {
+            if (localInput.trim()) {
+              onSteer(localInput);
+              setLocalInput("");
+            }
+          }}
+          disabled={!localInput.trim()}
+          className="px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-xl shrink-0 cursor-pointer disabled:opacity-40 shadow-2xs transition-colors"
+          title="Kirim Mid-Run Steering ke AI"
+        >
+          Steer AI
+        </button>
+      ) : (
+        <button
+          type="submit"
+          disabled={!isConnected || !localInput.trim()}
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-900 hover:bg-black text-white disabled:opacity-30 shrink-0 cursor-pointer transition-colors shadow-2xs"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      )}
+    </form>
+    </div>
+  );
+});

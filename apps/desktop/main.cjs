@@ -9,6 +9,20 @@ const WEB_URL = process.env.ARUNAKI_WEB_URL || 'http://127.0.0.1:5173';
 const WAIT_TIMEOUT_MS = 15000;
 const WAIT_INTERVAL_MS = 500;
 
+// Workspace root, learned from the first fs:getFolderTree call (folder picked by user).
+// All fs/office IPC handlers must stay inside it.
+let workspaceRoot = null;
+
+function resolveInsideWorkspace(p) {
+  const resolved = path.resolve(p);
+  if (!workspaceRoot) return resolved; // no workspace selected yet (dev/offline) — allow
+  const rel = path.relative(workspaceRoot, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error('Path di luar workspace tidak diizinkan');
+  }
+  return resolved;
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -150,19 +164,21 @@ app.whenReady().then(() => {
     };
 
     const tree = await buildTree(folderPath);
+    workspaceRoot = path.resolve(folderPath);
     return { tree, folderName: path.basename(folderPath), folderPath };
   });
 
   // Read individual file content on demand
   ipcMain.handle('fs:readFile', async (_event, filePath) => {
     try {
-      const ext = path.extname(filePath).toLowerCase();
-      const BINARY_EXT = new Set(['.pdf', '.docx', '.xlsx', '.xls', '.png', '.jpg', '.jpeg', '.gif']);
+      const safePath = resolveInsideWorkspace(filePath);
+      const ext = path.extname(safePath).toLowerCase();
+      const BINARY_EXT = new Set(['.pdf', '.doc', '.docx', '.xlsx', '.xls', '.xlsm', '.pptx', '.ppt', '.odt', '.ods', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.zip', '.rar', '.7z', '.mp4', '.mp3']);
       if (BINARY_EXT.has(ext)) {
-        const buf = await fs.readFile(filePath);
+        const buf = await fs.readFile(safePath);
         return { content: buf.toString('base64'), encoding: 'base64' };
       }
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fs.readFile(safePath, 'utf-8');
       return { content, encoding: 'utf-8' };
     } catch (err) {
       return { error: err.message };
@@ -171,7 +187,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:writeFile', async (_event, filePath, content) => {
     try {
-      await fs.writeFile(filePath, content, 'utf-8');
+      const safePath = resolveInsideWorkspace(filePath);
+      await fs.writeFile(safePath, content, 'utf-8');
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -180,7 +197,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:createFolder', async (_event, folderPath) => {
     try {
-      await fs.mkdir(folderPath, { recursive: true });
+      const safePath = resolveInsideWorkspace(folderPath);
+      await fs.mkdir(safePath, { recursive: true });
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -189,7 +207,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:deletePath', async (_event, targetPath) => {
     try {
-      await fs.rm(targetPath, { recursive: true, force: true });
+      const safePath = resolveInsideWorkspace(targetPath);
+      await fs.rm(safePath, { recursive: true, force: true });
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -198,7 +217,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:renamePath', async (_event, oldPath, newPath) => {
     try {
-      await fs.rename(oldPath, newPath);
+      const safeOld = resolveInsideWorkspace(oldPath);
+      const safeNew = resolveInsideWorkspace(newPath);
+      await fs.rename(safeOld, safeNew);
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -207,7 +228,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle('app:openPath', async (_event, targetPath) => {
     try {
-      await shell.openPath(targetPath);
+      const safePath = resolveInsideWorkspace(targetPath);
+      const r = await shell.openPath(safePath);
+      if (r) return { error: r };
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -216,16 +239,19 @@ app.whenReady().then(() => {
 
   ipcMain.handle('excel:openNative', async (_event, filePath) => {
     try {
+      const safePath = resolveInsideWorkspace(filePath);
       const winax = require('winax');
       const excel = new winax.Object('Excel.Application');
       excel.Visible = true;
-      const workbook = excel.Workbooks.Open(filePath);
+      const workbook = excel.Workbooks.Open(safePath);
       const hwnd = excel.Hwnd;
       
       return { success: true, hwnd: hwnd.toString() };
     } catch (err) {
       try {
-        await shell.openPath(filePath);
+        const safePath = resolveInsideWorkspace(filePath);
+        const r = await shell.openPath(safePath);
+        if (r) return { error: r };
         return { success: true, fallback: 'shell' };
       } catch {
         return { error: err.message };
@@ -237,8 +263,9 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:parseExcel', async (_event, filePath) => {
     try {
+      const safePath = resolveInsideWorkspace(filePath);
       const xlsx = require('xlsx');
-      const workbook = xlsx.readFile(filePath, { cellDates: true, cellStyles: true, cellNF: true, cellFormulas: true });
+      const workbook = xlsx.readFile(safePath, { cellDates: true, cellStyles: true, cellNF: true, cellFormulas: true });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
@@ -278,11 +305,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:writeExcel', async (_event, filePath, rows) => {
     try {
+      const safePath = resolveInsideWorkspace(filePath);
       const xlsx = require('xlsx');
       const worksheet = xlsx.utils.aoa_to_sheet(rows);
       const workbook = xlsx.utils.book_new();
       xlsx.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-      xlsx.writeFile(workbook, filePath);
+      xlsx.writeFile(workbook, safePath);
       return { success: true };
     } catch (err) {
       return { error: err.message };
@@ -291,7 +319,8 @@ app.whenReady().then(() => {
 
   ipcMain.handle('fs:readBinaryFile', async (_event, filePath) => {
     try {
-      const data = await fs.readFile(filePath);
+      const safePath = resolveInsideWorkspace(filePath);
+      const data = await fs.readFile(safePath);
       return { success: true, base64: data.toString('base64') };
     } catch (err) {
       return { error: err.message };
@@ -326,7 +355,8 @@ app.whenReady().then(() => {
       let error = null;
 
       try {
-        const targetPath = msg.args && msg.args.path ? path.resolve(msg.args.path) : null;
+        const rawPath = msg.args && msg.args.path ? msg.args.path : null;
+        const targetPath = rawPath ? resolveInsideWorkspace(rawPath) : null;
 
         switch (msg.method) {
           case 'openFile': {

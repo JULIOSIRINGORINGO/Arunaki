@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import type { ChatMessage } from './ai.service.js';
+import { AiService } from './ai.service.js';
 
 export interface CompactionResult {
   compactedMessages: ChatMessage[];
@@ -7,43 +8,94 @@ export interface CompactionResult {
   summary?: string;
 }
 
-const MERGE_SUMMARIES_INSTRUCTIONS = `Merge prior conversation history into a single cohesive summary.
+const LLM_SUMMARY_INSTRUCTIONS = `Kompaksi riwayat percakapan menjadi satu ringkasan kohesif.
 
-MUST PRESERVE EXACTLY:
-- Active tasks and their current status (in-progress, completed, pending)
-- All physical file names, paths, UUIDs, IDs, and numbers
-- The last thing the user requested and what was done about it
-- Decisions made and their rationale
-- Constraints and user preferences
+WAJIB DIpertahankan:
+- Tugas aktif dan statusnya (in-progress, completed, pending)
+- Semua nama file fisik, path, UUID, ID, dan angka
+- Permintaan terakhir user dan apa yang sudah dilakukan
+- Keputusan yang diambil beserta alasan
+- Constraint dan preferensi user
 
-PRIORITIZE recent context over older history. The agent needs to know what it was doing and which files it touched.`;
+UTAMAKAN konteks terakhir dibanding history lama. Format sebagai user-role message dengan wrapper tags [COMPACTED HISTORY].`;
 
 @Injectable()
 export class CompactionService {
   private readonly logger = new Logger(CompactionService.name);
+  private readonly useLlmSummary: boolean;
 
-  /**
-   * Compact conversation message history when message count exceeds threshold
-   */
-  compactHistory(messages: ChatMessage[], maxTurns = 20): CompactionResult {
+  constructor(
+    @Optional() @Inject(forwardRef(() => AiService)) private readonly aiService?: AiService,
+  ) {
+    this.useLlmSummary = !!aiService;
+  }
+
+  async compactHistory(
+    messages: ChatMessage[],
+    maxTurns = 20,
+  ): Promise<CompactionResult> {
     if (messages.length <= maxTurns) {
-      return {
-        compactedMessages: messages,
-        wasCompacted: false,
-      };
+      return { compactedMessages: messages, wasCompacted: false };
     }
 
-    this.logger.log(`Compaction Engine: Compacting ${messages.length} messages down to recent turns + summary boundary`);
+    this.logger.log(
+      `Compaction Engine: Compacting ${messages.length} messages down to recent turns + summary boundary`,
+    );
 
-    // Separate system prompt, older history, and recent turns
     const systemMessages = messages.filter((m) => m.role === 'system');
     const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-
-    // Keep last 10 turns intact
     const recentMessages = nonSystemMessages.slice(-10);
     const olderMessages = nonSystemMessages.slice(0, -10);
 
-    // Extract facts & identifiers from older messages
+    if (this.useLlmSummary) {
+      return this.compactWithLLM(systemMessages, olderMessages, recentMessages);
+    }
+
+    return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
+  }
+
+  private async compactWithLLM(
+    systemMessages: ChatMessage[],
+    olderMessages: ChatMessage[],
+    recentMessages: ChatMessage[],
+  ): Promise<CompactionResult> {
+    try {
+      const olderTexts = olderMessages
+        .map((m) => `[${m.role}] ${m.content || ''}`)
+        .filter(Boolean)
+        .join('\n');
+
+      const summary = (
+        await this.aiService!.chat(
+          [
+            { role: 'system', content: LLM_SUMMARY_INSTRUCTIONS },
+            { role: 'user', content: `Kompaksi riwayat berikut menjadi ringkasan ringkas:\n\n${olderTexts}` },
+          ],
+          [],
+        )
+      ).content;
+
+      const summaryMessage: ChatMessage = {
+        role: 'system',
+        content: `[COMPACTED HISTORY]\n${summary}\n[END COMPACTED HISTORY]`,
+      };
+
+      return {
+        compactedMessages: [...systemMessages, summaryMessage, ...recentMessages],
+        wasCompacted: true,
+        summary,
+      };
+    } catch (err: any) {
+      this.logger.warn(`LLM compaction failed (${err.message}), falling back to summary`);
+      return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
+    }
+  }
+
+  private compactWithSummary(
+    systemMessages: ChatMessage[],
+    olderMessages: ChatMessage[],
+    recentMessages: ChatMessage[],
+  ): CompactionResult {
     const touchedFiles = new Set<string>();
     const userPrompts: string[] = [];
 
@@ -51,8 +103,6 @@ export class CompactionService {
       if (msg.role === 'user' && typeof msg.content === 'string') {
         userPrompts.push(msg.content);
       }
-
-      // Extract file paths from messages
       if (typeof msg.content === 'string') {
         const matches = msg.content.match(/[\w\-.]+\.(?:txt|xlsx|pdf|docx|csv|json|md)/gi);
         if (matches) {
@@ -79,6 +129,6 @@ export class CompactionService {
   }
 
   getCompactionInstructions(): string {
-    return MERGE_SUMMARIES_INSTRUCTIONS;
+    return LLM_SUMMARY_INSTRUCTIONS;
   }
 }

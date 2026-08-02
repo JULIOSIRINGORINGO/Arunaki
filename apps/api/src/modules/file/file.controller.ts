@@ -112,6 +112,26 @@ export class FileController {
     }
   }
 
+  @Get(':id/content')
+  async getContent(@Param('id') id: string) {
+    try {
+      const file = await this.fileService.findById(id);
+      if (!file) throw new BadRequestException('File not found');
+      if (file.path) {
+        try {
+          const fs = await import('fs/promises');
+          const content = await fs.readFile(file.path, 'utf-8');
+          return successResponse({ content, path: file.path, name: file.name });
+        } catch {
+          return successResponse({ content: file.content || '', path: file.path, name: file.name });
+        }
+      }
+      return successResponse({ content: file.content || '', path: file.path, name: file.name });
+    } catch (error) {
+      return errorResponse('FETCH_FAILED', error.message);
+    }
+  }
+
   @Put(':id/content')
   async updateContent(
     @Param('id') id: string,

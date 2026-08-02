@@ -4,10 +4,6 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
 import { ArtifactService } from '../artifact/artifact.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
-import {
-  AutonomousPlannerService,
-  ExecutionPlan,
-} from '../ai/autonomous-planner.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { AutoMemoryService } from '../memory/auto-memory.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -62,7 +58,6 @@ export class AgentRunnerService {
     private readonly knowledgeService: KnowledgeService,
     private readonly artifactService: ArtifactService,
     private readonly backgroundReviewService: BackgroundReviewService,
-    private readonly plannerService: AutonomousPlannerService,
     private readonly selfHealingService: SelfHealingService,
     private readonly autoMemoryService: AutoMemoryService,
     private readonly sessionAdmissionService: SessionAdmissionService,
@@ -72,7 +67,9 @@ export class AgentRunnerService {
     private readonly harnessRegistry: HarnessRegistryService,
   ) {}
 
-  async getKnowledgeContext(): Promise<string> {
+  async getKnowledgeContext(userContent: string = ''): Promise<string> {
+    const isKnowledgeQuery = /(?:pengetahuan|knowledge|aturan|kebijakan|prosedur|hukum|standar|sop|domain|referensi)/i.test(userContent);
+    if (!isKnowledgeQuery) return '';
     try {
       return await this.knowledgeService.getActiveContext();
     } catch {
@@ -139,6 +136,7 @@ export class AgentRunnerService {
         runId,
         error,
       });
+      this.transcriptService.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -148,7 +146,7 @@ export class AgentRunnerService {
   private async runAgentSyncInternal(params: AgentRunParams) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
-    const knowledgeContext = await this.getKnowledgeContext();
+    const knowledgeContext = await this.getKnowledgeContext(params.userContent);
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,
       undefined,
@@ -170,12 +168,14 @@ export class AgentRunnerService {
     const createdArtifactIds: string[] = [];
 
     const MAX_ROUNDS = 5;
+    let reachedMaxRounds = true;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const aiResponse = await this.aiService.chat(messages, tools);
       usage = aiResponse.usage;
 
       if (aiResponse.toolCalls.length === 0) {
         finalContent = aiResponse.content;
+        reachedMaxRounds = false;
         break;
       }
 
@@ -258,7 +258,9 @@ export class AgentRunnerService {
     }
 
     if (!finalContent) {
-      finalContent = 'Pekerjaan telah selesai.';
+      finalContent = reachedMaxRounds
+        ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
+        : 'Pekerjaan telah selesai.';
     }
 
     const artifactRecords = await Promise.all(
@@ -356,6 +358,7 @@ export class AgentRunnerService {
         runId,
         error,
       });
+      this.transcriptService.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -374,7 +377,7 @@ export class AgentRunnerService {
         data: 'Memproses pesan dan mengumpulkan konteks...',
       });
 
-      const knowledgeContext = await this.getKnowledgeContext();
+      const knowledgeContext = await this.getKnowledgeContext(params.userContent);
       const systemPrompt = this.aiService.getSystemPrompt(
         chatMode,
         undefined,
@@ -394,11 +397,13 @@ export class AgentRunnerService {
       const createdArtifactIds: string[] = [];
 
       const MAX_ROUNDS = 5;
+      let reachedMaxRounds = true;
       for (let round = 0; round < MAX_ROUNDS; round++) {
         const aiResponse = await this.aiService.chat(messages, tools);
 
         if (aiResponse.toolCalls.length === 0) {
           finalContent = aiResponse.content;
+          reachedMaxRounds = false;
           onEvent({ type: 'text_delta', data: finalContent });
           break;
         }
@@ -526,7 +531,9 @@ export class AgentRunnerService {
       }
 
       if (!finalContent) {
-        finalContent = 'Pekerjaan telah selesai.';
+        finalContent = reachedMaxRounds
+          ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
+          : 'Pekerjaan telah selesai.';
       }
 
       const artifactRecords = await Promise.all(

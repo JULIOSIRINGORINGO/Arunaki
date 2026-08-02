@@ -1,8 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { SecretsVaultService } from './secrets-vault.service.js';
 
 describe('SecretsVaultService — AES-256-GCM Encryption', () => {
   let vaultService: SecretsVaultService;
+
+  beforeAll(() => {
+    process.env.ARUNAKI_VAULT_KEY =
+      'test-vault-key-0123456789abcdef0123456789abcdef';
+  });
 
   beforeEach(() => {
     vaultService = new SecretsVaultService();

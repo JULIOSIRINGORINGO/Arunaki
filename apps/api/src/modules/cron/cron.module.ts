@@ -6,9 +6,11 @@ import { ArtifactModule } from '../artifact/artifact.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
+import { WorkspaceModule } from '../workspace/workspace.module.js';
 
 @Module({
-  imports: [StorageModule, ArtifactModule, forwardRef(() => ToolsModule), forwardRef(() => MemoryModule), forwardRef(() => SkillsModule)],
+  // forwardRef: WorkspaceModule -> ToolsModule -> CronModule -> WorkspaceModule is circular
+  imports: [StorageModule, ArtifactModule, forwardRef(() => ToolsModule), forwardRef(() => MemoryModule), forwardRef(() => SkillsModule), forwardRef(() => WorkspaceModule)],
   controllers: [CronController],
   providers: [CronService],
   exports: [CronService],
