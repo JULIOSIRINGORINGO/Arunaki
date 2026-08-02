@@ -23,5 +23,5 @@ Fixing security gaps from the Audit Report (Layer 4 & 5) specifically findings 4
 - `npm run test` — ✅ passed (56/56 passed)
 
 ## Notes
-- `ARUNAKI_API_KEY` must be set for external API access, or else the app falls back to `Unauthorized` when attempting access from outside. For development convenience, it skips blocking if no key is set, but warns in the terminal.
-- `APP_SECRET` must be set in production, otherwise `SecretsVaultService` will throw errors.
+- `ARUNAKI_API_KEY` must be set, or else the app throws an `UnauthorizedException` blocking all access entirely (Fail-Safe mechanism).
+- `ARUNAKI_VAULT_KEY` (or `APP_SECRET`) must be set for encryption, otherwise `SecretsVaultService` will throw an initialization error, preventing the app from starting.
