@@ -201,9 +201,18 @@ export function WorkspaceDetailPage() {
         },
         onerror(err) {
           console.error("Workspace agent stream error:", err);
-          const msg = err?.message || "Gagal terhubung ke AI Agent";
+          const msg = err?.message || "Koneksi ke AI Agent terputus. Coba lagi beberapa saat.";
+          const time = new Date().toLocaleTimeString("id-ID");
+          setAgentLogs((prev) => [
+            ...prev,
+            { id: Date.now().toString(), type: "error", message: `KONEKSI TERPUTUS: ${msg}`, timestamp: time },
+          ]);
           toast.error(msg);
-          throw err; // stop fetch-event-source infinite retry
+          setIsAgentRunning(false);
+          setAgentResultText((prev) => prev || msg);
+        },
+        onclose() {
+          setIsAgentRunning(false);
         },
       });
     } catch (e: any) {
