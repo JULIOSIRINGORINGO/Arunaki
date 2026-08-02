@@ -300,7 +300,7 @@ export class SelfHealingService {
             key === 'destination'
           ) {
             // Only validate absolute paths or paths with separators
-            if (path.isAbsolute(value) || value.includes(path.sep)) {
+            if (path.isAbsolute(value) || value.includes('/') || value.includes('\\')) {
               paths.push(value);
             }
           }

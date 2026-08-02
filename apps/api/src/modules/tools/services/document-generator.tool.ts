@@ -57,8 +57,8 @@ export class DocumentGeneratorTool {
       const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
       const contentBase64 = buffer.toString('base64');
 
-      // Write directly to disk if outputPath or filename is a file path
-      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      // Write directly to disk if outputPath is provided
+      const targetWritePath = outputPath;
       if (targetWritePath) {
         const resolvedTarget = path.resolve(targetWritePath);
         const parentDir = path.dirname(resolvedTarget);
@@ -125,7 +125,7 @@ export class DocumentGeneratorTool {
       const csvContent = xlsx.utils.sheet_to_csv(worksheet);
       const contentBase64 = Buffer.from(csvContent, 'utf-8').toString('base64');
 
-      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      const targetWritePath = outputPath;
       if (targetWritePath) {
         const resolvedTarget = path.resolve(targetWritePath);
         const parentDir = path.dirname(resolvedTarget);
@@ -293,7 +293,7 @@ export class DocumentGeneratorTool {
       const contentBase64 = Buffer.from(pdfBytes).toString('base64');
       const pageCount = pdfDoc.getPageCount();
 
-      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      const targetWritePath = outputPath;
       if (targetWritePath) {
         const resolvedTarget = path.resolve(targetWritePath);
         const parentDir = path.dirname(resolvedTarget);
@@ -452,7 +452,7 @@ export class DocumentGeneratorTool {
       const buffer = await Packer.toBuffer(doc);
       const contentBase64 = buffer.toString('base64');
 
-      const targetWritePath = outputPath || (filename.includes('/') || filename.includes('\\') ? filename : null);
+      const targetWritePath = outputPath;
       if (targetWritePath) {
         const resolvedTarget = path.resolve(targetWritePath);
         const parentDir = path.dirname(resolvedTarget);
