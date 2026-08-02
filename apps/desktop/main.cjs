@@ -334,8 +334,8 @@ app.whenReady().then(() => {
   function connectToBackend() {
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
 
-    const token = process.env.ARUNAKI_API_KEY ? \`?token=\${process.env.ARUNAKI_API_KEY}\` : '';
-    ws = new WebSocket(\`ws://127.0.0.1:31524\${token}\`);
+    const token = process.env.ARUNAKI_API_KEY ? `?token=${process.env.ARUNAKI_API_KEY}` : '';
+    ws = new WebSocket(`ws://127.0.0.1:31524${token}`);
     ws.on('open', () => console.log('[desktop-bridge] Connected to backend'));
     ws.on('close', () => {
       ws = null;
