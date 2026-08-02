@@ -511,7 +511,21 @@ export class WorkspaceToolsService {
     }
 
     try {
-      // 1. Delete physical file from disk
+      // 1. Auto-backup to trash folder before deleting (reversible safety net)
+      try {
+        const trashDir = path.join(workspace.rootPath, '.arunaki-trash');
+        await fsPromises.mkdir(trashDir, { recursive: true });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const trashName = `${timestamp}_${path.basename(targetPath)}`;
+        const trashPath = path.join(trashDir, trashName);
+        await fsPromises.copyFile(targetPath, trashPath);
+        this.logger.log(`Auto-backup created: ${trashPath}`);
+      } catch (backupErr: any) {
+        // Backup failure is non-blocking — log and continue
+        this.logger.warn(`Trash backup failed (non-critical): ${backupErr.message}`);
+      }
+
+      // 2. Delete physical file from disk
       try {
         await fsPromises.unlink(targetPath);
       } catch (err: any) {

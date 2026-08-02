@@ -1,4 +1,4 @@
-# Laporan Audit — Arunaki AI (Arunaki-main__7_.zip)
+# Laporan Audit — Arunaki AI
 
 **Tanggal audit:** 1 Agustus 2026
 **Metode:** Code review langsung terhadap source (bukan hanya dokumentasi/klaim commit), verifikasi tiap temuan dengan menelusuri call site nyata.
