@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { extractMentionedFilenames, WorkspaceRunnerService } from './workspace-runner.service.js';
+import {
+  extractMentionedFilenames,
+  hasExplicitDeleteIntent,
+  WorkspaceRunnerService,
+} from './workspace-runner.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { DocumentReaderTool } from '../tools/services/document-reader.tool.js';
@@ -28,6 +32,14 @@ describe('extractMentionedFilenames', () => {
 
   it('ignores ordinary @ text', () => {
     expect(extractMentionedFilenames('hubungi @agus besok')).toEqual([]);
+  });
+});
+
+describe('hasExplicitDeleteIntent', () => {
+  it('requires a delete verb and the exact target name', () => {
+    expect(hasExplicitDeleteIntent('hapus REKAPAN TERBARU2.txt', 'REKAPAN TERBARU2.txt')).toBe(true);
+    expect(hasExplicitDeleteIntent('hapus file itu', 'REKAPAN TERBARU2.txt')).toBe(false);
+    expect(hasExplicitDeleteIntent('tambahkan data ke REKAPAN TERBARU2.txt', 'REKAPAN TERBARU2.txt')).toBe(false);
   });
 });
 

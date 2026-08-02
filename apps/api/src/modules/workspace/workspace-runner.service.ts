@@ -66,6 +66,11 @@ export function extractMentionedFilenames(text: string): string[] {
     .filter(Boolean);
 }
 
+export function hasExplicitDeleteIntent(goal: string, filename: string): boolean {
+  return /\b(hapus|hapuskan|delete|remove)\b/i.test(goal)
+    && goal.toLowerCase().includes(filename.toLowerCase());
+}
+
 export interface WorkspaceStreamEvent {
   type:
     | 'thinking'
@@ -1044,8 +1049,15 @@ export class WorkspaceRunnerService {
             try {
               const mentionedFiles = this.mentionedFiles.get(workspaceId) || new Set<string>();
               const filename = String(args.filename || '');
-              if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && ![...mentionedFiles].some((name) => name.toLowerCase() === filename.toLowerCase())) {
+              const isMentioned = [...mentionedFiles].some((name) => name.toLowerCase() === filename.toLowerCase());
+              if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && !isMentioned) {
                 throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
+              }
+              if (isMentioned && ['delete_workspace_file', 'rename_workspace_file'].includes(funcName)) {
+                throw new Error('File yang dirujuk dengan @ tidak boleh dihapus atau diubah namanya dalam run edit.');
+              }
+              if (funcName === 'delete_workspace_file' && !hasExplicitDeleteIntent(safeGoal, filename)) {
+                throw new Error('Penghapusan ditolak: instruksi harus secara eksplisit meminta hapus/delete dan menyebut nama file target.');
               }
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
                 throw new Error('Konten masih berisi referensi @file mentah dan tidak boleh disimpan.');

@@ -754,6 +754,7 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Block writes to a different file during a referenced-file run.
 - [x] Block saving raw `@filename` instructions as document content.
 - [x] Add mention extraction unit tests and verify API build.
+- [x] Guard delete globally: explicit delete intent plus exact filename required; referenced files cannot be deleted or renamed during edit runs.
 
 ---
 
