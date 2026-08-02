@@ -37,7 +37,6 @@ export class DataQueryTool {
     const verbMatches = strippedSql.match(
       /\b(SELECT|INSERT|UPDATE|DELETE|REPLACE|CREATE|DROP|ALTER|ATTACH|DETACH|VACUUM|PRAGMA|REINDEX)\b/g,
     );
-    const mainVerb = verbMatches ? verbMatches[verbMatches.length - 1] : undefined;
 
     const forbiddenVerbs = [
       'INSERT',
@@ -54,9 +53,11 @@ export class DataQueryTool {
       'REINDEX',
     ];
 
+    const hasForbiddenVerb = verbMatches && verbMatches.some(verb => forbiddenVerbs.includes(verb));
+
     if (
-      !mainVerb ||
-      forbiddenVerbs.includes(mainVerb) ||
+      !verbMatches ||
+      hasForbiddenVerb ||
       normalizedSql.includes(';') ||
       normalizedSql.includes('--') ||
       normalizedSql.includes('/*')
