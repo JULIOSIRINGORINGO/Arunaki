@@ -876,6 +876,12 @@ export class WorkspaceRunnerService {
             'write_workspace_file',
             'update_workspace_file',
             'delete_workspace_file',
+            // Desktop interactive tools — high-risk, require approval gate
+            'desktop_send_keys',
+            'desktop_excel_write_cell',
+            'desktop_excel_set_format',
+            'desktop_word_type',
+            'desktop_word_format',
           ];
 
           const readOnlyCalls: Array<{
@@ -929,6 +935,7 @@ export class WorkspaceRunnerService {
               const healResult = await this.selfHealingService.executeWithHealing(
                 toolCall.function.name,
                 enrichedArgs,
+                workspaceId,
               );
               const result = healResult.finalResult;
 
@@ -986,7 +993,8 @@ export class WorkspaceRunnerService {
           for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
-            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file', 'delete_workspace_file'].includes(funcName);
+            // Only auto-approve write/update within workspace folder; delete and desktop tools require user consent
+            const isSafeWorkspaceMutate = ['write_workspace_file', 'update_workspace_file'].includes(funcName);
 
             if (!isSafeWorkspaceMutate) {
               this.logger.warn(
@@ -1030,6 +1038,7 @@ export class WorkspaceRunnerService {
               const healResult = await this.selfHealingService.executeWithHealing(
                 funcName,
                 enrichedArgs,
+                workspaceId,
               );
               result = healResult.finalResult;
             } catch (e) {

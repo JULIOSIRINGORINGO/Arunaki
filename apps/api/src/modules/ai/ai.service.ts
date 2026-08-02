@@ -524,8 +524,6 @@ export class AiService {
 
  ${verification}
 
- ${this.buildWorkspaceToolingSection()}
-
  ${this.buildWorkspaceMemorySection()}
 
  ${this.buildProjectContextSection()}

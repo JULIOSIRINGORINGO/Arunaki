@@ -1726,6 +1726,31 @@ export class ToolsProviderModule implements OnModuleInit {
           '(e.g. "^s" for Ctrl+S, "{ENTER}", "{TAB}", "^z").',
         tags: ['desktop', 'keyboard', 'shortcut', 'sendkeys', 'interactive'],
         handler: async (args) => {
+          // Whitelist validation — only allow known-safe keyboard shortcuts (audit fix 5.1)
+          const ALLOWED_KEYS = [
+            '^s', '^z', '^y', '^c', '^v', '^x', '^a', '^p', '^b', '^i', '^u',  // Ctrl+Key
+            '{ENTER}', '{TAB}', '{ESC}', '{DELETE}', '{BACKSPACE}',              // Special keys
+            '{UP}', '{DOWN}', '{LEFT}', '{RIGHT}',                               // Arrow keys
+            '{HOME}', '{END}', '{PGUP}', '{PGDN}',                              // Navigation
+            '^{HOME}', '^{END}',                                                 // Ctrl+Nav
+            '+{TAB}', '%{TAB}', '%{F4}',                                         // Shift/Alt combos
+            '{F1}', '{F2}', '{F3}', '{F4}', '{F5}', '{F6}',                     // Function keys
+            '{F7}', '{F8}', '{F9}', '{F10}', '{F11}', '{F12}',
+          ];
+          const normalizedKeys = (args.keys || '').trim().toLowerCase();
+          const isAllowed = ALLOWED_KEYS.some(
+            (allowed) => allowed.toLowerCase() === normalizedKeys,
+          );
+          if (!isAllowed) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Kombinasi keyboard "${args.keys}" tidak diizinkan. Hanya shortcut yang telah di-whitelist yang diperbolehkan.`,
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+              error: { code: 'KEYS_NOT_WHITELISTED', message: `Key combination "${args.keys}" is not in the allowed whitelist` },
+            };
+          }
+
           try {
             await this.desktopBridge.sendKeys(args.keys);
             return {

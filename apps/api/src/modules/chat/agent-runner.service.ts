@@ -151,6 +151,7 @@ export class AgentRunnerService {
       chatMode,
       undefined,
       knowledgeContext,
+      historyMessages,
     );
     const tools = this.toolRegistryService.getToolDefinitions();
 
@@ -382,6 +383,7 @@ export class AgentRunnerService {
         chatMode,
         undefined,
         knowledgeContext,
+        historyMessages,
       );
       const tools = this.toolRegistryService.getToolDefinitions();
 
