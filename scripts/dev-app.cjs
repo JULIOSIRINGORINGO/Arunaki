@@ -68,16 +68,26 @@ process.on('SIGTERM', () => {
 
   // 2. Wait until API is reachable
   console.log('[dev-app] Menunggu API di port 3000...');
-  const ready = await waitForApi('http://127.0.0.1:3000/api/v1/health', 45000);
+  const ready = await waitForApi('http://127.0.0.1:3000/api/v1/health', 60000);
   if (!ready) {
-    console.error('[dev-app] API tidak merespon setelah 30 detik. Melanjutkan tetap...');
-  } else {
-    console.log('[dev-app] API siap.');
+    console.error('[dev-app] GAGAL: API tidak merespon setelah 60 detik. Membatalkan startup.');
+    stopAll();
+    process.exit(1);
   }
+  console.log('[dev-app] API siap.');
 
   // 3. Start Web (Vite proxy needs API running)
   start('Web', ['run', 'dev:web']);
 
-  // 4. Start Electron after Web is ready
-  setTimeout(() => start('Desktop', ['run', 'dev:desktop']), 5000);
+  // 4. Wait for Vite to be ready before starting Electron
+  console.log('[dev-app] Menunggu Frontend (Vite) di port 5173...');
+  const webReady = await waitForApi('http://127.0.0.1:5173', 30000);
+  if (!webReady) {
+    console.error('[dev-app] GAGAL: Vite tidak merespon setelah 30 detik. Membatalkan startup.');
+    stopAll();
+    process.exit(1);
+  }
+  
+  console.log('[dev-app] Frontend siap, memulai Desktop (Electron)...');
+  start('Desktop', ['run', 'dev:desktop']);
 })();

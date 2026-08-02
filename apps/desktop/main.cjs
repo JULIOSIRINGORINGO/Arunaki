@@ -5,6 +5,24 @@ const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 const WebSocket = require('ws');
 
+// Load .env manually since dotenv might not be installed
+try {
+  // Try to load from apps/desktop/.env
+  const envPath = path.join(__dirname, '.env');
+  const envContent = fsSync.readFileSync(envPath, 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+    if (match) {
+      const key = match[1];
+      let value = match[2] || '';
+      value = value.replace(/^['"]|['"]$/g, '');
+      if (!process.env[key]) process.env[key] = value;
+    }
+  });
+} catch (e) {
+  // Ignore if .env doesn't exist
+}
+
 const WEB_URL = process.env.ARUNAKI_WEB_URL || 'http://127.0.0.1:5173';
 const WAIT_TIMEOUT_MS = 15000;
 const WAIT_INTERVAL_MS = 500;

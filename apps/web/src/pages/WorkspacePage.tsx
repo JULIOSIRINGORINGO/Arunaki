@@ -1970,7 +1970,14 @@ const ChatInputForm = memo(function ChatInputForm({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [slashIndex, setSlashIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`;
+    }
+  }, [localInput]);
 
   const SLASH_COMMANDS = [
     { command: "/session new", label: "+ Buat Sesi Percakapan Baru" },
@@ -2066,18 +2073,26 @@ const ChatInputForm = memo(function ChatInputForm({
         return;
       }
     }
-    if (mentionQuery === null || mentionResults.length === 0) return;
-    if (e.key === "ArrowDown") {
+    
+    if (mentionQuery !== null && mentionResults.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % mentionResults.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(mentionResults[mentionIndex]);
+      } else if (e.key === "Escape") {
+        setMentionQuery(null);
+      }
+      return;
+    }
+
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      setMentionIndex((i) => (i + 1) % mentionResults.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
-    } else if (e.key === "Enter" || e.key === "Tab") {
-      e.preventDefault();
-      insertMention(mentionResults[mentionIndex]);
-    } else if (e.key === "Escape") {
-      setMentionQuery(null);
+      handleSubmit(e as any);
     }
   };
 
@@ -2197,14 +2212,14 @@ const ChatInputForm = memo(function ChatInputForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex items-center gap-2">
-      <input
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex items-end gap-2">
+      <textarea
         ref={inputRef}
-        type="text"
         value={localInput}
         onChange={(e) => handleChange(e.target.value)}
+        rows={1}
         placeholder="Tanyakan apa pun — @ untuk memilih file, / untuk aksi"
-        className="flex-1 bg-gray-50/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:outline-none focus:bg-white focus:border-gray-900 placeholder:text-gray-400 transition-all shadow-2xs"
+        className="flex-1 bg-gray-50/80 border border-gray-200/90 rounded-xl px-3.5 py-2.5 text-xs text-gray-900 focus:outline-none focus:bg-white focus:border-gray-900 placeholder:text-gray-400 transition-all shadow-2xs resize-none min-h-[38px] max-h-[180px] overflow-y-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       />
 
       {isAnalyzing ? (
