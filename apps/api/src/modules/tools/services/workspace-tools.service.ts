@@ -6,6 +6,7 @@ import { DocumentReaderTool } from './document-reader.tool.js';
 import { DocumentGeneratorTool } from './document-generator.tool.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
+import { DesktopBridgeService } from '../../interaction/desktop-bridge.service.js';
 import * as path from 'path';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class WorkspaceToolsService {
     private readonly documentReaderTool: DocumentReaderTool,
     private readonly documentGeneratorTool: DocumentGeneratorTool,
     private readonly prisma: PrismaService,
+    private readonly desktopBridge: DesktopBridgeService,
   ) {}
 
   /**
@@ -255,30 +257,35 @@ export class WorkspaceToolsService {
     const inferredFormat = validFormats.includes(ext) ? (ext as any) : 'txt';
     const targetFormat = format && validFormats.includes(format) ? format : inferredFormat;
 
+    let result: ToolResult;
     switch (targetFormat) {
       case 'xlsx':
-        return this.documentGeneratorTool.generateExcel(
+        result = await this.documentGeneratorTool.generateExcel(
           'Data',
           rows,
           targetPath,
           targetPath,
         );
+        break;
       case 'csv':
-        return this.documentGeneratorTool.generateCsv(rows, targetPath, targetPath);
+        result = await this.documentGeneratorTool.generateCsv(rows, targetPath, targetPath);
+        break;
       case 'pdf':
-        return this.documentGeneratorTool.generatePdf(
+        result = await this.documentGeneratorTool.generatePdf(
           title,
           content,
           targetPath,
           targetPath,
         );
+        break;
       case 'docx':
-        return this.documentGeneratorTool.generateDocx(
+        result = await this.documentGeneratorTool.generateDocx(
           title,
           content,
           targetPath,
           targetPath,
         );
+        break;
       case 'txt':
       case 'md':
       case 'json':
@@ -288,7 +295,7 @@ export class WorkspaceToolsService {
           const existedBefore = await this.storageService.exists(targetPath);
           await this.storageService.writeFile(targetPath, content);
           const actionLabel = existedBefore ? 'berhasil diperbarui' : 'berhasil dibuat';
-          return {
+          result = {
             status: 'success',
             data: { path: targetPath, filename, format, created: !existedBefore },
             preview: `File ${filename} ${actionLabel} di folder workspace.`,
@@ -302,7 +309,7 @@ export class WorkspaceToolsService {
             },
           };
         } catch (e) {
-          return {
+          result = {
             status: 'error',
             data: {},
             preview: `Gagal membuat file ${filename}: ${e.message}`,
@@ -314,8 +321,20 @@ export class WorkspaceToolsService {
             error: { code: 'WRITE_FAILED', message: e.message },
           };
         }
+        break;
       }
     }
+
+    // Auto-open on desktop if successful
+    if (result && result.status === 'success') {
+      try {
+        await this.desktopBridge.sendCommand('openFile', { path: targetPath });
+      } catch (err) {
+        this.logger.warn(`Gagal membuka file secara visual di desktop: ${err.message}`);
+      }
+    }
+
+    return result;
   }
 
   /**
