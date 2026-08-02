@@ -4,6 +4,7 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
+import { BoundedMap } from '../../common/utils/bounded-map.js';
 import { MemoryService } from '../memory/memory.service.js';
 
 export interface HeartbeatSnapshot {
@@ -41,7 +42,7 @@ export class WorkspaceHeartbeatService
   private readonly logger = new Logger(WorkspaceHeartbeatService.name);
 
   /** In-memory cache of last-known workspace states */
-  private readonly snapshots = new Map<string, Map<string, FileSnapshot>>();
+  private readonly snapshots = new BoundedMap<string, Map<string, FileSnapshot>>(1000);
 
   /** Interval reference for cleanup */
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -53,10 +54,10 @@ export class WorkspaceHeartbeatService
   private readonly MAX_CHANGES_PER_BEAT = 50;
 
   /** Registered workspace IDs and their file-listing callbacks */
-  private readonly workspaceCallbacks = new Map<
+  private readonly workspaceCallbacks = new BoundedMap<
     string,
     () => Promise<FileSnapshot[]>
-  >();
+  >(1000);
 
   constructor(private readonly memoryService: MemoryService) {}
 

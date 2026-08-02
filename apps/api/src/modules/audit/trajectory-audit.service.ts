@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { BoundedMap } from '../../common/utils/bounded-map.js';
 
 export type TrajectoryStepType =
   | 'agent_start'
@@ -46,7 +47,7 @@ export interface TrajectoryExport {
 @Injectable()
 export class TrajectoryAuditService {
   private readonly logger = new Logger(TrajectoryAuditService.name);
-  private readonly trajectories = new Map<string, TrajectoryStep[]>();
+  private readonly trajectories = new BoundedMap<string, TrajectoryStep[]>(1000);
 
   /**
    * Record a trajectory step for a run.

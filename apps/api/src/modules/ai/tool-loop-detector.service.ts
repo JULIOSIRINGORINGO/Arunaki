@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'crypto';
+import { BoundedMap } from '../../common/utils/bounded-map.js';
 
 export interface ToolInvocationEntry {
   toolName: string;
@@ -18,7 +19,7 @@ const MAX_REPEATED_TOOL_CALLS = 3;
 @Injectable()
 export class ToolLoopDetectorService {
   private readonly logger = new Logger(ToolLoopDetectorService.name);
-  private readonly sessionHistory = new Map<string, ToolInvocationEntry[]>();
+  private readonly sessionHistory = new BoundedMap<string, ToolInvocationEntry[]>(1000);
 
   /**
    * Track a tool call and check if it violates loop policy

@@ -46,7 +46,7 @@ export class FileController {
   }
 
   @Post('upload')
-  @UseInterceptors(FilesInterceptor('files', 50))
+  @UseInterceptors(FilesInterceptor('files', 50, { limits: { fileSize: 50 * 1024 * 1024 } }))
   async upload(
     @UploadedFiles() files: Express.Multer.File[],
     @Body('workspaceId') workspaceId: string,

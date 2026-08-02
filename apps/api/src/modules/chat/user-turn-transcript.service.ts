@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { BoundedMap } from '../../common/utils/bounded-map.js';
 
 export type TranscriptState =
   | 'created'
@@ -22,7 +23,7 @@ export interface TurnTranscript {
 @Injectable()
 export class UserTurnTranscriptService {
   private readonly logger = new Logger(UserTurnTranscriptService.name);
-  private readonly transcripts = new Map<string, TurnTranscript>();
+  private readonly transcripts = new BoundedMap<string, TurnTranscript>(1000);
   private readonly TURN_TIMEOUT_MS = 300_000;
 
   createTurn(runId: string, sessionKey: string, messageCountBefore: number): TurnTranscript {
