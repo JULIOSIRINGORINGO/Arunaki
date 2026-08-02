@@ -22,6 +22,19 @@ export class WorkspaceToolsService {
   ) {}
 
   /**
+   * Enforces that a target path is strictly contained within the workspace root.
+   * Defends against Path Traversal / LFI attacks.
+   */
+  private requirePathInWorkspace(targetPath: string, rootPath: string): string {
+    const resolvedTarget = path.resolve(targetPath);
+    const resolvedRoot = path.resolve(rootPath);
+    if (!resolvedTarget.startsWith(resolvedRoot + path.sep) && resolvedTarget !== resolvedRoot) {
+      throw new Error(`Path Traversal detected. Target path is outside workspace root.`);
+    }
+    return resolvedTarget;
+  }
+
+  /**
    * Search keywords across indexed files inside active workspace
    */
   async searchWorkspace(
@@ -117,6 +130,19 @@ export class WorkspaceToolsService {
     workspaceId?: string,
   ): Promise<ToolResult> {
     let resolvedPath = filePath;
+    let rootPath: string | null = null;
+
+    if (workspaceId) {
+      try {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { rootPath: true },
+        });
+        rootPath = workspace?.rootPath || null;
+      } catch {
+        // ignore DB error
+      }
+    }
 
     if (
       workspaceId &&
@@ -143,6 +169,24 @@ export class WorkspaceToolsService {
       // Go up 4 levels to reach apps/api/
       const apiBase = path.resolve(__dirname, '..', '..', '..', '..');
       resolvedPath = path.resolve(apiBase, resolvedPath);
+    }
+
+    if (rootPath) {
+      try {
+        resolvedPath = this.requirePathInWorkspace(resolvedPath, rootPath);
+      } catch (err: any) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Gagal membaca file: ${err.message}`,
+          metadata: {
+            toolName: 'read_workspace_file',
+            displayName: 'Baca File Workspace',
+            executionTime: 0,
+          },
+          error: { code: 'SECURITY_ERROR', message: err.message },
+        };
+      }
     }
 
     return this.documentReaderTool.readDocument(resolvedPath);
@@ -189,7 +233,22 @@ export class WorkspaceToolsService {
       };
     }
 
-    const targetPath = path.join(workspace.rootPath, filename);
+    let targetPath = path.join(workspace.rootPath, filename);
+    try {
+      targetPath = this.requirePathInWorkspace(targetPath, workspace.rootPath);
+    } catch (err: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal membuat file: ${err.message}`,
+        metadata: {
+          toolName: 'write_workspace_file',
+          displayName: 'Buat File Workspace',
+          executionTime: 0,
+        },
+        error: { code: 'SECURITY_ERROR', message: err.message },
+      };
+    }
 
     const ext = (filename.split('.').pop() || 'txt').toLowerCase();
     const validFormats = ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'];
@@ -308,7 +367,24 @@ export class WorkspaceToolsService {
     }
 
     let sourcePath = path.join(workspace.rootPath, filename);
-    const targetPath = path.join(workspace.rootPath, newFilename);
+    let targetPath = path.join(workspace.rootPath, newFilename);
+
+    try {
+      sourcePath = this.requirePathInWorkspace(sourcePath, workspace.rootPath);
+      targetPath = this.requirePathInWorkspace(targetPath, workspace.rootPath);
+    } catch (err: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal mengganti nama file: ${err.message}`,
+        metadata: {
+          toolName: 'rename_workspace_file',
+          displayName: 'Ganti Nama File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'SECURITY_ERROR', message: err.message },
+      };
+    }
 
     const fsPromises = await import('fs/promises');
 
@@ -457,6 +533,22 @@ export class WorkspaceToolsService {
     }
 
     let targetPath = path.join(workspace.rootPath, cleanName);
+
+    try {
+      targetPath = this.requirePathInWorkspace(targetPath, workspace.rootPath);
+    } catch (err: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal menghapus file: ${err.message}`,
+        metadata: {
+          toolName: 'delete_workspace_file',
+          displayName: 'Hapus File Workspace',
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'SECURITY_ERROR', message: err.message },
+      };
+    }
 
     const fsPromises = await import('fs/promises');
     let fileExists = false;
