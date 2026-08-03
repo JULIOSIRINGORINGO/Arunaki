@@ -131,9 +131,11 @@ export class ProviderService extends BaseService<Provider> {
   classifyError(statusCode: number, body: string): ClassifiedError {
     const message = `HTTP ${statusCode}`;
 
-    // 5xx (incl. 503 Service Unavailable) are transient — retry with backoff,
-    // don't burn the provider rotation. 503 is common on overloaded hosts.
-    if (statusCode >= 500 && statusCode < 600) {
+    // 5xx (incl. 503) + 400 are transient-ish for cheap/free/flaky upstreams —
+    // retry with backoff first (runWithModelFallback retries 3x before rotate).
+    // Cheap providers (Kenari/deepseek, free tiers) intermittently reject valid
+    // requests; burning rotation + cooldown on first 400 makes them unusable.
+    if ((statusCode >= 500 && statusCode < 600) || statusCode === 400) {
       return {
         action: 'retry',
         statusCode,
@@ -141,7 +143,7 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    if ([429, 413, 402, 401, 403, 404, 400].includes(statusCode)) {
+    if ([429, 413, 402, 401, 403, 404].includes(statusCode)) {
       const cooldownKey = String(statusCode) as keyof typeof this.COOLDOWN;
       return {
         action: 'rotate',

@@ -66,6 +66,13 @@ describe('ProviderService — Failover & Error Classification', () => {
       expect(classified.action).toBe('retry');
       expect(classified.statusCode).toBe(502);
     });
+
+    it('should classify HTTP 400 as retry (flaky cheap upstream), not rotate', () => {
+      const classified = service.classifyError(400, 'upstream_rejected');
+
+      expect(classified.action).toBe('retry');
+      expect(classified.statusCode).toBe(400);
+    });
   });
 
   describe('getNextAvailable', () => {
