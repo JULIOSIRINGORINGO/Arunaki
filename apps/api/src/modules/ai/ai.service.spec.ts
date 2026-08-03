@@ -23,6 +23,7 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
 
     mockToolRegistryService = {
       getToolCapabilities: vi.fn().mockReturnValue([]),
+      getToolDirectoryText: vi.fn().mockReturnValue('Mock Directory Text'),
     };
 
     mockContextRegistry = {};

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Knowledge } from '@prisma/client';
 import { PrismaBaseRepository } from '../../common/providers/prisma-base.repository.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
@@ -7,7 +7,7 @@ import { PrismaService } from '../../common/providers/prisma.service.js';
 export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> {
   protected readonly model: any;
 
-  constructor(protected readonly prisma: PrismaService) {
+  constructor(@Inject(PrismaService) protected readonly prisma: PrismaService) {
     super(prisma);
     this.model = prisma.knowledge;
   }

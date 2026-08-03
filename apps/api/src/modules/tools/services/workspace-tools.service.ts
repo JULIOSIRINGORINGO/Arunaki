@@ -20,13 +20,13 @@ export class WorkspaceToolsService {
   private readonly logger = new Logger(WorkspaceToolsService.name);
 
   constructor(
-    private readonly storageService: StorageService,
-    private readonly searchService: SearchService,
-    private readonly fileService: FileService,
-    private readonly documentReaderTool: DocumentReaderTool,
-    private readonly documentGeneratorTool: DocumentGeneratorTool,
-    private readonly prisma: PrismaService,
-    private readonly desktopBridge: DesktopBridgeService,
+    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
+    @Inject(forwardRef(() => SearchService)) private readonly searchService: SearchService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => DocumentReaderTool)) private readonly documentReaderTool: DocumentReaderTool,
+    @Inject(forwardRef(() => DocumentGeneratorTool)) private readonly documentGeneratorTool: DocumentGeneratorTool,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => DesktopBridgeService)) private readonly desktopBridge: DesktopBridgeService,
     @Optional() @Inject(forwardRef(() => AiService))
     private readonly aiService?: AiService,
   ) {}

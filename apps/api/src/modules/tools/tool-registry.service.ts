@@ -40,19 +40,26 @@ export class ToolRegistryService {
   }
 
   /**
-   * Get all tool definitions for LLM.
+   * Get all tool definitions for LLM (only those allowed in direct mode).
+   * By default, tools without catalogMode are considered 'catalog-only' to save tokens,
+   * EXCEPT if we haven't migrated everything yet, but let's be strict:
+   * actually, let's make the default 'catalog-only' if it's undefined, 
+   * BUT wait, if we do that, we might break all existing tools if we don't migrate them.
+   * Wait, the instructions said: "Secara default, semua tool lama akan diset sebagai catalog-only kecuali tool-tool esensial seperti pembaca/penulis file yang akan diset direct-only."
    */
   getToolDefinitions(): ToolDefinition[] {
-    return Array.from(this.tools.values()).map((r) => r.tool.definition);
+    return Array.from(this.tools.values())
+      .filter((r) => r.tool.catalogMode === 'direct-only')
+      .map((r) => r.tool.definition);
   }
 
   /**
-   * Get all tool capabilities for discovery.
+   * Get all tool capabilities for discovery (only direct-only tools).
    */
   getToolCapabilities(): ToolCapability[] {
-    return Array.from(this.tools.values()).map(
-      (r) => r.tool.capability,
-    ) as ToolCapability[];
+    return Array.from(this.tools.values())
+      .filter((r) => r.tool.catalogMode === 'direct-only')
+      .map((r) => r.tool.capability as ToolCapability);
   }
 
   /**
@@ -62,6 +69,52 @@ export class ToolRegistryService {
     return this.getToolCapabilities().filter((cap) =>
       tags.some((tag) => cap.tags.includes(tag)),
     );
+  }
+
+  /**
+   * Catalog: Search tools by keyword in name, display name, or description.
+   * Returns a concise list of matching tools.
+   */
+  searchTools(query: string): Array<{ name: string; description: string }> {
+    const lowerQuery = query.toLowerCase();
+    return Array.from(this.tools.values())
+      .filter(
+        (r) =>
+          r.tool.name.toLowerCase().includes(lowerQuery) ||
+          r.tool.displayName.toLowerCase().includes(lowerQuery) ||
+          r.tool.description.toLowerCase().includes(lowerQuery),
+      )
+      .map((r) => ({
+        name: r.tool.name,
+        description: r.tool.description,
+      }));
+  }
+
+  /**
+   * Catalog: Get the exact JSON schema definition for a tool by name.
+   */
+  describeTool(name: string): ToolDefinition | null {
+    const toolRecord = this.tools.get(name);
+    return toolRecord ? toolRecord.tool.definition : null;
+  }
+
+  /**
+   * Catalog: Generate the compact directory text for the AI system prompt.
+   */
+  getToolDirectoryText(): string {
+    const catalogTools = Array.from(this.tools.values()).filter(
+      (r) => r.tool.catalogMode !== 'direct-only',
+    );
+    if (catalogTools.length === 0) return 'No catalog tools available.';
+
+    let directory = '### Tool Catalog Directory\n\n';
+    directory += 'Anda memiliki akses ke direktori Tools berikut yang disembunyikan untuk menghemat konteks.\n';
+    directory += 'Gunakan tool_search_code (jika bisa) ATAU tool_search, tool_describe, dan tool_call untuk menggunakannya.\n\n';
+    
+    for (const r of catalogTools) {
+      directory += `- **${r.tool.name}**: ${r.tool.description.split('\n')[0]}\n`;
+    }
+    return directory;
   }
 
   /**

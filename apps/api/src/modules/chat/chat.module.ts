@@ -8,6 +8,7 @@ import { AgentRunnerService } from './agent-runner.service.js';
 import { SessionAdmissionService } from './session-admission.service.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 import { SessionStateEventsService } from './session-state-events.service.js';
+import { SubAgentRunnerService } from './sub-agent-runner.service.js';
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -37,8 +38,9 @@ import { ProviderModule } from '../provider/provider.module.js';
     SessionAdmissionService,
     UserTurnTranscriptService,
     SessionStateEventsService,
+    SubAgentRunnerService,
     HarnessRegistryService,
   ],
-  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService, SessionStateEventsService, HarnessRegistryService],
+  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService, SessionStateEventsService, SubAgentRunnerService, HarnessRegistryService],
 })
 export class ChatModule {}

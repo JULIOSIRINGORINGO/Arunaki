@@ -13,8 +13,11 @@ import { ToolsModule } from '../tools/tools.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { ContextModule } from './context/context.module.js';
 
+import { ConfigModule } from '@nestjs/config';
+
 @Module({
   imports: [
+    ConfigModule,
     ProviderModule,
     forwardRef(() => ToolsModule),
     forwardRef(() => MemoryModule),

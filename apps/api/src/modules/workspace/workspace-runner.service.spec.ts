@@ -24,6 +24,7 @@ import { CompactionService } from '../ai/compaction.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
+import { ProviderService } from '../provider/provider.service.js';
 
 describe('extractMentionedFilenames', () => {
   it('extracts an explicit file reference', () => {
@@ -83,6 +84,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
         { provide: ToolLoopDetectorService, useValue: { checkLoop: vi.fn() } },
         { provide: CompactionService, useValue: {} },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn() } } },
+        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
         { provide: ContextRegistry, useValue: { registerContext: vi.fn() } },
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },

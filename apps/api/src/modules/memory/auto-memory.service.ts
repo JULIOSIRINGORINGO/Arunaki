@@ -47,7 +47,9 @@ export class AutoMemoryService {
   private readonly MAX_BATCH_SIZE = 100;
 
   constructor(
+    @Inject(forwardRef(() => MemoryService))
     private readonly memoryService: MemoryService,
+    @Inject(PrismaService)
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AiService))
     private readonly aiService: AiService,
