@@ -189,8 +189,11 @@ export class AiService {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-      if (!response.ok && (response.status === 400 || response.status === 401 || response.status === 403)) {
+      if (!response.ok && response.status >= 400 && response.status < 500) {
         const errBody = await response.clone().text();
+        const toolNames = (body.tools || []).map((t: any) => t?.function?.name);
+        const msgInfo = (body.messages || []).map((m: any) => `${m.role}:${m.content ? m.content.length : 0}${m.tool_calls ? '+tc' : ''}`);
+        this.logger.warn(`[${provider.name}] ${response.status} req: model=${body.model} max_tokens=${body.max_tokens} tools=[${toolNames.join(',')}] msgs=[${msgInfo.join(',')}]`);
         this.logger.warn(`[${provider.name}] ${response.status} body: ${errBody.slice(0, 400)}`);
       }
       return { response, statusCode: response.status };
