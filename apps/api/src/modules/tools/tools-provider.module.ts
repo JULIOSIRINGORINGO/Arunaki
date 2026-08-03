@@ -348,7 +348,7 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'string',
               description: 'Sheet name (for xlsx/csv)',
             },
-            rows: { type: 'array', description: 'Row data (for xlsx/csv)' },
+            rows: { type: 'array', items: { type: 'object' }, description: 'Row data (for xlsx/csv)' },
             slides: {
               type: 'array',
               items: {
@@ -650,7 +650,7 @@ export class ToolsProviderModule implements OnModuleInit {
               description: 'Document format',
             },
             content: { type: 'string', description: 'Text/markdown content' },
-            rows: { type: 'array', description: 'Data rows for Excel/CSV' },
+            rows: { type: 'array', items: { type: 'object' }, description: 'Data rows for Excel/CSV' },
             title: { type: 'string', description: 'Document title' },
           },
           required: ['workspaceId', 'filename', 'format'],

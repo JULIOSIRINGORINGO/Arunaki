@@ -532,7 +532,8 @@ export class WorkspaceRunnerService {
     const wanted = new Set<string>();
     const add = (names: string[]) => names.forEach((n) => wanted.add(n));
 
-    // Core workspace file operations — selalu tersedia.
+    // Core workspace file operations — selalu tersedia (max ~7 tool schemas:
+    // Kenari/Gemini rejects large system + many-tool combinations).
     add([
       'list_workspace_files',
       'search_workspace',
@@ -541,17 +542,14 @@ export class WorkspaceRunnerService {
       'edit_workspace_file',
       'rename_workspace_file',
       'delete_workspace_file',
-      'calculate',
     ]);
 
     // Kata kunci goal → tambah tool yang relevan.
     if (/(?:query|select|cari data|database|sql)/.test(g)) add(['data_query', 'doc_search']);
     if (/(?:ringkas|analisis|analisa|rekap|reconcile|banding|rekonsiliasi|pivot)/.test(g)) {
-      add(['doc_search', 'doc_reconcile', 'doc_cross_reference', 'generate_export']);
+      add(['doc_search', 'doc_reconcile', 'doc_cross_reference']);
     }
-    if (/(?:export|buat.*(?:pdf|excel|csv|word|ppt|dokumen|file|laporan)|generate_export)/.test(g)) {
-      add(['generate_export', 'draft_communication']);
-    }
+    if (/(?:export|generate_export)/.test(g)) add(['generate_export']);
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
     if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
     if (/(?:buka|desktop|word|excel|powerpoint|ppt|office|aplikasi|mengetik)/.test(g)) {
