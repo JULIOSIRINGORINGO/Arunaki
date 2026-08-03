@@ -816,12 +816,26 @@ export class WorkspaceToolsService {
         };
       }
 
+      // Money-safe: LLM extracts raw numbers (understands units/format),
+      // framework recomputes totals deterministically, verifier compares
+      // against the total lines in the file. Never trust LLM arithmetic.
+      const verify = await this.recalculateAndVerify(updated, instructions);
+      if (!verify.ok) {
+        return {
+          status: 'error',
+          data: { issues: verify.issues },
+          preview: `Perhitungan tidak konsisten: ${verify.issues.join('; ')}`,
+          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime, filename },
+          error: { code: 'TOTAL_MISMATCH', message: verify.issues.join('; ') },
+        };
+      }
+
       await this.storageService.writeFile(targetPath, updated);
 
       return {
         status: 'success',
-        data: { path: targetPath, filename, editsApplied: applied.length },
-        preview: `File "${filename}" berhasil diperbarui (${applied.length} perubahan).`,
+        data: { path: targetPath, filename, editsApplied: applied.length, verifiedTotals: verify.checked },
+        preview: `File "${filename}" berhasil diperbarui (${applied.length} perubahan, ${verify.checked} total terverifikasi).`,
         metadata: {
           toolName: 'edit_workspace_file',
           displayName: 'Edit File',
@@ -839,6 +853,135 @@ export class WorkspaceToolsService {
         error: { code: 'EDIT_FAILED', message: e.message },
       };
     }
+  }
+
+  /**
+   * General total verification (not money-specific): LLM locates the
+   * structure (total anchors + item ranges + optional filters), framework
+   * parses the raw numbers itself and recomputes. Numbers NEVER come from
+   * the LLM — so a stale/miscalculated total is caught here, not shipped.
+   */
+  private async recalculateAndVerify(
+    content: string,
+    instructions: string,
+  ): Promise<{ ok: boolean; issues: string[]; checked: number }> {
+    if (!this.aiService) return { ok: true, issues: [], checked: 0 };
+
+    try {
+      const response = await this.aiService.chat(
+        [
+          {
+            role: 'system',
+            content:
+              'You are a document structure locator. Read the document and identify where its summary/total lines are and which item lines each one sums.\n' +
+              'Output ONLY a JSON object:\n' +
+              '{\n' +
+              '  "checks": [\n' +
+              '    {\n' +
+              '      "totalAnchor": "exact text near the total line, e.g. TOTAL PEMASUKAN",\n' +
+              '      "itemsFrom": "exact section header line marking the START of the item block, e.g. PEMASUKAN :",\n' +
+              '      "itemsTo": "exact line marking the END of the item block, e.g. NOTE BELUM BAYAR",\n' +
+              '      "filter": "optional keyword (e.g. bank BCA) — only item lines containing this are summed; omit if all items in the block count"\n' +
+              '    }\n' +
+              '  ]\n' +
+              '}\n\n' +
+              'RULES:\n' +
+              '- Do NOT output any numbers or amounts. Only anchors/section names/labels.\n' +
+              '- totalAnchor should be the shortest unique text that identifies the total line.\n' +
+              '- itemsFrom/itemsTo delimit the block whose lines contain the amounts that total sums.\n' +
+              '- Only include checks where the association is clear. If a total has no clear item block, skip it.\n' +
+              '- Do NOT invent totals that are not in the file.\n' +
+              '- Respond with ONLY valid JSON, no prose.',
+          },
+          {
+            role: 'user',
+            content: `DOCUMENT (after edit):\n---\n${content}\n---\n\nUPDATE REQUEST: ${instructions}\n\nLocate total lines and their item blocks as JSON.`,
+          },
+        ],
+        [],
+      );
+
+      const text = response.content || '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) return { ok: true, issues: [], checked: 0 };
+      const parsed = JSON.parse(match[0]);
+      const checks: Array<{ totalAnchor?: string; itemsFrom?: string; itemsTo?: string; filter?: string }> =
+        Array.isArray(parsed.checks) ? parsed.checks : [];
+
+      const issues: string[] = [];
+      let checked = 0;
+      if (checks.length === 0) return { ok: true, issues: [], checked: 0 };
+
+      const lines = content.split(/\r?\n/);
+
+      for (const check of checks) {
+        if (!check.totalAnchor || !check.itemsFrom || !check.itemsTo) continue;
+        const totalLine = lines.find((l) => l.includes(check.totalAnchor!));
+        if (!totalLine) continue;
+        const expected = this.parseAmount(totalLine);
+        if (expected === null) continue; // total line has no number → skip
+
+        // Collect amounts from the item block.
+        const itemAmounts: number[] = [];
+        let inBlock = false;
+        for (const line of lines) {
+          if (line.includes(check.itemsFrom!)) { inBlock = true; continue; }
+          if (inBlock && line.includes(check.itemsTo!)) break;
+          if (!inBlock) continue;
+          if (check.filter && !line.toLowerCase().includes(check.filter.toLowerCase())) continue;
+          const amt = this.parseAmount(line);
+          if (amt !== null) itemAmounts.push(amt);
+        }
+
+        if (itemAmounts.length === 0) continue;
+        const sum = itemAmounts.reduce((s, v) => s + v, 0);
+        checked++;
+        const tolerance = Math.max(1, Math.abs(expected) * 0.001);
+        if (Math.abs(sum - expected) > tolerance) {
+          issues.push(
+            `Total "${check.totalAnchor}" di file (${expected}) tidak sama dengan jumlah item pada bagiannya (${sum})`,
+          );
+        }
+      }
+
+      return { ok: issues.length === 0, issues, checked };
+    } catch {
+      // Verification is best-effort: never block the edit on a parse hiccup.
+      return { ok: true, issues: [], checked: 0 };
+    }
+  }
+
+  /**
+   * Deterministically parse an amount from a line of Indonesian-formatted
+   * numbers: "1.585RB" → 1585000, "319 RB" → 319000, "Rp 2.349.000,-" → 2349000.
+   * Returns null if no usable amount is found on the line.
+   */
+  private parseAmount(line: string): number | null {
+    // Normalize comma as decimal only when followed by digits (e.g. 1,5) — but
+    // Indonesian thousands use dots, so treat "1.585" as 1585. Prefer Rupiah/RB.
+    let text = line.replace(/\s/g, '');
+    // Strip obvious non-numeric prefixes after the amount when labeled.
+    const rbMatch = text.match(/([\d.,]+)\s*RB/i);
+    const rpMatch = text.match(/(?:Rp|RP|IDR)\s*([\d.,]+)/);
+    const plainMatch = text.match(/(\d[\d.,]*)/);
+
+    let raw: string | null = null;
+    let multiplier = 1;
+    if (rbMatch) {
+      raw = rbMatch[1];
+      multiplier = 1000; // RB = ribu
+    } else if (rpMatch) {
+      raw = rpMatch[1];
+    } else if (plainMatch) {
+      raw = plainMatch[1];
+    }
+    if (!raw) return null;
+
+    // "1.585" (dot thousands) → 1585 ; "1,585" → 1585 ; "2.349.000" → 2349000.
+    const cleaned = raw.replace(/\./g, '').replace(/,/g, '');
+    const num = parseFloat(cleaned);
+    if (isNaN(num)) return null;
+    return num * multiplier;
   }
 
   /**
