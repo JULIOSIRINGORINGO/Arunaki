@@ -722,6 +722,39 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     );
 
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'edit_workspace_file',
+        displayName: 'Edit File Workspace',
+        description:
+          'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. Use for updating documents (reports, recaps, logs) without rewriting everything.',
+        tags: ['edit', 'update', 'workspace', 'file', 'diff'],
+        handler: (args) =>
+          this.workspaceToolsService.editWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename,
+            instructions: args.instructions,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            filename: {
+              type: 'string',
+              description: 'Existing file name to edit (e.g. laporan.txt)',
+            },
+            instructions: {
+              type: 'string',
+              description: 'What to change in the file (e.g. update today date, add these transactions, recalc totals)',
+            },
+          },
+          required: ['workspaceId', 'filename', 'instructions'],
+        },
+        estimatedLatency: 'slow',
+        timeoutMs: 60000,
+      }),
+    );
+
     // ─── Skills ─────────────────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({

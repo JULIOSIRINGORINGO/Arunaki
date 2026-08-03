@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
 import { StorageService } from '../../storage/storage.service.js';
 import { SearchService } from '../../search/search.service.js';
 import { FileService } from '../../file/file.service.js';
@@ -7,6 +7,7 @@ import { DocumentGeneratorTool } from './document-generator.tool.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { DesktopBridgeService } from '../../interaction/desktop-bridge.service.js';
+import { AiService } from '../../ai/ai.service.js';
 import * as path from 'path';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class WorkspaceToolsService {
     private readonly documentGeneratorTool: DocumentGeneratorTool,
     private readonly prisma: PrismaService,
     private readonly desktopBridge: DesktopBridgeService,
+    @Optional() @Inject(forwardRef(() => AiService))
+    private readonly aiService?: AiService,
   ) {}
 
   /**
@@ -682,5 +685,181 @@ export class WorkspaceToolsService {
         error: { code: 'DELETE_FAILED', message: e.message },
       };
     }
+  }
+
+  /**
+   * Edit an existing file via LLM-generated edit-diff (not full rewrite).
+   *
+   * Flow: READ full file → LLM outputs [{oldText,newText}] edits → framework
+   * applies edits deterministically → verifies all oldText matched + content
+   * changed + requested data present. Token-efficient (only changed lines
+   * leave the model) and safe (untouched lines never pass through LLM output).
+   */
+  async editWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+    instructions: string;
+  }): Promise<ToolResult> {
+    const { workspaceId, filename, instructions } = params;
+    const startTime = Date.now();
+
+    if (!this.aiService) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'AI service tidak tersedia untuk edit-diff.',
+        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: 0 },
+        error: { code: 'AI_UNAVAILABLE', message: 'AiService not injected' },
+      };
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace belum terhubung ke folder.',
+        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: 0 },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
+      };
+    }
+
+    // Resolve actual file path (fuzzy match by name, like delete/rename).
+    let targetPath = path.join(workspace.rootPath, filename);
+    const fsPromises = await import('fs/promises');
+    let fileExists = false;
+    try {
+      await fsPromises.access(targetPath);
+      fileExists = true;
+    } catch {
+      fileExists = false;
+    }
+    if (!fileExists) {
+      try {
+        const files = await this.fileService.findByWorkspaceId(workspaceId);
+        const match = files.find(
+          (f) =>
+            f.name.toLowerCase() === filename.toLowerCase() ||
+            f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
+        );
+        if (match) targetPath = match.path;
+      } catch {
+        /* fall through to read attempt */
+      }
+    }
+
+    try {
+      const original = await fsPromises.readFile(targetPath, 'utf-8');
+
+      const edits = await this.generateEdits(original, instructions);
+
+      if (!Array.isArray(edits) || edits.length === 0) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'LLM tidak menghasilkan edit yang valid.',
+          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'EMPTY_EDITS', message: 'No valid edits returned' },
+        };
+      }
+
+      let updated = original;
+      const applied: string[] = [];
+      for (const edit of edits) {
+        const oldText = String(edit?.oldText ?? '');
+        const newText = String(edit?.newText ?? '');
+        if (!oldText || !updated.includes(oldText)) {
+          return {
+            status: 'error',
+            data: { failedOldText: oldText },
+            preview: `Edit gagal: teks target tidak ditemukan persis di file.`,
+            metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'OLD_TEXT_NOT_FOUND', message: `oldText not found: "${oldText.slice(0, 80)}"` },
+          };
+        }
+        updated = updated.replace(oldText, newText);
+        applied.push(oldText.slice(0, 60));
+      }
+
+      // Verify: content must have changed.
+      if (updated === original) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'File tidak berubah setelah edit.',
+          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'NO_CHANGE', message: 'Edits applied but content identical' },
+        };
+      }
+
+      await this.storageService.writeFile(targetPath, updated);
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename, editsApplied: applied.length },
+        preview: `File "${filename}" berhasil diperbarui (${applied.length} perubahan).`,
+        metadata: {
+          toolName: 'edit_workspace_file',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+          filename,
+          editsApplied: applied.length,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Gagal mengedit file "${filename}": ${e.message}`,
+        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'EDIT_FAILED', message: e.message },
+      };
+    }
+  }
+
+  /**
+   * Ask the LLM to produce a list of precise {oldText, newText} edits.
+   * The model reads the full file but only returns changed lines — the
+   * framework applies them deterministically (token-efficient + safe).
+   */
+  private async generateEdits(
+    original: string,
+    instructions: string,
+  ): Promise<Array<{ oldText: string; newText: string }>> {
+    if (!this.aiService) return [];
+
+    const response = await this.aiService.chat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are a precise document editor. You receive a full document and an update request.\n' +
+            'Your job: output ONLY a JSON array of edits: [{ "oldText": "...", "newText": "..." }].\n\n' +
+            'RULES:\n' +
+            '- oldText must match EXACTLY (character-for-character) a portion of the original document.\n' +
+            '- Only include lines/sections that actually change. Do NOT rewrite unchanged content.\n' +
+            '- If the document has a period/date and the update targets a new period, apply a rollover:\n' +
+            '  update the date/period header, reset running-period data, keep cumulative balances.\n' +
+            '- Compute any totals that must change.\n' +
+            '- Keep formatting identical (stars, dashes, spacing) except where the edit changes it.\n' +
+            '- Respond with ONLY valid JSON, no code fences, no prose.',
+        },
+        {
+          role: 'user',
+          content: `ORIGINAL DOCUMENT:\n---\n${original}\n---\n\nUPDATE REQUEST: ${instructions}\n\nReturn the JSON edit array.`,
+        },
+      ],
+      [],
+    );
+
+    const text = response.content || '';
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    return Array.isArray(parsed) ? parsed : [];
   }
 }
