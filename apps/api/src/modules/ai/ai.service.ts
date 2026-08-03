@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
+import { repairToolCalls } from './tool-call-repair.js';
 import {
   ProviderService,
   ProviderConfig,
@@ -332,36 +333,22 @@ export class AiService {
 
     let rawToolCalls = choice.message?.tool_calls || [];
 
-    // OpenClaw Text Tool Call Extractor: If model outputted tool call in content text instead of native tool_calls array
+    // Tool Call Repair (OpenClaw tool-call-repair approach): cheap/free models
+    // often leak tool calls as TEXT in various formats instead of the native
+    // tool_calls array. Normalize them so a leaked call still executes.
     if (rawToolCalls.length === 0 && content) {
-      const jsonBlockMatch =
-        content.match(/```(?:json)?\s*(\{\s*"name"[\s\S]*?\})\s*```/i) ||
-        content.match(/(\{\s*"name"\s*:\s*"[^"]+"[\s\S]*?\})/i) ||
-        content.match(/(<tool_call>[\s\S]*?<\/tool_call>)/i);
-
-      if (jsonBlockMatch && jsonBlockMatch[1]) {
-        try {
-          const rawString = jsonBlockMatch[1].replace(/<\/?tool_call>/gi, '').trim();
-          const parsed = JSON.parse(rawString);
-          if (parsed.name || parsed.function) {
-            const name = parsed.name || (typeof parsed.function === 'string' ? parsed.function : parsed.function?.name);
-            const args = parsed.arguments || parsed.parameters || parsed.args || {};
-            if (name) {
-              rawToolCalls = [
-                {
-                  id: `extracted-tool-${Date.now()}`,
-                  type: 'function',
-                  function: {
-                    name,
-                    arguments: typeof args === 'string' ? args : JSON.stringify(args),
-                  },
-                },
-              ];
-            }
-          }
-        } catch {
-          // ignore parse failure
-        }
+      rawToolCalls = repairToolCalls(content);
+      if (rawToolCalls.length > 0) {
+        this.logger.log(
+          `[tool-call-repair] repaired ${rawToolCalls.length} leaked tool call(s) from text`,
+        );
+        // Keep the reasoning text but strip the raw tool call JSON from content
+        // so the final answer isn't polluted with a serialized call.
+        content = content
+          .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
+          .replace(/<function_call>[\s\S]*?<\/function_call>/gi, '')
+          .replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '')
+          .trim();
       }
     }
 
