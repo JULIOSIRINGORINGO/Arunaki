@@ -727,8 +727,11 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'edit_workspace_file',
         displayName: 'Edit File Workspace',
         description:
-          'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. Use for updating documents (reports, recaps, logs) without rewriting everything.',
-        tags: ['edit', 'update', 'workspace', 'file', 'diff'],
+          'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. ' +
+          'USE THIS when a document already exists and the user wants a NEW-PERIOD update or "make the report for today" — e.g. a dated recap/report/log ' +
+          'that must roll over (update its date/period, replace the running-period data, keep cumulative balances) instead of appending or creating a new file. ' +
+          'Do NOT use write_workspace_file or generate_export when the target template file already exists.',
+        tags: ['edit', 'update', 'workspace', 'file', 'diff', 'rollover'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,

@@ -106,7 +106,28 @@ For brand-new files (create), visible open is optional — just create it.
 For existing files (edit/update), visible open is REQUIRED before editing.
 ```
 
-### 7.3 Data Analysis
+### 7.3 Temporal Documents & Rollover (GENERAL RULE)
+
+**When the user says "make/create the report for today/this month" (or any new period) and a matching template/document already exists in the workspace, DO NOT create a new file — UPDATE the existing one via rollover.**
+
+```
+1. list_workspace_files → find the existing template/report file
+2. read_workspace_file → read its full content
+3. Determine intent:
+   - NEW PERIOD (e.g. "today", a date differing from the file header):
+     → ROLL OVER: update the date/period header, REPLACE the running-period
+       data with the new data, KEEP cumulative balances (outstanding,
+       deposits, carried totals), recompute totals
+   - ADD/APPEND (user explicitly says "tambahkan"/"add"):
+     → keep everything, append the new entries
+4. edit_workspace_file → apply the changes (edit-diff)
+5. read_workspace_file → verify the file updated correctly
+6. Deliver without preamble
+```
+
+Prefer `edit_workspace_file` over `write_workspace_file`/`generate_export` whenever the target template file already exists. Only use `write_workspace_file`/`generate_export` for genuinely new files.
+
+### 7.4 Data Analysis
 
 ```
 Example — 6-Month Sales Trend:

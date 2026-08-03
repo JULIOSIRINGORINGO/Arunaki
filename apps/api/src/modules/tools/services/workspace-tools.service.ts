@@ -772,7 +772,23 @@ export class WorkspaceToolsService {
       for (const edit of edits) {
         const oldText = String(edit?.oldText ?? '');
         const newText = String(edit?.newText ?? '');
-        if (!oldText || !updated.includes(oldText)) {
+        if (!oldText) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Edit gagal: oldText kosong.`,
+            metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'OLD_TEXT_NOT_FOUND', message: 'oldText is empty' },
+          };
+        }
+        // CRLF tolerance: LLM returns LF (\n) but Windows files use CRLF (\r\n).
+        // Try exact match first, then CRLF-normalized.
+        const matches = updated.includes(oldText)
+          ? [oldText]
+          : updated.includes(oldText.replace(/\r?\n/g, '\r\n'))
+            ? [oldText.replace(/\r?\n/g, '\r\n')]
+            : [];
+        if (matches.length === 0) {
           return {
             status: 'error',
             data: { failedOldText: oldText },
@@ -781,7 +797,11 @@ export class WorkspaceToolsService {
             error: { code: 'OLD_TEXT_NOT_FOUND', message: `oldText not found: "${oldText.slice(0, 80)}"` },
           };
         }
-        updated = updated.replace(oldText, newText);
+        const matched = matches[0];
+        // Preserve the file's newline style in the replacement too.
+        const usesCRLF = updated.includes('\r\n');
+        const newTextNormalized = usesCRLF ? newText.replace(/\r?\n/g, '\r\n') : newText.replace(/\r\n/g, '\n');
+        updated = updated.replace(matched, newTextNormalized);
         applied.push(oldText.slice(0, 60));
       }
 
@@ -842,9 +862,15 @@ export class WorkspaceToolsService {
             'RULES:\n' +
             '- oldText must match EXACTLY (character-for-character) a portion of the original document.\n' +
             '- Only include lines/sections that actually change. Do NOT rewrite unchanged content.\n' +
-            '- If the document has a period/date and the update targets a new period, apply a rollover:\n' +
-            '  update the date/period header, reset running-period data, keep cumulative balances.\n' +
-            '- Compute any totals that must change.\n' +
+            '- DETERMINE the intent of the update request:\n' +
+            '  * If the user wants a NEW PERIOD (e.g. "today", "this month", a date that differs from the document header) — apply a ROLLOVER:\n' +
+            '    - update the period/date header to the new period\n' +
+            '    - REPLACE the running-period data (daily/monthly transactions, entries) with the new data from the request\n' +
+            '    - KEEP cumulative/balance data (outstanding, deposits, carried totals) that should persist across periods\n' +
+            '    - recompute totals that changed\n' +
+            '    - NEVER leave old running-period data mixed with the new period\n' +
+            '  * If the user explicitly asks to ADD/APPEND data (e.g. "tambahkan", "add") — keep everything and append the new entries.\n' +
+            '  * If the user asks to FIX/REPLACE specific content — only change that content.\n' +
             '- Keep formatting identical (stars, dashes, spacing) except where the edit changes it.\n' +
             '- Respond with ONLY valid JSON, no code fences, no prose.',
         },
