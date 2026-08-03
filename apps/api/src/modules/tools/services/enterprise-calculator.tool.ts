@@ -13,10 +13,13 @@ export class EnterpriseCalculatorTool {
     const details: string[] = [];
 
     for (const item of items) {
-      const itemTotal = item.qty * item.price;
+      const qty = Number(item.qty) || 0;
+      const price = Number(item.price) || 0;
+      const name = String(item.name ?? 'Item');
+      const itemTotal = qty * price;
       subtotal += itemTotal;
       details.push(
-        `${item.name}: ${item.qty} x Rp ${item.price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}`,
+        `${name}: ${qty} x Rp ${price.toLocaleString('id-ID')} = Rp ${itemTotal.toLocaleString('id-ID')}`,
       );
     }
 
@@ -43,7 +46,7 @@ export class EnterpriseCalculatorTool {
       data: {
         items: items.map((item, i) => ({
           ...item,
-          total: item.qty * item.price,
+          total: (Number(item.qty) || 0) * (Number(item.price) || 0),
           detail: details[i],
         })),
         subtotal,
