@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AiService, ChatMessage } from '../ai/ai.service.js';
+import { AiService, ChatMessage, ToolDefinition } from '../ai/ai.service.js';
 import {
   ContextManager,
   StreamingContextScrubber,
@@ -515,6 +515,74 @@ export class WorkspaceRunnerService {
     }
   }
 
+  /**
+   * Tool Router — kirim subset tools yang relevan, bukan seluruh registry.
+   * Framework kurangi beban LLM: payload kecil + agent tidak bingung memilih
+   * tool. LLM tetap bebas memilih tool dari subset yang diberikan.
+   *
+   * Selalu sertakan core workspace file ops; tambahkan berdasarkan kata kunci
+   * goal. Tidak menentukan TINDAKAN — hanya menyempitkan kandidat tool.
+   */
+  private selectToolsForGoal(
+    goal: string,
+    allTools: ToolDefinition[],
+  ): ToolDefinition[] {
+    const g = goal.toLowerCase();
+    const byName = (n: string) => allTools.find((t) => t.function.name === n);
+    const wanted = new Set<string>();
+    const add = (names: string[]) => names.forEach((n) => wanted.add(n));
+
+    // Core workspace file operations — selalu tersedia.
+    add([
+      'list_workspace_files',
+      'search_workspace',
+      'read_workspace_file',
+      'write_workspace_file',
+      'edit_workspace_file',
+      'rename_workspace_file',
+      'delete_workspace_file',
+      'calculate',
+    ]);
+
+    // Kata kunci goal → tambah tool yang relevan.
+    if (/(?:query|select|cari data|database|sql)/.test(g)) add(['data_query', 'doc_search']);
+    if (/(?:ringkas|analisis|analisa|rekap|reconcile|banding|rekonsiliasi|pivot)/.test(g)) {
+      add(['doc_search', 'doc_reconcile', 'doc_cross_reference', 'generate_export']);
+    }
+    if (/(?:export|buat.*(?:pdf|excel|csv|word|ppt|dokumen|file|laporan)|generate_export)/.test(g)) {
+      add(['generate_export', 'draft_communication']);
+    }
+    if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
+    if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
+    if (/(?:buka|desktop|word|excel|powerpoint|ppt|office|aplikasi|mengetik)/.test(g)) {
+      add([
+        'desktop_open_file',
+        'desktop_open_excel',
+        'desktop_open_word',
+        'desktop_open_ppt',
+        'desktop_excel_write_cell',
+        'desktop_word_type',
+        'desktop_send_keys',
+        'desktop_screenshot',
+      ]);
+    }
+    if (/(?:browser|website|web|google|internet|halaman)/.test(g)) {
+      add(['browser_navigate', 'browser_get_content', 'browser_type', 'browser_click', 'browser_screenshot']);
+    }
+    if (/(?:ingat|memory|recall|memori|pengalaman)/.test(g)) {
+      add(['list_memories', 'search_memories', 'save_memory']);
+    }
+    if (/(?:skill|workflow|prosedur|template kerja)/.test(g)) {
+      add(['list_skills', 'view_skill', 'search_skills']);
+    }
+    if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
+
+    // URL/web search: hanya jika user eksplisit minta cari internet.
+    if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
+
+    return allTools.filter((t) => wanted.has(t.function.name));
+  }
+
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
     try {
       await this.syncWorkspacePhysicalFiles(workspaceId);
@@ -707,7 +775,11 @@ export class WorkspaceRunnerService {
         'workspace',
         workspaceContext,
       );
-      const tools = this.toolRegistryService.getToolDefinitions();
+      // Tool Router: kirim hanya tools yang relevan, bukan seluruh registry.
+      // Framework kurangi beban LLM (payload kecil, agent tidak bingung pilih
+      // tool salah). LLM tetap bebas memilih tool dari subset yang relevan.
+      const allTools = this.toolRegistryService.getToolDefinitions();
+      const tools = this.selectToolsForGoal(userGoal, allTools);
 
       const history = historyMessages.map((message) => ({
         role: message.role,
