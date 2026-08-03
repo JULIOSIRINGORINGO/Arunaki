@@ -361,6 +361,8 @@ export class WorkspaceRunnerService {
 
   /**
    * Refresh context mid-run every N rounds.
+   * NOTE: use role 'user', not 'system' — OpenAI/DeepSeek reject a system
+   * message inserted between assistant(tool_calls) and tool result rounds.
    */
   private async prepareNextTurn(
     workspaceId: string,
@@ -372,7 +374,7 @@ export class WorkspaceRunnerService {
       try {
         const freshContext = await this.buildWorkspaceContext(workspaceId);
         messages.push({
-          role: 'system',
+          role: 'user',
           content: `[Context Refreshed - Round ${round}]\n${freshContext}`,
         });
       } catch (err: any) {

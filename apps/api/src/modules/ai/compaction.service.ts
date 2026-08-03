@@ -76,7 +76,7 @@ export class CompactionService {
       ).content;
 
       const summaryMessage: ChatMessage = {
-        role: 'system',
+        role: 'user',
         content: `[COMPACTED HISTORY]\n${summary}\n[END COMPACTED HISTORY]`,
       };
 
@@ -117,7 +117,7 @@ export class CompactionService {
 - Catatan: Histori lama telah diringkas untuk menghemat memori konteks AI.`;
 
     const summaryMessage: ChatMessage = {
-      role: 'system',
+      role: 'user',
       content: summaryText,
     };
 
