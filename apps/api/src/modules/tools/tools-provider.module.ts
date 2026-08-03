@@ -1,4 +1,5 @@
 import { Module, OnModuleInit, Inject, Optional, forwardRef } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
@@ -25,10 +26,14 @@ import { MemoryTool } from './services/memory.tool.js';
 import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
-import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { CronService } from '../cron/cron.service.js';
 import { CronModule } from '../cron/cron.module.js';
 import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
+import { ToolSearchTool } from './services/tool-search.tool.js';
+import { ToolDescribeTool } from './services/tool-describe.tool.js';
+import { ToolCallTool } from './services/tool-call.tool.js';
+import { ToolSearchCodeTool } from './services/tool-search-code.tool.js';
+import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 
 import { AiModule } from '../ai/ai.module.js';
 
@@ -61,8 +66,11 @@ import { AiModule } from '../ai/ai.module.js';
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
-    SubAgentRunnerService,
     ProgrammaticVerifierService,
+    ToolSearchTool,
+    ToolDescribeTool,
+    ToolCallTool,
+    ToolSearchCodeTool,
   ],
   exports: [
     ToolRegistryService,
@@ -83,38 +91,50 @@ import { AiModule } from '../ai/ai.module.js';
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
+    ToolSearchTool,
+    ToolDescribeTool,
+    ToolCallTool,
+    ToolSearchCodeTool,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
   constructor(
-    private readonly registry: ToolRegistryService,
-    private readonly textExtractorTool: TextExtractorTool,
-    private readonly calculatorTool: EnterpriseCalculatorTool,
-    private readonly documentGeneratorTool: DocumentGeneratorTool,
-    private readonly documentReaderTool: DocumentReaderTool,
-    private readonly dataQueryTool: DataQueryTool,
-    private readonly imageOcrTool: ImageOcrTool,
-    private readonly docSearchTool: DocSearchTool,
-    private readonly knowledgeBuilderTool: KnowledgeBuilderTool,
-    private readonly webSearchTool: WebSearchTool,
-    private readonly visionAiTool: VisionAiTool,
-    private readonly unitConverterTool: UnitConverterTool,
-    private readonly draftCommunicationTool: DraftCommunicationTool,
-    private readonly workspaceToolsService: WorkspaceToolsService,
-    private readonly skillsTool: SkillsTool,
-    private readonly memoryTool: MemoryTool,
-    private readonly browserInteraction: BrowserInteractionService,
-    private readonly desktopBridge: DesktopBridgeService,
-    private readonly docReconciliationService: DocumentReconciliationService,
-    private readonly subAgentRunner: SubAgentRunnerService,
+    @Inject(forwardRef(() => ToolRegistryService)) private readonly registry: ToolRegistryService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
     @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
   ) {}
+
+  private get textExtractorTool() { return this.moduleRef.get(TextExtractorTool, { strict: false }); }
+  private get calculatorTool() { return this.moduleRef.get(EnterpriseCalculatorTool, { strict: false }); }
+  private get documentGeneratorTool() { return this.moduleRef.get(DocumentGeneratorTool, { strict: false }); }
+  private get documentReaderTool() { return this.moduleRef.get(DocumentReaderTool, { strict: false }); }
+  private get dataQueryTool() { return this.moduleRef.get(DataQueryTool, { strict: false }); }
+  private get imageOcrTool() { return this.moduleRef.get(ImageOcrTool, { strict: false }); }
+  private get docSearchTool() { return this.moduleRef.get(DocSearchTool, { strict: false }); }
+  private get knowledgeBuilderTool() { return this.moduleRef.get(KnowledgeBuilderTool, { strict: false }); }
+  private get webSearchTool() { return this.moduleRef.get(WebSearchTool, { strict: false }); }
+  private get visionAiTool() { return this.moduleRef.get(VisionAiTool, { strict: false }); }
+  private get unitConverterTool() { return this.moduleRef.get(UnitConverterTool, { strict: false }); }
+  private get draftCommunicationTool() { return this.moduleRef.get(DraftCommunicationTool, { strict: false }); }
+  private get workspaceToolsService() { return this.moduleRef.get(WorkspaceToolsService, { strict: false }); }
+  private get skillsTool() { return this.moduleRef.get(SkillsTool, { strict: false }); }
+  private get memoryTool() { return this.moduleRef.get(MemoryTool, { strict: false }); }
+  private get subAgentRunner() { return this.moduleRef.get(SubAgentRunnerService, { strict: false }); }
+  private get browserInteraction() { return this.moduleRef.get(BrowserInteractionService, { strict: false }); }
+  private get desktopBridge() { return this.moduleRef.get(DesktopBridgeService, { strict: false }); }
+  private get docReconciliationService() { return this.moduleRef.get(DocumentReconciliationService, { strict: false }); }
 
   onModuleInit() {
     this.registerTools();
   }
 
   private registerTools() {
+    // ─── System / Catalog ─────────────────────────────────────────
+    this.registry.register(this.moduleRef.get(ToolSearchTool, { strict: false }));
+    this.registry.register(this.moduleRef.get(ToolDescribeTool, { strict: false }));
+    this.registry.register(this.moduleRef.get(ToolCallTool, { strict: false }));
+    this.registry.register(this.moduleRef.get(ToolSearchCodeTool, { strict: false }));
+
     // ─── Data & Documents ───────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({
@@ -1987,11 +2007,11 @@ export class ToolsProviderModule implements OnModuleInit {
 
             const results = await this.subAgentRunner.spawnParallel(tasks);
 
-            const successCount = results.filter((r) => r.status === 'success').length;
-            const totalDurationMs = Math.max(...results.map((r) => r.metadata.durationMs), 0);
+            const successCount = results.filter((r: any) => r.status === 'success').length;
+            const totalDurationMs = Math.max(...results.map((r: any) => r.metadata.durationMs), 0);
 
             const summary = results
-              .map((r) => {
+              .map((r: any) => {
                 const icon = r.status === 'success' ? '✅' : '❌';
                 const toolInfo = r.toolOutputs.length > 0
                   ? ` (${r.toolOutputs.length} tools digunakan)`
@@ -2003,7 +2023,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: {
-                results: results.map((r) => ({
+                results: results.map((r: any) => ({
                   taskId: r.taskId,
                   taskName: r.taskName,
                   status: r.status,
