@@ -1576,93 +1576,122 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'desktop_excel_write_cell',
-        displayName: 'Tulis Cell Excel',
+        name: 'desktop_excel_edit',
+        displayName: 'Edit File Excel (Native)',
         description:
-          'Writes a value or formula to a specific Excel cell (e.g. "A1", "B5") ' +
-          'in the desktop Excel application that is open visibly.',
-        tags: ['desktop', 'excel', 'write', 'cell', 'interactive'],
+          'Edits an Excel file natively via the desktop Excel application (COM). ' +
+          'Supports batch actions: write cell values, insert/delete rows, insert/delete columns, format cells, and save. ' +
+          'The system automatically creates a backup before editing. ' +
+          'Send one or more actions in a single call for efficiency. ' +
+          'Excel handles formula shifts and macros automatically.',
+        tags: ['desktop', 'excel', 'edit', 'write', 'insert', 'delete', 'format', 'native', 'com'],
         handler: async (args) => {
+          const startTime = Date.now();
           try {
-            const r = await this.desktopBridge.excelWriteCell(args.path, args.cell, args.value);
+            // Auto-resolve workspace path if filename provided without full path
+            let filePath = args.path;
+            if (filePath && !filePath.includes(':') && !filePath.startsWith('/')) {
+              // Relative path — resolve via workspace by reading a workspace file to get its full path
+              const readResult = await this.workspaceToolsService.readWorkspaceFile(
+                filePath,
+                args.workspaceId || '',
+              );
+              // Extract full path from readResult if available
+              if (readResult.data?.filePath) {
+                filePath = readResult.data.filePath;
+              } else if (readResult.data?.path) {
+                filePath = readResult.data.path;
+              }
+            }
+
+            // Rolling backup before edit (failsafe: if backup fails, abort)
+            if (filePath) {
+              const path = await import('path');
+              const dir = path.default.dirname(filePath);
+              const name = path.default.basename(filePath);
+              await this.workspaceToolsService.createRollingBackup(dir, name);
+            }
+
+            // Execute batch actions via COM
+            const r = await this.desktopBridge.excelEdit(filePath, args.actions || []);
+
+            const actionSummary = (args.actions || [])
+              .map((a: any) => {
+                switch (a.action) {
+                  case 'write_cell': return `Tulis ${a.cell}="${a.value}"`;
+                  case 'insert_row': return `Sisipkan baris ${a.row}`;
+                  case 'delete_row': return `Hapus baris ${a.row}`;
+                  case 'insert_column': return `Sisipkan kolom ${a.column}`;
+                  case 'delete_column': return `Hapus kolom ${a.column}`;
+                  case 'set_format': return `Format ${a.range}`;
+                  case 'save': return 'Simpan';
+                  default: return a.action;
+                }
+              })
+              .join(', ');
+
             return {
               status: 'success' as const,
-              data: { cell: args.cell, value: args.value },
-              preview: `Menulis "${args.value}" ke cell ${args.cell} di Excel`,
-              metadata: { toolName: 'desktop_excel_write_cell', displayName: 'Tulis Cell Excel', executionTime: 0 },
+              data: { path: filePath, results: r.results, actionsExecuted: r.actionsExecuted },
+              preview: `Excel berhasil diedit (${(args.actions || []).length} aksi: ${actionSummary}). Backup otomatis tersimpan.`,
+              metadata: {
+                toolName: 'desktop_excel_edit',
+                displayName: 'Edit File Excel (Native)',
+                executionTime: Date.now() - startTime,
+              },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_excel_write_cell', displayName: 'Tulis Cell Excel', executionTime: 0 },
-              error: { code: 'DESKTOP_ERROR', message: err.message },
+              metadata: {
+                toolName: 'desktop_excel_edit',
+                displayName: 'Edit File Excel (Native)',
+                executionTime: Date.now() - startTime,
+              },
+              error: { code: 'EXCEL_EDIT_ERROR', message: err.message },
             };
           }
         },
         parameters: {
           type: 'object',
           properties: {
-            path: { type: 'string', description: 'Excel file path (optional if already open)' },
-            cell: { type: 'string', description: 'Cell address (e.g. "A1", "B5")' },
-            value: { type: 'string', description: 'Value or formula (e.g. "100", "=SUM(A1:A5)")' },
+            path: { type: 'string', description: 'Excel file path or filename (e.g. "testing.xlsx" or full path)' },
+            workspaceId: { type: 'string', description: 'Workspace ID (used to resolve relative paths)' },
+            actions: {
+              type: 'array',
+              description: 'List of edit actions to execute in order',
+              items: {
+                type: 'object',
+                properties: {
+                  action: {
+                    type: 'string',
+                    enum: ['write_cell', 'insert_row', 'delete_row', 'insert_column', 'delete_column', 'set_format', 'save'],
+                    description: 'Action type',
+                  },
+                  cell: { type: 'string', description: 'Cell address for write_cell (e.g. "A1", "B5")' },
+                  value: { type: 'string', description: 'Value or formula for write_cell (e.g. "500000", "=SUM(A1:A5)")' },
+                  row: { type: 'number', description: 'Row number for insert_row/delete_row (e.g. 5)' },
+                  column: { type: 'string', description: 'Column letter for insert_column/delete_column (e.g. "C")' },
+                  range: { type: 'string', description: 'Cell range for set_format (e.g. "A1:D1")' },
+                  bold: { type: 'boolean', description: 'Bold formatting' },
+                  italic: { type: 'boolean', description: 'Italic formatting' },
+                  fontSize: { type: 'number', description: 'Font size' },
+                  bgColor: { type: 'number', description: 'Background color index (6=yellow, 4=green)' },
+                  alignment: { type: 'string', enum: ['left', 'center', 'right'], description: 'Text alignment' },
+                },
+                required: ['action'],
+              },
+            },
           },
-          required: ['cell', 'value'],
+          required: ['actions'],
         },
-        timeoutMs: 15000,
+        estimatedLatency: 'medium',
+        timeoutMs: 30000,
       }),
     );
 
-    this.registry.register(
-      ToolAdapter.from({
-        name: 'desktop_excel_set_format',
-        displayName: 'Format Cell Excel',
-        description:
-          'Formats Excel cells (bold, background color, alignment, font size) ' +
-          'in the desktop Excel application that is open visibly.',
-        tags: ['desktop', 'excel', 'format', 'style', 'interactive'],
-        handler: async (args) => {
-          try {
-            await this.desktopBridge.excelSetFormat(args.path, args.range, {
-              bold: args.bold,
-              italic: args.italic,
-              fontSize: args.fontSize,
-              bgColor: args.bgColor,
-              alignment: args.alignment,
-            });
-            return {
-              status: 'success' as const,
-              data: { range: args.range },
-              preview: `Memformat range ${args.range} di Excel`,
-              metadata: { toolName: 'desktop_excel_set_format', displayName: 'Format Cell Excel', executionTime: 0 },
-            };
-          } catch (err) {
-            return {
-              status: 'error' as const,
-              data: {},
-              preview: err.message,
-              metadata: { toolName: 'desktop_excel_set_format', displayName: 'Format Cell Excel', executionTime: 0 },
-              error: { code: 'DESKTOP_ERROR', message: err.message },
-            };
-          }
-        },
-        parameters: {
-          type: 'object',
-          properties: {
-            path: { type: 'string', description: 'Excel file path (optional if already open)' },
-            range: { type: 'string', description: 'Cell range (e.g. "A1", "A1:D1")' },
-            bold: { type: 'boolean', description: 'Bold' },
-            italic: { type: 'boolean', description: 'Italic' },
-            fontSize: { type: 'number', description: 'Font size' },
-            bgColor: { type: 'number', description: 'Background color index (e.g. 6 for yellow, 4 for green)' },
-            alignment: { type: 'string', enum: ['left', 'center', 'right'], description: 'Text alignment' },
-          },
-          required: ['range'],
-        },
-        timeoutMs: 15000,
-      }),
-    );
 
     this.registry.register(
       ToolAdapter.from({

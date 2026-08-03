@@ -501,6 +501,85 @@ app.whenReady().then(() => {
             }
             break;
           }
+          case 'excelEdit': {
+            try {
+              const winax = require('winax');
+              const excel = new winax.Object('Excel.Application');
+              excel.Visible = true;
+              if (targetPath) {
+                let found = false;
+                for (let i = 1; i <= excel.Workbooks.Count; i++) {
+                  try {
+                    if (excel.Workbooks.Item(i).FullName.toLowerCase() === targetPath.toLowerCase()) {
+                      excel.Workbooks.Item(i).Activate();
+                      found = true;
+                      break;
+                    }
+                  } catch { /* ignore */ }
+                }
+                if (!found) {
+                  excel.Workbooks.Open(targetPath);
+                }
+              } else if (excel.Workbooks.Count === 0) {
+                excel.Workbooks.Add();
+              }
+
+              const actions = msg.args.actions || [];
+              const results = [];
+              for (const act of actions) {
+                try {
+                  switch (act.action) {
+                    case 'write_cell':
+                      excel.ActiveSheet.Range(act.cell).Value = act.value;
+                      results.push({ action: 'write_cell', cell: act.cell, success: true });
+                      break;
+                    case 'insert_row':
+                      excel.ActiveSheet.Rows(act.row).Insert();
+                      results.push({ action: 'insert_row', row: act.row, success: true });
+                      break;
+                    case 'delete_row':
+                      excel.ActiveSheet.Rows(act.row).Delete();
+                      results.push({ action: 'delete_row', row: act.row, success: true });
+                      break;
+                    case 'insert_column':
+                      excel.ActiveSheet.Columns(act.column).Insert();
+                      results.push({ action: 'insert_column', column: act.column, success: true });
+                      break;
+                    case 'delete_column':
+                      excel.ActiveSheet.Columns(act.column).Delete();
+                      results.push({ action: 'delete_column', column: act.column, success: true });
+                      break;
+                    case 'set_format': {
+                      const rng = excel.ActiveSheet.Range(act.range || 'A1');
+                      if (act.bold !== undefined) rng.Font.Bold = act.bold;
+                      if (act.italic !== undefined) rng.Font.Italic = act.italic;
+                      if (act.fontSize) rng.Font.Size = act.fontSize;
+                      if (act.bgColor) rng.Interior.ColorIndex = act.bgColor;
+                      if (act.alignment) {
+                        if (act.alignment === 'center') rng.HorizontalAlignment = -4108;
+                        else if (act.alignment === 'right') rng.HorizontalAlignment = -4152;
+                        else if (act.alignment === 'left') rng.HorizontalAlignment = -4131;
+                      }
+                      results.push({ action: 'set_format', range: act.range, success: true });
+                      break;
+                    }
+                    case 'save':
+                      excel.ActiveWorkbook.Save();
+                      results.push({ action: 'save', success: true });
+                      break;
+                    default:
+                      results.push({ action: act.action, success: false, error: 'Unknown action' });
+                  }
+                } catch (actErr) {
+                  results.push({ action: act.action, success: false, error: actErr.message });
+                }
+              }
+              result = { success: true, actionsExecuted: results.length, results };
+            } catch (err) {
+              error = `Gagal mengedit Excel via COM: ${err.message}`;
+            }
+            break;
+          }
           case 'wordType': {
             try {
               const winax = require('winax');
