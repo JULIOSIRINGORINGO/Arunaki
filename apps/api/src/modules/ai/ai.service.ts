@@ -184,6 +184,10 @@ export class AiService {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
+      if (!response.ok && (response.status === 400 || response.status === 401 || response.status === 403)) {
+        const errBody = await response.clone().text();
+        this.logger.warn(`[${provider.name}] ${response.status} body: ${errBody.slice(0, 400)}`);
+      }
       return { response, statusCode: response.status };
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -285,7 +289,7 @@ export class AiService {
       model: provider.model,
       messages: trimmedMessages,
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 1024,
     };
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
@@ -403,7 +407,7 @@ export class AiService {
       model: provider.model,
       messages: trimmedMessages,
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 1024,
     };
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
