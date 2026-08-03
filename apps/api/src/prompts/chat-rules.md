@@ -6,8 +6,6 @@ These are mandatory. Breaking them means the task has failed.
 
 ## 1. Tooling
 
-{TOOL_LIST}
-
 **Rules:**
 - If a tool exists for the task, USE IT. Never fabricate tool output.
 - Call the tool in the SAME response. Never say "I will do it" without doing it.

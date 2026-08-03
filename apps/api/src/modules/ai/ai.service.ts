@@ -17,6 +17,11 @@ import {
 import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
 import { modelSupportsTools } from './model-capability.js';
+import {
+  cacheStablePromptPrefix,
+  hashStablePromptInput,
+  SYSTEM_PROMPT_CACHE_BOUNDARY,
+} from './system-prompt-cache.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 
 export interface ToolCall {
@@ -515,25 +520,33 @@ export class AiService {
         'workspace-context',
       );
 
-      // Inject dynamic tool list into rules
-      rules = rules.replace('{TOOL_LIST}', toolList);
+      // OpenClaw cache-boundary pattern: STABLE prefix (byte-identical across
+      // requests) + volatile suffix (per-turn). Provider serves cached_tokens
+      // on the prefix. Tool list, workspace context, memory and temporal are
+      // volatile and live BELOW the boundary so the prefix never changes.
+      const stablePrefix = cacheStablePromptPrefix(
+        hashStablePromptInput({ identity, rules, memoryContext, verification, modelAdditions }),
+        () => `${identity}
 
-       const prompt = `${identity}
+${rules}
 
- ${rules}
+${memoryContext}
 
- ${memoryContext}
+${verification}
 
- ${verification}
+${modelAdditions}`,
+      );
 
- ${modelAdditions}
+      const volatileSuffix = `${this.buildToolListSection(toolList)}
 
- ---
- ${safeWorkspaceContext}
+---
+${safeWorkspaceContext}
 
- ${this.buildWorkspaceMemorySection()}
+${this.buildWorkspaceMemorySection()}
 
- ${this.buildTemporalContextSection()}`;
+${this.buildTemporalContextSection()}`;
+
+      const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;
 
       this.checkPromptBudget(prompt, 'workspace');
       return prompt;
@@ -548,21 +561,27 @@ export class AiService {
     const safeKnowledgeContext = knowledgeContext
       ? this.limitInjection(knowledgeContext, 'knowledge-base')
       : '(No active Knowledge Base)';
-    rules = rules.replace('{TOOL_LIST}', toolList);
 
-    const prompt = `${identity}
+    const stablePrefix = cacheStablePromptPrefix(
+      hashStablePromptInput({ identity, rules, knowledgeBuilder, modelAdditions }),
+      () => `${identity}
 
 ${rules}
 
 ${knowledgeBuilder}
 
-${modelAdditions}
+${modelAdditions}`,
+    );
+
+    const volatileSuffix = `${this.buildToolListSection(toolList)}
 
 ---
 ${posturePrompt}
 
 ## Active Knowledge Base
 ${safeKnowledgeContext}`;
+
+    const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;
 
     this.checkPromptBudget(prompt, 'chat');
     return prompt;
@@ -592,6 +611,13 @@ ${safeKnowledgeContext}`;
    * Build a dynamic tool list summary from the tool registry.
    * Categories are inferred from tool tags, not hardcoded names.
    */
+  private buildToolListSection(toolList: string): string {
+    return `## Tools Available
+
+${toolList || 'No tools available.'}
+`;
+  }
+
   private buildToolListSummary(): string {
     const caps = this.toolRegistryService?.getToolCapabilities();
     if (!caps || caps.length === 0) {
