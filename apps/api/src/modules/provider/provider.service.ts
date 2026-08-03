@@ -131,7 +131,9 @@ export class ProviderService extends BaseService<Provider> {
   classifyError(statusCode: number, body: string): ClassifiedError {
     const message = `HTTP ${statusCode}`;
 
-    if (statusCode >= 500 && statusCode < 600 && statusCode !== 503) {
+    // 5xx (incl. 503 Service Unavailable) are transient — retry with backoff,
+    // don't burn the provider rotation. 503 is common on overloaded hosts.
+    if (statusCode >= 500 && statusCode < 600) {
       return {
         action: 'retry',
         statusCode,
@@ -139,7 +141,7 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    if ([429, 413, 402, 401, 403, 503, 404, 400].includes(statusCode)) {
+    if ([429, 413, 402, 401, 403, 404, 400].includes(statusCode)) {
       const cooldownKey = String(statusCode) as keyof typeof this.COOLDOWN;
       return {
         action: 'rotate',

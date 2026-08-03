@@ -46,12 +46,11 @@ describe('ProviderService — Failover & Error Classification', () => {
       expect(classified.cooldownSeconds).toBe(300);
     });
 
-    it('should classify HTTP 503 (Service Unavailable) as rotate with 20s cooldown', () => {
+    it('should classify HTTP 503 (Service Unavailable) as retry with backoff', () => {
       const classified = service.classifyError(503, 'Model server overloaded');
 
-      expect(classified.action).toBe('rotate');
+      expect(classified.action).toBe('retry');
       expect(classified.statusCode).toBe(503);
-      expect(classified.cooldownSeconds).toBe(20);
     });
 
     it('should classify HTTP 500 (Internal Server Error) as retry with backoff', () => {
