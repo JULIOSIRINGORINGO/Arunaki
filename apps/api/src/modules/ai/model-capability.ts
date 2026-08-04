@@ -6,54 +6,75 @@ export interface ModelCapability {
   contextWindow?: number;
 }
 
+// Registered ONCE by bare model name — works across all providers
+// (OpenRouter `openai/gpt-oss-120b:free`, Groq `gpt-oss-120b`, Kenari `gpt-oss-120b`, etc.)
 const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
-  // OpenRouter auto-router — delegates to compatible model
-  'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'openrouter/auto': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  // OpenAI GPT-OSS
+  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // Google Gemma 4 — confirmed support tools
-  'google/gemma-4-31b-it:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'google/gemma-4-26b-a4b-it:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'gemma-4-31b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'gemma-4-26b-a4b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // NVIDIA Nemotron — some support tools
-  'nvidia/nemotron-3-super-120b-a12b:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'nvidia/nemotron-3-nano-30b-a3b:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'nvidia/nemotron-nano-9b-v2:free': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-  'nvidia/nemotron-nano-12b-v2-vl:free': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-  'nvidia/nemotron-3.5-content-safety:free': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-
-  // OpenAI GPT-OSS
-  'openai/gpt-oss-20b:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'openai/gpt-oss-120b:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'nemotron-3-super-120b-a12b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'nemotron-3-nano-30b-a3b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'nemotron-nano-9b-v2': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
+  'nemotron-nano-12b-v2-vl': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
+  'nemotron-3.5-content-safety': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
 
   // Cohere
-  'cohere/north-mini-code:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'north-mini-code': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // Poolside
-  'poolside/laguna-m.1:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'poolside/laguna-xs-2.1:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'laguna-m.1': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'laguna-xs-2.1': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // Qwen
-  'qwen/qwen3-coder:free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'qwen3-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // DeepSeek (Kenari)
   'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000 },
+
+  // OpenRouter auto-router pseudonyms — keep full name to avoid collision with `free`/`auto`
+  'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'openrouter/auto': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 };
+
+/**
+ * Normalize a provider-specific model slug to its bare name:
+ * - strips vendor prefix:  `openai/gpt-oss-120b:free` → `gpt-oss-120b`
+ * - strips tier suffix:    `:free`, `:extended`, `:paid`, `:nitro`
+ * So one registry entry covers the same model across every provider.
+ */
+export function normalizeModelName(modelName: string): string {
+  const withoutSuffix = modelName.replace(/:(free|extended|paid|nitro)$/i, '');
+  const slashIdx = withoutSuffix.indexOf('/');
+  return slashIdx > 0 ? withoutSuffix.slice(slashIdx + 1) : withoutSuffix;
+}
+
+function lookupCapability(modelName: string): ModelCapability | undefined {
+  return (
+    MODEL_CAPABILITIES[modelName] ??
+    MODEL_CAPABILITIES[normalizeModelName(modelName)] ??
+    undefined
+  );
+}
 
 /**
  * Check if a given model supports tool/function calling.
  * Defaults to true for unknown models (assume modern models support tools).
  */
 export function modelSupportsTools(modelName: string): boolean {
-  const cap = MODEL_CAPABILITIES[modelName];
-  return cap?.supportsTools ?? true;
+  return lookupCapability(modelName)?.supportsTools ?? true;
 }
 
 /**
  * Get capability for a model, or sensible defaults.
  */
 export function getModelCapability(modelName: string): ModelCapability {
-  return MODEL_CAPABILITIES[modelName] ?? {
+  return lookupCapability(modelName) ?? {
     supportsTools: true,
     supportsTemperature: true,
     supportsSystemPrompt: true,
