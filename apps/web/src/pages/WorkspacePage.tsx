@@ -495,7 +495,11 @@ export function WorkspacePage() {
         const workspaces = json.data || [];
 
         // Find workspace with rootPath (connected folder)
-        const connected = workspaces.find((ws: any) => ws.rootPath);
+        // Prefer the last-connected workspace, not just the newest.
+        const storedId = localStorage.getItem('arunaki_workspace_id');
+        const connected =
+          (storedId && workspaces.find((ws: any) => ws.id === storedId && ws.rootPath)) ||
+          workspaces.find((ws: any) => ws.rootPath) || null;
 
         if (connected && !cancelled) {
           setWorkspaceId(connected.id);
@@ -933,6 +937,29 @@ export function WorkspacePage() {
     }
   }, [doConnect, queryClient]);
 
+  const handleReconnectFolder = useCallback(async (ws: any) => {
+    if (!ws?.rootPath) return;
+    setWorkspaceId(ws.id);
+    setIsConnected(true);
+    setIsModalOpen(false);
+    connectedWsRef.current = ws.id;
+    localStorage.setItem('arunaki_workspace_id', ws.id);
+    await queryClient.invalidateQueries({ queryKey: ['wsFiles', ws.id] });
+    toast.success(`Folder "${ws.name}" dibuka kembali`);
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.getFolderTree && ws.rootPath) {
+      try {
+        const scan = await desktop.getFolderTree(ws.rootPath);
+        if (scan?.tree) {
+          const countFiles = (nodes: any[]): number =>
+            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+          setNativeTree(scan.tree);
+          setNativeFileCount(countFiles(scan.tree));
+        }
+      } catch {}
+    }
+  }, [queryClient]);
+
   const handleFilesSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -958,6 +985,15 @@ export function WorkspacePage() {
       return json.data;
     },
     enabled: !!workspaceId,
+  });
+
+  const { data: workspacesList = [] } = useQuery<any[]>({
+    queryKey: ["workspaces"],
+    queryFn: async () => {
+      const res = await apiFetch(`${API_BASE}/workspaces`);
+      const json = await res.json();
+      return json.data || [];
+    },
   });
 
   const { data: files = [] } = useQuery<any[]>({
@@ -1220,6 +1256,7 @@ export function WorkspacePage() {
 
   // Use native file count from Electron tree if available, else from API
   const fileCount = nativeTree ? nativeFileCount : files.length;
+  const recentFolders = workspacesList.filter((ws: any) => ws.rootPath);
 
   const getStepIcon = (step: AgentStep) => {
     if (step.status === "running") return <Loader2 className="w-3.5 h-3.5 text-gray-500 shrink-0 animate-spin" />;
@@ -1485,6 +1522,29 @@ export function WorkspacePage() {
                   </>
                 )}
               </button>
+
+              {recentFolders.length > 0 && (
+                <div className="w-full text-left">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">
+                    Recent Folders
+                  </div>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {recentFolders.map((ws: any) => (
+                      <button
+                        key={ws.id}
+                        onClick={() => handleReconnectFolder(ws)}
+                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-gray-200/80 bg-white hover:bg-gray-50 transition-colors cursor-pointer text-left"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FolderCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="text-xs font-semibold text-gray-800 truncate">{ws.name}</span>
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-mono truncate ml-2 shrink-0">{ws.status}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <input
                 ref={fileInputRef}

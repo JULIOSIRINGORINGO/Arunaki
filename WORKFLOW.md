@@ -783,9 +783,37 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 44: Desktop ↔ Web ↔ API Connectivity & Workspace Restore UX ✅ DONE
+
+**Goal:** Fix broken folder connection flow in the Electron desktop app — desktop app couldn't reach the API (auth), and the web UI restored the wrong workspace on launch. Make folder opening VS Code-like: remembers last folder + one-click "Recent Folders".
+
+### 44.1 Desktop Bridge Auth Fix
+- [x] Root cause: `apps/desktop/main.cjs` env loader only read `apps/desktop/.env` (missing) → desktop sent empty token → `desktop-bridge.service.ts:41-49` rejected with `ws.close(1008,'Unauthorized')`. Log "Connected to backend" prints on `open` before server closes (misleading).
+- [x] Fix: loader falls back to `apps/api/.env` (existing `process.env` wins). Requires desktop app restart. Commit `4c32bab`.
+
+### 44.2 Web UI Auth Fix (`apps/web/.env`)
+- [x] Root cause: API has global `AuthGuard` (`security/auth.guard.ts:17-21`) requiring `x-api-key` == `ARUNAKI_API_KEY`. Web UI only sends it when `VITE_ARUNAKI_API_KEY` is set, but `apps/web/.env` was missing → every API call 401 → folder list empty. (Also confirms: desktop and API were in fact connected — WS `OPEN`, `/workspaces` 200 with key.)
+- [x] Fix: created `apps/web/.env` with matching key (gitignored, untracked). Requires Vite restart.
+
+### 44.3 Workspace Restore Bug (`WorkspacePage.tsx:498`)
+- [x] Root cause: restore ignored `arunaki_workspace_id` in localStorage and used `workspaces.find(ws => ws.rootPath)` — always the newest workspace (Rollover QA), never the last one the user connected.
+- [x] Fix: prefer `localStorage.getItem('arunaki_workspace_id')` when it still exists with a `rootPath`, fall back to first-with-rootPath.
+
+### 44.4 Recent Folders (VS Code-style open)
+- [x] Added `useQuery(["workspaces"])` list + `handleReconnectFolder()`; the "Buka Folder" modal now shows a **Recent Folders** list — one click reconnects (sets workspace, loads tree, invalidates files, restores localStorage).
+
+### 44.5 Workspace DB Cleanup
+- [x] Deleted 4 junk workspaces via `DELETE /workspaces/:id` (all relations `onDelete: Cascade`): Rollover QA (pending, temp folder) + 3× duplicate `laporan-test`. DB now empty — user picks fresh folder on next launch.
+
+### 44.6 Testing & Documentation
+- [x] `npx tsc -b --noEmit` (apps/web) — exit 0; Vite dev server HMR picks up changes (Electron reload/restart needed).
+- [x] Dev log `docs/dev-logs/dev-log-2026-08-04-connectivity-workspace-restore.md` created.
+
+---
+
 ## Current Status
 
-**Phase:** 43 — Preemptive Compaction & Aggregate Tool-Result Budget ✅ [AI]
+**Phase:** 44 — Desktop ↔ Web ↔ API Connectivity & Workspace Restore UX ✅ [AI]
 **Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security (fail-safe auth, DoS protection, path traversal protection).
 **Model Default:** `openrouter/free` dengan capability-aware request  
 **Next:** Voice Interaction & Desktop Packaging  
