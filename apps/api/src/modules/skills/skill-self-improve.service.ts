@@ -19,6 +19,7 @@ export class SkillSelfImproveService {
   private readonly logger = new Logger(SkillSelfImproveService.name);
 
   constructor(
+    @Inject(forwardRef(() => SkillService))
     private readonly skillService: SkillService,
     @Inject(forwardRef(() => AiService))
     private readonly aiService: AiService,

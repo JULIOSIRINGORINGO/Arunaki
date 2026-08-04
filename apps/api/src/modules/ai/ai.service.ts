@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
@@ -87,9 +87,9 @@ export class AiService {
   private readonly fallbackModel: string;
 
   constructor(
-    private readonly config: ConfigService,
-    private readonly providerService: ProviderService,
-    @Optional() private readonly toolRegistryService?: ToolRegistryService,
+    @Inject(ConfigService) private readonly config: ConfigService,
+    @Inject(ProviderService) private readonly providerService: ProviderService,
+    @Optional() @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService?: ToolRegistryService,
     @Optional() @Inject(ContextRegistry) private readonly contextRegistry?: ContextRegistry,
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
@@ -497,6 +497,7 @@ export class AiService {
 
     // Dynamic tool list from registry (used in both modes)
     const toolList = this.buildToolListSummary();
+    const toolDirectory = this.toolRegistryService?.getToolDirectoryText() || '';
 
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load prompt files
@@ -528,6 +529,8 @@ ${modelAdditions}`,
       );
 
       const volatileSuffix = `${this.buildToolListSection(toolList)}
+
+${toolDirectory}
 
 ---
 ${safeWorkspaceContext}
@@ -564,6 +567,8 @@ ${modelAdditions}`,
     );
 
     const volatileSuffix = `${this.buildToolListSection(toolList)}
+
+${toolDirectory}
 
 ---
 ${posturePrompt}

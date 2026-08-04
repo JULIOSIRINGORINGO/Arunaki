@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
@@ -70,7 +70,7 @@ export class SubAgentRunnerService {
   private readonly logger = new Logger(SubAgentRunnerService.name);
 
   constructor(
-    private readonly aiService: AiService,
+    @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
     private readonly toolRegistryService: ToolRegistryService,
     private readonly selfHealingService: SelfHealingService,
   ) {}

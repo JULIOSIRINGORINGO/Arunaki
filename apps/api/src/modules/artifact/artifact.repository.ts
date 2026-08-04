@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from '../../common/providers/prisma.service';
 import { PrismaBaseRepository } from '../../common/providers/prisma-base.repository';
 import { Artifact } from '@prisma/client';
@@ -9,7 +9,7 @@ export class ArtifactRepository extends PrismaBaseRepository<Artifact> {
     return this.prisma.artifact;
   }
 
-  constructor(protected readonly prisma: PrismaService) {
+  constructor(@Inject(PrismaService) protected readonly prisma: PrismaService) {
     super(prisma);
   }
 

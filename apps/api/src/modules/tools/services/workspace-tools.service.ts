@@ -9,19 +9,24 @@ import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { DesktopBridgeService } from '../../interaction/desktop-bridge.service.js';
 import { AiService } from '../../ai/ai.service.js';
 import * as path from 'path';
+import * as fs from 'fs';
+import { promises as fsp } from 'fs';
+
+const BACKUP_DIR = '.arunaki_backups';
+const MAX_BACKUPS = 5;
 
 @Injectable()
 export class WorkspaceToolsService {
   private readonly logger = new Logger(WorkspaceToolsService.name);
 
   constructor(
-    private readonly storageService: StorageService,
-    private readonly searchService: SearchService,
-    private readonly fileService: FileService,
-    private readonly documentReaderTool: DocumentReaderTool,
-    private readonly documentGeneratorTool: DocumentGeneratorTool,
-    private readonly prisma: PrismaService,
-    private readonly desktopBridge: DesktopBridgeService,
+    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
+    @Inject(forwardRef(() => SearchService)) private readonly searchService: SearchService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => DocumentReaderTool)) private readonly documentReaderTool: DocumentReaderTool,
+    @Inject(forwardRef(() => DocumentGeneratorTool)) private readonly documentGeneratorTool: DocumentGeneratorTool,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => DesktopBridgeService)) private readonly desktopBridge: DesktopBridgeService,
     @Optional() @Inject(forwardRef(() => AiService))
     private readonly aiService?: AiService,
   ) {}
@@ -37,6 +42,69 @@ export class WorkspaceToolsService {
       throw new Error(`Path Traversal detected. Target path is outside workspace root.`);
     }
     return resolvedTarget;
+  }
+
+  /**
+   * Creates a rolling backup of a file before editing.
+   * - Max 5 backups per file; oldest is deleted when limit exceeded.
+   * - If backup fails (I/O error or file lock), throws Error to abort the edit.
+   */
+  async createRollingBackup(workspaceRoot: string, filename: string): Promise<string> {
+    const sourcePath = path.join(workspaceRoot, filename);
+    const backupDir = path.join(workspaceRoot, BACKUP_DIR);
+
+    // Ensure backup directory exists
+    await fsp.mkdir(backupDir, { recursive: true });
+
+    // File lock detection: try opening file for reading
+    let fd: fsp.FileHandle | undefined;
+    try {
+      fd = await fsp.open(sourcePath, 'r');
+    } catch (err: any) {
+      throw new Error(
+        `Tidak bisa membuat backup: file "${filename}" sedang digunakan atau tidak dapat diakses. ` +
+        `Tutup aplikasi lain yang membuka file ini lalu coba lagi. (${err.code})`,
+      );
+    } finally {
+      if (fd) await fd.close();
+    }
+
+    // Create backup with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const baseName = path.basename(filename);
+    const backupName = `${baseName}.backup-${timestamp}`;
+    const backupPath = path.join(backupDir, backupName);
+
+    try {
+      await fsp.copyFile(sourcePath, backupPath);
+      this.logger.log(`Backup created: ${backupPath}`);
+    } catch (err: any) {
+      throw new Error(
+        `Gagal membuat backup file "${filename}": ${err.message}. ` +
+        `Proses edit dibatalkan untuk melindungi data asli.`,
+      );
+    }
+
+    // Rolling cleanup: keep only MAX_BACKUPS most recent
+    try {
+      const allFiles = await fsp.readdir(backupDir);
+      const backupsForFile = allFiles
+        .filter((f) => f.startsWith(baseName + '.backup-'))
+        .sort(); // ISO timestamp ensures alphabetical = chronological
+
+      if (backupsForFile.length > MAX_BACKUPS) {
+        const toDelete = backupsForFile.slice(0, backupsForFile.length - MAX_BACKUPS);
+        for (const old of toDelete) {
+          await fsp.unlink(path.join(backupDir, old));
+          this.logger.log(`Old backup deleted: ${old}`);
+        }
+      }
+    } catch (err) {
+      // Non-fatal: cleanup failure should not block the edit
+      this.logger.warn(`Backup cleanup failed: ${err.message}`);
+    }
+
+    return backupPath;
   }
 
   /**
@@ -94,7 +162,10 @@ export class WorkspaceToolsService {
     const startTime = Date.now();
     try {
       const files = await this.fileService.findByWorkspaceId(workspaceId);
-      const list = files
+      const filteredFiles = files.filter(
+        (f) => !f.path.includes(BACKUP_DIR) && !f.name.startsWith('.arunaki_backups'),
+      );
+      const list = filteredFiles
         .map(
           (f, i) =>
             `${i + 1}. ${f.name} (${f.type || 'file'}, ${Math.round(f.size / 1024)} KB) [path: ${f.path}]`,
@@ -103,7 +174,7 @@ export class WorkspaceToolsService {
 
       return {
         status: 'success',
-        data: { count: files.length, files },
+        data: { count: filteredFiles.length, files: filteredFiles },
         preview: list || 'Belum ada file di workspace ini.',
         metadata: {
           toolName: 'list_workspace_files',

@@ -43,6 +43,13 @@ export interface Tool {
   /** Timeout in milliseconds */
   readonly timeoutMs?: number;
 
+  /** 
+   * Tool exposure mode for LLM prompt compaction. 
+   * 'direct-only' (default for core): always visible to LLM.
+   * 'catalog-only' (default for most): hidden in a catalog, requires tool_search/describe to use.
+   */
+  readonly catalogMode?: 'direct-only' | 'catalog-only';
+
   /** Execute the tool with given arguments */
   execute(args: Record<string, any>): Promise<ToolResult> | ToolResult;
 
