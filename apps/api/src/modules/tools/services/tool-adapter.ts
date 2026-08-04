@@ -15,6 +15,8 @@ export interface ToolConfig {
     'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
   estimatedLatency?: 'fast' | 'medium' | 'slow';
   timeoutMs?: number;
+  /** 'catalog-only' (default) = hidden, discoverable via tool_search; 'direct-only' = always sent to LLM. */
+  catalogMode?: 'direct-only' | 'catalog-only';
 }
 
 /**
@@ -35,12 +37,15 @@ export class ToolAdapter implements Tool {
     args: Record<string, any>,
   ) => Promise<ToolResult> | ToolResult;
 
+  readonly catalogMode?: 'direct-only' | 'catalog-only';
+
   private constructor(config: ToolConfig) {
     this.name = config.name;
     this.displayName = config.displayName;
     this.description = config.description;
     this.handler = config.handler;
     this.timeoutMs = config.timeoutMs ?? 10000;
+    this.catalogMode = config.catalogMode ?? 'catalog-only';
 
     this.definition = {
       type: 'function',

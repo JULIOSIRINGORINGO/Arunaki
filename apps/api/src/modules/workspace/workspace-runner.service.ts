@@ -534,16 +534,12 @@ export class WorkspaceRunnerService {
     const wanted = new Set<string>();
     const add = (names: string[]) => names.forEach((n) => wanted.add(n));
 
-    // Core workspace file operations — selalu tersedia (max ~7 tool schemas:
-    // Kenari/Gemini rejects large system + many-tool combinations).
+    // Catalog meta-tools — always available (LLM uses these to discover & call all other tools).
     add([
-      'list_workspace_files',
-      'search_workspace',
-      'read_workspace_file',
-      'write_workspace_file',
-      'edit_workspace_file',
-      'rename_workspace_file',
-      'delete_workspace_file',
+      'tool_search',
+      'tool_describe',
+      'tool_call',
+      'tool_search_code',
     ]);
 
     // Kata kunci goal → tambah tool yang relevan.

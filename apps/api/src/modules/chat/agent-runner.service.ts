@@ -163,6 +163,11 @@ export class AgentRunnerService {
       })),
     ];
 
+    // Ensure user message is present (required by all providers)
+    if (params.userContent && !messages.some((m) => m.role === 'user')) {
+      messages.push({ role: 'user', content: params.userContent });
+    }
+
     const toolOutputs: ToolOutputRecord[] = [];
     let finalContent = '';
     let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
