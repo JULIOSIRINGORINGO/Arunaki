@@ -293,6 +293,7 @@ export class ChatController {
         chatId: id,
         userContent: userContent,
         chatMode: chat.mode as 'chat' | 'workspace',
+        workspaceId: chat.workspaceId as string | null,
         historyMessages: history.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
@@ -409,6 +410,7 @@ export class ChatController {
           chatId: id,
           userContent: userContent,
           chatMode: chat.mode as 'chat' | 'workspace',
+        workspaceId: chat.workspaceId as string | null,
           historyMessages: history.map((m) => ({
             role: m.role as 'user' | 'assistant' | 'system',
             content: m.content,

@@ -815,6 +815,14 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] **Folder path visible** — header subtitle shows `{fileCount} file terhubung — {rootPath}`; `document.title` = `{folderName} — Arunaki` (drives the Electron window title).
 - [x] `handleReconnectFolder` moved before `handleConnectFolder`; `workspacesList` query hoisted above both (TS TDZ); workspaces query invalidated after every new connect.
 
+### 44.8 Tool-Path Workspace Isolation Hardening
+- [x] `document_reader` & `image_ocr` now require `workspaceId`; handler resolves filePath against workspace root via new `WorkspaceToolsService.resolveWithinWorkspace()`.
+- [x] `WorkspaceToolsService.requirePathInWorkspace` & `SelfHealingService.validateWorkspacePath` switched to `path.relative` containment (fixes prefix-match flaw like `C:\ws` vs `C:\ws2`).
+- [x] `SelfHealingService.validateToolPaths` made public + `AgentRunner` (sync & stream) merges trusted `workspaceId` from `ChatHistory` and validates path-like args before execution.
+- [x] `AgentRunParams.workspaceId` threaded through `ChatController` (sync + stream).
+- [x] Dev log `docs/dev-logs/dev-log-2026-08-04-apply-tool-middleware-pipeline.md` created.
+- [x] Build passes (`npm run build` — 0 errors).
+
 ---
 
 ## Current Status

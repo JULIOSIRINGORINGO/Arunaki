@@ -38,10 +38,30 @@ export class WorkspaceToolsService {
   private requirePathInWorkspace(targetPath: string, rootPath: string): string {
     const resolvedTarget = path.resolve(targetPath);
     const resolvedRoot = path.resolve(rootPath);
-    if (!resolvedTarget.startsWith(resolvedRoot + path.sep) && resolvedTarget !== resolvedRoot) {
-      throw new Error(`Path Traversal detected. Target path is outside workspace root.`);
+    const rel = path.relative(resolvedRoot, resolvedTarget);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      throw new Error('Path Traversal detected. Target path is outside workspace root.');
     }
     return resolvedTarget;
+  }
+
+  /**
+   * Resolves a caller-supplied path against the workspace root and returns the
+   * safe absolute path, or throws if the path escapes the workspace.
+   * Public entry point for tools (document_reader, image_ocr) that accept a
+   * free-form path but must stay scoped to the workspace.
+   */
+  async resolveWithinWorkspace(workspaceId: string, targetPath: string): Promise<string> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+    if (!workspace?.rootPath) {
+      throw new Error(
+        `Workspace "${workspaceId}" tidak ditemukan atau belum memiliki root path`,
+      );
+    }
+    return this.requirePathInWorkspace(targetPath, workspace.rootPath);
   }
 
   /**

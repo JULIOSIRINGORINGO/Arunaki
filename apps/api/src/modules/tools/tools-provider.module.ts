@@ -200,13 +200,44 @@ export class ToolsProviderModule implements OnModuleInit {
           'csv',
           'text',
         ],
-        handler: (args) => this.documentReaderTool.readDocument(args.filePath),
+        handler: async (args) => {
+          try {
+            const safePath = await this.workspaceToolsService.resolveWithinWorkspace(
+              args.workspaceId,
+              args.filePath,
+            );
+            return await this.documentReaderTool.readDocument(safePath);
+          } catch (err) {
+            return {
+              status: 'error',
+              data: {},
+              preview: `Akses ditolak: ${err.message}`,
+              metadata: {
+                toolName: 'document_reader',
+                displayName: 'Pembaca Dokumen',
+                executionTime: 0,
+              },
+              error: {
+                code: 'WORKSPACE_ISOLATION_VIOLATION',
+                message: err.message,
+              },
+            };
+          }
+        },
         parameters: {
           type: 'object',
           properties: {
-            filePath: { type: 'string', description: 'Path to the document file' },
+            workspaceId: {
+              type: 'string',
+              description: 'ID workspace yang berisi dokumen',
+            },
+            filePath: {
+              type: 'string',
+              description:
+                'Path file di dalam workspace (absolut atau relatif)',
+            },
           },
-          required: ['filePath'],
+          required: ['workspaceId', 'filePath'],
         },
         timeoutMs: 10000,
       }),
@@ -252,18 +283,47 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'OCR Gambar',
         description: 'Reads text from images using OCR.',
         tags: ['image', 'ocr', 'text', 'recognition'],
-        handler: (args) =>
-          this.imageOcrTool.recognizeText(args.filePath, args.language),
+        handler: async (args) => {
+          try {
+            const safePath = await this.workspaceToolsService.resolveWithinWorkspace(
+              args.workspaceId,
+              args.filePath,
+            );
+            return await this.imageOcrTool.recognizeText(safePath, args.language);
+          } catch (err) {
+            return {
+              status: 'error',
+              data: {},
+              preview: `Akses ditolak: ${err.message}`,
+              metadata: {
+                toolName: 'image_ocr',
+                displayName: 'OCR Gambar',
+                executionTime: 0,
+              },
+              error: {
+                code: 'WORKSPACE_ISOLATION_VIOLATION',
+                message: err.message,
+              },
+            };
+          }
+        },
         parameters: {
           type: 'object',
           properties: {
-            filePath: { type: 'string', description: 'Path to the image file' },
+            workspaceId: {
+              type: 'string',
+              description: 'ID workspace yang berisi gambar',
+            },
+            filePath: {
+              type: 'string',
+              description: 'Path gambar di dalam workspace (absolut atau relatif)',
+            },
             language: {
               type: 'string',
               description: 'OCR language (default: eng)',
             },
           },
-          required: ['filePath'],
+          required: ['workspaceId', 'filePath'],
         },
         estimatedLatency: 'medium',
         timeoutMs: 30000,

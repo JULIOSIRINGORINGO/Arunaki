@@ -17,6 +17,7 @@ export interface AgentRunParams {
   chatId: string;
   userContent: string;
   chatMode?: 'chat' | 'workspace';
+  workspaceId?: string | null;
   historyMessages: Array<{
     role: 'user' | 'assistant' | 'system';
     content: string;
@@ -209,18 +210,36 @@ export class AgentRunnerService {
 
         let result: ToolResult;
         try {
-          result = await this.toolRegistryService.executeTool(funcName, args);
+          const safeArgs = params.workspaceId
+            ? { ...args, workspaceId: params.workspaceId }
+            : args;
+          if (params.workspaceId) {
+            await this.selfHealingService.validateToolPaths(
+              funcName,
+              safeArgs,
+              params.workspaceId,
+            );
+          }
+          result = await this.toolRegistryService.executeTool(funcName, safeArgs);
         } catch (e) {
+          const isIsolation = e.message?.includes('Access denied');
           result = {
             status: 'error',
             data: {},
-            preview: `Tool error: ${e.message}`,
+            preview: isIsolation
+              ? `Access denied: ${e.message}`
+              : `Tool error: ${e.message}`,
             metadata: {
               toolName: funcName,
               displayName: funcName,
               executionTime: 0,
             },
-            error: { code: 'EXECUTION_FAILED', message: e.message },
+            error: {
+              code: isIsolation
+                ? 'WORKSPACE_ISOLATION_VIOLATION'
+                : 'EXECUTION_FAILED',
+              message: e.message,
+            },
           };
         }
 
@@ -453,9 +472,13 @@ export class AgentRunnerService {
               args = {};
             }
 
+            const safeArgs = params.workspaceId
+              ? { ...args, workspaceId: params.workspaceId }
+              : args;
             const healResult = await this.selfHealingService.executeWithHealing(
               toolCall.function.name,
-              args,
+              safeArgs,
+              params.workspaceId || undefined,
             );
 
             // Emit self-healing events if recovery was attempted

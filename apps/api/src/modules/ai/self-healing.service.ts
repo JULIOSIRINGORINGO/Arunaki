@@ -259,8 +259,8 @@ export class SelfHealingService {
   validateWorkspacePath(workspaceId: string, requestedPath: string, rootPath: string): string {
     const resolvedRequested = path.resolve(requestedPath);
     const resolvedRoot = path.resolve(rootPath);
-
-    if (!resolvedRequested.startsWith(resolvedRoot + path.sep) && resolvedRequested !== resolvedRoot) {
+    const rel = path.relative(resolvedRoot, resolvedRequested);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(
         `Access denied: Path "${requestedPath}" is outside workspace root "${rootPath}"`,
       );
@@ -273,7 +273,7 @@ export class SelfHealingService {
    * Validate all path-like arguments in tool args against workspace root.
    * Throws if any path is outside workspace.
    */
-  private async validateToolPaths(
+  async validateToolPaths(
     toolName: string,
     args: Record<string, any>,
     workspaceId: string,
