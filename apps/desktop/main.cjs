@@ -7,18 +7,28 @@ const WebSocket = require('ws');
 
 // Load .env manually since dotenv might not be installed
 try {
-  // Try to load from apps/desktop/.env
-  const envPath = path.join(__dirname, '.env');
-  const envContent = fsSync.readFileSync(envPath, 'utf-8');
-  envContent.split('\n').forEach(line => {
-    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-    if (match) {
-      const key = match[1];
-      let value = match[2] || '';
-      value = value.replace(/^['"]|['"]$/g, '');
-      if (!process.env[key]) process.env[key] = value;
+  // Try apps/desktop/.env first, then apps/api/.env (where the backend .env lives)
+  const candidatePaths = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '..', 'api', '.env'),
+  ];
+  for (const envPath of candidatePaths) {
+    try {
+      const envContent = fsSync.readFileSync(envPath, 'utf-8');
+      envContent.split('\n').forEach(line => {
+        const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+        if (match) {
+          const key = match[1];
+          let value = match[2] || '';
+          value = value.replace(/^['"]|['"]$/g, '');
+          if (!process.env[key]) process.env[key] = value;
+        }
+      });
+      break;
+    } catch (e) {
+      // Try next path
     }
-  });
+  }
 } catch (e) {
   // Ignore if .env doesn't exist
 }
