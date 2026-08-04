@@ -793,6 +793,7 @@ export function WorkspacePage() {
       connectedWsRef.current = newId;
       localStorage.setItem('arunaki_workspace_id', newId);
       queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       toast.success(`Workspace "${folderName}" terhubung!`);
 
       // 4. Auto-analyze di background (fire & forget)
@@ -804,6 +805,38 @@ export function WorkspacePage() {
       setIsCreating(false);
     }
   }, [queryClient, triggerAutoAnalysis]);
+
+  const { data: workspacesList = [] } = useQuery<any[]>({
+    queryKey: ["workspaces"],
+    queryFn: async () => {
+      const res = await apiFetch(`${API_BASE}/workspaces`);
+      const json = await res.json();
+      return json.data || [];
+    },
+  });
+
+  const handleReconnectFolder = useCallback(async (ws: any) => {
+    if (!ws?.rootPath) return;
+    setWorkspaceId(ws.id);
+    setIsConnected(true);
+    setIsModalOpen(false);
+    connectedWsRef.current = ws.id;
+    localStorage.setItem('arunaki_workspace_id', ws.id);
+    await queryClient.invalidateQueries({ queryKey: ['wsFiles', ws.id] });
+    toast.success(`Folder "${ws.name}" dibuka kembali`);
+    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
+    if (desktop?.getFolderTree && ws.rootPath) {
+      try {
+        const scan = await desktop.getFolderTree(ws.rootPath);
+        if (scan?.tree) {
+          const countFiles = (nodes: any[]): number =>
+            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
+          setNativeTree(scan.tree);
+          setNativeFileCount(countFiles(scan.tree));
+        }
+      } catch {}
+    }
+  }, [queryClient]);
 
   const handleConnectFolder = useCallback(async () => {
     // Check if running in Electron with native folder picker
@@ -818,6 +851,17 @@ export function WorkspacePage() {
 
         const folderPath = result.path;
         const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
+
+        // VS Code-like: opening the same folder reuses its workspace (no duplicates)
+        const normalized = (p: string) => p.replace(/[\\/]+/g, '\\').toLowerCase().replace(/\\$/, '');
+        const existing = workspacesList.find(
+          (ws: any) => ws.rootPath && normalized(ws.rootPath) === normalized(folderPath)
+        );
+        if (existing) {
+          toast.info(`Folder "${folderName}" sudah pernah dibuka — menyambungkan kembali`);
+          await handleReconnectFolder(existing);
+          return;
+        }
 
         setIsCreating(true);
         toast.info(`Membaca struktur folder "${folderName}"...`);
@@ -870,7 +914,8 @@ export function WorkspacePage() {
         setIsModalOpen(false);
         connectedWsRef.current = newId;
         localStorage.setItem('arunaki_workspace_id', newId);
-        await queryClient.invalidateQueries({ queryKey: ['wsFiles', newId] });
+        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] });
         toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
         triggerAutoAnalysis(newId);
       } catch (err: any) {
@@ -935,30 +980,7 @@ export function WorkspacePage() {
     } else {
       fileInputRef.current?.click();
     }
-  }, [doConnect, queryClient]);
-
-  const handleReconnectFolder = useCallback(async (ws: any) => {
-    if (!ws?.rootPath) return;
-    setWorkspaceId(ws.id);
-    setIsConnected(true);
-    setIsModalOpen(false);
-    connectedWsRef.current = ws.id;
-    localStorage.setItem('arunaki_workspace_id', ws.id);
-    await queryClient.invalidateQueries({ queryKey: ['wsFiles', ws.id] });
-    toast.success(`Folder "${ws.name}" dibuka kembali`);
-    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
-    if (desktop?.getFolderTree && ws.rootPath) {
-      try {
-        const scan = await desktop.getFolderTree(ws.rootPath);
-        if (scan?.tree) {
-          const countFiles = (nodes: any[]): number =>
-            nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-          setNativeTree(scan.tree);
-          setNativeFileCount(countFiles(scan.tree));
-        }
-      } catch {}
-    }
-  }, [queryClient]);
+  }, [doConnect, queryClient, workspacesList, handleReconnectFolder]);
 
   const handleFilesSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -987,15 +1009,6 @@ export function WorkspacePage() {
     enabled: !!workspaceId,
   });
 
-  const { data: workspacesList = [] } = useQuery<any[]>({
-    queryKey: ["workspaces"],
-    queryFn: async () => {
-      const res = await apiFetch(`${API_BASE}/workspaces`);
-      const json = await res.json();
-      return json.data || [];
-    },
-  });
-
   const { data: files = [] } = useQuery<any[]>({
     queryKey: ["wsFiles", workspaceId],
     queryFn: async () => {
@@ -1005,6 +1018,10 @@ export function WorkspacePage() {
     },
     enabled: !!workspaceId,
   });
+
+  useEffect(() => {
+    document.title = workspace?.name ? `${workspace.name} — Arunaki` : 'Arunaki';
+  }, [workspace?.name]);
 
   const refreshFolderQuietly = useCallback(async (wsId: string) => {
     const rootPath = connectedFolderPath || workspace?.rootPath;
@@ -1287,9 +1304,9 @@ export function WorkspacePage() {
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
               {workspace?.name || "Workspace Strategis & Analisis"}
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">
               {isConnected
-                ? `${fileCount} file terhubung dari workspace ini.`
+                ? `${fileCount} file terhubung — ${connectedFolderPath || workspace?.rootPath || ""}`
                 : "Pusat pengelolaan dokumen korporat, otomatisasi ekstraksi data, dan intelijen berbasis AI."}
             </p>
           </div>
@@ -1306,7 +1323,7 @@ export function WorkspacePage() {
             </button>
           ) : (
             <button
-              onClick={handleDisconnectFolder}
+              onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 border border-gray-200/90 bg-white hover:bg-gray-50 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-700 shadow-2xs cursor-pointer transition-all active:scale-98"
             >
               <FolderCheck className="w-4 h-4 text-emerald-600" />
@@ -1544,6 +1561,16 @@ export function WorkspacePage() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {isConnected && (
+                <button
+                  onClick={handleDisconnectFolder}
+                  className="w-full py-2.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Putuskan Koneksi</span>
+                </button>
               )}
 
               <input

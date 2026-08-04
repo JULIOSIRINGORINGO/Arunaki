@@ -809,6 +809,12 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `npx tsc -b --noEmit` (apps/web) — exit 0; Vite dev server HMR picks up changes (Electron reload/restart needed).
 - [x] Dev log `docs/dev-logs/dev-log-2026-08-04-connectivity-workspace-restore.md` created.
 
+### 44.7 VS Code-style Alignment (`WorkspacePage.tsx`)
+- [x] **Dedupe by folder path** — connecting a folder that already has a workspace reuses it (`handleReconnectFolder`) instead of creating a duplicate; path compared normalized (case/slash-insensitive). Prevents the 3× duplicate mess.
+- [x] **Switch folder without disconnect** — "Terhubung: {name}" button now opens the "Buka Folder" modal (Recent Folders + picker) instead of disconnecting; added a "Putuskan Koneksi" action inside the modal.
+- [x] **Folder path visible** — header subtitle shows `{fileCount} file terhubung — {rootPath}`; `document.title` = `{folderName} — Arunaki` (drives the Electron window title).
+- [x] `handleReconnectFolder` moved before `handleConnectFolder`; `workspacesList` query hoisted above both (TS TDZ); workspaces query invalidated after every new connect.
+
 ---
 
 ## Current Status

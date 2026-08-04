@@ -33,3 +33,14 @@ Folder connection di Electron desktop app tampak tidak bekerja ("ga ada folderny
 
 - **User harus restart Vite + reload/restart Electron** agar `apps/web/.env` ter-bake dan kode restore/Recent Folders aktif (Vite HMR otomatis untuk source change).
 - Karena DB dikosongkan, app akan menampilkan modal "Buka Folder" pada launch berikutnya — user pilih folder yang benar (mis. `E:\JS\laporan-test`); folder itu yang akan direstore otomatis selanjutnya.
+
+## Update 2 — VS Code-style alignment (Gap 1-3)
+
+- **Gap 1 (dedupe):** `handleConnectFolder` sekarang cek `workspacesList` dengan path ternormalisasi (case & slash-insensitive); jika folder sudah punya workspace → `handleReconnectFolder` reuse, tidak bikin duplikat.
+- **Gap 2 (switch tanpa disconnect):** tombol "Terhubung: {name}" membuka modal "Buka Folder" (Recent Folders + picker) sebagai switcher; tambah tombol "Putuskan Koneksi" di modal.
+- **Gap 3 (path + judul):** subtitle header menampilkan path folder aktif; `document.title` = `{folderName} — Arunaki` (window title Electron mengikuti).
+- Fix TS: `handleReconnectFolder` + `workspacesList` dipindah sebelum `handleConnectFolder` (TDZ); invalidate `workspaces` query setelah connect baru.
+
+## Tests (update 2)
+
+- `npx tsc -b --noEmit` (apps/web) — ✅ exit 0
