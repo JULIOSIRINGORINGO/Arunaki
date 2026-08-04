@@ -17,7 +17,7 @@ import {
 } from './auto-posture-detector.service.js';
 import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
-import { modelSupportsTools } from './model-capability.js';
+import { modelSupportsTools, scaleMaxTokens } from './model-capability.js';
 import {
   cacheStablePromptPrefix,
   hashStablePromptInput,
@@ -298,7 +298,7 @@ export class AiService {
       model: provider.model,
       messages: trimmedMessages,
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: scaleMaxTokens(provider.model),
     };
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
@@ -402,7 +402,7 @@ export class AiService {
       model: provider.model,
       messages: trimmedMessages,
       temperature: 0.7,
-      max_tokens: 1024,
+      max_tokens: scaleMaxTokens(provider.model),
     };
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
