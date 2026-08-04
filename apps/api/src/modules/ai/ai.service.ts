@@ -17,7 +17,7 @@ import {
 } from './auto-posture-detector.service.js';
 import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
-import { modelSupportsTools, scaleMaxTokens } from './model-capability.js';
+import { modelSupportsTools, scaleMaxTokens, getModelCapability } from './model-capability.js';
 import {
   cacheStablePromptPrefix,
   hashStablePromptInput,
@@ -261,6 +261,43 @@ export class AiService {
   }
 
   /**
+   * Pre-prompt context guard (OpenClaw preemptive-compaction + aggregate
+   * tool-result budget). Runs BEFORE the provider request:
+   * 1. Truncates old tool results so their total ≤ 50% of the context window.
+   * 2. Estimates prompt pressure; if it exceeds the context window minus the
+   *    max_tokens reserve, runs compression first so an over-budget prompt is
+   *    never sent (small-context models like 32K reject them with a 400).
+   */
+  private async preemptivelyCompact(
+    messages: ChatMessage[],
+    model: string,
+  ): Promise<ChatMessage[]> {
+    const contextWindow = getModelCapability(model).contextWindow ?? 32000;
+
+    const budgeted = this.contextManager.enforceAggregateToolResultBudget(
+      messages,
+      contextWindow,
+    );
+    if (budgeted.truncatedCount > 0) {
+      this.logger.log(
+        `[aggregate-tool-result] truncated ${budgeted.truncatedCount} old tool result(s) to stay within 50% of ${contextWindow}-token context`,
+      );
+    }
+
+    const reserve = scaleMaxTokens(model);
+    const budgetBeforeReserve = Math.max(1, contextWindow - reserve);
+    const estimated = this.contextManager.estimatePromptTokens(budgeted.messages);
+    if (estimated <= budgetBeforeReserve) {
+      return budgeted.messages;
+    }
+
+    this.logger.warn(
+      `[preemptive-compaction] ${estimated} tokens > ${budgetBeforeReserve} budget (${model}, ${contextWindow}-token context) — compacting before request`,
+    );
+    return this.contextManager.compress(budgeted.messages, contextWindow);
+  }
+
+  /**
    * Main chat method with credential pool + error classification.
    *
    * Flow:
@@ -294,9 +331,17 @@ export class AiService {
       );
     }
 
+    // Pre-prompt guard: aggregate tool-result budget + pressure estimate.
+    // Compact before sending instead of letting the provider reject an
+    // over-budget prompt.
+    const preparedMessages = await this.preemptivelyCompact(
+      trimmedMessages,
+      provider.model,
+    );
+
     const body: Record<string, any> = {
       model: provider.model,
-      messages: trimmedMessages,
+      messages: preparedMessages,
       temperature: 0.7,
       max_tokens: scaleMaxTokens(provider.model),
     };
@@ -398,9 +443,14 @@ export class AiService {
       );
     }
 
+    const preparedMessages = await this.preemptivelyCompact(
+      trimmedMessages,
+      provider.model,
+    );
+
     const body: Record<string, any> = {
       model: provider.model,
-      messages: trimmedMessages,
+      messages: preparedMessages,
       temperature: 0.7,
       max_tokens: scaleMaxTokens(provider.model),
     };

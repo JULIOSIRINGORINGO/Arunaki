@@ -28,6 +28,18 @@ const DEFAULT_CONFIG: ContextConfig = {
   useLlmSummary: false,
 };
 
+// Preemptive pressure-estimation constants (OpenClaw preemptive-compaction):
+// tool results tokenize denser than prose (CSV/JSON tables), so they get a
+// tighter chars-per-token ratio. Overheads model message/block framing that a
+// naive char/4 estimator misses.
+export const ESTIMATED_CHARS_PER_TOKEN = 4;
+export const TOOL_RESULT_CHARS_PER_TOKEN = 2;
+export const JSON_PAYLOAD_CHARS_PER_TOKEN = 3;
+export const MESSAGE_BOUNDARY_OVERHEAD_TOKENS = 12;
+// ponytail: single threshold share, upgrade to soft-trim/hard-clear ratios if
+// long-running sessions still overflow on small-context (32K) models.
+export const AGGREGATE_TOOL_RESULT_CONTEXT_SHARE = 0.5;
+
 /**
  * ContextManager — 4-phase context compression pipeline.
  *
@@ -64,14 +76,18 @@ export class ContextManager {
   /**
    * Main entry point — run full compression pipeline.
    * Returns compressed messages ready for API call.
+   * `contextLength` (optional) overrides the configured context so the
+   * trigger threshold tracks the actual model window (e.g. 32K models).
    */
-  async compress(messages: ChatMessage[]): Promise<ChatMessage[]> {
+  async compress(
+    messages: ChatMessage[],
+    contextLength?: number,
+  ): Promise<ChatMessage[]> {
     if (messages.length === 0) return messages;
 
+    const effectiveContext = contextLength ?? this.config.contextLength;
     const tokenCount = this.estimateTokens(messages);
-    const thresholdTokens = Math.floor(
-      this.config.contextLength * this.config.threshold,
-    );
+    const thresholdTokens = Math.floor(effectiveContext * this.config.threshold);
 
     // Don't compress if under threshold
     if (tokenCount <= thresholdTokens) {
@@ -79,7 +95,7 @@ export class ContextManager {
     }
 
     this.logger.log(
-      `Context compression triggered: ${tokenCount} tokens > ${thresholdTokens} threshold (${this.config.contextLength} × ${this.config.threshold})`,
+      `Context compression triggered: ${tokenCount} tokens > ${thresholdTokens} threshold (${effectiveContext} × ${this.config.threshold})`,
     );
 
     // Phase 1: Prune old tool results
@@ -92,7 +108,7 @@ export class ContextManager {
     result = this.sanitizeToolPairs(result);
 
     // Phase 4: Token-aware tail protection + summary
-    result = await this.protectTailAndSummarize(result);
+    result = await this.protectTailAndSummarize(result, effectiveContext);
 
     const finalTokens = this.estimateTokens(result);
     this.logger.log(
@@ -264,6 +280,7 @@ export class ContextManager {
    */
   private async protectTailAndSummarize(
     messages: ChatMessage[],
+    contextLength?: number,
   ): Promise<ChatMessage[]> {
     if (messages.length <= 5) return messages;
 
@@ -288,7 +305,7 @@ export class ContextManager {
 
     // Calculate tail token budget
     const thresholdTokens = Math.floor(
-      this.config.contextLength * this.config.threshold,
+      (contextLength ?? this.config.contextLength) * this.config.threshold,
     );
     const tailBudget = Math.floor(thresholdTokens * this.config.targetRatio);
 
@@ -453,6 +470,102 @@ Provide a concise summary (max 300 chars).`;
   }
 
   // ─── Token Estimation ──────────────────────────────────────────────
+
+  /**
+   * Pre-prompt pressure estimate (OpenClaw preemptive-compaction).
+   * Runs BEFORE sending: if this exceeds the context budget minus the
+   * max_tokens reserve, the caller compacts first instead of letting the
+   * provider reject an over-budget prompt.
+   */
+  estimatePromptTokens(messages: ChatMessage[]): number {
+    let total = 0;
+    for (const msg of messages) {
+      total += MESSAGE_BOUNDARY_OVERHEAD_TOKENS;
+      const content = msg.content || '';
+      if (msg.role === 'tool') {
+        // Tool results tokenize dense — halve the chars-per-token ratio.
+        total += Math.ceil(content.length / TOOL_RESULT_CHARS_PER_TOKEN);
+      } else {
+        total += Math.ceil(content.length / ESTIMATED_CHARS_PER_TOKEN);
+      }
+      if (msg.tool_calls) {
+        for (const tc of msg.tool_calls) {
+          total += Math.ceil(
+            tc.function.name.length / ESTIMATED_CHARS_PER_TOKEN,
+          );
+          total += Math.ceil(
+            tc.function.arguments.length / JSON_PAYLOAD_CHARS_PER_TOKEN,
+          );
+        }
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Pre-prompt aggregate tool-result guard (OpenClaw tool-result-limits).
+   * Keeps the total of all tool-result chars ≤ share of the context window
+   * (default 50%), truncating the OLDEST results first so fresh tool output
+   * and the last 3 results stay intact.
+   */
+  enforceAggregateToolResultBudget(
+    messages: ChatMessage[],
+    contextWindowTokens: number,
+  ): { messages: ChatMessage[]; truncatedCount: number } {
+    const toolIdx: number[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === 'tool') toolIdx.push(i);
+    }
+    if (toolIdx.length === 0) {
+      return { messages, truncatedCount: 0 };
+    }
+
+    const totalChars = toolIdx.reduce(
+      (sum, i) => sum + (messages[i].content?.length || 0),
+      0,
+    );
+    const shareChars = Math.max(
+      1,
+      Math.floor(
+        contextWindowTokens *
+          ESTIMATED_CHARS_PER_TOKEN *
+          AGGREGATE_TOOL_RESULT_CONTEXT_SHARE,
+      ),
+    );
+    if (totalChars <= shareChars) {
+      return { messages, truncatedCount: 0 };
+    }
+
+    const KEEP_LAST = 3;
+    const PREVIEW_CHARS = 250;
+    let remaining = shareChars;
+    let truncatedCount = 0;
+    const result = [...messages];
+
+    // Walk newest → oldest; keep the last 3 intact, truncate whatever falls
+    // outside the shared budget once it's exhausted.
+    for (let n = toolIdx.length - 1; n >= 0; n--) {
+      const i = toolIdx[n];
+      const len = result[i].content?.length || 0;
+      if (n >= toolIdx.length - KEEP_LAST) {
+        remaining -= len;
+        continue;
+      }
+      if (remaining > 0 && len <= remaining) {
+        remaining -= len;
+        continue;
+      }
+      const preview = result[i].content?.substring(0, PREVIEW_CHARS) || '';
+      result[i] = {
+        ...result[i],
+        content: `[Old tool output cleared — aggregate tool-result budget exceeded (${totalChars} chars > ${shareChars})]\n${preview}\n...[truncated ${len} chars]`,
+      };
+      truncatedCount++;
+      remaining = 0;
+    }
+
+    return { messages: result, truncatedCount };
+  }
 
   /**
    * Estimate tokens for a message array.

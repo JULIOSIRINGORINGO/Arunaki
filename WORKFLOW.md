@@ -758,9 +758,30 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 43: Preemptive Compaction & Aggregate Tool-Result Budget ✅ DONE
+
+**Goal:** OpenClaw-inspired pre-prompt context guard — compact BEFORE sending instead of letting the provider reject an over-budget prompt, and cap the aggregate size of all tool results so they can't eat the whole context window.
+
+### 43.1 Preemptive Pressure Estimation (`context-manager.ts`)
+- [x] `estimatePromptTokens()` — message-boundary overhead (12 tokens/msg) + role-weighted chars-per-token (4 for prose, 2 for tool results, 3 for JSON tool-call args), mirroring OpenClaw `preemptive-compaction.ts`.
+- [x] `compress(messages, contextLength?)` — optional real model context override so the 25% trigger threshold tracks the actual model window (e.g. 32K models) instead of the hardcoded 128K default.
+
+### 43.2 Aggregate Tool-Result Budget (`context-manager.ts`)
+- [x] `enforceAggregateToolResultBudget(messages, contextWindow)` — total tool-result chars ≤ 50% of context window (OpenClaw `AGGREGATE_TOOL_RESULT_CONTEXT_SHARE=0.5`); truncates OLDEST results first, keeps the last 3 intact.
+
+### 43.3 Wiring (`ai.service.ts`)
+- [x] `preemptivelyCompact()` private method — runs both guards before every `chat()` and `chatStream()` request; compacts only when estimated prompt tokens exceed `contextWindow − max_tokens` reserve.
+- [x] Unit tests `context-manager.spec.ts` (4 tests) — aggregate truncation order, token-weighting, model-context compress override.
+
+### 43.4 Testing & Documentation
+- [x] Build passes (`npx nest build` — 0 errors) & Vitest passes (`npx vitest run` — 84/84)
+- [x] Dev log `docs/dev-logs/dev-log-2026-08-04-preemptive-compaction-aggregate-budget.md` created using template in `AGENTS.md`
+
+---
+
 ## Current Status
 
-**Phase:** 42 — Referenced File Safety ✅ [AI]
+**Phase:** 43 — Preemptive Compaction & Aggregate Tool-Result Budget ✅ [AI]
 **Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security (fail-safe auth, DoS protection, path traversal protection).
 **Model Default:** `openrouter/free` dengan capability-aware request  
 **Next:** Voice Interaction & Desktop Packaging  
