@@ -568,6 +568,75 @@ Provide a concise summary (max 300 chars).`;
   }
 
   /**
+   * Route decision helper (OpenClaw estimateToolResultReductionPotential).
+   * Estimates how many chars `truncateToolResultsOnly` could free: every tool
+   * result over toolPruneChars except the last 3 collapses to a preview.
+   */
+  estimateToolResultReduction(messages: ChatMessage[]): number {
+    const toolIdx: number[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === 'tool') toolIdx.push(i);
+    }
+    if (toolIdx.length <= 3) return 0;
+
+    const pruneThreshold = toolIdx.length - 3;
+    // Marker text + `...[truncated]` overhead added by pruneOldToolResults.
+    const keptAfterPrune =
+      this.config.toolPreviewChars + 80;
+    let total = 0;
+    for (let n = 0; n < pruneThreshold; n++) {
+      const len = messages[toolIdx[n]].content?.length || 0;
+      if (len > this.config.toolPruneChars) {
+        total += len - keptAfterPrune;
+      }
+    }
+    return Math.max(0, total);
+  }
+
+  /**
+   * Truncate-only route (OpenClaw truncate_tool_results_only): applies Phase 1
+   * (prune old tool results) WITHOUT the rest of the compression pipeline.
+   * Cheaper than full compress — history structure is preserved.
+   */
+  truncateToolResultsOnly(messages: ChatMessage[]): ChatMessage[] {
+    return this.pruneOldToolResults(messages);
+  }
+
+  /**
+   * Pre-prompt thinking-block strip (OpenClaw dropThinkingBlocks).
+   * Removes `<think>...</think>` blocks from all assistant messages except the
+   * latest one — reasoning is never replayed to the provider and only wastes
+   * tokens. Keeps the latest assistant turn intact (providers that require
+   * replay signatures can continue the conversation).
+   */
+  stripThinkingFromContext(messages: ChatMessage[]): ChatMessage[] {
+    let latestAssistant = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        latestAssistant = i;
+        break;
+      }
+    }
+
+    let touched = false;
+    const result = messages.map((msg, idx) => {
+      if (
+        msg.role !== 'assistant' ||
+        idx === latestAssistant ||
+        !msg.content ||
+        !msg.content.includes('<think>')
+      ) {
+        return msg;
+      }
+      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      if (cleaned === msg.content) return msg;
+      touched = true;
+      return { ...msg, content: cleaned || '[Reasoning omitted to save context]' };
+    });
+    return touched ? result : messages;
+  }
+
+  /**
    * Estimate tokens for a message array.
    * Uses char-based estimation (~4 chars per token) for speed.
    */

@@ -75,4 +75,72 @@ describe('ContextManager — preemptive compaction guards', () => {
       expect(compressed.length).toBeLessThan(msgs.length);
     });
   });
+
+  describe('estimateToolResultReduction', () => {
+    it('counts only prunable chars for oversized results beyond the last 3', () => {
+      const cm = new ContextManager();
+      const msgs: ChatMessage[] = [
+        toolMessage('x'.repeat(5000)),
+        toolMessage('x'.repeat(5000)),
+        toolMessage('x'.repeat(5000)),
+        toolMessage('x'.repeat(5000)),
+        toolMessage('short'),
+        toolMessage('short'),
+      ];
+      // last 3 = [3, 4, 5] → indices 0-2 prunable: 3 * (5000 - (250 + 80)) = 14010
+      expect(cm.estimateToolResultReduction(msgs)).toBe(14010);
+    });
+
+    it('returns 0 when 3 or fewer tool results exist', () => {
+      const cm = new ContextManager();
+      const msgs: ChatMessage[] = [
+        toolMessage('x'.repeat(5000)),
+        toolMessage('x'.repeat(5000)),
+        toolMessage('x'.repeat(5000)),
+      ];
+      expect(cm.estimateToolResultReduction(msgs)).toBe(0);
+    });
+  });
+
+  describe('truncateToolResultsOnly', () => {
+    it('prunes oversized results but keeps the last 3 intact', () => {
+      const cm = new ContextManager();
+      const big = 'x'.repeat(5000);
+      const msgs: ChatMessage[] = [
+        toolMessage(big),
+        toolMessage(big),
+        toolMessage(big),
+        toolMessage(big),
+        toolMessage('fresh1'),
+        toolMessage('fresh2'),
+      ];
+      const result = cm.truncateToolResultsOnly(msgs);
+      expect(result[0].content).toContain('[Old tool output cleared');
+      expect(result[3].content).toBe(big);
+      expect(result[5].content).toBe('fresh2');
+    });
+  });
+
+  describe('stripThinkingFromContext', () => {
+    it('removes think blocks from old assistant messages but keeps the latest', () => {
+      const cm = new ContextManager();
+      const msgs: ChatMessage[] = [
+        { role: 'assistant', content: '<think>old reasoning</think>answer one' },
+        { role: 'tool', content: 'result' },
+        { role: 'assistant', content: '<think>latest reasoning</think>answer two' },
+      ];
+      const result = cm.stripThinkingFromContext(msgs);
+      expect(result[0].content).toBe('answer one');
+      expect(result[2].content).toBe('<think>latest reasoning</think>answer two');
+    });
+
+    it('returns the same reference when nothing changes', () => {
+      const cm = new ContextManager();
+      const msgs: ChatMessage[] = [
+        { role: 'user', content: 'hello' },
+        { role: 'assistant', content: 'hi' },
+      ];
+      expect(cm.stripThinkingFromContext(msgs)).toBe(msgs);
+    });
+  });
 });

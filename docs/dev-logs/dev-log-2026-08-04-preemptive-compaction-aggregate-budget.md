@@ -24,10 +24,25 @@ Adopted 2 more OpenClaw patterns for the pre-prompt context guard:
 
 ## Tests
 
-- `npx vitest run src/modules/ai/context-manager.spec.ts` — ✅ 4/4 passed
+- `npx vitest run src/modules/ai/context-manager.spec.ts` — ✅ 9/9 passed
 - `npx vitest run src/modules/ai src/modules/provider src/modules/tools` — ✅ 44/44 passed
-- `npx vitest run` — ✅ 84/84 passed
+- `npx vitest run` — ✅ 89/89 passed
 - `npx nest build` — ✅ 0 errors
+
+## Round 2 additions (same task)
+
+Adopted 2 more OpenClaw patterns on top of the initial implementation:
+
+1. **Route-based compaction decision** (`context-manager.ts: estimateToolResultReduction` + `truncateToolResultsOnly`; `ai.service.ts: preemptivelyCompact`):
+   - Before running the full `compress()` pipeline, estimate how many chars Phase 1 (prune old tool results) alone could free.
+   - If reduction potential ≥ `max(overflowChars + 2048, overflowChars × 1.5)` → choose **truncate-only** (cheaper, history structure preserved).
+   - Otherwise → **compact** (full pipeline). Mirrors OpenClaw `compact_only` / `truncate_tool_results_only` / `compact_then_truncate` routing from `preemptive-compaction.ts`.
+2. **`stripThinkingFromContext()`** (`context-manager.ts`) — removes `<think>...</think>` blocks from all assistant messages except the latest before sending (OpenClaw `dropThinkingBlocks`), so stale reasoning is never replayed to the provider.
+
+### Files changed (round 2)
+- `apps/api/src/modules/ai/context-manager.ts` — `estimateToolResultReduction()`, `truncateToolResultsOnly()`, `stripThinkingFromContext()`
+- `apps/api/src/modules/ai/ai.service.ts` — routing logic in `preemptivelyCompact()` + import of `ESTIMATED_CHARS_PER_TOKEN`
+- `apps/api/src/modules/ai/context-manager.spec.ts` — +5 tests (reduction estimate, truncate-only, thinking strip ×2, unchanged-reference)
 
 ## Notes
 

@@ -773,8 +773,12 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `preemptivelyCompact()` private method — runs both guards before every `chat()` and `chatStream()` request; compacts only when estimated prompt tokens exceed `contextWindow − max_tokens` reserve.
 - [x] Unit tests `context-manager.spec.ts` (4 tests) — aggregate truncation order, token-weighting, model-context compress override.
 
-### 43.4 Testing & Documentation
-- [x] Build passes (`npx nest build` — 0 errors) & Vitest passes (`npx vitest run` — 84/84)
+### 43.4 Route Decision & Thinking-Block Strip (OpenClaw round 2)
+- [x] Route-based compaction — `estimateToolResultReduction()` estimates how many chars `truncateToolResultsOnly()` (Phase 1-only, history-preserving) could free; if it comfortably covers the overflow (buffer `max(overflow+2048, 1.5×overflow)`) use truncate-only, else full `compress()`. Mirrors OpenClaw `compact_only` / `truncate_tool_results_only` / `compact_then_truncate` routing.
+- [x] `stripThinkingFromContext()` — removes `<think>...</think>` blocks from all assistant messages except the latest before sending (OpenClaw `dropThinkingBlocks`), so reasoning is never replayed to the provider.
+
+### 43.5 Testing & Documentation
+- [x] Build passes (`npx nest build` — 0 errors) & Vitest passes (`npx vitest run` — 89/89)
 - [x] Dev log `docs/dev-logs/dev-log-2026-08-04-preemptive-compaction-aggregate-budget.md` created using template in `AGENTS.md`
 
 ---

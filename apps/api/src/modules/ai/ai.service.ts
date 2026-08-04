@@ -8,7 +8,7 @@ import {
   ProviderService,
   ProviderConfig,
 } from '../provider/provider.service.js';
-import { ContextManager } from './context-manager.js';
+import { ContextManager, ESTIMATED_CHARS_PER_TOKEN } from './context-manager.js';
 import { ContextRegistry } from './context/context-registry.service.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
 import {
@@ -263,10 +263,13 @@ export class AiService {
   /**
    * Pre-prompt context guard (OpenClaw preemptive-compaction + aggregate
    * tool-result budget). Runs BEFORE the provider request:
-   * 1. Truncates old tool results so their total ≤ 50% of the context window.
-   * 2. Estimates prompt pressure; if it exceeds the context window minus the
-   *    max_tokens reserve, runs compression first so an over-budget prompt is
-   *    never sent (small-context models like 32K reject them with a 400).
+   * 1. Strips `<think>` blocks from all but the latest assistant message.
+   * 2. Truncates old tool results so their total ≤ 50% of the context window.
+   * 3. Estimates prompt pressure; when over the context budget minus the
+   *    max_tokens reserve, chooses the cheapest route that fits:
+   *    - truncate-only: old tool results alone cover the overflow (history
+   *      structure preserved)
+   *    - compact: full compression pipeline
    */
   private async preemptivelyCompact(
     messages: ChatMessage[],
@@ -274,8 +277,10 @@ export class AiService {
   ): Promise<ChatMessage[]> {
     const contextWindow = getModelCapability(model).contextWindow ?? 32000;
 
+    const deReasoned = this.contextManager.stripThinkingFromContext(messages);
+
     const budgeted = this.contextManager.enforceAggregateToolResultBudget(
-      messages,
+      deReasoned,
       contextWindow,
     );
     if (budgeted.truncatedCount > 0) {
@@ -291,8 +296,28 @@ export class AiService {
       return budgeted.messages;
     }
 
+    const overflowTokens = estimated - budgetBeforeReserve;
+    const overflowChars = overflowTokens * ESTIMATED_CHARS_PER_TOKEN;
+    // Buffer (OpenClaw TRUNCATION_ROUTE_BUFFER_TOKENS=512): require the
+    // truncate-only route to comfortably exceed the overflow before choosing
+    // it, so we don't thrash between routes on every turn.
+    const truncateOnlyThresholdChars = Math.max(
+      overflowChars + 2048,
+      Math.ceil(overflowChars * 1.5),
+    );
+    const reducible = this.contextManager.estimateToolResultReduction(
+      budgeted.messages,
+    );
+
+    if (reducible >= truncateOnlyThresholdChars) {
+      this.logger.warn(
+        `[preemptive-compaction] truncate-only route: ${reducible} reducible tool-result chars ≥ ${truncateOnlyThresholdChars} needed — pruning tool results instead of compacting (${estimated} tokens > ${budgetBeforeReserve})`,
+      );
+      return this.contextManager.truncateToolResultsOnly(budgeted.messages);
+    }
+
     this.logger.warn(
-      `[preemptive-compaction] ${estimated} tokens > ${budgetBeforeReserve} budget (${model}, ${contextWindow}-token context) — compacting before request`,
+      `[preemptive-compaction] compact route: ${reducible} reducible tool-result chars < ${truncateOnlyThresholdChars} needed — running full compression (${estimated} tokens > ${budgetBeforeReserve})`,
     );
     return this.contextManager.compress(budgeted.messages, contextWindow);
   }
