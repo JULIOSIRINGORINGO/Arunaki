@@ -123,8 +123,8 @@ Ini pola arsitektur yang bagus — mirip sistem plugin OpenClaw/hook lifecycle C
 3. Pertimbangkan menjadikan ini bagian dari konsolidasi yang sama dengan Part 1 temuan #4 (unifikasi context-engine antara chat dan workspace mode) — kalau kedua mode akhirnya dibuat berbagi satu jalur eksekusi inti, masalah "cuma di-wire ke satu mode" untuk banyak fitur (context-engine, session-admission, harness-plugin) akan otomatis terselesaikan sekaligus, bukan ditambal satu-satu.
 
 ### Kriteria selesai
-- [ ] Didokumentasikan eksplisit kalau sistem ini memang belum dipakai (supaya developer berikutnya tidak bingung mencari "plugin apa saja yang aktif")
-- [ ] Kalau plugin pertama dibuat, hook-nya juga terpasang di workspace mode, bukan cuma chat mode
+- [x] Didokumentasikan eksplisit kalau sistem ini memang belum dipakai (supaya developer berikutnya tidak bingung mencari "plugin apa saja yang aktif")
+- [x] Kalau plugin pertama dibuat, hook-nya juga terpasang di workspace mode, bukan cuma chat mode
 
 ---
 
