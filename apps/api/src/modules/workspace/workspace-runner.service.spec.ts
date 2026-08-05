@@ -18,6 +18,7 @@ import { BackgroundReviewService } from '../memory/background-review.service.js'
 import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
+import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
 import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 import { CompactionService } from '../ai/compaction.service.js';
@@ -46,8 +47,10 @@ describe('hasExplicitDeleteIntent', () => {
 
 describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
   let runnerService: WorkspaceRunnerService;
+  let todoStore: TodoStoreService;
 
   beforeEach(async () => {
+    todoStore = new TodoStoreService();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
@@ -88,6 +91,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
         { provide: ContextRegistry, useValue: { registerContext: vi.fn() } },
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: TodoStoreService, useValue: todoStore },
       ],
     }).compile();
 
@@ -109,10 +113,12 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
   let runnerService: WorkspaceRunnerService;
   let maxActive = 0;
   let active = 0;
+  let todoStore: TodoStoreService;
 
   beforeEach(async () => {
     maxActive = 0;
     active = 0;
+    todoStore = new TodoStoreService();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
@@ -188,6 +194,7 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         },
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: TodoStoreService, useValue: todoStore },
       ],
     }).compile();
 
@@ -221,5 +228,95 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
       e.data.toolName.startsWith('parallel ('),
     );
     expect(hasParallelEvent).toBe(true);
+  });
+});
+
+describe('WorkspaceRunnerService todo list injection', () => {
+  let runnerService: WorkspaceRunnerService;
+  let chatMock: ReturnType<typeof vi.fn>;
+  let todoStore: TodoStoreService;
+
+  beforeEach(async () => {
+    todoStore = new TodoStoreService();
+    chatMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        content: null,
+        toolCalls: [
+          { id: 'todo_1', function: { name: 'todo_write', arguments: '{"todos":[{"id":"1","content":"Baca file","status":"in_progress"},{"id":"2","content":"Hitung total","status":"pending"}]}' } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: null,
+        toolCalls: [
+          { id: 'call_1', function: { name: 'read_workspace_file', arguments: '{"filename":"a.txt"}' } },
+        ],
+      })
+      .mockResolvedValue({ content: 'Laporan selesai.', toolCalls: [] });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WorkspaceRunnerService,
+        {
+          provide: AiService,
+          useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), chat: chatMock },
+        },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
+        { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
+        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
+        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        { provide: BackgroundReviewService, useValue: {} },
+        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
+        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SelfHealingService,
+          useValue: {
+            executeWithHealing: vi.fn().mockImplementation(async (name: string, args: any) => {
+              if (name === 'todo_write' && Array.isArray(args?.todos)) {
+                todoStore.set(args.workspaceId || 'ws-todo-test', args.todos);
+              }
+              return {
+                finalResult: { status: 'success', data: { text: 'ok' } },
+                healed: false,
+                attempts: [],
+              };
+            }),
+          },
+        },
+        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
+        { provide: CompactionService, useValue: {} },
+        { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) }, source: { findFirst: vi.fn().mockResolvedValue(null) } } },
+        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
+        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
+        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: TodoStoreService, useValue: todoStore },
+      ],
+    }).compile();
+
+    runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
+  });
+
+  it('menyuntikkan todo list yang ditulis LLM ke context di round berikutnya', async () => {
+    for await (const _ of runnerService.runWorkspaceAgentGenerator({
+      workspaceId: 'ws-todo-test',
+      userGoal: 'buat laporan 10 langkah',
+      historyMessages: [{ role: 'user', content: 'buat laporan 10 langkah' }],
+    })) {
+      // drain generator
+    }
+
+    const chatCalls = chatMock.mock.calls;
+    const secondRoundMessages = chatCalls[1][0] as any[];
+    const todoMsg = secondRoundMessages.find(
+      (m: any) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='),
+    );
+    expect(todoMsg).toBeDefined();
+    expect(todoMsg.content).toContain('- [in_progress] 1: Baca file');
+    expect(todoMsg.content).toContain('- [pending] 2: Hitung total');
   });
 });

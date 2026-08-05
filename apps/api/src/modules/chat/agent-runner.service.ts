@@ -12,6 +12,7 @@ import { MessageService } from './message.service.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
+import { TodoStoreService } from '../tools/services/todo-store.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -66,6 +67,7 @@ export class AgentRunnerService {
     private readonly transcriptService: UserTurnTranscriptService,
     private readonly sessionEvents: SessionStateEventsService,
     private readonly harnessRegistry: HarnessRegistryService,
+    private readonly todoStore: TodoStoreService,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
@@ -176,7 +178,19 @@ export class AgentRunnerService {
 
     const MAX_ROUNDS = 5;
     let reachedMaxRounds = true;
+    const todoRunId = params.idempotencyKey || `chat:${chatId}`;
     for (let round = 0; round < MAX_ROUNDS; round++) {
+      // Inject current todo list (working memory) so LLM stays anchored
+      const todoText = this.todoStore.serialize(todoRunId);
+      const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
+      if (todoText) {
+        const todoMsg = { role: 'system' as const, content: todoText };
+        if (todoIdx >= 0) messages[todoIdx] = todoMsg;
+        else messages.push(todoMsg);
+      } else if (todoIdx >= 0) {
+        messages.splice(todoIdx, 1);
+      }
+
       const aiResponse = await this.aiService.chat(messages, tools);
       usage = aiResponse.usage;
 
@@ -217,8 +231,8 @@ export class AgentRunnerService {
         let result: ToolResult;
         try {
           const safeArgs = params.workspaceId
-            ? { ...args, workspaceId: params.workspaceId }
-            : args;
+            ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+            : { ...args, runId: todoRunId };
           if (params.workspaceId) {
             await this.selfHealingService.validateToolPaths(
               funcName,
@@ -437,7 +451,19 @@ export class AgentRunnerService {
 
       const MAX_ROUNDS = 5;
       let reachedMaxRounds = true;
+      const todoRunId = params.idempotencyKey || `chat:${params.chatId}`;
       for (let round = 0; round < MAX_ROUNDS; round++) {
+        // Inject current todo list (working memory) so LLM stays anchored
+        const todoText = this.todoStore.serialize(todoRunId);
+        const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
+        if (todoText) {
+          const todoMsg = { role: 'system' as const, content: todoText };
+          if (todoIdx >= 0) messages[todoIdx] = todoMsg;
+          else messages.push(todoMsg);
+        } else if (todoIdx >= 0) {
+          messages.splice(todoIdx, 1);
+        }
+
         const aiResponse = await this.aiService.chat(messages, tools);
 
         if (aiResponse.toolCalls.length === 0) {
@@ -486,8 +512,8 @@ export class AgentRunnerService {
             }
 
             const safeArgs = params.workspaceId
-              ? { ...args, workspaceId: params.workspaceId }
-              : args;
+              ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+              : { ...args, runId: todoRunId };
             const healResult = await this.selfHealingService.executeWithHealing(
               toolCall.function.name,
               safeArgs,

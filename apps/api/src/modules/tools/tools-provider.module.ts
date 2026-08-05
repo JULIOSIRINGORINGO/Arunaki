@@ -33,6 +33,7 @@ import { ToolSearchTool } from './services/tool-search.tool.js';
 import { ToolDescribeTool } from './services/tool-describe.tool.js';
 import { ToolCallTool } from './services/tool-call.tool.js';
 import { ToolSearchCodeTool } from './services/tool-search-code.tool.js';
+import { TodoStoreService } from './services/todo-store.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 
 import { AiModule } from '../ai/ai.module.js';
@@ -71,6 +72,7 @@ import { AiModule } from '../ai/ai.module.js';
     ToolDescribeTool,
     ToolCallTool,
     ToolSearchCodeTool,
+    TodoStoreService,
   ],
   exports: [
     ToolRegistryService,
@@ -95,6 +97,7 @@ import { AiModule } from '../ai/ai.module.js';
     ToolDescribeTool,
     ToolCallTool,
     ToolSearchCodeTool,
+    TodoStoreService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -123,6 +126,7 @@ export class ToolsProviderModule implements OnModuleInit {
   private get browserInteraction() { return this.moduleRef.get(BrowserInteractionService, { strict: false }); }
   private get desktopBridge() { return this.moduleRef.get(DesktopBridgeService, { strict: false }); }
   private get docReconciliationService() { return this.moduleRef.get(DocumentReconciliationService, { strict: false }); }
+  private get todoStore() { return this.moduleRef.get(TodoStoreService, { strict: false }); }
 
   onModuleInit() {
     this.registerTools();
@@ -134,6 +138,56 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(this.moduleRef.get(ToolDescribeTool, { strict: false }));
     this.registry.register(this.moduleRef.get(ToolCallTool, { strict: false }));
     this.registry.register(this.moduleRef.get(ToolSearchCodeTool, { strict: false }));
+
+    // ─── Todo / Plan (working memory for long tasks) ───────────────
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'todo_write',
+        displayName: 'Daftar Kerja',
+        description:
+          'Tulis atau update daftar langkah kerja (todo list) untuk task yang sedang dikerjakan. Gunakan di awal task multi-langkah (perkiraan >3 langkah), dan update status tiap kali sebuah langkah selesai. Task sederhana (1-2 langkah) tidak perlu tool ini.',
+        tags: ['todo', 'plan', 'task', 'memory'],
+        handler: (args) => {
+          const runId = String(args.workspaceId || args.runId || 'default');
+          const items = Array.isArray(args.todos) ? args.todos : [];
+          this.todoStore.set(runId, items);
+          return {
+            status: 'success',
+            data: { todos: this.todoStore.get(runId), runId },
+            preview: `Daftar kerja disimpan (${items.length} langkah)`,
+            metadata: {
+              toolName: 'todo_write',
+              displayName: 'Daftar Kerja',
+              executionTime: 0,
+            },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            todos: {
+              type: 'array',
+              description: 'Seluruh daftar langkah kerja (state penuh, bukan delta)',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', description: 'ID unik langkah' },
+                  content: { type: 'string', description: 'Deskripsi langkah' },
+                  status: {
+                    type: 'string',
+                    enum: ['pending', 'in_progress', 'completed'],
+                  },
+                },
+                required: ['id', 'content', 'status'],
+              },
+            },
+          },
+          required: ['todos'],
+        },
+        catalogMode: 'catalog-only',
+        timeoutMs: 5000,
+      }),
+    );
 
     // ─── Data & Documents ───────────────────────────────────────────
     this.registry.register(

@@ -8,6 +8,7 @@ import { FileModule } from '../file/file.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
+import { TodoStoreService } from './services/todo-store.service.js';
 
 /**
  * ToolsModule — module boundary for tool system.
@@ -26,7 +27,7 @@ import { ProgrammaticVerifierService } from './services/programmatic-verifier.se
     MemoryModule,
     ToolsProviderModule,
   ],
-  providers: [ProgrammaticVerifierService],
-  exports: [ToolsProviderModule, ProgrammaticVerifierService],
+  providers: [ProgrammaticVerifierService, TodoStoreService],
+  exports: [ToolsProviderModule, ProgrammaticVerifierService, TodoStoreService],
 })
 export class ToolsModule {}

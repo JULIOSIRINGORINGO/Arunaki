@@ -836,6 +836,16 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test `workspace-runner.service.spec.ts`: 3 read-only calls independen → `maxActive > 1` (paralel), `tool_done` berurutan sesuai tool_calls, event `parallel (...)`.
 - [x] Build passes (`npm run build` — 0 errors); semua test workspace + chat pass.
 
+### 45.1 Explicit Todo/Plan Tool untuk LLM (Gap #6)
+- [x] Gap-analysis check: tidak ada working-memory eksplisit untuk LLM. `workspace-runner.service.ts:941-961` hanya meng-infer event `plan_created` untuk UI — bukan tool yang bisa dipanggil LLM.
+- [x] `TodoStoreService` (baru, `apps/api/src/modules/tools/services/todo-store.service.ts`) — per-run store: `set/get/clear/has/serialize`; interface `TodoItem { id, content, status: 'pending'|'in_progress'|'completed' }`; `serialize()` → blok `=== TODO LIST ===` untuk disisipkan ke system prompt.
+- [x] Tool `todo_write` diregistrasi di `tools-provider.module.ts` via `ToolAdapter.from` (catalog-only; butuh array `todos` lengkap, bukan delta; schema status enum). `TodoStoreService` di-provide + export dari `ToolsProviderModule` & `ToolsModule`.
+- [x] Workspace runner: `todoStore.clear(workspaceId)` di awal run; tiap round injeksi blok todo in-place (update satu pesan system, hapus jika kosong) sebelum `aiService.chat`.
+- [x] Agent runner (sync + stream): inject todo per round dengan `todoRunId = idempotencyKey || 'chat:<chatId>'`, `runId` di-thread ke args tool agar tulis-ke-run yang benar.
+- [x] `rules.md`: tugas >3 langkah wajib tulis plan via `todo_write`; 1-2 langkah tidak perlu.
+- [x] Test: `todo-store.service.spec.ts` (3 test: set/get/clear, format serialize, serialize kosong) + test injeksi 2-round di `workspace-runner.service.spec.ts` (todo_write → read → cek pesan system round 2 berisi `- [in_progress] 1: Baca file`). Semua pass.
+- [x] Build passes (`npm run build` — 0 errors).
+
 
 ---
 

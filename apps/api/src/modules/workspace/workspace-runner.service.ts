@@ -20,6 +20,7 @@ import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service
 import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 import { CompactionService } from '../ai/compaction.service.js';
 import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
+import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { ProviderService } from '../provider/provider.service.js';
@@ -155,8 +156,8 @@ export class WorkspaceRunnerService {
     private readonly contextRegistry: ContextRegistry,
     private readonly eventEmitter: EventEmitter2,
     private readonly providerService: ProviderService,
+    private readonly todoStore: TodoStoreService,
   ) {}
-
   private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
     const mentioned = new Set<string>();
     for (const filename of extractMentionedFilenames(goal)) {
@@ -727,9 +728,10 @@ export class WorkspaceRunnerService {
    try {
        this.setState(runState, 'running', onEvent);
        this.setPhase(runState, 'scanning', onEvent);
-       this.modifiedFiles.delete(workspaceId);
-       this.readFiles.delete(workspaceId);
-        this.mentionedFiles.delete(workspaceId);
+        this.modifiedFiles.delete(workspaceId);
+        this.readFiles.delete(workspaceId);
+         this.mentionedFiles.delete(workspaceId);
+         this.todoStore.clear(workspaceId);
 
 
       // Emit agent started event
@@ -886,6 +888,18 @@ export class WorkspaceRunnerService {
 
           // Context refresh every 5 rounds
           await this.prepareNextTurn(workspaceId, messages, runState.round);
+
+          // Inject current todo list (working memory) so LLM stays anchored
+          // across long runs. Single [TODO] message updated in place per round.
+          const todoText = this.todoStore.serialize(workspaceId);
+          const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
+          if (todoText) {
+            const todoMsg = { role: 'system' as const, content: todoText };
+            if (todoIdx >= 0) messages[todoIdx] = todoMsg;
+            else messages.push(todoMsg);
+          } else if (todoIdx >= 0) {
+            messages.splice(todoIdx, 1);
+          }
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
