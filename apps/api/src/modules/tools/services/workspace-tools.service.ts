@@ -36,6 +36,10 @@ export class WorkspaceToolsService {
    * Defends against Path Traversal / LFI attacks.
    */
   private requirePathInWorkspace(targetPath: string, rootPath: string): string {
+    // Defense-in-depth: path.resolve() is CWD-relative, so plain traversal
+    // values (".", "..") resolve to the process CWD, which lives outside the
+    // workspace root and therefore throws here. Tools must pass absolute or
+    // workspace-relative paths; this is the last line of defense (Gap #13).
     const resolvedTarget = path.resolve(targetPath);
     const resolvedRoot = path.resolve(rootPath);
     const rel = path.relative(resolvedRoot, resolvedTarget);

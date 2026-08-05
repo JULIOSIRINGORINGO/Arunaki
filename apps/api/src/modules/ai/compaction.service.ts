@@ -1,12 +1,20 @@
 import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import type { ChatMessage } from './ai.service.js';
 import { AiService } from './ai.service.js';
+import { countTokens } from './tokenizer.js';
 
 export interface CompactionResult {
   compactedMessages: ChatMessage[];
   wasCompacted: boolean;
   summary?: string;
 }
+
+// Token-based thresholds (Gap #14/#15): compaction triggers on accumulated
+// tokens, not raw message count, and the LLM summary input is capped so the
+// summarization call itself cannot overflow context.
+const MAX_TOTAL_TOKENS = 60_000;
+const RECENT_TOKENS_BUDGET = 24_000;
+const MAX_SUMMARY_INPUT_TOKENS = 30_000;
 
 const LLM_SUMMARY_INSTRUCTIONS = `Kompaksi riwayat percakapan menjadi satu ringkasan kohesif.
 
@@ -32,20 +40,23 @@ export class CompactionService {
 
   async compactHistory(
     messages: ChatMessage[],
-    maxTurns = 20,
   ): Promise<CompactionResult> {
-    if (messages.length <= maxTurns) {
+    const totalTokens = messages.reduce(
+      (sum, m) => sum + countTokens(m.content ?? ''),
+      0,
+    );
+    if (totalTokens <= MAX_TOTAL_TOKENS) {
       return { compactedMessages: messages, wasCompacted: false };
     }
 
     this.logger.log(
-      `Compaction Engine: Compacting ${messages.length} messages down to recent turns + summary boundary`,
+      `Compaction Engine: Compacting ${messages.length} messages (${totalTokens} tokens) down to recent turns + summary boundary`,
     );
 
     const systemMessages = messages.filter((m) => m.role === 'system');
     const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-    const recentMessages = nonSystemMessages.slice(-10);
-    const olderMessages = nonSystemMessages.slice(0, -10);
+    const { recentMessages, olderMessages } =
+      this.splitRecentByTokens(nonSystemMessages);
 
     if (this.useLlmSummary) {
       return this.compactWithLLM(systemMessages, olderMessages, recentMessages);
@@ -54,16 +65,53 @@ export class CompactionService {
     return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
   }
 
+  /**
+   * Split non-system messages into recent/older by token budget instead of a
+   * fixed count — keeps ~RECENT_TOKENS_BUDGET tokens of live context (Gap #14).
+   */
+  private splitRecentByTokens(messages: ChatMessage[]): {
+    recentMessages: ChatMessage[];
+    olderMessages: ChatMessage[];
+  } {
+    const recentMessages: ChatMessage[] = [];
+    let used = 0;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const content = messages[i].content ?? '';
+      const tokens = countTokens(content);
+      if (used + tokens > RECENT_TOKENS_BUDGET && recentMessages.length >= 2) {
+        break;
+      }
+      recentMessages.unshift(messages[i]);
+      used += tokens;
+    }
+    const olderMessages = messages.slice(0, messages.length - recentMessages.length);
+    return { recentMessages, olderMessages };
+  }
+
   private async compactWithLLM(
     systemMessages: ChatMessage[],
     olderMessages: ChatMessage[],
     recentMessages: ChatMessage[],
   ): Promise<CompactionResult> {
     try {
-      const olderTexts = olderMessages
-        .map((m) => `[${m.role}] ${m.content || ''}`)
-        .filter(Boolean)
-        .join('\n');
+      // Cap the summary input so the LLM call cannot overflow context even when
+      // olderMessages is large (Gap #15). Walks message-by-message so truncation
+      // stays on message boundaries.
+      const keptLines: string[] = [];
+      let used = 0;
+      for (const msg of olderMessages) {
+        const line = `[${msg.role}] ${msg.content || ''}`;
+        const lineTokens = countTokens(line);
+        if (used + lineTokens > MAX_SUMMARY_INPUT_TOKENS && keptLines.length > 0) {
+          this.logger.warn(
+            `Compaction input truncated at ${MAX_SUMMARY_INPUT_TOKENS} tokens (${olderMessages.length} messages → ${keptLines.length} lines)`,
+          );
+          break;
+        }
+        keptLines.push(line);
+        used += lineTokens;
+      }
+      const olderTexts = keptLines.join('\n');
 
       const summary = (
         await this.aiService!.chat(
@@ -86,7 +134,9 @@ export class CompactionService {
         summary,
       };
     } catch (err: any) {
-      this.logger.warn(`LLM compaction failed (${err.message}), falling back to summary`);
+      this.logger.warn(
+        `Compaction: LLM summary gagal (${err.message}). FALLBACK ke COMPACTION SUMMARY (non-LLM).`,
+      );
       return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
     }
   }

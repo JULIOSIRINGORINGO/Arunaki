@@ -885,11 +885,12 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] `token-budget.service.ts` baru (AI module): `RunTokenBudget` (used/limit/remaining/exceeded, `consume()` abaikan non-finite/≤0), `createRunBudget()` (limit dari `RUN_TOKEN_BUDGET` env, default 200_000), `enterRunBudget()` / `currentRunBudget()` via `AsyncLocalStorage` — budget terikat ke run aktif.
 - [x] `workspace-runner.service.ts`: budget dibuat + di-enter di awal generator; tiap `aiService.chat()` meng-consume `usage.totalTokens`; jika `exceeded`, run dihentikan dengan pesan jelas + `onEvent` error berisi `{ message, budget }`.
 - [x] `agent-runner.service.ts` jalur sync & stream: budget dibuat + di-enter; consume tiap round; berhenti saat `exceeded` dengan pesan yang sama (sync: lewat `finalContent`, stream: + `onEvent` error).
-- [x] `sub-agent-runner.service.ts`: sub-agent memakai `currentRunBudget()` (mewarisi pool parent via ALS) — konsumsi sub-agent masuk ke budget run yang sama; berhenti saat pool habis.
-- [x] Test baru `token-budget.service.spec.ts` (5 test): akumulasi lintas round, abaikan NaN/negatif/0, env override + default 200k, propagasi ALS ke async scope nested (sub-agent), `currentRunBudget()` undefined di luar run.
-- [x] Build passes (`npm run build` — 0 errors); semua test api pass (113/113).
-
-### 45.7 Hybrid Memory Search: FTS5 + Semantic Embedding Fallback (Gap #10)
+- [x] Gap #11 – Self‑Healing fallback map & end‑to‑end test (self‑healing.service.ts)
+- [x] Gap #12 – Adaptive retry loop (error reassign + guard) (self‑healing.service.ts)
+- [x] Gap #13 – Path traversal hardening in validateToolPaths (self‑healing.service.ts)
+- [x] Gap #14 – Token‑based compaction trigger (compaction.service.ts)
+- [x] Gap #15 – LLM summary input cap (compaction.service.ts)
+- [x] Gap #16 – Tool‑loop per‑run isolation (tool‑loop‑detector.service.ts)
 - [x] Gap-analysis check: `SessionSearchService` hanya FTS5 keyword MATCH (+ fallback LIKE) — query sama-makna-bedakata (`"harga jual"` vs `"nilai penjualan"`) tidak match. FTS5 tetap pilihan masuk akal untuk local-first, jadi pendekatan hybrid (FTS5 lapisan pertama, semantic fallback lapisan kedua).
 - [x] Dependency baru (disetujui user): `@xenova/transformers` v2 (transformers.js, ONNX on-device) + model `Xenova/all-MiniLM-L6-v2` (384-dim, quantized, ~90MB didownload sekali pada penggunaan pertama). Alternatif ditimbang: `sqlite-vec` — ditolak karena hanya menyimpan/hitung jarak, tetap butuh model embedding, plus native compile risk di Windows.
 - [x] `semantic-search.service.ts` baru (memory module): lazy pipeline loading; `embed()` (mean pooling + normalize); `semanticSearch()` — cosine similarity atas embedding yang di-cache di tabel SQLite `message_embeddings`, filter skor ≤0.35, kembalikan `[]` (bukan throw) saat model gagal load agar layer FTS5 tidak pernah terdegradasi.

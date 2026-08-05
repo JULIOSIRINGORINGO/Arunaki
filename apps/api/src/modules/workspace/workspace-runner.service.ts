@@ -802,6 +802,9 @@ export class WorkspaceRunnerService {
         this.readFiles.delete(workspaceId);
          this.mentionedFiles.delete(workspaceId);
          this.todoStore.clear(workspaceId);
+         // Gap #16: per-run tool history — otherwise identical tool calls from a
+         // previous run count toward this run's circuit breaker (false positive).
+         this.toolLoopDetector.clearSession(workspaceId);
 
 
       // Emit agent started event
@@ -1338,14 +1341,13 @@ export class WorkspaceRunnerService {
              });
            }
 
-          // Compact history if context length grows (OpenClaw compaction.ts)
-          if (messages.length > 20) {
-            const compactResult = await this.compactionService.compactHistory(messages);
-            if (compactResult.wasCompacted) {
-              messages.length = 0;
-              messages.push(...compactResult.compactedMessages);
-            }
-          }
+           // Compact history if the accumulated token budget is exceeded
+           // (OpenClaw compaction.ts — threshold lives in CompactionService, Gap #14)
+           const compactResult = await this.compactionService.compactHistory(messages);
+           if (compactResult.wasCompacted) {
+             messages.length = 0;
+             messages.push(...compactResult.compactedMessages);
+           }
         }
 
         if (!reachedMaxRounds) {

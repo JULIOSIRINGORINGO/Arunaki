@@ -34,11 +34,10 @@ export class SelfHealingService {
   private readonly logger = new Logger(SelfHealingService.name);
   private readonly MAX_RETRIES = 3;
 
-  /** Map of tool name → fallback tool names */
+  /** Map of tool name → fallback tool names (must match registered tool names in tools-provider.module.ts) */
   private readonly fallbackMap: Record<string, string[]> = {
-    workspace_search: ['workspace_list_files'],
-    workspace_read: ['workspace_list_files'],
-    workspace_analyze: ['workspace_read', 'workspace_list_files'],
+    search_workspace: ['list_workspace_files'],
+    read_workspace_file: ['list_workspace_files'],
   };
 
   /** Map of error patterns → recovery strategies */
@@ -151,34 +150,46 @@ export class SelfHealingService {
       firstResult.error?.message || firstResult.preview || 'Unknown error';
 
     // 2. Try recovery strategies based on error pattern
+    // Re-evaluate currentError each iteration so a failed strategy doesn't
+    // repeat verbatim on the next retry (Gap #12).
+    let currentError =
+      firstResult.error?.message || firstResult.preview || 'Unknown error';
+    const tried = new Set<string>();
+
     for (let retry = 0; retry < this.MAX_RETRIES; retry++) {
-      const strategy = this.findRecoveryStrategy(errorMessage);
+      const strategy = this.findRecoveryStrategy(currentError);
 
       if (strategy) {
-        const adjustedArgs = strategy.adjust(args, errorMessage);
+        const attemptKey = `${strategy.strategy}:${currentError}`;
+        if (!tried.has(attemptKey)) {
+          tried.add(attemptKey);
+          const adjustedArgs = strategy.adjust(args, currentError);
 
-        this.logger.log(
-          `Healing attempt ${retry + 1}: strategy="${strategy.strategy}"`,
-        );
-        const retryResult = await this.toolRegistryService.executeTool(
-          toolName,
-          adjustedArgs,
-        );
-
-        const attempt: HealingAttempt = {
-          originalError: errorMessage,
-          strategy: strategy.strategy,
-          success: retryResult.status === 'success',
-          result: retryResult,
-          timestamp: new Date(),
-        };
-        attempts.push(attempt);
-
-        if (retryResult.status === 'success') {
           this.logger.log(
-            `Self-healed with strategy "${strategy.strategy}" on attempt ${retry + 1}`,
+            `Healing attempt ${retry + 1}: strategy="${strategy.strategy}"`,
           );
-          return { finalResult: retryResult, attempts, healed: true };
+          const retryResult = await this.toolRegistryService.executeTool(
+            toolName,
+            adjustedArgs,
+          );
+
+          const attempt: HealingAttempt = {
+            originalError: currentError,
+            strategy: strategy.strategy,
+            success: retryResult.status === 'success',
+            result: retryResult,
+            timestamp: new Date(),
+          };
+          attempts.push(attempt);
+
+          if (retryResult.status === 'success') {
+            this.logger.log(
+              `Self-healed with strategy "${strategy.strategy}" on attempt ${retry + 1}`,
+            );
+            return { finalResult: retryResult, attempts, healed: true };
+          }
+          currentError =
+            retryResult.error?.message || retryResult.preview || currentError;
         }
       }
 
@@ -192,7 +203,7 @@ export class SelfHealingService {
         );
 
         const attempt: HealingAttempt = {
-          originalError: errorMessage,
+          originalError: currentError,
           strategy: `fallback:${fallbackTool}`,
           success: fallbackResult.status === 'success',
           result: fallbackResult,
@@ -204,6 +215,8 @@ export class SelfHealingService {
           this.logger.log(`Self-healed with fallback "${fallbackTool}"`);
           return { finalResult: fallbackResult, attempts, healed: true };
         }
+        currentError =
+          fallbackResult.error?.message || fallbackResult.preview || currentError;
       }
     }
 
@@ -299,8 +312,11 @@ export class SelfHealingService {
             key === 'source' ||
             key === 'destination'
           ) {
-            // Only validate absolute paths or paths with separators
-            if (path.isAbsolute(value) || value.includes('/') || value.includes('\\')) {
+            // Only validate absolute paths, paths with separators, or plain
+            // traversal values (Gap #13: "." / ".." / "../" resolve outside the
+            // workspace but never contain a separator on their own).
+            const isTraversal = value === '.' || value === '..' || /^\.\.[/\\]/.test(value);
+            if (path.isAbsolute(value) || value.includes('/') || value.includes('\\') || isTraversal) {
               paths.push(value);
             }
           }

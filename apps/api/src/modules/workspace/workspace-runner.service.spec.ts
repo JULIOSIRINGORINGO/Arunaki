@@ -85,7 +85,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           useValue: { scan: vi.fn().mockReturnValue({ isInjection: false }) },
         },
         { provide: ToolLoopDetectorService, useValue: { checkLoop: vi.fn() } },
-        { provide: CompactionService, useValue: {} },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn() } } },
         { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
         { provide: ContextRegistry, useValue: { registerContext: vi.fn() } },
@@ -174,8 +174,8 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
-        { provide: CompactionService, useValue: {} },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         {
           provide: PrismaService,
           useValue: {
@@ -287,8 +287,8 @@ describe('WorkspaceRunnerService todo list injection', () => {
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
-        { provide: CompactionService, useValue: {} },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) }, source: { findFirst: vi.fn().mockResolvedValue(null) } } },
         { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
         { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
@@ -394,8 +394,8 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
-        { provide: CompactionService, useValue: {} },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         {
           provide: PrismaService,
           useValue: {
@@ -486,8 +486,8 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
-        { provide: CompactionService, useValue: {} },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         {
           provide: PrismaService,
           useValue: {
