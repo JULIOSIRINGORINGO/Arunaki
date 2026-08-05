@@ -1025,7 +1025,7 @@ export class WorkspaceRunnerService {
             }
           }
 
-          // Execute read-only tools in parallel with SelfHealing
+          // Execute read-only tools in parallel (semantically safe: no writes)
           if (readOnlyCalls.length > 0) {
             onEvent({
               type: 'tool_start',
@@ -1036,15 +1036,21 @@ export class WorkspaceRunnerService {
               },
             });
 
-            for (const { toolCall, args } of readOnlyCalls) {
-              const enrichedArgs = { ...args, workspaceId };
-              const healResult = await this.selfHealingService.executeWithHealing(
-                toolCall.function.name,
-                enrichedArgs,
-                workspaceId,
-              );
-              const result = healResult.finalResult;
+            const healedResults = await Promise.all(
+              readOnlyCalls.map(async ({ toolCall, args }) => {
+                const enrichedArgs = { ...args, workspaceId };
+                const healResult =
+                  await this.selfHealingService.executeWithHealing(
+                    toolCall.function.name,
+                    enrichedArgs,
+                    workspaceId,
+                  );
+                return { toolCall, args, result: healResult.finalResult };
+              }),
+            );
 
+            // Emit in original tool_calls order so tool_call_id stays consistent
+            for (const { toolCall, args, result } of healedResults) {
               if (result.status === 'success' && result.metadata?.contentBase64) {
                 const artifact = await this.artifactService.createFromAgent({
                   workspaceId,
@@ -1080,20 +1086,20 @@ export class WorkspaceRunnerService {
                 },
               });
 
-               // Track file reads
-               if (['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(toolCall.function.name)) {
-                 const current = this.readFiles.get(workspaceId) || [];
-                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
-                 this.readFiles.set(workspaceId, current.slice(-30));
-               }
+              // Track file reads
+              if (['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(toolCall.function.name)) {
+                const current = this.readFiles.get(workspaceId) || [];
+                current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
+                this.readFiles.set(workspaceId, current.slice(-30));
+              }
 
-               messages.push({
-                 role: 'tool',
-                 tool_call_id: toolCall.id,
-                 content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
-               });
-             }
-           }
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
+              });
+            }
+          }
 
           // Execute mutating tools — full autonomous with built-in safety:
           // - delete_workspace_file: auto-backup to .arunaki-trash/ before delete

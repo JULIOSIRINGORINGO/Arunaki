@@ -192,7 +192,20 @@ export class AgentRunnerService {
         tool_calls: aiResponse.toolCalls,
       });
 
-      for (const toolCall of aiResponse.toolCalls) {
+      // Notify harness of tool starts (in order)
+      for (const tc of aiResponse.toolCalls) {
+        let args: Record<string, any> = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
+        this.harnessRegistry.onToolStart({
+          chatId,
+          runId: params.idempotencyKey || '',
+          toolName: tc.function.name,
+          args,
+        });
+      }
+
+      // Execute independent tool calls in parallel, like the stream path
+      const executionPromises = aiResponse.toolCalls.map(async (toolCall) => {
         const funcName = toolCall.function.name;
         let args: Record<string, any> = {};
         try {
@@ -200,13 +213,6 @@ export class AgentRunnerService {
         } catch {
           args = {};
         }
-
-        this.harnessRegistry.onToolStart({
-          chatId,
-          runId: params.idempotencyKey || '',
-          toolName: funcName,
-          args,
-        });
 
         let result: ToolResult;
         try {
@@ -243,6 +249,13 @@ export class AgentRunnerService {
           };
         }
 
+        return { toolCall, funcName, args, result };
+      });
+
+      const executedResults = await Promise.all(executionPromises);
+
+      // Emit in original tool_calls order so tool_call_id stays consistent
+      for (const { toolCall, funcName, args, result } of executedResults) {
         this.harnessRegistry.onToolResult({
           chatId,
           runId: params.idempotencyKey || '',

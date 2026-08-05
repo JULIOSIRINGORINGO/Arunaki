@@ -104,3 +104,122 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
     expect(isRunning).toBe(false);
   });
 });
+
+describe('WorkspaceRunnerService read-only parallel execution', () => {
+  let runnerService: WorkspaceRunnerService;
+  let maxActive = 0;
+  let active = 0;
+
+  beforeEach(async () => {
+    maxActive = 0;
+    active = 0;
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WorkspaceRunnerService,
+        {
+          provide: AiService,
+          useValue: {
+            getSystemPrompt: vi.fn().mockReturnValue('system'),
+            chat: vi
+              .fn()
+              .mockResolvedValueOnce({
+                content: null,
+                toolCalls: [
+                  { id: 'call_1', function: { name: 'read_workspace_file', arguments: '{"filename":"a.txt"}' } },
+                  { id: 'call_2', function: { name: 'search_workspace', arguments: '{"query":"x"}' } },
+                  { id: 'call_3', function: { name: 'list_workspace_files', arguments: '{}' } },
+                ],
+              })
+              .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
+          },
+        },
+        {
+          provide: ToolRegistryService,
+          useValue: {
+            getToolDefinitions: vi.fn().mockReturnValue([]),
+          },
+        },
+        { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
+        {
+          provide: StorageService,
+          useValue: { exists: vi.fn(), readFile: vi.fn() },
+        },
+        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
+        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        { provide: BackgroundReviewService, useValue: {} },
+        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
+        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SelfHealingService,
+          useValue: {
+            executeWithHealing: vi.fn().mockImplementation(async () => {
+              active++;
+              maxActive = Math.max(maxActive, active);
+              await new Promise((r) => setTimeout(r, 30));
+              active--;
+              return {
+                finalResult: { status: 'success', data: { text: 'ok' } },
+                healed: false,
+                attempts: [],
+              };
+            }),
+          },
+        },
+        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
+        { provide: CompactionService, useValue: {} },
+        {
+          provide: PrismaService,
+          useValue: {
+            workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) },
+            source: { findFirst: vi.fn().mockResolvedValue(null) },
+          },
+        },
+        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
+        {
+          provide: ContextRegistry,
+          useValue: {
+            getActive: vi.fn().mockReturnValue({
+              assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }),
+            }),
+          },
+        },
+        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+      ],
+    }).compile();
+
+    runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
+  });
+
+  it('menjalankan read-only tools secara paralel dan mempertahankan urutan tool_calls', async () => {
+    const doneOrder: string[] = [];
+    const events: any[] = [];
+
+    for await (const event of runnerService.runWorkspaceAgentGenerator({
+      workspaceId: 'ws-parallel-test',
+      userGoal: 'bacakan file a.txt dan cari x',
+      historyMessages: [{ role: 'user', content: 'bacakan file a.txt dan cari x' }],
+    })) {
+      events.push(event);
+      if (event.type === 'tool_done') {
+        doneOrder.push(event.data.toolName);
+      }
+    }
+
+    expect(doneOrder).toEqual([
+      'read_workspace_file',
+      'search_workspace',
+      'list_workspace_files',
+    ]);
+    expect(maxActive).toBeGreaterThan(1);
+    const hasParallelEvent = events.some((e) =>
+      e.type === 'tool_start' &&
+      typeof e.data.toolName === 'string' &&
+      e.data.toolName.startsWith('parallel ('),
+    );
+    expect(hasParallelEvent).toBe(true);
+  });
+});

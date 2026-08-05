@@ -827,7 +827,14 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Gap-analysis check: `validateArgs` (tool-registry.service.ts) hanya memeriksa string/number/array/enum/required — `boolean` & `object` tidak divalidasi (7+ param boolean di tools-provider module lolos tipe salah tanpa ketahuan).
 - [x] `validateArgs` sekarang memeriksa `boolean` dan `object` (tolak array/null — null optional tetap dianggap absent).
 - [x] Spec baru `tool-registry.service.spec.ts` — 4 test pass (valid args, boolean salah tipe, object salah tipe, null optional lolos).
-- [x] Build passes (`npm run build` — 0 errors). Dev log `docs/dev-logs/dev-log-2026-08-04-tool-args-validation.md` created.
+- [x] Build passes (`npm run build` — 0 errors). Dev log `docs/dev-logs/dev-log-2026-08-05-tool-args-validation.md` created.
+
+### 45.0 Parallel Tool Execution Consistency (Gap #1)
+- [x] Sync path `runAgentSyncInternal` (agent-runner.service.ts) diubah dari `for...await` sequential ke `Promise.all` — konsisten dengan stream path; `onToolStart` semua dipanggil dulu, eksekusi paralel, hasil emit dalam urutan tool_calls asli (tool_call_id konsisten).
+- [x] Read-only tools di workspace-runner.service.ts (mode utama: Excel/Word hosting) diubah dari `for` sequential ke `Promise.all` dengan urutan hasil dipertahankan. Mutating tools tetap sequential (dependensi antar tool).
+- [x] Komentar menyesatkan `// Execute read-only tools in parallel with SelfHealing` diganti jadi akurat.
+- [x] Test `workspace-runner.service.spec.ts`: 3 read-only calls independen → `maxActive > 1` (paralel), `tool_done` berurutan sesuai tool_calls, event `parallel (...)`.
+- [x] Build passes (`npm run build` — 0 errors); semua test workspace + chat pass.
 
 
 ---
