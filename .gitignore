@@ -28,3 +28,6 @@ test_excel.csv
 REKAPAN*.txt
 REKAPAN*.xlsm
 TABEL REKAPAN*.xlsm
+
+GAP_ANALYSIS_ARUNAKI_VS_OPENCLAW.md
+Perbandingan_Arunaki_vs_OpenClaw_LLM.md
