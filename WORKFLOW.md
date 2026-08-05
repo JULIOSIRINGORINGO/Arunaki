@@ -846,6 +846,14 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test: `todo-store.service.spec.ts` (3 test: set/get/clear, format serialize, serialize kosong) + test injeksi 2-round di `workspace-runner.service.spec.ts` (todo_write → read → cek pesan system round 2 berisi `- [in_progress] 1: Baca file`). Semua pass.
 - [x] Build passes (`npm run build` — 0 errors).
 
+### 45.2 Tokenizer Akurat (tiktoken) Dipakai untuk Keputusan (Gap #2)
+- [x] Gap-analysis check: `estimateTokens()` (context-manager.ts:643) pakai heuristik char/4 untuk SEMUA keputusan compaction/budget; `countTokens()` tiktoken di ai.service.ts jadi dead code.
+- [x] Util baru `apps/api/src/modules/ai/tokenizer.ts` — `countTokens(text)` pakai `encoding_for_model('gpt-4')` (cl100k_base) dengan fallback char/4 hanya saat tiktoken throw, + bounded string cache (10k entries) supaya tidak re-encode pesan yang sama tiap round.
+- [x] `ContextManager.estimateTokens()` sekarang memakai tokenizer asli (bukan char/4) untuk content + tool_calls.
+- [x] `AiService.countTokens()` delegasi ke util yang sama (tidak lagi dead code).
+- [x] Test: 2 test baru di `context-manager.spec.ts` — teks Bahasa Indonesia panjang & JSON tool result dihitung exact dengan tiktoken (bukan heuristik).
+- [x] Build passes (`npm run build` — 0 errors); semua test ai module pass (32/32).
+
 
 ---
 

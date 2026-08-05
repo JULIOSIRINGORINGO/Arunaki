@@ -9,6 +9,7 @@ import {
   ProviderConfig,
 } from '../provider/provider.service.js';
 import { ContextManager, ESTIMATED_CHARS_PER_TOKEN } from './context-manager.js';
+import { countTokens as tokenize } from './tokenizer.js';
 import { ContextRegistry } from './context/context-registry.service.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
 import {
@@ -233,15 +234,11 @@ export class AiService {
   }
 
   /**
-   * Count tokens in a string using tiktoken
+   * Count tokens in a string using tiktoken.
+   * Shared with ContextManager via tokenizer util (cached, char/4 fallback).
    */
   countTokens(text: string): number {
-    try {
-      return this.enc.encode(text).length;
-    } catch {
-      // Fallback: rough estimate (4 chars per token)
-      return Math.ceil(text.length / 4);
-    }
+    return tokenize(text);
   }
 
   /**

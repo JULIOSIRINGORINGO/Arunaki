@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { ChatMessage } from './ai.service.js';
+import { countTokens } from './tokenizer.js';
 
 export interface ContextConfig {
   /** Context window size (tokens) */
@@ -637,20 +638,20 @@ Provide a concise summary (max 300 chars).`;
   }
 
   /**
-   * Estimate tokens for a message array.
-   * Uses char-based estimation (~4 chars per token) for speed.
+   * Estimate tokens for a message array using the real tiktoken tokenizer.
+   * Falls back to char/4 only when tiktoken is unavailable.
    */
   estimateTokens(messages: ChatMessage[]): number {
     let total = 0;
     for (const msg of messages) {
       total += 4; // Per-message overhead
       if (msg.content) {
-        total += Math.ceil(msg.content.length / 4);
+        total += countTokens(msg.content);
       }
       if (msg.tool_calls) {
         for (const tc of msg.tool_calls) {
-          total += Math.ceil(tc.function.name.length / 4);
-          total += Math.ceil(tc.function.arguments.length / 4);
+          total += countTokens(tc.function.name);
+          total += countTokens(tc.function.arguments);
         }
       }
     }

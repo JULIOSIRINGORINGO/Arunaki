@@ -1,12 +1,40 @@
 import { describe, it, expect } from 'vitest';
 import { ContextManager } from './context-manager.js';
 import { ChatMessage } from './ai.service.js';
+import { countTokens } from './tokenizer.js';
 
 function toolMessage(content: string): ChatMessage {
   return { role: 'tool', content, tool_call_id: 't1', name: 'read_workspace_file' };
 }
 
 describe('ContextManager — preemptive compaction guards', () => {
+  describe('estimateTokens uses the real tokenizer', () => {
+    it('counts Indonesian prose with tiktoken, not the char/4 heuristic', () => {
+      const cm = new ContextManager();
+      const id = `Laporan keuangan bulan ini menunjukkan peningkatan penjualan sebesar 15 persen dibandingkan periode sebelumnya. Kami mencatat total pendapatan Rp 250.000.000 dan biaya operasional Rp 180.000.000, sehingga laba bersih mencapai Rp 70.000.000. Rekomendasi kami adalah meningkatkan alokasi pemasaran digital dan memperkuat layanan pelanggan.`.repeat(20);
+      const msgs: ChatMessage[] = [{ role: 'user', content: id }];
+      const total = cm.estimateTokens(msgs);
+      // 4 per-message overhead + exact tokenizer count (not char/4)
+      expect(total).toBe(4 + countTokens(id));
+    });
+
+    it('counts JSON tool results with tiktoken (denser than prose)', () => {
+      const cm = new ContextManager();
+      const json = JSON.stringify(
+        Array.from({ length: 200 }, (_, i) => ({
+          id: i,
+          name: `Item ${i}`,
+          price: 1000 + i,
+          qty: 3,
+          note: 'contoh data penjualan',
+        })),
+      );
+      const msgs: ChatMessage[] = [toolMessage(json)];
+      const total = cm.estimateTokens(msgs);
+      expect(total).toBe(4 + countTokens(json));
+      expect(total).toBeGreaterThan(Math.ceil(json.length / 4));
+    });
+  });
   describe('enforceAggregateToolResultBudget', () => {
     it('keeps messages unchanged when total tool chars are within the 50% share', () => {
       const cm = new ContextManager();
