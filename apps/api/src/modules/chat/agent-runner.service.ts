@@ -13,6 +13,7 @@ import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
 import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
+import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -68,6 +69,7 @@ export class AgentRunnerService {
     private readonly sessionEvents: SessionStateEventsService,
     private readonly harnessRegistry: HarnessRegistryService,
     private readonly todoStore: TodoStoreService,
+    private readonly quarantine: ContextQuarantine,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
@@ -149,7 +151,10 @@ export class AgentRunnerService {
   private async runAgentSyncInternal(params: AgentRunParams) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
-    const knowledgeContext = await this.getKnowledgeContext(params.userContent);
+    const knowledgeContext = this.quarantine.sanitizeText(
+      await this.getKnowledgeContext(params.userContent),
+      'knowledge-context',
+    );
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,
       undefined,
@@ -429,7 +434,10 @@ export class AgentRunnerService {
         data: 'Memproses pesan dan mengumpulkan konteks...',
       });
 
-      const knowledgeContext = await this.getKnowledgeContext(params.userContent);
+      const knowledgeContext = this.quarantine.sanitizeText(
+        await this.getKnowledgeContext(params.userContent),
+        'knowledge-context',
+      );
       const systemPrompt = this.aiService.getSystemPrompt(
         chatMode,
         undefined,

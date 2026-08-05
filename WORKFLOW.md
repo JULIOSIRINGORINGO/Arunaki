@@ -864,6 +864,14 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test 3 kasus baru di `tool-registry.service.spec.ts`: cache hit (handler 1x), non-cacheable tidak di-cache (2x), invalidasi scope saat mutating tool (re-execute).
 - [x] Build passes (`npm run build` — 0 errors); semua test tools module pass (19/19).
 
+### 45.4 Context-Engine Baru Wired ke Chat Mode (Gap #4)
+- [x] Gap-analysis check: `ContextQuarantine` (sanitasi prompt-injection) hanya dipakai workspace mode; chat mode inject `knowledgeContext` tanpa sanitasi; `ContextRegistry` di-`@Optional @Inject` di ai.service.ts tapi tidak dipanggil.
+- [x] `AgentRunnerService` inject `ContextQuarantine`; `knowledgeContext` di-sanitize sebelum masuk `getSystemPrompt()` di jalur sync (`runAgentSyncInternal`) DAN stream (`runAgentStreamInternal`) — proteksi konsisten dengan workspace mode.
+- [x] `sanitizeText` di-`ContextQuarantine` di-expose public (private method di-rename `sanitizeTextInternal`).
+- [x] Dead injection dibersihkan: `@Optional() @Inject(ContextRegistry)` + import dihapus dari `ai.service.ts`.
+- [x] Test baru `context-quarantine.service.spec.ts` (3 test): knowledge-context injection ter-quarantine, sanitasi via `sanitizeAssemblyParams`, teks bersih tidak berubah.
+- [x] Build passes (`npm run build` — 0 errors); semua test chat + quarantine + ai service pass.
+
 
 ---
 

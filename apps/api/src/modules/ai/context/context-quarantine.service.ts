@@ -57,7 +57,15 @@ export class ContextQuarantine {
     };
   }
 
-  private sanitizeText(text: string, label: string): string {
+  /**
+   * Sanitize a single injected context string (used by chat mode before
+   * knowledge/memory content reaches the system prompt).
+   */
+  sanitizeText(text: string, label: string): string {
+    return this.sanitizeTextInternal(text, label);
+  }
+
+  private sanitizeTextInternal(text: string, label: string): string {
     let sanitized = text;
     let changed = false;
 

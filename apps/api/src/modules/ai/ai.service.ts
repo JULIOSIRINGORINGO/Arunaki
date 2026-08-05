@@ -10,7 +10,6 @@ import {
 } from '../provider/provider.service.js';
 import { ContextManager, ESTIMATED_CHARS_PER_TOKEN } from './context-manager.js';
 import { countTokens as tokenize } from './tokenizer.js';
-import { ContextRegistry } from './context/context-registry.service.js';
 import { ModelRouterService, ModelHints } from './model-router.service.js';
 import {
   AutoPostureDetector,
@@ -91,7 +90,6 @@ export class AiService {
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(ProviderService) private readonly providerService: ProviderService,
     @Optional() @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService?: ToolRegistryService,
-    @Optional() @Inject(ContextRegistry) private readonly contextRegistry?: ContextRegistry,
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
