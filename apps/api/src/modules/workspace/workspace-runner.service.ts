@@ -43,46 +43,7 @@ export const WORKSPACE_MUTATING_TOOLS = [
   'desktop_word_format',
 ];
 
-export type AgentState =
-  | 'idle'
-  | 'running'
-  | 'steering'
-  | 'aborting'
-  | 'completed'
-  | 'failed';
 
-export type ExecutionPhase =
-  | 'scanning'
-  | 'planning'
-  | 'reading'
-  | 'analyzing'
-  | 'generating'
-  | 'completed';
-
-export interface WorkspaceRunState {
-  workspaceId: string;
-  state: AgentState;
-  goal: string;
-  startedAt: Date;
-  round: number;
-  currentPhase: ExecutionPhase;
-  abortController: AbortController;
-}
-
-export interface WorkspaceRunParams {
-  workspaceId: string;
-  userGoal: string;
-  historyMessages: Array<{
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-  }>;
-}
-
-export interface FileSnapshot {
-  path: string;
-  existedBefore: boolean;
-  content: Buffer | null;
-}
 
 export function extractMentionedFilenames(text: string): string[] {
   return [...text.matchAll(/@([^\n@]+?\.[A-Za-z0-9]{1,10})(?=\s|$|[.,;:!?])/g)]
@@ -161,26 +122,26 @@ export class WorkspaceRunnerService {
   >();
 
   constructor(
-    private readonly aiService: AiService,
-    private readonly toolRegistryService: ToolRegistryService,
-    private readonly storageService: StorageService,
-    private readonly fileService: FileService,
-    private readonly searchService: SearchService,
-    private readonly artifactService: ArtifactService,
-    private readonly memoryService: MemoryService,
-    private readonly backgroundReviewService: BackgroundReviewService,
-    private readonly smartRecallService: SmartRecallService,
-    private readonly skillService: SkillService,
-    private readonly selfHealingService: SelfHealingService,
-    private readonly promptInjectionDetector: PromptInjectionDetector,
-    private readonly toolLoopDetector: ToolLoopDetectorService,
-    private readonly compactionService: CompactionService,
-    private readonly prisma: PrismaService,
-    private readonly contextRegistry: ContextRegistry,
-    private readonly eventEmitter: EventEmitter2,
-    private readonly providerService: ProviderService,
-    private readonly todoStore: TodoStoreService,
-    private readonly sessionAdmissionService: SessionAdmissionService,
+    @Inject(AiService) private readonly aiService: AiService,
+    @Inject(ToolRegistryService) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(StorageService) private readonly storageService: StorageService,
+    @Inject(FileService) private readonly fileService: FileService,
+    @Inject(SearchService) private readonly searchService: SearchService,
+    @Inject(ArtifactService) private readonly artifactService: ArtifactService,
+    @Inject(MemoryService) private readonly memoryService: MemoryService,
+    @Inject(BackgroundReviewService) private readonly backgroundReviewService: BackgroundReviewService,
+    @Inject(SmartRecallService) private readonly smartRecallService: SmartRecallService,
+    @Inject(SkillService) private readonly skillService: SkillService,
+    @Inject(SelfHealingService) private readonly selfHealingService: SelfHealingService,
+    @Inject(PromptInjectionDetector) private readonly promptInjectionDetector: PromptInjectionDetector,
+    @Inject(ToolLoopDetectorService) private readonly toolLoopDetector: ToolLoopDetectorService,
+    @Inject(CompactionService) private readonly compactionService: CompactionService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(ContextRegistry) private readonly contextRegistry: ContextRegistry,
+    @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
+    @Inject(ProviderService) private readonly providerService: ProviderService,
+    @Inject(TodoStoreService) private readonly todoStore: TodoStoreService,
+    @Inject(SessionAdmissionService) private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
   private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
     const mentioned = new Set<string>();
@@ -1525,4 +1486,46 @@ export class WorkspaceRunnerService {
       }
     }
   }
+}
+
+
+export type AgentState =
+  | 'idle'
+  | 'running'
+  | 'steering'
+  | 'aborting'
+  | 'completed'
+  | 'failed';
+
+export type ExecutionPhase =
+  | 'scanning'
+  | 'planning'
+  | 'reading'
+  | 'analyzing'
+  | 'generating'
+  | 'completed';
+
+export interface WorkspaceRunState {
+  workspaceId: string;
+  state: AgentState;
+  goal: string;
+  startedAt: Date;
+  round: number;
+  currentPhase: ExecutionPhase;
+  abortController: AbortController;
+}
+
+export interface WorkspaceRunParams {
+  workspaceId: string;
+  userGoal: string;
+  historyMessages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+  }>;
+}
+
+export interface FileSnapshot {
+  path: string;
+  existedBefore: boolean;
+  content: Buffer | null;
 }

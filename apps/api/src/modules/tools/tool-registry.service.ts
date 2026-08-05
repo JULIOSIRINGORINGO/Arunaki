@@ -22,16 +22,7 @@ interface ValidationResult {
 const CACHE_TTL_MS = 60_000;
 const CACHE_MAX_ENTRIES = 1000;
 
-const MUTATING_TOOLS = new Set([
-  'write_workspace_file',
-  'edit_workspace_file',
-  'delete_workspace_file',
-  'rename_workspace_file',
-  'desktop_send_keys',
-  'desktop_excel_edit',
-  'desktop_word_type',
-  'desktop_word_format',
-]);
+
 
 /**
  * ToolRegistryService — self-registering tool registry.
@@ -158,6 +149,14 @@ export class ToolRegistryService {
         name: r.tool.name,
         description: r.tool.description,
       }));
+  }
+
+  /**
+   * Check if a tool is mutating (modifies workspace state).
+   */
+  isMutating(name: string): boolean {
+    const toolRecord = this.tools.get(name);
+    return toolRecord ? !!toolRecord.tool.mutating : false;
   }
 
   /**
@@ -295,7 +294,7 @@ export class ToolRegistryService {
 
     const scope = this.scopeOf(args);
     if (tool.cacheable) {
-      if (MUTATING_TOOLS.has(name)) this.invalidateCache(scope);
+      if (this.isMutating(name)) this.invalidateCache(scope);
       const key = this.cacheKey(scope, name, args);
       const cached = this.resultCache.get(key);
       if (cached && cached.expiresAt > Date.now()) {
@@ -336,7 +335,7 @@ export class ToolRegistryService {
       }
     }
 
-    if (MUTATING_TOOLS.has(name)) this.invalidateCache(scope);
+    if (this.isMutating(name)) this.invalidateCache(scope);
     const startTime = Date.now();
 
     try {

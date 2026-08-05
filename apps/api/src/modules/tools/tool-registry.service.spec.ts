@@ -132,6 +132,7 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
         handler: writeHandler,
         parameters: { type: 'object', properties: {} },
         cacheable: false,
+        mutating: true,
       }),
     );
 

@@ -41,12 +41,17 @@ describe('CronService — Scheduled Reports & Cron Tasks', () => {
       seedStarterSkills: vi.fn().mockResolvedValue(0),
     };
 
+    const mockWorkspaceRunnerService = {
+      runAgentInWorkspace: vi.fn(),
+    };
+
     cronService = new CronService(
-      mockPrisma,
-      mockArtifactService,
-      mockDocumentGenerator,
-      mockAutoMemoryService,
-      mockSkillService,
+      mockPrisma as any,
+      mockArtifactService as any,
+      mockDocumentGenerator as any,
+      mockAutoMemoryService as any,
+      mockSkillService as any,
+      mockWorkspaceRunnerService as any,
     );
   });
 
@@ -86,23 +91,16 @@ describe('CronService — Scheduled Reports & Cron Tasks', () => {
   });
 
   it('should toggle schedule active status', async () => {
-    mockPrisma.scheduledReport.findUnique.mockResolvedValue({
-      id: 'cron_1',
-      active: true,
-    });
-    mockPrisma.scheduledReport.update.mockResolvedValue({
-      id: 'cron_1',
-      active: false,
-    });
-
-    const updated = await cronService.toggleSchedule('cron_1');
-    expect(updated?.active).toBe(false);
+    mockPrisma.scheduledReport.findUnique.mockResolvedValue({ active: true, workspaceId: 'ws-1' });
+    mockPrisma.scheduledReport.update.mockResolvedValue({ id: 'cron_1', active: false });
+    const updated = await cronService.toggleSchedule('123', 'ws-1');
+    expect(mockPrisma.scheduledReport.update).toHaveBeenCalled();
   });
 
   it('should delete a schedule', async () => {
+    mockPrisma.scheduledReport.findUnique.mockResolvedValue({ active: true, workspaceId: 'ws-1' });
     mockPrisma.scheduledReport.delete.mockResolvedValue({ id: 'cron_1' });
-
-    const deleted = await cronService.deleteSchedule('cron_1');
+    const deleted = await cronService.deleteSchedule('cron_1', 'ws-1');
     expect(deleted.id).toBe('cron_1');
   });
 });

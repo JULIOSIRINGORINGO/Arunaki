@@ -19,6 +19,8 @@ export interface ToolConfig {
   catalogMode?: 'direct-only' | 'catalog-only';
   /** Read-only/idempotent result may be cached per-run (default false). */
   cacheable?: boolean;
+  /** True if the tool modifies workspace state (requires safety checks) */
+  mutating?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export class ToolAdapter implements Tool {
 
   readonly catalogMode?: 'direct-only' | 'catalog-only';
   readonly cacheable: boolean;
+  readonly mutating?: boolean;
 
   private constructor(config: ToolConfig) {
     this.name = config.name;
@@ -50,6 +53,7 @@ export class ToolAdapter implements Tool {
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.catalogMode = config.catalogMode ?? 'catalog-only';
     this.cacheable = config.cacheable ?? false;
+    this.mutating = config.mutating;
 
     this.definition = {
       type: 'function',

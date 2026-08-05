@@ -43,6 +43,9 @@ export interface Tool {
   /** Timeout in milliseconds */
   readonly timeoutMs?: number;
 
+  /** True if the tool modifies workspace state (requires safety checks) */
+  readonly mutating?: boolean;
+
   /** 
    * Tool exposure mode for LLM prompt compaction. 
    * 'direct-only' (default for core): always visible to LLM.

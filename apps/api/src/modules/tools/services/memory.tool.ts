@@ -122,9 +122,9 @@ export class MemoryTool {
     }
   }
 
-  async searchMemories(query: string): Promise<ToolResult> {
+  async searchMemories(query: string, workspaceId: string): Promise<ToolResult> {
     try {
-      const memories = await this.memoryService.search(query);
+      const memories = await this.memoryService.search(query, workspaceId);
 
       if (memories.length === 0) {
         return {
@@ -141,7 +141,8 @@ export class MemoryTool {
 
       const preview = memories
         .map(
-          (m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`,
+          (m: Memory) =>
+            `[${m.type}] ${m.key}: ${m.content.substring(0, 100)}${m.content.length > 100 ? '...' : ''}`,
         )
         .join('\n');
 
@@ -159,7 +160,7 @@ export class MemoryTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal search memories: ${e.message}`,
+        preview: `Gagal mencari memory: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
@@ -170,7 +171,7 @@ export class MemoryTool {
     }
   }
 
-  async deleteMemory(type: string, key: string): Promise<ToolResult> {
+  async deleteMemory(type: string, key: string, workspaceId: string): Promise<ToolResult> {
     try {
       const memory = await this.memoryService.findByKey(type, key);
       if (!memory) {
@@ -184,6 +185,20 @@ export class MemoryTool {
             executionTime: 0,
           },
           error: { code: 'NOT_FOUND', message: `Memory not found` },
+        };
+      }
+
+      if (memory.workspaceId !== null && memory.workspaceId !== workspaceId) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Penghapusan ditolak: Memory ini bukan milik workspace Anda.`,
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
+          error: { code: 'FORBIDDEN', message: `Cannot delete memory from another workspace` },
         };
       }
 

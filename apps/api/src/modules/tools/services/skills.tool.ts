@@ -125,6 +125,7 @@ export class SkillsTool {
     category?: string;
     content: string;
     tags?: string[];
+    workspaceId: string;
   }): Promise<ToolResult> {
     try {
       const skill = await this.skillService.createSkill({
@@ -211,6 +212,7 @@ export class SkillsTool {
 
   async updateSkill(
     name: string,
+    workspaceId: string,
     data: Partial<{
       displayName: string;
       description: string;
@@ -231,6 +233,20 @@ export class SkillsTool {
             executionTime: 0,
           },
           error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
+        };
+      }
+
+      if (skill.workspaceId !== null && skill.workspaceId !== workspaceId) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Update ditolak: Skill ini bukan milik workspace Anda.`,
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
+          error: { code: 'FORBIDDEN', message: `Cannot update skill from another workspace` },
         };
       }
 
@@ -268,7 +284,7 @@ export class SkillsTool {
     }
   }
 
-  async deleteSkill(name: string): Promise<ToolResult> {
+  async deleteSkill(name: string, workspaceId: string): Promise<ToolResult> {
     try {
       const skill = await this.skillService.findByName(name);
       if (!skill) {
@@ -282,6 +298,20 @@ export class SkillsTool {
             executionTime: 0,
           },
           error: { code: 'NOT_FOUND', message: `Skill "${name}" not found` },
+        };
+      }
+
+      if (skill.workspaceId !== null && skill.workspaceId !== workspaceId) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Penghapusan ditolak: Skill ini bukan milik workspace Anda.`,
+          metadata: {
+            toolName: 'skills',
+            displayName: 'Skills',
+            executionTime: 0,
+          },
+          error: { code: 'FORBIDDEN', message: `Cannot delete skill from another workspace` },
         };
       }
 

@@ -108,11 +108,13 @@ export class CronService implements OnModuleInit {
   /**
    * Toggle active status.
    */
-  async toggleSchedule(id: string) {
+  async toggleSchedule(id: string, workspaceId: string) {
     const existing = await this.prisma.scheduledReport.findUnique({
       where: { id },
     });
-    if (!existing) return null;
+    if (!existing || existing.workspaceId !== workspaceId) {
+      throw new Error('Schedule not found or access denied.');
+    }
 
     return this.prisma.scheduledReport.update({
       where: { id },
@@ -123,7 +125,13 @@ export class CronService implements OnModuleInit {
   /**
    * Delete a scheduled report.
    */
-  async deleteSchedule(id: string) {
+  async deleteSchedule(id: string, workspaceId: string) {
+    const existing = await this.prisma.scheduledReport.findUnique({
+      where: { id },
+    });
+    if (!existing || existing.workspaceId !== workspaceId) {
+      throw new Error('Schedule not found or access denied.');
+    }
     return this.prisma.scheduledReport.delete({ where: { id } });
   }
 

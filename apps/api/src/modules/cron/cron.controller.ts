@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Headers,
   NotFoundException,
 } from '@nestjs/common';
 import { CronService, CreateScheduleDto } from './cron.service.js';
@@ -39,8 +40,11 @@ export class CronController {
   }
 
   @Patch(':id/toggle')
-  async toggleSchedule(@Param('id') id: string) {
-    const updated = await this.cronService.toggleSchedule(id);
+  async toggleSchedule(
+    @Param('id') id: string,
+    @Headers('x-workspace-id') workspaceId: string = 'default-workspace',
+  ) {
+    const updated = await this.cronService.toggleSchedule(id, workspaceId);
     if (!updated) {
       throw new NotFoundException(`Schedule "${id}" not found.`);
     }
@@ -51,8 +55,11 @@ export class CronController {
   }
 
   @Delete(':id')
-  async deleteSchedule(@Param('id') id: string) {
-    await this.cronService.deleteSchedule(id);
+  async deleteSchedule(
+    @Param('id') id: string,
+    @Headers('x-workspace-id') workspaceId: string = 'default-workspace',
+  ) {
+    await this.cronService.deleteSchedule(id, workspaceId);
     return {
       data: { success: true },
       error: null,

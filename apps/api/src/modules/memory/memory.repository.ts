@@ -132,14 +132,22 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
     });
   }
 
-  async search(query: string): Promise<Memory[]> {
+  async search(query: string, workspaceId: string): Promise<Memory[]> {
     const lowerQuery = query.toLowerCase();
     return this.prisma.memory.findMany({
       where: {
         active: true,
         OR: [
-          { key: { contains: lowerQuery } },
-          { content: { contains: lowerQuery } },
+          { workspaceId: null }, // Global memories
+          { workspaceId }, // Workspace-specific memories
+        ],
+        AND: [
+          {
+            OR: [
+              { key: { contains: lowerQuery } },
+              { content: { contains: lowerQuery } },
+            ],
+          },
         ],
       },
       orderBy: [{ importance: 'desc' }, { accessCount: 'desc' }],

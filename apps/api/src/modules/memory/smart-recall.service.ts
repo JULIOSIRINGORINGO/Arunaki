@@ -192,7 +192,9 @@ export class SmartRecallService {
     if (keywords.length === 0) return '';
 
     const query = keywords.join(' ');
-    const memories = await this.memoryService.search(query);
+    // Default to a safe string if workspaceId is not provided to satisfy the type.
+    // The repository handles empty workspaceId safely.
+    const memories = await this.memoryService.search(query, workspaceId || '');
 
     if (memories.length === 0) return '';
 

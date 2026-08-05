@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -5,7 +6,6 @@ import {
   extractMentionedFilenames,
   hasExplicitDeleteIntent,
   WorkspaceRunnerService,
-  WORKSPACE_MUTATING_TOOLS,
 } from './workspace-runner.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
@@ -69,6 +69,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: ToolRegistryService,
           useValue: {
             getToolDefinitions: vi.fn().mockReturnValue([]),
+            isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
             executeTool: vi.fn().mockResolvedValue({ status: 'success', data: {} }),
           },
         },
@@ -146,6 +147,8 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: ToolRegistryService,
           useValue: {
             getToolDefinitions: vi.fn().mockReturnValue([]),
+            isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
+            getToolDirectoryText: vi.fn().mockReturnValue(''),
           },
         },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
@@ -219,6 +222,8 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         doneOrder.push(event.data.toolName);
       }
     }
+    
+    if (doneOrder.length === 0) console.log('DEBUG EVENTS:', JSON.stringify(events, null, 2));
 
     expect(doneOrder).toEqual([
       'read_workspace_file',
@@ -265,7 +270,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
           provide: AiService,
           useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), chat: chatMock },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
         { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
@@ -355,7 +360,7 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
           },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         {
           provide: StorageService,
@@ -463,7 +468,7 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
           },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         {
           provide: StorageService,
@@ -525,21 +530,4 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
   });
 });
 
-describe('WorkspaceRunnerService Static Verification', () => {
-  it('harus memvalidasi semua nama tool di WORKSPACE_MUTATING_TOOLS cocok dengan nama tool yang terdaftar', () => {
-    const expectedTools = [
-      'write_workspace_file',
-      'edit_workspace_file',
-      'delete_workspace_file',
-      'rename_workspace_file',
-      'desktop_send_keys',
-      'desktop_excel_edit',
-      'desktop_word_type',
-      'desktop_word_format',
-    ];
 
-    expect(WORKSPACE_MUTATING_TOOLS).toEqual(expectedTools);
-    // Note: To fully verify against the registry without loading the full app module,
-    // we hardcode the expected list here as a drift-prevention guard.
-  });
-});

@@ -43,8 +43,8 @@ export class MemoryService extends BaseService<Memory> {
     return this.repository.incrementAccess(id);
   }
 
-  async search(query: string): Promise<Memory[]> {
-    return this.repository.search(query);
+  async search(query: string, workspaceId: string): Promise<Memory[]> {
+    return this.repository.search(query, workspaceId);
   }
 
   async cleanup(): Promise<number> {

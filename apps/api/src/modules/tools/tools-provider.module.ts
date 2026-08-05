@@ -923,7 +923,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             name: { type: 'string', description: 'Skill name (snake_case)' },
           },
-          required: ['name'],
+          required: ['name', 'workspaceId'],
         },
         timeoutMs: 5000,
       }),
@@ -943,6 +943,7 @@ export class ToolsProviderModule implements OnModuleInit {
             category: args.category,
             content: args.content,
             tags: args.tags,
+            workspaceId: args.workspaceId,
           }),
         parameters: {
           type: 'object',
@@ -970,8 +971,9 @@ export class ToolsProviderModule implements OnModuleInit {
               items: { type: 'string' },
               description: 'Tags for searching',
             },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
           },
-          required: ['name', 'displayName', 'description', 'content'],
+          required: ['name', 'displayName', 'description', 'content', 'workspaceId'],
         },
         timeoutMs: 5000,
       }),
@@ -1003,7 +1005,7 @@ export class ToolsProviderModule implements OnModuleInit {
           'Updates an existing skill (content, description, tags). Version is incremented automatically.',
         tags: ['skills', 'update', 'edit', 'workflow'],
         handler: (args) =>
-          this.skillsTool.updateSkill(args.name, {
+          this.skillsTool.updateSkill(args.name, args.workspaceId, {
             displayName: args.displayName,
             description: args.description,
             content: args.content,
@@ -1025,7 +1027,7 @@ export class ToolsProviderModule implements OnModuleInit {
               description: 'New tags',
             },
           },
-          required: ['name'],
+          required: ['name', 'workspaceId'],
         },
         timeoutMs: 5000,
       }),
@@ -1038,7 +1040,7 @@ export class ToolsProviderModule implements OnModuleInit {
         description:
           'Deactivates a skill (soft delete). The skill no longer appears in the list but still exists in the database.',
         tags: ['skills', 'delete', 'remove', 'workflow'],
-        handler: (args) => this.skillsTool.deleteSkill(args.name),
+        handler: (args) => this.skillsTool.deleteSkill(args.name, args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
@@ -1047,7 +1049,7 @@ export class ToolsProviderModule implements OnModuleInit {
               description: 'Name of the skill to deactivate',
             },
           },
-          required: ['name'],
+          required: ['name', 'workspaceId'],
         },
         timeoutMs: 5000,
       }),
@@ -1123,7 +1125,7 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Cari Memory',
         description: 'Searches for memories by keyword.',
         tags: ['memory', 'search', 'find', 'recall'],
-        handler: (args) => this.memoryTool.searchMemories(args.query),
+        handler: (args) => this.memoryTool.searchMemories(args.query, args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
@@ -1141,7 +1143,7 @@ export class ToolsProviderModule implements OnModuleInit {
         displayName: 'Hapus Memory',
         description: 'Deletes a memory by type and key.',
         tags: ['memory', 'delete', 'remove'],
-        handler: (args) => this.memoryTool.deleteMemory(args.type, args.key),
+        handler: (args) => this.memoryTool.deleteMemory(args.type, args.key, args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
@@ -2259,7 +2261,7 @@ export class ToolsProviderModule implements OnModuleInit {
             agentGoal: { type: 'string', description: 'Special instruction/goal if reportType="agent_run"' },
             workspaceId: { type: 'string', description: 'Workspace ID' },
           },
-          required: ['name'],
+          required: ['name', 'workspaceId'],
         },
         timeoutMs: 15000,
       }),
@@ -2330,7 +2332,15 @@ export class ToolsProviderModule implements OnModuleInit {
               };
             }
 
-            await this.cronService.deleteSchedule(args.id);
+            if (!args.workspaceId) {
+              return {
+                status: 'error' as const,
+                data: {},
+                preview: 'Workspace ID wajib diisi.',
+                metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+              };
+            }
+            await this.cronService.deleteSchedule(args.id, args.workspaceId);
             return {
               status: 'success' as const,
               data: { id: args.id },
