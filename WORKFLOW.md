@@ -872,6 +872,14 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test baru `context-quarantine.service.spec.ts` (3 test): knowledge-context injection ter-quarantine, sanitasi via `sanitizeAssemblyParams`, teks bersih tidak berubah.
 - [x] Build passes (`npm run build` — 0 errors); semua test chat + quarantine + ai service pass.
 
+### 45.5 Rollback/Checkpoint Multi-Step Mutating Ops (Gap #8)
+- [x] Gap-analysis check: loop `mutatingCalls` mengeksekusi mutasi satu-per-satu langsung tulis disk tanpa mekanisme "kalau langkah ke-N gagal, undo 1..N-1" → workspace bisa ditinggalkan dalam state inkonsisten.
+- [x] Sebelum loop mutating dimulai, `snapshotFile()` (workspace-runner.service.ts) menyimpan isi file target (`filename`/`path` dari args, di-resolve via rootPath + validated) ke array `checkpoints` — compensating transaction (rekomendasi #2, lebih ringan dari snapshot penuh).
+- [x] Jika satu mutasi di putaran gagal (`result.status === 'error'`), `rollbackSnapshots()` mengembalikan semua file yang disentuh putaran itu ke state sebelum putaran (write-back content lama, hapus file yang tadinya tidak ada) — sekali per putaran (`rollbackNotified`).
+- [x] User diberi notifikasi jelas: `onEvent({ type: 'error', data: { message: 'Sebagian perubahan dibatalkan otomatis...' } })`.
+- [x] Test 2 kasus baru di `workspace-runner.service.spec.ts`: (a) mutasi a.txt sukses lalu b.txt gagal → `writeBuffer(a.txt, v1)` dipanggil + event error rollback muncul; (b) seluruh mutasi sukses → tidak ada rollback (`writeBuffer`/`deleteFile` tidak dipanggil).
+- [x] Build passes (`npm run build` — 0 errors); semua test workspace (9/9), chat, dan tools pass.
+
 
 ---
 

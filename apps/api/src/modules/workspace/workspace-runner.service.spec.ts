@@ -320,3 +320,200 @@ describe('WorkspaceRunnerService todo list injection', () => {
     expect(todoMsg.content).toContain('- [pending] 2: Hitung total');
   });
 });
+
+describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
+  let runnerService: WorkspaceRunnerService;
+  let writeBufferMock: ReturnType<typeof vi.fn>;
+  let deleteFileMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    const todoStore = new TodoStoreService();
+    writeBufferMock = vi.fn().mockResolvedValue(undefined);
+    deleteFileMock = vi.fn().mockResolvedValue(undefined);
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WorkspaceRunnerService,
+        {
+          provide: AiService,
+          useValue: {
+            getSystemPrompt: vi.fn().mockReturnValue('system'),
+            chat: vi
+              .fn()
+              .mockResolvedValueOnce({
+                content: null,
+                toolCalls: [
+                  { id: 'm1', function: { name: 'write_workspace_file', arguments: '{"filename":"a.txt","content":"v2"}' } },
+                  { id: 'm2', function: { name: 'write_workspace_file', arguments: '{"filename":"b.txt","content":"v2"}' } },
+                ],
+              })
+              .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
+          },
+        },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
+        {
+          provide: StorageService,
+          useValue: {
+            exists: vi.fn().mockResolvedValue(true),
+            readBuffer: vi.fn().mockResolvedValue(Buffer.from('v1')),
+            writeBuffer: writeBufferMock,
+            deleteFile: deleteFileMock,
+          },
+        },
+        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
+        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        { provide: BackgroundReviewService, useValue: {} },
+        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
+        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SelfHealingService,
+          useValue: {
+            executeWithHealing: vi.fn().mockImplementation(async (name: string, args: any) => {
+              if (args?.filename === 'b.txt') {
+                return {
+                  finalResult: {
+                    status: 'error',
+                    data: {},
+                    preview: 'Disk penuh',
+                    metadata: { toolName: name, displayName: name, executionTime: 0 },
+                    error: { code: 'WRITE_FAILED', message: 'Disk penuh' },
+                  },
+                  healed: false,
+                  attempts: [],
+                };
+              }
+              return {
+                finalResult: { status: 'success', data: { path: `/${args?.filename}` } },
+                healed: false,
+                attempts: [],
+              };
+            }),
+          },
+        },
+        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
+        { provide: CompactionService, useValue: {} },
+        {
+          provide: PrismaService,
+          useValue: {
+            workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:/fake-workspace', businessType: null }) },
+            source: { findFirst: vi.fn().mockResolvedValue(null) },
+          },
+        },
+        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
+        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
+        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: TodoStoreService, useValue: todoStore },
+      ],
+    }).compile();
+
+    runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
+  });
+
+  it('rollback file yang sudah termodifikasi saat mutasi berikutnya gagal', async () => {
+    const events: any[] = [];
+
+    for await (const event of runnerService.runWorkspaceAgentGenerator({
+      workspaceId: 'ws-rollback-test',
+      userGoal: 'ubah file a.txt dan b.txt',
+      historyMessages: [{ role: 'user', content: 'ubah file a.txt dan b.txt' }],
+    })) {
+      events.push(event);
+    }
+
+    // a.txt sudah ditulis v2 (sukses), lalu b.txt gagal → a.txt harus dikembalikan ke v1
+    expect(writeBufferMock).toHaveBeenCalledWith(
+      expect.stringContaining('a.txt'),
+      Buffer.from('v1'),
+    );
+
+    const rollbackEvent = events.find(
+      (e) => e.type === 'error' && e.data?.message?.includes('dibatalkan otomatis'),
+    );
+    expect(rollbackEvent).toBeDefined();
+  });
+
+  it('tidak melakukan rollback saat seluruh mutasi sukses', async () => {
+    const todoStore = new TodoStoreService();
+    const module = await Test.createTestingModule({
+      providers: [
+        WorkspaceRunnerService,
+        {
+          provide: AiService,
+          useValue: {
+            getSystemPrompt: vi.fn().mockReturnValue('system'),
+            chat: vi
+              .fn()
+              .mockResolvedValueOnce({
+                content: null,
+                toolCalls: [
+                  { id: 'm1', function: { name: 'write_workspace_file', arguments: '{"filename":"a.txt","content":"v2"}' } },
+                ],
+              })
+              .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
+          },
+        },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]) } },
+        { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
+        {
+          provide: StorageService,
+          useValue: {
+            exists: vi.fn().mockResolvedValue(true),
+            readBuffer: vi.fn().mockResolvedValue(Buffer.from('v1')),
+            writeBuffer: writeBufferMock,
+            deleteFile: deleteFileMock,
+          },
+        },
+        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
+        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        { provide: BackgroundReviewService, useValue: {} },
+        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
+        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SelfHealingService,
+          useValue: {
+            executeWithHealing: vi.fn().mockResolvedValue({
+              finalResult: { status: 'success', data: { path: '/a.txt' } },
+              healed: false,
+              attempts: [],
+            }),
+          },
+        },
+        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }) } },
+        { provide: CompactionService, useValue: {} },
+        {
+          provide: PrismaService,
+          useValue: {
+            workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:/fake-workspace', businessType: null }) },
+            source: { findFirst: vi.fn().mockResolvedValue(null) },
+          },
+        },
+        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
+        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
+        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: TodoStoreService, useValue: todoStore },
+      ],
+    }).compile();
+
+    runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
+
+    for await (const _ of runnerService.runWorkspaceAgentGenerator({
+      workspaceId: 'ws-rollback-ok-test',
+      userGoal: 'ubah file a.txt',
+      historyMessages: [{ role: 'user', content: 'ubah file a.txt' }],
+    })) {
+      // drain generator
+    }
+
+    expect(writeBufferMock).not.toHaveBeenCalled();
+    expect(deleteFileMock).not.toHaveBeenCalled();
+  });
+});

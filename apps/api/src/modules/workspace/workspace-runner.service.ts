@@ -61,6 +61,12 @@ export interface WorkspaceRunParams {
   }>;
 }
 
+export interface FileSnapshot {
+  path: string;
+  existedBefore: boolean;
+  content: Buffer | null;
+}
+
 export function extractMentionedFilenames(text: string): string[] {
   return [...text.matchAll(/@([^\n@]+?\.[A-Za-z0-9]{1,10})(?=\s|$|[.,;:!?])/g)]
     .map((match) => match[1].trim())
@@ -177,6 +183,66 @@ export class WorkspaceRunnerService {
       messages.push({ role: 'system', content: `=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
+  }
+
+  /**
+   * Resolve the on-disk path of a workspace file (best-effort, rootPath + filename).
+   * Returns null when the workspace root is unavailable or the path escapes it.
+   */
+  private async resolveWorkspaceFilePath(
+    workspaceId: string,
+    filename: string,
+  ): Promise<string | null> {
+    try {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
+      if (!workspace?.rootPath) return null;
+      const resolvedRoot = path.resolve(workspace.rootPath);
+      const resolvedTarget = path.resolve(path.join(resolvedRoot, filename));
+      const rel = path.relative(resolvedRoot, resolvedTarget);
+      if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+      return resolvedTarget;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Snapshot the current content of a target file before mutation, so a
+   * mid-chain failure in one round can roll back to the pre-round state.
+   */
+  private async snapshotFile(
+    workspaceId: string,
+    filename: string,
+  ): Promise<FileSnapshot | null> {
+    try {
+      const targetPath = await this.resolveWorkspaceFilePath(workspaceId, filename);
+      if (!targetPath) return null;
+      const existedBefore = await this.storageService.exists(targetPath);
+      const content = existedBefore
+        ? await this.storageService.readBuffer(targetPath)
+        : null;
+      return { path: targetPath, existedBefore, content };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Compensating transaction: restore files to their pre-round state in reverse order. */
+  private async rollbackSnapshots(snapshots: FileSnapshot[]): Promise<void> {
+    for (const snap of [...snapshots].reverse()) {
+      try {
+        if (snap.existedBefore && snap.content) {
+          await this.storageService.writeBuffer(snap.path, snap.content);
+        } else if (await this.storageService.exists(snap.path)) {
+          await this.storageService.deleteFile(snap.path);
+        }
+      } catch (e: any) {
+        this.logger.error(`Rollback gagal untuk ${snap.path}: ${e.message}`);
+      }
+    }
   }
 
   /** Get current state of a workspace run */
@@ -1065,7 +1131,7 @@ export class WorkspaceRunnerService {
 
             // Emit in original tool_calls order so tool_call_id stays consistent
             for (const { toolCall, args, result } of healedResults) {
-              if (result.status === 'success' && result.metadata?.contentBase64) {
+            if (result.status === 'success' && result.metadata?.contentBase64) {
                 const artifact = await this.artifactService.createFromAgent({
                   workspaceId,
                   type:
@@ -1119,6 +1185,19 @@ export class WorkspaceRunnerService {
           // - delete_workspace_file: auto-backup to .arunaki-trash/ before delete
           // - desktop_send_keys: keyboard whitelist validation
           // - all tools: workspace path isolation via SelfHealingService
+          // - checkpoint: file-based mutations are snapshotted before the round
+          //   starts; if any mutation in this round fails, files that were
+          //   already touched are rolled back to their pre-round state.
+          const checkpoints: FileSnapshot[] = [];
+          for (const { args } of mutatingCalls) {
+            const filename = args.filename || args.path;
+            if (filename) {
+              const snap = await this.snapshotFile(workspaceId, String(filename));
+              if (snap) checkpoints.push(snap);
+            }
+          }
+
+          let rollbackNotified = false;
           for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
@@ -1169,6 +1248,25 @@ export class WorkspaceRunnerService {
                 },
                 error: { code: 'EXECUTION_FAILED', message: e.message },
               };
+            }
+
+            if (result.status === 'error' && checkpoints.length > 0 && !rollbackNotified) {
+              // Rollback any files already touched in this round to their
+              // pre-round state, then notify the user what happened.
+              await this.rollbackSnapshots(checkpoints);
+              rollbackNotified = true;
+              this.logger.warn(
+                `Rollback ${checkpoints.length} file(s) setelah ${funcName} gagal pada putaran yang sama.`,
+              );
+              onEvent({
+                type: 'error',
+                data: {
+                  message:
+                    'Sebagian perubahan dibatalkan otomatis karena ada langkah yang gagal.',
+                  failedTool: funcName,
+                  rolledBackFiles: checkpoints.length,
+                },
+              });
             }
 
             if (result.status === 'success' && result.metadata?.contentBase64) {
