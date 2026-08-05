@@ -172,10 +172,10 @@ Yang membuat ini lebih rumit dari sekadar "argumen kelupaan": `SubAgentTask` int
 4. Tambahkan test regresi khusus untuk kelas bug ini di ketiga lokasi sekaligus: pastikan `executeWithHealing()` menerima argumen ke-3 non-undefined setiap kali dipanggil dari jalur mana pun yang beroperasi dalam konteks workspace (chat, workspace, DAN sub-agent) — supaya kalau ada lokasi call keempat ditambahkan di masa depan (misal harness plugin baru), test ini menangkapnya otomatis alih-alih menunggu audit manual berikutnya.
 
 ### Kriteria selesai
-- [ ] `SubAgentTask` punya field `workspaceId`
-- [ ] `agent_spawn` handler meneruskan `workspaceId` dari parent run ke setiap sub-task secara otomatis (bukan mengandalkan LLM)
-- [ ] `sub-agent-runner.service.ts` mengirim `workspaceId` sebagai argumen ke-3 ke `executeWithHealing()`
-- [ ] Test regresi lintas-ketiga-lokasi memverifikasi `executeWithHealing()` selalu menerima `workspaceId` non-undefined dalam konteks workspace
+- [x] `SubAgentTask` punya field `workspaceId`
+- [x] `agent_spawn` handler meneruskan `workspaceId` dari parent run ke setiap sub-task secara otomatis (bukan mengandalkan LLM)
+- [x] `sub-agent-runner.service.ts` mengirim `workspaceId` sebagai argumen ke-3 ke `executeWithHealing()`
+- [x] Test regresi lintas-ketiga-lokasi memverifikasi `executeWithHealing()` selalu menerima `workspaceId` non-undefined dalam konteks workspace
 
 ---
 

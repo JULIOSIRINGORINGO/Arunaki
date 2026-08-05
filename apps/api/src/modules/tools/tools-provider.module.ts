@@ -2111,6 +2111,7 @@ export class ToolsProviderModule implements OnModuleInit {
               allowedTools: t.allowedTools || [],
               maxRounds: t.maxRounds || 5,
               additionalContext: t.additionalContext || '',
+              workspaceId: args.workspaceId, // Inherited from parent run via enrichedArgs
             }));
 
             if (tasks.length === 0) {

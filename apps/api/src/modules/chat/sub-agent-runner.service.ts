@@ -33,6 +33,8 @@ export interface SubAgentTask {
   maxRounds?: number;
   /** Additional context to inject into the sub-agent's system prompt */
   additionalContext?: string;
+  /** The workspace ID this sub-agent operates in (used for safe path validation) */
+  workspaceId?: string;
 }
 
 export interface SubAgentResult {
@@ -321,6 +323,7 @@ export class SubAgentRunnerService {
         const healResult = await this.selfHealingService.executeWithHealing(
           funcName,
           args,
+          task.workspaceId,
         );
 
         const result = healResult.finalResult;

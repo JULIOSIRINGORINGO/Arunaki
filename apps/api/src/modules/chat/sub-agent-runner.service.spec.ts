@@ -91,6 +91,7 @@ describe('SubAgentRunnerService', () => {
       taskId: 'sub_2',
       taskName: 'Baca File Excel',
       taskDescription: 'Baca file data.xlsx dan hitung jumlah baris',
+      workspaceId: 'ws-123',
     };
 
     const result = await service.spawnSubAgent(task);
@@ -100,6 +101,12 @@ describe('SubAgentRunnerService', () => {
     expect(result.toolOutputs[0].toolName).toBe('read_workspace_file');
     expect(result.toolOutputs[0].status).toBe('success');
     expect(result.metadata.rounds).toBe(2);
+
+    expect(mockSelfHealing.executeWithHealing).toHaveBeenCalledWith(
+      'read_workspace_file',
+      { path: 'data.xlsx' },
+      'ws-123'
+    );
   });
 
   it('should run multiple sub-agents in parallel', async () => {
