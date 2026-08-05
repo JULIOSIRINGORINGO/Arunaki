@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../common/providers/prisma.service.js';
+import { SemanticSearchService } from './semantic-search.service.js';
 
 /**
  * SessionSearchService — FTS5-powered cross-session recall.
@@ -14,7 +15,10 @@ import { PrismaService } from '../../common/providers/prisma.service.js';
 export class SessionSearchService implements OnModuleInit {
   private readonly logger = new Logger(SessionSearchService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly semanticSearchService: SemanticSearchService,
+  ) {}
 
   async onModuleInit() {
     await this.initializeFTS5();
@@ -105,6 +109,10 @@ export class SessionSearchService implements OnModuleInit {
   /**
    * Search across all sessions for relevant messages.
    * Returns ranked results with context.
+   *
+   * Hybrid (Gap #10): FTS5 keyword search is the primary layer; when it
+   * returns sparse results, semantic search (MiniLM embeddings) supplements
+   * them so same-meaning-different-words queries still hit.
    */
   async search(
     query: string,
@@ -160,7 +168,7 @@ export class SessionSearchService implements OnModuleInit {
 
       const results = await this.prisma.$queryRawUnsafe<any[]>(sql, ...params);
 
-      return results.map((r) => ({
+      const mapped = results.map((r) => ({
         messageId: r.messageId,
         chatHistoryId: r.chatHistoryId,
         workspaceId: r.workspaceId,
@@ -169,6 +177,30 @@ export class SessionSearchService implements OnModuleInit {
         snippet: r.snippet || r.content.substring(0, 200),
         rank: r.rank || 0,
       }));
+
+      // Semantic fallback: when keyword hits are sparse (fewer than 3),
+      // supplement with embedding similarity results.
+      if (mapped.length < 3) {
+        const semantic = await this.semanticSearchService.semanticSearch(
+          query,
+          {
+            workspaceId: options?.workspaceId,
+            role: options?.role,
+            limit,
+          },
+        );
+        const seen = new Set(mapped.map((m) => m.messageId));
+        for (const s of semantic) {
+          if (!seen.has(s.messageId)) {
+            seen.add(s.messageId);
+            mapped.push(s);
+          }
+        }
+        mapped.sort((a, b) => a.rank - b.rank);
+        return mapped.slice(0, limit);
+      }
+
+      return mapped;
     } catch (err: any) {
       this.logger.warn(`FTS5 search failed: ${err.message}`);
       // Fallback to LIKE search
