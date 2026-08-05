@@ -1,319 +1,167 @@
-# Gap Analysis: Arunaki Harness vs OpenClaw/Claude Code Patterns — PART 2 (TERBARU)
+# Gap Analysis: Arunaki Harness vs OpenClaw/Claude Code Patterns — PART 3 (TERBARU)
 
-**Status:** Temuan #11-16, hasil lanjutan audit batch 1 (`self-healing.service.ts`, `compaction.service.ts`, `tool-loop-detector.service.ts` — full-read baris-per-baris). **Belum diproses** — ini yang baru.
+**Status:** Temuan #17-18 + 1 koreksi ke Part 1, hasil lanjutan full-read `tool-registry.service.ts` (588 baris) dan `ai.service.ts` (800 baris, bagian inti dibaca tuntas), cross-check ke `context-manager.ts`.
 **Sumber audit:** `Arunaki-main__8_.zip`
 **Tanggal audit:** Agustus 2026
 
-> Temuan #1-10 (batch pertama, sudah kamu proses) ada di file terpisah: `PART1_FINDINGS_1-10_ALREADY_PROCESSED.md`. Penomoran di file ini sengaja dipertahankan #11-16 (bukan direset ke #1) supaya tetap konsisten dengan riwayat sebelumnya kalau kamu perlu cross-reference.
+> Part 1 (#1-10) dan Part 2 (#11-16) ada di file terpisah. File ini isinya temuan baru saja + koreksi.
 
 ---
 
-## Ringkasan Prioritas (Part 2 saja)
+## ⚠️ KOREKSI ke Part 1, Temuan #7 (Skema Validasi Tool Arguments)
 
-| # | Temuan | Kategori | Dampak | Effort Perbaikan |
-|---|--------|----------|--------|-------------------|
-| 11 | `fallbackMap` di self-healing salah nama tool — fallback tool dead code | Reliability | Sedang | Rendah |
-| 12 | Self-healing retry loop tidak adaptif (errorMessage tidak diperbarui) | Reliability/Performa | Rendah-Sedang | Rendah |
-| 13 | Validasi path bisa dilewati untuk filename tanpa separator | Safety | Rendah | Rendah |
-| 14 | Compaction trigger berbasis jumlah pesan, bukan token | Performa/Akurasi | Sedang-Tinggi | Sedang |
-| 15 | Panggilan LLM ringkasan compaction tidak dibatasi ukurannya | Reliability | Rendah-Sedang | Rendah |
-| 16 | `clearSession()` di tool-loop-detector tidak pernah dipanggil | Reliability | Sedang | Rendah |
+**Klaim sebelumnya (Part 1):** "Tidak ada validasi schema untuk tool arguments."
 
----
+**Setelah baca tuntas `tool-registry.service.ts`, klaim ini TERLALU KUAT — perlu direvisi:**
 
-## 11. `fallbackMap` di Self-Healing Salah Nama Tool — Fallback Tool Jadi Dead Code
-
-### Lokasi
-`apps/api/src/modules/ai/self-healing.service.ts:38-42`
-
-### Bukti kode
+Ternyata ADA `validateArgs()` (`tool-registry.service.ts:143-185`) yang genuinely dipanggil di `executeTool()` (baris 214) **sebelum** `tool.execute(args)` dijalankan:
 ```ts
-// self-healing.service.ts:38-42
-private readonly fallbackMap: Record<string, string[]> = {
-  workspace_search: ['workspace_list_files'],
-  workspace_read: ['workspace_list_files'],
-  workspace_analyze: ['workspace_read', 'workspace_list_files'],
-};
-```
-
-```ts
-// tools-provider.module.ts:634, 658, 677 — nama tool YANG SEBENARNYA terdaftar
-name: 'search_workspace',       // bukan 'workspace_search'
-name: 'list_workspace_files',   // bukan 'workspace_list_files'
-name: 'read_workspace_file',    // bukan 'workspace_read'
-```
-
-```ts
-// self-healing.service.ts:186 — lookup yang akan SELALU gagal
-const fallbacks = this.fallbackMap[toolName] || [];  // toolName aktual = 'search_workspace', key di map = 'workspace_search' -> tidak pernah match
-```
-
-### Kenapa ini masalah
-Class docstring `SelfHealingService` (baris 21-31) menjelaskan 3 strategi recovery: (1) retry dengan parameter disesuaikan, (2) fallback ke tool alternatif, (3) skip & report. Strategi #2 secara teknis terimplementasi lengkap (logic-nya benar), tapi **tidak pernah bisa trigger** karena kunci di `fallbackMap` pakai urutan kata terbalik (`noun_verb`) dari nama tool asli yang terdaftar di registry (`verb_noun`). Ini bug penamaan murni — bukan masalah desain. Dampaknya: kalau `search_workspace` gagal karena alasan yang seharusnya bisa di-recover dengan fallback ke `list_workspace_files` (misal query terlalu spesifik, hasil kosong), sistem langsung menyerah ke strategi retry-with-adjusted-params saja, tidak pernah mencoba fallback tool sama sekali.
-
-### Rekomendasi perbaikan
-1. Perbaiki key `fallbackMap` supaya sesuai nama tool asli:
-   ```ts
-   private readonly fallbackMap: Record<string, string[]> = {
-     search_workspace: ['list_workspace_files'],
-     read_workspace_file: ['list_workspace_files'],
-     // tambahkan mapping lain yang relevan sesuai tool yang benar-benar terdaftar,
-     // cek daftar lengkap di tools-provider.module.ts dan workspace-tools.service.ts
-   };
-   ```
-2. Tambahkan test yang benar-benar memanggil `executeWithHealing()` dengan tool yang sengaja dibuat gagal, dan assert bahwa fallback tool ter-trigger (bukan cuma unit test terhadap `fallbackMap` object secara statis — history bug ini justru karena tidak ada test end-to-end yang benar-benar mengecek lookup-nya jalan).
-3. Audit ulang seluruh nama tool yang dipakai di `self-healing.service.ts` (termasuk `recoveryStrategies`) terhadap nama tool aktual di registry — pola bug penamaan seperti ini bisa jadi ada di tempat lain juga.
-
-### Kriteria selesai
-- [ ] Key `fallbackMap` cocok persis dengan nama tool yang terdaftar di registry
-- [ ] Test end-to-end memverifikasi fallback tool benar-benar ter-eksekusi saat tool utama gagal
-- [ ] Tidak ada mapping lain di file yang sama yang punya mismatch serupa
-
----
-
-## 12. Self-Healing Retry Loop Tidak Adaptif
-
-### Lokasi
-`apps/api/src/modules/ai/self-healing.service.ts:150-208`
-
-### Bukti kode
-```ts
-// self-healing.service.ts:150-151
-const errorMessage =
-  firstResult.error?.message || firstResult.preview || 'Unknown error';
-
-// baris 154 — errorMessage di atas dipakai untuk SEMUA iterasi retry,
-// tidak pernah di-reassign dari retryResult
-for (let retry = 0; retry < this.MAX_RETRIES; retry++) {
-  const strategy = this.findRecoveryStrategy(errorMessage);  // <-- selalu errorMessage yang SAMA
-  // ...
-  const retryResult = await this.toolRegistryService.executeTool(toolName, adjustedArgs);
-  // retryResult.error?.message TIDAK PERNAH dipakai untuk update errorMessage
-  // ...
+// tool-registry.service.ts:214-233
+const validation = this.validateArgs(args, tool.definition.function.parameters);
+if (!validation.valid) {
+  return { status: 'error', /* ... */, error: { code: 'INVALID_ARGS', message: validation.errors.join('; ') } };
 }
 ```
+Validasi yang dilakukan: required-field check, tipe primitif (`string`/`number`/`array` — dicek via `typeof`/`Array.isArray`), dan `enum` constraint. Ini juga dipanggil di `executeToolStreaming()` (baris 367), jadi konsisten di kedua jalur eksekusi.
+
+**Yang MASIH benar dari temuan #7 (bagian yang tetap valid):**
+- `zod` di `package.json` memang tidak pernah diimport — kalau memang ada rencana pakai `zod`, itu tetap dependency mati.
+- Validasi yang ada **dangkal**: tidak ada cek tipe `boolean`, tidak ada validasi `object` bertingkat (nested schema), tidak ada validasi ISI array (cuma cek itu array, bukan tipe elemennya), tidak ada constraint tambahan (`minLength`, `pattern`, `format`, dll yang biasa ada di JSON Schema penuh).
+
+**Rekomendasi yang perlu diupdate:** bukan "bangun validasi dari nol", tapi "perkuat `validateArgs()` yang sudah ada" — tambahkan cek `boolean`, validasi rekursif untuk `object`/nested array items, dan pertimbangkan baru pakai `ajv` kalau butuh constraint lebih kompleks (`pattern`, `format`, `minimum`/`maximum`). Effort-nya jadi lebih kecil dari yang saya sebut sebelumnya karena fondasinya sudah ada.
+
+---
+
+## 17. Naive 40-Message Hard Truncation Berjalan SEBELUM Compaction — Silent Data Loss
+
+### Lokasi
+- `apps/api/src/modules/ai/ai.service.ts:340-343` (`chat()`)
+- `apps/api/src/modules/ai/ai.service.ts:459-462` (`chatStream()`)
+
+### Bukti kode
+```ts
+// ai.service.ts:340-343 — di dalam chat(), SEBELUM preemptivelyCompact() dipanggil
+// Light trim: keep last 40 messages, skip 4-phase compression
+const trimmedMessages = messages.length > 40
+  ? messages.slice(-40)
+  : messages;
+// ...
+const preparedMessages = await this.preemptivelyCompact(trimmedMessages, provider.model);
+```
+```ts
+// ai.service.ts:459-462 — pola IDENTIK di chatStream()
+const trimmedMessages = messages.length > 40
+  ? messages.slice(-40)
+  : messages;
+```
 
 ### Kenapa ini masalah
-`MAX_RETRIES = 3` dimaksudkan untuk memberi 3 kesempatan recovery yang berbeda-beda sesuai error yang muncul di setiap percobaan. Tapi karena `errorMessage` tidak diperbarui setelah tiap retry gagal, `findRecoveryStrategy(errorMessage)` akan selalu mengembalikan strategi yang **sama persis** di ketiga iterasi (karena inputnya sama) — retry ke-2 dan ke-3 pada dasarnya mengulang strategi retry ke-1 yang sudah terbukti gagal, alih-alih mendiagnosis error baru yang mungkin muncul dari hasil retry sebelumnya (yang bisa jadi errornya sudah berbeda). Ini membuang 2 dari 3 percobaan recovery tanpa manfaat tambahan, dan menambah latensi tanpa menambah peluang sukses.
+Ini adalah **temuan paling berdampak** dari batch audit ini. Setiap kali `chat()` atau `chatStream()` dipanggil dengan history >40 pesan, kode ini **langsung membuang** semua pesan di luar 40 terakhir dengan `Array.slice()` biasa — **tidak ada ringkasan, tidak ada pemberitahuan, tidak ada log yang terlihat user**. Komentarnya sendiri jujur bilang "skip 4-phase compression" — ini secara eksplisit BUKAN compaction, ini penghapusan mentah.
+
+Yang membuat ini serius:
+1. **Terjadi SEBELUM `preemptivelyCompact()`** (pipeline yang lebih pintar — aggregate tool-result budget, truncate-only vs full-compact routing) sempat berjalan. Jadi pipeline canggih yang sudah diaudit sebelumnya (disebut di Part 1 temuan #2, #14) itu **cuma beroperasi pada sisa 40 pesan yang selamat** dari slice mentah ini — bukan pada history lengkap. Kalau ada informasi penting di pesan ke-41 dari belakang (misal keputusan user, konten file yang dibaca), itu hilang duluan sebelum sistem compaction yang "smart" sempat mempertimbangkannya.
+2. **Berlaku untuk KEDUA mode** (chat dan workspace) karena `chat()`/`chatStream()` adalah titik masuk bersama — termasuk workspace mode yang punya `MAX_ROUNDS=25` dan `CompactionService` sendiri (Part 2, temuan #14) yang triggernya di >20 pesan. Kalau `CompactionService` di workspace-runner gagal/skip triggernya karena bug apa pun (termasuk bug di temuan #14 — trigger berbasis jumlah pesan bisa salah kalkulasi), slice 40-pesan mentah ini jadi **satu-satunya pengaman**, dan pengaman itu sendiri destruktif tanpa ringkasan.
+3. Threshold `40` adalah angka pesan (bukan token) — sama sekali tidak memperhitungkan ukuran konten tiap pesan, sama seperti bug di temuan #14, tapi versi ini lebih parah karena **tidak ada fallback summary sama sekali**, cuma dibuang.
 
 ### Rekomendasi perbaikan
+1. **Prioritas tertinggi:** hapus/ubah slice mentah ini. Kalau memang butuh "light trim" cepat sebelum pipeline berat jalan, minimal panggil `ContextManager` (atau `CompactionService`) untuk meringkas pesan yang mau dibuang, bukan `.slice()` polos:
+   ```ts
+   let trimmedMessages = messages;
+   if (messages.length > 40) {
+     // jangan buang mentah — minimal berikan kesempatan compress()/compactHistory()
+     // menangani ini sebelum fallback ke slice
+     trimmedMessages = await this.contextManager.compress(messages, contextWindow);
+     // fallback slice HANYA kalau compress() sendiri gagal/timeout
+   }
+   ```
+2. Kalau slice mentah tetap dipertahankan untuk alasan performa/latency, minimal:
+   - Log dengan level yang terlihat (bukan silent) setiap kali ini trigger, sertakan berapa pesan yang dibuang.
+   - Kirim event ke UI (`onEvent({ type: 'context_truncated', ... })`) supaya user tahu sebagian riwayat percakapan "hilang" dari working memory LLM, bukan cuma diringkas.
+3. Naikkan threshold `40` jadi berbasis token (reuse perbaikan dari Part 1 #2 setelah tokenizer akurat dipasang), konsisten dengan rekomendasi di temuan #14 Part 2 — supaya satu sumber kebenaran untuk "kapan riwayat perlu ditangani", bukan tiga titik terpisah (slice 40-pesan di sini, trigger >20 pesan di `CompactionService`, threshold token di `ContextManager.compress()`) yang masing-masing punya logika sendiri.
+
+### Kriteria selesai
+- [x] Tidak ada lagi pemotongan history yang membuang pesan tanpa ringkasan atau notifikasi
+- [x] Kalau ada mekanisme "light trim" cepat, itu memanggil jalur compaction yang ada (bukan slice mentah) atau minimal ter-log & ter-notifikasi jelas
+- [x] Test: history 60+ pesan dengan informasi penting di pesan ke-45-dari-belakang tetap "diingat" LLM setelah lewat `chat()` (baik lewat ringkasan atau tetap utuh)
+
+---
+
+## 18. Dua Sistem Context-Compaction Independen yang Tidak Konsisten (`ContextManager` vs `CompactionService`)
+
+### Lokasi
+- `apps/api/src/modules/ai/ai.service.ts:104-115` — instansiasi `ContextManager` dengan `useLlmSummary: false`
+- `apps/api/src/modules/ai/context-manager.ts:364-382` (`generateSummary`) — cek `if (this.config.useLlmSummary && this.aiService)`
+- `apps/api/src/modules/ai/context-manager.ts:388-...` (`generateLlmSummary`) — fungsi LLM-summary yang lengkap tapi **tidak pernah bisa ter-reach** lewat instance ini
+- Dibandingkan dengan: `apps/api/src/modules/ai/compaction.service.ts` (`CompactionService`, dibahas di Part 2 temuan #14/#15) — sistem TERPISAH yang genuinely memanggil LLM untuk ringkasan
+
+### Bukti kode
 ```ts
-let currentErrorMessage = errorMessage;
-for (let retry = 0; retry < this.MAX_RETRIES; retry++) {
-  const strategy = this.findRecoveryStrategy(currentErrorMessage);
-  if (strategy) {
-    const adjustedArgs = strategy.adjust(args, currentErrorMessage);
-    const retryResult = await this.toolRegistryService.executeTool(toolName, adjustedArgs);
-    // ...
-    if (retryResult.status === 'success') { /* return seperti biasa */ }
-    // PENTING: update errorMessage dari hasil retry supaya iterasi berikutnya
-    // mendiagnosis error TERBARU, bukan error dari percobaan pertama
-    currentErrorMessage = retryResult.error?.message || retryResult.preview || currentErrorMessage;
+// ai.service.ts:104-115 — konfigurasi ContextManager yang dipakai
+// SEMUA panggilan chat()/chatStream() (lewat preemptivelyCompact -> compress())
+this.contextManager = new ContextManager(
+  {
+    contextLength: 128000,
+    threshold: 0.25,
+    targetRatio: 0.2,
+    toolPruneChars: 1000,
+    toolPreviewChars: 250,
+    injectionMaxChars: 2000,
+    useLlmSummary: false,   // <-- HARDCODED false
+  },
+  { chat: this.chat.bind(this) },
+);
+```
+```ts
+// context-manager.ts:364-382
+private async generateSummary(messages: ChatMessage[]): Promise<string | null> {
+  if (messages.length === 0) return null;
+  if (this.config.useLlmSummary && this.aiService) {   // <-- SELALU false untuk instance di atas
+    try {
+      return await this.generateLlmSummary(messages);   // <-- kode ini eksis tapi TIDAK PERNAH jalan
+    } catch (err: any) { /* fallback */ }
   }
-  // fallback tools loop tetap seperti semula
-}
-```
-Tambahkan juga guard supaya kalau strategi yang dipilih di iterasi ke-N sama dengan strategi di iterasi ke-(N-1) DAN errorMessage juga tidak berubah, langsung skip ke fallback tools tanpa buang 1 retry lagi (mencegah pola "coba strategi sama 3x" yang jadi akar masalah ini).
-
-### Kriteria selesai
-- [ ] `errorMessage` diperbarui dari hasil tiap retry, bukan cuma dari percobaan pertama
-- [ ] Retry tidak mengulang strategi identik berturut-turut tanpa alasan
-- [ ] Test: tool yang gagal dengan error berbeda di tiap percobaan retry memicu strategi recovery yang sesuai di tiap iterasi, bukan strategi yang sama terus
-
----
-
-## 13. Validasi Path Bisa Dilewati untuk Filename Tanpa Separator
-
-### Lokasi
-`apps/api/src/modules/ai/self-healing.service.ts:284-312` (fungsi `findPaths` di dalam `validateToolPaths`)
-
-### Bukti kode
-```ts
-// self-healing.service.ts:303
-if (path.isAbsolute(value) || value.includes('/') || value.includes('\\')) {
-  paths.push(value);
-}
-// kalau value TIDAK absolute DAN TIDAK mengandung '/' atau '\',
-// value itu tidak pernah masuk ke pathsToValidate sama sekali —
-// jadi validateWorkspacePath() tidak pernah dipanggil untuknya
-```
-
-### Kenapa ini masalah
-Ini defense-in-depth layer (bukan satu-satunya proteksi — `requirePathInWorkspace()` di `workspace-tools.service.ts` yang disebut di audit sebelumnya adalah lapisan independen lain). Tapi sebagai lapisan tersendiri, logikanya berasumsi path traversal selalu mengandung separator. Argumen berupa nama file polos tanpa separator (misal filename `".."` — dua titik saja, tanpa slash) akan lolos dari pengecekan ini sepenuhnya karena tidak match kondisi di atas. Untuk tool yang menerima parameter seperti `path`/`directory` yang secara valid bisa diisi `".."` untuk merujuk direktori induk, ini berarti validasi di layer `SelfHealingService` tidak menangkapnya — bergantung penuh pada layer `requirePathInWorkspace()` lain untuk menahannya.
-
-### Rekomendasi perbaikan
-1. Perluas kondisi untuk juga menangkap nilai yang secara literal adalah `.` atau `..` atau diawali `../`/`..\`, meski tidak ada separator lain:
-   ```ts
-   if (
-     path.isAbsolute(value) ||
-     value.includes('/') ||
-     value.includes('\\') ||
-     value === '.' ||
-     value === '..'
-   ) {
-     paths.push(value);
-   }
-   ```
-2. Dokumentasikan secara eksplisit di komentar kode bahwa fungsi ini adalah **satu dari beberapa lapisan** validasi path (bukan satu-satunya), supaya developer berikutnya tidak salah asumsi bahwa lolos dari fungsi ini berarti aman — arahkan ke `requirePathInWorkspace()` sebagai lapisan independen yang harus tetap ada.
-3. Tambahkan test dengan input `".."` sebagai nilai `path`/`directory` untuk memverifikasi tertangkap oleh minimal satu dari kedua layer validasi yang ada.
-
-### Kriteria selesai
-- [ ] Nilai `.`/`..` tertangkap oleh `findPaths()` meski tanpa separator lain
-- [ ] Komentar kode menjelaskan relasi fungsi ini dengan `requirePathInWorkspace()` sebagai defense-in-depth
-- [ ] Test path-traversal minimal mencakup kasus filename tanpa separator
-
----
-
-## 14. Compaction Trigger Berbasis Jumlah Pesan, Bukan Token
-
-### Lokasi
-`apps/api/src/modules/ai/compaction.service.ts:33-39`
-
-### Bukti kode
-```ts
-// compaction.service.ts:33-39
-async compactHistory(
-  messages: ChatMessage[],
-  maxTurns = 20,
-): Promise<CompactionResult> {
-  if (messages.length <= maxTurns) {          // <-- MURNI hitung jumlah pesan
-    return { compactedMessages: messages, wasCompacted: false };
-  }
-  // ...
-}
-```
-
-Dipanggil dari `workspace-runner.service.ts:1202`:
-```ts
-if (messages.length > 20) {
-  const compactResult = await this.compactionService.compactHistory(messages);
-  // ...
+  return this.generateTemplateSummary(messages);   // <-- SELALU jalur ini yang dipakai
 }
 ```
 
 ### Kenapa ini masalah
-Trigger compaction 100% berbasis **jumlah** pesan (`>20`), sama sekali tidak melihat ukuran/token dari isi pesan tersebut. Dua skenario yang sama-sama bermasalah:
-1. **False trigger:** 25 pesan pendek (misal konfirmasi singkat bolak-balik) sudah men-trigger compaction dan LLM call tambahan untuk ringkasan (`compactWithLLM`), padahal total token-nya mungkin masih jauh dari limit context window — ini pemborosan latensi dan biaya LLM call tanpa manfaat.
-2. **Missed trigger (lebih berbahaya):** 15 pesan saja, tapi beberapa di antaranya adalah hasil tool call besar (JSON hasil `read_workspace_file` untuk spreadsheet besar, atau hasil `doc_search` dengan banyak snippet) — total token bisa sudah mendekati atau melewati context window, tapi karena jumlah pesan masih di bawah 20, compaction **tidak pernah trigger** sampai jumlah pesan juga ikut menumpuk, berisiko request ditolak provider karena context overflow duluan.
+Ada **dua kelas berbeda** yang sama-sama bertugas "meringkas history supaya muat context window", tapi:
 
-Ini bug yang sama akarnya dengan temuan #2 (tokenizer akurat tidak dipakai untuk keputusan) — kalau #2 diperbaiki, seharusnya trigger di sini juga ikut diperbaiki memakai basis token, bukan cuma memperbaiki fungsi `estimateTokens()`-nya saja tanpa mengubah titik pemanggilannya.
+| | `ContextManager.compress()` | `CompactionService.compactHistory()` |
+|---|---|---|
+| Dipanggil dari | `ai.service.ts` → `preemptivelyCompact()` → **setiap** `chat()`/`chatStream()` call | `workspace-runner.service.ts` saja, sebelum manggil `chat()` |
+| Trigger | Token-based (`estimateTokens() > threshold`, tapi pakai heuristik char/4 — Part 1 #2) | Jumlah pesan (`>20` — Part 2 #14) |
+| Pakai LLM untuk ringkasan? | **Tidak pernah** (`useLlmSummary: false` hardcoded) — meski fiturnya ada dan lengkap di `generateLlmSummary()` | **Ya**, via `compactWithLLM()` |
+| Fallback kalau LLM gagal/nonaktif | N/A (memang tidak pernah dipanggil) | Template summary (`compactWithSummary()`) |
+
+Karena `ContextManager` adalah jalur yang **selalu aktif** (dipanggil di setiap `chat()`/`chatStream()`, termasuk untuk chat mode yang sama sekali tidak punya `CompactionService` sendiri — lihat Part 1 temuan #4, chat mode tidak pakai context-engine baru), sementara `CompactionService` cuma dipanggil dari satu tempat (workspace-runner, sebelum call ke `chat()`), hasil akhirnya:
+
+- **Chat mode** (percakapan biasa, bukan workspace): satu-satunya jaring pengaman kompresi history adalah `ContextManager.compress()`, yang **selalu** menghasilkan ringkasan kualitas rendah (template-based, bukan LLM) begitu history lewat threshold — padahal kapabilitas ringkasan LLM yang lebih baik sudah tertulis lengkap di `generateLlmSummary()`, cuma dikonfigurasi mati.
+- **Workspace mode**: dapat DUA lapis kompresi berurutan — `CompactionService` (LLM-based, trigger jumlah pesan) duluan di `workspace-runner.service.ts`, LALU `ContextManager.compress()` lagi di dalam `chat()` (trigger token, tapi tanpa LLM) kalau ternyata masih di atas threshold. Redundan dan berpotensi meringkas ringkasan yang sudah diringkas — bukan bug fatal, tapi tumpang tindih logika yang seharusnya bisa disatukan.
+
+Ini pola yang sama seperti temuan-temuan sebelumnya (kapabilitas dibangun lengkap, tapi konfigurasi/wiring membuatnya tidak terpakai) — kali ini bukan "tidak dipanggil sama sekali", tapi "dipanggil dengan konfigurasi yang mematikan fitur terbaiknya".
 
 ### Rekomendasi perbaikan
-1. Ganti kondisi trigger dari `messages.length > 20` menjadi berbasis token, memakai `countMessageTokens()` (setelah diperbaiki di temuan #2 supaya akurat):
-   ```ts
-   // di workspace-runner.service.ts, ganti pengecekan:
-   const estimatedTokens = this.aiService.countMessageTokens(messages);
-   const COMPACTION_TOKEN_THRESHOLD = 60000; // sesuaikan dengan context window model yang dipakai, sisakan ruang untuk response
-   if (estimatedTokens > COMPACTION_TOKEN_THRESHOLD) {
-     const compactResult = await this.compactionService.compactHistory(messages);
-     // ...
-   }
-   ```
-2. Di dalam `CompactionService.compactHistory()` sendiri, pertimbangkan juga mengganti `maxTurns` (jumlah pesan) jadi opsional secondary-check saja — token tetap jadi kriteria utama, jumlah pesan sebagai fallback kalau token counter gagal (mirip pola fallback yang sudah ada di `countTokens()`).
-3. Sesuaikan juga proporsi `recentMessages`/`olderMessages` (saat ini fixed 10 pesan terakhir, baris 47-48) — idealnya proporsi ini juga berbasis token budget, bukan angka pesan fixed, supaya 10 pesan terakhir yang sangat besar tidak tetap membebani context meski sudah "dianggap ter-compact".
+1. **Jangka pendek (cepat):** ubah `useLlmSummary: false` jadi `true` di `ai.service.ts:111`, dan pastikan `{ chat: this.chat.bind(this) }` yang sudah diteruskan sebagai `aiService` param ke `ContextManager` (baris 114) benar-benar cukup untuk `generateLlmSummary()` bekerja (cek signature yang dipakai `generateLlmSummary` cocok dengan `{ chat }` minimal interface itu). Uji dulu di environment staging karena ini mengubah setiap panggilan `chat()` untuk memicu LLM call tambahan saat compress — pastikan tidak menyebabkan latency/biaya tak terduga untuk chat mode yang sebelumnya tidak pernah kena ini.
+2. **Jangka menengah:** satukan `ContextManager` dan `CompactionService` jadi satu sistem, atau minimal buat salah satunya jadi "the one used everywhere" dan yang lain dihapus/deprecated — supaya tidak ada dua tempat terpisah yang harus disinkronkan setiap kali ada perubahan (persis seperti masalah drift di Part 1 temuan #1, parallel execution). Kandidat paling masuk akal: pertahankan `ContextManager` (lebih dekat ke `chat()`, sudah token-aware) dan migrasikan logic ringkasan `CompactionService` ke dalamnya, lalu hapus pemanggilan `CompactionService` terpisah di `workspace-runner.service.ts`.
+3. Kalau tetap mempertahankan dua sistem terpisah untuk alasan tertentu (misal workspace mode memang butuh strategi berbeda dari chat mode), minimal dokumentasikan eksplisit di kedua file kenapa keduanya ada dan kapan masing-masing dipakai — supaya developer berikutnya tidak bingung atau salah asumsi salah satu adalah dead code.
 
 ### Kriteria selesai
-- [ ] Trigger compaction berbasis estimasi token, bukan jumlah pesan
-- [ ] Threshold token disesuaikan dengan context window model aktif (bisa beda-beda per provider)
-- [ ] Test: history dengan sedikit pesan tapi ukuran besar tetap men-trigger compaction; history dengan banyak pesan kecil tidak men-trigger compaction yang tidak perlu
+- [x] Jelas satu sumber kebenaran untuk "bagaimana history diringkas", atau ada dokumentasi eksplisit kenapa ada dua sistem
+- [x] Chat mode (bukan cuma workspace mode) mendapat ringkasan berkualitas LLM saat history panjang, bukan cuma template
+- [x] Tidak ada double-compression yang tidak perlu di workspace mode
+- [x] Test: `useLlmSummary: true` tidak menyebabkan regresi latency/biaya yang signifikan untuk chat mode biasa
 
 ---
 
-## 15. Panggilan LLM Ringkasan Compaction Tidak Dibatasi Ukurannya
+## Urutan Pengerjaan (Temuan Part 3)
 
-### Lokasi
-`apps/api/src/modules/ai/compaction.service.ts:57-92` (`compactWithLLM`)
-
-### Bukti kode
-```ts
-// compaction.service.ts:63-66
-const olderTexts = olderMessages
-  .map((m) => `[${m.role}] ${m.content || ''}`)
-  .filter(Boolean)
-  .join('\n');
-// olderMessages bisa berisi RATUSAN pesan tanpa batas atas —
-// seluruhnya digabung jadi satu string mentah tanpa truncation
-
-// baris 68-76 — dikirim utuh ke LLM call kedua
-const summary = (
-  await this.aiService!.chat(
-    [
-      { role: 'system', content: LLM_SUMMARY_INSTRUCTIONS },
-      { role: 'user', content: `Kompaksi riwayat berikut menjadi ringkasan ringkas:\n\n${olderTexts}` },
-    ],
-    [],
-  )
-).content;
-```
-
-### Kenapa ini masalah
-Fungsi ini dipanggil justru pada saat history sudah besar (itu alasan compaction di-trigger). Tapi `olderMessages` (yaitu semua pesan SELAIN 10 terakhir) dikirim mentah-mentah ke LLM call kedua tanpa batas ukuran — kalau history yang mau di-compact sudah sangat panjang (skenario yang justru paling butuh compaction), LLM call untuk membuat ringkasannya sendiri berisiko melebihi context window model yang dipakai untuk summarization tersebut. Kalau ini terjadi, `catch` block di baris 88-91 akan menangkapnya dan fallback ke `compactWithSummary()` (versi template, bukan LLM) — jadi tidak sampai crash total, tapi fallback ini terjadi diam-diam tanpa peringatan eksplisit ke user bahwa ringkasan yang dihasilkan lebih rendah kualitasnya (cuma ambil 3 user prompt terakhir + nama file yang disebut, jauh lebih kasar dari ringkasan LLM).
-
-### Rekomendasi perbaikan
-1. Batasi `olderTexts` dengan token cap sebelum dikirim ke LLM call kedua:
-   ```ts
-   const MAX_SUMMARY_INPUT_TOKENS = 30000; // sesuaikan dengan context window model summarization
-   let olderTexts = olderMessages
-     .map((m) => `[${m.role}] ${m.content || ''}`)
-     .filter(Boolean)
-     .join('\n');
-   if (this.aiService && this.aiService.countTokens(olderTexts) > MAX_SUMMARY_INPUT_TOKENS) {
-     // ambil sebagian dari akhir (paling relevan/baru) alih-alih seluruhnya,
-     // atau lakukan chunked summarization (ringkas per-chunk lalu gabung)
-     olderTexts = this.truncateToTokenBudget(olderTexts, MAX_SUMMARY_INPUT_TOKENS);
-   }
-   ```
-2. Kalau fallback ke `compactWithSummary()` (versi template) terjadi karena LLM call gagal, log dengan level yang lebih terlihat (bukan cuma `logger.warn`) dan idealnya kirim event ke UI supaya user tahu kualitas ringkasan yang dipakai lebih kasar dari biasanya untuk turn tersebut — konsisten dengan pola transparansi yang sudah dipakai di tempat lain (`onEvent({ type: 'self_heal', ... })` untuk self-healing).
-3. Pertimbangkan chunked/hierarchical summarization untuk history yang sangat panjang (ringkas per-batch 50 pesan, lalu gabungkan ringkasan-ringkasan itu) alih-alih satu LLM call besar — lebih robust terhadap history yang terus bertambah panjang seiring waktu.
-
-### Kriteria selesai
-- [ ] `olderTexts` dibatasi token cap sebelum dikirim ke LLM call summarization
-- [ ] Fallback ke template summary (kualitas lebih rendah) ter-log secara jelas dan idealnya terlihat oleh user
-- [ ] Test dengan history sangat panjang (100+ pesan) tidak menyebabkan LLM call summarization gagal karena context overflow
-
----
-
-## 16. `clearSession()` di Tool-Loop-Detector Tidak Pernah Dipanggil
-
-### Lokasi
-`apps/api/src/modules/ai/tool-loop-detector.service.ts:75-77`
-
-### Bukti kode
-```ts
-// tool-loop-detector.service.ts:75-77
-clearSession(workspaceId: string): void {
-  this.sessionHistory.delete(workspaceId);
-}
-// grep "clearSession" di seluruh apps/api/src: HANYA muncul di file ini sendiri
-// (deklarasi), tidak pernah dipanggil dari workspace-runner.service.ts,
-// agent-runner.service.ts, atau file lain mana pun
-```
-
-### Kenapa ini masalah
-`sessionHistory` (baris 22) itu `BoundedMap` yang di-key oleh `workspaceId` — bukan `runId`/turn/sesi individual. Karena `clearSession()` tidak pernah dipanggil di titik mana pun (misal saat run baru dimulai, atau saat run selesai), history 15-tool-call-terakhir yang dilacak `checkAndRecord()` **terus menumpuk lintas run yang berbeda** untuk workspace yang sama. Dampak konkretnya:
-- Kalau 2-3 tool call identik terjadi menjelang akhir run A (hal yang wajar, bukan loop beneran — misal user memang minta baca file yang sama 3x di run berbeda untuk keperluan berbeda), lalu run B (run baru, task sama sekali berbeda) kebetulan memanggil tool identik di awal, itu bisa langsung ke-hitung sebagai lanjutan dari repeat-count run A dan salah trigger circuit breaker padahal run B belum benar-benar looping.
-- Sebaliknya, kalau within-run loop terjadi tapi tool call sebelumnya (dari run lampau) kebetulan "memenuhi kuota" window 15-entry duluan dengan tool call berbeda, window bisa lebih cepat penuh dengan history yang sudah tidak relevan, mengurangi efektivitas deteksi untuk loop yang benar-benar terjadi dalam run aktif.
-
-### Rekomendasi perbaikan
-1. Panggil `clearSession(workspaceId)` di titik mulai setiap run baru di `workspace-runner.service.ts` (sebelum loop utama dimulai, dekat baris tempat `runState` diinisialisasi) — supaya setiap run mulai dengan state deteksi-loop yang bersih.
-2. Alternatif yang lebih robust jangka panjang: ubah key `sessionHistory` dari `workspaceId` saja menjadi kombinasi `${workspaceId}:${runId}` — supaya deteksi loop secara eksplisit ter-scope ke run yang sedang berjalan tanpa perlu eksplisit clear di awal/akhir (otomatis "fresh" per run karena `runId` selalu unik), sekaligus menghindari lupa panggil `clearSession()` di titik lain di masa depan (misal kalau ada jalur error yang skip pemanggilan clear).
-3. Tambahkan test yang mensimulasikan 2 run berurutan dengan tool call identik yang overlap di boundary keduanya, memverifikasi run kedua tidak salah ke-trigger circuit breaker akibat history dari run pertama.
-
-### Kriteria selesai
-- [ ] `sessionHistory` di-scope per run (bukan cuma per workspace), atau `clearSession()` dipanggil konsisten di setiap awal run baru
-- [ ] Test 2-run-berurutan memverifikasi tidak ada false-positive circuit breaker akibat state lintas-run
-
----
-
-## Urutan Pengerjaan yang Disarankan (Temuan #11-16)
-
-1. **Cepat & berdampak tinggi dulu:** #11 (fix key `fallbackMap`), #12 (retry loop adaptif), #16 (`clearSession()` dipanggil) — semuanya bug penamaan/pemanggilan sederhana, effort rendah, dampak langsung terasa.
-2. **Satu paket dengan perbaikan tokenizer (#2 di Part 1):** #14 (compaction berbasis token) → #15 (cap ukuran input LLM summary) — akar masalahnya sama dengan temuan #2 di Part 1 (context management tidak berbasis token akurat), lebih efisien dikerjakan dalam satu PR bareng perbaikan #2.
-3. **Input hardening, satu paket dengan #7/#8 di Part 1:** #13 (path validation gap) — tema sama dengan schema validation & rollback di Part 1.
+1. **Paling mendesak:** #17 (silent data loss dari slice 40-pesan) — ini satu-satunya temuan di seluruh audit (Part 1-3) yang bisa menyebabkan hilangnya konteks percakapan tanpa jejak sama sekali. Prioritaskan di atas semua temuan lain kalau harus pilih satu.
+2. Koreksi #7 — update dokumentasi/task tracker Part 1 supaya agent coding tidak membangun ulang validasi dari nol; cukup perkuat yang sudah ada.
+3. #18 (dua sistem compaction) — kerjakan SETELAH #17 selesai dan SATU PAKET dengan Part 1 #2 (tokenizer) + Part 2 #14/#15 (compaction berbasis token) — semuanya akar masalahnya di area context-management yang sama, lebih efisien sebagai satu inisiatif besar daripada dicicil.
 
 ## Catatan Metodologi & Batasan
 
-- **Sudah dibaca tuntas baris-per-baris di batch ini:** `self-healing.service.ts` (323 baris), `compaction.service.ts` (133 baris), `tool-loop-detector.service.ts` (78 baris).
-- **Belum dibaca tuntas** (masih via grep/potongan): `ai.service.ts` (800 baris), `context-manager.ts` (744 baris), `tool-registry.service.ts` (588 baris) — sisa Batch 1.
-- **Belum disentuh sama sekali (rencana Batch 2):** `provider.service.ts` (264 baris), sisa `sub-agent-runner.service.ts` (379 baris), `tools-provider.module.ts` (2340 baris), `session-admission.service.ts` (136 baris), `message.service.ts` (59 baris), `harness/harness-registry.service.ts` (111 baris), seluruh `apps/web`, seluruh `apps/desktop`.
-- Dokumen ini snapshot progres audit yang masih berjalan, bukan hasil final — jumlah temuan kemungkinan masih bertambah.
+- **Sudah dibaca tuntas di batch ini:** `tool-registry.service.ts` (588 baris, penuh), `ai.service.ts` (800 baris, penuh), plus bagian `compress()`/`generateSummary()`/`generateLlmSummary()` di `context-manager.ts` (belum seluruh 744 baris — bagian `pruneOldToolResults`, `stripOldImages`, `sanitizeToolPairs`, `enforceAggregateToolResultBudget` belum dibaca detail).
+- **Masih belum disentuh:** `provider.service.ts` (264 baris), sisa `sub-agent-runner.service.ts`, `tools-provider.module.ts` (2340 baris, mayoritas), `session-admission.service.ts`, `message.service.ts`, `harness-registry.service.ts`, seluruh `apps/web`, seluruh `apps/desktop` — ini rencana Batch 2 (belum dimulai).
+- Dokumen ini snapshot progres audit yang masih berjalan.

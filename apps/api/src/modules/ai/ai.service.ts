@@ -108,7 +108,7 @@ export class AiService {
         toolPruneChars: 1000,
         toolPreviewChars: 250,
         injectionMaxChars: 2000,
-        useLlmSummary: false,
+        useLlmSummary: true,
       },
       { chat: this.chat.bind(this) },
     );
@@ -332,10 +332,7 @@ export class AiService {
     tools?: ToolDefinition[],
     options?: { preferredProviderId?: string },
   ): Promise<AiResponse> {
-    // Light trim: keep last 40 messages, skip 4-phase compression
-    const trimmedMessages = messages.length > 40
-      ? messages.slice(-40)
-      : messages;
+    const trimmedMessages = messages;
 
     // Get starting provider (optionally pinned for logical failover retries)
     let provider = options?.preferredProviderId
@@ -451,10 +448,7 @@ export class AiService {
     messages: ChatMessage[],
     tools?: ToolDefinition[],
   ): AsyncGenerator<StreamChunk> {
-    // Light trim, skip heavy 4-phase compression
-    const trimmedMessages = messages.length > 40
-      ? messages.slice(-40)
-      : messages;
+    const trimmedMessages = messages;
 
     const provider = await this.getProviderConfig();
     if (!provider.apiKey) {
