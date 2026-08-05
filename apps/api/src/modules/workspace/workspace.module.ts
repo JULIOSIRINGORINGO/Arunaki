@@ -17,6 +17,7 @@ import { MemoryModule } from '../memory/memory.module.js';
 import { SkillsModule } from '../skills/skills.module.js';
 import { SourceModule } from '../source/source.module.js';
 import { ProviderModule } from '../provider/provider.module.js';
+import { ChatModule } from '../chat/chat.module.js';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ProviderModule } from '../provider/provider.module.js';
     SkillsModule,
     SourceModule,
     ProviderModule,
+    ChatModule,
     EventEmitterModule.forRoot(),
   ],
   controllers: [WorkspaceController],

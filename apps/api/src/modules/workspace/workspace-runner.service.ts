@@ -28,6 +28,7 @@ import {
   createRunBudget,
   enterRunBudget,
 } from '../ai/token-budget.service.js';
+import { SessionAdmissionService } from '../chat/session-admission.service.js';
 import * as path from 'path';
 
 export type AgentState =
@@ -167,6 +168,7 @@ export class WorkspaceRunnerService {
     private readonly eventEmitter: EventEmitter2,
     private readonly providerService: ProviderService,
     private readonly todoStore: TodoStoreService,
+    private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
   private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
     const mentioned = new Set<string>();
@@ -770,13 +772,15 @@ export class WorkspaceRunnerService {
       historyMessages,
     } = params;
 
-    // Guard: prevent duplicate runs on same workspace
-    if (this.isRunning(workspaceId)) {
+    let lease: any;
+    try {
+      lease = await this.sessionAdmissionService.acquireAdmission(workspaceId);
+    } catch (error: any) {
       onEvent({
         type: 'error',
         data: {
           message:
-            'Workspace sedang dalam analisis. Tunggu selesai atau batalkan sebelum memulai baru.',
+            'Workspace sedang sibuk memproses permintaan lain. Harap tunggu.',
         },
       });
       return;
@@ -1515,6 +1519,9 @@ export class WorkspaceRunnerService {
       throw error;
     } finally {
       this.activeRuns.delete(workspaceId);
+      if (lease) {
+        await lease.release().catch((e: any) => this.logger.warn(`Failed to release lease: ${e.message}`));
+      }
     }
   }
 }

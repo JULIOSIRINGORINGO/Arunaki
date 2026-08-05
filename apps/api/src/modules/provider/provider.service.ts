@@ -181,7 +181,7 @@ export class ProviderService extends BaseService<Provider> {
     }
 
     // 2. Check enabled database providers for registered fallback credentials
-    const allProviders = await this.repository.findAllEnabled().catch(() => []);
+    const allProviders = await this.repository.findAvailable().catch(() => []);
     const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
 
     if (openrouterProv) {

@@ -26,6 +26,7 @@ import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
 import { ProviderService } from '../provider/provider.service.js';
+import { SessionAdmissionService } from '../chat/session-admission.service.js';
 
 describe('extractMentionedFilenames', () => {
   it('extracts an explicit file reference', () => {
@@ -92,6 +93,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
       ],
     }).compile();
 
@@ -195,6 +197,7 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
       ],
     }).compile();
 
@@ -295,6 +298,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
       ],
     }).compile();
 
@@ -408,6 +412,7 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
       ],
     }).compile();
 
@@ -500,6 +505,7 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
         { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
       ],
     }).compile();
 

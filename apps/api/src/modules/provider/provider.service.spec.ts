@@ -104,10 +104,9 @@ describe('ProviderService — Failover & Error Classification', () => {
     });
 
     it('should rotate to free candidate pool if no database provider available', async () => {
-      mockRepository.findAvailable.mockResolvedValue([]);
-      mockRepository.findAllEnabled.mockResolvedValue([
+      mockRepository.findAvailable.mockResolvedValue([
         {
-          id: 'openrouter',
+          id: 'openrouter/free', // Same as currentProviderId to skip step 1
           name: 'OpenRouter',
           type: 'openai-compatible',
           baseUrl: 'https://openrouter.ai/api/v1',
@@ -115,6 +114,7 @@ describe('ProviderService — Failover & Error Classification', () => {
           model: 'openrouter/auto',
         },
       ]);
+      mockRepository.findAllEnabled.mockResolvedValue([]);
 
       const next = await service.getNextAvailable('openrouter/free');
 
