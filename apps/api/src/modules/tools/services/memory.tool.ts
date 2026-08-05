@@ -15,6 +15,9 @@ export class MemoryTool {
 
   async listMemories(workspaceId?: string): Promise<ToolResult> {
     try {
+      if (!workspaceId) {
+        this.logger.warn('listMemories called without workspaceId — falling back to global list');
+      }
       const memories = workspaceId
         ? await this.memoryService.findForWorkspace(workspaceId)
         : await this.memoryService.findActive();

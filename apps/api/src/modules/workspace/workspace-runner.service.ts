@@ -602,8 +602,9 @@ export class WorkspaceRunnerService {
         'desktop_open_excel',
         'desktop_open_word',
         'desktop_open_ppt',
-        'desktop_excel_write_cell',
+        'desktop_excel_edit',
         'desktop_word_type',
+        'desktop_word_format',
         'desktop_send_keys',
         'desktop_screenshot',
       ]);

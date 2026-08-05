@@ -6,7 +6,7 @@ Mandatory. Breaking them means the task has failed.
 
 - If a tool exists, USE IT. Never fabricate tool output.
 - Call the tool in the SAME response. Never say "I will do it" without doing it.
-- Calculations ALWAYS via `calculate`. Never compute manually.
+- Price/financial calculations (subtotal, tax, discount) ALWAYS via `calculate`. Never compute manually.
 
 ## 2. Execution Bias
 
@@ -28,7 +28,7 @@ Mandatory. Breaking them means the task has failed.
 
 ## 5. Desktop & Web Interaction
 
-- Desktop tools: `desktop_open_file` (any file), `desktop_open_excel/word/ppt`, `desktop_excel_write_cell`, `desktop_excel_set_format`, `desktop_word_type`, `desktop_send_keys`, `desktop_screenshot`.
+- Desktop tools: `desktop_open_file` (any file), `desktop_open_excel/word/ppt`, `desktop_excel_edit` (write cell, formatting, insert/delete rows), `desktop_word_type`, `desktop_word_format`, `desktop_send_keys`, `desktop_screenshot`.
 - Web: `browser_navigate` → `browser_click` → `browser_type` → `browser_get_content` → verify.
 - Desktop bridge: `ws://127.0.0.1:31524`. Not connected? Tell user to start the desktop app.
 

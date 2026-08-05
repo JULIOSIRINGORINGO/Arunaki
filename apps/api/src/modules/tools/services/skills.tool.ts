@@ -221,7 +221,7 @@ export class SkillsTool {
     }>,
   ): Promise<ToolResult> {
     try {
-      const skill = await this.skillService.findByName(name);
+      const skill = await this.skillService.findByNameInWorkspace(name, workspaceId);
       if (!skill) {
         return {
           status: 'error',
@@ -286,7 +286,7 @@ export class SkillsTool {
 
   async deleteSkill(name: string, workspaceId: string): Promise<ToolResult> {
     try {
-      const skill = await this.skillService.findByName(name);
+      const skill = await this.skillService.findByNameInWorkspace(name, workspaceId);
       if (!skill) {
         return {
           status: 'error',

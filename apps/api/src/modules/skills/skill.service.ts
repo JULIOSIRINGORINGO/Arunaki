@@ -55,6 +55,21 @@ export class SkillService extends BaseService<Skill> {
     return this.repository.findByName(name);
   }
 
+  /**
+   * Find a skill by name, preferring workspace-scoped over global.
+   * Returns null if no skill with that name exists in the given workspace or globally.
+   */
+  async findByNameInWorkspace(name: string, workspaceId: string): Promise<Skill | null> {
+    const skill = await this.repository.findByName(name);
+    if (!skill) return null;
+    // Return the skill if it belongs to this workspace or is global
+    if (skill.workspaceId === null || skill.workspaceId === workspaceId) {
+      return skill;
+    }
+    // Skill exists but belongs to another workspace — treat as not found
+    return null;
+  }
+
   async incrementUsage(id: string): Promise<void> {
     return this.repository.incrementUsage(id);
   }
@@ -110,7 +125,12 @@ export class SkillService extends BaseService<Skill> {
   }): Promise<Skill> {
     const existing = await this.findByName(data.name);
     if (existing) {
-      throw new Error(`Skill "${data.name}" already exists`);
+      const owner = existing.workspaceId
+        ? `workspace ${existing.workspaceId}`
+        : 'global scope';
+      throw new Error(
+        `Skill "${data.name}" already exists (owned by ${owner}). Use a different name.`,
+      );
     }
 
     return this.create({
@@ -317,6 +337,9 @@ ATURAN:
    * Rollback skill to previous version (if history exists).
    * Currently placeholder — requires SkillVersion table.
    */
+  // TODO: Implement skill version rollback. Requires a SkillVersion table
+  // to store historical content snapshots. Currently only the version counter
+  // is incremented on update; the old content is not preserved.
   async rollbackSkill(skillId: string, targetVersion: string): Promise<Skill | null> {
     this.logger.warn(
       `Rollback requested for ${skillId} to ${targetVersion} — not yet implemented (needs SkillVersion table)`,
