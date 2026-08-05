@@ -50,6 +50,9 @@ export interface Tool {
    */
   readonly catalogMode?: 'direct-only' | 'catalog-only';
 
+  /** Read-only/idempotent result may be cached per-run (default false). */
+  readonly cacheable?: boolean;
+
   /** Execute the tool with given arguments */
   execute(args: Record<string, any>): Promise<ToolResult> | ToolResult;
 

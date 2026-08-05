@@ -854,6 +854,16 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test: 2 test baru di `context-manager.spec.ts` — teks Bahasa Indonesia panjang & JSON tool result dihitung exact dengan tiktoken (bukan heuristik).
 - [x] Build passes (`npm run build` — 0 errors); semua test ai module pass (32/32).
 
+### 45.3 Dedup/Cache Hasil Tool Call (Gap #3)
+- [x] Gap-analysis check: `ToolLoopDetectorService` hanya mendeteksi loop, tidak menyimpan hasil; `executeTool()` tidak punya layer cache.
+- [x] `Tool` interface + `ToolAdapter` + `ToolConfig` punya field `cacheable` (default false).
+- [x] `executeTool()` cek cache dulu untuk tool `cacheable=true` — key `scope:name:hash(args)`, scope = `workspaceId || runId || 'default'`, TTL 60s, bounded 1000 entries.
+- [x] Invalidasi otomatis per-scope saat tool mutating jalan (write/update/delete/rename/desktop write) — karena semua tool call lewat `executeTool`, satu guard cukup.
+- [x] `cacheable: true` untuk `doc_search`, `search_workspace`, `list_workspace_files`, `read_workspace_file`. TIDAK untuk `web_search` (hasil berubah) & tool mutating.
+- [x] Log `[CACHE HIT]` saat reuse untuk observability.
+- [x] Test 3 kasus baru di `tool-registry.service.spec.ts`: cache hit (handler 1x), non-cacheable tidak di-cache (2x), invalidasi scope saat mutating tool (re-execute).
+- [x] Build passes (`npm run build` — 0 errors); semua test tools module pass (19/19).
+
 
 ---
 

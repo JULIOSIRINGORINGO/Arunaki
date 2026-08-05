@@ -403,6 +403,7 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['workspaceId', 'query'],
         },
         timeoutMs: 10000,
+        cacheable: true,
       }),
     );
 
@@ -704,6 +705,7 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['workspaceId', 'query'],
         },
         timeoutMs: 8000,
+        cacheable: true,
       }),
     );
 
@@ -723,6 +725,7 @@ export class ToolsProviderModule implements OnModuleInit {
           },
         },
         timeoutMs: 5000,
+        cacheable: true,
       }),
     );
 
@@ -751,6 +754,7 @@ export class ToolsProviderModule implements OnModuleInit {
         },
         estimatedLatency: 'medium',
         timeoutMs: 15000,
+        cacheable: true,
       }),
     );
 

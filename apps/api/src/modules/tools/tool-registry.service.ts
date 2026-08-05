@@ -5,6 +5,7 @@ import {
   ToolCapability,
 } from './interfaces/tool.interface.js';
 import { ToolResult, ToolResultChunk, StreamingToolResult } from './interfaces/tool-result.interface.js';
+import { createHash } from 'crypto';
 
 interface RegisteredTool {
   tool: Tool;
@@ -15,6 +16,22 @@ interface ValidationResult {
   valid: boolean;
   errors: string[];
 }
+
+// Cache read-only tool results per-run (scope = workspaceId || runId).
+// TTL 60s + invalidation when a mutating tool runs in the same scope.
+const CACHE_TTL_MS = 60_000;
+const CACHE_MAX_ENTRIES = 1000;
+
+const MUTATING_TOOLS = new Set([
+  'write_workspace_file',
+  'update_workspace_file',
+  'delete_workspace_file',
+  'rename_workspace_file',
+  'desktop_excel_write_cell',
+  'desktop_excel_set_format',
+  'desktop_word_type',
+  'desktop_word_format',
+]);
 
 /**
  * ToolRegistryService — self-registering tool registry.
@@ -28,6 +45,39 @@ interface ValidationResult {
 export class ToolRegistryService {
   private readonly logger = new Logger(ToolRegistryService.name);
   private readonly tools = new Map<string, RegisteredTool>();
+  private readonly resultCache = new Map<string, { result: ToolResult; expiresAt: number }>();
+
+  private cacheKey(scope: string, name: string, args: Record<string, any>): string {
+    const argHash = createHash('sha256')
+      .update(JSON.stringify(args ?? {}))
+      .digest('hex')
+      .substring(0, 16);
+    return `${scope}:${name}:${argHash}`;
+  }
+
+  private scopeOf(args: Record<string, any>): string {
+    return String(args?.workspaceId || args?.runId || 'default');
+  }
+
+  /**
+   * Drop cached results for a scope (called when a mutating tool runs there).
+   */
+  invalidateCache(scope: string): void {
+    const prefix = `${scope}:`;
+    for (const key of this.resultCache.keys()) {
+      if (key.startsWith(prefix)) this.resultCache.delete(key);
+    }
+  }
+
+  private clearExpiredCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.resultCache) {
+      if (entry.expiresAt <= now) this.resultCache.delete(key);
+    }
+    if (this.resultCache.size > CACHE_MAX_ENTRIES) {
+      this.resultCache.clear();
+    }
+  }
 
   /**
    * Register a tool into the registry.
@@ -242,6 +292,51 @@ export class ToolRegistryService {
     }
 
     this.logger.log(`Executing tool "${name}" (timeout: ${timeoutMs}ms)`);
+
+    const scope = this.scopeOf(args);
+    if (tool.cacheable) {
+      if (MUTATING_TOOLS.has(name)) this.invalidateCache(scope);
+      const key = this.cacheKey(scope, name, args);
+      const cached = this.resultCache.get(key);
+      if (cached && cached.expiresAt > Date.now()) {
+        this.logger.log(`[CACHE HIT] tool "${name}" reused from per-run cache`);
+        return cached.result;
+      }
+      this.clearExpiredCache();
+      const startTime = Date.now();
+      try {
+        const result = await this.executeWithTimeout(
+          () => Promise.resolve(tool.execute(args)),
+          timeoutMs,
+        );
+        result.metadata.executionTime = Date.now() - startTime;
+        const finalResult = this.truncateResult(result);
+        if (finalResult.status === 'success') {
+          this.resultCache.set(key, { result: finalResult, expiresAt: Date.now() + CACHE_TTL_MS });
+        }
+        return finalResult;
+      } catch (e) {
+        const isTimeout = e.message?.includes('timeout');
+        return {
+          status: 'error',
+          data: {},
+          preview: isTimeout
+            ? `Tool "${name}" timeout setelah ${timeoutMs}ms`
+            : `Tool "${name}" gagal: ${e.message}`,
+          metadata: {
+            toolName: name,
+            displayName: tool.capability.displayName,
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: isTimeout ? 'TOOL_TIMEOUT' : 'EXECUTION_FAILED',
+            message: e.message,
+          },
+        };
+      }
+    }
+
+    if (MUTATING_TOOLS.has(name)) this.invalidateCache(scope);
     const startTime = Date.now();
 
     try {

@@ -17,6 +17,8 @@ export interface ToolConfig {
   timeoutMs?: number;
   /** 'catalog-only' (default) = hidden, discoverable via tool_search; 'direct-only' = always sent to LLM. */
   catalogMode?: 'direct-only' | 'catalog-only';
+  /** Read-only/idempotent result may be cached per-run (default false). */
+  cacheable?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export class ToolAdapter implements Tool {
   ) => Promise<ToolResult> | ToolResult;
 
   readonly catalogMode?: 'direct-only' | 'catalog-only';
+  readonly cacheable: boolean;
 
   private constructor(config: ToolConfig) {
     this.name = config.name;
@@ -46,6 +49,7 @@ export class ToolAdapter implements Tool {
     this.handler = config.handler;
     this.timeoutMs = config.timeoutMs ?? 10000;
     this.catalogMode = config.catalogMode ?? 'catalog-only';
+    this.cacheable = config.cacheable ?? false;
 
     this.definition = {
       type: 'function',
