@@ -31,6 +31,18 @@ import {
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
 import * as path from 'path';
 
+export const WORKSPACE_MUTATING_TOOLS = [
+  'write_workspace_file',
+  'edit_workspace_file',
+  'delete_workspace_file',
+  'rename_workspace_file',
+  // Desktop interactive tools — high-risk, require approval gate
+  'desktop_send_keys',
+  'desktop_excel_edit',
+  'desktop_word_type',
+  'desktop_word_format',
+];
+
 export type AgentState =
   | 'idle'
   | 'running'
@@ -1087,17 +1099,6 @@ export class WorkspaceRunnerService {
           if (hasWriteTools) this.setPhase(runState, 'generating', onEvent);
 
           // Separate mutating vs read-only tools for parallel execution
-          const mutatingTools = [
-            'write_workspace_file',
-            'update_workspace_file',
-            'delete_workspace_file',
-            // Desktop interactive tools — high-risk, require approval gate
-            'desktop_send_keys',
-            'desktop_excel_write_cell',
-            'desktop_excel_set_format',
-            'desktop_word_type',
-            'desktop_word_format',
-          ];
 
           const readOnlyCalls: Array<{
             toolCall: (typeof aiResponse.toolCalls)[0];
@@ -1127,7 +1128,7 @@ export class WorkspaceRunnerService {
               break;
             }
 
-            if (mutatingTools.includes(funcName)) {
+            if (WORKSPACE_MUTATING_TOOLS.includes(funcName)) {
               mutatingCalls.push({ toolCall, args });
             } else {
               readOnlyCalls.push({ toolCall, args });

@@ -24,11 +24,11 @@ const CACHE_MAX_ENTRIES = 1000;
 
 const MUTATING_TOOLS = new Set([
   'write_workspace_file',
-  'update_workspace_file',
+  'edit_workspace_file',
   'delete_workspace_file',
   'rename_workspace_file',
-  'desktop_excel_write_cell',
-  'desktop_excel_set_format',
+  'desktop_send_keys',
+  'desktop_excel_edit',
   'desktop_word_type',
   'desktop_word_format',
 ]);

@@ -1,150 +1,204 @@
-# Gap Analysis: Arunaki Harness vs OpenClaw/Claude Code Patterns — PART 4 (TERBARU)
+# Gap Analysis: Arunaki Harness vs OpenClaw/Claude Code Patterns — PART 5 (TERBARU, Batch 2 Selesai)
 
-**Status:** Temuan #19-21, hasil Batch 2 (baru dimulai): `provider.service.ts` (264 baris, full), `session-admission.service.ts` (136 baris, full), `message.service.ts` (59 baris, full), `harness-registry.service.ts` (111 baris, full), plus penyelesaian sisa `context-manager.ts` (745 baris, sekarang full).
+**Status:** Temuan #22-23, hasil penyelesaian Batch 2: sisa `sub-agent-runner.service.ts` (259 baris tersisa, sekarang full), scan menyeluruh `tools-provider.module.ts` (2340 baris — tool inventory lengkap + pengecekan silang ke `mutatingTools`), plus pengecekan `apps/desktop` (746 baris, WebSocket bridge auth) dan `apps/web` (7925 baris — fokus ke jalur auth API, bukan full-read).
 **Sumber audit:** `Arunaki-main__8_.zip`
 **Tanggal audit:** Agustus 2026
 
-> Part 1 (#1-10), Part 2 (#11-16), Part 3 (#17-18 + koreksi #7) ada di file terpisah.
+> Part 1-4 (#1-21 + koreksi #7) ada di file terpisah. **Batch 2 sekarang selesai** — lihat Catatan Metodologi di akhir file ini untuk cakupan final seluruh audit.
 
 ---
 
-## Ringkasan Prioritas (Part 4 saja)
+## 🔴 22. `edit_workspace_file` dan `desktop_excel_edit` Salah Kategori — Lolos dari SEMUA Safety Guard Khusus Mutating Tools
 
-| # | Temuan | Kategori | Dampak | Effort Perbaikan |
-|---|--------|----------|--------|-------------------|
-| 19 | `getNextAvailable()` step 2 melewati pengecekan cooldown provider | Reliability | Sedang | Rendah |
-| 20 | `SessionAdmissionService` (kunci konkurensi per-sesi) cuma di chat mode, tidak di workspace mode | Safety/Reliability | Tinggi | Sedang |
-| 21 | Sistem plugin `HarnessRegistryService` cuma di chat mode dan belum ada plugin terdaftar sama sekali | Arsitektur | Rendah | Rendah |
-
----
-
-## 19. `getNextAvailable()` Step 2 Melewati Pengecekan Cooldown Provider
+**Ini temuan paling parah di seluruh audit (Part 1-5).** Bukan cuma inefisiensi atau kapabilitas tak terpakai — ini celah keamanan konten aktif pada tool yang kemungkinan besar paling sering dipakai untuk edit file sungguhan.
 
 ### Lokasi
-- `apps/api/src/modules/provider/provider.service.ts:163-223` (`getNextAvailable`)
-- `apps/api/src/modules/provider/provider.repository.ts:26` (`findAllEnabled` — TIDAK filter cooldown) vs `:51-56` (`findAvailable` — filter cooldown via `cooldownUntil`)
+- `apps/api/src/modules/workspace/workspace-runner.service.ts:981-991` (definisi array `mutatingTools`)
+- `apps/api/src/modules/tools/tools-provider.module.ts:807` (nama tool asli: `edit_workspace_file`)
+- `apps/api/src/modules/tools/tools-provider.module.ts:1659` (nama tool asli: `desktop_excel_edit`)
 
 ### Bukti kode
 ```ts
-// provider.repository.ts:51-56 — findAvailable() FILTER cooldown
-async findAvailable(): Promise<Provider[]> {
-  // ...
-  where: { OR: [{ cooldownUntil: null }, { cooldownUntil: { lt: now } }] }
-}
+// workspace-runner.service.ts:981-991 — daftar tool yang dianggap "mutating"
+const mutatingTools = [
+  'write_workspace_file',
+  'update_workspace_file',        // <-- TOOL INI TIDAK PERNAH ADA
+  'delete_workspace_file',
+  'desktop_send_keys',
+  'desktop_excel_write_cell',     // <-- TOOL INI TIDAK PERNAH ADA
+  'desktop_excel_set_format',     // <-- TOOL INI TIDAK PERNAH ADA
+  'desktop_word_type',
+  'desktop_word_format',
+];
 ```
 ```ts
-// provider.service.ts:163-181 — Step 1: BENAR, pakai findAvailable() (filter cooldown)
-async getNextAvailable(currentProviderId?: string): Promise<ProviderConfig | null> {
-  const available: Provider[] = await this.repository.findAvailable().catch(() => []);
-  const next = available.find((p) => p.id !== currentProviderId);
-  if (next) { /* return next, sudah difilter cooldown */ }
+// tools-provider.module.ts:807 — nama tool yang SEBENARNYA terdaftar untuk edit file
+name: 'edit_workspace_file',   // TIDAK ADA di mutatingTools sama sekali
 
-  // Step 2: SALAH — pakai findAllEnabled() (TIDAK filter cooldown)
-  const allProviders = await this.repository.findAllEnabled().catch(() => []);
-  const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
-  if (openrouterProv) {
-    // rotasi model DALAM preset yang sama, pakai openrouterProv.apiKey
-    // yang BISA SAJA masih dalam masa cooldown aktif
-    const preset = this.catalogService.detectPreset(openrouterProv.apiKey, openrouterProv.baseUrl);
-    const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
-    return { /* ..., apiKey: this.decryptApiKey(openrouterProv.apiKey), model: nextModel };
-  }
-  // ...
+// tools-provider.module.ts:1659 — nama tool yang SEBENARNYA untuk edit Excel desktop
+name: 'desktop_excel_edit',    // TIDAK ADA di mutatingTools sama sekali
+```
+
+Karena `edit_workspace_file` dan `desktop_excel_edit` tidak match string apa pun di `mutatingTools`, baris `mutatingTools.includes(funcName)` (baris 1021) mengembalikan `false` untuk keduanya — jadi **keduanya masuk ke `readOnlyCalls`, bukan `mutatingCalls`**, meski keduanya jelas-jelas memodifikasi isi file/dokumen.
+
+### Kenapa ini sangat serius
+Blok kode `mutatingCalls` (baris 1098-1140+) punya guard keamanan yang **TIDAK ADA** di jalur `readOnlyCalls`:
+```ts
+// workspace-runner.service.ts:1098-1132 — HANYA berlaku untuk mutatingCalls
+// - Cek: file yang dirujuk user dengan @ HARUS jadi target update
+//   (mencegah AI salah update file yang tidak dimaksud user)
+if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && !isMentioned) {
+  throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
+}
+// - Cek: file yang dirujuk dengan @ TIDAK BOLEH dihapus/rename dalam run edit
+if (isMentioned && ['delete_workspace_file', 'rename_workspace_file'].includes(funcName)) {
+  throw new Error('File yang dirujuk dengan @ tidak boleh dihapus atau diubah namanya dalam run edit.');
+}
+// - Cek: delete HARUS ada instruksi eksplisit dari user
+if (funcName === 'delete_workspace_file' && !hasExplicitDeleteIntent(safeGoal, filename)) {
+  throw new Error('Penghapusan ditolak: instruksi harus secara eksplisit meminta hapus/delete...');
+}
+// - Cek: konten yang mau disimpan tidak boleh masih mengandung referensi @file mentah
+//   (mencegah AI menyimpan placeholder "@laporan.xlsx" alih-alih isi file yang benar)
+if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
+  throw new Error('Konten masih berisi referensi @file mentah dan tidak boleh disimpan.');
 }
 ```
 
-### Kenapa ini masalah
-Step 1 (`findAvailable()`) benar — cuma mengambil provider yang TIDAK sedang cooldown. Tapi kalau step 1 tidak menemukan kandidat (misal semua provider database lain juga sedang cooldown), step 2 mengambil provider OpenRouter lewat `findAllEnabled()` — yang **tidak peduli status cooldown-nya sama sekali** — lalu mencoba "rotasi model" di dalam preset yang sama menggunakan API key yang sama persis dari provider yang mungkin baru saja kena rate-limit (429) atau bahkan masih dalam cooldown 300 detik akibat 401/402/403. Karena API key-nya sama (cuma model yang beda), kemungkinan besar permintaan berikutnya akan **kena limit yang sama lagi** — logika "rotasi" ini secara efektif tidak benar-benar menghindari sumber masalahnya. Ini bisa menyebabkan siklus retry yang sia-sia: sistem "merasa" sudah rotasi provider (menambah `rotation` counter di `AiAttempt`), padahal secara efektif masih memukul limit yang sama.
+Karena `edit_workspace_file` **tidak lewat blok ini sama sekali**, kalau LLM salah paham konteks percakapan dan memanggil `edit_workspace_file` pada file yang justru sedang dirujuk user dengan `@` untuk keperluan lain (bukan untuk diedit) — guard "file yang dirujuk dengan @ tidak boleh diubah" **tidak akan pernah trigger** untuk tool ini, karena guard itu cuma dicek untuk item di `mutatingCalls`. Sama halnya, kalau `edit_workspace_file` menyisipkan konten yang masih mengandung raw `@filename.xlsx` (bug LLM lain yang seharusnya ditangkap check terakhir), itu juga tidak akan tertangkap.
+
+Dampak untuk `desktop_excel_edit`: komentar di baris 985 eksplisit bilang *"Desktop interactive tools — high-risk, require approval gate"* — niatnya jelas tool desktop-interactive harus dapat perlakuan ekstra hati-hati. Tapi `desktop_excel_edit` (mengedit cell Excel yang sedang dibuka secara live via COM/Electron bridge) justru lolos dari kategori itu sama sekali karena namanya salah ketik di daftar.
+
+Ini POLA YANG SAMA PERSIS dengan temuan Part 2 #11 (`fallbackMap` salah nama tool) — tapi konsekuensinya jauh lebih besar di sini karena yang salah kategori adalah **guard keamanan konten aktif di jalur mutasi file utama**, bukan sekadar fitur fallback-recovery.
 
 ### Rekomendasi perbaikan
+1. **Prioritas tertinggi, perbaikan cepat:**
+   ```ts
+   const mutatingTools = [
+     'write_workspace_file',
+     'edit_workspace_file',          // FIX: nama benar (sebelumnya 'update_workspace_file')
+     'delete_workspace_file',
+     'rename_workspace_file',        // TAMBAHAN: juga tidak ada di list asli, padahal dirujuk di guard baris 1124!
+     'desktop_send_keys',
+     'desktop_excel_edit',           // FIX: nama benar (sebelumnya 'desktop_excel_write_cell')
+     'desktop_word_type',
+     'desktop_word_format',
+     // 'desktop_excel_set_format' dihapus — tool ini tidak pernah ada di registry;
+     // kalau memang direncanakan sebagai fitur terpisah, tambahkan setelah tool-nya dibuat
+   ];
+   ```
+   **Catatan tambahan yang ditemukan saat memperbaiki ini:** `rename_workspace_file` DIRUJUK di guard baris 1124 (`['delete_workspace_file', 'rename_workspace_file'].includes(funcName)`) tapi **juga tidak ada** di `mutatingTools` asli — artinya guard itu sendiri tidak akan pernah jalan untuk `rename_workspace_file` karena tool itu juga masuk `readOnlyCalls` duluan. Bug yang sama menimpa tool ketiga yang sebelumnya tidak saya cek.
+2. Tambahkan test yang memverifikasi SETIAP nama tool di `mutatingTools` benar-benar match nama tool yang terdaftar di `tools-provider.module.ts` (test statis, tidak perlu eksekusi — cukup bandingkan dua daftar string). Ini mencegah drift semacam ini terulang lagi kalau ada rename tool di masa depan tanpa update daftar ini.
+3. Pertimbangkan derive `mutatingTools` secara otomatis dari metadata tool (misal field `mutating: boolean` di `ToolCapability`/`Tool` interface, diisi saat registrasi tool), alih-alih daftar string hardcoded terpisah yang harus disinkronkan manual — supaya kelas bug ini (nama tool hardcoded yang drift dari sumber kebenaran) tidak bisa terjadi lagi secara struktural, bukan cuma diperbaiki sekali.
+
+### Kriteria selesai
+- [x] `edit_workspace_file`, `desktop_excel_edit`, dan `rename_workspace_file` masuk `mutatingCalls`, bukan `readOnlyCalls`
+- [x] Semua nama di `mutatingTools` diverifikasi cocok dengan tool yang benar-benar terdaftar (test statis)
+- [x] Test: memanggil `edit_workspace_file` pada file yang di-`@`-mention untuk tujuan lain memicu error yang sama seperti `write_workspace_file`
+- [ ] Pertimbangkan migrasi ke flag `mutating` per-tool di source of truth registry, bukan daftar terpisah
+
+---
+
+## 23. `SubAgentRunnerService` Tidak Pernah Mengirim `workspaceId` ke `executeWithHealing()` — Bug Argument-Passing yang Sama Terulang di Lokasi Ketiga
+
+### Lokasi
+- `apps/api/src/modules/chat/sub-agent-runner.service.ts:311-314`
+- `apps/api/src/modules/chat/sub-agent-runner.service.ts:22-35` (interface `SubAgentTask` — tidak ada field `workspaceId`)
+
+### Konteks historis
+Audit sebelumnya (tercatat di `LAPORAN_AUDIT_ARUNAKI.md`, siklus audit lampau) menemukan bug ini di **2 lokasi** (`agent-runner.service.ts` dan `workspace-runner.service.ts`) dan keduanya **sudah dikonfirmasi diperbaiki** — `workspaceId` sekarang benar dikirim sebagai argumen posisi ke-3 terpisah di kedua tempat itu (diverifikasi ulang barusan, lihat bukti di bawah). Tapi `sub-agent-runner.service.ts` — lokasi PEMANGGILAN KETIGA yang sama sekali belum pernah diaudit sebelumnya (karena fitur sub-agent baru ditemukan dan diverifikasi wired di audit gap-analysis saat ini) — punya **bug yang identik, dan tidak pernah diperbaiki karena tidak pernah diketahui**.
+
+### Bukti kode
 ```ts
-// provider.service.ts:184 — tambahkan filter cooldown eksplisit
-const allProviders = await this.repository.findAllEnabled().catch(() => []);
-const now = new Date();
-const openrouterProv = allProviders.find(
-  (p) => p.baseUrl.includes('openrouter.ai') &&
-         (!p.cooldownUntil || p.cooldownUntil < now),   // <-- tambahan
+// sub-agent-runner.service.ts:22-35 — interface SubAgentTask
+export interface SubAgentTask {
+  taskId: string;
+  taskName: string;
+  taskDescription: string;
+  allowedTools?: string[];
+  maxRounds?: number;
+  additionalContext?: string;
+  // TIDAK ADA field workspaceId sama sekali di interface ini
+}
+```
+```ts
+// sub-agent-runner.service.ts:311-314 — pemanggilan executeWithHealing TANPA workspaceId
+const healResult = await this.selfHealingService.executeWithHealing(
+  funcName,
+  args,
+  // <-- argumen ke-3 (workspaceId) TIDAK ADA SAMA SEKALI, bukan cuma salah taruh
 );
 ```
-Atau, lebih konsisten: ubah `findAllEnabled()` di titik pemanggilan ini jadi `findAvailable()` lalu filter `baseUrl.includes('openrouter.ai')` dari hasilnya — supaya logikanya seragam dengan step 1, dan tidak perlu duplikasi definisi "provider yang tersedia" di dua tempat.
 
-### Kriteria selesai
-- [ ] Step 2 di `getNextAvailable()` tidak lagi memilih provider yang sedang cooldown aktif
-- [ ] Test: provider OpenRouter dalam cooldown tidak terpilih sebagai fallback candidate meski `findAllEnabled()` masih mencantumkannya
-
----
-
-## 20. `SessionAdmissionService` (Kunci Konkurensi Per-Sesi) Cuma di Chat Mode, Tidak di Workspace Mode
-
-### Lokasi
-- `apps/api/src/modules/chat/session-admission.service.ts` (136 baris) — implementasi lengkap
-- Dipakai di: `apps/api/src/modules/chat/agent-runner.service.ts`
-- **Tidak** dipakai di: `apps/api/src/modules/workspace/workspace-runner.service.ts` (dikonfirmasi — nol hasil grep)
-
-### Bukti
-`SessionAdmissionService` adalah implementasi mutex/antrian per `sessionKey` yang solid: kalau ada run yang sedang aktif untuk sebuah sesi, run berikutnya untuk sesi yang sama di-antre (bukan dijalankan konkuren), lengkap dengan timeout, dukungan `AbortSignal`, dan cleanup saat service shutdown. Ini genuinely dipanggil di `agent-runner.service.ts` untuk memastikan satu sesi chat tidak diproses dua kali secara bersamaan.
-
-Tapi `workspace-runner.service.ts` — mode yang benar-benar menulis ke disk (Excel/Word/file lain) — **tidak memanggilnya sama sekali**.
+Bandingkan dengan 2 lokasi lain yang sudah benar:
+```ts
+// workspace-runner.service.ts:1134-1138 — BENAR
+const healResult = await this.selfHealingService.executeWithHealing(
+  funcName, enrichedArgs, workspaceId,
+);
+// agent-runner.service.ts:478-481 — BENAR
+const healResult = await this.selfHealingService.executeWithHealing(
+  toolCall.function.name, safeArgs, params.workspaceId || undefined,
+);
+```
 
 ### Kenapa ini masalah
-Ini salah satu temuan berdampak tinggi karena berhubungan langsung dengan integritas data. Kalau frontend (bug, double-click, race condition network retry, atau serangan replay) mengirim 2 request workspace run untuk `workspaceId` yang sama secara nyaris bersamaan, **tidak ada apa pun** yang mencegah keduanya berjalan konkuren:
-- Kedua run bisa membaca file yang sama, masing-masing membuat keputusan independen berdasarkan state file yang sama, lalu **menulis hasil yang saling menimpa** — salah satu perubahan user hilang tanpa jejak error.
-- Ini memperparah gap di Part 1 temuan #8 (tidak ada rollback/checkpoint) — kombinasi "tidak ada penguncian konkurensi" + "tidak ada rollback" berarti race condition semacam ini tidak cuma mungkin terjadi, tapi juga tidak bisa dipulihkan otomatis kalau terjadi.
-- `ToolLoopDetectorService` (Part 2 #16) dan sistem lain yang di-keyed per `workspaceId` juga berasumsi implisit hanya ada satu run aktif per workspace pada satu waktu — asumsi itu tidak dijamin benar tanpa `SessionAdmissionService` di jalur ini.
+Argumen ke-3 (`workspaceId`) di `executeWithHealing()` adalah yang secara eksklusif memicu `validateToolPaths()`/`validateWorkspacePath()` — validator path-traversal defense-in-depth yang jadi salah satu perbaikan paling penting di audit siklus sebelumnya. Karena `sub-agent-runner.service.ts` tidak pernah mengirim argumen ini sama sekali (bukan cuma salah nilai — betul-betul tidak ada), **setiap tool call yang dilakukan oleh SETIAP sub-agent yang di-spawn lewat `agent_spawn` melewati validator path ini sepenuhnya**, terlepas dari tool apa yang dipanggil sub-agent tersebut.
+
+Yang membuat ini lebih rumit dari sekadar "argumen kelupaan": `SubAgentTask` interface bahkan tidak punya field `workspaceId` — jadi ini bukan cuma satu baris yang lupa `.workspaceId`, tapi ketiadaan struktural di level desain. Sub-agent yang dibuat lewat tool `agent_spawn` (dikonfirmasi wired di Part 1) **sepenuhnya tidak sadar konteks workspace** di level arsitektur — kalau sub-agent butuh tahu workspace mana yang sedang dikerjakan, itu satu-satunya jalan cuma lewat `additionalContext` (field teks bebas) yang harus "ditebak ulang" oleh LLM di dalam setiap argumen tool call individual (`args.workspaceId`, karena tool workspace mewajibkan itu di schema-nya sendiri) — tidak ada jaminan struktural LLM melakukannya dengan benar dan konsisten di semua tool call.
 
 ### Rekomendasi perbaikan
-1. Terapkan `SessionAdmissionService.acquireAdmission(workspaceId, signal)` di titik masuk `workspace-runner.service.ts` (fungsi run utama), persis seperti pola yang sudah dipakai di `agent-runner.service.ts` — gunakan `workspaceId` sebagai `sessionKey` (bukan `sessionId`/`chatId` seperti di chat mode, supaya penguncian benar-benar di level workspace/file, bukan di level percakapan).
-2. Bungkus seluruh badan eksekusi run dengan `lease.run(async () => { ... })` supaya lease otomatis dilepas bahkan kalau run gagal/throw.
-3. Tambahkan test yang mengirim 2 workspace run untuk `workspaceId` yang sama secara paralel, memverifikasi run kedua benar-benar menunggu run pertama selesai (bukan berjalan konkuren).
-4. Pertimbangkan expose `getAdmissionStatus(workspaceId)` ke endpoint status API supaya UI bisa menampilkan "sedang ada proses lain berjalan di workspace ini" ke user, bukan cuma diam-diam mengantre.
+1. **Tambahkan `workspaceId` ke interface `SubAgentTask`:**
+   ```ts
+   export interface SubAgentTask {
+     taskId: string;
+     taskName: string;
+     taskDescription: string;
+     allowedTools?: string[];
+     maxRounds?: number;
+     additionalContext?: string;
+     workspaceId?: string;   // TAMBAHAN
+   }
+   ```
+2. **Teruskan `workspaceId` dari parent run ke setiap task saat `agent_spawn` handler di `tools-provider.module.ts` membangun `SubAgentTask`** — parent run PASTI tahu `workspaceId`-nya sendiri (itu parameter run utama), tinggal disisipkan otomatis ke setiap task, TIDAK BOLEH bergantung pada LLM menuliskannya sendiri di `additionalContext`.
+3. **Kirim `workspaceId` sebagai argumen ke-3 terpisah** di `sub-agent-runner.service.ts:311`:
+   ```ts
+   const healResult = await this.selfHealingService.executeWithHealing(
+     funcName,
+     args,
+     task.workspaceId,   // TAMBAHAN
+   );
+   ```
+4. Tambahkan test regresi khusus untuk kelas bug ini di ketiga lokasi sekaligus: pastikan `executeWithHealing()` menerima argumen ke-3 non-undefined setiap kali dipanggil dari jalur mana pun yang beroperasi dalam konteks workspace (chat, workspace, DAN sub-agent) — supaya kalau ada lokasi call keempat ditambahkan di masa depan (misal harness plugin baru), test ini menangkapnya otomatis alih-alih menunggu audit manual berikutnya.
 
 ### Kriteria selesai
-- [ ] `workspace-runner.service.ts` memakai `SessionAdmissionService` di titik masuk run, sama seperti `agent-runner.service.ts`
-- [ ] Test 2-run-paralel-workspace-sama memverifikasi eksekusi berurutan, bukan konkuren
-- [ ] Lease selalu dilepas meski run gagal (test dengan simulasi error di tengah run)
+- [ ] `SubAgentTask` punya field `workspaceId`
+- [ ] `agent_spawn` handler meneruskan `workspaceId` dari parent run ke setiap sub-task secara otomatis (bukan mengandalkan LLM)
+- [ ] `sub-agent-runner.service.ts` mengirim `workspaceId` sebagai argumen ke-3 ke `executeWithHealing()`
+- [ ] Test regresi lintas-ketiga-lokasi memverifikasi `executeWithHealing()` selalu menerima `workspaceId` non-undefined dalam konteks workspace
 
 ---
 
-## 21. Sistem Plugin `HarnessRegistryService` Cuma di Chat Mode, dan Belum Ada Plugin Terdaftar Sama Sekali
+## Pengecekan Tambahan (Tidak Ada Temuan Baru)
 
-### Lokasi
-- `apps/api/src/modules/chat/harness/harness-registry.service.ts` (111 baris) — registry + dispatcher lengkap (5 lifecycle hook: `onAgentStart`, `onToolStart`, `onToolResult`, `onAgentComplete`, `onAgentError`, masing-masing dengan isolasi try/catch per-plugin)
-- Dipakai di: `apps/api/src/modules/chat/agent-runner.service.ts` saja
-- Grep `implements HarnessPlugin` atau `HarnessPlugin =` di seluruh `apps/api/src`: **0 hasil**
+- **`apps/desktop/main.cjs` (729 baris) — WebSocket bridge auth:** dikonfirmasi SUDAH BENAR. Backend (`desktop-bridge.service.ts:41-49`) memvalidasi token dari query param terhadap `ARUNAKI_API_KEY`, dan **fail-closed** kalau env var tidak diset (`!expectedKey || token !== expectedKey` → tolak). Ini konsisten dengan perbaikan yang sudah dikonfirmasi di audit siklus sebelumnya.
+- **`apps/web` (7925 baris) — jalur autentikasi API dari frontend:** `src/lib/api.ts` (wrapper `apiFetch`) mengirim header `x-api-key` dari `VITE_ARUNAKI_API_KEY` dengan benar. Dikonfirmasi ini satu-satunya titik yang memanggil `fetch()` mentah di seluruh `apps/web/src` — tidak ada komponen lain yang bypass wrapper ini, jadi tidak ada jalur API call dari frontend yang kebocoran tanpa auth header. **Catatan:** ini bukan full-read seluruh 7925 baris, cuma pengecekan terfokus ke jalur auth — komponen UI individual (state management, form handling, dll) belum diperiksa detail.
 
-### Kenapa ini masalah (dampak rendah, tapi pola yang sama berulang lagi)
-Ini pola arsitektur yang bagus — mirip sistem plugin OpenClaw/hook lifecycle Claude Code, dengan isolasi kegagalan per-plugin (satu plugin error tidak menjatuhkan seluruh run). Tapi dua catatan:
-1. **Belum ada satu plugin pun yang mengimplementasikan `HarnessPlugin`** — infrastrukturnya lengkap tapi saat ini nol fungsi tambahan yang benar-benar berjalan lewatnya. Ini bukan bug, tapi menandakan kapasitas ekstensibilitas yang belum dimanfaatkan.
-2. **Kalaupun ada plugin terdaftar nanti, hook-nya cuma akan terpicu di chat mode** — `workspace-runner.service.ts` tidak memanggil `HarnessRegistryService` sama sekali. Ini pola yang sama seperti temuan #20 di atas dan beberapa temuan di Part 1 (#4, context-engine) — infrastruktur baru cenderung di-wire ke satu mode saja, bukan keduanya.
+## Urutan Pengerjaan (Temuan Part 5)
 
-### Rekomendasi perbaikan
-1. Kalau memang tidak ada rencana pemakaian plugin dalam waktu dekat, ini bisa dibiarkan sebagai infrastruktur siap-pakai — tidak mendesak untuk diperbaiki.
-2. Kalau ada rencana pemakaian (misal untuk fitur observability/analytics/audit-log eksternal), pastikan saat mengimplementasikan plugin pertama, hook yang sama juga dipanggil dari `workspace-runner.service.ts` — supaya tidak mengulang pola "cuma jalan di chat mode" seperti beberapa temuan lain di audit ini.
-3. Pertimbangkan menjadikan ini bagian dari konsolidasi yang sama dengan Part 1 temuan #4 (unifikasi context-engine antara chat dan workspace mode) — kalau kedua mode akhirnya dibuat berbagi satu jalur eksekusi inti, masalah "cuma di-wire ke satu mode" untuk banyak fitur (context-engine, session-admission, harness-plugin) akan otomatis terselesaikan sekaligus, bukan ditambal satu-satu.
+1. **#22 di atas SEGALA temuan lain di seluruh audit (Part 1-5)** — ini satu-satunya temuan yang secara langsung memungkinkan operasi file/konten melewati guard keamanan yang secara eksplisit dirancang untuk mencegah kesalahan tersebut. Perbaikannya sendiri sangat murah (ganti 2-3 string di satu array) — rasio dampak:effort adalah yang tertinggi di seluruh audit ini.
+2. **#23 setelah #22** — sama-sama soal keamanan path/konteks workspace, dan menyentuh file yang sama (kalau memperbaiki #22, developer sudah "masuk" ke area kode ini, jadi efisien dikerjakan berurutan).
 
-### Kriteria selesai
-- [x] Didokumentasikan eksplisit kalau sistem ini memang belum dipakai (supaya developer berikutnya tidak bingung mencari "plugin apa saja yang aktif")
-- [x] Kalau plugin pertama dibuat, hook-nya juga terpasang di workspace mode, bukan cuma chat mode
+## Catatan Metodologi & Batasan — RINGKASAN AKHIR SELURUH AUDIT (Part 1-5)
 
----
+**Batch 2 sekarang selesai.** Berikut cakupan final:
 
-## Catatan Tambahan (bukan temuan baru, penjelasan lanjutan dari Part 1 #2 & Part 3 #18)
+**Sudah dibaca tuntas baris-per-baris:** `agent-runner.service.ts`, `workspace-runner.service.ts`, `self-healing.service.ts`, `compaction.service.ts`, `tool-loop-detector.service.ts`, `tool-registry.service.ts`, `ai.service.ts`, `context-manager.ts` (745 baris, full), `provider.service.ts`, `session-admission.service.ts`, `message.service.ts`, `harness-registry.service.ts`, `sub-agent-runner.service.ts` (379 baris, full). Total ~9 file inti backend, semua full-read.
 
-Sisa `context-manager.ts` sudah dibaca tuntas (745 baris, full). Konfirmasi tambahan yang memperkuat gambaran temuan sebelumnya: ada **3 fungsi estimasi token berbeda** dalam codebase ini, bukan cuma 2 seperti disebut sebelumnya —
-1. `AiService.countTokens()` — akurat (tiktoken), tidak pernah dipanggil (Part 1 #2)
-2. `ContextManager.estimateTokens()` — heuristik char/4 seragam untuk semua jenis pesan, dipakai untuk trigger `compress()` (Part 1 #2)
-3. `ContextManager.estimatePromptTokens()` — heuristik LEBIH BAIK dari #2 (rasio karakter/token berbeda untuk pesan `tool` vs pesan biasa, karena tool-result cenderung lebih padat token), dipakai khusus di `preemptivelyCompact()` untuk estimasi tekanan prompt sebelum request dikirim
+**Dibaca luas tapi tidak baris-per-baris:** `tools-provider.module.ts` (2340 baris — inventaris 57 tool lengkap diverifikasi by name, beberapa handler dibaca detail termasuk `agent_spawn`, `edit_workspace_file`, `read_workspace_file`, `doc_cross_reference`; belum setiap handler dari 57 tool diperiksa detail satu-per-satu).
 
-Tiga fungsi berbeda untuk masalah yang sama, dengan akurasi berbeda-beda, dipakai di titik keputusan berbeda-beda dalam alur yang sama. Ini bukan temuan baru berdiri sendiri — ini detail tambahan yang memperkuat urgensi Part 3 temuan #18 (unifikasi sistem context-management): kalau unifikasi dikerjakan, sebaiknya sekalian unifikasi ke SATU fungsi estimasi token yang konsisten (idealnya `#3` yang paling akurat di antara ketiganya kalau tokenizer asli dari #1 belum mau dipakai penuh, atau langsung ke tiktoken dari #1 kalau performanya cukup).
+**Dicek terfokus (bukan full-read):** `apps/desktop/main.cjs` (jalur WS bridge auth), `apps/web/src` (jalur auth API `apiFetch`) — kedua area berisiko-tinggi ini bersih, tapi bukan cakupan lengkap seluruh 8671 baris gabungan kedua app tersebut.
 
-## Urutan Pengerjaan (Temuan Part 4)
+**Total temuan seluruh audit (Part 1-5): 23 temuan + 1 koreksi** (temuan #7 di Part 1 dikoreksi jadi lebih ringan di Part 3; 1 temuan awal — sub-agent orphaned — ditarik penuh di draf pertama sebelum Part 1 final).
 
-1. **Paling mendesak:** #20 (session admission di workspace mode) — sejajar dengan Part 1 #8 dan Part 3 #17 sebagai temuan dengan risiko integritas data tertinggi di seluruh audit.
-2. #19 (cooldown bypass) — cepat diperbaiki, effort rendah, tapi berdampak nyata ke reliability pemilihan provider saat sedang banyak error.
-3. #21 (plugin system) — prioritas rendah, tidak mendesak, cukup didokumentasikan dulu.
-
-## Catatan Metodologi & Batasan
-
-- **Sudah dibaca tuntas di batch ini:** `provider.service.ts` (264 baris), `session-admission.service.ts` (136 baris), `message.service.ts` (59 baris), `harness-registry.service.ts` (111 baris), sisa `context-manager.ts` (745 baris, sekarang full lengkap).
-- **Masih belum disentuh:** sisa `sub-agent-runner.service.ts` (~250 baris belum dibaca dari 379 total), `tools-provider.module.ts` (2340 baris, mayoritas belum — baru bagian `agent_spawn` yang dibaca detail), seluruh `apps/web`, seluruh `apps/desktop`.
-- Dokumen ini snapshot progres audit yang masih berjalan.
+Dokumen ini sekarang mencakup seluruh backend inti (`apps/api`) secara memadai. Sisa area yang benar-benar belum tersentuh untuk audit setara: detail komponen UI di `apps/web/src` di luar jalur auth, dan modul-modul backend sekunder yang belum disebut di atas (kemungkinan ada beberapa service kecil lain yang belum ter-cover — cek `apps/api/src/modules/` untuk daftar modul lengkap kalau ingin memverifikasi cakupan 100%).

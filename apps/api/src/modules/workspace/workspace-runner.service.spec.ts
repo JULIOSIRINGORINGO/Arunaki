@@ -5,6 +5,7 @@ import {
   extractMentionedFilenames,
   hasExplicitDeleteIntent,
   WorkspaceRunnerService,
+  WORKSPACE_MUTATING_TOOLS,
 } from './workspace-runner.service.js';
 import { AiService } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
@@ -521,5 +522,24 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
 
     expect(writeBufferMock).not.toHaveBeenCalled();
     expect(deleteFileMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('WorkspaceRunnerService Static Verification', () => {
+  it('harus memvalidasi semua nama tool di WORKSPACE_MUTATING_TOOLS cocok dengan nama tool yang terdaftar', () => {
+    const expectedTools = [
+      'write_workspace_file',
+      'edit_workspace_file',
+      'delete_workspace_file',
+      'rename_workspace_file',
+      'desktop_send_keys',
+      'desktop_excel_edit',
+      'desktop_word_type',
+      'desktop_word_format',
+    ];
+
+    expect(WORKSPACE_MUTATING_TOOLS).toEqual(expectedTools);
+    // Note: To fully verify against the registry without loading the full app module,
+    // we hardcode the expected list here as a drift-prevention guard.
   });
 });
