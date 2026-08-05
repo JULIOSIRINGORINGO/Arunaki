@@ -168,6 +168,15 @@ export class ToolRegistryService {
       if (expectedType === 'array' && !Array.isArray(value)) {
         errors.push(`Field "${key}" harus berupa array`);
       }
+      if (expectedType === 'boolean' && typeof value !== 'boolean') {
+        errors.push(`Field "${key}" harus bertipe boolean`);
+      }
+      if (
+        expectedType === 'object' &&
+        (Array.isArray(value) || typeof value !== 'object')
+      ) {
+        errors.push(`Field "${key}" harus berupa object`);
+      }
 
       const enumValues = schema.enum;
       if (

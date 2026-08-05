@@ -823,6 +823,13 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Dev log `docs/dev-logs/dev-log-2026-08-04-apply-tool-middleware-pipeline.md` created.
 - [x] Build passes (`npm run build` — 0 errors).
 
+### 44.9 Tool Argument Schema Validation Hardening
+- [x] Gap-analysis check: `validateArgs` (tool-registry.service.ts) hanya memeriksa string/number/array/enum/required — `boolean` & `object` tidak divalidasi (7+ param boolean di tools-provider module lolos tipe salah tanpa ketahuan).
+- [x] `validateArgs` sekarang memeriksa `boolean` dan `object` (tolak array/null — null optional tetap dianggap absent).
+- [x] Spec baru `tool-registry.service.spec.ts` — 4 test pass (valid args, boolean salah tipe, object salah tipe, null optional lolos).
+- [x] Build passes (`npm run build` — 0 errors). Dev log `docs/dev-logs/dev-log-2026-08-04-tool-args-validation.md` created.
+
+
 ---
 
 ## Current Status
