@@ -880,6 +880,15 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Test 2 kasus baru di `workspace-runner.service.spec.ts`: (a) mutasi a.txt sukses lalu b.txt gagal → `writeBuffer(a.txt, v1)` dipanggil + event error rollback muncul; (b) seluruh mutasi sukses → tidak ada rollback (`writeBuffer`/`deleteFile` tidak dipanggil).
 - [x] Build passes (`npm run build` — 0 errors); semua test workspace (9/9), chat, dan tools pass.
 
+### 45.6 Run-Level Token Budget Enforcement (Gap #9)
+- [x] Gap-analysis check: tidak ada enforcement cost/token budget — MAX_ROUNDS workspace (25) dan chat (5) membatasi jumlah putaran tapi bukan total token; sub-agent dapat di-spawn paralel tanpa akumulasi biaya.
+- [x] `token-budget.service.ts` baru (AI module): `RunTokenBudget` (used/limit/remaining/exceeded, `consume()` abaikan non-finite/≤0), `createRunBudget()` (limit dari `RUN_TOKEN_BUDGET` env, default 200_000), `enterRunBudget()` / `currentRunBudget()` via `AsyncLocalStorage` — budget terikat ke run aktif.
+- [x] `workspace-runner.service.ts`: budget dibuat + di-enter di awal generator; tiap `aiService.chat()` meng-consume `usage.totalTokens`; jika `exceeded`, run dihentikan dengan pesan jelas + `onEvent` error berisi `{ message, budget }`.
+- [x] `agent-runner.service.ts` jalur sync & stream: budget dibuat + di-enter; consume tiap round; berhenti saat `exceeded` dengan pesan yang sama (sync: lewat `finalContent`, stream: + `onEvent` error).
+- [x] `sub-agent-runner.service.ts`: sub-agent memakai `currentRunBudget()` (mewarisi pool parent via ALS) — konsumsi sub-agent masuk ke budget run yang sama; berhenti saat pool habis.
+- [x] Test baru `token-budget.service.spec.ts` (5 test): akumulasi lintas round, abaikan NaN/negatif/0, env override + default 200k, propagasi ALS ke async scope nested (sub-agent), `currentRunBudget()` undefined di luar run.
+- [x] Build passes (`npm run build` — 0 errors); semua test api pass (113/113).
+
 
 ---
 

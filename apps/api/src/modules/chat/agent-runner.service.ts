@@ -14,6 +14,10 @@ import { SessionStateEventsService, SessionEventType } from './session-state-eve
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
+import {
+  createRunBudget,
+  enterRunBudget,
+} from '../ai/token-budget.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -184,6 +188,8 @@ export class AgentRunnerService {
     const MAX_ROUNDS = 5;
     let reachedMaxRounds = true;
     const todoRunId = params.idempotencyKey || `chat:${chatId}`;
+    const budget = createRunBudget();
+    enterRunBudget(budget);
     for (let round = 0; round < MAX_ROUNDS; round++) {
       // Inject current todo list (working memory) so LLM stays anchored
       const todoText = this.todoStore.serialize(todoRunId);
@@ -198,6 +204,15 @@ export class AgentRunnerService {
 
       const aiResponse = await this.aiService.chat(messages, tools);
       usage = aiResponse.usage;
+      budget.consume(aiResponse.usage?.totalTokens || 0);
+      if (budget.exceeded) {
+        this.logger.warn(
+          `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${round + 1}. Menghentikan run.`,
+        );
+        finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+        reachedMaxRounds = false;
+        break;
+      }
 
       if (aiResponse.toolCalls.length === 0) {
         finalContent = aiResponse.content;
@@ -460,6 +475,8 @@ export class AgentRunnerService {
       const MAX_ROUNDS = 5;
       let reachedMaxRounds = true;
       const todoRunId = params.idempotencyKey || `chat:${params.chatId}`;
+      const budget = createRunBudget();
+      enterRunBudget(budget);
       for (let round = 0; round < MAX_ROUNDS; round++) {
         // Inject current todo list (working memory) so LLM stays anchored
         const todoText = this.todoStore.serialize(todoRunId);
@@ -473,6 +490,16 @@ export class AgentRunnerService {
         }
 
         const aiResponse = await this.aiService.chat(messages, tools);
+        budget.consume(aiResponse.usage?.totalTokens || 0);
+        if (budget.exceeded) {
+          this.logger.warn(
+            `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${round + 1}. Menghentikan run.`,
+          );
+          finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+          onEvent({ type: 'error', data: finalContent });
+          reachedMaxRounds = false;
+          break;
+        }
 
         if (aiResponse.toolCalls.length === 0) {
           finalContent = aiResponse.content;

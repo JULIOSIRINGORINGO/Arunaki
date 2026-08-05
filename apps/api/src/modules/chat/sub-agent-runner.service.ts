@@ -3,6 +3,7 @@ import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
+import { currentRunBudget } from '../ai/token-budget.service.js';
 
 /**
  * SubAgentRunnerService — Isolated sub-agent execution engine.
@@ -242,6 +243,15 @@ export class SubAgentRunnerService {
       rounds = round + 1;
 
       const aiResponse = await this.aiService.chat(messages, tools);
+
+      // Sub-agents inherit the parent run's token budget via AsyncLocalStorage;
+      // stop early when the shared pool is exhausted.
+      const budget = currentRunBudget();
+      budget?.consume(aiResponse.usage?.totalTokens || 0);
+      if (budget?.exceeded) {
+        finalContent = `Sub-agent ${task.taskName} dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) terlampaui.`;
+        break;
+      }
 
       if (aiResponse.toolCalls.length === 0) {
         finalContent = aiResponse.content;

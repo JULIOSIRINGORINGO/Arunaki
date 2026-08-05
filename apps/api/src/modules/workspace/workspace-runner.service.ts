@@ -24,6 +24,10 @@ import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { ProviderService } from '../provider/provider.service.js';
+import {
+  createRunBudget,
+  enterRunBudget,
+} from '../ai/token-budget.service.js';
 import * as path from 'path';
 
 export type AgentState =
@@ -930,6 +934,8 @@ export class WorkspaceRunnerService {
        let mutationsApplied = 0;
        let logicalFailoverUsed = false;
        let activeProviderId: string | undefined;
+       const budget = createRunBudget();
+       enterRunBudget(budget);
 
        // Verifier (post-hoc, NOT tool routing): goal meminta modifikasi file.
        // Hanya dipakai untuk mendeteksi "klaim sukses tanpa eksekusi" lalu
@@ -972,6 +978,22 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools, {
             preferredProviderId: activeProviderId,
           });
+
+          // Token budget enforcement: accumulate usage across all rounds;
+          // stop the run with a clear message when the budget is exhausted.
+          budget.consume(aiResponse.usage?.totalTokens || 0);
+          if (budget.exceeded) {
+            this.logger.warn(
+              `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${runState.round}. Menghentikan run.`,
+            );
+            finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+            onEvent({
+              type: 'error',
+              data: { message: finalContent, budget: { used: budget.used, limit: budget.limit } },
+            });
+            reachedMaxRounds = false;
+            break;
+          }
 
           if (aiResponse.toolCalls.length === 0) {
             // Logical failover: goal butuh modifikasi, belum ada mutation,
