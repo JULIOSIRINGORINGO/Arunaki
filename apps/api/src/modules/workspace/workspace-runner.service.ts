@@ -31,18 +31,6 @@ import {
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
 import * as path from 'path';
 
-export const WORKSPACE_MUTATING_TOOLS = [
-  'write_workspace_file',
-  'edit_workspace_file',
-  'delete_workspace_file',
-  'rename_workspace_file',
-  // Desktop interactive tools — high-risk, require approval gate
-  'desktop_send_keys',
-  'desktop_excel_edit',
-  'desktop_word_type',
-  'desktop_word_format',
-];
-
 
 
 export function extractMentionedFilenames(text: string): string[] {
@@ -1090,7 +1078,7 @@ export class WorkspaceRunnerService {
               break;
             }
 
-            if (WORKSPACE_MUTATING_TOOLS.includes(funcName)) {
+            if (this.toolRegistryService.isMutating(funcName)) {
               mutatingCalls.push({ toolCall, args });
             } else {
               readOnlyCalls.push({ toolCall, args });

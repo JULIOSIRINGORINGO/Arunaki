@@ -35,6 +35,8 @@ import { ToolCallTool } from './services/tool-call.tool.js';
 import { ToolSearchCodeTool } from './services/tool-search-code.tool.js';
 import { TodoStoreService } from './services/todo-store.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
+import { ContextModule } from '../ai/context/context.module.js';
+import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 
 import { AiModule } from '../ai/ai.module.js';
 
@@ -104,6 +106,7 @@ export class ToolsProviderModule implements OnModuleInit {
   constructor(
     @Inject(forwardRef(() => ToolRegistryService)) private readonly registry: ToolRegistryService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
+    @Inject(forwardRef(() => ContextQuarantine)) private readonly contextQuarantine: ContextQuarantine,
     @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
   ) {}
 
@@ -761,6 +764,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'write_workspace_file',
+        mutating: true,
         displayName: 'Buat File Workspace',
         description:
           'Creates a new report/document file (Excel, PDF, Word, TXT, JSON) inside the Workspace folder. Folder path is taken automatically from the database.',
@@ -802,6 +806,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'delete_workspace_file',
+        mutating: true,
         displayName: 'Hapus File Workspace',
         description:
           'Deletes a file from the Workspace folder and updates the workspace index.',
@@ -830,6 +835,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'rename_workspace_file',
+        mutating: true,
         displayName: 'Ganti Nama File Workspace',
         description:
           'Renames an existing file inside the Workspace folder. The original file is moved to the new name, and the workspace index is updated.',
@@ -863,6 +869,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'edit_workspace_file',
+        mutating: true,
         displayName: 'Edit File Workspace',
         description:
           'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. ' +
@@ -932,6 +939,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'create_skill',
+        mutating: true,
         displayName: 'Buat Skill',
         description: 'Saves a successful workflow as a new skill.',
         tags: ['skills', 'create', 'workflow', 'template', 'save'],
@@ -1000,6 +1008,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'update_skill',
+        mutating: true,
         displayName: 'Update Skill',
         description:
           'Updates an existing skill (content, description, tags). Version is incremented automatically.',
@@ -1036,6 +1045,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'delete_skill',
+        mutating: true,
         displayName: 'Hapus Skill',
         description:
           'Deactivates a skill (soft delete). The skill no longer appears in the list but still exists in the database.',
@@ -1077,6 +1087,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'save_memory',
+        mutating: true,
         displayName: 'Simpan Memory',
         description: 'Saves important information as cross-session memory.',
         tags: ['memory', 'save', 'remember', 'preference', 'context', 'domain'],
@@ -1140,6 +1151,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'delete_memory',
+        mutating: true,
         displayName: 'Hapus Memory',
         description: 'Deletes a memory by type and key.',
         tags: ['memory', 'delete', 'remove'],
@@ -1365,7 +1377,8 @@ export class ToolsProviderModule implements OnModuleInit {
         tags: ['browser', 'read', 'content', 'text'],
         handler: async (args) => {
           try {
-            const content = await this.browserInteraction.getContent(args.workspaceId);
+            let content = await this.browserInteraction.getContent(args.workspaceId);
+            content = this.contextQuarantine.sanitizeText(content, 'browser-content');
             return {
               status: 'success' as const,
               data: { content },
@@ -1717,6 +1730,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_excel_edit',
+        mutating: true,
         displayName: 'Edit File Excel (Native)',
         description:
           'Edits an Excel file natively via the desktop Excel application (COM). ' +
@@ -1836,6 +1850,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_word_type',
+        mutating: true,
         displayName: 'Ketik Teks Word',
         description:
           'Types text or paragraphs directly into the active desktop Word document.',
@@ -1881,6 +1896,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_word_format',
+        mutating: true,
         displayName: 'Format Dokumen Word',
         description:
           'Formats text/selection in a Word document (Heading 1, Heading 2, Bold, Font Size).',
@@ -1925,6 +1941,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_send_keys',
+        mutating: true,
         displayName: 'Kirim Shortcut Keyboard Desktop',
         description:
           'Presses keyboard key combinations/shortcuts in the active desktop application window ' +
@@ -2203,6 +2220,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'schedule_cron_job',
+        mutating: true,
         displayName: 'Jadwalkan Laporan & Tugas Cron Berkala',
         description:
           'Schedules automatic report execution or recurring agent tasks in the background. ' +
@@ -2318,6 +2336,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'delete_cron_job',
+        mutating: true,
         displayName: 'Hapus Jadwal Cron Berkala',
         description: 'Deletes a recurring report schedule from the system.',
         tags: ['cron', 'scheduler', 'delete', 'remove'],
