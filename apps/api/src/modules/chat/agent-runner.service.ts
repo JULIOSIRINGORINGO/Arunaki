@@ -80,7 +80,7 @@ export class AgentRunnerService {
     const isKnowledgeQuery = /(?:pengetahuan|knowledge|aturan|kebijakan|prosedur|hukum|standar|sop|domain|referensi)/i.test(userContent);
     if (!isKnowledgeQuery) return '';
     try {
-      return await this.knowledgeService.getActiveContext();
+      return await this.knowledgeService.getKnowledgeMap();
     } catch {
       return '';
     }
@@ -157,7 +157,7 @@ export class AgentRunnerService {
 
     const knowledgeContext = this.quarantine.sanitizeText(
       await this.getKnowledgeContext(params.userContent),
-      'knowledge-context',
+      'knowledge-map',
     );
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,

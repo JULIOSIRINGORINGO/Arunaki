@@ -637,7 +637,7 @@ ${toolDirectory}
 ---
 ${posturePrompt}
 
-## Active Knowledge Base
+## Peta Knowledge Graph
 ${safeKnowledgeContext}`;
 
     const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;

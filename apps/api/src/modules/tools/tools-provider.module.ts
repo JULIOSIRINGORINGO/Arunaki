@@ -16,6 +16,7 @@ import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
 import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
+import { KnowledgeSearchTool } from './services/knowledge-search.tool.js';
 import { WebSearchTool } from './services/web-search.tool.js';
 import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
@@ -61,6 +62,7 @@ import { AiModule } from '../ai/ai.module.js';
     ImageOcrTool,
     DocSearchTool,
     KnowledgeBuilderTool,
+    KnowledgeSearchTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
@@ -86,6 +88,7 @@ import { AiModule } from '../ai/ai.module.js';
     ImageOcrTool,
     DocSearchTool,
     KnowledgeBuilderTool,
+    KnowledgeSearchTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
