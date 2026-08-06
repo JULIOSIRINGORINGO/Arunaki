@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import Markdown from "react-markdown";
@@ -126,6 +127,7 @@ const MessageAgentSteps = ({ steps }: { steps: AgentStep[] }) => {
 
 export function WorkspacePage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isConnected, setIsConnected] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -994,6 +996,98 @@ export function WorkspacePage() {
       fileInputRef.current.value = "";
     }
   }, [doConnect]);
+
+  // Auto-connect folder when navigated from File menu button with openFolder param
+  const openFolderParam = searchParams.get("openFolder");
+  const autoConnectTriggeredRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!openFolderParam || autoConnectTriggeredRef.current === openFolderParam) return;
+    autoConnectTriggeredRef.current = openFolderParam;
+
+    // Clear the search param so it doesn't re-trigger
+    setSearchParams({}, { replace: true });
+
+    // Trigger the native folder connect flow with the pre-selected path
+    const autoConnect = async () => {
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      if (!desktop?.getFolderTree) return;
+
+      const folderPath = openFolderParam;
+      const folderName = folderPath.split(/[\\/]/).pop() || "Workspace";
+
+      // Check if already connected to this folder
+      const normalized = (p: string) => p.replace(/[\\/]+/g, "\\").toLowerCase().replace(/\\$/, "");
+      const existing = workspacesList.find(
+        (ws: any) => ws.rootPath && normalized(ws.rootPath) === normalized(folderPath)
+      );
+      if (existing) {
+        toast.info(`Folder "${folderName}" sudah pernah dibuka — menyambungkan kembali`);
+        await handleReconnectFolder(existing);
+        return;
+      }
+
+      // New folder — run the full connect flow
+      setIsCreating(true);
+      toast.info(`Membaca struktur folder "${folderName}"...`);
+
+      try {
+        const scan = await desktop.getFolderTree(folderPath);
+        if (!scan?.tree) {
+          toast.error("Gagal membaca folder.");
+          setIsCreating(false);
+          return;
+        }
+
+        const countFiles = (nodes: any[]): number =>
+          nodes.reduce((sum: number, n: any) => sum + (n.type === "directory" ? countFiles(n.children || []) : 1), 0);
+        const fileCount = countFiles(scan.tree);
+
+        const wsRes = await apiFetch(`${API_BASE}/workspaces`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: "generic" }),
+        });
+        const wsJson = await wsRes.json();
+        const newId = wsJson.data?.id;
+        if (!newId) {
+          toast.error("Gagal membuat workspace");
+          setIsCreating(false);
+          return;
+        }
+
+        const connectRes = await apiFetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderPath }),
+        });
+        const connectJson = await connectRes.json().catch(() => null);
+        if (!connectRes.ok || !connectJson?.data) {
+          throw new Error(connectJson?.error?.message || "Backend gagal mengindeks folder");
+        }
+
+        setNativeTree(scan.tree);
+        setNativeFileCount(fileCount);
+        setConnectedFolderPath(folderPath);
+        setWorkspaceId(newId);
+        setIsConnected(true);
+        setIsModalOpen(false);
+        connectedWsRef.current = newId;
+        localStorage.setItem("arunaki_workspace_id", newId);
+        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+        toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
+        triggerAutoAnalysis(newId);
+      } catch (err: any) {
+        console.error("Auto-connect folder failed:", err);
+        toast.error(`Gagal menghubungkan folder: ${err.message || "Periksa apakah backend berjalan"}`);
+      } finally {
+        setIsCreating(false);
+      }
+    };
+
+    autoConnect();
+  }, [openFolderParam, searchParams, setSearchParams, workspacesList, handleReconnectFolder, queryClient, triggerAutoAnalysis]);
 
   const { data: workspace } = useQuery({
     queryKey: ["workspace", workspaceId],

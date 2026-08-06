@@ -19,20 +19,23 @@ export function AppLayout() {
   const pageTitle = getPageTitle();
 
   const handleOpenFolder = async () => {
-    // Check if running in Electron environment
-    if (typeof window !== "undefined" && (window as any).arunakiDesktop?.selectFolder) {
+    const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+    if (desktop?.pickFolder) {
       try {
-        const folderPath = await (window as any).arunakiDesktop.selectFolder();
-        if (folderPath) {
-          navigate(`/?path=${encodeURIComponent(folderPath)}`);
+        const result = await desktop.pickFolder();
+        if (result?.path) {
+          // Navigate to workspace page with the folder path as search param
+          // WorkspacePage will detect this and auto-connect
+          navigate(`/workspace?openFolder=${encodeURIComponent(result.path)}`);
           return;
         }
       } catch (err) {
         console.error("Select folder failed:", err);
       }
+    } else {
+      // Not in Electron — navigate to workspace page where browser File System Access API is available
+      navigate("/workspace");
     }
-    // Fallback: navigate to workspace assistant home view
-    navigate("/");
   };
 
   return (
@@ -95,4 +98,3 @@ export function AppLayout() {
     </div>
   );
 }
-
