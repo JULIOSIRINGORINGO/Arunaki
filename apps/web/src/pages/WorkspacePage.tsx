@@ -1296,9 +1296,9 @@ export function WorkspacePage() {
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
           {openEditorFile ? (
             /* VS CODE CENTER WORKSPACE EDITOR (Clean White Card with Black Header Capsule) */
-            <div className="flex-1 flex flex-col bg-white text-gray-900 rounded-3xl border border-stone-800/10 shadow-sm overflow-hidden h-full animate-fade-in">
+            <div className="flex-1 flex flex-col bg-white text-gray-900 rounded-[24px] border border-stone-800/10 shadow-sm overflow-hidden h-full animate-fade-in">
               {/* Editor Black Header Capsule Toolbar */}
-              <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] border-b border-stone-800/40 text-white shrink-0 select-none">
+              <div className="flex items-center justify-between px-5 h-11 min-h-[44px] bg-[#1A191B] border-b border-stone-800/40 text-white shrink-0 select-none">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="w-4 h-4 text-[#FF5E38] shrink-0" />
                   <span className="font-semibold text-xs text-white truncate">{openEditorFile.name}</span>
@@ -1367,9 +1367,9 @@ export function WorkspacePage() {
             </div>
           ) : (
             /* CLEAN SPACIOUS WORKSPACE CANVAS (With Black Header Capsule Bar) */
-            <div className="bg-white rounded-3xl border border-stone-800/10 shadow-sm flex-1 h-full flex flex-col overflow-hidden min-w-0">
+            <div className="bg-white rounded-[24px] border border-stone-800/10 shadow-sm flex-1 h-full flex flex-col overflow-hidden min-w-0">
               {/* Canvas Black Header Toolbar */}
-              <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
+              <div className="flex items-center justify-between px-5 h-11 min-h-[44px] bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
                 <span className="text-[#F4EFE6] font-bold text-xs tracking-wide">
                   Editor Dokumen
                 </span>

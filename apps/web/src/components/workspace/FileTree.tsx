@@ -463,9 +463,9 @@ try {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-3xl border border-stone-800/10 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-white rounded-[24px] border border-stone-800/10 shadow-sm overflow-hidden">
       {/* Black Header Capsule Toolbar */}
-      <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
+      <div className="flex items-center justify-between px-5 h-11 min-h-[44px] bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
         <div className="flex items-center gap-2 min-w-0">
           <FolderOpen className="w-4 h-4 text-[#C4B5FD] shrink-0" />
           <span className="text-[#F4EFE6] font-bold text-xs tracking-wide truncate" title={workspaceName}>
