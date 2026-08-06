@@ -40,21 +40,27 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
           className="w-14 h-10 flex items-center justify-center cursor-pointer group relative"
           title="Chat AI Utama"
         >
-          {/* Bleeding Cream Tab Background with Organic Inverted Concave Curves */}
+          {/* Bleeding Cream Tab Background with Vector-Perfect SVG Fillet Curves */}
           <div
             className={cn(
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isChatActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            {/* Top Inverted Curve Fillet */}
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            {/* Bottom Inverted Curve Fillet */}
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            {/* Top Vector Concave Curve SVG */}
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            {/* Bottom Vector Concave Curve SVG */}
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
@@ -81,12 +87,18 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               isWorkspaceActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
@@ -113,12 +125,18 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               isKnowledgeActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
@@ -145,12 +163,18 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               isHistoryActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
@@ -180,12 +204,18 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               isSettingsActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
@@ -212,12 +242,18 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               isProfileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
           >
-            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
-            </div>
-            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
-              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
-            </div>
+            <svg
+              className="absolute -top-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 0 v12 H0 a12 12 0 0 0 12-12Z" />
+            </svg>
+            <svg
+              className="absolute -bottom-3 right-6 w-3 h-3 text-[#F4EFE6] fill-current pointer-events-none"
+              viewBox="0 0 12 12"
+            >
+              <path d="M12 12 v-12 H0 a12 12 0 0 1 12 12Z" />
+            </svg>
           </div>
 
           <div
