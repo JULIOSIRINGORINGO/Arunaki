@@ -16,7 +16,6 @@ import {
   successResponse,
   errorResponse,
 } from '../../common/dtos/api-response.dto.js';
-import * as fs from 'fs';
 import * as path from 'path';
 
 @Controller('knowledge')
@@ -43,6 +42,16 @@ export class KnowledgeController {
     }
   }
 
+  @Get('edges')
+  async findAllEdges() {
+    try {
+      const edges = await this.knowledgeService.findAllEdges();
+      return successResponse(edges);
+    } catch (error) {
+      return errorResponse('FETCH_FAILED', error.message);
+    }
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -55,13 +64,26 @@ export class KnowledgeController {
 
   @Post()
   async create(
-    @Body() body: { title: string; content: string; type?: string },
+    @Body()
+    body: {
+      title: string;
+      content: string;
+      type?: string;
+      positionX?: number;
+      positionY?: number;
+      nodeColor?: string;
+      icon?: string;
+    },
   ) {
     try {
       const item = await this.knowledgeService.create({
         title: body.title,
         content: body.content,
         type: body.type || 'custom',
+        positionX: body.positionX ?? 0,
+        positionY: body.positionY ?? 0,
+        nodeColor: body.nodeColor ?? '#3B82F6',
+        icon: body.icon ?? 'file-text',
       });
       return successResponse(item);
     } catch (error) {
@@ -72,7 +94,14 @@ export class KnowledgeController {
   @Patch(':id')
   async update(
     @Param('id') id: string,
-    @Body() body: { title?: string; content?: string; type?: string },
+    @Body()
+    body: {
+      title?: string;
+      content?: string;
+      type?: string;
+      nodeColor?: string;
+      icon?: string;
+    },
   ) {
     try {
       const item = await this.knowledgeService.update(id, body);
@@ -91,6 +120,68 @@ export class KnowledgeController {
       return errorResponse('UPDATE_FAILED', error.message);
     }
   }
+
+  @Patch(':id/position')
+  async updatePosition(
+    @Param('id') id: string,
+    @Body() body: { positionX: number; positionY: number },
+  ) {
+    try {
+      const item = await this.knowledgeService.updatePosition(
+        id,
+        body.positionX,
+        body.positionY,
+      );
+      return successResponse(item);
+    } catch (error) {
+      return errorResponse('UPDATE_FAILED', error.message);
+    }
+  }
+
+  @Patch('positions/batch')
+  async updatePositions(
+    @Body()
+    body: {
+      positions: Array<{ id: string; positionX: number; positionY: number }>;
+    },
+  ) {
+    try {
+      await this.knowledgeService.updatePositions(body.positions);
+      return successResponse({ updated: body.positions.length });
+    } catch (error) {
+      return errorResponse('UPDATE_FAILED', error.message);
+    }
+  }
+
+  // ─── Edge CRUD ────────────────────────────────────────
+
+  @Post('edges')
+  async createEdge(
+    @Body() body: { sourceId: string; targetId: string; label?: string },
+  ) {
+    try {
+      const edge = await this.knowledgeService.createEdge(
+        body.sourceId,
+        body.targetId,
+        body.label,
+      );
+      return successResponse(edge);
+    } catch (error) {
+      return errorResponse('CREATE_FAILED', error.message);
+    }
+  }
+
+  @Delete('edges/:id')
+  async deleteEdge(@Param('id') id: string) {
+    try {
+      await this.knowledgeService.deleteEdge(id);
+      return successResponse({ deleted: true });
+    } catch (error) {
+      return errorResponse('DELETE_FAILED', error.message);
+    }
+  }
+
+  // ─── File Upload ──────────────────────────────────────
 
   @Post('upload')
   @UseInterceptors(
@@ -112,7 +203,10 @@ export class KnowledgeController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { positionX?: string; positionY?: string },
+  ) {
     if (!file) {
       return errorResponse('NO_FILE', 'Tidak ada file yang diunggah');
     }
@@ -175,6 +269,8 @@ export class KnowledgeController {
         title,
         content: text,
         type: ext.replace('.', ''),
+        positionX: body.positionX ? parseFloat(body.positionX) : 0,
+        positionY: body.positionY ? parseFloat(body.positionY) : 0,
       });
 
       return successResponse(item);

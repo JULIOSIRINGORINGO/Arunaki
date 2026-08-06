@@ -205,12 +205,39 @@ model Knowledge {
   id        String   @id @default(cuid())
   title     String
   content   String   // isi knowledge (markdown/text)
-  type      String   @default("custom") // custom, pricing, rules, sop, data
+  type      String   @default("custom") // custom, pricing, rules, sop, data, catalog, template
   active    Boolean  @default(true)
+
+  // Canvas position (for visual node editor)
+  positionX Float    @default(0)
+  positionY Float    @default(0)
+
+  // Node visual metadata
+  nodeColor String   @default("#3B82F6") // hex color for node
+  icon      String   @default("file-text") // lucide icon name
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  edgesFrom KnowledgeEdge[] @relation("EdgeSource")
+  edgesTo   KnowledgeEdge[] @relation("EdgeTarget")
+
   @@map("knowledge")
+}
+
+// KnowledgeEdge - Koneksi antar knowledge nodes (visual graph)
+model KnowledgeEdge {
+  id        String   @id @default(cuid())
+  sourceId  String
+  targetId  String
+  source    Knowledge @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    Knowledge @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  label     String?  // Edge label ("depends on", "references", "uses", etc.)
+  createdAt DateTime @default(now())
+
+  @@unique([sourceId, targetId])
+  @@map("knowledge_edges")
 }
 
 // Artifact - Output hasil kerja agent
