@@ -4,8 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import Markdown from "react-markdown";
 import {
-  Folder,
-  FolderCheck,
   Settings,
   Info,
   FileSpreadsheet,
@@ -129,9 +127,8 @@ export function WorkspacePage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isConnected, setIsConnected] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const [, setIsCreating] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -549,12 +546,7 @@ export function WorkspacePage() {
     return () => { cancelled = true; };
   }, [queryClient]);
 
-  // Show modal only after restore attempt
-  useEffect(() => {
-    if (!isRestoring && !workspaceId) {
-      setIsModalOpen(true);
-    }
-  }, [isRestoring, workspaceId]);
+  // No auto-popup modal — folder selection is done via the File menu button in the header
 
   const refreshFolderRef = useRef<(wsId: string) => void>(() => {});
 
@@ -787,7 +779,6 @@ export function WorkspacePage() {
       // 3. Connect
       setWorkspaceId(newId);
       setIsConnected(true);
-      setIsModalOpen(false);
       connectedWsRef.current = newId;
       localStorage.setItem('arunaki_workspace_id', newId);
       queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
@@ -817,7 +808,6 @@ export function WorkspacePage() {
     if (!ws?.rootPath) return;
     setWorkspaceId(ws.id);
     setIsConnected(true);
-    setIsModalOpen(false);
     connectedWsRef.current = ws.id;
     localStorage.setItem('arunaki_workspace_id', ws.id);
     await queryClient.invalidateQueries({ queryKey: ['wsFiles', ws.id] });
@@ -836,149 +826,6 @@ export function WorkspacePage() {
     }
   }, [queryClient]);
 
-  const handleConnectFolder = useCallback(async () => {
-    // Check if running in Electron with native folder picker
-    const desktop = typeof window !== 'undefined' && (window as any).arunakiDesktop;
-    const isElectron = !!(desktop?.pickFolder && desktop?.getFolderTree);
-
-    if (isElectron) {
-      try {
-        // 1. Open native folder dialog (like VS Code)
-        const result = await desktop.pickFolder();
-        if (!result?.path) return;
-
-        const folderPath = result.path;
-        const folderName = folderPath.split(/[\\/]/).pop() || 'Workspace';
-
-        // VS Code-like: opening the same folder reuses its workspace (no duplicates)
-        const normalized = (p: string) => p.replace(/[\\/]+/g, '\\').toLowerCase().replace(/\\$/, '');
-        const existing = workspacesList.find(
-          (ws: any) => ws.rootPath && normalized(ws.rootPath) === normalized(folderPath)
-        );
-        if (existing) {
-          toast.info(`Folder "${folderName}" sudah pernah dibuka — menyambungkan kembali`);
-          await handleReconnectFolder(existing);
-          return;
-        }
-
-        setIsCreating(true);
-        toast.info(`Membaca struktur folder "${folderName}"...`);
-
-        // 2. Get full folder tree (files stay on disk — VS Code approach)
-        const scan = await desktop.getFolderTree(folderPath);
-
-        if (!scan?.tree) {
-          toast.error('Gagal membaca folder.');
-          setIsCreating(false);
-          return;
-        }
-
-        // 3. Count all files in tree
-        const countFiles = (nodes: any[]): number =>
-          nodes.reduce((sum: number, n: any) => sum + (n.type === 'directory' ? countFiles(n.children || []) : 1), 0);
-        const fileCount = countFiles(scan.tree);
-
-        // 4. Register workspace in backend (rootPath stored — API can read files by path)
-        const wsRes = await apiFetch(`${API_BASE}/workspaces`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: folderName, rootPath: folderPath, businessType: 'generic' }),
-        });
-        const wsJson = await wsRes.json();
-        const newId = wsJson.data?.id;
-        if (!newId) {
-          toast.error('Gagal membuat workspace');
-          setIsCreating(false);
-          return;
-        }
-
-        // 5. Index files in backend for AI before marking the folder connected.
-        const connectRes = await apiFetch(`${API_BASE}/workspaces/${newId}/connect-folder`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderPath }),
-        });
-        const connectJson = await connectRes.json().catch(() => null);
-        if (!connectRes.ok || !connectJson?.data) {
-          throw new Error(connectJson?.error?.message || 'Backend gagal mengindeks folder');
-        }
-
-        // 6. Folder is readable by Electron and indexed by the backend.
-        setNativeTree(scan.tree);
-        setNativeFileCount(fileCount);
-        setConnectedFolderPath(folderPath);
-        setWorkspaceId(newId);
-        setIsConnected(true);
-        setIsModalOpen(false);
-        connectedWsRef.current = newId;
-        localStorage.setItem('arunaki_workspace_id', newId);
-        queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
-        queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-        toast.success(`Folder "${folderName}" terhubung! (${fileCount} file)`);
-        triggerAutoAnalysis(newId);
-      } catch (err: any) {
-        console.error('Connect folder failed:', err);
-        toast.error(`Gagal menghubungkan folder: ${err.message || 'Periksa apakah backend berjalan'}`);
-        setIsCreating(false);
-      } finally {
-        setIsCreating(false);
-      }
-      return;
-    }
-
-    
-    // Fallback to browser File System Access API
-    if ("showDirectoryPicker" in window) {
-      try {
-        const dirHandle = await (window as any).showDirectoryPicker({ mode: "read" });
-        const folderName = dirHandle.name;
-
-        setIsCreating(true);
-
-        const files: File[] = [];
-        const IGNORED_NAMES = new Set([
-          "node_modules", ".git", "dist", "build", ".next", ".venv", "__pycache__", ".idea", ".vscode", "coverage", ".cache"
-        ]);
-
-        const readEntries = async (handle: any, path: string) => {
-          if (files.length >= 100) return;
-
-          try {
-            const entries = handle.values ? handle.values() : [];
-            for await (const entry of entries) {
-              if (files.length >= 100) break;
-              if (!entry || !entry.name || entry.name.startsWith(".") || IGNORED_NAMES.has(entry.name)) continue;
-
-              if (entry.kind === "file") {
-                try {
-                  const file = await entry.getFile();
-                  files.push(new File([file], `${path}${file.name}`, { type: file.type }));
-                } catch {
-                  // Skip unreadable files silently
-                }
-              } else if (entry.kind === "directory") {
-                await readEntries(entry, `${path}${entry.name}/`);
-              }
-            }
-          } catch {
-            // Fallback for directory reading
-          }
-        };
-
-        await readEntries(dirHandle, "");
-        await doConnect(files, folderName);
-      } catch (e: any) {
-        setIsCreating(false);
-        if (e?.name === "AbortError") {
-          return;
-        }
-        // Fallback to webkitdirectory if showDirectoryPicker fails
-        fileInputRef.current?.click();
-      }
-    } else {
-      fileInputRef.current?.click();
-    }
-  }, [doConnect, queryClient, workspacesList, handleReconnectFolder]);
 
   const handleFilesSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1071,7 +918,6 @@ export function WorkspacePage() {
         setConnectedFolderPath(folderPath);
         setWorkspaceId(newId);
         setIsConnected(true);
-        setIsModalOpen(false);
         connectedWsRef.current = newId;
         localStorage.setItem("arunaki_workspace_id", newId);
         queryClient.invalidateQueries({ queryKey: ["wsFiles", newId] });
@@ -1348,22 +1194,9 @@ export function WorkspacePage() {
   // Active Session helper
   const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
 
-  const handleDisconnectFolder = () => {
-    setIsConnected(false);
-    setWorkspaceId(null);
-    setAgentSteps([]);
-    setAnalysisResult(null);
-    setIsAnalyzing(false);
-    setNativeTree(null);
-    setNativeFileCount(0);
-    connectedWsRef.current = null;
-    localStorage.removeItem('arunaki_workspace_id');
-    setIsModalOpen(true);
-  };
 
   // Use native file count from Electron tree if available, else from API
   const fileCount = nativeTree ? nativeFileCount : files.length;
-  const recentFolders = workspacesList.filter((ws: any) => ws.rootPath);
 
   const getStepIcon = (step: AgentStep) => {
     if (step.status === "running") return <Loader2 className="w-3.5 h-3.5 text-gray-500 shrink-0 animate-spin" />;
@@ -1521,94 +1354,17 @@ export function WorkspacePage() {
         </div>
       </div>
 
-      {/* POPUP MODAL: Folder Connection Modal */}
-      {/* POPUP MODAL: Folder Connection Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl border border-gray-200/90 shadow-2xl w-full max-w-lg p-6 sm:p-8 flex flex-col items-center justify-center relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="bg-[#F8F9FA] rounded-2xl p-6 sm:p-8 w-full flex flex-col items-center text-center gap-4 border border-gray-100 mt-2">
-              <Folder className="w-16 h-16 text-gray-900 stroke-[1.5]" />
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1.5">
-                  Buka Folder
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">
-                  Pilih folder di komputer Anda. Nama workspace diambil dari nama folder.
-                </p>
-              </div>
-
-              <button
-                onClick={handleConnectFolder}
-                disabled={isCreating}
-                className="w-full py-3 bg-black text-white hover:bg-gray-800 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs mt-2"
-              >
-                {isCreating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Menghubungkan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Folder className="w-4 h-4" />
-                    <span>Pilih Folder di Komputer</span>
-                  </>
-                )}
-              </button>
-
-              {recentFolders.length > 0 && (
-                <div className="w-full text-left">
-                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">
-                    Recent Folders
-                  </div>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    {recentFolders.map((ws: any) => (
-                      <button
-                        key={ws.id}
-                        onClick={() => handleReconnectFolder(ws)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-gray-200/80 bg-white hover:bg-gray-50 transition-colors cursor-pointer text-left"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FolderCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="text-xs font-semibold text-gray-800 truncate">{ws.name}</span>
-                        </div>
-                        <span className="text-[10px] text-gray-400 font-mono truncate ml-2 shrink-0">{ws.status}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {isConnected && (
-                <button
-                  onClick={handleDisconnectFolder}
-                  className="w-full py-2.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Putuskan Koneksi</span>
-                </button>
-              )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                // @ts-expect-error directory & webkitdirectory not in React types
-                directory=""
-                webkitdirectory=""
-                multiple
-                className="hidden"
-                onChange={handleFilesSelected}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Hidden file input for browser fallback folder selection */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        // @ts-expect-error directory & webkitdirectory not in React types
+        directory=""
+        webkitdirectory=""
+        multiple
+        className="hidden"
+        onChange={handleFilesSelected}
+      />
 
       {/* POPUP MODAL: Kelola Workspace */}
       {isManageModalOpen && (
