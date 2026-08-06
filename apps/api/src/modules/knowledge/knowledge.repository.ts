@@ -1,15 +1,38 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { Knowledge, KnowledgeEdge } from '@prisma/client';
 import { PrismaBaseRepository } from '../../common/providers/prisma-base.repository.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 
 @Injectable()
-export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> {
+export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> implements OnModuleInit {
   protected readonly model: any;
 
   constructor(@Inject(PrismaService) protected readonly prisma: PrismaService) {
     super(prisma);
     this.model = prisma.knowledge;
+  }
+
+  async onModuleInit() {
+    try {
+      const existing = await this.prisma.knowledge.findUnique({
+        where: { id: 'main-ai-node' }
+      });
+      if (!existing) {
+        await this.prisma.knowledge.create({
+          data: {
+            id: 'main-ai-node',
+            title: 'Arunaki AI',
+            content: 'Sistem inti AI yang memproses semua knowledge.',
+            type: 'core',
+            active: true,
+            nodeColor: '#10b981',
+            icon: 'bot',
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to seed main-ai-node:', error);
+    }
   }
 
   async findActive(): Promise<Knowledge[]> {

@@ -16,8 +16,6 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import {
-  BookOpen,
-  Sparkles,
   UploadCloud,
   FileText,
   CheckCircle2,
@@ -101,28 +99,11 @@ function FlowEditor() {
           active: doc.active,
           nodeColor: doc.nodeColor,
           icon: doc.icon,
-          onSelect: setSelectedNodeId,
-        },
-      }));
-      
-      // Add Main AI Node (Core)
-      initialNodes.push({
-        id: 'main-ai-node',
-        type: 'knowledge',
-        position: { x: 400, y: 300 },
-        data: {
-          id: 'main-ai-node',
-          title: 'Arunaki AI',
-          content: 'Sistem inti AI yang memproses semua knowledge.',
-          type: 'core',
-          active: true,
-          isMain: true,
-          nodeColor: '#10b981', // emerald
-          icon: 'bot',
-          onSelect: () => setSelectedNodeId('main-ai-node'),
+          isMain: doc.id === 'main-ai-node',
+          onSelect: () => setSelectedNodeId(doc.id),
         },
         draggable: true,
-      });
+      }));
 
       // Build edges
       const initialEdges: Edge[] = dbEdges.map((e: KnowledgeEdgeData) => ({
@@ -196,6 +177,17 @@ function FlowEditor() {
       }
     },
     []
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      event.preventDefault();
+      // Remove from UI
+      setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+      // Call our backend deletion handler
+      onEdgesDelete([edge]);
+    },
+    [setEdges, onEdgesDelete]
   );
 
   // Save node positions on drag stop
@@ -425,27 +417,7 @@ function FlowEditor() {
 
   return (
     <div className="flex-1 h-[calc(100vh-60px)] relative">
-      {/* Absolute Header Overlay */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-gray-900 text-white shadow-sm">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                Knowledge Graph
-              </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <Sparkles className="w-3 h-3" /> Visual Editor
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 mt-1 max-w-md">
-              Hubungkan knowledge ke node Arunaki agar AI memahami alur & aturan bisnis Anda.
-            </p>
-          </div>
-        </div>
-      </div>
+
 
       {loading ? (
         <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
@@ -462,6 +434,7 @@ function FlowEditor() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onEdgesDelete={onEdgesDelete}
+          onEdgeContextMenu={onEdgeContextMenu}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
@@ -481,12 +454,14 @@ function FlowEditor() {
           }}
         >
           <Background color="#ccc" gap={20} size={1} />
-          <Controls className="bg-white border-gray-200 shadow-sm rounded-xl overflow-hidden" />
+          <Controls className="!bg-black border-2 !border-gray-800 shadow-xl rounded-xl overflow-hidden !bottom-8 !left-4 [&_button]:!bg-black [&_button]:!text-[#c4b5fd] [&_button]:!border-b-gray-800 [&_button:hover]:!bg-gray-900" />
           <MiniMap 
-            className="rounded-2xl border-gray-200 shadow-sm"
+            className="rounded-xl !bg-black border-2 border-gray-800 shadow-xl overflow-hidden !bottom-8 !right-4"
+            maskColor="rgba(17, 24, 39, 0.8)"
+            nodeBorderRadius={16}
             nodeColor={(node) => {
-              if (node.id === 'main-ai-node') return '#10b981';
-              return node.data?.nodeColor as string || '#3B82F6';
+              if (node.id === 'main-ai-node') return '#c4b5fd'; // Lilac for Arunaki
+              return '#f97316'; // Orange for documents
             }}
           />
           
@@ -497,7 +472,10 @@ function FlowEditor() {
           
           <KnowledgeNodePanel
             nodeId={selectedNodeId}
-            onClose={() => setSelectedNodeId(null)}
+            onClose={() => {
+              setSelectedNodeId(null);
+              setNodes((nds) => nds.map((n) => ({ ...n, selected: false })));
+            }}
             onUpdate={handleUpdateNode}
             onDelete={handleDeleteNode}
           />

@@ -99,8 +99,12 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     }
   };
 
+  if (!nodeId || nodeId === 'main-ai-node') {
+    return null;
+  }
+
   return (
-    <Panel position="top-right" className="h-[calc(100%-2rem)] w-80 mt-4 mr-4 bg-white rounded-2xl shadow-2xl border border-gray-200/80 flex flex-col overflow-hidden pointer-events-auto">
+    <Panel position="top-right" className="max-h-[calc(100vh-8rem)] w-80 mt-4 mr-4 bg-white rounded-2xl shadow-2xl border border-gray-200/80 flex flex-col overflow-hidden pointer-events-auto">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50/50 shrink-0">
         <h3 className="font-bold text-gray-900 text-sm">Edit Node</h3>

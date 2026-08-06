@@ -11,5 +11,8 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   if (apiKey) {
     headers.set('x-api-key', apiKey);
   }
+  if (init?.body && typeof init.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   return fetch(input, { ...init, headers });
 }

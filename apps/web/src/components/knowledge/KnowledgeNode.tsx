@@ -1,5 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import { BookOpen, FileText, Activity, ShieldCheck, Database, Type } from 'lucide-react';
+import { ArunakiLogo } from '../common/ArunakiLogo';
 import { cn } from '../../lib/utils';
 
 interface KnowledgeNodeProps {
@@ -32,70 +33,73 @@ const getIcon = (iconName?: string) => {
 export function KnowledgeNode({ data, selected }: KnowledgeNodeProps) {
   const isMain = data.isMain;
   const isActive = data.active;
-  const color = data.nodeColor || '#3B82F6'; // Default blue
   
+  if (isMain) {
+    return (
+      <div className="relative group">
+        <svg width="0" height="0" className="absolute">
+          <defs>
+            <linearGradient id="arunaki-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f97316" />
+              <stop offset="100%" stopColor="#c4b5fd" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div 
+          className={cn(
+            "flex items-center justify-center w-16 h-16 rounded-full bg-black shadow-xl border border-gray-800 cursor-pointer transition-all",
+            selected ? "ring-4 ring-gray-900/40 scale-105" : "ring-4 ring-gray-900/10 hover:scale-105"
+          )}
+          onClick={() => data.onSelect?.(data.id)}
+        >
+          <ArunakiLogo className="w-8 h-8 -translate-y-[2px]" fill="url(#arunaki-grad)" />
+        </div>
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+           <span className="text-xs font-bold text-gray-700 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100">Arunaki AI</span>
+        </div>
+        
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="w-3 h-3 border-2 border-white bg-gray-900"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={() => data.onSelect?.(data.id)}
       className={cn(
-        "relative rounded-2xl border bg-white shadow-sm transition-all min-w-[200px] max-w-[280px]",
-        selected ? "border-gray-900 shadow-md ring-1 ring-gray-900/10" : "border-gray-200/80 hover:border-gray-300 hover:shadow",
-        !isActive && !isMain && "opacity-60 bg-gray-50/50",
-        isMain && "border-accent bg-accent/5 ring-1 ring-accent/20"
+        "relative rounded-xl shadow-sm transition-all min-w-[160px] max-w-[200px] cursor-pointer bg-orange-500 border border-orange-600",
+        selected ? "shadow-md ring-2 ring-orange-500/50 scale-[1.02]" : "hover:shadow-md hover:bg-orange-600",
+        !isActive && "opacity-60 grayscale"
       )}
     >
-      {/* Target handle (Top) - Input */}
-      {!isMain && (
-        <Handle
-          type="target"
-          position={Position.Top}
-          className="w-3 h-3 border-2 border-white bg-gray-300"
-        />
-      )}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="w-3 h-3 border-2 border-white bg-gray-300"
+      />
 
-      {/* Header */}
-      <div className="flex items-center gap-3 p-3 border-b border-gray-100">
-        <div 
-          className="p-1.5 rounded-lg text-white flex-shrink-0"
-          style={{ backgroundColor: color }}
-        >
+      <div className="flex items-center gap-2.5 p-2.5">
+        <div className="p-1.5 rounded-lg text-white flex-shrink-0 bg-white/20">
           {getIcon(data.icon)}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className={cn("text-xs font-bold truncate", isMain ? "text-accent" : "text-gray-900")}>
+          <h3 className="text-xs font-bold text-white truncate">
             {data.title}
           </h3>
-          <p className="text-[10px] text-gray-400 font-mono uppercase tracking-wider truncate mt-0.5">
-            {isMain ? 'CORE AI' : data.type}
+          <p className="text-[9px] text-orange-100 font-mono uppercase tracking-wider truncate mt-0.5">
+            {data.type}
           </p>
         </div>
       </div>
 
-      {/* Body preview */}
-      {!isMain && data.content && (
-        <div className="p-3 bg-gray-50/50 rounded-b-2xl">
-          <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">
-            {data.content}
-          </p>
-        </div>
-      )}
-      
-      {isMain && (
-        <div className="p-3 bg-accent/5 rounded-b-2xl">
-          <p className="text-[10px] text-accent/80 font-medium text-center">
-            Central Hub
-          </p>
-        </div>
-      )}
-
-      {/* Source handle (Bottom) - Output */}
       <Handle
         type="source"
         position={Position.Bottom}
-        className={cn(
-          "w-3 h-3 border-2 border-white",
-          isMain ? "bg-accent" : "bg-gray-400"
-        )}
+        className="w-3 h-3 border-2 border-white bg-gray-400"
       />
     </div>
   );
