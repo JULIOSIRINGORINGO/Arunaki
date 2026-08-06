@@ -1,8 +1,22 @@
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 
 export function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path === "/") return "CHAT";
+    if (path.startsWith("/workspace")) return "WORKSPACE";
+    if (path === "/knowledge") return "PENGETAHUAN";
+    if (path === "/history") return "RIWAYAT CHAT";
+    if (path === "/settings") return "PENGATURAN";
+    if (path === "/profile") return "PROFIL";
+    return "ARUNAKI";
+  };
+
+  const pageTitle = getPageTitle();
 
   const handleOpenFolder = async () => {
     // Check if running in Electron environment
@@ -33,7 +47,7 @@ export function AppLayout() {
           {/* Left Title Label & Desktop App Menu Bar */}
           <div className="flex items-center gap-6">
             <span className="text-[#FF5E38] font-black text-sm tracking-wider uppercase pr-2 border-r border-stone-800">
-              WORKSPACE
+              {pageTitle}
             </span>
 
             {/* Relevant App Menus: File, Edit, Tampilan, Bantuan */}
