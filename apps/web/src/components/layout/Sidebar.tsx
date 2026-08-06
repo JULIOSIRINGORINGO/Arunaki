@@ -40,12 +40,23 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
           className="w-14 h-10 flex items-center justify-center cursor-pointer group relative"
           title="Chat AI Utama"
         >
+          {/* Bleeding Cream Tab Background with Organic Inverted Concave Curves */}
           <div
             className={cn(
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isChatActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            {/* Top Inverted Curve Fillet */}
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            {/* Bottom Inverted Curve Fillet */}
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
@@ -69,7 +80,15 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isWorkspaceActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
@@ -93,7 +112,15 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isKnowledgeActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
@@ -117,7 +144,15 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isHistoryActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
@@ -144,7 +179,15 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isSettingsActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
@@ -168,7 +211,15 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
               "absolute left-2 top-1 bottom-1 right-[-24px] bg-[#F4EFE6] rounded-l-full transition-all duration-200 z-10 pointer-events-none",
               isProfileActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
             )}
-          />
+          >
+            <div className="absolute -top-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-br-full" />
+            </div>
+            <div className="absolute -bottom-3 right-6 w-3 h-3 bg-[#1A191B]">
+              <div className="w-full h-full bg-[#F4EFE6] rounded-tr-full" />
+            </div>
+          </div>
+
           <div
             className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-20 shrink-0",
