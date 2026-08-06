@@ -902,14 +902,34 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Build passes (`npm run build` — 0 errors); model diverifikasi load & embed (384-dim); semua test api pass (119/119).
 
 
+## Phase 46: Exact UI Redesign & Popup Chat Docking ✅ DONE
+
+**Goal:** Transform Arunaki Web/Desktop UI to match the user's reference mockup with exact color palette (Cream `#F4EFE6`, Dark Charcoal `#1A191B`, Coral Orange `#FF5E38`, Lilac Purple `#C4B5FD`), double-pill vertical sidebar with custom active tab notch, top WORKSPACE header bar with open folder button and docked `:chat` popup container.
+
+### 46.1 Exact Color System & Styling
+- [x] Implement exact color tokens (`bg-[#F4EFE6]`, `bg-[#1A191B]`, `text-[#FF5E38]`, `bg-[#C4B5FD]`)
+- [x] Dual rounded cards design system (`rounded-[24px]`) with dark headers (`#1A191B`)
+
+### 46.2 Top Workspace Header & Docked Chat (`:chat`)
+- [x] Top dark capsule header bar with `WORKSPACE` label in Coral Orange
+- [x] `:chat` Lilac capsule button acting as the dock/storage for popup chat
+- [x] Floating Popup Chat component with close/minimize animation back to `:chat` button
+- [x] Coral Orange `open folder` capsule button for workspace selection dialog
+
+### 46.3 Vertical Double-Pill Sidebar
+- [x] Standalone dark circular brand badge with logo at top left
+- [x] Middle dark vertical capsule container with active tab notch indicator (orange circle logo `#FF5E38`) and purple icons (`#C4B5FD`)
+- [x] Bottom dark vertical capsule container with action buttons
+
 ---
 
 ## Current Status
 
-**Phase:** 44 — Desktop ↔ Web ↔ API Connectivity & Workspace Restore UX ✅ [AI]
+**Phase:** 46 — Exact UI Redesign & Popup Chat Docking ✅ DONE
 **Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security (fail-safe auth, DoS protection, path traversal protection).
 **Model Default:** `openrouter/free` dengan capability-aware request  
 **Next:** Voice Interaction & Desktop Packaging  
+
 
 ---
 

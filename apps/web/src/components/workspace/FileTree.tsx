@@ -463,18 +463,18 @@ try {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200/90 shadow-2xs overflow-hidden">
-      {/* VS Code Style Header Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-gray-50/70">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-          <span className="font-semibold text-xs text-gray-800 truncate" title={workspaceName}>
-            {workspaceName}
+    <div className="flex flex-col h-full bg-white rounded-3xl border border-stone-800/10 shadow-sm overflow-hidden">
+      {/* Black Header Capsule Toolbar */}
+      <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
+        <div className="flex items-center gap-2 min-w-0">
+          <FolderOpen className="w-4 h-4 text-[#C4B5FD] shrink-0" />
+          <span className="text-[#F4EFE6] font-bold text-xs tracking-wide truncate" title={workspaceName}>
+            {workspaceName || "Workspace"}
           </span>
         </div>
 
-        {/* Action Icons (VS Code Explorer Actions) */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        {/* Action Icons */}
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             title="Tambah File Baru"
@@ -482,7 +482,7 @@ try {
               setNewItemName("");
               setPromptModal("file");
             }}
-            className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
           >
             <FilePlus className="w-3.5 h-3.5" />
           </button>
@@ -494,7 +494,7 @@ try {
               setNewItemName("");
               setPromptModal("folder");
             }}
-            className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </button>
@@ -504,7 +504,7 @@ try {
               type="button"
               title="Refresh Struktur Direktori"
               onClick={onRefresh}
-              className="p-1 hover:bg-gray-200/80 rounded text-gray-600 hover:text-gray-900 transition-colors"
+              className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
             >
               <RotateCw className="w-3.5 h-3.5" />
             </button>

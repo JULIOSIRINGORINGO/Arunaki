@@ -10,10 +10,8 @@ import {
   FileSpreadsheet,
   FileText,
   ShieldCheck,
-  MessageSquare,
   ArrowUp,
   X,
-  Plus,
   Loader2,
   CheckCircle2,
   AlertCircle,
@@ -27,13 +25,13 @@ import {
   Save,
   Minus,
   Maximize2,
-  FolderOpen,
   RotateCw,
   GripHorizontal,
   Move,
 } from "lucide-react";
 import { toast } from "sonner";
 import FileTree from "../components/workspace/FileTree";
+import { ArunakiLogo } from "../components/common/ArunakiLogo";
 import { API_BASE, apiFetch } from "../lib/api";
 
 interface AgentStep {
@@ -172,8 +170,12 @@ export function WorkspacePage() {
 
   type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-  const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>({ x: 260, y: 70 });
+  const [chatPosition, setChatPosition] = useState<{ x: number; y: number }>(() => ({
+    x: typeof window !== "undefined" ? Math.max(20, window.innerWidth - 600) : 400,
+    y: 76,
+  }));
   const [chatSize, setChatSize] = useState<{ width: number; height: number }>({ width: 540, height: 560 });
+
   const [isChatMinimized, setIsChatMinimized] = useState(false);
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isDraggingChat, setIsDraggingChat] = useState(false);
@@ -227,13 +229,7 @@ export function WorkspacePage() {
     };
   };
 
-  const handlePillClick = (e: React.MouseEvent) => {
-    const dx = Math.abs(e.clientX - dragStartPosRef.current.x);
-    const dy = Math.abs(e.clientY - dragStartPosRef.current.y);
-    if (dx < 5 && dy < 5) {
-      setIsChatMinimized(false);
-    }
-  };
+
 
   const handleStartResizeChat = (dir: ResizeDirection, e: React.MouseEvent) => {
     e.preventDefault();
@@ -1293,85 +1289,37 @@ export function WorkspacePage() {
   }
 
   return (
-    <div className="flex-1 overflow-hidden h-full bg-[#FAFAFA] p-4 sm:p-6 lg:p-8 flex flex-col relative min-w-0">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 mb-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-white border border-gray-200/90 shadow-2xs flex items-center justify-center text-gray-800 shrink-0">
-            <Folder className="w-5 h-5 text-gray-800" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-              {workspace?.name || "Workspace Strategis & Analisis"}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 truncate">
-              {isConnected
-                ? `${fileCount} file terhubung — ${connectedFolderPath || workspace?.rootPath || ""}`
-                : "Pusat pengelolaan dokumen korporat, otomatisasi ekstraksi data, dan intelijen berbasis AI."}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {!isConnected ? (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-black text-white hover:bg-gray-800 rounded-xl px-4 py-2.5 text-xs font-semibold shadow-xs cursor-pointer transition-all active:scale-98"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Hubungkan Folder</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 border border-gray-200/90 bg-white hover:bg-gray-50 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-700 shadow-2xs cursor-pointer transition-all active:scale-98"
-            >
-              <FolderCheck className="w-4 h-4 text-emerald-600" />
-              <span>Terhubung: {workspace?.name || "Workspace"}</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setIsManageModalOpen(true)}
-            className="flex items-center gap-2 border border-gray-200/90 bg-white hover:bg-gray-50 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-800 shadow-2xs cursor-pointer transition-all active:scale-98"
-          >
-            <Settings className="w-4 h-4 text-gray-600" />
-            <span>Kelola Workspace</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="flex-1 overflow-hidden h-full bg-transparent flex flex-col relative min-w-0">
       {/* Main Grid Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 overflow-hidden">
         {/* Left Column - Clean Workspace Canvas / VS Code Central Editor */}
         <div className="lg:col-span-8 flex flex-col h-full min-h-0 min-w-0 overflow-hidden">
           {openEditorFile ? (
-            /* VS CODE CENTER WORKSPACE EDITOR (Clean White Theme) */
-            <div className="flex-1 flex flex-col bg-white text-gray-900 rounded-2xl border border-gray-200/90 shadow-2xs overflow-hidden h-full animate-fade-in">
-              {/* Editor Header Toolbar */}
-              <div className="flex items-center justify-between px-4 py-3 bg-gray-50/80 border-b border-gray-200/80 text-gray-900 shrink-0">
+            /* VS CODE CENTER WORKSPACE EDITOR (Clean White Card with Black Header Capsule) */
+            <div className="flex-1 flex flex-col bg-white text-gray-900 rounded-3xl border border-stone-800/10 shadow-sm overflow-hidden h-full animate-fade-in">
+              {/* Editor Black Header Capsule Toolbar */}
+              <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] border-b border-stone-800/40 text-white shrink-0 select-none">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <FileText className="w-4 h-4 text-purple-600 shrink-0" />
-                  <span className="font-semibold text-xs text-gray-900 truncate">{openEditorFile.name}</span>
-                  <span className="text-[11px] text-gray-500 font-mono truncate hidden sm:inline">{openEditorFile.path}</span>
+                  <FileText className="w-4 h-4 text-[#FF5E38] shrink-0" />
+                  <span className="font-semibold text-xs text-white truncate">{openEditorFile.name}</span>
+                  <span className="text-[11px] text-stone-400 font-mono truncate hidden sm:inline">{openEditorFile.path}</span>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
                   {!openEditorFile.isEditing ? (
                     <button
                       type="button"
-                      onClick={() => setOpenEditorFile({ ...openEditorFile, isEditing: true })}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-white hover:bg-gray-100 text-gray-800 rounded-xl border border-gray-200/90 font-semibold shadow-2xs transition-colors cursor-pointer"
+                      onClick={() => setOpenEditorFile((prev) => (prev ? { ...prev, isEditing: true } : null))}
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-stone-800 hover:bg-stone-700 text-white rounded-lg font-semibold transition-colors cursor-pointer border border-stone-700/50"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                      <Edit3 className="w-3.5 h-3.5 text-[#FF5E38]" />
                       <span>Edit Content</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={handleSaveEditorContent}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition-colors shadow-2xs cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1 text-xs bg-[#FF5E38] hover:bg-[#ff4d24] text-[#1A191B] rounded-lg font-bold transition-colors shadow-2xs cursor-pointer"
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span>Simpan</span>
@@ -1381,7 +1329,7 @@ export function WorkspacePage() {
                   <button
                     type="button"
                     onClick={() => setOpenEditorFile(null)}
-                    className="p-1.5 hover:bg-gray-200/70 text-gray-500 hover:text-gray-900 rounded-xl transition-colors cursor-pointer"
+                    className="p-1 hover:bg-stone-800 text-stone-400 hover:text-white rounded-lg transition-colors cursor-pointer"
                     title="Tutup Editor File"
                   >
                     <X className="w-4 h-4" />
@@ -1394,7 +1342,7 @@ export function WorkspacePage() {
                 {openEditorFile.isEditing ? (
                   <textarea
                     value={openEditorFile.content}
-                    onChange={(e) => setOpenEditorFile({ ...openEditorFile, content: e.target.value })}
+                    onChange={(e) => setOpenEditorFile((prev) => (prev ? { ...prev, content: e.target.value } : null))}
                     className="w-full h-full bg-transparent text-gray-900 resize-none outline-none font-mono text-xs leading-relaxed"
                     spellCheck={false}
                   />
@@ -1406,64 +1354,44 @@ export function WorkspacePage() {
               </div>
 
               {/* Editor Footer */}
-              <div className="px-4 py-2.5 bg-gray-50/80 border-t border-gray-200/80 text-[11px] text-gray-600 flex items-center justify-between font-mono shrink-0">
+              <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 text-[11px] text-gray-600 flex items-center justify-between font-mono shrink-0">
                 <span>{openEditorFile.isEditing ? "Mode Sunting (Aktif)" : "Mode Pratinjau Terbuka (Read-Only)"}</span>
                 <button
                   type="button"
                   onClick={() => setOpenEditorFile(null)}
-                  className="hover:text-gray-900 text-emerald-600 font-semibold underline cursor-pointer"
+                  className="hover:text-gray-900 text-[#FF5E38] font-semibold underline cursor-pointer"
                 >
-                  Tutup Editor File & Kembali ke Workspace Overview
+                  Tutup Editor File
                 </button>
               </div>
             </div>
           ) : (
-            /* CLEAN SPACIOUS WORKSPACE CANVAS (No embedded chat in middle!) */
-            <div className="bg-white rounded-2xl border border-gray-200/90 p-8 shadow-2xs flex-1 h-full flex flex-col justify-between overflow-hidden min-w-0">
-              <div className="space-y-6 max-w-xl mx-auto flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-                <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-center justify-center mx-auto text-amber-600 shadow-2xs">
-                  <FolderOpen className="w-8 h-8" />
-                </div>
-
-                <div className="space-y-2">
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {workspace?.name || "Workspace Arunaki AI"}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
-                    {!isConnected
-                      ? "Belum ada folder terhubung. Hubungkan folder bisnis Anda untuk mengaktifkan AI Document Agent."
-                      : `Terhubung dengan ${fileCount} file dokumen. Klik file dari Explorer kanan untuk membuka editor di tengah.`}
-                  </p>
-                </div>
-
-                {!isConnected ? (
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-xs active:scale-98"
-                  >
-                    <Folder className="w-4 h-4" />
-                    <span>Hubungkan Folder Komputer</span>
-                  </button>
-                ) : (
-                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                    <button
-                      onClick={() => setIsChatMinimized(false)}
-                      className="px-5 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-                    >
-                      <MessageSquare className="w-4 h-4 text-emerald-400" />
-                      <span>Buka Popup Arunaki AI Chat 💬</span>
-                    </button>
-
-                    <button
-                      onClick={handleRefreshFolder}
-                      className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
-                    >
-                      <RotateCw className="w-4 h-4 text-gray-600" />
-                      <span>Refresh Folder</span>
-                    </button>
-                  </div>
-                )}
+            /* CLEAN SPACIOUS WORKSPACE CANVAS (With Black Header Capsule Bar) */
+            <div className="bg-white rounded-3xl border border-stone-800/10 shadow-sm flex-1 h-full flex flex-col overflow-hidden min-w-0">
+              {/* Canvas Black Header Toolbar */}
+              <div className="flex items-center justify-between px-5 h-12 bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
+                <span className="text-[#F4EFE6] font-bold text-xs tracking-wide">
+                  Editor Dokumen
+                </span>
               </div>
+
+              <div className="flex-1 bg-white flex flex-col items-center justify-center gap-3 min-h-0 select-none animate-fade-in p-6">
+                {/* Line 1: Icon */}
+                <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center text-[#FF5E38] shadow-2xs mb-1">
+                  <ArunakiLogo className="w-8 h-8" fill="#FF5E38" />
+                </div>
+
+                {/* Line 2 & 3: Big bold text lines */}
+                <div className="text-center leading-none space-y-1">
+                  <h1 className="text-3xl sm:text-4xl font-black text-stone-300 tracking-widest uppercase block">
+                    ARUNAKI
+                  </h1>
+                  <h1 className="text-3xl sm:text-4xl font-black text-stone-300 tracking-widest uppercase block">
+                    WORKSPACE
+                  </h1>
+                </div>
+              </div>
+
 
             </div>
           )}
@@ -1684,33 +1612,25 @@ export function WorkspacePage() {
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         {isChatMinimized ? (
           <div
-            onMouseDown={handleStartDragChat}
-            onClick={handlePillClick}
-            style={{ left: `${chatPosition.x}px`, top: `${chatPosition.y}px` }}
-            className={`pointer-events-auto absolute bg-gray-900 text-white rounded-full px-4 py-2.5 shadow-2xl flex items-center gap-3 cursor-move select-none border border-gray-700 hover:bg-black transition-none ${
-              isDraggingChat ? "shadow-amber-500/40 ring-2 ring-amber-400/50 scale-102" : ""
-            }`}
+            onClick={() => setIsChatMinimized(false)}
+            style={{ right: "28px", top: "25px" }}
+            className="pointer-events-auto fixed bg-[#FF5E38] hover:bg-[#ff4d24] text-white rounded-full px-3.5 py-1.5 shadow-md flex items-center gap-2.5 cursor-pointer select-none border border-[#FF5E38]/80 transition-all z-50 active:scale-95 font-semibold"
+            title="Buka Asisten Intelijen Arunaki AI"
           >
-            <Move className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-xs font-semibold shrink-0">Arunaki AI Assistant</span>
+            <Bot className="w-3.5 h-3.5 text-white shrink-0" />
             {isConnected && (
-              <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+              <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-mono font-bold border border-white/30 shrink-0">
                 {fileCount} Dokumen
               </span>
             )}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsChatMinimized(false);
-              }}
-              className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded-full transition-colors cursor-pointer ml-0.5 shrink-0"
+            <div
+              className="p-1 hover:bg-white/15 text-white rounded-full transition-colors cursor-pointer shrink-0 ml-0.5"
               title="Buka Jendela Chat"
             >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
+              <Maximize2 className="w-3 h-3 text-white" />
+            </div>
           </div>
+
         ) : (
           <div
             ref={chatPanelRef}
@@ -1732,10 +1652,9 @@ export function WorkspacePage() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Move className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="font-semibold text-xs text-white truncate">Asisten Intelijen Arunaki AI</span>
+                <Bot className="w-4 h-4 text-[#FF5E38] shrink-0" />
                 {isConnected && (
-                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-mono shrink-0">
+                  <span className="text-[10px] bg-[#FF5E38]/20 text-[#FF5E38] px-2 py-0.5 rounded-full font-mono border border-[#FF5E38]/40 shrink-0 font-bold">
                     {fileCount} Dokumen
                   </span>
                 )}
@@ -1744,11 +1663,15 @@ export function WorkspacePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setChatPosition({ x: 260, y: 70 });
+                    setChatPosition({
+                      x: Math.max(20, window.innerWidth - 600),
+                      y: 76,
+                    });
                     setChatSize({ width: 540, height: 560 });
                     setIsChatExpanded(false);
-                    toast.success("Posisi & ukuran chat telah di-reset ke standar.");
+                    toast.success("Posisi & ukuran chat telah di-reset ke standar di bawah tombol :chat.");
                   }}
+
                   className="p-1 hover:bg-gray-800 text-gray-300 hover:text-white rounded transition-colors cursor-pointer"
                   title="Reset Posisi & Ukuran Chat ke Standar"
                 >

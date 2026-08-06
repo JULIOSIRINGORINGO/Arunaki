@@ -123,6 +123,34 @@ export function ChatPage() {
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const [liveScreenshotUrl, setLiveScreenshotUrl] = useState<string | null>(null);
 
+  const pathParam = searchParams.get("path");
+
+  // Connect folder when path parameter is passed in URL (e.g. from open folder button)
+  useEffect(() => {
+    if (pathParam) {
+      const connectSelectedFolder = async () => {
+        try {
+          const folderName = pathParam.split(/[/\\]/).pop() || pathParam;
+          const wsRes = await apiFetch(`${API_BASE}/workspaces`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: folderName, rootPath: pathParam }),
+          });
+          const wsJson = await wsRes.json();
+          const newId = wsJson.data?.id;
+          if (newId) {
+            localStorage.setItem("arunaki_workspace_id", newId);
+            queryClient.invalidateQueries({ queryKey: ["files", newId] });
+            toast.success(`Folder "${folderName}" terhubung!`);
+          }
+        } catch (err) {
+          console.error("Connect folder failed:", err);
+        }
+      };
+      connectSelectedFolder();
+    }
+  }, [pathParam, queryClient]);
+
   // Clear local state whenever chatId URL parameter changes (e.g. switching chats or creating a new chat)
   useEffect(() => {
     setOptimisticMessages([]);
@@ -135,6 +163,7 @@ export function ChatPage() {
       setPendingChatId(null);
     }
   }, [chatId]);
+
 
   const effectiveChatId = chatId || pendingChatId;
 
@@ -402,11 +431,11 @@ export function ChatPage() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="relative flex h-full w-full bg-white min-w-0 overflow-hidden"
+      className="relative flex h-full w-full gap-4 min-w-0 overflow-hidden"
     >
       {/* Drag & Drop File Overlay Backdrop */}
       {isDraggingFile && (
-        <div className="absolute inset-0 bg-emerald-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white space-y-3 animate-fade-in border-4 border-dashed border-emerald-300 pointer-events-none">
+        <div className="absolute inset-0 bg-emerald-900/60 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white space-y-3 animate-fade-in border-4 border-dashed border-emerald-300 pointer-events-none rounded-[24px]">
           <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shadow-lg">
             <Sparkles className="w-8 h-8 text-white animate-bounce" />
           </div>
@@ -417,30 +446,33 @@ export function ChatPage() {
         </div>
       )}
 
-      <div className="flex flex-col flex-1 h-full min-w-0 bg-white overflow-hidden">
-        <div className="shrink-0 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      {/* Main Workspace White Card with Dark Top Header Bar */}
+      <div className="bg-white rounded-[24px] overflow-hidden flex flex-col flex-1 h-full min-w-0 shadow-sm border border-stone-200/50">
+        {/* Dark Top Header Bar */}
+        <div className="bg-[#1A191B] h-11 min-h-[44px] px-5 flex items-center justify-between shrink-0 select-none">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
-              Chat
-            </h1>
+            <span className="text-white font-bold text-xs tracking-wide">
+              Chat & Workspace Assistant
+            </span>
             <LiveExecutionBadge status={liveStatus} active={sendMessage.isPending} />
           </div>
 
           <button
             onClick={() => setCanvasOpen(!canvasOpen)}
             className={cn(
-              "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs active:scale-[0.98]",
+              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer shadow-xs active:scale-95",
               canvasOpen
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50",
+                ? "bg-[#C4B5FD] text-[#1A191B]"
+                : "bg-stone-800 text-stone-300 hover:text-white"
             )}
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <Sparkles className="w-3 h-3 text-[#FF5E38]" />
             <span>{canvasOpen ? "Sembunyikan Canvas" : "Buka Canvas"}</span>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 px-6">
+        {/* White Chat Messages View */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 px-6 py-4 bg-white">
           <ChatMessages
             messages={messages}
             isLoading={sendMessage.isPending}
@@ -452,7 +484,8 @@ export function ChatPage() {
           )}
         </div>
 
-        <div className="shrink-0">
+        {/* Input Footer */}
+        <div className="shrink-0 bg-white border-t border-stone-100">
           <ChatInput
             onSend={handleSend}
             disabled={sendMessage.isPending}
@@ -460,6 +493,7 @@ export function ChatPage() {
         </div>
       </div>
 
+      {/* Canvas Panel */}
       <CanvasPanel
         isOpen={canvasOpen}
         onClose={() => setCanvasOpen(false)}
@@ -478,3 +512,4 @@ export function ChatPage() {
     </div>
   );
 }
+

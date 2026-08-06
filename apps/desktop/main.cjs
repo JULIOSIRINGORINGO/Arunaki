@@ -5,6 +5,9 @@ const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 const WebSocket = require('ws');
 
+// Disable GPU hardware acceleration to prevent Chromium GPU/Network service crashes and black screen on Windows
+app.disableHardwareAcceleration();
+
 // Load .env manually since dotenv might not be installed
 try {
   // Try apps/desktop/.env first, then apps/api/.env (where the backend .env lives)
@@ -88,7 +91,7 @@ function createWindow() {
     height: 960,
     minWidth: 1100,
     minHeight: 720,
-    backgroundColor: '#111111',
+    backgroundColor: '#F4EFE6',
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -103,7 +106,22 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent('<html><body style="margin:0;display:grid;place-items:center;background:#111;color:#fff;font:16px system-ui"><div>Menunggu Arunaki Web di 127.0.0.1:5173...</div></body></html>')}`);
+  // Auto-reload if network service / renderer process crashes or fails to load
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.warn('[main] Render process gone, reloading...', details);
+    setTimeout(() => {
+      try { win.reload(); } catch {}
+    }, 1000);
+  });
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.warn(`[main] did-fail-load (${errorCode}: ${errorDescription}), retrying...`);
+    setTimeout(() => {
+      try { void win.loadURL(WEB_URL); } catch {}
+    }, 1500);
+  });
+
+  win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent('<html><body style="margin:0;display:grid;place-items:center;background:#F4EFE6;color:#1A191B;font:16px system-ui"><div>Menunggu Arunaki Web di 127.0.0.1:5173...</div></body></html>')}`);
 
   waitForWebApp(WEB_URL).then((isReady) => {
     if (isReady) {
@@ -115,12 +133,13 @@ function createWindow() {
       void win.loadFile(distIndexPath);
       return;
     }
-    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent('<html><body style="margin:0;display:grid;place-items:center;background:#111;color:#fff;font:16px system-ui"><div>Arunaki Web belum aktif. Jalankan npm run dev:web lalu buka ulang desktop.</div></body></html>')}`);
+    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent('<html><body style="margin:0;display:grid;place-items:center;background:#F4EFE6;color:#1A191B;font:16px system-ui"><div>Arunaki Web belum aktif. Jalankan npm run dev:web lalu buka ulang desktop.</div></body></html>')}`);
   }).catch((err) => {
     console.error('[main] Error loading web app:', err);
-    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<html><body style="margin:0;display:grid;place-items:center;background:#111;color:#ff6b6b;font:16px system-ui"><div>Gagal memuat aplikasi: ${err.message}</div></body></html>`)}`);
+    void win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<html><body style="margin:0;display:grid;place-items:center;background:#F4EFE6;color:#FF5E38;font:16px system-ui"><div>Gagal memuat aplikasi: ${err.message}</div></body></html>`)}`);
   });
 }
+
 
 app.whenReady().then(() => {
   ipcMain.handle('app:ping', () => 'desktop');
