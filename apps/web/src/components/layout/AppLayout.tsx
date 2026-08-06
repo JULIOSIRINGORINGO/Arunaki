@@ -9,7 +9,7 @@ export function AppLayout() {
     const path = location.pathname;
     if (path === "/") return "CHAT";
     if (path.startsWith("/workspace")) return "WORKSPACE";
-    if (path === "/knowledge") return "PENGETAHUAN";
+    if (path === "/knowledge") return "KNOWLEDGE";
     if (path === "/history") return "RIWAYAT CHAT";
     if (path === "/settings") return "PENGATURAN";
     if (path === "/profile") return "PROFIL";
