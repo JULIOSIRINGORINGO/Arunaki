@@ -568,13 +568,20 @@ export class WorkspaceRunnerService {
     const wanted = new Set<string>();
     const add = (names: string[]) => names.forEach((n) => wanted.add(n));
 
-    // Catalog meta-tools — always available (LLM uses these to discover & call all other tools).
+    // Catalog meta-tools & core workspace file tools — always available.
     add([
       'tool_search',
       'tool_describe',
       'tool_call',
       'tool_search_code',
+      'read_workspace_file',
+      'write_workspace_file',
+      'search_workspace',
     ]);
+
+    if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(g)) {
+      add(['write_workspace_file', 'read_workspace_file']);
+    }
 
     // Kata kunci goal → tambah tool yang relevan.
     if (/(?:query|select|cari data|database|sql)/.test(g)) add(['data_query', 'doc_search']);
