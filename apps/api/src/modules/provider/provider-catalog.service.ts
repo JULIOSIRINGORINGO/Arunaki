@@ -23,7 +23,6 @@ export class ProviderCatalogService {
       fallbackModels: [
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
-        'deepseek-r1-distill-llama-70b',
         'mixtral-8x7b-32768',
       ],
     },
@@ -52,6 +51,13 @@ export class ProviderCatalogService {
       baseUrl: 'https://api.together.xyz/v1',
       urlKeyword: 'together.xyz',
       fallbackModels: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'Qwen/Qwen2.5-Coder-32B-Instruct'],
+    },
+    {
+      id: 'kenari',
+      name: 'Kenari',
+      baseUrl: 'https://api.kenari.id/v1',
+      urlKeyword: 'kenari.id',
+      fallbackModels: ['gpt-oss-120b', 'deepseek-v4-flash', 'llama-3-1-70b-instruct'],
     },
   ];
 

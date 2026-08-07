@@ -36,7 +36,6 @@ export class ProviderRepository extends PrismaBaseRepository<Provider> {
    */
   async findAllForPool(): Promise<Provider[]> {
     return this.prisma.provider.findMany({
-      where: { active: true },
       orderBy: [
         { priority: 'desc' },
         { lastErrorAt: 'asc' }, // Prefer providers with fewer/recent errors
@@ -52,7 +51,6 @@ export class ProviderRepository extends PrismaBaseRepository<Provider> {
     const now = new Date();
     return this.prisma.provider.findMany({
       where: {
-        active: true,
         OR: [{ cooldownUntil: null }, { cooldownUntil: { lt: now } }],
       },
       orderBy: [{ priority: 'desc' }, { lastErrorAt: 'asc' }],

@@ -34,6 +34,7 @@ interface Provider {
 
 const PROVIDER_TYPES = [
   { value: "openrouter", label: "OpenRouter", defaultUrl: "https://openrouter.ai/api/v1" },
+  { value: "kenari", label: "Kenari (Kenari.id)", defaultUrl: "https://api.kenari.id/v1" },
   { value: "openai", label: "OpenAI", defaultUrl: "https://api.openai.com/v1" },
   { value: "anthropic", label: "Anthropic", defaultUrl: "https://api.anthropic.com/v1" },
   { value: "openai-compatible", label: "OpenAI-Compatible", defaultUrl: "" },
@@ -51,6 +52,7 @@ const DEFAULT_MODELS: Record<string, string[]> = {
   openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
   anthropic: ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"],
   ollama: ["llama3.1", "mistral", "codellama", "gemma2"],
+  kenari: ["gpt-oss-120b", "deepseek-v4-flash", "llama-3-1-70b-instruct"],
   "openai-compatible": [],
 };
 

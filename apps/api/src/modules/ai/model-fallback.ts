@@ -32,7 +32,7 @@ export interface FallbackOptions {
     provider: FallbackProvider,
     body: Record<string, any>,
   ) => Promise<{ response: Response; statusCode: number }>;
-  getNextProvider: (currentId: string) => Promise<FallbackProvider | null>;
+  getNextProvider: (currentId: string, triedIds?: string[]) => Promise<FallbackProvider | null>;
   classifyError: (
     statusCode: number,
     body: string,
@@ -162,7 +162,7 @@ export async function runWithModelFallback(
     rotationCount++;
     if (rotationCount > MAX_ROTATIONS) break;
 
-    const nextProvider = await options.getNextProvider(provider.id);
+    const nextProvider = await options.getNextProvider(provider.id, Array.from(triedProviders));
     if (!nextProvider) {
       log.log('No more available providers for rotation');
       break;

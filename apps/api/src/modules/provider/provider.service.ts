@@ -136,6 +136,14 @@ export class ProviderService extends BaseService<Provider> {
     // Cheap providers (Kenari/deepseek, free tiers) intermittently reject valid
     // requests; burning rotation + cooldown on first 400 makes them unusable.
     if ((statusCode >= 500 && statusCode < 600) || statusCode === 400) {
+      if (statusCode === 400 && (body.includes('model_decommissioned') || body.includes('model_not_found') || body.includes('invalid_api_key'))) {
+        return {
+          action: 'rotate',
+          statusCode,
+          message: `${message}: ${body.substring(0, 150)}`,
+          cooldownSeconds: 300,
+        };
+      }
       return {
         action: 'retry',
         statusCode,
@@ -162,10 +170,13 @@ export class ProviderService extends BaseService<Provider> {
 
   async getNextAvailable(
     currentProviderId?: string,
+    triedProviderIds: string[] = [],
   ): Promise<ProviderConfig | null> {
-    // 1. Check active database providers not in cooldown
+    // 1. Check active database providers not in cooldown, skipping those we already tried
     const available: Provider[] = await this.repository.findAvailable().catch(() => []);
-    const next = available.find((p) => p.id !== currentProviderId);
+    const next = available.find(
+      (p) => p.id !== currentProviderId && !triedProviderIds.includes(p.id)
+    );
 
     if (next) {
       return {
