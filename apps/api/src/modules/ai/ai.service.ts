@@ -402,7 +402,8 @@ export class AiService {
       .replace(/&#x27;/g, "'")
       .replace(/&amp;/g, '&');
 
-    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    content = cleanContent || content.replace(/<\/?think>/gi, '').trim();
 
     let rawToolCalls = choice.message?.tool_calls || [];
 

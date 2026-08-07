@@ -121,19 +121,19 @@ describe('System Integration & Stress Testing', () => {
       }
 
       // Next available rotation should fall back to alternate candidate pool
-      mockRepo.findAllEnabled.mockResolvedValue([
+      mockRepo.findAvailable.mockResolvedValue([
         {
-          id: 'openrouter',
-          name: 'OpenRouter',
+          id: 'kenari',
+          name: 'Kenari',
           type: 'openai-compatible',
-          baseUrl: 'https://openrouter.ai/api/v1',
-          apiKey: 'sk-or-test-key',
-          model: 'openrouter/auto',
+          baseUrl: 'https://kenari.id/v1',
+          apiKey: 'kn-test-key',
+          model: 'deepseek-v4-flash',
         },
       ]);
       const next = await providerService.getNextAvailable('openrouter/free');
       expect(next).not.toBeNull();
-      expect(next?.model).toBe('openrouter/auto');
+      expect(next?.model).toBe('deepseek-v4-flash');
     });
   });
 });

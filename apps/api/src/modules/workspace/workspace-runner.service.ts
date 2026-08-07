@@ -34,8 +34,8 @@ import * as path from 'path';
 
 
 export function extractMentionedFilenames(text: string): string[] {
-  return [...text.matchAll(/@([^\n@]+?\.[A-Za-z0-9]{1,10})(?=\s|$|[.,;:!?])/g)]
-    .map((match) => match[1].trim())
+  return [...text.matchAll(/@\[?([^\n@\]]+?\.[A-Za-z0-9]{1,10})\]?(?=\s|$|[.,;:!?])/g)]
+    .map((match) => match[1].trim().replace(/^\[|\]$/g, ''))
     .filter(Boolean);
 }
 
@@ -147,7 +147,7 @@ export class WorkspaceRunnerService {
       const content = typeof text === 'string'
         ? text.slice(0, 12000)
         : ToolResultFormatter.formatForLlm('read_workspace_file', finalResult);
-      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read_workspace_file atau search_workspace untuk file ini.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read_workspace_file atau search_workspace lagi untuk file ini. JIKA user meminta mengedit/memperbarui file, Anda WAJIB memanggil tool write_workspace_file dengan parameter filename="${filename}" dan content yang telah diperbarui.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
   }
@@ -563,6 +563,7 @@ export class WorkspaceRunnerService {
     goal: string,
     allTools: ToolDefinition[],
   ): ToolDefinition[] {
+    const gClean = goal.replace(/@\[?[^\n@\]]+\.[A-Za-z0-9]{1,10}\]?/g, '').toLowerCase();
     const g = goal.toLowerCase();
     const byName = (n: string) => allTools.find((t) => t.function.name === n);
     const wanted = new Set<string>();
@@ -579,14 +580,14 @@ export class WorkspaceRunnerService {
       'search_workspace',
     ]);
 
-    if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(g)) {
+    if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(gClean) || /@[^\s@]+\.[A-Za-z0-9]+/.test(goal)) {
       add(['write_workspace_file', 'read_workspace_file']);
     }
 
-    // Kata kunci goal → tambah tool yang relevan.
-    if (/(?:query|select|cari data|database|sql)/.test(g)) add(['data_query', 'doc_search']);
-    if (/(?:ringkas|analisis|analisa|rekap|reconcile|banding|rekonsiliasi|pivot)/.test(g)) {
-      add(['doc_search', 'doc_reconcile', 'doc_cross_reference']);
+    // Kata kunci goal → tambah tool yang relevan (menggunakan gClean agar nama file @ tidak memicu tool salah).
+    if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
+    if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
+      add(['doc_reconcile', 'doc_cross_reference']);
     }
     if (/(?:export|generate_export)/.test(g)) add(['generate_export']);
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
@@ -1250,15 +1251,18 @@ export class WorkspaceRunnerService {
             let result: ToolResult;
             try {
               const mentionedFiles = this.mentionedFiles.get(workspaceId) || new Set<string>();
-              const filename = String(args.filename || '');
-              const isMentioned = [...mentionedFiles].some((name) => name.toLowerCase() === filename.toLowerCase());
+              const rawTargetName = String(args.filename || args.filePath || '');
+              const targetBasename = path.basename(rawTargetName).toLowerCase();
+              const isMentioned = [...mentionedFiles].some(
+                (name) => path.basename(name).toLowerCase() === targetBasename,
+              );
               if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && !isMentioned) {
                 throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
               }
               if (isMentioned && ['delete_workspace_file', 'rename_workspace_file'].includes(funcName)) {
                 throw new Error('File yang dirujuk dengan @ tidak boleh dihapus atau diubah namanya dalam run edit.');
               }
-              if (funcName === 'delete_workspace_file' && !hasExplicitDeleteIntent(safeGoal, filename)) {
+              if (funcName === 'delete_workspace_file' && !hasExplicitDeleteIntent(safeGoal, rawTargetName)) {
                 throw new Error('Penghapusan ditolak: instruksi harus secara eksplisit meminta hapus/delete dan menyebut nama file target.');
               }
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
