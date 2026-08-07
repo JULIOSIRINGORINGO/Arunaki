@@ -147,7 +147,7 @@ export class WorkspaceRunnerService {
       const content = typeof text === 'string'
         ? text.slice(0, 12000)
         : ToolResultFormatter.formatForLlm('read_workspace_file', finalResult);
-      messages.push({ role: 'system', content: `=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read_workspace_file atau search_workspace untuk file ini.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
   }
@@ -951,6 +951,35 @@ export class WorkspaceRunnerService {
           const aiResponse = await this.aiService.chat(messages, tools, {
             preferredProviderId: activeProviderId,
           });
+
+          // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
+          aiResponse.toolCalls = aiResponse.toolCalls || [];
+
+          // Fallback parser for leaked raw tool syntax (e.g., DeepSeek v4 via non-native API)
+          if (aiResponse.toolCalls.length === 0 && aiResponse.content && aiResponse.content.includes('<|tool_call>')) {
+            const toolCallMatch = aiResponse.content.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);
+            if (toolCallMatch) {
+              const funcName = toolCallMatch[1];
+              let rawArgs = toolCallMatch[2].trim();
+              
+              // Handle custom quote escaping (e.g., <|"> -> ")
+              rawArgs = rawArgs.replace(/<\|">/g, '"');
+              // Handle unquoted keys in leaked JSON
+              rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+              
+              aiResponse.toolCalls.push({
+                id: `call_fallback_${Date.now()}`,
+                type: 'function',
+                function: {
+                  name: funcName,
+                  arguments: rawArgs,
+                }
+              });
+              
+              // Remove the leaked syntax from the content
+              aiResponse.content = aiResponse.content.replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '').trim();
+            }
+          }
 
           // Token budget enforcement: accumulate usage across all rounds;
           // stop the run with a clear message when the budget is exhausted.

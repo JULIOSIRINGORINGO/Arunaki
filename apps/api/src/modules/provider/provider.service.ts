@@ -217,10 +217,16 @@ export class ProviderService extends BaseService<Provider> {
     if (envKey) {
       const preset = this.catalogService.detectPreset(envKey, envBaseUrl);
       const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
+      const targetId = `fallback-${preset.id}-${nextModel}`;
+
+      if (triedProviderIds.includes(targetId)) {
+        this.logger.log(`No more un-tried models in preset ${preset.name}`);
+        return null;
+      }
 
       this.logger.log(`Rotating ${preset.name} fallback candidate to: ${nextModel}`);
       return {
-        id: `fallback-${preset.id}-${nextModel}`,
+        id: targetId,
         name: `${preset.name} Fallback (${nextModel})`,
         type: 'openai-compatible',
         baseUrl: preset.baseUrl,

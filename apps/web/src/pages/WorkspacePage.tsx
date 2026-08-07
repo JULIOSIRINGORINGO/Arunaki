@@ -61,48 +61,40 @@ interface ChatSession {
 
 const MessageAgentSteps = ({ steps }: { steps: AgentStep[] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  if (!steps || steps.length === 0) return null;
+  
+  // Filter out internal thinking/scanning steps that don't represent actual tool actions.
+  // Typical real tools will have type='tool' or 'result', or label containing 'Menjalankan', 'Menyunting', etc.
+  // Since we might not have all types perfectly mapped, let's just filter out the generic 'Membaca konteks...' step.
+  const realSteps = steps.filter(s => s.type === 'tool' || s.type === 'plan' || s.type === 'result' || s.type === 'error' || (s.type === 'thinking' && !s.label.includes('Membaca konteks workspace')));
+  
+  if (!realSteps || realSteps.length === 0) return null;
+
   const getStepIcon = (step: AgentStep) => {
-    if (step.status === "running") return <Loader2 className="w-3.5 h-3.5 text-gray-500 shrink-0 animate-spin" />;
-    if (step.status === "error") return <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />;
-    return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
+    if (step.status === "running") return <Loader2 className="w-3 h-3 text-gray-500 shrink-0 animate-spin" />;
+    if (step.status === "error") return <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />;
+    return <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />;
   };
 
   return (
-    <div className="bg-white border border-gray-200/90 rounded-xl p-3 space-y-2 shadow-2xs mb-3 text-left">
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setIsExpanded((prev) => !prev)}
-          className="flex items-center gap-2 cursor-pointer text-left hover:opacity-85 transition-opacity min-w-0 flex-1 pr-1"
-        >
-          <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shrink-0">
-            <Brain className="w-3.5 h-3.5 text-emerald-600" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-gray-900 truncate">
-                Eksekusi Selesai
-              </span>
-              <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
-                {steps.filter((s) => s.status === 'done').length}/{steps.length}
-              </span>
-            </div>
-          </div>
-          <div className="text-gray-400 shrink-0">
-            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </div>
-        </button>
-      </div>
+    <div className="mb-2 text-left">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="flex items-center gap-1.5 text-[10px] font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1 rounded-md transition-colors cursor-pointer border border-gray-200/50"
+      >
+        <Brain className="w-3 h-3 text-gray-500" />
+        <span>Worked for {realSteps.length} {realSteps.length === 1 ? 'step' : 'steps'}</span>
+        {isExpanded ? <ChevronDown className="w-3 h-3 ml-1" /> : <ChevronRight className="w-3 h-3 ml-1" />}
+      </button>
 
       {isExpanded && (
-        <div className="pt-2 border-t border-gray-100 space-y-1.5 max-h-48 overflow-y-auto">
-          {steps.map((step, i) => (
+        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5 max-h-48 overflow-y-auto bg-gray-50/50 p-2 rounded-lg">
+          {realSteps.map((step, i) => (
             <div
               key={i}
-              className={`flex items-start gap-2 text-[10px] p-1.5 rounded-lg hover:bg-gray-50`}
+              className={`flex items-start gap-2 text-[10px] p-1.5 rounded-lg hover:bg-gray-100 transition-colors`}
             >
-              <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
+              <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-200 shadow-sm">
                 {getStepIcon(step)}
               </div>
               <div className="min-w-0 flex-1 break-words">
@@ -144,7 +136,7 @@ export function WorkspacePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [activeToolAction, setActiveToolAction] = useState<{ toolName: string; args?: any } | null>(null);
-  const [isStepsExpanded, setIsStepsExpanded] = useState(true);
+
 
   // Mirror of agentSteps for use inside SSE handlers (closure staleness).
   const agentStepsRef = useRef<AgentStep[]>([]);
@@ -1208,11 +1200,6 @@ export function WorkspacePage() {
   // Use native file count from Electron tree if available, else from API
   const fileCount = nativeTree ? nativeFileCount : files.length;
 
-  const getStepIcon = (step: AgentStep) => {
-    if (step.status === "running") return <Loader2 className="w-3.5 h-3.5 text-gray-500 shrink-0 animate-spin" />;
-    if (step.status === "error") return <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />;
-    return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
-  };
 
   if (isRestoring) {
     return (
@@ -1657,89 +1644,27 @@ export function WorkspacePage() {
                 </div>
               )}
 
-              {/* Agent Progress & Thinking Drawer (Global / Active Only) */}
-              {isAnalyzing && agentSteps.length > 0 && (
-                <div className="bg-white border border-gray-200/90 rounded-xl p-3 space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setIsStepsExpanded((prev) => !prev)}
-                      className="flex items-center gap-2 cursor-pointer text-left hover:opacity-85 transition-opacity min-w-0 flex-1 pr-1"
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shrink-0">
-                        {isAnalyzing ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                        ) : (
-                          <Brain className="w-3.5 h-3.5 text-emerald-600" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-gray-900 truncate">
-                            {isAnalyzing ? "Proses Eksekusi Agen AI" : "Eksekusi Selesai"}
-                          </span>
-                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded-full bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
-                            {agentSteps.filter((s) => s.status === 'done').length}/{agentSteps.length}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-gray-400 shrink-0">
-                        {isStepsExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      </div>
-                    </button>
-
-                    {isAnalyzing && (
-                      <button
-                        type="button"
-                        onClick={handleAbortAgent}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 font-semibold cursor-pointer shrink-0 ml-1"
-                      >
-                        <Square className="w-2.5 h-2.5 text-red-600 fill-red-600" />
-                        <span>Hentikan</span>
-                      </button>
-                    )}
+              {/* Subtle Inline Thinking Indicator */}
+              {isAnalyzing && (
+                <div className="flex items-center justify-between p-2 px-3 bg-white/50 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-xs font-medium text-gray-500 animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                    <span>
+                      {agentSteps.length > 0 
+                        ? agentSteps[agentSteps.length - 1].label 
+                        : 'Sedang memproses...'}
+                    </span>
                   </div>
-
-                  {/* Expandable Step List Timeline */}
-                  {isStepsExpanded && (
-                    <div className="pt-2 border-t border-gray-100 space-y-1.5 max-h-48 overflow-y-auto">
-                      {agentSteps.map((step, i) => (
-                        <div
-                          key={i}
-                          className={`flex items-start gap-2 text-[11px] p-1.5 rounded-lg ${
-                            step.status === 'running' ? 'bg-amber-50/80 border border-amber-200/60' : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="mt-0.5 shrink-0 bg-white rounded-full p-0.5 border border-gray-100">
-                            {getStepIcon(step)}
-                          </div>
-                          <div className="min-w-0 flex-1 break-words">
-                            <span className={`font-medium ${step.status === 'running' ? 'text-amber-900 font-semibold' : 'text-gray-800'}`}>
-                              {step.label}
-                            </span>
-                            {step.detail && (
-                              <span className="text-gray-500 text-[10px] block mt-0.5 font-mono truncate">
-                                {step.detail}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleAbortAgent}
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] bg-red-50 hover:bg-red-100 text-red-600 rounded border border-red-100 font-medium cursor-pointer"
+                  >
+                    <Square className="w-2.5 h-2.5 fill-current" />
+                    <span>Hentikan</span>
+                  </button>
                 </div>
-              )}
-
-              {/* Analysis Result */}
-              {analysisResult && (
-                <div className="bg-white border border-gray-200 rounded-xl p-3 text-xs text-gray-800 space-y-1.5 shadow-2xs">
-                  <p className="font-bold text-gray-900 text-xs">Hasil Analisis AI</p>
-                  <div className="text-gray-700 leading-relaxed text-[11px]" style={{ overflowWrap: 'anywhere' }}>
-                    <Markdown>{analysisResult}</Markdown>
-                  </div>
-                </div>
-              )}
-            </div>
+              )}            </div>
 
             {/* Chat Prompt Input Bar */}
             <div className="p-3 sm:p-3.5 pr-7 border-t border-gray-100 bg-white relative shrink-0">

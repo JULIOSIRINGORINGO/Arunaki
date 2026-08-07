@@ -93,10 +93,10 @@ export class AiService {
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
-      this.config.get<string>('AI_BASE_URL') || 'https://openrouter.ai/api/v1';
+      this.config.get<string>('AI_BASE_URL') || 'https://kenari.id/v1';
     this.fallbackModel =
       this.config.get<string>('AI_MODEL') ||
-      'openrouter/free';
+      'deepseek-v4-flash';
     this.enc = this.getEncodingForModel(this.fallbackModel);
 
     // Initialize services

@@ -55,9 +55,10 @@ export class ProviderCatalogService {
     {
       id: 'kenari',
       name: 'Kenari',
-      baseUrl: 'https://api.kenari.id/v1',
+      baseUrl: 'https://kenari.id/v1',
+      keyPrefix: 'kn-',
       urlKeyword: 'kenari.id',
-      fallbackModels: ['gpt-oss-120b', 'deepseek-v4-flash', 'llama-3-1-70b-instruct'],
+      fallbackModels: ['deepseek-v4-flash'],
     },
   ];
 
@@ -68,7 +69,7 @@ export class ProviderCatalogService {
         (p.urlKeyword && baseUrl.includes(p.urlKeyword)),
     );
 
-    return matched || ProviderCatalogService.PRESETS[1]; // Default to OpenRouter preset
+    return matched || ProviderCatalogService.PRESETS.find(p => p.id === 'kenari') || ProviderCatalogService.PRESETS[1]; // Default to Kenari
   }
 
   getNextModelInPreset(preset: ProviderCatalogPreset, currentModelId?: string): string {
