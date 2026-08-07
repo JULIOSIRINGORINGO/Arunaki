@@ -808,15 +808,19 @@ export class WorkspaceRunnerService {
         this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
       }
 
-      const systemPrompt = this.aiService.getSystemPrompt(
-        'workspace',
-        workspaceContext,
-      );
       // Tool Router: kirim hanya tools yang relevan, bukan seluruh registry.
       // Framework kurangi beban LLM (payload kecil, agent tidak bingung pilih
       // tool salah). LLM tetap bebas memilih tool dari subset yang relevan.
       const allTools = this.toolRegistryService.getToolDefinitions();
       const tools = this.selectToolsForGoal(userGoal, allTools);
+
+      const systemPrompt = this.aiService.getSystemPrompt(
+        'workspace',
+        workspaceContext,
+        undefined,
+        historyMessages,
+        tools
+      );
 
       const history = historyMessages.map((message) => ({
         role: message.role,
@@ -1037,6 +1041,21 @@ export class WorkspaceRunnerService {
             content: aiResponse.content || null,
             tool_calls: aiResponse.toolCalls,
           });
+
+          // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
+          const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
+          if (askUserToolCall) {
+            let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+            try { 
+              const args = JSON.parse(askUserToolCall.function.arguments || '{}');
+              if (args.message) message = args.message;
+            } catch {}
+            
+            finalContent = message;
+            onEvent({ type: 'text_delta', data: finalContent });
+            reachedMaxRounds = false;
+            break;
+          }
 
           // Update phase based on tool types
           const hasReadTools = aiResponse.toolCalls.some((tc) =>

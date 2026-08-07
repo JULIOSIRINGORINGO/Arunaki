@@ -554,6 +554,7 @@ export class AiService {
     workspaceContext?: string,
     knowledgeContext?: string,
     historyMessages?: Array<{ role: string; content: string }>,
+    tools?: any[],
   ): string {
     // Get model hints for current provider
     const providerConfig = this.getProviderConfigSync();
@@ -577,7 +578,7 @@ export class AiService {
     );
 
     // Dynamic tool list from registry (used in both modes)
-    const toolList = this.buildToolListSummary();
+    const toolList = this.buildToolListSummary(tools);
 
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load prompt files
@@ -689,8 +690,15 @@ ${toolList || 'No tools available.'}
 `;
   }
 
-  private buildToolListSummary(): string {
-    const caps = this.toolRegistryService?.getToolCapabilities();
+  private buildToolListSummary(tools?: any[]): string {
+    // If tools are provided (Tool RAG), extract their names to filter the capabilities
+    const includedNames = tools ? new Set(tools.map(t => t.function?.name || t.name)) : null;
+    
+    let caps = this.toolRegistryService?.getToolCapabilities();
+    if (includedNames && caps) {
+      caps = caps.filter(c => includedNames.has(c.name));
+    }
+    
     if (!caps || caps.length === 0) {
       return 'No tools available.';
     }

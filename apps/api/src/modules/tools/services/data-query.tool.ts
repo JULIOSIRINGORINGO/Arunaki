@@ -7,6 +7,20 @@ export class DataQueryTool {
   private readonly logger = new Logger(DataQueryTool.name);
   private readonly prisma = new PrismaClient();
 
+  private serializeBigInt(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'bigint') return obj.toString();
+    if (Array.isArray(obj)) return obj.map(item => this.serializeBigInt(item));
+    if (typeof obj === 'object' && !(obj instanceof Date)) {
+      const result: any = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = this.serializeBigInt(obj[key]);
+      }
+      return result;
+    }
+    return obj;
+  }
+
   async queryData(sql: string): Promise<ToolResult> {
     const startTime = Date.now();
 
@@ -81,7 +95,8 @@ export class DataQueryTool {
     try {
       this.logger.log(`Executing query: ${sql.substring(0, 100)}`);
 
-      const result = await this.prisma.$queryRawUnsafe(sql);
+      const rawResult = await this.prisma.$queryRawUnsafe(sql);
+      const result = this.serializeBigInt(rawResult);
 
       const preview = Array.isArray(result)
         ? `${result.length} rows returned`
@@ -120,9 +135,10 @@ export class DataQueryTool {
     const startTime = Date.now();
 
     try {
-      const result = await this.prisma.$queryRawUnsafe(
+      const rawResult = await this.prisma.$queryRawUnsafe(
         "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
       );
+      const result = this.serializeBigInt(rawResult);
 
       const tables = Array.isArray(result)
         ? result.map((r: any) => r.name)
@@ -171,9 +187,10 @@ export class DataQueryTool {
         };
       }
 
-      const result = await this.prisma.$queryRawUnsafe(
+      const rawResult = await this.prisma.$queryRawUnsafe(
         `PRAGMA table_info(${tableName})`,
       );
+      const result = this.serializeBigInt(rawResult);
 
       return {
         status: 'success',

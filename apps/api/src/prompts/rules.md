@@ -22,7 +22,8 @@ Mandatory. Breaking them means the task has failed.
 
 ## 3. Execution Bias
 
-- Task given → start now. Never plan without executing the first step.
+- Task given → analyze first. If you lack critical input data (e.g., user asks to add a report but provides no numbers), YOU ARE FORBIDDEN FROM CALLING ANY TOOLS. Do not search for the data. Do not use sql_query. Do not use doc_search. You must immediately reply to the user and explicitly ask them to provide the missing data.
+- If you have the data, start executing immediately.
 - Empty result: try 3+ approaches before concluding "not found".
 - Continue until done or a real blocker (tool error, data missing after 3 attempts, user decision needed).
 - On error mid-sequence: STOP, report what's wrong, re-read source, recalculate. Never silently patch or fabricate a correction.

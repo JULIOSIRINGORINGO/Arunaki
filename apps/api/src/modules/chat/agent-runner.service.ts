@@ -18,6 +18,7 @@ import {
   createRunBudget,
   enterRunBudget,
 } from '../ai/token-budget.service.js';
+import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -74,11 +75,10 @@ export class AgentRunnerService {
     private readonly harnessRegistry: HarnessRegistryService,
     private readonly todoStore: TodoStoreService,
     private readonly quarantine: ContextQuarantine,
+    private readonly toolLoopDetector: ToolLoopDetectorService,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
-    const isKnowledgeQuery = /(?:pengetahuan|knowledge|aturan|kebijakan|prosedur|hukum|standar|sop|domain|referensi)/i.test(userContent);
-    if (!isKnowledgeQuery) return '';
     try {
       return await this.knowledgeService.getKnowledgeMap();
     } catch {
@@ -159,13 +159,20 @@ export class AgentRunnerService {
       await this.getKnowledgeContext(params.userContent),
       'knowledge-map',
     );
+    const contextForTools = historyMessages
+      .slice(-3)
+      .map(m => m.content)
+      .join(' ') + ' ' + (params.userContent || '');
+      
+    const tools = this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
+
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,
       undefined,
       knowledgeContext,
       historyMessages,
+      tools
     );
-    const tools = this.toolRegistryService.getToolDefinitions();
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -214,8 +221,26 @@ export class AgentRunnerService {
         break;
       }
 
+      // Accumulate thought process if present
+      if (aiResponse.content) {
+        finalContent += (finalContent ? '\n\n' : '') + aiResponse.content;
+      }
+
       if (aiResponse.toolCalls.length === 0) {
-        finalContent = aiResponse.content;
+        reachedMaxRounds = false;
+        break;
+      }
+
+      // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
+      const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
+      if (askUserToolCall) {
+        let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+        try { 
+          const args = JSON.parse(askUserToolCall.function.arguments || '{}');
+          if (args.message) message = args.message;
+        } catch {}
+        
+        finalContent = message;
         reachedMaxRounds = false;
         break;
       }
@@ -250,17 +275,27 @@ export class AgentRunnerService {
 
         let result: ToolResult;
         try {
-          const safeArgs = params.workspaceId
-            ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
-            : { ...args, runId: todoRunId };
-          if (params.workspaceId) {
-            await this.selfHealingService.validateToolPaths(
-              funcName,
-              safeArgs,
-              params.workspaceId,
-            );
+          const loopCheck = this.toolLoopDetector.checkAndRecord(params.chatId, funcName, args);
+          if (loopCheck.isLooping) {
+            result = {
+              status: 'error',
+              data: {},
+              preview: loopCheck.message || `Circuit breaker tripped for ${funcName}`,
+              metadata: { toolName: funcName, displayName: funcName, errorType: 'circuit_breaker', executionTime: 0 } as any,
+            };
+          } else {
+            const safeArgs = params.workspaceId
+              ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+              : { ...args, runId: todoRunId };
+            if (params.workspaceId) {
+              await this.selfHealingService.validateToolPaths(
+                funcName,
+                safeArgs,
+                params.workspaceId,
+              );
+            }
+            result = await this.toolRegistryService.executeTool(funcName, safeArgs);
           }
-          result = await this.toolRegistryService.executeTool(funcName, safeArgs);
         } catch (e) {
           const isIsolation = e.message?.includes('Access denied');
           result = {
@@ -453,13 +488,20 @@ export class AgentRunnerService {
         await this.getKnowledgeContext(params.userContent),
         'knowledge-context',
       );
+      const contextForTools = historyMessages
+        .slice(-3)
+        .map(m => m.content)
+        .join(' ') + ' ' + (params.userContent || '');
+        
+      const tools = this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
+
       const systemPrompt = this.aiService.getSystemPrompt(
         chatMode,
         undefined,
         knowledgeContext,
         historyMessages,
+        tools
       );
-      const tools = this.toolRegistryService.getToolDefinitions();
 
       const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
@@ -468,6 +510,10 @@ export class AgentRunnerService {
           content: m.content,
         })),
       ];
+      this.toolLoopDetector.clearSession(params.chatId);
+
+      // Extract artifacts from this round
+      const newArtifacts: string[] = [];
 
       let finalContent = '';
       const createdArtifactIds: string[] = [];
@@ -501,12 +547,30 @@ export class AgentRunnerService {
           break;
         }
 
-        if (aiResponse.toolCalls.length === 0) {
-          finalContent = aiResponse.content;
-          reachedMaxRounds = false;
-          onEvent({ type: 'text_delta', data: finalContent });
-          break;
-        }
+      if (aiResponse.content) {
+        onEvent({ type: 'text_delta', data: aiResponse.content + (aiResponse.toolCalls.length > 0 ? '\n\n' : '') });
+      }
+
+      if (aiResponse.toolCalls.length === 0) {
+        finalContent = aiResponse.content;
+        reachedMaxRounds = false;
+        break;
+      }
+
+      // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
+      const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
+      if (askUserToolCall) {
+        let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+        try { 
+          const args = JSON.parse(askUserToolCall.function.arguments || '{}');
+          if (args.message) message = args.message;
+        } catch {}
+        
+        finalContent = message;
+        onEvent({ type: 'text_delta', data: finalContent });
+        reachedMaxRounds = false;
+        break;
+      }
 
         messages.push({
           role: 'assistant',
@@ -549,6 +613,20 @@ export class AgentRunnerService {
             const safeArgs = params.workspaceId
               ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
               : { ...args, runId: todoRunId };
+
+            const loopCheck = this.toolLoopDetector.checkAndRecord(params.chatId, toolCall.function.name, args);
+            if (loopCheck.isLooping) {
+              return {
+                toolCall,
+                result: {
+                  status: 'error',
+                  data: {},
+                  preview: loopCheck.message || `Circuit breaker tripped for ${toolCall.function.name}`,
+                  metadata: { toolName: toolCall.function.name, displayName: toolCall.function.name, errorType: 'circuit_breaker', executionTime: 0 } as any,
+                },
+              };
+            }
+
             const healResult = await this.selfHealingService.executeWithHealing(
               toolCall.function.name,
               safeArgs,
@@ -610,7 +688,7 @@ export class AgentRunnerService {
               data: {
                 toolName: toolCall.function.name,
                 preview: result.preview,
-                screenshot: result.data?.screenshot,
+                screenshot: (result.data as any)?.screenshot,
                 data: result.data,
                 timestamp: new Date().toISOString(),
               },

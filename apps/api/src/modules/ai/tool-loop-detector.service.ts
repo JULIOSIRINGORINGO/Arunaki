@@ -43,29 +43,44 @@ export class ToolLoopDetectorService {
     this.sessionHistory.set(workspaceId, history);
 
     // Count consecutive identical calls
-    let repeatCount = 0;
+    let exactRepeatCount = 0;
+    let toolNameRepeatCount = 0;
     for (let i = history.length - 1; i >= 0; i--) {
-      if (history[i].toolName === toolName && history[i].argsHash === argsHash) {
-        repeatCount++;
+      if (history[i].toolName === toolName) {
+        toolNameRepeatCount++;
+        if (history[i].argsHash === argsHash) {
+          exactRepeatCount++;
+        }
       } else {
-        break; // break on first non-matching call
+        break; // break on first non-matching tool name
       }
     }
 
-    if (repeatCount >= MAX_REPEATED_TOOL_CALLS) {
+    if (exactRepeatCount >= MAX_REPEATED_TOOL_CALLS) {
       this.logger.warn(
-        `Circuit Breaker: Tool loop detected for "${toolName}" on workspace ${workspaceId} (repeated ${repeatCount}x)`,
+        `Circuit Breaker: Tool loop detected for "${toolName}" on workspace ${workspaceId} (exact args repeated ${exactRepeatCount}x)`,
       );
       return {
         isLooping: true,
-        repeatCount,
-        message: `Terdeteksi perulangan pemanggilan tool "${toolName}" sebanyak ${repeatCount}x. Eksekusi dihentikan secara aman.`,
+        repeatCount: exactRepeatCount,
+        message: `Terdeteksi perulangan pemanggilan tool "${toolName}" dengan argumen yang sama persis sebanyak ${exactRepeatCount}x. Eksekusi dihentikan secara aman.`,
+      };
+    }
+
+    if (toolNameRepeatCount >= 5) {
+      this.logger.warn(
+        `Circuit Breaker: Tool spam detected for "${toolName}" on workspace ${workspaceId} (tool repeated ${toolNameRepeatCount}x)`,
+      );
+      return {
+        isLooping: true,
+        repeatCount: toolNameRepeatCount,
+        message: `Terdeteksi penggunaan tool "${toolName}" berturut-turut sebanyak ${toolNameRepeatCount}x (kemungkinan brute force). Hentikan pencarian buta ini dan bertanyalah kepada User secara langsung.`,
       };
     }
 
     return {
       isLooping: false,
-      repeatCount,
+      repeatCount: Math.max(exactRepeatCount, toolNameRepeatCount),
     };
   }
 

@@ -80,11 +80,6 @@ export class ToolRegistryService {
     this.logger.log(`Tool registered: ${tool.name} (timeout: ${timeoutMs}ms)`);
   }
 
-  /**
-   * Get compact tool definitions (schema hints) for LLM.
-   * Reduces token usage by ~70% vs full JSON schemas.
-   * Full schemas available via tool_describe when LLM needs details.
-   */
   getToolDefinitions(): ToolDefinition[] {
     return Array.from(this.tools.values())
       .map((r) => ({
@@ -95,6 +90,62 @@ export class ToolRegistryService {
           parameters: this.buildCompactSchema(r.tool.definition.function.parameters),
         },
       }));
+  }
+
+  /**
+   * Get dynamically filtered tool definitions based on context (Tool RAG).
+   * Core tools are always included, plus the highest scoring tools matching the context.
+   */
+  getRelevantToolDefinitions(contextText: string, limit: number = 15): ToolDefinition[] {
+    const allTools = Array.from(this.tools.values());
+    
+    // Core tools that the AI must always have access to
+    const coreToolNames = new Set([
+      'read_workspace_file',
+      'search_workspace',
+      'write_workspace_file',
+      'invoke_subagent',
+      'desktop_open_excel',
+      'vision_ai',
+      'search_knowledge_graph'
+    ]);
+
+    const ctx = contextText.toLowerCase();
+    
+    const scoredTools = allTools.map((r) => {
+      let score = 0;
+      if (coreToolNames.has(r.tool.name)) {
+        score = 1000; // Guarantee core tools
+      } else {
+        // Simple scoring based on tags, name, and description
+        const cap = r.tool.capability as ToolCapability;
+        if (cap) {
+          for (const tag of cap.tags || []) {
+            if (ctx.includes(tag.toLowerCase())) score += 5;
+          }
+        }
+        if (ctx.includes(r.tool.name.replace(/_/g, ' '))) score += 5;
+        
+        // Bonus for mentions of the exact tool name
+        if (ctx.includes(r.tool.name)) score += 10;
+      }
+      return { record: r, score };
+    });
+
+    // Sort by score descending
+    scoredTools.sort((a, b) => b.score - a.score);
+
+    // Take top `limit` or all core tools if they exceed limit
+    const selected = scoredTools.filter((t, i) => i < limit || t.score >= 1000).map(t => t.record);
+
+    return selected.map((r) => ({
+      type: 'function' as const,
+      function: {
+        name: r.tool.name,
+        description: r.tool.description.split('\n')[0],
+        parameters: this.buildCompactSchema(r.tool.definition.function.parameters),
+      },
+    }));
   }
 
   /**

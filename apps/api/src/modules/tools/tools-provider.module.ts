@@ -8,6 +8,7 @@ import { SkillsModule } from '../skills/skills.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
 import { ToolRegistryService } from './tool-registry.service.js';
 import { ToolAdapter } from './services/tool-adapter.js';
+import { AskUserTool } from './services/ask-user.tool.js';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
 import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
@@ -50,6 +51,7 @@ import { AiModule } from '../ai/ai.module.js';
   ],
   providers: [
     ToolRegistryService,
+    AskUserTool,
     TextExtractorTool,
     EnterpriseCalculatorTool,
     DocumentGeneratorTool,
@@ -72,6 +74,7 @@ import { AiModule } from '../ai/ai.module.js';
   ],
   exports: [
     ToolRegistryService,
+    AskUserTool,
     TextExtractorTool,
     EnterpriseCalculatorTool,
     DocumentGeneratorTool,
@@ -105,6 +108,7 @@ export class ToolsProviderModule implements OnModuleInit {
   private get calculatorTool() { return this.moduleRef.get(EnterpriseCalculatorTool, { strict: false }); }
   private get documentGeneratorTool() { return this.moduleRef.get(DocumentGeneratorTool, { strict: false }); }
   private get documentReaderTool() { return this.moduleRef.get(DocumentReaderTool, { strict: false }); }
+  private get askUser() { return this.moduleRef.get(AskUserTool, { strict: false }); }
   private get dataQueryTool() { return this.moduleRef.get(DataQueryTool, { strict: false }); }
   private get imageOcrTool() { return this.moduleRef.get(ImageOcrTool, { strict: false }); }
   private get docSearchTool() { return this.moduleRef.get(DocSearchTool, { strict: false }); }
@@ -127,6 +131,25 @@ export class ToolsProviderModule implements OnModuleInit {
   }
 
   private registerTools() {
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'ask_user',
+        displayName: 'Tanya Pengguna',
+        description: 'GUNAKAN ALAT INI JIKA ANDA MEMBUTUHKAN DATA TAMBAHAN DARI PENGGUNA. Jika pengguna meminta membuat/menambahkan laporan tetapi tidak memberikan angka/datanya, Anda WAJIB memanggil alat ini. Alat ini akan segera menghentikan eksekusi Anda dan menyampaikan pesan Anda kepada pengguna.',
+        tags: ['communication'],
+        parameters: {
+          type: 'object',
+          properties: {
+            message: {
+              type: 'string',
+              description: 'Pesan atau pertanyaan yang ingin Anda sampaikan kepada pengguna untuk meminta data yang kurang.',
+            },
+          },
+          required: ['message'],
+        },
+        handler: async (args) => this.askUser.execute(args),
+      })
+    );
 
     // ─── Todo / Plan (working memory for long tasks) ───────────────
     this.registry.register(
