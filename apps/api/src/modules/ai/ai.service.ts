@@ -372,7 +372,7 @@ export class AiService {
       provider,
       body,
       makeRequest: (p, b) => this.makeRequest(p, b),
-      getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
+      getNextProvider: (currentId, triedIds = []) => this.providerService.getNextAvailable(currentId, triedIds),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
       recordUsage: (id) => this.providerService.recordUsage(id),
@@ -391,6 +391,17 @@ export class AiService {
     }
 
     let content = choice.message?.content || '';
+
+    // Model fallback often generates HTML-escaped tags (e.g. &lt;function)
+    // We must unescape them so repairToolCalls and stripping regex can catch them.
+    content = content
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x27;/g, "'")
+      .replace(/&amp;/g, '&');
+
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
     let rawToolCalls = choice.message?.tool_calls || [];
@@ -404,14 +415,20 @@ export class AiService {
         this.logger.log(
           `[tool-call-repair] repaired ${rawToolCalls.length} leaked tool call(s) from text`,
         );
-        // Keep the reasoning text but strip the raw tool call JSON from content
-        // so the final answer isn't polluted with a serialized call.
+        // Strip bare json blocks only if they were repaired into tool calls
         content = content
-          .replace(/<tool_call>[\s\S]*?<\/tool_call>/gi, '')
-          .replace(/<function_call>[\s\S]*?<\/function_call>/gi, '')
           .replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, '')
           .trim();
       }
+    }
+
+    if (content) {
+      // Always strip hallucinated XML-ish tags (Gemini/DeepSeek often leak these)
+      content = content
+        .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
+        .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
+        .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
+        .trim();
     }
 
     if (!content && rawToolCalls.length === 0) {

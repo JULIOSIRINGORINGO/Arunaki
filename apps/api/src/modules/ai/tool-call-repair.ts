@@ -20,9 +20,10 @@ export interface RepairedToolCall {
   function: { name: string; arguments: string };
 }
 
-const XML_ISH_TAG_RE = /<(?:tool_call|function_call|tool)[^>]*>([\s\S]*?)<\/(?:tool_call|function_call|tool)>/gi;
+const XML_ISH_TAG_RE = /<\s*(?:tool_call|function_call|tool|function)[^>]*>([\s\S]*?)<\/\s*(?:tool_call|function_call|tool|function)\s*>/gi;
 const FENCED_JSON_RE = /```(?:json)?\s*([\s\S]*?)```/gi;
 const BARE_JSON_RE = /\{[\s\S]*?\}/g;
+const FUNCT_TAG_RE = /<\s*function\s*(?:\([^)]+\))?=\s*([\s\S]*?)\s*>\s*<\/\s*function\s*>/gi;
 
 /** Repair malformed JSON: strip code fences, collapse line breaks in strings, fix trailing commas. */
 export function repairJson(raw: string): string {
@@ -44,6 +45,8 @@ function parseCallObject(obj: any): { name?: string; args?: unknown } | null {
   const name =
     typeof obj.name === 'string'
       ? obj.name
+      : typeof obj.tool_name === 'string'
+        ? obj.tool_name
       : typeof obj.function === 'string'
         ? obj.function
         : typeof obj.function?.name === 'string'
@@ -137,10 +140,18 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
     }
   };
 
-// 1. XML-ish tags (may contain multiple). Attribute form:
+  // 1a. <function(tool_call)={...}></function> format (Gemini often uses this)
+  let m: RegExpExecArray | null;
+  FUNCT_TAG_RE.lastIndex = 0;
+  while ((m = FUNCT_TAG_RE.exec(content)) !== null) {
+    if (m[1]) {
+      tryPush(m[1]);
+    }
+  }
+
+  // 1b. XML-ish tags (may contain multiple). Attribute form:
   //    <function_call name="edit">{"workspaceId":"w1"}</function_call> — name is on the tag.
   XML_ISH_TAG_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
   while ((m = XML_ISH_TAG_RE.exec(content)) !== null) {
     const tag = m[0];
     const inner = m[1] || '';

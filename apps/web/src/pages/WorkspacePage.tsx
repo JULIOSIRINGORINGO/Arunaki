@@ -703,14 +703,24 @@ export function WorkspacePage() {
               case "error":
                 setActiveToolAction(null);
                 setIsAnalyzing(false);
-                setAgentSteps((prev) => [
-                  ...prev,
-                  {
-                    type: "error",
-                    label: `Error: ${event.data?.message || "Unknown error"}`,
-                    status: "error",
-                  },
-                ]);
+                
+                const finalErrorSteps = [...agentStepsRef.current, {
+                  type: "error" as const,
+                  label: `Error: ${event.data?.message || "Unknown error"}`,
+                  status: "error" as const,
+                }];
+                setAgentSteps(finalErrorSteps);
+                
+                const errorMsg: ChatMessage = {
+                  id: (Date.now() + 1).toString(),
+                  role: "assistant",
+                  content: `⚠️ **Gagal memproses permintaan:**\n${event.data?.message || "Terjadi kesalahan internal."}`,
+                  timestamp: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+                  steps: finalErrorSteps,
+                };
+                addMessageToActiveSession(errorMsg, errorMsg.content, finalErrorSteps);
+                setAnalysisResult(errorMsg.content);
+                
                 abortController.abort();
                 break;
             }
