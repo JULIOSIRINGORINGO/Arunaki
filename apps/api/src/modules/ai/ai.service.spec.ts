@@ -31,8 +31,7 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
     service = new AiService(
       mockConfig,
       mockProviderService,
-      mockToolRegistryService,
-      mockContextRegistry
+      mockToolRegistryService
     );
 
     // Mock internal methods that load files or read DB to ensure deterministic tests
@@ -67,9 +66,9 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
     const prompt1 = service.getSystemPrompt('chat', undefined, 'Knowledge Base Context 1', []);
     const prompt2 = service.getSystemPrompt('chat', undefined, 'Completely Different KB Context 2', []);
 
-    // Split by '## Active Knowledge Base'
-    const prefix1 = prompt1.split('## Active Knowledge Base')[0];
-    const prefix2 = prompt2.split('## Active Knowledge Base')[0];
+    // Split by '## Peta Knowledge Graph'
+    const prefix1 = prompt1.split('## Peta Knowledge Graph')[0];
+    const prefix2 = prompt2.split('## Peta Knowledge Graph')[0];
 
     // The static prefix MUST be identical to ensure LLM prompt caching is not invalidated
     expect(prefix1).toBe(prefix2);

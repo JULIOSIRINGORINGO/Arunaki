@@ -578,7 +578,6 @@ export class AiService {
 
     // Dynamic tool list from registry (used in both modes)
     const toolList = this.buildToolListSummary();
-    const toolDirectory = this.toolRegistryService?.getToolDirectoryText() || '';
 
     if (mode === 'workspace' && workspaceContext) {
       // Workspace mode — load prompt files
@@ -610,8 +609,6 @@ ${modelAdditions}`,
       );
 
       const volatileSuffix = `${this.buildToolListSection(toolList)}
-
-${toolDirectory}
 
 ---
 ${safeWorkspaceContext}
@@ -648,8 +645,6 @@ ${modelAdditions}`,
     );
 
     const volatileSuffix = `${this.buildToolListSection(toolList)}
-
-${toolDirectory}
 
 ---
 ${posturePrompt}

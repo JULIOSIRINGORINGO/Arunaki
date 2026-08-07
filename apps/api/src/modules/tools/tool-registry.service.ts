@@ -87,7 +87,6 @@ export class ToolRegistryService {
    */
   getToolDefinitions(): ToolDefinition[] {
     return Array.from(this.tools.values())
-      .filter((r) => r.tool.catalogMode === 'direct-only')
       .map((r) => ({
         type: 'function' as const,
         function: {
@@ -119,7 +118,6 @@ export class ToolRegistryService {
    */
   getToolCapabilities(): ToolCapability[] {
     return Array.from(this.tools.values())
-      .filter((r) => r.tool.catalogMode === 'direct-only')
       .map((r) => r.tool.capability as ToolCapability);
   }
 
@@ -133,57 +131,11 @@ export class ToolRegistryService {
   }
 
   /**
-   * Catalog: Search tools by keyword in name, display name, or description.
-   * Returns a concise list of matching tools.
-   */
-  searchTools(query: string): Array<{ name: string; description: string }> {
-    const lowerQuery = query.toLowerCase();
-    return Array.from(this.tools.values())
-      .filter(
-        (r) =>
-          r.tool.name.toLowerCase().includes(lowerQuery) ||
-          r.tool.displayName.toLowerCase().includes(lowerQuery) ||
-          r.tool.description.toLowerCase().includes(lowerQuery),
-      )
-      .map((r) => ({
-        name: r.tool.name,
-        description: r.tool.description,
-      }));
-  }
-
-  /**
    * Check if a tool is mutating (modifies workspace state).
    */
   isMutating(name: string): boolean {
     const toolRecord = this.tools.get(name);
     return toolRecord ? !!toolRecord.tool.mutating : false;
-  }
-
-  /**
-   * Catalog: Get the exact JSON schema definition for a tool by name.
-   */
-  describeTool(name: string): ToolDefinition | null {
-    const toolRecord = this.tools.get(name);
-    return toolRecord ? toolRecord.tool.definition : null;
-  }
-
-  /**
-   * Catalog: Generate the compact directory text for the AI system prompt.
-   */
-  getToolDirectoryText(): string {
-    const catalogTools = Array.from(this.tools.values()).filter(
-      (r) => r.tool.catalogMode !== 'direct-only',
-    );
-    if (catalogTools.length === 0) return 'No catalog tools available.';
-
-    let directory = '### Tool Catalog Directory\n\n';
-    directory += 'Anda memiliki akses ke direktori Tools berikut yang disembunyikan untuk menghemat konteks.\n';
-    directory += 'Gunakan tool_search_code (jika bisa) ATAU tool_search, tool_describe, dan tool_call untuk menggunakannya.\n\n';
-    
-    for (const r of catalogTools) {
-      directory += `- **${r.tool.name}**: ${r.tool.description.split('\n')[0]}\n`;
-    }
-    return directory;
   }
 
   /**

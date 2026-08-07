@@ -30,10 +30,6 @@ import { DocumentReconciliationService } from '../document/doc-reconciliation.se
 import { CronService } from '../cron/cron.service.js';
 import { CronModule } from '../cron/cron.module.js';
 import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
-import { ToolSearchTool } from './services/tool-search.tool.js';
-import { ToolDescribeTool } from './services/tool-describe.tool.js';
-import { ToolCallTool } from './services/tool-call.tool.js';
-import { ToolSearchCodeTool } from './services/tool-search-code.tool.js';
 import { TodoStoreService } from './services/todo-store.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { ContextModule } from '../ai/context/context.module.js';
@@ -72,10 +68,6 @@ import { AiModule } from '../ai/ai.module.js';
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
-    ToolSearchTool,
-    ToolDescribeTool,
-    ToolCallTool,
-    ToolSearchCodeTool,
     TodoStoreService,
   ],
   exports: [
@@ -98,10 +90,6 @@ import { AiModule } from '../ai/ai.module.js';
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
-    ToolSearchTool,
-    ToolDescribeTool,
-    ToolCallTool,
-    ToolSearchCodeTool,
     TodoStoreService,
   ],
 })
@@ -139,11 +127,6 @@ export class ToolsProviderModule implements OnModuleInit {
   }
 
   private registerTools() {
-    // ─── System / Catalog ─────────────────────────────────────────
-    this.registry.register(this.moduleRef.get(ToolSearchTool, { strict: false }));
-    this.registry.register(this.moduleRef.get(ToolDescribeTool, { strict: false }));
-    this.registry.register(this.moduleRef.get(ToolCallTool, { strict: false }));
-    this.registry.register(this.moduleRef.get(ToolSearchCodeTool, { strict: false }));
 
     // ─── Todo / Plan (working memory for long tasks) ───────────────
     this.registry.register(
@@ -190,7 +173,7 @@ export class ToolsProviderModule implements OnModuleInit {
           },
           required: ['todos'],
         },
-        catalogMode: 'catalog-only',
+
         timeoutMs: 5000,
       }),
     );

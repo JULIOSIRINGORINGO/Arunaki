@@ -15,8 +15,7 @@ export interface ToolConfig {
     'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
   estimatedLatency?: 'fast' | 'medium' | 'slow';
   timeoutMs?: number;
-  /** 'catalog-only' (default) = hidden, discoverable via tool_search; 'direct-only' = always sent to LLM. */
-  catalogMode?: 'direct-only' | 'catalog-only';
+
   /** Read-only/idempotent result may be cached per-run (default false). */
   cacheable?: boolean;
   /** True if the tool modifies workspace state (requires safety checks) */
@@ -41,7 +40,7 @@ export class ToolAdapter implements Tool {
     args: Record<string, any>,
   ) => Promise<ToolResult> | ToolResult;
 
-  readonly catalogMode?: 'direct-only' | 'catalog-only';
+
   readonly cacheable: boolean;
   readonly mutating?: boolean;
 
@@ -51,7 +50,7 @@ export class ToolAdapter implements Tool {
     this.description = config.description;
     this.handler = config.handler;
     this.timeoutMs = config.timeoutMs ?? 10000;
-    this.catalogMode = config.catalogMode ?? 'catalog-only';
+
     this.cacheable = config.cacheable ?? false;
     this.mutating = config.mutating;
 

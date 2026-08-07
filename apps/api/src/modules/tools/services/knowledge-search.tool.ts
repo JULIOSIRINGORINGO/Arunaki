@@ -59,10 +59,6 @@ export class KnowledgeSearchTool implements Tool {
     return false;
   }
 
-  get catalogMode(): 'direct-only' | 'catalog-only' {
-    return 'direct-only';
-  }
-
   async execute(args: Record<string, any>): Promise<ToolResult> {
     const { query } = args;
     const startTime = Date.now();
