@@ -4,6 +4,17 @@ export interface ModelCapability {
   supportsSystemPrompt?: boolean;
   maxTokens?: number;
   contextWindow?: number;
+  /**
+   * Reasoning models (DeepSeek V4, etc.) emit long `reasoning_content`
+   * before any content/tool_calls. If set, the request sends
+   * `reasoning_effort` to bound how long the model "thinks", and
+   * scaleMaxTokens returns a headroom so thinking never starves the
+   * actual response. Without this, a 32000-token context yields
+   * max_tokens=1024 and a reasoning model exhausts it on thinking →
+   * finish_reason "length", content:null, tool_calls:0 → Arunaki's
+   * generic "Maaf, saya tidak dapat memberikan jawaban" fallback.
+   */
+  reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 // Registered ONCE by bare model name — works across all providers
@@ -35,7 +46,7 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   'qwen3-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
   // DeepSeek (Kenari)
-  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000 },
+  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000, reasoningEffort: 'medium' },
 
   // OpenRouter auto-router pseudonyms — keep full name to avoid collision with `free`/`auto`
   'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
@@ -85,9 +96,13 @@ export function getModelCapability(modelName: string): ModelCapability {
 /**
  * Scale max_tokens based on context window.
  * Small context (≤32K) → 1024, Medium (≤128K) → 2048, Large (>128K) → 4096.
+ * Reasoning models need headroom for thinking even on a small context
+ * window, otherwise finish_reason "length" truncates before any
+ * content/tool_calls is emitted.
  */
 export function scaleMaxTokens(modelName: string): number {
   const cap = getModelCapability(modelName);
+  if (cap.reasoningEffort) return 8192;
   const ctx = cap.contextWindow ?? 32000;
   if (ctx <= 32000) return 1024;
   if (ctx <= 128000) return 2048;

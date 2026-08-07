@@ -117,6 +117,21 @@ export class AiService {
   }
 
   /**
+   * Apply reasoning-model request options (reasoning_effort) to a request
+   * body. Reasoning models emit long thinking before any content/tool_calls;
+   * bounding the effort keeps them from exhausting max_tokens on thinking.
+   */
+  private applyReasoningOptions(
+    body: Record<string, any>,
+    model: string,
+  ): void {
+    const effort = getModelCapability(model).reasoningEffort;
+    if (effort) {
+      body.reasoning_effort = effort;
+    }
+  }
+
+  /**
    * Get active provider config from DB, fallback to .env
    */
   private async getProviderConfig(): Promise<ProviderConfig> {
@@ -367,6 +382,7 @@ export class AiService {
     if (canUseTools) {
       body.tools = tools;
     }
+    this.applyReasoningOptions(body, provider.model);
 
     const result = await runWithModelFallback({
       provider,
@@ -490,6 +506,7 @@ export class AiService {
     if (canUseTools) {
       body.tools = tools;
     }
+    this.applyReasoningOptions(body, provider.model);
 
     for await (const chunk of streamWithFallback({
       provider,
