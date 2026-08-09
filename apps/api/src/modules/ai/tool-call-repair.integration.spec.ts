@@ -27,20 +27,20 @@ describe('tool call repair integration', () => {
       data: { content: 'Isi file laporan' },
       preview: 'File laporan dibaca',
       metadata: {
-        toolName: 'read_workspace_file',
+        toolName: 'read',
         displayName: 'Read file',
         executionTime: 0,
       },
     });
     const registry = new ToolRegistryService();
     registry.register({
-      name: 'read_workspace_file',
+      name: 'read',
       displayName: 'Read file',
       description: 'Read a workspace file',
       definition: {
         type: 'function',
         function: {
-          name: 'read_workspace_file',
+          name: 'read',
           description: 'Read a workspace file',
           parameters: {
             type: 'object',
@@ -50,7 +50,7 @@ describe('tool call repair integration', () => {
         },
       },
       capability: {
-        name: 'read_workspace_file',
+        name: 'read',
         displayName: 'Read file',
         description: 'Read a workspace file',
         tags: ['workspace'],
@@ -71,7 +71,7 @@ describe('tool call repair integration', () => {
               {
                 message: {
                   content:
-                    'Cek file <tool_call>{"name":"read_workspace_file","arguments":{"path":"laporan.txt"}}</tool_call>',
+                    'Cek file <tool_call>{"name":"read","arguments":{"path":"laporan.txt"}}</tool_call>',
                 },
               },
             ],
@@ -119,14 +119,14 @@ describe('tool call repair integration', () => {
       taskId: 'repair-integration',
       taskName: 'Read laporan',
       taskDescription: 'Baca laporan.txt',
-      allowedTools: ['read_workspace_file'],
+      allowedTools: ['read'],
     });
 
     expect(execute).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledWith({ path: 'laporan.txt' });
     expect(result.content).toBe('File berhasil dibaca.');
     expect(result.toolOutputs).toMatchObject([
-      { toolName: 'read_workspace_file', status: 'success' },
+      { toolName: 'read', status: 'success' },
     ]);
     expect(fetch).toHaveBeenCalledTimes(2);
 
@@ -139,7 +139,7 @@ describe('tool call repair integration', () => {
     );
     const tool = followUp.messages.find((message) => message.role === 'tool');
     expect(assistant?.tool_calls?.[0].function).toMatchObject({
-      name: 'read_workspace_file',
+      name: 'read',
       arguments: '{"path":"laporan.txt"}',
     });
     expect(tool?.tool_call_id).toBe(assistant?.tool_calls?.[0].id);

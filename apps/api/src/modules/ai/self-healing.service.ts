@@ -36,8 +36,8 @@ export class SelfHealingService {
 
   /** Map of tool name → fallback tool names (must match registered tool names in tools-provider.module.ts) */
   private readonly fallbackMap: Record<string, string[]> = {
-    search_workspace: ['list_workspace_files'],
-    read_workspace_file: ['list_workspace_files'],
+    search_workspace: ['list'],
+    read: ['list'],
   };
 
   /** Map of error patterns → recovery strategies */

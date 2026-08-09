@@ -4,7 +4,7 @@ import { ChatMessage } from './ai.service.js';
 import { countTokens } from './tokenizer.js';
 
 function toolMessage(content: string): ChatMessage {
-  return { role: 'tool', content, tool_call_id: 't1', name: 'read_workspace_file' };
+  return { role: 'tool', content, tool_call_id: 't1', name: 'read' };
 }
 
 describe('ContextManager — preemptive compaction guards', () => {

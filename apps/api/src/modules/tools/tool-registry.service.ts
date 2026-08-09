@@ -101,9 +101,9 @@ export class ToolRegistryService {
     
     // Core tools that the AI must always have access to
     const coreToolNames = new Set([
-      'read_workspace_file',
+      'read',
       'search_workspace',
-      'write_workspace_file',
+      'write',
       'invoke_subagent',
       'desktop_open_excel',
       'vision_ai',

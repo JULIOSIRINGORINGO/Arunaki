@@ -31,31 +31,31 @@ describe('SelfHealingService (Gap #11-13)', () => {
   });
 
   describe('#11 fallback tool mapping uses real registered names', () => {
-    it('falls back read_workspace_file -> list_workspace_files end-to-end', async () => {
+    it('falls back read -> list end-to-end', async () => {
       registryMock.executeTool.mockImplementation((name: string) => {
-        if (name === 'read_workspace_file') return errorResult('file not found: a.txt', 'ENOENT');
-        if (name === 'list_workspace_files') return successResult();
+        if (name === 'read') return errorResult('file not found: a.txt', 'ENOENT');
+        if (name === 'list') return successResult();
         return errorResult(`unknown tool ${name}`);
       });
 
-      const result = await service.executeWithHealing('read_workspace_file', {
+      const result = await service.executeWithHealing('read', {
         filePath: 'a.txt',
       });
 
       expect(result.healed).toBe(true);
       expect(registryMock.executeTool).toHaveBeenCalledWith(
-        'list_workspace_files',
+        'list',
         { filePath: 'a.txt' },
       );
       expect(result.attempts.map((a) => a.strategy)).toContain(
-        'fallback:list_workspace_files',
+        'fallback:list',
       );
     });
 
-    it('falls back search_workspace -> list_workspace_files end-to-end', async () => {
+    it('falls back search_workspace -> list end-to-end', async () => {
       registryMock.executeTool.mockImplementation((name: string) => {
         if (name === 'search_workspace') return errorResult('file not found: x');
-        if (name === 'list_workspace_files') return successResult();
+        if (name === 'list') return successResult();
         return errorResult(`unknown tool ${name}`);
       });
 
@@ -65,7 +65,7 @@ describe('SelfHealingService (Gap #11-13)', () => {
 
       expect(result.healed).toBe(true);
       expect(result.attempts.map((a) => a.strategy)).toContain(
-        'fallback:list_workspace_files',
+        'fallback:list',
       );
     });
   });
@@ -122,7 +122,7 @@ describe('SelfHealingService (Gap #11-13)', () => {
       const svc = new SelfHealingService(registryMock as any, prismaMock as any);
 
       await expect(
-        svc.validateToolPaths('read_workspace_file', { filePath: '..' }, 'ws-1'),
+        svc.validateToolPaths('read', { filePath: '..' }, 'ws-1'),
       ).rejects.toThrow('outside workspace');
     });
 
@@ -135,7 +135,7 @@ describe('SelfHealingService (Gap #11-13)', () => {
       const svc = new SelfHealingService(registryMock as any, prismaMock as any);
 
       await expect(
-        svc.validateToolPaths('read_workspace_file', { filePath: '../secret.txt' }, 'ws-1'),
+        svc.validateToolPaths('read', { filePath: '../secret.txt' }, 'ws-1'),
       ).rejects.toThrow('outside workspace');
     });
 
@@ -149,7 +149,7 @@ describe('SelfHealingService (Gap #11-13)', () => {
 
       await expect(
         svc.validateToolPaths(
-          'read_workspace_file',
+          'read',
           { filePath: 'C:\\workspace\\docs\\a.txt' },
           'ws-1',
         ),

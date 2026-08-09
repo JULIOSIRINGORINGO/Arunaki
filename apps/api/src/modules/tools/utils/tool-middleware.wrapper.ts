@@ -73,7 +73,7 @@ export function wrapActionableError(tool: Tool): Tool {
         let suggestedAction = 'Periksa kembali parameter input atau periksa status file.';
 
         if (result.error.code === 'FILE_NOT_FOUND' || result.error.message.includes('not found')) {
-          suggestedAction = 'Gunakan tool "search_workspace" atau "list_workspace_files" untuk menemukan path file yang benar.';
+          suggestedAction = 'Gunakan tool "search_workspace" atau "list" untuk menemukan path file yang benar.';
         } else if (result.error.code === 'INVALID_ARGS') {
           suggestedAction = 'Sesuaikan argumen fungsi agar memenuhi skema parameter.';
         } else if (result.error.code === 'WORKSPACE_ISOLATION_VIOLATION') {

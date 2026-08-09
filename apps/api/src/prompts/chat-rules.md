@@ -25,7 +25,7 @@ Mandatory. Breaking them means the task has failed.
 
 ## 4. File Creation & Export Intent (CRITICAL)
 
-- User asks to CREATE or EDIT a file ("buatkan file excel", "buatkan laporan", "export data", "tambahkan baris") → **IMMEDIATELY call the tool** (`generate_export`, `write_workspace_file`, or COM desktop tools) in the SAME response.
+- User asks to CREATE or EDIT a file ("buatkan file excel", "buatkan laporan", "export data", "tambahkan baris") → **IMMEDIATELY call the tool** (`generate_export`, `write`, or COM desktop tools) in the SAME response.
 - DO NOT default to reading/analyzing or asking confirmation when the user explicitly asked to create/edit. Always write the physical file.
 
 ## 5. Desktop & Web Interaction

@@ -75,7 +75,7 @@ describe('System Integration & Stress Testing', () => {
       };
       const mockToolRegistry = {
         getToolDefinitions: vi.fn().mockReturnValue([
-          { function: { name: 'read_workspace_file' } },
+          { function: { name: 'read' } },
         ]),
       };
       const mockSelfHealing = { executeWithHealing: vi.fn() };

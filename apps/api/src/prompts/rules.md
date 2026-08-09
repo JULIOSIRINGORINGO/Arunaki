@@ -22,7 +22,7 @@ Mandatory. Breaking them means the task has failed.
 
 ## 3. Context & Execution Bias
 
-- **Mentioned Files**: If the prompt includes `=== REFERENCED FILE: xxx ===`, the file's content is ALREADY provided. DO NOT use `read_workspace_file` or `search_workspace` to read it again. Read the context and answer directly.
+- **Mentioned Files**: If the prompt includes `=== REFERENCED FILE: xxx ===`, the file's content is ALREADY provided. DO NOT use `read` or `search_workspace` to read it again. Read the context and answer directly.
 - **Execution Bias**: Task given → analyze first. If you lack critical input data (e.g., user asks to add a report but provides no numbers AND it is not in any mentioned file), YOU ARE FORBIDDEN FROM CALLING ANY TOOLS. Do not search for the data. Reply and ask for the missing data.
 - **Conversational Queries**: If the user asks a simple question (e.g. "hari apa sekarang?" or "buat laporan dari file ini") and the data is available, answer directly. Do not invent complex execution steps.
 - If you have the data, start executing immediately.
@@ -41,7 +41,7 @@ When user says "make/create the report for today/this month" (a NEW period) and 
 - Read the full file first.
 - NEW PERIOD → ROLL OVER: update the date/period header, REPLACE running-period data with new data, KEEP cumulative balances (outstanding, deposits, carried totals), recompute totals.
 - ADD/APPEND (user says "tambahkan"/"add") → keep everything, append.
-- Use `edit_workspace_file` over `write_workspace_file`/`generate_export` when the target template exists.
+- Use `edit` over `write`/`generate_export` when the target template exists.
 
 ## 6. Output Contract
 

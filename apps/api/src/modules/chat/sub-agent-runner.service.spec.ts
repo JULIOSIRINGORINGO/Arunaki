@@ -13,7 +13,7 @@ describe('SubAgentRunnerService', () => {
     };
     mockToolRegistry = {
       getToolDefinitions: vi.fn().mockReturnValue([
-        { function: { name: 'read_workspace_file' } },
+        { function: { name: 'read' } },
         { function: { name: 'calculate' } },
         { function: { name: 'generate_export' } },
       ]),
@@ -61,7 +61,7 @@ describe('SubAgentRunnerService', () => {
           id: 'tc_1',
           type: 'function',
           function: {
-            name: 'read_workspace_file',
+            name: 'read',
             arguments: JSON.stringify({ path: 'data.xlsx' }),
           },
         },
@@ -81,7 +81,7 @@ describe('SubAgentRunnerService', () => {
         status: 'success',
         data: { rows: 50 },
         preview: 'Membaca data.xlsx — 50 baris',
-        metadata: { toolName: 'read_workspace_file', displayName: 'Read File', executionTime: 120 },
+        metadata: { toolName: 'read', displayName: 'Read File', executionTime: 120 },
       },
       healed: false,
       attempts: [],
@@ -98,12 +98,12 @@ describe('SubAgentRunnerService', () => {
 
     expect(result.status).toBe('success');
     expect(result.toolOutputs).toHaveLength(1);
-    expect(result.toolOutputs[0].toolName).toBe('read_workspace_file');
+    expect(result.toolOutputs[0].toolName).toBe('read');
     expect(result.toolOutputs[0].status).toBe('success');
     expect(result.metadata.rounds).toBe(2);
 
     expect(mockSelfHealing.executeWithHealing).toHaveBeenCalledWith(
-      'read_workspace_file',
+      'read',
       { path: 'data.xlsx' },
       'ws-123'
     );
@@ -160,7 +160,7 @@ describe('SubAgentRunnerService', () => {
       taskId: 'sub_scoped',
       taskName: 'Baca Saja',
       taskDescription: 'Hanya baca file, jangan export',
-      allowedTools: ['read_workspace_file'],
+      allowedTools: ['read'],
     };
 
     const result = await service.spawnSubAgent(task);
