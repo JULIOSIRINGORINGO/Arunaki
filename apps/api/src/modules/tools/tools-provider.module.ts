@@ -807,8 +807,8 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['workspaceId', 'filename', 'format'],
         },
         outputType: 'document',
-        estimatedLatency: 'medium',
-        timeoutMs: 15000,
+        estimatedLatency: 'slow',
+        timeoutMs: 60000,
       }),
     );
 

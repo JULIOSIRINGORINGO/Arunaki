@@ -181,6 +181,9 @@ async function runTest() {
     { name: 'Total Uang di Laci = 605 RB (825+200+150-570)', pass: /TOTAL UANG DI LACI\s*[:=]\s*605\s*RB/i.test(content) },
     { name: 'Total NOTE BELUM BAYAR benar', pass: content.includes(`${noteBelumBayar}RB`) || content.includes(`${noteBelumBayar} RB`) || content.includes(`${noteBelumBayar.toLocaleString('id-ID')}RB`) },
     { name: 'Pengeluaran LISTRIK ada', pass: content.includes('LISTRIK 250') },
+    { name: 'Bagian BELANJAAN KE LABURA ada', pass: content.includes('BELANJAAN KE LABURA:') },
+    { name: 'TOTAL BELANJA KE BENDONG ada', pass: content.includes('TOTAL BELANJA KE BENDONG RP 742.000,-') },
+    { name: 'SISA DEPOSIT ada', pass: content.includes('SISA DEPOSIT RP 3.405.640,-') },
   ];
 
   let passed = 0;
