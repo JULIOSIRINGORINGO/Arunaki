@@ -31,3 +31,14 @@ TABEL REKAPAN*.xlsm
 
 GAP_ANALYSIS_ARUNAKI_VS_OPENCLAW.md
 Perbandingan_Arunaki_vs_OpenClaw_LLM.md
+
+# Auto-ignore user document & excel/data files
+*.txt
+*.xlsx
+*.xls
+*.csv
+*.docx
+*.pdf
+*.xlsm
+Yang diharapkan.txt
+
