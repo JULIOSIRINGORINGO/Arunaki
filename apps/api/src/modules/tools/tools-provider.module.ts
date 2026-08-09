@@ -134,15 +134,15 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'ask_user',
-        displayName: 'Tanya Pengguna',
-        description: 'GUNAKAN ALAT INI JIKA ANDA MEMBUTUHKAN DATA TAMBAHAN DARI PENGGUNA. Jika pengguna meminta membuat/menambahkan laporan tetapi tidak memberikan angka/datanya, Anda WAJIB memanggil alat ini. Alat ini akan segera menghentikan eksekusi Anda dan menyampaikan pesan Anda kepada pengguna.',
+        displayName: 'Ask User',
+        description: 'Use this tool when you need additional data or clarification from the user. If the user asks to create or update a report but did not provide the numbers or data, you MUST call this tool to ask for the missing details.',
         tags: ['communication'],
         parameters: {
           type: 'object',
           properties: {
             message: {
               type: 'string',
-              description: 'Pesan atau pertanyaan yang ingin Anda sampaikan kepada pengguna untuk meminta data yang kurang.',
+              description: 'Message or question to present to the user requesting missing information.',
             },
           },
           required: ['message'],
@@ -155,9 +155,9 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'todo_write',
-        displayName: 'Daftar Kerja',
+        displayName: 'Write Todo',
         description:
-          'Tulis atau update daftar langkah kerja (todo list) untuk task yang sedang dikerjakan. Gunakan di awal task multi-langkah (perkiraan >3 langkah), dan update status tiap kali sebuah langkah selesai. Task sederhana (1-2 langkah) tidak perlu tool ini.',
+          'Write or update the task checklist (todo list) for multi-step tasks (>3 steps). Update step statuses as each step completes.',
         tags: ['todo', 'plan', 'task', 'memory'],
         handler: (args) => {
           const runId = String(args.workspaceId || args.runId || 'default');
@@ -166,10 +166,10 @@ export class ToolsProviderModule implements OnModuleInit {
           return {
             status: 'success',
             data: { todos: this.todoStore.get(runId), runId },
-            preview: `Daftar kerja disimpan (${items.length} langkah)`,
+            preview: `Todo list saved (${items.length} steps)`,
             metadata: {
               toolName: 'todo_write',
-              displayName: 'Daftar Kerja',
+              displayName: 'Write Todo',
               executionTime: 0,
             },
           };
@@ -179,12 +179,12 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             todos: {
               type: 'array',
-              description: 'Seluruh daftar langkah kerja (state penuh, bukan delta)',
+              description: 'Full list of task steps (full state, not delta)',
               items: {
                 type: 'object',
                 properties: {
-                  id: { type: 'string', description: 'ID unik langkah' },
-                  content: { type: 'string', description: 'Deskripsi langkah' },
+                  id: { type: 'string', description: 'Unique step ID' },
+                  content: { type: 'string', description: 'Step description' },
                   status: {
                     type: 'string',
                     enum: ['pending', 'in_progress', 'completed'],
@@ -205,7 +205,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'extract_structured_data',
-        displayName: 'Ekstraksi Data',
+        displayName: 'Extract Data',
         description:
           'Validates and normalizes structured data from documents. Send already-extracted data, not raw text.',
         tags: ['extract', 'data', 'validate'],
@@ -254,7 +254,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'document_reader',
-        displayName: 'Pembaca Dokumen',
+        displayName: 'Read Document',
         description: 'Reads document files and extracts their raw text.',
         tags: [
           'read',
@@ -346,7 +346,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'image_ocr',
-        displayName: 'OCR Gambar',
+        displayName: 'Image OCR',
         description: 'Reads text from images using OCR.',
         tags: ['image', 'ocr', 'text', 'recognition'],
         handler: async (args) => {
@@ -399,7 +399,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'doc_search',
-        displayName: 'Pencarian Dokumen',
+        displayName: 'Search Documents',
         description:
           'Searches documents, knowledge, and messages by keyword.',
         tags: ['search', 'document', 'knowledge', 'find'],
@@ -423,7 +423,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'calculate',
-        displayName: 'Kalkulasi Harga',
+        displayName: 'Calculate Financials',
         description:
           'Performs numeric calculations — subtotal, tax, discount, total, or any math operation.',
         tags: ['calculate', 'math', 'finance', 'tax', 'discount', 'total'],
@@ -460,7 +460,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'generate_export',
-        displayName: 'Dokumen Export',
+        displayName: 'Export Document',
         description:
           'Converts structured data into ready-to-download files — Excel (xlsx), CSV, PDF, Word (docx), or PowerPoint (pptx).',
         tags: [
@@ -521,7 +521,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'save_knowledge',
-        displayName: 'Simpan Knowledge',
+        displayName: 'Save Knowledge',
         description:
           'Saves or updates the Knowledge Base. Use when the user wants to create or update knowledge.',
         tags: ['knowledge', 'save', 'create', 'update', 'base'],
@@ -557,7 +557,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'web_search',
-        displayName: 'Pencarian Web',
+        displayName: 'Web Search',
         description:
           'Searches the internet for real-time information (material prices, market news, exchange rates, competitors, etc.).',
         tags: ['search', 'web', 'internet', 'realtime', 'google', 'tavily'],
@@ -618,7 +618,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'unit_converter',
-        displayName: 'Konverter Satuan & Mata Uang',
+        displayName: 'Convert Units',
         description:
           'Converts values between various units (yard, meter, cm, roll, kg, gram, dozen, kodi) or currencies (usd, idr, eur, sgd).',
         tags: ['converter', 'unit', 'currency', 'domain-config'],
@@ -652,7 +652,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'draft_communication',
-        displayName: 'Pembuat Draf Pesan & Email',
+        displayName: 'Draft Communication',
         description:
           'Creates professional message drafts for WhatsApp, formal Email, Price Quote (Quotation), or Invoice Reminder.',
         tags: [
@@ -699,7 +699,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'search_workspace',
-        displayName: 'Pencarian Workspace',
+        displayName: 'Search Workspace',
         description:
           'Searches for keywords, topics, or data across all documents in the active Workspace.',
         tags: ['search', 'fts', 'workspace', 'query', 'files'],
@@ -723,8 +723,8 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'list_workspace_files',
-        displayName: 'Daftar Berkas Workspace',
+        name: 'list',
+        displayName: 'List Files',
         description:
           'Lists all files and folders inside the active Workspace.',
         tags: ['files', 'list', 'workspace', 'directory'],
@@ -743,10 +743,10 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'read_workspace_file',
-        displayName: 'Pembaca Berkas Workspace',
+        name: 'read',
+        displayName: 'Read File',
         description:
-          'Reads the full content of a document file (PDF, Word, Excel, CSV, TXT) inside the workspace.',
+          'Reads the full content of a file (PDF, Word, Excel, CSV, TXT) inside the workspace.',
         tags: ['read', 'pdf', 'docx', 'xlsx', 'csv', 'workspace'],
         handler: (args) =>
           this.workspaceToolsService.readWorkspaceFile(
@@ -758,7 +758,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             filePath: {
               type: 'string',
-              description: 'File name or full path of the document file',
+              description: 'File name or full path of the document',
             },
             workspaceId: { type: 'string', description: 'Workspace ID' },
           },
@@ -772,11 +772,11 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'write_workspace_file',
+        name: 'write',
         mutating: true,
-        displayName: 'Buat File Workspace',
+        displayName: 'Create File',
         description:
-          'Creates a new report/document file (Excel, PDF, Word, TXT, JSON) inside the Workspace folder. Folder path is taken automatically from the database.',
+          'Creates a new report or document file (Excel, PDF, Word, TXT, JSON) inside the workspace.',
         tags: ['write', 'create', 'export', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.writeWorkspaceFile({
@@ -790,10 +790,10 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
             filename: {
               type: 'string',
-              description: 'File name to create',
+              description: 'Name of the file to create',
             },
             format: {
               type: 'string',
@@ -801,7 +801,7 @@ export class ToolsProviderModule implements OnModuleInit {
               description: 'Document format',
             },
             content: { type: 'string', description: 'Text/markdown content' },
-            rows: { type: 'array', items: { type: 'object' }, description: 'Data rows for Excel/CSV' },
+            rows: { type: 'array', items: { type: 'object' }, description: 'Data rows for table files' },
             title: { type: 'string', description: 'Document title' },
           },
           required: ['workspaceId', 'filename', 'format'],
@@ -814,12 +814,12 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'delete_workspace_file',
+        name: 'delete',
         mutating: true,
-        displayName: 'Hapus File Workspace',
+        displayName: 'Delete File',
         description:
-          'Deletes a file from the Workspace folder and updates the workspace index.',
-        tags: ['delete', 'remove', 'unlink', 'workspace', 'file'],
+          'Deletes a file from the workspace. Automatically creates a backup in .arunaki-trash before deletion.',
+        tags: ['delete', 'remove', 'trash', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.deleteWorkspaceFile({
             workspaceId: args.workspaceId,
@@ -828,10 +828,10 @@ export class ToolsProviderModule implements OnModuleInit {
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
             filename: {
               type: 'string',
-              description: 'File name to delete (e.g. julio.txt)',
+              description: 'File name to delete',
             },
           },
           required: ['workspaceId', 'filename'],
@@ -843,11 +843,11 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'rename_workspace_file',
+        name: 'rename',
         mutating: true,
-        displayName: 'Ganti Nama File Workspace',
+        displayName: 'Rename File',
         description:
-          'Renames an existing file inside the Workspace folder. The original file is moved to the new name, and the workspace index is updated.',
+          'Renames an existing file inside the workspace. The original file is moved to the new name, and the workspace index is updated.',
         tags: ['rename', 'move', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.renameWorkspaceFile({
@@ -877,14 +877,14 @@ export class ToolsProviderModule implements OnModuleInit {
 
     this.registry.register(
       ToolAdapter.from({
-        name: 'edit_workspace_file',
+        name: 'edit',
         mutating: true,
-        displayName: 'Edit File Workspace',
+        displayName: 'Edit File',
         description:
           'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. ' +
           'USE THIS when a document already exists and the user wants a NEW-PERIOD update or "make the report for today" — e.g. a dated recap/report/log ' +
           'that must roll over (update its date/period, replace the running-period data, keep cumulative balances) instead of appending or creating a new file. ' +
-          'Do NOT use write_workspace_file or generate_export when the target template file already exists.',
+          'Do NOT use write or generate_export when the target template file already exists.',
         tags: ['edit', 'update', 'workspace', 'file', 'diff', 'rollover'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
@@ -916,7 +916,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'list_skills',
-        displayName: 'Daftar Skills',
+        displayName: 'List Skills',
         description:
           'Lists all stored workflow skills. A skill is a reusable workflow template.',
         tags: ['skills', 'list', 'workflow', 'template'],
@@ -929,7 +929,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'view_skill',
-        displayName: 'Lihat Skill',
+        displayName: 'View Skill',
         description:
           'Views workflow skill details — including the full instructions to follow.',
         tags: ['skills', 'view', 'workflow', 'template'],
@@ -949,7 +949,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'create_skill',
         mutating: true,
-        displayName: 'Buat Skill',
+        displayName: 'Create Skill',
         description: 'Saves a successful workflow as a new skill.',
         tags: ['skills', 'create', 'workflow', 'template', 'save'],
         handler: (args) =>
@@ -999,7 +999,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'search_skills',
-        displayName: 'Cari Skills',
+        displayName: 'Search Skills',
         description: 'Searches for skills by keyword.',
         tags: ['skills', 'search', 'find', 'workflow'],
         handler: (args) => this.skillsTool.searchSkills(args.query),
@@ -1055,7 +1055,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'delete_skill',
         mutating: true,
-        displayName: 'Hapus Skill',
+        displayName: 'Delete Skill',
         description:
           'Deactivates a skill (soft delete). The skill no longer appears in the list but still exists in the database.',
         tags: ['skills', 'delete', 'remove', 'workflow'],
@@ -1078,7 +1078,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'list_memories',
-        displayName: 'Daftar Memory',
+        displayName: 'List Memories',
         description:
           'Lists all stored memories (preferences, context, history).',
         tags: ['memory', 'list', 'context', 'preferences'],
@@ -1097,7 +1097,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'save_memory',
         mutating: true,
-        displayName: 'Simpan Memory',
+        displayName: 'Save Memory',
         description: 'Saves important information as cross-session memory.',
         tags: ['memory', 'save', 'remember', 'preference', 'context', 'domain'],
         handler: (args) =>
@@ -1142,7 +1142,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'search_memories',
-        displayName: 'Cari Memory',
+        displayName: 'Search Memories',
         description: 'Searches for memories by keyword.',
         tags: ['memory', 'search', 'find', 'recall'],
         handler: (args) => this.memoryTool.searchMemories(args.query, args.workspaceId),
@@ -1161,7 +1161,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'delete_memory',
         mutating: true,
-        displayName: 'Hapus Memory',
+        displayName: 'Delete Memory',
         description: 'Deletes a memory by type and key.',
         tags: ['memory', 'delete', 'remove'],
         handler: (args) => this.memoryTool.deleteMemory(args.type, args.key, args.workspaceId),
@@ -1208,7 +1208,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_navigate',
-        displayName: 'Buka Halaman Web',
+        displayName: 'Browser Navigate',
         description:
           'Opens a web page (Google Docs, Google Sheets, website) in the visible browser. ' +
           'Use to open online documents or search for information on the web.',
@@ -1220,14 +1220,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { title: r.title, url: r.url },
               preview: `Halaman terbuka: ${r.title}`,
-              metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
+              metadata: { toolName: 'browser_navigate', displayName: 'Browser Navigate', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_navigate', displayName: 'Buka Halaman Web', executionTime: 0 },
+              metadata: { toolName: 'browser_navigate', displayName: 'Browser Navigate', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1248,7 +1248,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_click',
-        displayName: 'Klik Element',
+        displayName: 'Browser Click',
         description:
           'Clicks an element on the web page using a CSS selector. ' +
           'Use to click buttons, links, menus, or cells in Google Docs/Sheets.',
@@ -1260,14 +1260,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { selector: args.selector },
               preview: `Mengklik: ${args.selector}`,
-              metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
+              metadata: { toolName: 'browser_click', displayName: 'Browser Click', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_click', displayName: 'Klik Element', executionTime: 0 },
+              metadata: { toolName: 'browser_click', displayName: 'Browser Click', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1290,7 +1290,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_type',
-        displayName: 'Ketik Teks',
+        displayName: 'Browser Type',
         description:
           'Types text into a form field, spreadsheet cell, or document editor. ' +
           'Use to fill data in Google Sheets, type in Google Docs, or fill forms.',
@@ -1306,14 +1306,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { selector: args.selector, length: args.text.length },
               preview: `Mengetik ${args.text.length} karakter di: ${args.selector}`,
-              metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
+              metadata: { toolName: 'browser_type', displayName: 'Browser Type', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_type', displayName: 'Ketik Teks', executionTime: 0 },
+              metadata: { toolName: 'browser_type', displayName: 'Browser Type', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1341,7 +1341,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_screenshot',
-        displayName: 'Screenshot Halaman',
+        displayName: 'Browser Screenshot',
         description:
           'Takes a screenshot of the current web page. The image is returned as base64. ' +
           'Use to see what is currently displayed in the browser and diagnose problems.',
@@ -1353,14 +1353,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { screenshot: `data:image/png;base64,${base64}` },
               preview: 'Screenshot halaman berhasil diambil',
-              metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_screenshot', displayName: 'Browser Screenshot', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_screenshot', displayName: 'Screenshot Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_screenshot', displayName: 'Browser Screenshot', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1379,7 +1379,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_get_content',
-        displayName: 'Baca Konten Halaman',
+        displayName: 'Browser Read Content',
         description:
           'Reads the visible text on the current web page. ' +
           'Use to read Google Docs documents, Google Sheets data, or web content.',
@@ -1392,14 +1392,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { content },
               preview: `Membaca ${content.length} karakter dari halaman`,
-              metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_get_content', displayName: 'Browser Read Content', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_get_content', displayName: 'Baca Konten Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_get_content', displayName: 'Browser Read Content', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }

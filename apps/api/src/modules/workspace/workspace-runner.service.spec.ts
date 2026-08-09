@@ -29,6 +29,20 @@ import { DomainRegistryService } from '../domain/domain.registry.service.js';
 import { ProviderService } from '../provider/provider.service.js';
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
 
+const mockToolDefinitions = () =>
+  [
+    'read',
+    'write',
+    'search_workspace',
+    'list',
+    'todo_write',
+    'ask_user',
+    'agent_spawn',
+  ].map((name) => ({
+    type: 'function',
+    function: { name, description: `Tool ${name}`, parameters: {} },
+  }));
+
 describe('extractMentionedFilenames', () => {
   it('extracts an explicit file reference', () => {
     expect(extractMentionedFilenames('@REKAPAN TERBARU2.txt tambahkan pemasukan')).toEqual(['REKAPAN TERBARU2.txt']);
@@ -68,8 +82,8 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
         {
           provide: ToolRegistryService,
           useValue: {
-            getToolDefinitions: vi.fn().mockReturnValue([]),
-            isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
+            getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
+            isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
             executeTool: vi.fn().mockResolvedValue({ status: 'success', data: {} }),
           },
         },
@@ -130,14 +144,15 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: AiService,
           useValue: {
             getSystemPrompt: vi.fn().mockReturnValue('system'),
+            getActiveModelContext: vi.fn().mockResolvedValue({ model: 'deepseek-v4-flash', contextWindow: 32000, maxTokens: 8192 }),
             chat: vi
               .fn()
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'call_1', function: { name: 'read_workspace_file', arguments: '{"filename":"a.txt"}' } },
+                  { id: 'call_1', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
                   { id: 'call_2', function: { name: 'search_workspace', arguments: '{"query":"x"}' } },
-                  { id: 'call_3', function: { name: 'list_workspace_files', arguments: '{}' } },
+                  { id: 'call_3', function: { name: 'list', arguments: '{}' } },
                 ],
               })
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
@@ -146,8 +161,8 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         {
           provide: ToolRegistryService,
           useValue: {
-            getToolDefinitions: vi.fn().mockReturnValue([]),
-            isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
+            getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
+            isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
             getToolDirectoryText: vi.fn().mockReturnValue(''),
           },
         },
@@ -226,9 +241,9 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
     if (doneOrder.length === 0) console.log('DEBUG EVENTS:', JSON.stringify(events, null, 2));
 
     expect(doneOrder).toEqual([
-      'read_workspace_file',
+      'read',
       'search_workspace',
-      'list_workspace_files',
+      'list',
     ]);
     expect(maxActive).toBeGreaterThan(1);
     const hasParallelEvent = events.some((e) =>
@@ -258,7 +273,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
       .mockResolvedValueOnce({
         content: null,
         toolCalls: [
-          { id: 'call_1', function: { name: 'read_workspace_file', arguments: '{"filename":"a.txt"}' } },
+          { id: 'call_1', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
         ],
       })
       .mockResolvedValue({ content: 'Laporan selesai.', toolCalls: [] });
@@ -268,9 +283,9 @@ describe('WorkspaceRunnerService todo list injection', () => {
         WorkspaceRunnerService,
         {
           provide: AiService,
-          useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), chat: chatMock },
+          useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }), chat: chatMock },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
         { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
@@ -331,6 +346,79 @@ describe('WorkspaceRunnerService todo list injection', () => {
   });
 });
 
+describe('WorkspaceRunnerService undeclared tool rejection', () => {
+  let runnerService: WorkspaceRunnerService;
+  let healMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    healMock = vi.fn().mockImplementation(async (name: string) => ({
+      finalResult: { status: 'success', data: { text: `ran:${name}` } },
+      healed: false,
+      attempts: [],
+    }));
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        WorkspaceRunnerService,
+        {
+          provide: AiService,
+          useValue: {
+            getSystemPrompt: vi.fn().mockReturnValue('system'),
+            getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }),
+            chat: vi
+              .fn()
+              .mockResolvedValueOnce({
+                content: null,
+                toolCalls: [
+                  { id: 'c1', function: { name: 'calculate', arguments: '{"items":[{"qty":1,"price":100}]}' } },
+                  { id: 'c2', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
+                ],
+              })
+              .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
+          },
+        },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockReturnValue(false) } },
+        { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
+        { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
+        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
+        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        { provide: BackgroundReviewService, useValue: {} },
+        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
+        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        { provide: SelfHealingService, useValue: { executeWithHealing: healMock } },
+        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
+        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
+        { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) } } },
+        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
+        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: ProviderService, useValue: { getNextAvailable: vi.fn().mockResolvedValue(null) } },
+        { provide: TodoStoreService, useValue: new TodoStoreService() },
+        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
+      ],
+    }).compile();
+
+    runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
+  });
+
+  it('menolak tool yang tidak dideklarasikan di subset tanpa mengeksekusinya', async () => {
+    for await (const _ of runnerService.runWorkspaceAgentGenerator({
+      workspaceId: 'ws-reject-test',
+      userGoal: 'bacakan file a.txt',
+      historyMessages: [{ role: 'user', content: 'bacakan file a.txt' }],
+    })) {
+      // consume stream
+    }
+
+    const calledNames = healMock.mock.calls.map((c: any[]) => c[0]);
+    expect(calledNames).not.toContain('calculate');
+    expect(calledNames).toContain('read');
+  });
+});
+
 describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
   let runnerService: WorkspaceRunnerService;
   let writeBufferMock: ReturnType<typeof vi.fn>;
@@ -348,19 +436,20 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
           provide: AiService,
           useValue: {
             getSystemPrompt: vi.fn().mockReturnValue('system'),
+            getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }),
             chat: vi
               .fn()
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'm1', function: { name: 'write_workspace_file', arguments: '{"filename":"a.txt","content":"v2"}' } },
-                  { id: 'm2', function: { name: 'write_workspace_file', arguments: '{"filename":"b.txt","content":"v2"}' } },
+                  { id: 'm1', function: { name: 'write', arguments: '{"filename":"a.txt","content":"v2"}' } },
+                  { id: 'm2', function: { name: 'write', arguments: '{"filename":"b.txt","content":"v2"}' } },
                 ],
               })
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
           },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         {
           provide: StorageService,
@@ -457,18 +546,19 @@ describe('WorkspaceRunnerService mutating rollback (checkpoint)', () => {
           provide: AiService,
           useValue: {
             getSystemPrompt: vi.fn().mockReturnValue('system'),
+            getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }),
             chat: vi
               .fn()
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'm1', function: { name: 'write_workspace_file', arguments: '{"filename":"a.txt","content":"v2"}' } },
+                  { id: 'm1', function: { name: 'write', arguments: '{"filename":"a.txt","content":"v2"}' } },
                 ],
               })
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
           },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue([]), isMutating: vi.fn().mockImplementation((name) => ['write_workspace_file', 'edit_workspace_file', 'delete_workspace_file', 'rename_workspace_file', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
+        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
         {
           provide: StorageService,

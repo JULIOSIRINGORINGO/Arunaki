@@ -92,4 +92,36 @@ describe('CompactionService (Gap #14/#15)', () => {
       ),
     ).toBe(true);
   });
+
+  it('compacts earlier when given a small model context window (32K)', async () => {
+    const svc = new CompactionService(undefined);
+    // 250 messages * LONG_LINE ≈ 250 * ~250 tokens ≈ 62K tokens.
+    // Over the default 60K threshold too, but we want to verify the window
+    // path independently: use fewer messages that stay under the 60K default
+    // but exceed the 32K window threshold (0.75 * 32000 = 24000).
+    const messages = [
+      msg('system', 'asisten'),
+      ...Array.from({ length: 120 }, (_, i) =>
+        msg(i % 2 === 0 ? 'user' : 'assistant', `${LONG_LINE} pesan #${i}`),
+      ),
+    ];
+
+    const result = await svc.compactHistory(messages, 32000);
+
+    expect(result.wasCompacted).toBe(true);
+    expect(result.compactedMessages[0].role).toBe('system');
+    expect(result.compactedMessages[1].content).toContain('COMPACTION SUMMARY');
+  });
+
+  it('does not compact under the window threshold even when over a tighter budget', async () => {
+    const svc = new CompactionService(undefined);
+    const messages = [
+      msg('user', 'halo'),
+      msg('assistant', 'hai'),
+    ];
+
+    const result = await svc.compactHistory(messages, 32000);
+
+    expect(result.wasCompacted).toBe(false);
+  });
 });

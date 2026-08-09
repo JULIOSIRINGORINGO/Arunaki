@@ -102,7 +102,11 @@ export class AiService {
     // Initialize services
     this.contextManager = new ContextManager(
       {
-        contextLength: 128000,
+        // Model-window-aware default (OpenClaw compaction): the pre-prompt
+        // guard already derives the live window from the provider model via
+        // getModelCapability; this constructor default only matters when no
+        // explicit window is passed (e.g. legacy context engine fallback).
+        contextLength: getModelCapability(this.fallbackModel).contextWindow ?? 32000,
         threshold: 0.25,
         targetRatio: 0.2,
         toolPruneChars: 1000,
@@ -155,6 +159,26 @@ export class AiService {
       baseUrl: this.fallbackBaseUrl.replace(/\/$/, ''),
       apiKey: this.fallbackApiKey,
       model: this.fallbackModel,
+    };
+  }
+
+  /**
+   * Resolve the active provider's model and its context budget. Lets callers
+   * (workspace runner, compaction) scale context/compaction thresholds to the
+   * real model window (e.g. 32K for deepseek-v4-flash) instead of a fixed
+   * 128K default — the LLM is never handed a history larger than it can see.
+   */
+  async getActiveModelContext(): Promise<{
+    model: string;
+    contextWindow: number;
+    maxTokens: number;
+  }> {
+    const provider = await this.getProviderConfig();
+    const cap = getModelCapability(provider.model);
+    return {
+      model: provider.model,
+      contextWindow: cap.contextWindow ?? 32000,
+      maxTokens: scaleMaxTokens(provider.model),
     };
   }
 

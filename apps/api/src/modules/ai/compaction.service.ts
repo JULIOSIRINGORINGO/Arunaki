@@ -12,9 +12,34 @@ export interface CompactionResult {
 // Token-based thresholds (Gap #14/#15): compaction triggers on accumulated
 // tokens, not raw message count, and the LLM summary input is capped so the
 // summarization call itself cannot overflow context.
-const MAX_TOTAL_TOKENS = 60_000;
-const RECENT_TOKENS_BUDGET = 24_000;
-const MAX_SUMMARY_INPUT_TOKENS = 30_000;
+//
+// When the caller passes the active model's context window, thresholds scale
+// to it (OpenClaw compaction.ts): trigger at 75% of the window, keep 50% as a
+// recent tail, cap the summary input at 60%. A 32K-window model therefore
+// compacts around 24K tokens instead of the fixed 60K default — the LLM is
+// never handed a bloated history that exceeds its real window.
+const DEFAULT_MAX_TOTAL_TOKENS = 60_000;
+const DEFAULT_RECENT_TOKENS_BUDGET = 24_000;
+const DEFAULT_MAX_SUMMARY_INPUT_TOKENS = 30_000;
+
+function thresholdsFor(contextWindow?: number): {
+  maxTotal: number;
+  recentBudget: number;
+  maxSummaryInput: number;
+} {
+  if (!contextWindow) {
+    return {
+      maxTotal: DEFAULT_MAX_TOTAL_TOKENS,
+      recentBudget: DEFAULT_RECENT_TOKENS_BUDGET,
+      maxSummaryInput: DEFAULT_MAX_SUMMARY_INPUT_TOKENS,
+    };
+  }
+  return {
+    maxTotal: Math.floor(contextWindow * 0.75),
+    recentBudget: Math.floor(contextWindow * 0.5),
+    maxSummaryInput: Math.floor(contextWindow * 0.6),
+  };
+}
 
 const LLM_SUMMARY_INSTRUCTIONS = `Kompaksi riwayat percakapan menjadi satu ringkasan kohesif.
 
@@ -40,26 +65,34 @@ export class CompactionService {
 
   async compactHistory(
     messages: ChatMessage[],
+    contextWindow?: number,
   ): Promise<CompactionResult> {
+    const { maxTotal, recentBudget, maxSummaryInput } =
+      thresholdsFor(contextWindow);
     const totalTokens = messages.reduce(
       (sum, m) => sum + countTokens(m.content ?? ''),
       0,
     );
-    if (totalTokens <= MAX_TOTAL_TOKENS) {
+    if (totalTokens <= maxTotal) {
       return { compactedMessages: messages, wasCompacted: false };
     }
 
     this.logger.log(
-      `Compaction Engine: Compacting ${messages.length} messages (${totalTokens} tokens) down to recent turns + summary boundary`,
+      `Compaction Engine: Compacting ${messages.length} messages (${totalTokens} tokens${contextWindow ? `, window ${contextWindow}` : ''}) down to recent turns + summary boundary`,
     );
 
     const systemMessages = messages.filter((m) => m.role === 'system');
     const nonSystemMessages = messages.filter((m) => m.role !== 'system');
     const { recentMessages, olderMessages } =
-      this.splitRecentByTokens(nonSystemMessages);
+      this.splitRecentByTokens(nonSystemMessages, recentBudget);
 
     if (this.useLlmSummary) {
-      return this.compactWithLLM(systemMessages, olderMessages, recentMessages);
+      return this.compactWithLLM(
+        systemMessages,
+        olderMessages,
+        recentMessages,
+        maxSummaryInput,
+      );
     }
 
     return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
@@ -67,9 +100,12 @@ export class CompactionService {
 
   /**
    * Split non-system messages into recent/older by token budget instead of a
-   * fixed count — keeps ~RECENT_TOKENS_BUDGET tokens of live context (Gap #14).
+   * fixed count — keeps ~recentBudget tokens of live context (Gap #14).
    */
-  private splitRecentByTokens(messages: ChatMessage[]): {
+  private splitRecentByTokens(
+    messages: ChatMessage[],
+    recentBudget: number,
+  ): {
     recentMessages: ChatMessage[];
     olderMessages: ChatMessage[];
   } {
@@ -78,7 +114,7 @@ export class CompactionService {
     for (let i = messages.length - 1; i >= 0; i--) {
       const content = messages[i].content ?? '';
       const tokens = countTokens(content);
-      if (used + tokens > RECENT_TOKENS_BUDGET && recentMessages.length >= 2) {
+      if (used + tokens > recentBudget && recentMessages.length >= 2) {
         break;
       }
       recentMessages.unshift(messages[i]);
@@ -92,6 +128,7 @@ export class CompactionService {
     systemMessages: ChatMessage[],
     olderMessages: ChatMessage[],
     recentMessages: ChatMessage[],
+    maxSummaryInput: number,
   ): Promise<CompactionResult> {
     try {
       // Cap the summary input so the LLM call cannot overflow context even when
@@ -102,9 +139,9 @@ export class CompactionService {
       for (const msg of olderMessages) {
         const line = `[${msg.role}] ${msg.content || ''}`;
         const lineTokens = countTokens(line);
-        if (used + lineTokens > MAX_SUMMARY_INPUT_TOKENS && keptLines.length > 0) {
+        if (used + lineTokens > maxSummaryInput && keptLines.length > 0) {
           this.logger.warn(
-            `Compaction input truncated at ${MAX_SUMMARY_INPUT_TOKENS} tokens (${olderMessages.length} messages → ${keptLines.length} lines)`,
+            `Compaction input truncated at ${maxSummaryInput} tokens (${olderMessages.length} messages → ${keptLines.length} lines)`,
           );
           break;
         }

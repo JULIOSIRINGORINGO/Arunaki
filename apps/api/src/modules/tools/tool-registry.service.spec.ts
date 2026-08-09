@@ -51,11 +51,11 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
       status: 'success',
       data: { text: 'file contents' },
       preview: 'file contents',
-      metadata: { toolName: 'read_workspace_file', displayName: 'x', executionTime: 0 },
+      metadata: { toolName: 'read', displayName: 'x', executionTime: 0 },
     });
     service.register(
       ToolAdapter.from({
-        name: 'read_workspace_file',
+        name: 'read',
         displayName: 'x',
         description: 'reads a file',
         tags: ['read'],
@@ -66,8 +66,8 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
     );
 
     const args = { workspaceId: 'ws-1', filePath: 'a.txt' };
-    const first = await service.executeTool('read_workspace_file', args);
-    const second = await service.executeTool('read_workspace_file', args);
+    const first = await service.executeTool('read', args);
+    const second = await service.executeTool('read', args);
     expect(first.preview).toBe('file contents');
     expect(second.preview).toBe('file contents');
     expect(handler).toHaveBeenCalledTimes(1);
@@ -104,17 +104,17 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
       status: 'success',
       data: { text: 'file contents' },
       preview: 'file contents',
-      metadata: { toolName: 'read_workspace_file', displayName: 'x', executionTime: 0 },
+      metadata: { toolName: 'read', displayName: 'x', executionTime: 0 },
     });
     const writeHandler = vi.fn().mockResolvedValue({
       status: 'success',
       data: { text: 'written' },
       preview: 'written',
-      metadata: { toolName: 'write_workspace_file', displayName: 'x', executionTime: 0 },
+      metadata: { toolName: 'write', displayName: 'x', executionTime: 0 },
     });
     service.register(
       ToolAdapter.from({
-        name: 'read_workspace_file',
+        name: 'read',
         displayName: 'x',
         description: 'reads',
         tags: ['read'],
@@ -125,7 +125,7 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
     );
     service.register(
       ToolAdapter.from({
-        name: 'write_workspace_file',
+        name: 'write',
         displayName: 'x',
         description: 'writes',
         tags: ['write'],
@@ -137,9 +137,9 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
     );
 
     const args = { workspaceId: 'ws-1' };
-    await service.executeTool('read_workspace_file', args);
-    await service.executeTool('write_workspace_file', args);
-    await service.executeTool('read_workspace_file', args);
+    await service.executeTool('read', args);
+    await service.executeTool('write', args);
+    await service.executeTool('read', args);
     // after invalidation the second read re-executes
     expect(readHandler).toHaveBeenCalledTimes(2);
   });

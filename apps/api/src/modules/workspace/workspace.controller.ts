@@ -130,6 +130,19 @@ export class WorkspaceController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
+    // Abort the run + release the session lease when the client disconnects
+    // (browser close, network drop, test timeout). Without this, a dead
+    // client leaves the workspace permanently locked.
+    const onClose = () => {
+      try {
+        this.workspaceRunnerService.abortRun(id, 'client disconnected');
+      } catch (e) {
+        /* ignore */
+      }
+    };
+    res.on('close', onClose);
+    res.on('aborted', onClose);
+
     try {
       const workspace = await this.workspaceService.findById(id);
       if (!workspace) {

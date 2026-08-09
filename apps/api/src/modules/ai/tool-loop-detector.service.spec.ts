@@ -6,9 +6,9 @@ describe('ToolLoopDetectorService (Gap #16)', () => {
     const svc = new ToolLoopDetectorService();
     const ws = 'ws-1';
 
-    svc.checkAndRecord(ws, 'read_workspace_file', { filePath: 'a.txt' });
-    svc.checkAndRecord(ws, 'read_workspace_file', { filePath: 'a.txt' });
-    const third = svc.checkAndRecord(ws, 'read_workspace_file', { filePath: 'a.txt' });
+    svc.checkAndRecord(ws, 'read', { filePath: 'a.txt' });
+    svc.checkAndRecord(ws, 'read', { filePath: 'a.txt' });
+    const third = svc.checkAndRecord(ws, 'read', { filePath: 'a.txt' });
 
     expect(third.isLooping).toBe(true);
     expect(third.repeatCount).toBe(3);
@@ -19,12 +19,12 @@ describe('ToolLoopDetectorService (Gap #16)', () => {
     const ws = 'ws-1';
 
     for (let i = 0; i < 3; i++) {
-      svc.checkAndRecord(ws, 'read_workspace_file', { filePath: 'a.txt' });
+      svc.checkAndRecord(ws, 'read', { filePath: 'a.txt' });
     }
 
     svc.clearSession(ws);
 
-    const nextRun = svc.checkAndRecord(ws, 'read_workspace_file', { filePath: 'a.txt' });
+    const nextRun = svc.checkAndRecord(ws, 'read', { filePath: 'a.txt' });
     expect(nextRun.isLooping).toBe(false);
     expect(nextRun.repeatCount).toBe(1);
   });
@@ -33,12 +33,12 @@ describe('ToolLoopDetectorService (Gap #16)', () => {
     const svc = new ToolLoopDetectorService();
 
     for (let i = 0; i < 3; i++) {
-      svc.checkAndRecord('ws-a', 'read_workspace_file', { filePath: 'a.txt' });
-      svc.checkAndRecord('ws-b', 'read_workspace_file', { filePath: 'a.txt' });
+      svc.checkAndRecord('ws-a', 'read', { filePath: 'a.txt' });
+      svc.checkAndRecord('ws-b', 'read', { filePath: 'a.txt' });
     }
 
-    const a = svc.checkAndRecord('ws-a', 'read_workspace_file', { filePath: 'a.txt' });
-    const b = svc.checkAndRecord('ws-b', 'read_workspace_file', { filePath: 'a.txt' });
+    const a = svc.checkAndRecord('ws-a', 'read', { filePath: 'a.txt' });
+    const b = svc.checkAndRecord('ws-b', 'read', { filePath: 'a.txt' });
     expect(a.isLooping).toBe(true);
     expect(b.isLooping).toBe(true);
   });

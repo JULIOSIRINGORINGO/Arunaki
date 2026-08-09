@@ -49,4 +49,6 @@ export interface ContextAssemblyParams {
   skillsContext?: string;
   additionalProjections?: ContextProjection[];
   maxTokens?: number;
+  /** Active model's context window (tokens) — lets the engine compress against the real window. */
+  contextWindow?: number;
 }

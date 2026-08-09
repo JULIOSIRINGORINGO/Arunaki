@@ -38,6 +38,7 @@ export class LegacyContextEngine implements IContextEngine {
       .map((projection) => this.quarantine.sanitizeProjection(projection));
     const compressed = await this.manager.compress(
       this.quarantine.sanitizeMessages(safeParams.messages),
+      safeParams.contextWindow,
     );
     const systemPrompt = this.projectionAssembler.render(
       projections,

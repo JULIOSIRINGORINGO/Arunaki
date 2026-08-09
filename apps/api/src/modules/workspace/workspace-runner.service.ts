@@ -135,7 +135,7 @@ export class WorkspaceRunnerService {
     const mentioned = new Set<string>();
     for (const filename of extractMentionedFilenames(goal)) {
       const { finalResult } = await this.selfHealingService.executeWithHealing(
-        'read_workspace_file',
+        'read',
         { workspaceId, filePath: filename },
         workspaceId,
       );
@@ -146,8 +146,8 @@ export class WorkspaceRunnerService {
       const text = (finalResult.data as Record<string, unknown>).text;
       const content = typeof text === 'string'
         ? text.slice(0, 12000)
-        : ToolResultFormatter.formatForLlm('read_workspace_file', finalResult);
-      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read_workspace_file atau search_workspace lagi untuk file ini. JIKA user meminta mengedit/memperbarui file, Anda WAJIB memanggil tool write_workspace_file dengan parameter filename="${filename}" dan content yang telah diperbarui.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+        : ToolResultFormatter.formatForLlm('read', finalResult);
+      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read atau search_workspace lagi untuk file ini. JIKA user meminta mengisi/memperbarui file yang SUDAH ADA, panggil tool write dengan parameter filename="${filename}" dan content berisi SELURUH isi file yang diperbarui — PERTAHANKAN struktur file asli (heading, urutan bagian, format baris; jangan menambah atau menghapus bagian), dan perbarui angka/isi sesuai data yang user berikan.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
   }
@@ -575,13 +575,15 @@ export class WorkspaceRunnerService {
       'tool_describe',
       'tool_call',
       'tool_search_code',
-      'read_workspace_file',
-      'write_workspace_file',
+      'read',
+      'write',
+      'edit',
       'search_workspace',
+      'list',
     ]);
 
     if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(gClean) || /@[^\s@]+\.[A-Za-z0-9]+/.test(goal)) {
-      add(['write_workspace_file', 'read_workspace_file']);
+      add(['write', 'edit', 'read']);
     }
 
     // Kata kunci goal → tambah tool yang relevan (menggunakan gClean agar nama file @ tidak memicu tool salah).
@@ -822,6 +824,11 @@ export class WorkspaceRunnerService {
       const allTools = this.toolRegistryService.getToolDefinitions();
       const tools = this.selectToolsForGoal(userGoal, allTools);
 
+      // Resolve the active model's context budget once per run so compaction
+      // and the context engine scale to the real window (e.g. 32K for
+      // deepseek-v4-flash) instead of a fixed 128K default.
+      const modelCtx = await this.aiService.getActiveModelContext();
+
       const systemPrompt = this.aiService.getSystemPrompt(
         'workspace',
         workspaceContext,
@@ -840,6 +847,7 @@ export class WorkspaceRunnerService {
         messages: history,
         workspaceContext,
         memoryContext: recallContext,
+        contextWindow: modelCtx.contextWindow,
       });
       const systemContent = context.systemPrompt
         ? `${systemPrompt}\n\n${context.systemPrompt}`
@@ -1096,13 +1104,26 @@ export class WorkspaceRunnerService {
 
           // Update phase based on tool types
           const hasReadTools = aiResponse.toolCalls.some((tc) =>
-            ['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(tc.function.name),
+            ['search_workspace', 'read', 'list'].includes(tc.function.name),
           );
           const hasWriteTools = aiResponse.toolCalls.some((tc) =>
-            ['write_workspace_file', 'generate_export', 'draft_communication'].includes(tc.function.name),
+            ['write', 'generate_export', 'draft_communication'].includes(tc.function.name),
           );
           if (hasReadTools) this.setPhase(runState, 'reading', onEvent);
           if (hasWriteTools) this.setPhase(runState, 'generating', onEvent);
+
+          // OpenClaw pattern: strict subset enforcement. Only tools declared in
+          // body.tools are executable; a hallucinated call to an undeclared
+          // (but registered) tool is rejected with corrective feedback instead
+          // of being executed — otherwise weak models loop forever (e.g.
+          // gpt-oss-120b calling `calculate`/`data_query` that were never sent).
+          const declaredTools = new Set(
+            tools.map((t) => t.function?.name || ''),
+          );
+          // Internal harness tools stay callable regardless of subset.
+          declaredTools.add('ask_user');
+          declaredTools.add('todo_write');
+          declaredTools.add('agent_spawn');
 
           // Separate mutating vs read-only tools for parallel execution
 
@@ -1122,6 +1143,21 @@ export class WorkspaceRunnerService {
               args = JSON.parse(toolCall.function.arguments || '{}');
             } catch {
               args = {};
+            }
+
+            if (!declaredTools.has(funcName)) {
+              this.logger.warn(
+                `Rejected undeclared tool call "${funcName}" (not in active tool subset).`,
+              );
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content:
+                  `Error: tool "${funcName}" tidak tersedia untuk tugas ini. ` +
+                  `Tool yang tersedia: [${[...declaredTools].join(', ')}]. ` +
+                  'Gunakan salah satu tool tersebut.',
+              });
+              continue;
             }
 
             // Circuit Breaker: Check for tool loop violation (OpenClaw resolveToolLoopDetectionConfig)
@@ -1203,7 +1239,7 @@ export class WorkspaceRunnerService {
               });
 
               // Track file reads
-              if (['search_workspace', 'read_workspace_file', 'list_workspace_files'].includes(toolCall.function.name)) {
+              if (['search_workspace', 'read', 'list'].includes(toolCall.function.name)) {
                 const current = this.readFiles.get(workspaceId) || [];
                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
                 this.readFiles.set(workspaceId, current.slice(-30));
@@ -1218,7 +1254,7 @@ export class WorkspaceRunnerService {
           }
 
           // Execute mutating tools — full autonomous with built-in safety:
-          // - delete_workspace_file: auto-backup to .arunaki-trash/ before delete
+          // - delete: auto-backup to .arunaki-trash/ before delete
           // - desktop_send_keys: keyboard whitelist validation
           // - all tools: workspace path isolation via SelfHealingService
           // - checkpoint: file-based mutations are snapshotted before the round
@@ -1256,13 +1292,13 @@ export class WorkspaceRunnerService {
               const isMentioned = [...mentionedFiles].some(
                 (name) => path.basename(name).toLowerCase() === targetBasename,
               );
-              if (mentionedFiles.size > 0 && funcName === 'write_workspace_file' && !isMentioned) {
+              if (mentionedFiles.size > 0 && funcName === 'write' && !isMentioned) {
                 throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
               }
-              if (isMentioned && ['delete_workspace_file', 'rename_workspace_file'].includes(funcName)) {
+              if (isMentioned && ['delete', 'rename'].includes(funcName)) {
                 throw new Error('File yang dirujuk dengan @ tidak boleh dihapus atau diubah namanya dalam run edit.');
               }
-              if (funcName === 'delete_workspace_file' && !hasExplicitDeleteIntent(safeGoal, rawTargetName)) {
+              if (funcName === 'delete' && !hasExplicitDeleteIntent(safeGoal, rawTargetName)) {
                 throw new Error('Penghapusan ditolak: instruksi harus secara eksplisit meminta hapus/delete dan menyebut nama file target.');
               }
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
@@ -1356,8 +1392,12 @@ export class WorkspaceRunnerService {
            }
 
            // Compact history if the accumulated token budget is exceeded
-           // (OpenClaw compaction.ts — threshold lives in CompactionService, Gap #14)
-           const compactResult = await this.compactionService.compactHistory(messages);
+           // (OpenClaw compaction.ts — threshold scales to the active model
+           // window, so a 32K model compacts long before a 128K one would).
+           const compactResult = await this.compactionService.compactHistory(
+             messages,
+             modelCtx.contextWindow,
+           );
            if (compactResult.wasCompacted) {
              messages.length = 0;
              messages.push(...compactResult.compactedMessages);

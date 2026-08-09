@@ -201,7 +201,7 @@ export class WorkspaceToolsService {
         data: { count: filteredFiles.length, files: filteredFiles },
         preview: list || 'Belum ada file di workspace ini.',
         metadata: {
-          toolName: 'list_workspace_files',
+          toolName: 'list',
           displayName: 'Daftar Berkas Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -212,7 +212,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal memindai file workspace: ${e.message}`,
         metadata: {
-          toolName: 'list_workspace_files',
+          toolName: 'list',
           displayName: 'Daftar Berkas Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -280,7 +280,7 @@ export class WorkspaceToolsService {
           data: {},
           preview: `Gagal membaca file: ${err.message}`,
           metadata: {
-            toolName: 'read_workspace_file',
+            toolName: 'read',
             displayName: 'Baca File Workspace',
             executionTime: 0,
           },
@@ -325,7 +325,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
         metadata: {
-          toolName: 'write_workspace_file',
+          toolName: 'write',
           displayName: 'Buat File Workspace',
           executionTime: 0,
         },
@@ -342,7 +342,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal membuat file: ${err.message}`,
         metadata: {
-          toolName: 'write_workspace_file',
+          toolName: 'write',
           displayName: 'Buat File Workspace',
           executionTime: 0,
         },
@@ -391,14 +391,58 @@ export class WorkspaceToolsService {
         const startTime = Date.now();
         try {
           const existedBefore = await this.storageService.exists(targetPath);
-          await this.storageService.writeFile(targetPath, content);
+          let contentToWrite = content;
+          if (existedBefore) {
+            // Existing file: verify totals + structure after the write instead
+            // of trusting full-file rewrites blindly (model can hallucinate new
+            // sections or break totals). Revert on failure.
+            const original = await fsp.readFile(targetPath, 'utf-8');
+            const verify = await this.recalculateAndVerify(contentToWrite, '');
+            if (!verify.ok) {
+              result = {
+                status: 'error',
+                data: { issues: verify.issues },
+                preview: `Perhitungan tidak konsisten: ${verify.issues.join('; ')}`,
+                metadata: {
+                  toolName: 'write',
+                  displayName: 'Buat File Workspace',
+                  executionTime: Date.now() - startTime,
+                  filename,
+                  format,
+                  created: false,
+                },
+                error: { code: 'TOTAL_MISMATCH', message: verify.issues.join('; ') },
+              };
+              break;
+            }
+            // Structure guard: every section label present before must still exist.
+            const missing = this.missingSectionLabels(original, contentToWrite);
+            if (missing.length > 0) {
+              result = {
+                status: 'error',
+                data: { missingSections: missing },
+                preview: `Struktur file berubah: bagian ${missing.join(', ')} hilang. Pertahankan semua bagian laporan yang ada.`,
+                metadata: {
+                  toolName: 'write',
+                  displayName: 'Buat File Workspace',
+                  executionTime: Date.now() - startTime,
+                  filename,
+                  format,
+                  created: false,
+                },
+                error: { code: 'STRUCTURE_CHANGED', message: `Bagian hilang: ${missing.join(', ')}` },
+              };
+              break;
+            }
+          }
+          await this.storageService.writeFile(targetPath, contentToWrite);
           const actionLabel = existedBefore ? 'berhasil diperbarui' : 'berhasil dibuat';
           result = {
             status: 'success',
             data: { path: targetPath, filename, format, created: !existedBefore },
             preview: `File ${filename} ${actionLabel} di folder workspace.`,
             metadata: {
-              toolName: 'write_workspace_file',
+              toolName: 'write',
               displayName: 'Buat File Workspace',
               executionTime: Date.now() - startTime,
               filename,
@@ -412,7 +456,7 @@ export class WorkspaceToolsService {
             data: {},
             preview: `Gagal membuat file ${filename}: ${e.message}`,
             metadata: {
-              toolName: 'write_workspace_file',
+              toolName: 'write',
               displayName: 'Buat File Workspace',
               executionTime: Date.now() - startTime,
             },
@@ -458,7 +502,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
         metadata: {
-          toolName: 'rename_workspace_file',
+          toolName: 'rename',
           displayName: 'Ganti Nama File Workspace',
           executionTime: 0,
         },
@@ -475,7 +519,7 @@ export class WorkspaceToolsService {
         data: { filename, newFilename },
         preview: 'Nama file sumber dan target tidak valid atau sama.',
         metadata: {
-          toolName: 'rename_workspace_file',
+          toolName: 'rename',
           displayName: 'Ganti Nama File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -495,7 +539,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal mengganti nama file: ${err.message}`,
         metadata: {
-          toolName: 'rename_workspace_file',
+          toolName: 'rename',
           displayName: 'Ganti Nama File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -532,7 +576,7 @@ export class WorkspaceToolsService {
             data: {},
             preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
             metadata: {
-              toolName: 'rename_workspace_file',
+              toolName: 'rename',
               displayName: 'Ganti Nama File Workspace',
               executionTime: Date.now() - startTime,
             },
@@ -545,7 +589,7 @@ export class WorkspaceToolsService {
           data: {},
           preview: `Berkas "${filename}" tidak ditemukan di workspace.`,
           metadata: {
-            toolName: 'rename_workspace_file',
+            toolName: 'rename',
             displayName: 'Ganti Nama File Workspace',
             executionTime: Date.now() - startTime,
           },
@@ -581,7 +625,7 @@ export class WorkspaceToolsService {
         data: { path: targetPath, filename, newFilename },
         preview: `Berkas "${filename}" berhasil diganti nama menjadi "${newFilename}".`,
         metadata: {
-          toolName: 'rename_workspace_file',
+          toolName: 'rename',
           displayName: 'Ganti Nama File Workspace',
           executionTime: Date.now() - startTime,
           filename: newFilename,
@@ -593,7 +637,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal mengganti nama file "${filename}": ${e.message}`,
         metadata: {
-          toolName: 'rename_workspace_file',
+          toolName: 'rename',
           displayName: 'Ganti Nama File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -623,7 +667,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
         metadata: {
-          toolName: 'delete_workspace_file',
+          toolName: 'delete',
           displayName: 'Hapus File Workspace',
           executionTime: 0,
         },
@@ -641,7 +685,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: 'Mohon sebutkan nama file secara spesifik yang ingin dihapus.',
         metadata: {
-          toolName: 'delete_workspace_file',
+          toolName: 'delete',
           displayName: 'Hapus File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -659,7 +703,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal menghapus file: ${err.message}`,
         metadata: {
-          toolName: 'delete_workspace_file',
+          toolName: 'delete',
           displayName: 'Hapus File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -695,7 +739,7 @@ export class WorkspaceToolsService {
             data: {},
             preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
             metadata: {
-              toolName: 'delete_workspace_file',
+              toolName: 'delete',
               displayName: 'Hapus File Workspace',
               executionTime: Date.now() - startTime,
             },
@@ -708,7 +752,7 @@ export class WorkspaceToolsService {
           data: {},
           preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
           metadata: {
-            toolName: 'delete_workspace_file',
+            toolName: 'delete',
             displayName: 'Hapus File Workspace',
             executionTime: Date.now() - startTime,
           },
@@ -761,7 +805,7 @@ export class WorkspaceToolsService {
         data: { path: targetPath, filename },
         preview: `File "${filename}" berhasil dihapus dari workspace.`,
         metadata: {
-          toolName: 'delete_workspace_file',
+          toolName: 'delete',
           displayName: 'Hapus File Workspace',
           executionTime: Date.now() - startTime,
           filename,
@@ -773,7 +817,7 @@ export class WorkspaceToolsService {
         data: {},
         preview: `Gagal menghapus file "${filename}": ${e.message}`,
         metadata: {
-          toolName: 'delete_workspace_file',
+          toolName: 'delete',
           displayName: 'Hapus File Workspace',
           executionTime: Date.now() - startTime,
         },
@@ -803,7 +847,7 @@ export class WorkspaceToolsService {
         status: 'error',
         data: {},
         preview: 'AI service tidak tersedia untuk edit-diff.',
-        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: 0 },
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: 0 },
         error: { code: 'AI_UNAVAILABLE', message: 'AiService not injected' },
       };
     }
@@ -817,7 +861,7 @@ export class WorkspaceToolsService {
         status: 'error',
         data: {},
         preview: 'Workspace belum terhubung ke folder.',
-        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: 0 },
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: 0 },
         error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
       };
     }
@@ -857,7 +901,7 @@ export class WorkspaceToolsService {
           status: 'error',
           data: {},
           preview: 'LLM tidak menghasilkan edit yang valid.',
-          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
           error: { code: 'EMPTY_EDITS', message: 'No valid edits returned' },
         };
       }
@@ -872,27 +916,79 @@ export class WorkspaceToolsService {
             status: 'error',
             data: {},
             preview: `Edit gagal: oldText kosong.`,
-            metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
             error: { code: 'OLD_TEXT_NOT_FOUND', message: 'oldText is empty' },
           };
         }
-        // CRLF tolerance: LLM returns LF (\n) but Windows files use CRLF (\r\n).
-        // Try exact match first, then CRLF-normalized.
-        const matches = updated.includes(oldText)
-          ? [oldText]
-          : updated.includes(oldText.replace(/\r?\n/g, '\r\n'))
-            ? [oldText.replace(/\r?\n/g, '\r\n')]
-            : [];
-        if (matches.length === 0) {
+        // 1. Exact Match (with CRLF tolerance)
+        let matched = '';
+        if (updated.includes(oldText)) {
+          matched = oldText;
+        } else if (updated.includes(oldText.replace(/\r?\n/g, '\r\n'))) {
+          matched = oldText.replace(/\r?\n/g, '\r\n');
+        } else if (updated.includes(oldText.replace(/\r\n/g, '\n'))) {
+          matched = oldText.replace(/\r\n/g, '\n');
+        }
+
+        const isDisproportionate = (m: string) => m.length > Math.max(100, oldText.length * 2);
+        if (matched && isDisproportionate(matched)) matched = '';
+
+        // 2. Line Trimmed Replacer (fallback)
+        if (!matched) {
+          const oldLines = oldText.split(/\r?\n/).map(l => l.trim());
+          const updatedLines = updated.split(/\r?\n/);
+          const usesCRLF = updated.includes('\r\n');
+          const newline = usesCRLF ? '\r\n' : '\n';
+          
+          for (let i = 0; i <= updatedLines.length - oldLines.length; i++) {
+            let isMatch = true;
+            for (let j = 0; j < oldLines.length; j++) {
+              if (updatedLines[i + j].trim() !== oldLines[j]) {
+                isMatch = false;
+                break;
+              }
+            }
+            if (isMatch) {
+              const candidate = updatedLines.slice(i, i + oldLines.length).join(newline);
+              if (!isDisproportionate(candidate)) {
+                matched = candidate;
+                break;
+              }
+            }
+          }
+
+          // 3. Block Anchor Replacer (fallback)
+          if (!matched && oldLines.length > 2) {
+            const firstLine = oldLines[0];
+            const lastLine = oldLines[oldLines.length - 1];
+            let foundMatch = '';
+            for (let i = 0; i < updatedLines.length - 2; i++) {
+              if (updatedLines[i].trim() === firstLine) {
+                for (let j = i + 2; j < Math.min(i + oldLines.length + 5, updatedLines.length); j++) {
+                  if (updatedLines[j].trim() === lastLine) {
+                    const candidate = updatedLines.slice(i, j + 1).join(newline);
+                    if (candidate.length >= oldText.length * 0.65 && candidate.length <= oldText.length * 1.5 && !isDisproportionate(candidate)) {
+                      foundMatch = candidate;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (foundMatch) break;
+            }
+            if (foundMatch) matched = foundMatch;
+          }
+        }
+
+        if (!matched) {
           return {
             status: 'error',
             data: { failedOldText: oldText },
-            preview: `Edit gagal: teks target tidak ditemukan persis di file.`,
-            metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
-            error: { code: 'OLD_TEXT_NOT_FOUND', message: `oldText not found: "${oldText.slice(0, 80)}"` },
+            preview: `Edit gagal: teks target tidak ditemukan persis di file atau ukuran penggantian terlalu besar.`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'OLD_TEXT_NOT_FOUND', message: `oldText not found or disproportionate match: "${oldText.slice(0, 80)}"` },
           };
         }
-        const matched = matches[0];
         // Preserve the file's newline style in the replacement too.
         const usesCRLF = updated.includes('\r\n');
         const newTextNormalized = usesCRLF ? newText.replace(/\r?\n/g, '\r\n') : newText.replace(/\r\n/g, '\n');
@@ -906,7 +1002,7 @@ export class WorkspaceToolsService {
           status: 'error',
           data: {},
           preview: 'File tidak berubah setelah edit.',
-          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
           error: { code: 'NO_CHANGE', message: 'Edits applied but content identical' },
         };
       }
@@ -920,7 +1016,7 @@ export class WorkspaceToolsService {
           status: 'error',
           data: { issues: verify.issues },
           preview: `Perhitungan tidak konsisten: ${verify.issues.join('; ')}`,
-          metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime, filename },
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename },
           error: { code: 'TOTAL_MISMATCH', message: verify.issues.join('; ') },
         };
       }
@@ -932,7 +1028,7 @@ export class WorkspaceToolsService {
         data: { path: targetPath, filename, editsApplied: applied.length, verifiedTotals: verify.checked },
         preview: `File "${filename}" berhasil diperbarui (${applied.length} perubahan, ${verify.checked} total terverifikasi).`,
         metadata: {
-          toolName: 'edit_workspace_file',
+          toolName: 'edit',
           displayName: 'Edit File',
           executionTime: Date.now() - startTime,
           filename,
@@ -944,7 +1040,7 @@ export class WorkspaceToolsService {
         status: 'error',
         data: {},
         preview: `Gagal mengedit file "${filename}": ${e.message}`,
-        metadata: { toolName: 'edit_workspace_file', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
         error: { code: 'EDIT_FAILED', message: e.message },
       };
     }
@@ -1044,6 +1140,33 @@ export class WorkspaceToolsService {
       // Verification is best-effort: never block the edit on a parse hiccup.
       return { ok: true, issues: [], checked: 0 };
     }
+  }
+
+  /**
+   * Section labels that must survive a full-file rewrite. Detects lines that
+   * look like report section headers ("PEMASUKAN :", "NOTE BELUM BAYAR :",
+   * "TOTAL UANG DI LACI: ...", "==========" dividers). Returns labels present
+   * in `before` but missing in `after` (empty = structure preserved).
+   */
+  private missingSectionLabels(before: string, after: string): string[] {
+    const extract = (doc: string): string[] => {
+      const labels: string[] = [];
+      for (const line of doc.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        // Section headers: "LABEL :" with a space before the colon, or all-caps
+        // label lines, or divider rows of = characters.
+        if (/^[A-Z0-9][A-Z0-9 _./-]+ :$/i.test(trimmed) && /[A-Z]/.test(trimmed)) {
+          labels.push(trimmed);
+        } else if (/^={3,}\s*$/.test(trimmed)) {
+          labels.push('='.repeat(10));
+        }
+      }
+      return labels;
+    };
+    const beforeLabels = extract(before);
+    const afterSet = new Set(extract(after));
+    return beforeLabels.filter((l) => !afterSet.has(l));
   }
 
   /**
