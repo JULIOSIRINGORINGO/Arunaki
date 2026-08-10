@@ -277,10 +277,10 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'error',
               data: {},
-              preview: `Akses ditolak: ${err.message}`,
+              preview: `Access denied: ${err.message}`,
               metadata: {
                 toolName: 'document_reader',
-                displayName: 'Pembaca Dokumen',
+                displayName: 'Read Document',
                 executionTime: 0,
               },
               error: {
@@ -360,10 +360,10 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'error',
               data: {},
-              preview: `Akses ditolak: ${err.message}`,
+              preview: `Access denied: ${err.message}`,
               metadata: {
                 toolName: 'image_ocr',
-                displayName: 'OCR Gambar',
+                displayName: 'Image OCR',
                 executionTime: 0,
               },
               error: {
@@ -1210,7 +1210,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { title: r.title, url: r.url },
-              preview: `Halaman terbuka: ${r.title}`,
+              preview: `Opened page: ${r.title}`,
               metadata: { toolName: 'browser_navigate', displayName: 'Browser Navigate', executionTime: 0 },
             };
           } catch (err) {
@@ -1250,7 +1250,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { selector: args.selector },
-              preview: `Mengklik: ${args.selector}`,
+              preview: `Clicked: ${args.selector}`,
               metadata: { toolName: 'browser_click', displayName: 'Browser Click', executionTime: 0 },
             };
           } catch (err) {
@@ -1296,7 +1296,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { selector: args.selector, length: args.text.length },
-              preview: `Mengetik ${args.text.length} karakter di: ${args.selector}`,
+              preview: `Typed ${args.text.length} characters in: ${args.selector}`,
               metadata: { toolName: 'browser_type', displayName: 'Browser Type', executionTime: 0 },
             };
           } catch (err) {
@@ -1343,7 +1343,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { screenshot: `data:image/png;base64,${base64}` },
-              preview: 'Screenshot halaman berhasil diambil',
+              preview: 'Browser screenshot captured successfully',
               metadata: { toolName: 'browser_screenshot', displayName: 'Browser Screenshot', executionTime: 0 },
             };
           } catch (err) {
@@ -1382,7 +1382,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { content },
-              preview: `Membaca ${content.length} karakter dari halaman`,
+              preview: `Read ${content.length} characters from page`,
               metadata: { toolName: 'browser_get_content', displayName: 'Browser Read Content', executionTime: 0 },
             };
           } catch (err) {
@@ -2232,15 +2232,15 @@ export class ToolsProviderModule implements OnModuleInit {
               return {
                 status: 'error' as const,
                 data: {},
-                preview: 'CronService tidak tersedia.',
-                metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+                preview: 'CronService unavailable.',
+                metadata: { toolName: 'schedule_cron_job', displayName: 'Schedule Cron Job', executionTime: 0 },
                 error: { code: 'SERVICE_UNAVAILABLE', message: 'CronService not injected.' },
               };
             }
 
             const schedule = await this.cronService.createSchedule({
               workspaceId: args.workspaceId || 'default-workspace',
-              name: args.name || 'Laporan Otomatis Berkala',
+              name: args.name || 'Automated Recurring Report',
               reportType: args.reportType || 'laba_rugi',
               cronExpr: args.cronExpr || '0 17 * * 5',
               format: args.format || 'excel',
@@ -2250,15 +2250,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: schedule,
-              preview: `Jadwal cron "${schedule.name}" berhasil dibuat (${schedule.cronExpr}, tipe: ${schedule.reportType})`,
-              metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+              preview: `Cron schedule "${schedule.name}" created successfully (${schedule.cronExpr}, type: ${schedule.reportType})`,
+              metadata: { toolName: 'schedule_cron_job', displayName: 'Schedule Cron Job', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Gagal membuat jadwal cron: ${err.message}`,
-              metadata: { toolName: 'schedule_cron_job', displayName: 'Jadwalkan Laporan Cron', executionTime: 0 },
+              preview: `Failed to create cron schedule: ${err.message}`,
+              metadata: { toolName: 'schedule_cron_job', displayName: 'Schedule Cron Job', executionTime: 0 },
               error: { code: 'SCHEDULE_ERROR', message: err.message },
             };
           }
@@ -2288,7 +2288,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'list_cron_jobs',
-        displayName: 'Daftar Jadwal Cron Berkala',
+        displayName: 'List Cron Jobs',
         description: 'Lists active automatic report schedules and recurring agent tasks.',
         tags: ['cron', 'scheduler', 'list', 'recurring'],
         handler: async (args) => {
@@ -2297,28 +2297,28 @@ export class ToolsProviderModule implements OnModuleInit {
               return {
                 status: 'error' as const,
                 data: { schedules: [] },
-                preview: 'CronService tidak tersedia.',
-                metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+                preview: 'CronService unavailable.',
+                metadata: { toolName: 'list_cron_jobs', displayName: 'List Cron Jobs', executionTime: 0 },
               };
             }
 
             const schedules = await this.cronService.getSchedules(args.workspaceId || 'default-workspace');
             const summary = schedules.length > 0
               ? schedules.map((s) => `- **${s.name}** (${s.cronExpr}, ${s.reportType}, active: ${s.active})`).join('\n')
-              : 'Tidak ada jadwal cron aktif.';
+              : 'No active cron schedules.';
 
             return {
               status: 'success' as const,
               data: { schedules, count: schedules.length },
-              preview: `Ditemukan ${schedules.length} jadwal cron:\n${summary}`,
-              metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+              preview: `Found ${schedules.length} cron schedules:\n${summary}`,
+              metadata: { toolName: 'list_cron_jobs', displayName: 'List Cron Jobs', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error' as const,
               data: { schedules: [] },
-              preview: `Gagal mengambil daftar cron: ${err.message}`,
-              metadata: { toolName: 'list_cron_jobs', displayName: 'Daftar Jadwal Cron', executionTime: 0 },
+              preview: `Failed to retrieve cron schedules: ${err.message}`,
+              metadata: { toolName: 'list_cron_jobs', displayName: 'List Cron Jobs', executionTime: 0 },
               error: { code: 'LIST_ERROR', message: err.message },
             };
           }
@@ -2346,7 +2346,7 @@ export class ToolsProviderModule implements OnModuleInit {
               return {
                 status: 'error' as const,
                 data: {},
-                preview: 'CronService tidak tersedia.',
+                preview: 'CronService unavailable.',
                 metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               };
             }
@@ -2355,7 +2355,7 @@ export class ToolsProviderModule implements OnModuleInit {
               return {
                 status: 'error' as const,
                 data: {},
-                preview: 'Workspace ID wajib diisi.',
+                preview: 'Workspace ID is required.',
                 metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               };
             }
@@ -2363,7 +2363,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { id: args.id },
-              preview: `Jadwal cron ${args.id} telah dihapus.`,
+              preview: `Cron schedule ${args.id} deleted successfully.`,
               metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
             };
           } catch (err: any) {
