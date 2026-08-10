@@ -908,7 +908,7 @@ export class ToolsProviderModule implements OnModuleInit {
           required: ['workspaceId', 'filename', 'instructions'],
         },
         estimatedLatency: 'slow',
-        timeoutMs: 60000,
+        timeoutMs: 120000,
       }),
     );
 
