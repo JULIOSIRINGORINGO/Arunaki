@@ -49,7 +49,7 @@ function resolveInsideWorkspace(p) {
   if (!workspaceRoot) return resolved; // no workspace selected yet (dev/offline) — allow
   const rel = path.relative(workspaceRoot, resolved);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error('Path di luar workspace tidak diizinkan');
+    throw new Error('Path outside workspace is not allowed');
   }
   return resolved;
 }
