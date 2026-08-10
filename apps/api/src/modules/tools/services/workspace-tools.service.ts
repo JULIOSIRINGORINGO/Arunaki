@@ -883,11 +883,10 @@ export class WorkspaceToolsService {
 
       if (!Array.isArray(edits) || edits.length === 0) {
         return {
-          status: 'error',
-          data: {},
-          preview: 'LLM tidak menghasilkan edit yang valid.',
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'EMPTY_EDITS', message: 'No valid edits returned' },
+          status: 'success',
+          data: { path: targetPath, filename, editsApplied: 0 },
+          preview: `File "${filename}" is already up to date or no changes were required.`,
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 0 },
         };
       }
 

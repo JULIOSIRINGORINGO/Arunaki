@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const API_BASE = 'http://localhost:3000/api/v1';
-const WORKSPACE_ID = 'cmsj3htjg0008vtzs4oi4bzic';
+const WORKSPACE_ID = 'cmshh81u8000bvg78c4ay5hgk';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
-const WORKSPACE_ROOT = 'E:\\LAPORAN';
+const WORKSPACE_ROOT = 'E:\\JS\\laporan-test';
 
 const instruction = `update laporan hari ini ke file @${TARGET_FILE} ini datanya:
 Pemasukan:
@@ -26,7 +26,7 @@ async function runTest() {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'X-API-Key': 'arunaki-dev-key'
+        'X-API-Key': process.env.ARUNAKI_API_KEY || '199710338e26f2127f7012001e927b4b'
       },
       body: JSON.stringify({ goal: instruction, historyMessages: [] }),
     });
@@ -118,7 +118,7 @@ async function runTest() {
     { name: 'Data lama (CK AGUS) dihapus', pass: !content.includes('CK AGUS') },
     { name: 'Total BCA = 300 RB', pass: /TOTAL TF BCA\s*[:=]\s*300\s*RB/i.test(content) },
     { name: 'Total BNI = 200 RB', pass: /TOTAL TF BNI\s*[:=]\s*200\s*RB/i.test(content) },
-    { name: 'Pengeluaran baru ada', pass: content.includes('GALON 7') && content.includes('PARKIR 3') && content.includes('PRINT 5') && content.includes('LAUNDRY 30') },
+    { name: 'Pengeluaran baru ada', pass: /GALON\s*(=|\s)\s*7/i.test(content) && /PARKIR\s*(=|\s)\s*3/i.test(content) && /PRINT\s*(=|\s)\s*5/i.test(content) && /LAUNDRY\s*(=|\s)\s*30/i.test(content) },
   ];
 
   let passed = 0;

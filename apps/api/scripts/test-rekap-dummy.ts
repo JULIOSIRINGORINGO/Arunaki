@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const API_BASE = 'http://localhost:3000/api/v1';
-const WORKSPACE_ID = 'cmsj3htjg0008vtzs4oi4bzic';
+const WORKSPACE_ID = 'cmshh81u8000bvg78c4ay5hgk';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
-const WORKSPACE_ROOT = 'E:\\LAPORAN';
+const WORKSPACE_ROOT = 'E:\\JS\\laporan-test';
 
 const instruction = `@${TARGET_FILE} update dong rekapnya, ini yang masuk:
 ANDI = 400RB(BCA) [ DTF ]✅
@@ -44,7 +44,7 @@ async function runTest() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': 'arunaki-dev-key'
+        'X-API-Key': process.env.ARUNAKI_API_KEY || '199710338e26f2127f7012001e927b4b'
       },
       body: JSON.stringify({ goal: instruction, historyMessages: [] }),
     });
