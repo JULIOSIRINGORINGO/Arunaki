@@ -242,4 +242,97 @@ export class DocumentReconciliationService {
 
     return results;
   }
+
+  /**
+   * Parse daily text report and map entries directly to monthly Excel reconciliation sheet.
+   */
+  reconcileDailyReportToExcel(txtContent: string, dateDay: number = 10, sheetName: string = 'AGUSTUS'): {
+    day: number;
+    sheet: string;
+    colIndex: number;
+    pemasukanItems: string[];
+    totalPemasukan: number;
+    totalBca: number;
+    totalBni: number;
+    totalMandiri: number;
+    totalCash: number;
+    totalPengeluaran: number;
+    actions: Array<{ action: string; cell: string; value: any }>;
+  } {
+    const lines = txtContent.split('\n').map((l) => l.strip ? l.strip() : l.trim()).filter(Boolean);
+    const pemasukanItems: string[] = [];
+    let totalPemasukan = 0;
+    let totalBca = 0;
+    let totalBni = 0;
+    let totalMandiri = 0;
+    let totalCash = 0;
+    let totalPengeluaran = 0;
+
+    let currentSection = '';
+    for (const line of lines) {
+      if (line.includes('PEMASUKAN :')) {
+        currentSection = 'pemasukan';
+      } else if (line.includes('PENGELUARAN :')) {
+        currentSection = 'pengeluaran';
+      } else if (line.includes('NOTE BELUM BAYAR :') || line.includes('BELANJAAN KE LABURA:')) {
+        currentSection = 'other';
+      }
+
+      if (currentSection === 'pemasukan' && line.includes('=') && line.includes('RB')) {
+        pemasukanItems.push(line.replace(/✅/g, '').trim());
+      }
+
+      if (line.includes('TOTAL PEMASUKAN:')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalPemasukan = parseFloat(m[1].replace(/\./g, ''));
+      } else if (line.includes('TOTAL TF BCA :')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalBca = parseFloat(m[1].replace(/\./g, ''));
+      } else if (line.includes('TOTAL TF BNI :')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalBni = parseFloat(m[1].replace(/\./g, ''));
+      } else if (line.includes('TOTAL MANDIRI :')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalMandiri = parseFloat(m[1].replace(/\./g, ''));
+      } else if (line.includes('TOTAL CASH :')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalCash = parseFloat(m[1].replace(/\./g, ''));
+      } else if (line.includes('TOTAL PENGELUARAN:')) {
+        const m = line.match(/([\d\.]+)\s*RB/);
+        if (m) totalPengeluaran = parseFloat(m[1].replace(/\./g, ''));
+      }
+    }
+
+    const colIndex = dateDay + 2; // Col L for day 10
+    const colLetter = String.fromCharCode(64 + colIndex);
+
+    const actions: Array<{ action: string; cell: string; value: any }> = [
+      { action: 'write_cell', cell: `${colLetter}4`, value: totalPemasukan },
+    ];
+
+    pemasukanItems.forEach((item, idx) => {
+      actions.push({ action: 'write_cell', cell: `${colLetter}${5 + idx}`, value: item });
+    });
+
+    actions.push({ action: 'write_cell', cell: `${colLetter}14`, value: ` Rp${totalPemasukan.toLocaleString('en-US')}.000 ` });
+    if (totalBni) actions.push({ action: 'write_cell', cell: `${colLetter}16`, value: ` Rp${totalBni.toLocaleString('en-US')}.000 ` });
+    if (totalBca) actions.push({ action: 'write_cell', cell: `${colLetter}17`, value: ` Rp${totalBca.toLocaleString('en-US')}.000 ` });
+    if (totalMandiri) actions.push({ action: 'write_cell', cell: `${colLetter}18`, value: ` Rp${totalMandiri.toLocaleString('en-US')}.000 ` });
+    if (totalCash) actions.push({ action: 'write_cell', cell: `${colLetter}19`, value: ` Rp${totalCash.toLocaleString('en-US')}.000 ` });
+    actions.push({ action: 'write_cell', cell: `${colLetter}22`, value: ` Rp${totalPengeluaran.toLocaleString('en-US')}.000 ` });
+
+    return {
+      day: dateDay,
+      sheet: sheetName,
+      colIndex,
+      pemasukanItems,
+      totalPemasukan,
+      totalBca,
+      totalBni,
+      totalMandiri,
+      totalCash,
+      totalPengeluaran,
+      actions,
+    };
+  }
 }
