@@ -58,7 +58,7 @@ export class ProviderCatalogService {
       baseUrl: 'https://kenari.id/v1',
       keyPrefix: 'kn-',
       urlKeyword: 'kenari.id',
-      fallbackModels: ['deepseek-v4-flash'],
+      fallbackModels: ['gpt-oss-120b', 'deepseek-v4-flash'],
     },
   ];
 

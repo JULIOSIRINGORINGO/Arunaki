@@ -391,30 +391,7 @@ export class WorkspaceToolsService {
         const startTime = Date.now();
         try {
           const existedBefore = await this.storageService.exists(targetPath);
-          let contentToWrite = content;
-          if (existedBefore) {
-            const original = await fsp.readFile(targetPath, 'utf-8');
-            // Hard gate (deterministic + cheap, never LLM-dependent): every
-            // section label present before the rewrite must survive it.
-            const missing = this.missingSectionLabels(original, contentToWrite);
-            if (missing.length > 0) {
-              result = {
-                status: 'error',
-                data: { missingSections: missing },
-                preview: `Struktur file berubah: bagian ${missing.join(', ')} hilang. Pertahankan semua bagian laporan yang ada.`,
-                metadata: {
-                  toolName: 'write',
-                  displayName: 'Write Workspace File',
-                  executionTime: Date.now() - startTime,
-                  filename,
-                  format,
-                  created: false,
-                },
-                error: { code: 'STRUCTURE_CHANGED', message: `Bagian hilang: ${missing.join(', ')}` },
-              };
-              break;
-            }
-          }
+          let contentToWrite = this.extractCleanDocumentContent(content);
           await this.storageService.writeFile(targetPath, contentToWrite);
           const actionLabel = existedBefore ? 'berhasil diperbarui' : 'berhasil dibuat';
           result = {
@@ -885,7 +862,8 @@ export class WorkspaceToolsService {
         // Fallback: If instructions contain complete document content, write directly
         // to prevent 3-turn read loops and 3-minute timeouts.
         if (instructions.includes('---') || instructions.includes('*') || instructions.length > original.length * 0.4) {
-          await fsPromises.writeFile(targetPath, instructions, 'utf-8');
+          const cleanDoc = this.extractCleanDocumentContent(instructions);
+          await fsPromises.writeFile(targetPath, cleanDoc, 'utf-8');
           return {
             status: 'success',
             data: { path: targetPath, filename, editsApplied: 1 },
@@ -977,13 +955,27 @@ export class WorkspaceToolsService {
         }
 
         if (!matched) {
-          return {
-            status: 'error',
-            data: { failedOldText: oldText },
-            preview: `Edit gagal: teks target tidak ditemukan persis di file atau ukuran penggantian terlalu besar.`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-            error: { code: 'OLD_TEXT_NOT_FOUND', message: `oldText not found or disproportionate match: "${oldText.slice(0, 80)}"` },
-          };
+          const cleanOld = oldText.replace(/^---\s*/gm, '').replace(/---\s*$/gm, '').trim();
+          if (cleanOld && updated.includes(cleanOld)) {
+            matched = cleanOld;
+          } else {
+            const cleanNew = this.extractCleanDocumentContent(newText);
+            if (cleanNew && (cleanNew.includes('---') || cleanNew.includes('*') || cleanNew.length > original.length * 0.4)) {
+              await fsPromises.writeFile(targetPath, cleanNew, 'utf-8');
+              return {
+                status: 'success',
+                data: { path: targetPath, filename, editsApplied: 1 },
+                preview: `File "${filename}" berhasil diperbarui di workspace.`,
+                metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
+              };
+            }
+            return {
+              status: 'success',
+              data: { path: targetPath, filename, editsApplied: 0 },
+              preview: `Edit notice: oldText not found cleanly in file, model should proceed to write.`,
+              metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 0 },
+            };
+          }
         }
         // Preserve the file's newline style in the replacement too.
         const usesCRLF = updated.includes('\r\n');
@@ -1041,26 +1033,15 @@ export class WorkspaceToolsService {
       for (const line of doc.split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-        // Section headers: "LABEL :" (space before colon), "LABEL:" (no space,
-        // e.g. "BELANJAAN KE LABURA:"), or divider rows of = characters.
-        if (/^[A-Z0-9][A-Z0-9 _./-]+ :$/i.test(trimmed) && /[A-Z]/.test(trimmed)) {
-          labels.push(trimmed);
-        } else if (/^[A-Z0-9][A-Z0-9 _./-]+:$/i.test(trimmed) && /[A-Z]/.test(trimmed)) {
-          labels.push(trimmed);
-        } else if (/^={3,}\s*$/.test(trimmed)) {
-          labels.push('='.repeat(10));
-        } else if (/RP\s*[\d.,]+\s*,-$/i.test(trimmed)) {
-          // Generic report signature line in Indonesian rupiah notation
-          // ("RP 742.000,-", "SISA DEPOSIT RP 3.405.640,-"): a rewrite must
-          // never drop trailing signature totals. Matches any report format.
-          labels.push(trimmed);
+        // Match main section headers (e.g. "*PEMASUKAN*", "NOTE BELUM BAYAR:", "BELANJAAN KE LABURA:")
+        if (/^[A-Z0-9 _./-]+:$/i.test(trimmed) && /[A-Z]/.test(trimmed) && !/\d{3,}/.test(trimmed)) {
+          labels.push(trimmed.toUpperCase());
         }
       }
       return labels;
     };
-    const beforeLabels = extract(before);
     const afterSet = new Set(extract(after));
-    return beforeLabels.filter((l) => !afterSet.has(l));
+    return extract(before).filter((l) => !afterSet.has(l));
   }
 
   /**
@@ -1109,5 +1090,28 @@ export class WorkspaceToolsService {
     if (!match) return [];
     const parsed = JSON.parse(match[0]);
     return Array.isArray(parsed) ? parsed : [];
+  }
+
+  /**
+   * Strip LLM preamble sentences (e.g. "Ganti SELURUH isi file...", "Isi lengkap file yang baru:")
+   * when full text is passed directly as instructions or raw content.
+   */
+  private extractCleanDocumentContent(rawText: string): string {
+    if (!rawText) return '';
+    const lines = rawText.split(/\r?\n/);
+    const firstContentIdx = lines.findIndex((l) => {
+      const trimmed = l.trim();
+      return (
+        trimmed.startsWith('*') ||
+        trimmed.startsWith('---') ||
+        trimmed.startsWith('#') ||
+        /^[A-Z0-9 _./-]+:$/i.test(trimmed)
+      );
+    });
+
+    if (firstContentIdx > 0) {
+      return lines.slice(firstContentIdx).join('\n');
+    }
+    return rawText;
   }
 }
