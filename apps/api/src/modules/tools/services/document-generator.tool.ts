@@ -611,7 +611,7 @@ export class DocumentGeneratorTool {
   }
 
   /**
-   * Generate RUG (Rincian Usaha Gym) - Revenue & Cost Report
+   * Generate RUG (Rincian Usaha) - Revenue & Cost Report
    */
   async generateRugReport(
     data: BusinessReportData,
@@ -628,7 +628,7 @@ export class DocumentGeneratorTool {
 
       const summaryRows: Array<Record<string, string | number>> = [
         {
-          Laporan: 'Rincian Usaha Gym (RUG)',
+          Laporan: 'Laporan Rincian Usaha (RUG)',
           Periode: data.period,
           Perusahaan: data.companyName,
         },
@@ -1141,7 +1141,7 @@ export class DocumentGeneratorTool {
     }
 
     const titles: Record<string, string> = {
-      rug: 'Laporan Rincian Usaha Gym (RUG)',
+      rug: 'Laporan Rincian Usaha (RUG)',
       'laba-rugi': 'Laporan Laba Rugi',
       neraca: 'Laporan Neraca (Balance Sheet)',
     };
