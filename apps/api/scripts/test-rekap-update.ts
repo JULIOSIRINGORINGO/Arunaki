@@ -43,7 +43,7 @@ async function runTest() {
         'Content-Type': 'application/json',
         'X-API-Key': process.env.ARUNAKI_API_KEY || '199710338e26f2127f7012001e927b4b'
       },
-      body: JSON.stringify({ goal: instruction, historyMessages: [] }),
+      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'gpt-oss-120b' }),
     });
 
     if (!response.ok) {
