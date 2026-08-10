@@ -147,7 +147,7 @@ export class WorkspaceRunnerService {
       const content = typeof text === 'string'
         ? text.slice(0, 12000)
         : ToolResultFormatter.formatForLlm('read', finalResult);
-      messages.push({ role: 'user', content: `[Konteks: User me-mention file "${filename}" dengan @. Isi file sudah dibacakan di bawah. GUNAKAN konten ini langsung untuk menjawab. JANGAN panggil read atau search_workspace lagi untuk file ini. JIKA user meminta mengisi/memperbarui file yang SUDAH ADA, panggil tool write dengan parameter filename="${filename}" dan content berisi SELURUH isi file yang diperbarui — PERTAHANKAN struktur file asli (heading, urutan bagian, format baris; jangan menambah atau menghapus bagian), dan perbarui angka/isi sesuai data yang user berikan.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+      messages.push({ role: 'user', content: `[Context: User mentioned file "${filename}" with @. File content pre-read below. Use this content directly. DO NOT call read or search_workspace for this file again.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
   }
@@ -1040,7 +1040,7 @@ export class WorkspaceRunnerService {
                 messages.push({
                   role: 'user',
                   content:
-                    'Catatan: Tugas sebelumnya belum dieksekusi. Lakukan operasi file yang diminta pengguna dengan tool yang sesuai — jangan hanya menjawab teks.',
+                    'Note: The requested task has not been executed yet. Execute the user-requested file operation using appropriate tools -- do not respond with plain text alone.',
                 });
                 continue;
               }

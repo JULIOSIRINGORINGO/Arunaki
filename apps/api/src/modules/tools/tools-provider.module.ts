@@ -295,12 +295,12 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             workspaceId: {
               type: 'string',
-              description: 'ID workspace yang berisi dokumen',
+              description: 'Workspace ID containing documents',
             },
             filePath: {
               type: 'string',
               description:
-                'Path file di dalam workspace (absolut atau relatif)',
+                'File path inside workspace (absolute or relative)',
             },
           },
           required: ['workspaceId', 'filePath'],
@@ -378,11 +378,11 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             workspaceId: {
               type: 'string',
-              description: 'ID workspace yang berisi gambar',
+              description: 'Workspace ID containing images',
             },
             filePath: {
               type: 'string',
-              description: 'Path gambar di dalam workspace (absolut atau relatif)',
+              description: 'Image file path inside workspace (absolute or relative)',
             },
             language: {
               type: 'string',
@@ -2346,7 +2346,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'delete_cron_job',
         mutating: true,
-        displayName: 'Hapus Jadwal Cron Berkala',
+        displayName: 'Delete Cron Job',
         description: 'Deletes a recurring report schedule from the system.',
         tags: ['cron', 'scheduler', 'delete', 'remove'],
         handler: async (args) => {
@@ -2356,7 +2356,7 @@ export class ToolsProviderModule implements OnModuleInit {
                 status: 'error' as const,
                 data: {},
                 preview: 'CronService tidak tersedia.',
-                metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+                metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               };
             }
 
@@ -2365,7 +2365,7 @@ export class ToolsProviderModule implements OnModuleInit {
                 status: 'error' as const,
                 data: {},
                 preview: 'Workspace ID wajib diisi.',
-                metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+                metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               };
             }
             await this.cronService.deleteSchedule(args.id, args.workspaceId);
@@ -2373,14 +2373,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: { id: args.id },
               preview: `Jadwal cron ${args.id} telah dihapus.`,
-              metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+              metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error' as const,
               data: {},
               preview: `Gagal menghapus jadwal cron: ${err.message}`,
-              metadata: { toolName: 'delete_cron_job', displayName: 'Hapus Jadwal Cron', executionTime: 0 },
+              metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               error: { code: 'DELETE_ERROR', message: err.message },
             };
           }

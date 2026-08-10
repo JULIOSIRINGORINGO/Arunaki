@@ -41,16 +41,16 @@ function thresholdsFor(contextWindow?: number): {
   };
 }
 
-const LLM_SUMMARY_INSTRUCTIONS = `Kompaksi riwayat percakapan menjadi satu ringkasan kohesif.
+const LLM_SUMMARY_INSTRUCTIONS = `Compact the conversation history into a single cohesive summary.
 
-WAJIB DIpertahankan:
-- Tugas aktif dan statusnya (in-progress, completed, pending)
-- Semua nama file fisik, path, UUID, ID, dan angka
-- Permintaan terakhir user dan apa yang sudah dilakukan
-- Keputusan yang diambil beserta alasan
-- Constraint dan preferensi user
+MUST PRESERVE:
+- Active tasks and their status (in-progress, completed, pending)
+- All physical filenames, paths, UUIDs, IDs, and numbers
+- User's latest request and actions already performed
+- Decisions made and rationale
+- User constraints and preferences
 
-UTAMAKAN konteks terakhir dibanding history lama. Format sebagai user-role message dengan wrapper tags [COMPACTED HISTORY].`;
+Prioritize the most recent context over older history. Format as a user-role message with wrapper tags [COMPACTED HISTORY].`;
 
 @Injectable()
 export class CompactionService {

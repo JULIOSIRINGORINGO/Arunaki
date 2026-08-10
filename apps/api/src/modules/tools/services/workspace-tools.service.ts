@@ -281,7 +281,7 @@ export class WorkspaceToolsService {
           preview: `Gagal membaca file: ${err.message}`,
           metadata: {
             toolName: 'read',
-            displayName: 'Baca File Workspace',
+            displayName: 'Read Workspace File',
             executionTime: 0,
           },
           error: { code: 'SECURITY_ERROR', message: err.message },
@@ -326,7 +326,7 @@ export class WorkspaceToolsService {
         preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
         metadata: {
           toolName: 'write',
-          displayName: 'Buat File Workspace',
+          displayName: 'Write Workspace File',
           executionTime: 0,
         },
         error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
@@ -343,7 +343,7 @@ export class WorkspaceToolsService {
         preview: `Gagal membuat file: ${err.message}`,
         metadata: {
           toolName: 'write',
-          displayName: 'Buat File Workspace',
+          displayName: 'Write Workspace File',
           executionTime: 0,
         },
         error: { code: 'SECURITY_ERROR', message: err.message },
@@ -404,7 +404,7 @@ export class WorkspaceToolsService {
                 preview: `Struktur file berubah: bagian ${missing.join(', ')} hilang. Pertahankan semua bagian laporan yang ada.`,
                 metadata: {
                   toolName: 'write',
-                  displayName: 'Buat File Workspace',
+                  displayName: 'Write Workspace File',
                   executionTime: Date.now() - startTime,
                   filename,
                   format,
@@ -428,7 +428,7 @@ export class WorkspaceToolsService {
             preview: `File ${filename} ${actionLabel} di folder workspace.`,
             metadata: {
               toolName: 'write',
-              displayName: 'Buat File Workspace',
+              displayName: 'Write Workspace File',
               executionTime: Date.now() - startTime,
               filename,
               format,
@@ -442,7 +442,7 @@ export class WorkspaceToolsService {
             preview: `Gagal membuat file ${filename}: ${e.message}`,
             metadata: {
               toolName: 'write',
-              displayName: 'Buat File Workspace',
+              displayName: 'Write Workspace File',
               executionTime: Date.now() - startTime,
             },
             error: { code: 'WRITE_FAILED', message: e.message },
@@ -653,7 +653,7 @@ export class WorkspaceToolsService {
         preview: 'Workspace belum terhubung ke folder. Hubungkan folder terlebih dahulu.',
         metadata: {
           toolName: 'delete',
-          displayName: 'Hapus File Workspace',
+          displayName: 'Delete Workspace File',
           executionTime: 0,
         },
         error: { code: 'NO_ROOT_PATH', message: 'Workspace belum terhubung ke folder' },
@@ -671,7 +671,7 @@ export class WorkspaceToolsService {
         preview: 'Mohon sebutkan nama file secara spesifik yang ingin dihapus.',
         metadata: {
           toolName: 'delete',
-          displayName: 'Hapus File Workspace',
+          displayName: 'Delete Workspace File',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'AMBIGUOUS_FILENAME', message: 'Pronoun filename not resolved' },
@@ -689,7 +689,7 @@ export class WorkspaceToolsService {
         preview: `Gagal menghapus file: ${err.message}`,
         metadata: {
           toolName: 'delete',
-          displayName: 'Hapus File Workspace',
+          displayName: 'Delete Workspace File',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'SECURITY_ERROR', message: err.message },
@@ -725,7 +725,7 @@ export class WorkspaceToolsService {
             preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
             metadata: {
               toolName: 'delete',
-              displayName: 'Hapus File Workspace',
+              displayName: 'Delete Workspace File',
               executionTime: Date.now() - startTime,
             },
             error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
@@ -738,7 +738,7 @@ export class WorkspaceToolsService {
           preview: `Berkas "${cleanName}" tidak ditemukan di workspace.`,
           metadata: {
             toolName: 'delete',
-            displayName: 'Hapus File Workspace',
+            displayName: 'Delete Workspace File',
             executionTime: Date.now() - startTime,
           },
           error: { code: 'FILE_NOT_FOUND', message: `File ${cleanName} not found` },
@@ -791,7 +791,7 @@ export class WorkspaceToolsService {
         preview: `File "${filename}" berhasil dihapus dari workspace.`,
         metadata: {
           toolName: 'delete',
-          displayName: 'Hapus File Workspace',
+          displayName: 'Delete Workspace File',
           executionTime: Date.now() - startTime,
           filename,
         },
@@ -803,7 +803,7 @@ export class WorkspaceToolsService {
         preview: `Gagal menghapus file "${filename}": ${e.message}`,
         metadata: {
           toolName: 'delete',
-          displayName: 'Hapus File Workspace',
+          displayName: 'Delete Workspace File',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'DELETE_FAILED', message: e.message },

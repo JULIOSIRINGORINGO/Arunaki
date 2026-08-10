@@ -24,7 +24,7 @@ export class KnowledgeSearchTool implements Tool {
       description: this.description,
       tags: ['knowledge', 'rag', 'search', 'docs'],
       inputSchema: {
-        query: 'Judul node atau kata kunci untuk mencari dokumen di Knowledge Graph. (Contoh: "Katalog Produk" atau "Aturan Cuti")',
+        query: 'Node title or keywords to search in Knowledge Graph (e.g. "Product Catalog" or "Leave Policy")',
       },
       outputType: 'text',
       estimatedLatency: 'fast' as const,
@@ -32,7 +32,7 @@ export class KnowledgeSearchTool implements Tool {
   }
 
   get description(): string {
-    return 'Cari dan baca isi dari Node Knowledge Graph (SOP, Katalog, Aturan) berdasarkan judulnya. Tool ini juga akan otomatis menarik isi dari node-node yang memiliki relasi dengan target node.';
+    return 'Search and read content from Knowledge Graph Nodes (SOPs, Catalogs, Rules) by title. Automatically pulls content from related nodes.';
   }
 
   get definition(): ToolDefinition {
@@ -46,7 +46,7 @@ export class KnowledgeSearchTool implements Tool {
           properties: {
             query: {
               type: 'string',
-              description: 'Judul node atau kata kunci untuk mencari dokumen di Knowledge Graph. (Contoh: "Katalog Produk" atau "Aturan Cuti")',
+              description: 'Node title or keywords to search in Knowledge Graph (e.g. "Product Catalog" or "Leave Policy")',
             },
           },
           required: ['query'],

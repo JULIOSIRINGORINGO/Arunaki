@@ -366,24 +366,24 @@ export class SubAgentRunnerService {
    */
   private buildSubAgentSystemPrompt(task: SubAgentTask): string {
     const parts = [
-      'Kamu adalah Sub-Agent dari Arunaki — Digital Employee untuk Dokumen.',
-      `Tugas spesifik yang harus kamu kerjakan: "${task.taskName}".`,
+      'You are a Sub-Agent of Arunaki -- Desktop Computer Use Agent for Documents.',
+      `Specific task to perform: "${task.taskName}".`,
       '',
-      'Instruksi:',
-      '- Kerjakan HANYA tugas yang diminta, jangan mengerjakan hal lain.',
-      '- Gunakan tool yang tersedia untuk menyelesaikan tugas.',
-      '- Berikan hasil akhir dalam format yang jelas dan ringkas.',
-      '- Jika tugas tidak bisa diselesaikan, jelaskan alasannya.',
+      'Instructions:',
+      '- Execute ONLY the requested task; do not perform unrelated actions.',
+      '- Use available tools to complete the task.',
+      '- Provide final results in a clear and concise format.',
+      '- If the task cannot be completed, explain the blocker clearly.',
     ];
 
     if (task.additionalContext) {
-      parts.push('', 'Konteks tambahan:', task.additionalContext);
+      parts.push('', 'Additional Context:', task.additionalContext);
     }
 
     if (task.allowedTools && task.allowedTools.length > 0) {
       parts.push(
         '',
-        `Tool yang diizinkan: ${task.allowedTools.join(', ')}`,
+        `Allowed tools: ${task.allowedTools.join(', ')}`,
       );
     }
 
