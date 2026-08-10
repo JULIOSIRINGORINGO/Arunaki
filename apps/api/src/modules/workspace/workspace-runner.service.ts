@@ -419,12 +419,12 @@ export class WorkspaceRunnerService {
 
   /** Map phase names to user-facing Indonesian labels */
   private readonly PHASE_LABELS: Record<ExecutionPhase, string> = {
-    scanning: 'Memindai dokumen workspace...',
-    planning: 'Menyusun rencana analisis...',
-    reading: 'Membaca dan memahami file...',
-    analyzing: 'Menganalisis data...',
-    generating: 'Menghasilkan output...',
-    completed: 'Selesai',
+    scanning: 'Scanning workspace documents...',
+    planning: 'Formulating execution plan...',
+    reading: 'Reading file contents...',
+    analyzing: 'Analyzing data...',
+    generating: 'Generating output...',
+    completed: 'Completed',
   };
 
   private setPhase(

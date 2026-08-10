@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   Sparkles,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -51,6 +53,7 @@ export function WorkspaceDetailPage() {
   const [goal, setGoal] = useState("");
   const [isAgentRunning, setIsAgentRunning] = useState(false);
   const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
+  const [isLogsExpanded, setIsLogsExpanded] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<string[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<{
     toolName: string;
@@ -352,7 +355,7 @@ export function WorkspaceDetailPage() {
               <ShieldAlert className="text-amber-600 shrink-0" size={18} />
               <div>
                 <p className="text-xs font-semibold text-amber-900">
-                  Izin Keamanan Diperlukan (Approval Gate)
+                  Security Approval Required (Approval Gate)
                 </p>
                 <p className="text-[11px] text-amber-700">
                   {approvalRequest.description}
@@ -364,13 +367,13 @@ export function WorkspaceDetailPage() {
                 onClick={handleReject}
                 className="px-2.5 py-1 rounded-md text-xs font-medium text-amber-800 hover:bg-amber-100 transition-colors"
               >
-                Tolak
+                Reject
               </button>
               <button
                 onClick={handleApprove}
                 className="px-3 py-1 rounded-md text-xs font-semibold bg-amber-600 text-white hover:bg-amber-700 shadow-2xs transition-colors cursor-pointer"
               >
-                Izinkan & Lanjutkan
+                Approve & Continue
               </button>
             </div>
           </div>
@@ -382,7 +385,7 @@ export function WorkspaceDetailPage() {
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 space-y-2">
               <div className="flex items-center gap-2 text-emerald-800 font-semibold text-xs">
                 <Sparkles size={14} className="text-emerald-600" />
-                <span>Rencana Eksekusi Otonom (Autonomous Plan)</span>
+                <span>Autonomous Execution Plan</span>
               </div>
               <ul className="space-y-1 text-xs text-emerald-700 pl-4 list-disc">
                 {currentPlan.map((step, idx) => (
@@ -392,19 +395,46 @@ export function WorkspaceDetailPage() {
             </div>
           )}
 
+          {/* Antigravity / Cursor IDE Style Collapsible Tool & Execution Widget */}
           {agentLogs.length > 0 && (
-            <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-4 space-y-2">
-              <p className="text-xs font-semibold text-gray-700 mb-2">Live Progress Log:</p>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto font-mono text-[11px]">
-                {agentLogs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-2 text-gray-600">
-                    <span className="text-gray-400 shrink-0">[{log.timestamp}]</span>
-                    <span className={log.type === "approval" ? "text-amber-600 font-bold" : ""}>
-                      {log.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden text-slate-200 transition-all shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsLogsExpanded(!isLogsExpanded)}
+                className="flex items-center justify-between w-full px-4 py-2.5 text-xs font-medium bg-slate-900 hover:bg-slate-800/80 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {isAgentRunning ? (
+                    <Loader2 size={14} className="animate-spin text-emerald-400 shrink-0" />
+                  ) : (
+                    <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+                  )}
+                  <span className="font-semibold text-slate-100">
+                    {isAgentRunning ? "Working..." : "Workspace Task Completed"}
+                  </span>
+                  <span className="text-slate-400 text-[11px]">
+                    ({agentLogs.length} action{agentLogs.length > 1 ? "s" : ""})
+                  </span>
+                </div>
+                {isLogsExpanded ? (
+                  <ChevronDown size={14} className="text-slate-400" />
+                ) : (
+                  <ChevronRight size={14} className="text-slate-400" />
+                )}
+              </button>
+
+              {isLogsExpanded && (
+                <div className="px-4 pb-3.5 pt-1 space-y-1.5 border-t border-slate-800/80 max-h-48 overflow-y-auto font-mono text-[11px]">
+                  {agentLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-2 text-slate-300">
+                      <span className="text-slate-500 shrink-0">[{log.timestamp}]</span>
+                      <span className={log.type === "approval" ? "text-amber-400 font-bold" : ""}>
+                        {log.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -412,7 +442,7 @@ export function WorkspaceDetailPage() {
             <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-2xs space-y-3 animate-fade-in">
               <div className="flex items-center gap-2 text-gray-900 font-semibold text-sm border-b border-gray-100 pb-2">
                 <CheckCircle2 size={16} className="text-emerald-600" />
-                <span>Hasil Analisis & Eksekusi Workspace Agent</span>
+                <span>Execution Results & Output</span>
               </div>
               <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {agentResultText}
@@ -426,10 +456,10 @@ export function WorkspaceDetailPage() {
                 <FolderOpen className="text-surface-400" size={24} />
               </div>
               <h3 className="text-sm font-semibold text-surface-800 mb-1">
-                Autonomous Workspace Agent Siap
+                Autonomous Workspace Agent Ready
               </h3>
               <p className="text-xs text-surface-500 max-w-sm mx-auto">
-                Ketik tujuan utama Anda di bawah. Agent akan membaca seluruh file di workspace, menyusun rencana, dan mengeksekusi pekerjaan secara otonom.
+                Type your main goal or instruction below. The agent will read workspace documents, formulate an execution plan, and run tasks autonomously.
               </p>
             </div>
           )}
@@ -448,7 +478,7 @@ export function WorkspaceDetailPage() {
               type="text"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="Berikan tujuan otonom... (contoh: Analisis semua file dan rangkum di Excel)"
+              placeholder="Enter your goal... (e.g. Update daily report in REKAPAN TERBARU2.txt)"
               disabled={isAgentRunning}
               className="flex-1 bg-transparent border-0 outline-none text-xs text-gray-900 placeholder:text-gray-400 py-1 disabled:opacity-40"
             />
@@ -460,12 +490,12 @@ export function WorkspaceDetailPage() {
               {isAgentRunning ? (
                 <>
                   <Loader2 size={13} className="animate-spin" />
-                  <span>Proses...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <Send size={13} />
-                  <span>Jalankan</span>
+                  <span>Run Agent</span>
                 </>
               )}
             </button>
