@@ -48,10 +48,12 @@ Workspace adalah **batas mutlak** Arunaki. Tidak ada akses ke file atau sistem d
 4. **Menyelesaikan pekerjaan secara bertahap** menggunakan Planner, Tools, Shell, dan Script
 5. **Menghasilkan output berkualitas** yang siap digunakan oleh pengguna
 6. **Meminimalkan intervensi manual** dengan automasi cerdas
-7. **Menjaga isolasi sandbox** — tidak ada operasi di luar Workspace
+7. **Minimal Typing, Maximum Automation** — Pengguna cukup mengetik instruksi 3 kata atau copy-paste catatan mentah, dan Arunaki secara otonom memahami struktur file, mengkalkulasi ulang total, serta mengedit dokumen tanpa spoon-feeding
+8. **Menjaga isolasi sandbox** — tidak ada operasi di luar Workspace
 
 ### 2.2 Value Proposition
 
+- **Minimal Typing UX**: Pengguna cukup menyalin-menempelkan (*copy-paste*) pesan WhatsApp mentah atau mengetik 3 kata (`"Rekap ke excel"`), dan Arunaki mengeksekusi seluruh pengolahan dokumen
 - **Efisiensi**: Menghemat waktu pengguna dalam mengelola dokumen kompleks
 - **Akurasi**: Mengurangi kesalahan manusia melalui analisis AI
 - **Skalabilitas**: Menangani Workspace dengan ratusan hingga ribuan file

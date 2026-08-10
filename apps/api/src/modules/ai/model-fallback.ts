@@ -133,6 +133,7 @@ export async function runWithModelFallback(
           if (provider.id !== 'env-fallback' && classified.cooldownSeconds && options.setCooldown) {
             await options.setCooldown(provider.id, classified.cooldownSeconds).catch(() => {});
           }
+          await new Promise((r) => setTimeout(r, 5000));
           break;
         }
 

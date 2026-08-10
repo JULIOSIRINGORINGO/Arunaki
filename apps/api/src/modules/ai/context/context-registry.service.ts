@@ -19,16 +19,18 @@ export class ContextRegistry {
 
   get(name?: string): IContextEngine {
     const engineName = name || this.activeEngine;
-    const engine = this.engines.get(engineName);
+    let engine = this.engines.get(engineName);
     if (!engine) {
-      this.logger.warn(
-        `Context engine "${engineName}" not found, falling back to legacy`,
-      );
-      const fallback = this.engines.get('legacy');
-      if (!fallback) {
-        throw new Error('No context engines registered');
-      }
-      return fallback;
+      engine = this.engines.get('legacy') || Array.from(this.engines.values())[0];
+    }
+    if (!engine) {
+      // Auto-fallback: instantiate a default LegacyContextEngine if none registered yet
+      const { LegacyContextEngine } = require('./legacy-context-engine.service.js');
+      const { ProjectionAssembler } = require('./projection-assembler.service.js');
+      const { ContextQuarantine } = require('./context-quarantine.service.js');
+      const defaultEngine = new LegacyContextEngine(new ProjectionAssembler(), new ContextQuarantine());
+      this.register(defaultEngine);
+      return defaultEngine;
     }
     return engine;
   }

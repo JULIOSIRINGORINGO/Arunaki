@@ -837,7 +837,7 @@ export class WorkspaceRunnerService {
         tools
       );
 
-      const history = historyMessages.map((message) => ({
+      const history = (historyMessages || []).map((message) => ({
         role: message.role,
         content: message.content,
       })) as ChatMessage[];
@@ -1140,7 +1140,19 @@ export class WorkspaceRunnerService {
             const funcName = toolCall.function.name;
             let args: Record<string, any> = {};
             try {
-              args = JSON.parse(toolCall.function.arguments || '{}');
+              const rawArgs = toolCall.function.arguments || '{}';
+              try {
+                args = JSON.parse(rawArgs);
+              } catch {
+                const cleaned = rawArgs
+                  .replace(/[\u0000-\u001F]+/g, (match) => {
+                    if (match === '\n') return '\\n';
+                    if (match === '\r') return '\\r';
+                    if (match === '\t') return '\\t';
+                    return '';
+                  });
+                args = JSON.parse(cleaned);
+              }
             } catch {
               args = {};
             }

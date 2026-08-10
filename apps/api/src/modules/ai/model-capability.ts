@@ -103,8 +103,7 @@ export function getModelCapability(modelName: string): ModelCapability {
 export function scaleMaxTokens(modelName: string): number {
   const cap = getModelCapability(modelName);
   if (cap.reasoningEffort) return 8192;
-  const ctx = cap.contextWindow ?? 32000;
-  if (ctx <= 32000) return 1024;
-  if (ctx <= 128000) return 2048;
+  const ctx = cap.contextWindow ?? 128000;
+  if (ctx <= 16000) return 2048;
   return 4096;
 }

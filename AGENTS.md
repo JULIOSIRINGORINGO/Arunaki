@@ -14,6 +14,14 @@ Arunaki setara dengan Claude Computer Use / OpenClaw dalam hal kemampuan mengend
 
 When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.), always adapt them to fit a web UI context. Desktop-only capabilities (native folder access, OS integration) are allowed via Electron main process, but core logic must remain platform-agnostic.
 
+## Minimal Typing, Maximum Automation (CRITICAL UX RULE)
+
+**Pengguna cukup mengetik seminimal mungkin. Arunaki harus mampu mengeksekusi dengan automasi maksimal.**
+
+- Pengguna cukup menyalin-menempelkan (*copy-paste*) pesan WhatsApp/catatan mentah langsung ke chat tanpa perlu merapikan formatnya (`"update ini ke laporan harian:" + [paste teks mentah]`).
+- Pengguna cukup mengetik instruksi 3 kata (contoh: `"Rekap ke excel"`), dan Arunaki secara cerdas memahami file mana yang harus dibuka, kolom mana yang harus diisi, dan total mana yang harus dihitung ulang.
+- Jangan pernah memaksa pengguna mengetik instruksi panjang, aturan layout buatan, atau formula matematika manual — biarkan LLM Arunaki mengolahnya secara otonom.
+
 ## Workspace Isolation (CRITICAL)
 
 **Agent only accesses the workspace folder. NOT the entire computer.**

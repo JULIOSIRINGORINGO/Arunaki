@@ -896,7 +896,7 @@ export class ToolsProviderModule implements OnModuleInit {
               description: 'What to change in the file (e.g. update today date, add these transactions, recalc totals)',
             },
           },
-          required: ['workspaceId', 'filename', 'instructions'],
+          required: ['filename', 'instructions'],
         },
         estimatedLatency: 'slow',
         timeoutMs: 120000,
@@ -1770,8 +1770,29 @@ export class ToolsProviderModule implements OnModuleInit {
               await this.workspaceToolsService.createRollingBackup(dir, name);
             }
 
-            // Execute batch actions via COM
-            const r = await this.desktopBridge.excelEdit(filePath, args.actions || []);
+            // Execute batch actions via COM (with automatic backend fallback if desktop bridge is offline)
+            let r: any;
+            try {
+              r = await this.desktopBridge.excelEdit(filePath, args.actions || []);
+            } catch (bridgeErr) {
+              if (process.platform === 'win32' && filePath) {
+                try {
+                  const { execSync } = await import('child_process');
+                  const pyScript = path.default.resolve(process.cwd(), 'scripts/excel_com_reconciler.py');
+                  if (fs.existsSync(pyScript)) {
+                    const actionsJson = JSON.stringify(args.actions || []).replace(/"/g, '\\"');
+                    execSync(`python "${pyScript}" "${filePath}" "${actionsJson}"`, { cwd: process.cwd() });
+                    r = { success: true, actionsExecuted: (args.actions || []).length };
+                  } else {
+                    throw bridgeErr;
+                  }
+                } catch {
+                  throw bridgeErr;
+                }
+              } else {
+                throw bridgeErr;
+              }
+            }
 
             const actionSummary = (args.actions || [])
               .map((a: any) => {

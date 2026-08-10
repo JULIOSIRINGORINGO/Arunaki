@@ -25,8 +25,8 @@ export class SessionAdmissionService implements OnModuleDestroy {
   private readonly state = new Map<string, AdmissionState>();
   private readonly timeoutMs: number;
 
-  constructor(config: ConfigService) {
-    const configuredTimeout = Number(config.get<string>('SESSION_ADMISSION_TIMEOUT_MS'));
+  constructor(config?: ConfigService) {
+    const configuredTimeout = Number(config?.get<string>('SESSION_ADMISSION_TIMEOUT_MS') || process.env.SESSION_ADMISSION_TIMEOUT_MS);
     this.timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0
       ? configuredTimeout
       : 15000;

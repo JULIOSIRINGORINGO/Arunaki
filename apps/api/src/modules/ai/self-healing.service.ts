@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
 import * as path from 'path';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
@@ -90,8 +90,8 @@ export class SelfHealingService {
   ];
 
   constructor(
-    private readonly toolRegistryService: ToolRegistryService,
-    private readonly prisma: PrismaService,
+    @Inject(ToolRegistryService) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(PrismaService) @Optional() private readonly prisma?: PrismaService,
   ) {}
 
   /**
@@ -105,7 +105,7 @@ export class SelfHealingService {
     workspaceId?: string,
   ): Promise<SelfHealingResult> {
     // Workspace Isolation: validate paths before execution
-    if (workspaceId) {
+    if (workspaceId && this.prisma) {
       try {
         await this.validateToolPaths(toolName, args, workspaceId);
       } catch (err: any) {

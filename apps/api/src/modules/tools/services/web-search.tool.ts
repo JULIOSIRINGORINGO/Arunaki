@@ -8,8 +8,8 @@ export class WebSearchTool {
   private readonly logger = new Logger(WebSearchTool.name);
   private readonly apiKey: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('TAVILY_API_KEY') || '';
+  constructor(private readonly config?: ConfigService) {
+    this.apiKey = this.config?.get<string>('TAVILY_API_KEY') || process.env.TAVILY_API_KEY || '';
   }
 
   async searchWeb(

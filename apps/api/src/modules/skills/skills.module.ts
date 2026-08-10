@@ -21,6 +21,8 @@ export class SkillsModule implements OnModuleInit {
   constructor(private readonly seedService: SkillSeedService) {}
 
   async onModuleInit(): Promise<void> {
-    await this.seedService.seedAll();
+    if (this.seedService && typeof this.seedService.seedAll === 'function') {
+      await this.seedService.seedAll();
+    }
   }
 }

@@ -77,15 +77,15 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async findActive(): Promise<Provider | null> {
-    return this.repository.findActive();
+    return this.repository ? this.repository.findActive() : null;
   }
 
   async findAllEnabled(): Promise<Provider[]> {
-    return this.repository.findAllEnabled();
+    return this.repository ? this.repository.findAllEnabled() : [];
   }
 
   async getActiveConfig(): Promise<ProviderConfig | null> {
-    const provider = await this.repository.findActive();
+    const provider = this.repository ? await this.repository.findActive() : null;
     if (!provider) return null;
 
     return {
@@ -173,7 +173,7 @@ export class ProviderService extends BaseService<Provider> {
     triedProviderIds: string[] = [],
   ): Promise<ProviderConfig | null> {
     // 1. Check active database providers not in cooldown, skipping those we already tried
-    const available: Provider[] = await this.repository.findAvailable().catch(() => []);
+    const available: Provider[] = this.repository ? await this.repository.findAvailable().catch(() => []) : [];
     const next = available.find(
       (p) => p.id !== currentProviderId && !triedProviderIds.includes(p.id)
     );
@@ -192,7 +192,7 @@ export class ProviderService extends BaseService<Provider> {
     }
 
     // 2. Check enabled database providers for registered fallback credentials
-    const allProviders = await this.repository.findAvailable().catch(() => []);
+    const allProviders = this.repository ? await this.repository.findAvailable().catch(() => []) : [];
     const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
 
     if (openrouterProv) {

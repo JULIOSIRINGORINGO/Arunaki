@@ -11,10 +11,10 @@ export class VisionAiTool {
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
   private readonly visionModel: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = this.config.get<string>('AI_API_KEY') || '';
+  constructor(private readonly config?: ConfigService) {
+    this.apiKey = this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
     this.visionModel =
-      this.config.get<string>('VISION_MODEL') || 'google/gemini-2.0-flash-001';
+      this.config?.get<string>('VISION_MODEL') || process.env.VISION_MODEL || 'google/gemini-2.0-flash-001';
   }
 
   async analyzeImage(

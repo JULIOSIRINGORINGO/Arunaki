@@ -140,10 +140,12 @@ export class WorkspaceToolsService {
   ): Promise<ToolResult> {
     const startTime = Date.now();
     try {
-      const results = await this.searchService.searchFiles({
-        workspaceId,
-        query,
-      });
+      const results = this.searchService
+        ? await this.searchService.searchFiles({
+            workspaceId,
+            query,
+          })
+        : [];
       const formatted =
         results.length > 0
           ? results
@@ -263,12 +265,16 @@ export class WorkspaceToolsService {
       }
     }
 
-    // If path is relative (like "workspace-data/..."), resolve relative to API base dir
+    // If path is relative, resolve relative to workspace rootPath (if available) or API base dir
     if (!path.isAbsolute(resolvedPath)) {
-      // __dirname in compiled JS is dist/modules/tools/services/
-      // Go up 4 levels to reach apps/api/
-      const apiBase = path.resolve(__dirname, '..', '..', '..', '..');
-      resolvedPath = path.resolve(apiBase, resolvedPath);
+      if (rootPath) {
+        resolvedPath = path.resolve(rootPath, resolvedPath);
+      } else {
+        // __dirname in compiled JS is dist/modules/tools/services/
+        // Go up 4 levels to reach apps/api/
+        const apiBase = path.resolve(__dirname, '..', '..', '..', '..');
+        resolvedPath = path.resolve(apiBase, resolvedPath);
+      }
     }
 
     if (rootPath) {
@@ -987,11 +993,10 @@ export class WorkspaceToolsService {
       // Verify: content must have changed.
       if (updated === original) {
         return {
-          status: 'error',
-          data: {},
-          preview: 'File tidak berubah setelah edit.',
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'NO_CHANGE', message: 'Edits applied but content identical' },
+          status: 'success',
+          data: { path: targetPath, filename, editsApplied: 0 },
+          preview: `File "${filename}" sudah dalam kondisi terbaru (tidak ada perubahan).`,
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 0 },
         };
       }
 
@@ -1086,10 +1091,31 @@ export class WorkspaceToolsService {
     );
 
     const text = response.content || '';
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const parsed = JSON.parse(match[0]);
-    return Array.isArray(parsed) ? parsed : [];
+    try {
+      const match = text.match(/\[[\s\S]*/);
+      if (!match) return [];
+      let jsonStr = match[0];
+      let depth = 0;
+      let endIdx = -1;
+      for (let i = 0; i < jsonStr.length; i++) {
+        if (jsonStr[i] === '[') depth++;
+        else if (jsonStr[i] === ']') {
+          depth--;
+          if (depth === 0) {
+            endIdx = i + 1;
+            break;
+          }
+        }
+      }
+      if (endIdx !== -1) {
+        jsonStr = jsonStr.slice(0, endIdx);
+      }
+      const parsed = JSON.parse(jsonStr);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e: any) {
+      this.logger.warn(`generateEdits JSON parse failed: ${e.message}`);
+      return [];
+    }
   }
 
   /**

@@ -63,6 +63,14 @@ Bedanya dari computer use agent umum: **semua operasi terbatas ke Workspace fold
 
 Pengguna memberi tugas. Arunaki menentukan langkah terbaik.
 
+## Minimal Typing, Maximum Automation
+
+Pengguna cukup memberikan input seminimal mungkin. Arunaki mengeksekusi dengan automasi maksimal tanpa membebani pengguna mengetik instruksi panjang atau merapikan format.
+
+- **Copy-Paste Mentah**: Pengguna cukup menyalin-menempelkan (*copy-paste*) pesan WhatsApp atau catatan mentah langsung ke chat tanpa perlu merapikan format (`"update ini ke laporan harian:" + [paste teks mentah]`).
+- **Instruksi 3 Kata**: Pengguna cukup mengetik instruksi singkat (`"Rekap ke excel"`), dan Arunaki secara cerdas mengenali file yang dimaksud, kolom yang harus diisi, dan kalkulasi yang harus diperbarui.
+- **Tanpa Spoon-Feeding**: Pengguna tidak perlu mengetik aturan mikro atau formula matematika manual — Arunaki secara otonom memahami struktur dokumen, mempertahankan entri lama, dan menghitung ulang semua total secara presisi.
+
 ## Workspace = Sandbox
 
 Workspace adalah **lingkungan kerja** Arunaki. Semua operasi terjadi di sini.
