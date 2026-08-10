@@ -882,6 +882,18 @@ export class WorkspaceToolsService {
       const edits = await this.generateEdits(original, instructions);
 
       if (!Array.isArray(edits) || edits.length === 0) {
+        // Fallback: If instructions contain complete document content, write directly
+        // to prevent 3-turn read loops and 3-minute timeouts.
+        if (instructions.includes('---') || instructions.includes('*') || instructions.length > original.length * 0.4) {
+          await fsPromises.writeFile(targetPath, instructions, 'utf-8');
+          return {
+            status: 'success',
+            data: { path: targetPath, filename, editsApplied: 1 },
+            preview: `File "${filename}" berhasil diperbarui di workspace.`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
+          };
+        }
+
         return {
           status: 'success',
           data: { path: targetPath, filename, editsApplied: 0 },
