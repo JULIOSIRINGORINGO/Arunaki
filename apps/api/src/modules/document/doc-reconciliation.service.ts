@@ -259,7 +259,7 @@ export class DocumentReconciliationService {
     totalPengeluaran: number;
     actions: Array<{ action: string; cell: string; value: any }>;
   } {
-    const lines = txtContent.split('\n').map((l) => l.strip ? l.strip() : l.trim()).filter(Boolean);
+    const lines = txtContent.split('\n').map((l) => l.trim()).filter(Boolean);
     const pemasukanItems: string[] = [];
     let totalPemasukan = 0;
     let totalBca = 0;

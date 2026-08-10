@@ -255,10 +255,12 @@ export class SelfHealingService {
    */
   private async getWorkspaceRootPath(workspaceId: string): Promise<string | null> {
     try {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { rootPath: true },
-      });
+      const workspace = this.prisma
+        ? await this.prisma.workspace.findUnique({
+            where: { id: workspaceId },
+            select: { rootPath: true },
+          })
+        : null;
       return workspace?.rootPath || null;
     } catch {
       return null;

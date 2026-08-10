@@ -1778,7 +1778,9 @@ export class ToolsProviderModule implements OnModuleInit {
               if (process.platform === 'win32' && filePath) {
                 try {
                   const { execSync } = await import('child_process');
-                  const pyScript = path.default.resolve(process.cwd(), 'scripts/excel_com_reconciler.py');
+                  const path = await import('path');
+                  const fs = await import('fs');
+                  const pyScript = path.resolve(process.cwd(), 'scripts/excel_com_reconciler.py');
                   if (fs.existsSync(pyScript)) {
                     const actionsJson = JSON.stringify(args.actions || []).replace(/"/g, '\\"');
                     execSync(`python "${pyScript}" "${filePath}" "${actionsJson}"`, { cwd: process.cwd() });
