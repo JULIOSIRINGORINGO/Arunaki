@@ -725,8 +725,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'list',
         displayName: 'List Files',
-        description:
-          'Lists all files and folders inside the active Workspace.',
+        description: 'Lists all files in the workspace.',
         tags: ['files', 'list', 'workspace', 'directory'],
         handler: (args) =>
           this.workspaceToolsService.listWorkspaceFiles(args.workspaceId),
@@ -745,8 +744,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'read',
         displayName: 'Read File',
-        description:
-          'Reads the full content of a file (PDF, Word, Excel, CSV, TXT) inside the workspace.',
+        description: 'Reads content from a file in the workspace.',
         tags: ['read', 'pdf', 'docx', 'xlsx', 'csv', 'workspace'],
         handler: (args) =>
           this.workspaceToolsService.readWorkspaceFile(
@@ -758,7 +756,7 @@ export class ToolsProviderModule implements OnModuleInit {
           properties: {
             filePath: {
               type: 'string',
-              description: 'File name or full path of the document',
+              description: 'File name or path',
             },
             workspaceId: { type: 'string', description: 'Workspace ID' },
           },
@@ -775,8 +773,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'write',
         mutating: true,
         displayName: 'Create File',
-        description:
-          'Creates a new report or document file (Excel, PDF, Word, TXT, JSON) inside the workspace.',
+        description: 'Writes full content to a file in the workspace.',
         tags: ['write', 'create', 'export', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.writeWorkspaceFile({
@@ -793,14 +790,14 @@ export class ToolsProviderModule implements OnModuleInit {
             workspaceId: { type: 'string', description: 'Workspace ID' },
             filename: {
               type: 'string',
-              description: 'Name of the file to create',
+              description: 'File name',
             },
             format: {
               type: 'string',
               enum: ['xlsx', 'csv', 'pdf', 'docx', 'txt', 'md', 'json'],
               description: 'Document format',
             },
-            content: { type: 'string', description: 'Text/markdown content' },
+            content: { type: 'string', description: 'File content' },
             rows: { type: 'array', items: { type: 'object' }, description: 'Data rows for table files' },
             title: { type: 'string', description: 'Document title' },
           },
@@ -817,8 +814,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'delete',
         mutating: true,
         displayName: 'Delete File',
-        description:
-          'Deletes a file from the workspace. Automatically creates a backup in .arunaki-trash before deletion.',
+        description: 'Deletes a file from the workspace.',
         tags: ['delete', 'remove', 'trash', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.deleteWorkspaceFile({
@@ -846,8 +842,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'rename',
         mutating: true,
         displayName: 'Rename File',
-        description:
-          'Renames an existing file inside the workspace. The original file is moved to the new name, and the workspace index is updated.',
+        description: 'Renames a file in the workspace.',
         tags: ['rename', 'move', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.renameWorkspaceFile({
@@ -861,11 +856,11 @@ export class ToolsProviderModule implements OnModuleInit {
             workspaceId: { type: 'string', description: 'Workspace ID (required)' },
             filename: {
               type: 'string',
-              description: 'File name to rename (e.g. test.txt)',
+              description: 'Current file name',
             },
             newFilename: {
               type: 'string',
-              description: 'New file name (e.g. test2.txt)',
+              description: 'New file name',
             },
           },
           required: ['workspaceId', 'filename', 'newFilename'],
@@ -880,12 +875,8 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'edit',
         mutating: true,
         displayName: 'Edit File',
-        description:
-          'Edits an existing file via precise edit-diff: reads the full file, applies only the changed lines, keeps untouched content intact. ' +
-          'USE THIS when a document already exists and the user wants a NEW-PERIOD update or "make the report for today" — e.g. a dated recap/report/log ' +
-          'that must roll over (update its date/period, replace the running-period data, keep cumulative balances) instead of appending or creating a new file. ' +
-          'Do NOT use write or generate_export when the target template file already exists.',
-        tags: ['edit', 'update', 'workspace', 'file', 'diff', 'rollover'],
+        description: 'Edits a file in the workspace with updated content or instructions.',
+        tags: ['edit', 'update', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,
