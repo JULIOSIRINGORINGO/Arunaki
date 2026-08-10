@@ -1437,10 +1437,10 @@ export class WorkspaceRunnerService {
         );
         if (!finalContent) {
           finalContent =
-            'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.';
+            'Agent reached maximum step limit. Results so far may be incomplete -- please continue your request if needed.';
         }
       } else if (!finalContent) {
-        finalContent = 'Pekerjaan otonom di Workspace telah selesai.';
+        finalContent = 'Autonomous workspace task completed.';
       }
 
       const artifactRecords = await Promise.all(

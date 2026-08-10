@@ -355,7 +355,7 @@ export class SubAgentRunnerService {
     }
 
     if (!finalContent) {
-      finalContent = `Sub-agent "${task.taskName}" telah menyelesaikan tugasnya.`;
+      finalContent = `Sub-agent "${task.taskName}" has completed its assigned task.`;
     }
 
     return { content: finalContent, toolOutputs, rounds };

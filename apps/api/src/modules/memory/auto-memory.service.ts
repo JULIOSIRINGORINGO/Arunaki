@@ -248,28 +248,28 @@ export class AutoMemoryService {
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content: `Kamu adalah Memory Consolidation Agent.
-Tugas: identifikasi memori yang mirip/duplikat dan gabungkan menjadi satu entri yang lebih lengkap.
+        content: `You are the Memory Consolidation Agent.
+Task: Identify similar/duplicate memories and merge them into a single comprehensive entry.
 
-Tipe memori: ${type}
-Jumlah memori: ${memories.length}
+Memory type: ${type}
+Total memories: ${memories.length}
 
-ATURAN:
-- Gabungkan memori yang berisi informasi sama atau tumpang tindih
-- Pertahankan detail penting dari masing-masing
-- Buang noise/pengulangan
-- Setiap hasil gabungan harus lebih lengkap dan actionable
-- Maksimal 15 hasil gabungan
+RULES:
+- Merge memories containing duplicate or overlapping information
+- Retain critical details from each
+- Remove noise and redundancy
+- Output merged memories clearly and actionably
+- Maximum 15 merged results
 
-Respond dalam JSON:
+Respond in JSON:
 {
   "merged": [
     {
-      "ids": ["id1", "id2"],  // IDs memori yang digabung
+      "ids": ["id1", "id2"],
       "key": "new-key",
-      "content": "konten gabungan yang lengkap",
+      "content": "complete merged content",
       "importance": 1-10,
-      "reason": "alasan penggabungan"
+      "reason": "reason for merging"
     }
   ]
 }`,
@@ -336,29 +336,29 @@ Respond dalam JSON:
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content: `Kamu adalah Memory Distillation Agent.
-Tugasmu: kompres dan rangkum kumpulan memori mentah menjadi poin-poin ringkas.
+        content: `You are the Memory Distillation Agent.
+Task: Compress and summarize raw memories into concise actionable points.
 
-Tipe memori: ${type}
-Jumlah memori mentah: ${memories.length}
+Memory type: ${type}
+Total raw memories: ${memories.length}
 
-ATURAN:
-- Gabungkan memori yang duplikat atau hampir sama
-- Identifikasi pola dan tema utama
-- Prioritaskan informasi dengan importance tinggi
-- Buang noise (memori tidak penting/berulang)
-- Setiap poin ringkasan harus actionable dan spesifik
-- Maksimal 10 poin ringkasan
+RULES:
+- Merge duplicate or similar memories
+- Identify key themes and patterns
+- Prioritize high-importance items
+- Remove noise and redundant items
+- Ensure every distilled point is specific and actionable
+- Maximum 10 distilled points
 
-Respond dalam JSON:
+Respond in JSON:
 {
   "distilled": [
     {
       "key": "unique-key",
-      "summary": "ringkasan padat",
+      "summary": "concise summary",
       "importance": 1-10,
       "category": "pattern|preference|fact|insight",
-      "sourceCount": jumlah memori sumber
+      "sourceCount": number of source memories
     }
   ]
 }`,

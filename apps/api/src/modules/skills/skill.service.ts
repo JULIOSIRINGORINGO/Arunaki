@@ -285,22 +285,22 @@ export class SkillService extends BaseService<Skill> {
     const messages = [
       {
         role: 'system' as const,
-        content: `Kamu adalah Skill Composer.
-Tugasmu: Gabungkan beberapa skill menjadi satu skill komposit yang koheren.
+        content: `You are the Skill Consolidation Agent.
+Your task: merge multiple skill blocks into a single clean skill block.
 
-Skill sumber:
+Source skills:
 ${skillBlocks}
 
-Deskripsi target: ${targetDescription}
+Target description: ${targetDescription}
 
-ATURAN:
-- Gabungkan konten tanpa duplikasi
-- Pertahankan struktur markdown yang jelas
-- Prioritaskan instruksi yang spesifik dan actionable
-- Hapus redundansi
-- Output: HANYA konten markdown gabungan, tanpa penjelasan`,
+RULES:
+- Merge content without duplication
+- Maintain clear markdown structure
+- Prioritize specific and actionable instructions
+- Remove redundancy
+- Output: ONLY the merged markdown content, no explanations`,
       },
-      { role: 'user' as const, content: 'Gabungkan skill di atas.' },
+      { role: 'user' as const, content: 'Merge the skills above.' },
     ];
 
     const response = await this.aiService.chat(messages, []);
