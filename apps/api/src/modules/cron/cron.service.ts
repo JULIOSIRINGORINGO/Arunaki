@@ -151,7 +151,6 @@ export class CronService implements OnModuleInit {
    * Check for due scheduled jobs and execute them.
    */
   private async checkAndRunDueSchedules() {
-    if (!(this.prisma as any)?.scheduledReport) return;
     const now = new Date();
     const dueJobs = await this.prisma.scheduledReport.findMany({
       where: {

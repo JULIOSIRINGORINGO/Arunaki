@@ -31,12 +31,6 @@ BENSIN 100`;
 
 async function runTest() {
   console.log('🚀 Starting extended re-total test...');
-  const basePath = path.join(WORKSPACE_ROOT, 'REKAPAN_TEMPLATE_BASE.txt');
-  const targetPath = path.join(WORKSPACE_ROOT, TARGET_FILE);
-  if (fs.existsSync(basePath)) {
-    fs.copyFileSync(basePath, targetPath);
-    console.log('📄 Standard template reset to REKAPAN TERBARU2.txt');
-  }
   console.log('Instruksi:', instruction);
 
   let sawDone = false;
