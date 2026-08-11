@@ -875,13 +875,31 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'edit',
         mutating: true,
         displayName: 'Edit File',
-        description: 'Edits a file in the workspace with updated content or instructions.',
+        description:
+          'Edit a file in the workspace with a precise patch. Your patch language is a stripped-down, file-oriented diff format designed to be easy to parse and safe to apply. You can think of it as a high-level envelope:\n' +
+          '*** Begin Patch\n' +
+          '[ one or more file sections ]\n' +
+          '*** End Patch\n' +
+          '\n' +
+          'Each operation starts with a header. To patch an existing file in place, use:\n' +
+          '*** Update File: <path>\n' +
+          '@@ <first context line>\n' +
+          ' <unchanged context line>\n' +
+          '- <line to remove>\n' +
+          '+ <line to add>\n' +
+          '\n' +
+          'It is important to remember:\n' +
+          '- Read the file FIRST and copy context lines exactly as they appear in the file.\n' +
+          '- Prefix removed lines with `-`, added lines with `+`, and unchanged context lines with a single space.\n' +
+          '- Context lines in one section must be contiguous in the file. For changes in different parts of the file, add separate `@@` sections.\n' +
+          '- For a NEW period rollover: update the date/period header, replace only the running-period data lines, keep cumulative/balance sections, and recompute totals.\n' +
+          '- The patch is validated before anything is written. If any context line does not match, NOTHING is changed and an error is returned — then read the file again and retry with corrected context lines.',
         tags: ['edit', 'update', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,
             filename: args.filename,
-            instructions: args.instructions,
+            patchText: args.patchText,
           }),
         parameters: {
           type: 'object',
@@ -891,15 +909,16 @@ export class ToolsProviderModule implements OnModuleInit {
               type: 'string',
               description: 'Existing file name to edit (e.g. laporan.txt)',
             },
-            instructions: {
+            patchText: {
               type: 'string',
-              description: 'What to change in the file (e.g. update today date, add these transactions, recalc totals)',
+              description:
+                'The full patch text that describes all changes to be made, wrapped in *** Begin Patch / *** End Patch.',
             },
           },
-          required: ['filename', 'instructions'],
+          required: ['filename', 'patchText'],
         },
-        estimatedLatency: 'slow',
-        timeoutMs: 120000,
+        estimatedLatency: 'fast',
+        timeoutMs: 60000,
       }),
     );
 

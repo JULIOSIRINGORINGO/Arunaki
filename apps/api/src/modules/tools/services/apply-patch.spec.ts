@@ -1,0 +1,105 @@
+import { describe, expect, it } from 'vitest';
+import { parse, derive, joinBom, PatchError } from './apply-patch.js';
+
+const DOC = [
+  'LAPORAN HARIAN — SENIN, 10 AGUSTUS 2026',
+  '======================================',
+  '',
+  'PEMASUKAN:',
+  'CK DEDI  | Rp 500.000',
+  'CK BUDI  | Rp 250.000',
+  'TOTAL PEMASUKAN | Rp 750.000',
+  '',
+  'PENGELUARAN:',
+  'Operasional | Rp 50.000',
+  'TOTAL PENGELUARAN | Rp 50.000',
+  '',
+  'SALDO AKHIR | Rp 700.000',
+  '',
+].join('\n');
+
+describe('apply-patch', () => {
+  it('applies multiple contiguous chunks and keeps the rest untouched', () => {
+    const patch =
+      '*** Begin Patch\n' +
+      '*** Update File: laporan.txt\n' +
+      '@@\n' +
+      '-LAPORAN HARIAN — SENIN, 10 AGUSTUS 2026\n' +
+      '+LAPORAN HARIAN — SELASA, 11 AGUSTUS 2026\n' +
+      '  ======================================\n' +
+      '@@\n' +
+      '  PEMASUKAN:\n' +
+      '-CK DEDI  | Rp 500.000\n' +
+      '-CK BUDI  | Rp 250.000\n' +
+      '+CK DEDI  | Rp 600.000\n' +
+      '+CK ANI  | Rp 300.000\n' +
+      '-TOTAL PEMASUKAN | Rp 750.000\n' +
+      '+TOTAL PEMASUKAN | Rp 900.000\n' +
+      '*** End Patch';
+    const hunks = parse(patch);
+    expect(hunks).toHaveLength(1);
+    expect(hunks[0].type).toBe('update');
+    const out = derive(hunks[0], DOC, 'laporan.txt').content;
+    expect(out).toContain('LAPORAN HARIAN — SELASA, 11 AGUSTUS 2026');
+    expect(out).toContain('CK DEDI  | Rp 600.000');
+    expect(out).toContain('CK ANI  | Rp 300.000');
+    expect(out).toContain('TOTAL PEMASUKAN | Rp 900.000');
+    expect(out).toContain('SALDO AKHIR | Rp 700.000');
+    expect(out).not.toContain('CK BUDI  | Rp 250.000');
+    expect(out).not.toContain('TOTAL PEMASUKAN | Rp 750.000');
+  });
+
+  it('rejects the whole patch (no partial write) when one context line is wrong', () => {
+    const patch =
+      '*** Begin Patch\n' +
+      '*** Update File: laporan.txt\n' +
+      '@@\n' +
+      '  LAPORAN HARIAN — SENIN, 10 AGUSTUS 2026\n' +
+      '  PEMASUKAN:\n' +
+      '-CK DEDI  | Rp 500.000\n' +
+      '+CK DEDI  | Rp 999.000\n' +
+      '  SALDO AKHIR | Rp 111.000\n' + // <-- does not exist in DOC
+      '*** End Patch';
+    const hunks = parse(patch);
+    expect(() => derive(hunks[0], DOC, 'laporan.txt')).toThrow(PatchError);
+    expect(() => derive(hunks[0], DOC, 'laporan.txt')).toThrow(/Failed to find expected lines/);
+  });
+
+  it('keeps BOM intact', () => {
+    const patch =
+      '*** Begin Patch\n' +
+      '*** Update File: laporan.txt\n' +
+      '@@\n' +
+      '-CK DEDI  | Rp 500.000\n' +
+      '+CK DEDI  | Rp 500.500\n' +
+      '*** End Patch';
+    const hunks = parse(patch);
+    const out = derive(hunks[0], '\uFEFF' + DOC, 'laporan.txt');
+    expect(out.bom).toBe(true);
+    expect(joinBom(out.content, out.bom).charCodeAt(0)).toBe(0xfeff);
+    expect(joinBom(out.content, out.bom)).toContain('CK DEDI  | Rp 500.500');
+  });
+
+  it('tolerates marker-space and trailing-whitespace drift on context lines', () => {
+    const patch =
+      '*** Begin Patch\n' +
+      '*** Update File: laporan.txt\n' +
+      '@@\n' +
+      '  CK BUDI  | Rp 250.000   \n' + // trailing spaces not in file
+      '- TOTAL PEMASUKAN | Rp 750.000\n' + // extra space after marker
+      '+ TOTAL PEMASUKAN | Rp 800.000\n' +
+      '*** End Patch';
+    const hunks = parse(patch);
+    const out = derive(hunks[0], DOC, 'laporan.txt').content;
+    expect(out).toContain('TOTAL PEMASUKAN | Rp 800.000');
+  });
+
+  it('returns an empty patch when the content is fenced (already applied)', () => {
+    const patch =
+      '```\n' +
+      '*** Begin Patch\n' +
+      '*** End Patch\n' +
+      '```';
+    expect(parse(patch)).toHaveLength(0);
+  });
+});

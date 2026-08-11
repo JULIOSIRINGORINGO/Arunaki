@@ -41,7 +41,7 @@ When user says "make/create the report for today/this month" (a NEW period) and 
 - Read the full file first.
 - NEW PERIOD → ROLL OVER: update the date/period header, REPLACE running-period data with new data, KEEP cumulative balances (outstanding, deposits, carried totals), recompute totals.
 - ADD/APPEND (user says "tambahkan"/"add") → keep everything, append.
-- FOR REPORT & DOCUMENT UPDATES: Always use the `write` tool directly to save the complete updated document content. DO NOT use `edit` for multi-section or full document updates.
+- **Editing existing files**: use the `edit` tool with a patch (*** Begin Patch / *** Update File / context + `-`/`+` lines). It only changes the listed lines and validates before writing. Use `write` only for new files or full rewrites.
 
 ## 6. Output Contract
 

@@ -1218,6 +1218,30 @@ Numerical Accuracy: Traceable to tool, verify once more, "Approximately X" for u
 
 ---
 
+## Phase 32: OpenCode-Style Patch Engine (Pengganti 9-Chain Fuzzy) ✅ DONE
+
+**Goal:** Ganti edit tool (LLM-generated `{oldText,newText}` + 9-chain fuzzy replacer + full-write heuristic) dengan engine patch ketat port dari opencode (`apply-patch.ts`): LLM kirim patch text, engine dry-run validasi semua baris konteks, baru menulis. Anti-gagal = parse ketat + tolak total tanpa partial write + error dikembalikan ke LLM (self-correct loop).
+
+### 32.1 Patch Engine (port dari opencode MIT) ✅
+- [x] `apps/api/src/modules/tools/services/apply-patch.ts` — `parse()` (Add/Update/Delete/Move, heredoc), `derive()` (dry-run, throw `PatchError` jika baris konteks tak cocok), ladder fuzzy 4-level (exact → rstrip → trim → normalized typographic), BOM handling, `joinBom()`
+- [x] `editWorkspaceFile` di `workspace-tools.service.ts` — input berubah dari `instructions` → `patchText`; parse → validasi hunk (delete/add ditolak, path wajib cocok dengan file yang diedit) → derive dry-run → tulis via StorageService; `estimatedLatency: 'fast'`, `timeoutMs: 60000`
+- [x] Hapus ~260 baris: `generateEdits` (LLM call kedua), `fuzzyApplyEdit` (9-chain), `similarity`, injeksi `AiService`, fallback full-content write
+
+### 32.2 Tool Schema & Prompt ✅
+- [x] Deskripsi tool `edit` semua bahasa Inggris mengikuti `apply_patch.txt` opencode (format `*** Begin Patch` / `*** Update File:` / `@@` / `-` `+` ` `, aturan kontiguitas, rollover, retry)
+- [x] `rules.md` §5 — "selalu pakai `write`" diganti "pakai `edit` patch untuk update file; `write` hanya untuk file baru/rewrite penuh"
+
+### 32.3 Enforce Patch Path (write dibuang saat @file) ✅
+- [x] `selectToolsForGoal` di `workspace-runner.service.ts` — saat goal mereferensikan `@file` yang ada, `write` dikeluarkan dari toolset sehingga model tidak bisa rewrite penuh; pakai `extractMentionedFilenames()` (mekanisme yang sama dengan `readMentionedFiles`) bukan regex ad-hoc
+
+### 32.4 Test & Verifikasi ✅
+- [x] `apply-patch.spec.ts` — 5 test: multi-chunk surgical, tolak-total tanpa partial write, BOM, whitespace drift, fenced empty patch
+- [x] `npx tsc -p apps/api/tsconfig.build.json --noEmit` — clean
+- [x] `npx vitest run` (tools + ai + workspace) — **89/89 passed**
+- [x] Harness live `test-rekap-extended.ts` — **12/12 checks passed**, `[tool_call] edit` ×4 (patch path dipakai, bukan `write`)
+
+---
+
 ## File Structure
 
 ```

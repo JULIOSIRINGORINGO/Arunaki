@@ -64,6 +64,7 @@ async function runTest() {
             try {
               const event = JSON.parse(line.slice(6));
               if (event.type === 'tool_call') console.log(`[tool_call] ${event.data?.name} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
+              if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName}`);
               if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
               if (event.type === 'error') error = event.data?.message || 'unknown';
               if (event.type === 'done') sawDone = true;

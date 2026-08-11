@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { StorageService } from '../../storage/storage.service.js';
 import { SearchService } from '../../search/search.service.js';
 import { FileService } from '../../file/file.service.js';
@@ -7,7 +7,7 @@ import { DocumentGeneratorTool } from './document-generator.tool.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { DesktopBridgeService } from '../../interaction/desktop-bridge.service.js';
-import { AiService } from '../../ai/ai.service.js';
+import * as Patch from './apply-patch.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import { promises as fsp } from 'fs';
@@ -27,8 +27,6 @@ export class WorkspaceToolsService {
     @Inject(forwardRef(() => DocumentGeneratorTool)) private readonly documentGeneratorTool: DocumentGeneratorTool,
     @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
     @Inject(forwardRef(() => DesktopBridgeService)) private readonly desktopBridge: DesktopBridgeService,
-    @Optional() @Inject(forwardRef(() => AiService))
-    private readonly aiService?: AiService,
   ) {}
 
   /**
@@ -805,20 +803,10 @@ export class WorkspaceToolsService {
   async editWorkspaceFile(params: {
     workspaceId: string;
     filename: string;
-    instructions: string;
+    patchText: string;
   }): Promise<ToolResult> {
-    const { workspaceId, filename, instructions } = params;
+    const { workspaceId, filename, patchText } = params;
     const startTime = Date.now();
-
-    if (!this.aiService) {
-      return {
-        status: 'error',
-        data: {},
-        preview: 'AI service tidak tersedia untuk edit-diff.',
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: 0 },
-        error: { code: 'AI_UNAVAILABLE', message: 'AiService not injected' },
-      };
-    }
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -862,56 +850,84 @@ export class WorkspaceToolsService {
     try {
       const original = await fsPromises.readFile(targetPath, 'utf-8');
 
-      const edits = await this.generateEdits(original, instructions);
+      if (!patchText || !patchText.trim()) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Patch kosong — kirim patch berformat *** Begin Patch / *** End Patch.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'EMPTY_PATCH', message: 'patchText is empty' },
+        };
+      }
 
-      if (!Array.isArray(edits) || edits.length === 0) {
-        // Fallback: If instructions contain complete document content, write directly
-        // to prevent 3-turn read loops and 3-minute timeouts.
-        if (instructions.includes('---') || instructions.includes('*') || instructions.length > original.length * 0.4) {
-          const cleanDoc = instructions;
-          await fsPromises.writeFile(targetPath, cleanDoc, 'utf-8');
-          return {
-            status: 'success',
-            data: { path: targetPath, filename, editsApplied: 1 },
-            preview: `File "${filename}" berhasil diperbarui di workspace.`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
-          };
-        }
+      let hunks: Patch.Hunk[];
+      try {
+        hunks = Patch.parse(patchText);
+      } catch (e: any) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Patch tidak valid: ${e.message}`,
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'INVALID_PATCH', message: e.message },
+        };
+      }
 
+      if (hunks.length === 0) {
         return {
           status: 'success',
           data: { path: targetPath, filename, editsApplied: 0 },
-          preview: `File "${filename}" is already up to date or no changes were required.`,
+          preview: `Tidak ada perubahan dalam patch untuk "${filename}".`,
           metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 0 },
         };
       }
 
-      let updated = original;
-      const applied: string[] = [];
-      for (const edit of edits) {
-        const oldText = String(edit?.oldText ?? '');
-        const newText = String(edit?.newText ?? '');
-        if (oldText) {
-          const res = this.fuzzyApplyEdit(updated, oldText, newText);
-          if (res.applied) {
-            updated = res.updated;
-            applied.push(oldText.slice(0, 60));
-          }
+      // edit only patches existing files. Deletes/adds have their own tools,
+      // and the hunk's file must match the file being edited.
+      const bad = hunks.find(
+        (h) =>
+          h.type !== 'update' ||
+          (!!h.path &&
+            h.path.split('/').pop()?.toLowerCase() !== filename.split('/').pop()?.toLowerCase()),
+      );
+      if (bad) {
+        return {
+          status: 'error',
+          data: {},
+          preview:
+            bad.type === 'delete'
+              ? 'Gunakan delete_workspace_file untuk menghapus file.'
+              : bad.type === 'add'
+                ? 'Gunakan write_workspace_file untuk membuat file baru.'
+                : `Patch menargetkan "${bad.path}" tapi edit dipanggil untuk "${filename}". Perbaiki nama file pada *** Update File.`,
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'INVALID_PATCH_TARGET', message: 'patch targets the wrong file or an unsupported hunk type' },
+        };
+      }
+
+      // Dry-run derive: any context mismatch throws -> nothing is written.
+      let content = original;
+      let editsApplied = 0;
+      for (const hunk of hunks) {
+        if (hunk.type === 'update') {
+          const update = Patch.derive(hunk, content, filename);
+          content = Patch.joinBom(update.content, update.bom);
+          editsApplied += hunk.chunks!.length;
         }
       }
 
-      await this.storageService.writeFile(targetPath, updated);
+      await this.storageService.writeFile(targetPath, content);
 
       return {
         status: 'success',
-        data: { path: targetPath, filename, editsApplied: Math.max(1, applied.length) },
-        preview: `File "${filename}" berhasil diperbarui.`,
+        data: { path: targetPath, filename, editsApplied },
+        preview: `File "${filename}" berhasil diperbarui (${editsApplied} hunk).`,
         metadata: {
           toolName: 'edit',
           displayName: 'Edit File',
           executionTime: Date.now() - startTime,
           filename,
-          editsApplied: Math.max(1, applied.length),
+          editsApplied,
         },
       };
     } catch (e: any) {
@@ -922,267 +938,6 @@ export class WorkspaceToolsService {
         metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
         error: { code: 'EDIT_FAILED', message: e.message },
       };
-    }
-  }
-
-  /**
-   * OpenCode 9-Chain Fuzzy Replacer:
-   * Flexibly matches `oldText` in `doc` without rigid character/regex requirements.
-   * Ensures edits succeed 100% of the time without failing or forcing full-file rewrites.
-   *
-   *  1. SimpleReplacer                 — exact substring match
-   *  2. CRLFNormalizedReplacer         — tolerate Windows \r\n vs Linux \n
-   *  3. LineTrimmedReplacer            — line-by-line after .trim()
-   *  4. BlockAnchorReplacer            — anchor first/last line + Levenshtein >= 65%
-   *  5. WhitespaceNormalizedReplacer   — collapse \s+ to a single space
-   *  6. IndentationFlexibleReplacer    — ignore leading spaces/tabs
-   *  7. EscapeNormalizedReplacer       — tolerate literal "\n" / "\t" escapes
-   *  8. KeyAnchorLineReplacer          — match a line by entry key (e.g. "CK DEDI", "TOTAL PEMASUKAN")
-   *  9. MultiOccurrenceReplacer        — replace every occurrence, not just the first
-   */
-  private fuzzyApplyEdit(
-    doc: string,
-    oldText: string,
-    newText: string,
-  ): { updated: string; applied: boolean } {
-    if (!doc || !newText) return { updated: doc, applied: false };
-    if (!oldText || !oldText.trim()) {
-      return { updated: newText, applied: true };
-    }
-
-    const usesCRLF = doc.includes('\r\n');
-    const newline = usesCRLF ? '\r\n' : '\n';
-    const normNewText = usesCRLF
-      ? newText.replace(/\r?\n/g, '\r\n')
-      : newText.replace(/\r\n/g, '\n');
-
-    // ── Chain 1: SimpleReplacer (exact match) ───────────────────────────────
-    if (doc.includes(oldText)) {
-      return { updated: doc.replace(oldText, normNewText), applied: true };
-    }
-
-    const docLines = doc.split(/\r?\n/);
-    const oldLines = oldText
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter(Boolean);
-    const firstClean = oldLines[0];
-    const lastClean = oldLines[oldLines.length - 1];
-    const replaceBlock = (startIdx: number, endIdx: number) => {
-      const matchedBlock = docLines.slice(startIdx, endIdx).join(newline);
-      return { updated: doc.replace(matchedBlock, normNewText), applied: true };
-    };
-
-    // ── Chain 2: CRLF / LF Normalized Replacer ─────────────────────────────
-    const docLF = doc.replace(/\r\n/g, '\n');
-    const oldLF = oldText.replace(/\r\n/g, '\n');
-    if (docLF.includes(oldLF)) {
-      const idx = docLF.indexOf(oldLF);
-      const before = docLF.slice(0, idx);
-      const origBefore = usesCRLF ? before.replace(/\n/g, '\r\n') : before;
-      const origMatched = doc.slice(
-        origBefore.length,
-        origBefore.length + oldText.length,
-      );
-      return { updated: doc.replace(origMatched, normNewText), applied: true };
-    }
-
-    // ── Chain 3: LineTrimmedReplacer (line-by-line after trim) ─────────────
-    if (oldLines.length > 0) {
-      for (let i = 0; i <= docLines.length - oldLines.length; i++) {
-        let match = true;
-        for (let j = 0; j < oldLines.length; j++) {
-          if (docLines[i + j].trim() !== oldLines[j]) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          return replaceBlock(i, i + oldLines.length);
-        }
-      }
-    }
-
-    // ── Chain 4: BlockAnchorReplacer (first/last line + Levenshtein >= 65%) ─
-    if (oldLines.length > 1 && firstClean && lastClean) {
-      for (let i = 0; i < docLines.length - 1; i++) {
-        if (this.similarity(docLines[i].trim(), firstClean) < 0.65) continue;
-        for (let j = i + 1; j < docLines.length; j++) {
-          if (this.similarity(docLines[j].trim(), lastClean) < 0.65) continue;
-          const blockLen = j - i + 1;
-          if (
-            blockLen >= oldLines.length * 0.5 &&
-            blockLen <= oldLines.length * 1.5
-          ) {
-            return replaceBlock(i, j + 1);
-          }
-        }
-      }
-    }
-
-    // ── Chain 5: WhitespaceNormalizedReplacer (\s+ -> single space) ────────
-    const normWhitespace = (s: string) => s.replace(/\s+/g, ' ').trim();
-    const docNormWS = normWhitespace(doc);
-    const oldNormWS = normWhitespace(oldText);
-    if (docNormWS.includes(oldNormWS) && firstClean) {
-      const lineIdx = docLines.findIndex((l) =>
-        normWhitespace(l).includes(normWhitespace(firstClean)),
-      );
-      if (lineIdx !== -1) {
-        return replaceBlock(lineIdx, lineIdx + Math.max(1, oldLines.length));
-      }
-    }
-
-    // ── Chain 6: IndentationFlexibleReplacer (ignore leading space/tab) ────
-    const indentless = (l: string) => l.replace(/^[\t ]+/, '');
-    const oldIndentless = oldLines.map(indentless);
-    if (oldIndentless.length > 0) {
-      for (let i = 0; i <= docLines.length - oldIndentless.length; i++) {
-        let match = true;
-        for (let j = 0; j < oldIndentless.length; j++) {
-          if (indentless(docLines[i + j]) !== oldIndentless[j]) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          return replaceBlock(i, i + oldIndentless.length);
-        }
-      }
-    }
-
-    // ── Chain 7: EscapeNormalizedReplacer (literal \n / \t escapes) ────────
-    const normEsc = (s: string) => s.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-    const docEsc = normEsc(doc);
-    const oldEsc = normEsc(oldText);
-    if (docEsc.includes(oldEsc)) {
-      const escIdx = docEsc.indexOf(oldEsc);
-      const escBefore = docEsc.slice(0, escIdx);
-      const escMatched = doc.slice(
-        escBefore.length,
-        escBefore.length + oldEsc.length,
-      );
-      return { updated: doc.replace(escMatched, normNewText), applied: true };
-    }
-
-    // ── Chain 8: KeyAnchorLineReplacer (line-by-line key, no regex) ────────
-    const keyMatch = oldText.split('=')[0]?.split(':')[0]?.trim();
-    if (keyMatch && keyMatch.length > 2) {
-      const lineIdx = docLines.findIndex((l) => l.includes(keyMatch));
-      if (lineIdx !== -1) {
-        docLines[lineIdx] = normNewText;
-        return { updated: docLines.join(newline), applied: true };
-      }
-    }
-
-    // ── Chain 9: MultiOccurrenceReplacer (replace all matches) ─────────────
-    if (oldLines.length === 1 && firstClean && firstClean.length > 3) {
-      const targetSub = firstClean;
-      const lineIdx = docLines.findIndex((l) => l.includes(targetSub));
-      if (lineIdx !== -1) {
-        for (let i = 0; i < docLines.length; i++) {
-          if (docLines[i].includes(targetSub)) {
-            docLines[i] = docLines[i].split(targetSub).join(normNewText);
-          }
-        }
-        return { updated: docLines.join(newline), applied: true };
-      }
-    }
-
-    // Fallback: Full Content Update (if newText represents the complete file)
-    if (newText.length > doc.length * 0.3) {
-      return { updated: normNewText, applied: true };
-    }
-
-    // Fallback: Append newText cleanly at the end
-    return { updated: doc + newline + normNewText, applied: true };
-  }
-
-  /** Levenshtein-based similarity ratio (0..1) between two strings. */
-  private similarity(a: string, b: string): number {
-    if (a === b) return 1;
-    if (!a.length || !b.length) return 0;
-    const maxLen = Math.max(a.length, b.length);
-    const prev = new Array<number>(b.length + 1);
-    const curr = new Array<number>(b.length + 1);
-    for (let j = 0; j <= b.length; j++) prev[j] = j;
-    for (let i = 1; i <= a.length; i++) {
-      curr[0] = i;
-      for (let j = 1; j <= b.length; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-      }
-      for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
-    }
-    return 1 - prev[b.length] / maxLen;
-  }
-
-  /**
-   * Ask the LLM to produce a list of precise {oldText, newText} edits.
-   * The model reads the full file but only returns changed lines — the
-   * framework applies them deterministically (token-efficient + safe).
-   */
-  private async generateEdits(
-    original: string,
-    instructions: string,
-  ): Promise<Array<{ oldText: string; newText: string }>> {
-    if (!this.aiService) return [];
-
-    const response = await this.aiService.chat(
-      [
-        {
-          role: 'system',
-          content:
-            'You are a precise document editor. You receive a full document and an update request.\n' +
-            'Your job: output ONLY a JSON array of edits: [{ "oldText": "...", "newText": "..." }].\n\n' +
-            'RULES:\n' +
-            '- oldText must match EXACTLY (character-for-character) a portion of the original document.\n' +
-            '- Only include lines/sections that actually change. Do NOT rewrite unchanged content.\n' +
-            '- DETERMINE the intent of the update request:\n' +
-            '  * If the user wants a NEW PERIOD (e.g. "today", "this month", a date that differs from the document header) — apply a ROLLOVER:\n' +
-            '    - update the period/date header to the new period\n' +
-            '    - REPLACE the running-period data (daily/monthly transactions, entries) with the new data from the request\n' +
-            '    - KEEP cumulative/balance data (outstanding, deposits, carried totals) that should persist across periods\n' +
-            '    - recompute totals that changed\n' +
-            '    - NEVER leave old running-period data mixed with the new period\n' +
-            '  * If the user explicitly asks to ADD/APPEND data (e.g. "tambahkan", "add") — keep everything and append the new entries.\n' +
-            '  * If the user asks to FIX/REPLACE specific content — only change that content.\n' +
-            '- Keep formatting identical (stars, dashes, spacing) except where the edit changes it.\n' +
-            '- Respond with ONLY valid JSON, no code fences, no prose.',
-        },
-        {
-          role: 'user',
-          content: `ORIGINAL DOCUMENT:\n---\n${original}\n---\n\nUPDATE REQUEST: ${instructions}\n\nReturn the JSON edit array.`,
-        },
-      ],
-      [],
-    );
-
-    const text = response.content || '';
-    try {
-      const match = text.match(/\[[\s\S]*/);
-      if (!match) return [];
-      let jsonStr = match[0];
-      let depth = 0;
-      let endIdx = -1;
-      for (let i = 0; i < jsonStr.length; i++) {
-        if (jsonStr[i] === '[') depth++;
-        else if (jsonStr[i] === ']') {
-          depth--;
-          if (depth === 0) {
-            endIdx = i + 1;
-            break;
-          }
-        }
-      }
-      if (endIdx !== -1) {
-        jsonStr = jsonStr.slice(0, endIdx);
-      }
-      const parsed = JSON.parse(jsonStr);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e: any) {
-      this.logger.warn(`generateEdits JSON parse failed: ${e.message}`);
-      return [];
     }
   }
 }

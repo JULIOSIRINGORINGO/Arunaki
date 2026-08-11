@@ -528,6 +528,15 @@ export class WorkspaceRunnerService {
       add(['write', 'edit', 'read']);
     }
 
+    // A referenced file (@file) already exists in the workspace, so it must be
+    // edited in place with a patch (surgical, opencode-style). Remove `write`
+    // so the model cannot silently rewrite the whole file instead.
+    // Reuses the SAME extraction as readMentionedFiles() so the toolset always
+    // matches which @files actually get pre-read/resolved.
+    if (extractMentionedFilenames(goal).length > 0) {
+      wanted.delete('write');
+    }
+
     // Kata kunci goal → tambah tool yang relevan (menggunakan gClean agar nama file @ tidak memicu tool salah).
     if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
     if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
