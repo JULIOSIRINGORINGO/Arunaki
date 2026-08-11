@@ -1,5 +1,6 @@
 import { Module, OnModuleInit, Inject, Optional, forwardRef } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { ParserModule } from '../parser/parser.module.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { SearchModule } from '../search/search.module.js';
@@ -23,6 +24,13 @@ import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
+import { EditToolService } from './services/edit-tool.service.js';
+import { WriteToolService } from './services/write-tool.service.js';
+import { ReadToolService } from './services/read-tool.service.js';
+import { DeleteToolService } from './services/delete-tool.service.js';
+import { RenameToolService } from './services/rename-tool.service.js';
+import { ListToolService } from './services/list-tool.service.js';
+import { SearchToolService } from './services/search-tool.service.js';
 import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
 import { BrowserInteractionService } from '../interaction/browser-interaction.service.js';
@@ -40,6 +48,7 @@ import { AiModule } from '../ai/ai.module.js';
 
 @Module({
   imports: [
+    ParserModule,
     KnowledgeModule,
     StorageModule,
     SearchModule,
@@ -66,6 +75,13 @@ import { AiModule } from '../ai/ai.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
+    EditToolService,
+    WriteToolService,
+    ReadToolService,
+    DeleteToolService,
+    RenameToolService,
+    ListToolService,
+    SearchToolService,
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
@@ -89,6 +105,13 @@ import { AiModule } from '../ai/ai.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
+    EditToolService,
+    WriteToolService,
+    ReadToolService,
+    DeleteToolService,
+    RenameToolService,
+    ListToolService,
+    SearchToolService,
     SkillsTool,
     MemoryTool,
     DocumentReconciliationService,

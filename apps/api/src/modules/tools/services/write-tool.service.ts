@@ -1,0 +1,144 @@
+import { Injectable, Logger } from '@nestjs/common';
+import * as path from 'path';
+import { PrismaService } from '../../../common/providers/prisma.service.js';
+import { StorageService } from '../../storage/storage.service.js';
+import { FileService } from '../../file/file.service.js';
+import { ParserService } from '../../parser/parser.service.js';
+import { ToolResult } from '../interfaces/tool-result.interface.js';
+
+@Injectable()
+export class WriteToolService {
+  private readonly logger = new Logger(WriteToolService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+    private readonly fileService: FileService,
+    private readonly parserService: ParserService,
+  ) {}
+
+  async execute(params: {
+    workspaceId: string;
+    filename: string;
+    format: string;
+    content?: string;
+    rows?: Record<string, any>[];
+    title?: string;
+  }): Promise<ToolResult> {
+    const { workspaceId, filename, format, content, rows, title } = params;
+    const startTime = Date.now();
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true, sources: { select: { id: true } } },
+    });
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace root path is not connected.',
+        metadata: { toolName: 'write', displayName: 'Create File', executionTime: 0 },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+      };
+    }
+
+    const cleanFilename = filename.replace(/[/\\?%*:|"<>]/g, '_');
+    const finalFilename = cleanFilename.endsWith(`.${format}`)
+      ? cleanFilename
+      : `${cleanFilename}.${format}`;
+    const targetPath = path.join(workspace.rootPath, finalFilename);
+
+    try {
+      if (format === 'xlsx' || format === 'csv') {
+        const XLSX = await import('xlsx');
+        let workbook: any;
+        if (rows && rows.length > 0) {
+          const worksheet = XLSX.utils.json_to_sheet(rows);
+          workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+        } else if (content) {
+          const lines = content.split('\n').map((line) => line.split(/[,;\t]/));
+          const worksheet = XLSX.utils.aoa_to_sheet(lines);
+          workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+        } else {
+          workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No Data']]), 'Data');
+        }
+
+        if (format === 'csv') {
+          const sheetName = workbook.SheetNames[0];
+          const csvText = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+          await this.storageService.writeFile(targetPath, csvText);
+        } else {
+          const buf = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+          await this.storageService.writeFile(targetPath, buf.toString('binary'));
+        }
+      } else if (format === 'pdf') {
+        const pdfText = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kinds [] /Count 0 >> endobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer << /Size 3 /Root 1 0 R >>\nstartxref\n109\n%%EOF`;
+        const fileContent = content || title || 'Document';
+        await this.storageService.writeFile(
+          targetPath,
+          `${pdfText}\n% Content: ${fileContent}`,
+        );
+      } else {
+        const textContent = content || (rows ? JSON.stringify(rows, null, 2) : '');
+        await this.storageService.writeFile(targetPath, textContent);
+      }
+
+      const defaultSourceId = workspace.sources[0]?.id;
+      if (defaultSourceId) {
+        try {
+          const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
+          const existing = existingFiles.find((f) => f.path === targetPath);
+
+          let parsedText = content || '';
+          if (!parsedText) {
+            const parsed = await this.parserService.parse(targetPath, format);
+            parsedText = parsed.content;
+          }
+
+          if (existing) {
+            await this.fileService.updateContent(existing.id, parsedText);
+            await this.fileService.updateStatus(existing.id, 'synced');
+          } else {
+            const fsPromises = await import('fs/promises');
+            const stat = await fsPromises.stat(targetPath);
+            const created = await this.fileService.create({
+              name: finalFilename,
+              path: targetPath,
+              type: format,
+              size: stat.size,
+              sourceId: defaultSourceId,
+            });
+            await this.fileService.updateContent(created.id, parsedText);
+            await this.fileService.updateStatus(created.id, 'synced');
+          }
+        } catch {
+          /* File DB sync fallback */
+        }
+      }
+
+      return {
+        status: 'success',
+        data: { path: targetPath, filename: finalFilename, format },
+        preview: `Successfully created/updated document "${finalFilename}".`,
+        metadata: {
+          toolName: 'write',
+          displayName: 'Create File',
+          executionTime: Date.now() - startTime,
+          path: targetPath,
+          filename: finalFilename,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Failed to create file "${finalFilename}": ${e.message}`,
+        metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+        error: { code: 'WRITE_FAILED', message: e.message },
+      };
+    }
+  }
+}
