@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://127.0.0.1:3000/api/v1';
 const WORKSPACE_ID = 'cmshh81u8000bvg78c4ay5hgk';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
 const WORKSPACE_ROOT = 'E:\\JS\\laporan-test';
@@ -43,7 +43,7 @@ async function runTest() {
         'Content-Type': 'application/json',
         'X-API-Key': process.env.ARUNAKI_API_KEY || '199710338e26f2127f7012001e927b4b'
       },
-      body: JSON.stringify({ goal: instruction, historyMessages: [] }),
+      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'gpt-oss-120b' }),
     });
 
     if (response.ok && response.body) {
@@ -137,7 +137,7 @@ async function runTest() {
     { name: 'Total CASH = 150 RB', pass: /TOTAL CASH\s*[:=]\s*150\s*RB/i.test(content) },
     { name: 'Total Pengeluaran = 570 RB (7+3+5+30+250+175+100)', pass: /TOTAL PENGELUARAN\s*[:=]\s*570\s*RB/i.test(content) },
     { name: 'Total Uang di Laci = 605 RB (825+200+150-570)', pass: /TOTAL UANG DI LACI\s*[:=]\s*605\s*RB/i.test(content) },
-    { name: 'Pengeluaran LISTRIK ada', pass: content.includes('LISTRIK 250') },
+    { name: 'Pengeluaran LISTRIK 250 ada', pass: /LISTRIK[\s=:]*250/i.test(content) },
   ];
 
   let passed = 0;

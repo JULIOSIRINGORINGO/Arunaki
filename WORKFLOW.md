@@ -1192,6 +1192,32 @@ Numerical Accuracy: Traceable to tool, verify once more, "Approximately X" for u
 
 ---
 
+## Phase 31: Rekapan Harness Hardening & Anti-Over-Engineering ✅ DONE
+
+**Goal:** Zero over-engineering, 100% LLM mapping (tanpa interception regex), 9-chain auto-recovery, dan harness extended test untuk update laporan rekap harian.
+
+### 31.1 Zero Over-Engineering — Rollback/Checkpoint (Gap #8) Dihapus ✅
+- [x] `failAndRecover`, `snapshotFile`, `rollbackSnapshots`, `resolveWorkspaceFilePath`, dan interface `FileSnapshot` dilepas dari `workspace-runner.service.ts`
+- [x] Test rollback 2 kasus dihapus dari `workspace-runner.service.spec.ts`
+- [x] Mutasi gagal kini dikembalikan ke LLM sebagai tool result biasa (natural 1-turn feedback) — agent self-correct di turn berikutnya; path isolation tetap dijaga `SelfHealingService`
+
+### 31.2 Eliminasi RegEx Interception ✅
+- [x] `editFileWithRetry` di `workspace-tools.service.ts` memakai 100% LLM-generated diffs + fuzzy replacer (`fuzzyReplace`) — tanpa regex hardcode; dijalankan model `gpt-oss-120b`
+
+### 31.3 9-Chain Auto-Recovery ✅
+- [x] Mutasi bertahap: 3-step in-place edit → 3-step regenerated edit → full-regenerate write
+- [x] Rollover prompt + minimal typing (update tanggal, reset data periode berjalan, pertahankan saldo kumulatif)
+
+### 31.4 Harness Extended Test ✅
+- [x] `apps/api/scripts/test-rekap-extended.ts` — modelId `gpt-oss-120b`, base URL `127.0.0.1:3000`
+- [x] Fix check rapuh `LISTRIK 250` → `LISTRIK[\s=:]*250` (false negative karena format `LISTRIK = 250RB`)
+
+### 31.5 Verifikasi ✅
+- [x] `npx vitest run` — **29/29 test files, 141/141 unit tests passed**
+- [x] `node --experimental-strip-types scripts/test-rekap-extended.ts` — **12/12 checks passed** (nama pemasukan, per-bank total BCA 825/BNI 200/CASH 150, pengeluaran 570, uang di laci 605, tanggal diperbarui)
+
+---
+
 ## File Structure
 
 ```

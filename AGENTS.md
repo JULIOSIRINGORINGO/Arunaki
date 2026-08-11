@@ -60,13 +60,10 @@ WORKFLOW.md is the **execution guide** — it defines what to build and in what 
 2. VISION.md                    → What & why
 3. docs/BOUNDARIES.md           → What's allowed / forbidden
 4. docs/OpenClaw-Blueprint.md   → Architecture reference (32 layer)
-5. docs/FIXES-AND-GAPS.md       → Gap tracker (apa yg perlu dikerjakan)
-6. WORKFLOW.md                  → Current phase + completed items
-7. docs/ARCHITECTURE.md         → Module boundaries
-8. Source code                  → Implementasi spesifik
+5. WORKFLOW.md                  → Current phase + completed items
+6. docs/ARCHITECTURE.md         → Module boundaries
+7. Source code                  → Implementasi spesifik
 ```
-
-`docs/FIXES-AND-GAPS.md` adalah **gap tracker utama** — semua gap dari audit 32-layer dicatat di sini dengan prioritas (P0/P1/P2). Setiap kali mau ngerjain sesuatu, cek dulu file ini.
 
 If a task requires something not covered by any document, do not invent a convention. Stop and ask, or propose an option and wait for confirmation.
 
@@ -136,12 +133,12 @@ If a requested task appears to require violating any of the above, treat it as a
 Proyek ini dikerjakan oleh beberapa AI agent. Untuk menghindari double pengerjaan:
 
 ### Checklist System
-- Setiap agent **WAJIB cek** `WORKFLOW.md` + `FIXES-AND-GAPS.md` sebelum mulai.
+- Setiap agent **WAJIB cek** `WORKFLOW.md` sebelum mulai.
 - Item yang sudah di ✅ dianggap **selesai**. Jangan dikerjakan ulang.
 - Item yang belum di-✅ boleh dikerjakan. Tapi segera update checklist setelah mulai:
 
 ### Protocol
-1. **Before start**: Baca `WORKFLOW.md` + `FIXES-AND-GAPS.md` — pastikan item belum di-✅
+1. **Before start**: Baca `WORKFLOW.md` — pastikan item belum di-✅
 2. **When starting**: Update checklist ke `🔄 [your_initials]` (tanda sedang dikerjakan)
 3. **When done**: Update ke `✅` dan tambah dev-log di `docs/dev-logs/`
 4. **Dev-log wajib**: Buat file `docs/dev-logs/dev-log-YYYY-MM-DD-[task-name].md` berisi:
