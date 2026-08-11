@@ -19,13 +19,13 @@ export class WorkspaceToolsService {
   private readonly logger = new Logger(WorkspaceToolsService.name);
 
   constructor(
-    private readonly editTool: EditToolService,
-    private readonly writeTool: WriteToolService,
-    private readonly readTool: ReadToolService,
-    private readonly deleteTool: DeleteToolService,
-    private readonly renameTool: RenameToolService,
-    private readonly listTool: ListToolService,
-    private readonly searchTool: SearchToolService,
+    @Inject(forwardRef(() => EditToolService)) private readonly editTool: EditToolService,
+    @Inject(forwardRef(() => WriteToolService)) private readonly writeTool: WriteToolService,
+    @Inject(forwardRef(() => ReadToolService)) private readonly readTool: ReadToolService,
+    @Inject(forwardRef(() => DeleteToolService)) private readonly deleteTool: DeleteToolService,
+    @Inject(forwardRef(() => RenameToolService)) private readonly renameTool: RenameToolService,
+    @Inject(forwardRef(() => ListToolService)) private readonly listTool: ListToolService,
+    @Inject(forwardRef(() => SearchToolService)) private readonly searchTool: SearchToolService,
     @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
   ) {}
 

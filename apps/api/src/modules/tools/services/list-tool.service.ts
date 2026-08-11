@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { FileService } from '../../file/file.service.js';
@@ -9,27 +9,35 @@ export class ListToolService {
   private readonly logger = new Logger(ListToolService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
   ) {}
 
   async execute(workspaceId: string): Promise<ToolResult> {
     const startTime = Date.now();
 
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { rootPath: true },
-    });
+    let rootPath: string | null = null;
+    if (this.prisma) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
+      rootPath = workspace?.rootPath || null;
+    }
+
+    if (!rootPath) {
+      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
+    }
 
     let filesToDescribe: { name: string; type: string; size: number; path: string }[] = [];
 
-    if (workspace?.rootPath) {
+    if (rootPath) {
       try {
         const fsPromises = await import('fs/promises');
-        const entries = await fsPromises.readdir(workspace.rootPath, { withFileTypes: true });
+        const entries = await fsPromises.readdir(rootPath, { withFileTypes: true });
         for (const entry of entries) {
           if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
-            const fullPath = path.join(workspace.rootPath, entry.name);
+            const fullPath = path.join(rootPath, entry.name);
             if (entry.isFile()) {
               const stat = await fsPromises.stat(fullPath);
               const ext = path.extname(entry.name).toLowerCase().replace('.', '');
@@ -47,7 +55,7 @@ export class ListToolService {
       }
     }
 
-    if (filesToDescribe.length === 0) {
+    if (filesToDescribe.length === 0 && this.fileService) {
       try {
         const dbFiles = await this.fileService.findByWorkspaceId(workspaceId);
         filesToDescribe = dbFiles.map((f) => ({

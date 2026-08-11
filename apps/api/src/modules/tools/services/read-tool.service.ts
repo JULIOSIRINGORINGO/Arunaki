@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { FileService } from '../../file/file.service.js';
@@ -10,24 +10,29 @@ export class ReadToolService {
   private readonly logger = new Logger(ReadToolService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly fileService: FileService,
-    private readonly parserService: ParserService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => ParserService)) private readonly parserService: ParserService,
   ) {}
 
   async execute(params: { filePath: string; workspaceId: string }): Promise<ToolResult> {
     const { filePath, workspaceId } = params;
     const startTime = Date.now();
 
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { rootPath: true },
-    });
-
     let targetPath = filePath;
 
-    if (workspace?.rootPath && !path.isAbsolute(filePath)) {
-      targetPath = path.join(workspace.rootPath, filePath);
+    if (this.prisma) {
+      try {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { rootPath: true },
+        });
+        if (workspace?.rootPath && !path.isAbsolute(filePath)) {
+          targetPath = path.join(workspace.rootPath, filePath);
+        }
+      } catch {
+        /* Fallback */
+      }
     }
 
     const fsPromises = await import('fs/promises');
@@ -39,7 +44,7 @@ export class ReadToolService {
       fileExists = false;
     }
 
-    if (!fileExists) {
+    if (!fileExists && this.fileService) {
       try {
         const files = await this.fileService.findByWorkspaceId(workspaceId);
         const match = files.find(
@@ -69,7 +74,10 @@ export class ReadToolService {
 
     try {
       const ext = path.extname(targetPath).toLowerCase().replace('.', '') || 'txt';
-      const parsed = await this.parserService.parse(targetPath, ext);
+      const parsed = this.parserService
+        ? await this.parserService.parse(targetPath, ext)
+        : { content: await fsPromises.readFile(targetPath, 'utf-8'), metadata: {} };
+
       const filename = path.basename(targetPath);
       const metadata = (parsed as any).metadata || {};
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { StorageService } from '../../storage/storage.service.js';
@@ -11,10 +11,10 @@ export class WriteToolService {
   private readonly logger = new Logger(WriteToolService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly storageService: StorageService,
-    private readonly fileService: FileService,
-    private readonly parserService: ParserService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => ParserService)) private readonly parserService: ParserService,
   ) {}
 
   async execute(params: {
@@ -28,25 +28,31 @@ export class WriteToolService {
     const { workspaceId, filename, format, content, rows, title } = params;
     const startTime = Date.now();
 
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { rootPath: true, sources: { select: { id: true } } },
-    });
-    if (!workspace?.rootPath) {
-      return {
-        status: 'error',
-        data: {},
-        preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'write', displayName: 'Create File', executionTime: 0 },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
-      };
+    let rootPath: string | null = null;
+    let defaultSourceId: string | undefined = undefined;
+
+    if (this.prisma) {
+      try {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { rootPath: true, sources: { select: { id: true } } },
+        });
+        rootPath = workspace?.rootPath || null;
+        defaultSourceId = workspace?.sources[0]?.id;
+      } catch {
+        /* Fallback */
+      }
+    }
+
+    if (!rootPath) {
+      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
     }
 
     const cleanFilename = filename.replace(/[/\\?%*:|"<>]/g, '_');
     const finalFilename = cleanFilename.endsWith(`.${format}`)
       ? cleanFilename
       : `${cleanFilename}.${format}`;
-    const targetPath = path.join(workspace.rootPath, finalFilename);
+    const targetPath = path.join(rootPath, finalFilename);
 
     try {
       if (format === 'xlsx' || format === 'csv') {
@@ -69,31 +75,47 @@ export class WriteToolService {
         if (format === 'csv') {
           const sheetName = workbook.SheetNames[0];
           const csvText = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
-          await this.storageService.writeFile(targetPath, csvText);
+          if (this.storageService) {
+            await this.storageService.writeFile(targetPath, csvText);
+          } else {
+            const fsPromises = await import('fs/promises');
+            await fsPromises.writeFile(targetPath, csvText, 'utf-8');
+          }
         } else {
           const buf = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-          await this.storageService.writeFile(targetPath, buf.toString('binary'));
+          if (this.storageService) {
+            await this.storageService.writeFile(targetPath, buf.toString('binary'));
+          } else {
+            const fsPromises = await import('fs/promises');
+            await fsPromises.writeFile(targetPath, buf);
+          }
         }
       } else if (format === 'pdf') {
         const pdfText = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kinds [] /Count 0 >> endobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer << /Size 3 /Root 1 0 R >>\nstartxref\n109\n%%EOF`;
         const fileContent = content || title || 'Document';
-        await this.storageService.writeFile(
-          targetPath,
-          `${pdfText}\n% Content: ${fileContent}`,
-        );
+        if (this.storageService) {
+          await this.storageService.writeFile(targetPath, `${pdfText}\n% Content: ${fileContent}`);
+        } else {
+          const fsPromises = await import('fs/promises');
+          await fsPromises.writeFile(targetPath, `${pdfText}\n% Content: ${fileContent}`, 'utf-8');
+        }
       } else {
         const textContent = content || (rows ? JSON.stringify(rows, null, 2) : '');
-        await this.storageService.writeFile(targetPath, textContent);
+        if (this.storageService) {
+          await this.storageService.writeFile(targetPath, textContent);
+        } else {
+          const fsPromises = await import('fs/promises');
+          await fsPromises.writeFile(targetPath, textContent, 'utf-8');
+        }
       }
 
-      const defaultSourceId = workspace.sources[0]?.id;
-      if (defaultSourceId) {
+      if (defaultSourceId && this.fileService) {
         try {
           const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
           const existing = existingFiles.find((f) => f.path === targetPath);
 
           let parsedText = content || '';
-          if (!parsedText) {
+          if (!parsedText && this.parserService) {
             const parsed = await this.parserService.parse(targetPath, format);
             parsedText = parsed.content;
           }

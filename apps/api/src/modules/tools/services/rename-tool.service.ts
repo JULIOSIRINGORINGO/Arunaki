@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { StorageService } from '../../storage/storage.service.js';
@@ -10,9 +10,9 @@ export class RenameToolService {
   private readonly logger = new Logger(RenameToolService.name);
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly storageService: StorageService,
-    private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
   ) {}
 
   async execute(params: {
@@ -23,21 +23,20 @@ export class RenameToolService {
     const { workspaceId, filename, newFilename } = params;
     const startTime = Date.now();
 
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { rootPath: true },
-    });
-    if (!workspace?.rootPath) {
-      return {
-        status: 'error',
-        data: {},
-        preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'rename', displayName: 'Rename File', executionTime: 0 },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
-      };
+    let rootPath: string | null = null;
+    if (this.prisma) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
+      rootPath = workspace?.rootPath || null;
     }
 
-    let targetPath = path.join(workspace.rootPath, filename);
+    if (!rootPath) {
+      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
+    }
+
+    let targetPath = path.join(rootPath, filename);
     const fsPromises = await import('fs/promises');
     let fileExists = false;
     try {
@@ -47,7 +46,7 @@ export class RenameToolService {
       fileExists = false;
     }
 
-    if (!fileExists) {
+    if (!fileExists && this.fileService) {
       try {
         const files = await this.fileService.findByWorkspaceId(workspaceId);
         const match = files.find(
@@ -81,19 +80,21 @@ export class RenameToolService {
     try {
       await fsPromises.rename(targetPath, newPath);
 
-      try {
-        const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
-        const existing = existingFiles.find((f) => f.path === targetPath);
-        if (existing) {
-          const ext = path.extname(cleanNewFilename).toLowerCase().replace('.', '');
-          await this.fileService.updateContent(existing.id, existing.content || '');
-          await this.prisma.file.update({
-            where: { id: existing.id },
-            data: { name: cleanNewFilename, path: newPath, type: ext || existing.type },
-          });
+      if (this.fileService && this.prisma) {
+        try {
+          const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
+          const existing = existingFiles.find((f) => f.path === targetPath);
+          if (existing) {
+            const ext = path.extname(cleanNewFilename).toLowerCase().replace('.', '');
+            await this.fileService.updateContent(existing.id, existing.content || '');
+            await this.prisma.file.update({
+              where: { id: existing.id },
+              data: { name: cleanNewFilename, path: newPath, type: ext || existing.type },
+            });
+          }
+        } catch {
+          /* DB sync fallback */
         }
-      } catch {
-        /* DB sync fallback */
       }
 
       return {

@@ -109,42 +109,47 @@ export class WorkspaceRunnerService {
   >();
 
   constructor(
-    @Inject(AiService) private readonly aiService: AiService,
-    @Inject(ToolRegistryService) private readonly toolRegistryService: ToolRegistryService,
-    @Inject(StorageService) private readonly storageService: StorageService,
-    @Inject(FileService) private readonly fileService: FileService,
-    @Inject(SearchService) private readonly searchService: SearchService,
-    @Inject(ArtifactService) private readonly artifactService: ArtifactService,
-    @Inject(MemoryService) private readonly memoryService: MemoryService,
-    @Inject(BackgroundReviewService) private readonly backgroundReviewService: BackgroundReviewService,
-    @Inject(SmartRecallService) private readonly smartRecallService: SmartRecallService,
-    @Inject(SkillService) private readonly skillService: SkillService,
-    @Inject(SelfHealingService) private readonly selfHealingService: SelfHealingService,
-    @Inject(PromptInjectionDetector) private readonly promptInjectionDetector: PromptInjectionDetector,
-    @Inject(CompactionService) private readonly compactionService: CompactionService,
-    @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(ContextRegistry) private readonly contextRegistry: ContextRegistry,
-    @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
-    @Inject(TodoStoreService) private readonly todoStore: TodoStoreService,
-    @Inject(SessionAdmissionService) private readonly sessionAdmissionService: SessionAdmissionService,
+    @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
+    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => SearchService)) private readonly searchService: SearchService,
+    @Inject(forwardRef(() => ArtifactService)) private readonly artifactService: ArtifactService,
+    @Inject(forwardRef(() => MemoryService)) private readonly memoryService: MemoryService,
+    @Inject(forwardRef(() => BackgroundReviewService)) private readonly backgroundReviewService: BackgroundReviewService,
+    @Inject(forwardRef(() => SmartRecallService)) private readonly smartRecallService: SmartRecallService,
+    @Inject(forwardRef(() => SkillService)) private readonly skillService: SkillService,
+    @Inject(forwardRef(() => SelfHealingService)) private readonly selfHealingService: SelfHealingService,
+    @Inject(forwardRef(() => PromptInjectionDetector)) private readonly promptInjectionDetector: PromptInjectionDetector,
+    @Inject(forwardRef(() => CompactionService)) private readonly compactionService: CompactionService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ContextRegistry)) private readonly contextRegistry: ContextRegistry,
+    @Inject(forwardRef(() => EventEmitter2)) private readonly eventEmitter: EventEmitter2,
+    @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore: TodoStoreService,
+    @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
   private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
     const mentioned = new Set<string>();
     for (const filename of extractMentionedFilenames(goal)) {
-      const finalResult = await this.selfHealingService.executeWithIsolation(
-        'read',
-        { workspaceId, filePath: filename },
-        workspaceId,
-      );
-      if (finalResult.status !== 'success') {
-        throw new Error(`Referenced file could not be read: ${filename}`);
+      try {
+        const finalResult = await this.selfHealingService.executeWithIsolation(
+          'read',
+          { workspaceId, filePath: filename },
+          workspaceId,
+        );
+        if (finalResult.status !== 'success') {
+          this.logger.warn(`Pre-read for mentioned file "${filename}" returned status: ${finalResult.preview}`);
+          continue;
+        }
+        mentioned.add(filename);
+        const text = (finalResult.data as Record<string, unknown>)?.content || (finalResult.data as Record<string, unknown>)?.text;
+        const content = typeof text === 'string'
+          ? text.slice(0, 12000)
+          : ToolResultFormatter.formatForLlm('read', finalResult);
+        messages.push({ role: 'user', content: `[Context: User mentioned file "${filename}" with @. File content pre-read below. Use this content directly.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+      } catch (err: any) {
+        this.logger.warn(`Failed to pre-read mentioned file "${filename}": ${err.message}`);
       }
-      mentioned.add(filename);
-      const text = (finalResult.data as Record<string, unknown>).text;
-      const content = typeof text === 'string'
-        ? text.slice(0, 12000)
-        : ToolResultFormatter.formatForLlm('read', finalResult);
-      messages.push({ role: 'user', content: `[Context: User mentioned file "${filename}" with @. File content pre-read below. Use this content directly. DO NOT call read or search_workspace for this file again.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
     }
     return mentioned;
   }

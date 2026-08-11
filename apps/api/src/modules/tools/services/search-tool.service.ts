@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { SearchService } from '../../search/search.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 
@@ -6,13 +6,17 @@ import { ToolResult } from '../interfaces/tool-result.interface.js';
 export class SearchToolService {
   private readonly logger = new Logger(SearchToolService.name);
 
-  constructor(private readonly searchService: SearchService) {}
+  constructor(
+    @Inject(forwardRef(() => SearchService)) private readonly searchService: SearchService,
+  ) {}
 
   async execute(workspaceId: string, query: string): Promise<ToolResult> {
     const startTime = Date.now();
 
     try {
-      const results = await this.searchService.searchFiles({ workspaceId, query });
+      const results = this.searchService
+        ? await this.searchService.searchFiles({ workspaceId, query })
+        : [];
 
       const previewText =
         results.length > 0
