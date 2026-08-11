@@ -804,6 +804,9 @@ export class WorkspaceRunnerService {
         : userGoal;
       const mentionedFiles = await this.readMentionedFiles(workspaceId, safeGoal, messages);
       this.mentionedFiles.set(workspaceId, mentionedFiles);
+      const readTargets = new Set(
+        [...mentionedFiles].map((filename) => path.basename(filename).toLowerCase()),
+      );
 
       // Crucial fix: Append current user goal to messages array so LLM knows what tool to call!
       const hasGoalInMessages = messages.some(
@@ -1046,6 +1049,19 @@ export class WorkspaceRunnerService {
                   'Use one of those tools.',
               });
               continue;
+            }
+
+            if (funcName === 'read') {
+              const target = path.basename(String(args.filePath || args.filename || '')).toLowerCase();
+              if (target && readTargets.has(target)) {
+                messages.push({
+                  role: 'tool',
+                  tool_call_id: toolCall.id,
+                  content: `File "${target}" has already been read in this run. Use the supplied file content and continue with the task.`,
+                });
+                continue;
+              }
+              if (target) readTargets.add(target);
             }
 
             // Circuit Breaker (OpenClaw pattern): failed tool results return

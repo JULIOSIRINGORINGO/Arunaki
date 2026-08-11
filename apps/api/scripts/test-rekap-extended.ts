@@ -36,74 +36,54 @@ async function runTest() {
   let sawDone = false;
   let error: string | null = null;
 
+  const apiKey = process.env.ARUNAKI_API_KEY;
+  if (!apiKey) throw new Error('ARUNAKI_API_KEY is required');
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), 90_000);
   try {
     const response = await fetch(`${API_BASE}/workspaces/${WORKSPACE_ID}/agent/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': process.env.ARUNAKI_API_KEY || '199710338e26f2127f7012001e927b4b'
+        'X-API-Key': apiKey,
       },
       body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'gpt-oss-120b' }),
+      signal: abortController.signal,
     });
-
-    if (response.ok && response.body) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      const streamDeadline = Date.now() + 300000;
-      while (Date.now() < streamDeadline) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6));
-              if (event.type === 'tool_call') console.log(`[tool_call] ${event.data?.name} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
-              if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName}`);
-              if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
-              if (event.type === 'error') error = event.data?.message || 'unknown';
-              if (event.type === 'done') sawDone = true;
-            } catch (e) {
-              // ignore parse errors
-            }
-          }
-        }
-
-        if (sawDone) {
-          await new Promise(r => setTimeout(r, 2000));
-          break;
-        }
-      }
-    } else {
-      throw new Error('HTTP server offline');
+    if (!response.ok || !response.body) {
+      throw new Error(`Agent stream failed: HTTP ${response.status} ${await response.text()}`);
     }
-  } catch (fetchErr: any) {
-    console.log('⚠️  HTTP Server offline, running Agent via NestJS Application Context...');
-    const { NestFactory } = await import('@nestjs/core');
-    const { AppModule } = await import('../src/app.module.js');
-    const { WorkspaceRunnerService } = await import('../src/modules/workspace/workspace-runner.service.js');
-    const app = await NestFactory.createApplicationContext(AppModule);
-    const workspaceRunner = app.get(WorkspaceRunnerService);
 
-    await workspaceRunner.runWorkspaceAgentStream(
-      {
-        workspaceId: WORKSPACE_ID,
-        userGoal: instruction,
-        historyMessages: [],
-        modelId: 'gpt-oss-120b',
-      },
-      (event: any) => {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (!abortController.signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const event = JSON.parse(line.slice(6));
+        if (event.type === 'tool_call') console.log(`[tool_call] ${event.data?.name} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
         if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName}`);
-        if (event.type === 'text_delta') console.log(`[llm]`, String(event.data).slice(0, 150));
-        if (event.type === 'completed') sawDone = true;
-      },
-    );
-    await app.close();
+        if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
+        if (event.type === 'error') error = event.data?.message || 'unknown';
+        if (event.type === 'done') sawDone = true;
+      }
+      if (sawDone) break;
+    }
+    if (abortController.signal.aborted) throw new Error('Agent stream exceeded 90 seconds');
+    if (error) throw new Error(`Agent error: ${error}`);
+    if (!sawDone) throw new Error('Agent stream ended without a done event');
+  } catch (fetchErr: any) {
+    console.error(`❌ ${fetchErr.message}`);
+    process.exit(1);
+  } finally {
+    clearTimeout(timeout);
   }
 
   // Small delay for file write

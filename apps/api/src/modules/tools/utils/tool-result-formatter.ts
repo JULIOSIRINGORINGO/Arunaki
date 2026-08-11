@@ -13,6 +13,7 @@ export interface ToolResultPayload {
 }
 
 const TOOL_ERROR_PREVIEW_MAX_CHARS = 600;
+const READ_CONTENT_MAX_CHARS = 12000;
 
 export class ToolResultFormatter {
   /**
@@ -27,6 +28,16 @@ export class ToolResultFormatter {
           : rawError;
 
       return `[TOOL_ERROR] ${toolName}: ${truncated}`;
+    }
+
+    const content = toolName === 'read' && typeof result.data?.content === 'string'
+      ? result.data.content
+      : undefined;
+    if (content !== undefined) {
+      const text = content.length > READ_CONTENT_MAX_CHARS
+        ? `${content.substring(0, READ_CONTENT_MAX_CHARS)}... [truncated]`
+        : content;
+      return `[TOOL_SUCCESS] read:\n${text}`;
     }
 
     if (result.preview) {

@@ -122,7 +122,7 @@ export class WorkspaceController {
   async streamAgent(
     @Param('id') id: string,
     @Body()
-    body: { goal: string; historyMessages?: any[] },
+    body: { goal: string; historyMessages?: any[]; modelId?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -159,6 +159,7 @@ export class WorkspaceController {
           historyMessages: body.historyMessages || [
             { role: 'user', content: body.goal },
           ],
+          modelId: body.modelId,
         },
         (event) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
