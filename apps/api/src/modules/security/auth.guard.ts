@@ -7,7 +7,11 @@ export class AuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
-    
+    const url = request.url || '';
+    if (url.includes('/health') || url === '/') {
+      return true;
+    }
+
     const expectedKey = process.env.ARUNAKI_API_KEY;
     if (!expectedKey) {
       this.logger.error('ARUNAKI_API_KEY is not set in environment. Access DENIED.');
