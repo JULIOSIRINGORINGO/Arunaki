@@ -5,8 +5,9 @@ const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 const WebSocket = require('ws');
 
-// Disable GPU hardware acceleration to prevent Chromium GPU/Network service crashes and black screen on Windows
+// Disable GPU hardware acceleration and GPU compositing to prevent white screen hang on Windows
 app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu-compositing');
 
 // Load .env manually since dotenv might not be installed
 try {
@@ -95,7 +96,7 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.cjs'),
     },
