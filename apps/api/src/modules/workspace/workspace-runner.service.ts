@@ -17,13 +17,11 @@ import { SmartRecallService } from '../memory/smart-recall.service.js';
 import { SkillService } from '../skills/skill.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
-import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 import { CompactionService } from '../ai/compaction.service.js';
 import { ToolResultFormatter } from '../tools/utils/tool-result-formatter.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
-import { ProviderService } from '../provider/provider.service.js';
 import {
   createRunBudget,
   enterRunBudget,
@@ -122,25 +120,23 @@ export class WorkspaceRunnerService {
     @Inject(SkillService) private readonly skillService: SkillService,
     @Inject(SelfHealingService) private readonly selfHealingService: SelfHealingService,
     @Inject(PromptInjectionDetector) private readonly promptInjectionDetector: PromptInjectionDetector,
-    @Inject(ToolLoopDetectorService) private readonly toolLoopDetector: ToolLoopDetectorService,
     @Inject(CompactionService) private readonly compactionService: CompactionService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ContextRegistry) private readonly contextRegistry: ContextRegistry,
     @Inject(EventEmitter2) private readonly eventEmitter: EventEmitter2,
-    @Inject(ProviderService) private readonly providerService: ProviderService,
     @Inject(TodoStoreService) private readonly todoStore: TodoStoreService,
     @Inject(SessionAdmissionService) private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
   private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
     const mentioned = new Set<string>();
     for (const filename of extractMentionedFilenames(goal)) {
-      const { finalResult } = await this.selfHealingService.executeWithHealing(
+      const finalResult = await this.selfHealingService.executeWithIsolation(
         'read',
         { workspaceId, filePath: filename },
         workspaceId,
       );
       if (finalResult.status !== 'success') {
-        throw new Error(`File yang dirujuk tidak dapat dibaca: ${filename}`);
+        throw new Error(`Referenced file could not be read: ${filename}`);
       }
       mentioned.add(filename);
       const text = (finalResult.data as Record<string, unknown>).text;
@@ -335,31 +331,7 @@ export class WorkspaceRunnerService {
     return true;
   }
 
-  /**
-   * Refresh context mid-run every N rounds.
-   * NOTE: use role 'user', not 'system' — OpenAI/DeepSeek reject a system
-   * message inserted between assistant(tool_calls) and tool result rounds.
-   */
-  private async prepareNextTurn(
-    workspaceId: string,
-    messages: ChatMessage[],
-    round: number,
-  ): Promise<void> {
-    if (round > 0 && round % 5 === 0) {
-      this.logger.log(`Refreshing context at round ${round}...`);
-      try {
-        const freshContext = await this.buildWorkspaceContext(workspaceId);
-        messages.push({
-          role: 'user',
-          content: `[Context Refreshed - Round ${round}]\n${freshContext}`,
-        });
-      } catch (err: any) {
-        this.logger.warn(`Context refresh failed (non-critical): ${err.message}`);
-      }
-    }
-  }
-
-  /** Map phase names to user-facing Indonesian labels */
+  /** Map phase names to user-facing labels */
   private readonly PHASE_LABELS: Record<ExecutionPhase, string> = {
     scanning: 'Scanning workspace documents...',
     planning: 'Formulating execution plan...',
@@ -494,12 +466,12 @@ export class WorkspaceRunnerService {
   }
 
   /**
-   * Tool Router — kirim subset tools yang relevan, bukan seluruh registry.
-   * Framework kurangi beban LLM: payload kecil + agent tidak bingung memilih
-   * tool. LLM tetap bebas memilih tool dari subset yang diberikan.
+   * Tool Router — send only the relevant tool subset, not the entire registry.
+   * Reduces LLM load: smaller payload + the agent is not confused about which
+   * tool to pick. The LLM remains free to choose from the given subset.
    *
-   * Selalu sertakan core workspace file ops; tambahkan berdasarkan kata kunci
-   * goal. Tidak menentukan TINDAKAN — hanya menyempitkan kandidat tool.
+   * Always include core workspace file ops; add more based on goal keywords.
+   * Does not decide the ACTION — only narrows the tool candidates.
    */
   private selectToolsForGoal(
     goal: string,
@@ -537,7 +509,7 @@ export class WorkspaceRunnerService {
       wanted.delete('write');
     }
 
-    // Kata kunci goal → tambah tool yang relevan (menggunakan gClean agar nama file @ tidak memicu tool salah).
+    // Goal keywords → add relevant tools (using gClean so @ file names don't trigger the wrong tool).
     if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
     if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
       add(['doc_reconcile', 'doc_cross_reference']);
@@ -569,7 +541,7 @@ export class WorkspaceRunnerService {
     }
     if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
 
-    // URL/web search: hanya jika user eksplisit minta cari internet.
+    // URL/web search: only when the user explicitly asks to search the internet.
     if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
 
     return allTools.filter((t) => wanted.has(t.function.name));
@@ -637,10 +609,10 @@ export class WorkspaceRunnerService {
           ? filesToDescribe
               .map(
                 (f) =>
-                  `- ${f.name} (Tipe: ${f.type}, Ukuran: ${Math.round(f.size / 1024)} KB)`,
+                  `- ${f.name} (Type: ${f.type}, Size: ${Math.round(f.size / 1024)} KB)`,
               )
               .join('\n')
-          : 'Belum ada file di workspace ini.';
+          : 'No files in this workspace yet.';
 
       // Get domain config for this business type
       const businessDomain = businessType !== 'generic' ? businessType : '';
@@ -657,7 +629,7 @@ export class WorkspaceRunnerService {
         workspaceId,
       );
 
-      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDaftar Berkas Terdeteksi:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDetected File List:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
@@ -668,7 +640,7 @@ export class WorkspaceRunnerService {
       }
 
       if (businessDomain) {
-        context += `\n\n=== DOMAIN ===\nDomain bisnis: ${businessDomain}\nGunakan list_skills / search_memories bila perlu detail domain.\n=== END DOMAIN ===`;
+        context += `\n\n=== DOMAIN ===\nBusiness domain: ${businessDomain}\nUse list_skills / search_memories if domain details are needed.\n=== END DOMAIN ===`;
       }
 
        const modified = this.modifiedFiles.get(workspaceId) || [];
@@ -703,7 +675,7 @@ export class WorkspaceRunnerService {
         type: 'error',
         data: {
           message:
-            'Workspace sedang sibuk memproses permintaan lain. Harap tunggu.',
+            'Workspace is busy processing another request. Please wait.',
         },
       });
       return;
@@ -725,13 +697,10 @@ export class WorkspaceRunnerService {
    try {
        this.setState(runState, 'running', onEvent);
        this.setPhase(runState, 'scanning', onEvent);
-        this.modifiedFiles.delete(workspaceId);
-        this.readFiles.delete(workspaceId);
-         this.mentionedFiles.delete(workspaceId);
-         this.todoStore.clear(workspaceId);
-         // Gap #16: per-run tool history — otherwise identical tool calls from a
-         // previous run count toward this run's circuit breaker (false positive).
-         this.toolLoopDetector.clearSession(workspaceId);
+         this.modifiedFiles.delete(workspaceId);
+         this.readFiles.delete(workspaceId);
+          this.mentionedFiles.delete(workspaceId);
+          this.todoStore.clear(workspaceId);
 
 
       // Emit agent started event
@@ -743,7 +712,7 @@ export class WorkspaceRunnerService {
 
       onEvent({
         type: 'thinking',
-        data: 'Membaca konteks workspace dan memproses permintaan...',
+        data: 'Reading workspace context and processing request...',
       });
 
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);
@@ -769,9 +738,9 @@ export class WorkspaceRunnerService {
         this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
       }
 
-      // Tool Router: kirim hanya tools yang relevan, bukan seluruh registry.
-      // Framework kurangi beban LLM (payload kecil, agent tidak bingung pilih
-      // tool salah). LLM tetap bebas memilih tool dari subset yang relevan.
+      // Tool Router: send only the relevant tools, not the entire registry.
+      // Reduces LLM load (smaller payload, agent not confused about which
+      // tool to pick). The LLM remains free to choose from the relevant subset.
       const allTools = this.toolRegistryService.getToolDefinitions();
       const tools = this.selectToolsForGoal(userGoal, allTools);
 
@@ -824,7 +793,7 @@ export class WorkspaceRunnerService {
 
         onEvent({
           type: 'error',
-          data: { message: 'Input mengandung konten yang tidak diizinkan. Silakan perbaiki dan coba lagi.' },
+          data: { message: 'Input contains disallowed content. Please fix it and try again.' },
         });
         return;
       }
@@ -858,7 +827,7 @@ export class WorkspaceRunnerService {
 
         onEvent({
           type: 'error',
-          data: { message: 'Analisis dibatalkan oleh pengguna.' },
+          data: { message: 'Analysis cancelled by user.' },
         });
         return;
       }
@@ -871,17 +840,8 @@ export class WorkspaceRunnerService {
        const createdArtifactIds: string[] = [];
        const MAX_ROUNDS = 25;
        let reachedMaxRounds = true;
-       let mutationsApplied = 0;
-       let logicalFailoverUsed = false;
-       let activeProviderId: string | undefined;
        const budget = createRunBudget();
        enterRunBudget(budget);
-
-       // Verifier (post-hoc, NOT tool routing): goal meminta modifikasi file.
-       // Hanya dipakai untuk mendeteksi "klaim sukses tanpa eksekusi" lalu
-       // memicu failover model — bukan untuk memilih tool.
-       const VERIFY_MUTATION_GOAL =
-         /(?:buat|tulis|isi|ubah|edit|ganti|hapus|rename|delete|create|update|simpan|tambah|kurang|perbarui)/i.test(safeGoal);
 
        // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
        for (let turn = 0; turn < 5; turn++) {
@@ -892,14 +852,11 @@ export class WorkspaceRunnerService {
              this.setState(runState, 'aborting', onEvent);
              onEvent({
               type: 'error',
-              data: { message: 'Analisis dibatalkan oleh pengguna.' },
+              data: { message: 'Analysis cancelled by user.' },
             });
             return;
           }
           runState.round = turn * MAX_ROUNDS + round + 1;
-
-          // Context refresh every 5 rounds
-          await this.prepareNextTurn(workspaceId, messages, runState.round);
 
           // Inject current todo list (working memory) so LLM stays anchored
           // across long runs. Single [TODO] message updated in place per round.
@@ -915,9 +872,7 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
-          const aiResponse = await this.aiService.chat(messages, tools, {
-            preferredProviderId: activeProviderId,
-          });
+          const aiResponse = await this.aiService.chat(messages, tools);
 
           // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
           aiResponse.toolCalls = aiResponse.toolCalls || [];
@@ -953,9 +908,9 @@ export class WorkspaceRunnerService {
           budget.consume(aiResponse.usage?.totalTokens || 0);
           if (budget.exceeded) {
             this.logger.warn(
-              `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${runState.round}. Menghentikan run.`,
+              `Token budget exceeded: ${budget.used}/${budget.limit} tokens after round ${runState.round}. Stopping the run.`,
             );
-            finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+            finalContent = `Run stopped: the token budget limit (${budget.limit.toLocaleString('en-US')} tokens) was exceeded after ${budget.used.toLocaleString('en-US')} tokens. Please break the task into smaller parts or continue in a new session.`;
             onEvent({
               type: 'error',
               data: { message: finalContent, budget: { used: budget.used, limit: budget.limit } },
@@ -965,38 +920,6 @@ export class WorkspaceRunnerService {
           }
 
           if (aiResponse.toolCalls.length === 0) {
-            // Logical failover: goal butuh modifikasi, belum ada mutation,
-            // tapi model langsung jawab (klaim sukses tanpa eksekusi).
-            // Putar ke provider lain, ulangi turn sekali.
-            const claimsSuccess =
-              VERIFY_MUTATION_GOAL &&
-              mutationsApplied === 0 &&
-              /(?:berhasil|sukses|selesai|telah|sudah|done|success)/i.test(
-                aiResponse.content || '',
-              );
-            if (claimsSuccess && !logicalFailoverUsed) {
-              const next = await this.providerService
-                .getNextAvailable(activeProviderId)
-                .catch(() => null);
-              if (next) {
-                logicalFailoverUsed = true;
-                activeProviderId = next.id;
-                this.logger.warn(
-                  `Logical failover: model jawab tanpa eksekusi untuk goal modifikasi. Beralih ke provider ${next.name} (${next.model}).`,
-                );
-                onEvent({
-                  type: 'thinking',
-                  data: `Mencoba ulang dengan model lain (${next.name})...`,
-                });
-                messages.push({
-                  role: 'user',
-                  content:
-                    'Note: The requested task has not been executed yet. Execute the user-requested file operation using appropriate tools -- do not respond with plain text alone.',
-                });
-                continue;
-              }
-            }
-
             finalContent = this.scrubber.scrub(aiResponse.content);
             onEvent({ type: 'text_delta', data: finalContent });
             reachedMaxRounds = false;
@@ -1006,9 +929,9 @@ export class WorkspaceRunnerService {
             break;
           }
 
-          // plan_created hanya untuk task multi-step (round > 1 atau >1 tool
-          // dalam satu round). Single tool pada round-1 = eksekusi langsung,
-          // tidak perlu event plan — UI langsung menampilkan tool_start.
+          // plan_created only for multi-step tasks (round > 1 or >1 tool in a
+          // single round). A single tool on round 1 = direct execution, no
+          // plan event needed — the UI shows tool_start immediately.
           const isSingleStep =
             runState.round === 1 &&
             aiResponse.toolCalls.length === 1;
@@ -1027,7 +950,7 @@ export class WorkspaceRunnerService {
               type: 'plan_created',
               data: {
                 goal: safeGoal,
-                steps: planSteps.length > 0 ? planSteps : ['Memproses permintaan...'],
+                steps: planSteps.length > 0 ? planSteps : ['Processing request...'],
               },
             });
           }
@@ -1041,7 +964,7 @@ export class WorkspaceRunnerService {
           // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
           const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
           if (askUserToolCall) {
-            let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+            let message = 'Please provide additional information to process this request.';
             try { 
               const args = JSON.parse(askUserToolCall.function.arguments || '{}');
               if (args.message) message = args.message;
@@ -1116,22 +1039,16 @@ export class WorkspaceRunnerService {
                 role: 'tool',
                 tool_call_id: toolCall.id,
                 content:
-                  `Error: tool "${funcName}" tidak tersedia untuk tugas ini. ` +
-                  `Tool yang tersedia: [${[...declaredTools].join(', ')}]. ` +
-                  'Gunakan salah satu tool tersebut.',
+                  `Error: tool "${funcName}" is not available for this task. ` +
+                  `Available tools: [${[...declaredTools].join(', ')}]. ` +
+                  'Use one of those tools.',
               });
               continue;
             }
 
-            // Circuit Breaker: Check for tool loop violation (OpenClaw resolveToolLoopDetectionConfig)
-            const loopCheck = this.toolLoopDetector.checkAndRecord(workspaceId, funcName, args);
-            if (loopCheck.isLooping) {
-              this.logger.warn(`Tool Loop Breaker triggered for ${funcName}. Stopping round.`);
-              finalContent = loopCheck.message || `Eksekusi dihentikan karena pemanggilan tool ${funcName} berulang.`;
-              onEvent({ type: 'text_delta', data: finalContent });
-              reachedMaxRounds = false;
-              break;
-            }
+            // Circuit Breaker (OpenClaw pattern): failed tool results return
+            // to the model verbatim; the model self-corrects on the next turn.
+            // The round cap (MAX_ROUNDS) is the hard loop bound.
 
             if (this.toolRegistryService.isMutating(funcName)) {
               mutatingCalls.push({ toolCall, args });
@@ -1154,13 +1071,12 @@ export class WorkspaceRunnerService {
             const healedResults = await Promise.all(
               readOnlyCalls.map(async ({ toolCall, args }) => {
                 const enrichedArgs = { ...args, workspaceId };
-                const healResult =
-                  await this.selfHealingService.executeWithHealing(
-                    toolCall.function.name,
-                    enrichedArgs,
-                    workspaceId,
-                  );
-                return { toolCall, args, result: healResult.finalResult };
+                const result = await this.selfHealingService.executeWithIsolation(
+                  toolCall.function.name,
+                  enrichedArgs,
+                  workspaceId,
+                );
+                return { toolCall, args, result };
               }),
             );
 
@@ -1245,29 +1161,28 @@ export class WorkspaceRunnerService {
                 (name) => path.basename(name).toLowerCase() === targetBasename,
               );
               if (mentionedFiles.size > 0 && funcName === 'write' && !isMentioned) {
-                throw new Error('File yang dirujuk dengan @ harus menjadi target pembaruan.');
+                throw new Error('A file referenced with @ must be the update target.');
               }
               if (isMentioned && ['delete', 'rename'].includes(funcName)) {
-                throw new Error('File yang dirujuk dengan @ tidak boleh dihapus atau diubah namanya dalam run edit.');
+                throw new Error('Files referenced with @ cannot be deleted or renamed during an edit run.');
               }
               if (funcName === 'delete' && !hasExplicitDeleteIntent(safeGoal, rawTargetName)) {
-                throw new Error('Penghapusan ditolak: instruksi harus secara eksplisit meminta hapus/delete dan menyebut nama file target.');
+                throw new Error('Deletion denied: the instruction must explicitly ask to delete and name the target file.');
               }
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
-                throw new Error('Konten masih berisi referensi @file mentah dan tidak boleh disimpan.');
+                throw new Error('Content still contains raw @file references and cannot be saved.');
               }
               const enrichedArgs = { ...args, workspaceId };
-              const healResult = await this.selfHealingService.executeWithHealing(
+              result = await this.selfHealingService.executeWithIsolation(
                 funcName,
                 enrichedArgs,
                 workspaceId,
               );
-              result = healResult.finalResult;
             } catch (e) {
               result = {
                 status: 'error',
                 data: {},
-                preview: `Eksekusi tool gagal: ${e.message}`,
+                preview: `Tool execution failed: ${e.message}`,
                 metadata: {
                   toolName: funcName,
                   displayName: funcName,
@@ -1312,14 +1227,13 @@ export class WorkspaceRunnerService {
                },
              });
 
-             // Track modified files
-             if (result.status === 'success') {
-               mutationsApplied++;
-               const filename = args.filename || args.path || 'unknown';
-               const current = this.modifiedFiles.get(workspaceId) || [];
-               current.push({ filename, timestamp: new Date() });
-               this.modifiedFiles.set(workspaceId, current.slice(-30));
-             }
+              // Track modified files
+              if (result.status === 'success') {
+                const filename = args.filename || args.path || 'unknown';
+                const current = this.modifiedFiles.get(workspaceId) || [];
+                current.push({ filename, timestamp: new Date() });
+                this.modifiedFiles.set(workspaceId, current.slice(-30));
+              }
 
              messages.push({
                role: 'tool',
@@ -1363,7 +1277,7 @@ export class WorkspaceRunnerService {
         this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
         onEvent({
           type: 'steering',
-          data: { message: 'Follow-up diterima, melanjutkan analisis...' },
+          data: { message: 'Follow-up received, continuing analysis...' },
         });
         reachedMaxRounds = true;
       }
@@ -1449,7 +1363,7 @@ export class WorkspaceRunnerService {
 
         await this.memoryService.recordWorkspaceHistory(
           workspaceId,
-          `Goal: ${userGoal}\nHasil: ${finalContent.substring(0, 500)}`,
+          `Goal: ${userGoal}\nResult: ${finalContent.substring(0, 500)}`,
           saveDomain,
         );
 
@@ -1500,7 +1414,7 @@ export class WorkspaceRunnerService {
 
       this.logger.error(`Workspace stream execution failed: ${error.message}`);
       const friendly = /rate limit|429|free-models-per-day/i.test(error.message)
-        ? 'Server AI sedang terkena rate limit (HTTP 429). Coba lagi setelah beberapa menit atau gunakan API key berbayar.'
+        ? 'The AI server is rate-limited (HTTP 429). Try again in a few minutes or use a paid API key.'
         : error.message;
       onEvent({ type: 'error', data: { message: friendly, code: 'AI_PROVIDER_ERROR' } });
       throw error;

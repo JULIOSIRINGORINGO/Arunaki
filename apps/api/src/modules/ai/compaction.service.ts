@@ -154,7 +154,7 @@ export class CompactionService {
         await this.aiService!.chat(
           [
             { role: 'system', content: LLM_SUMMARY_INSTRUCTIONS },
-            { role: 'user', content: `Kompaksi riwayat berikut menjadi ringkasan ringkas:\n\n${olderTexts}` },
+            { role: 'user', content: `Compact the following history into a concise summary:\n\n${olderTexts}` },
           ],
           [],
         )
@@ -172,7 +172,7 @@ export class CompactionService {
       };
     } catch (err: any) {
       this.logger.warn(
-        `Compaction: LLM summary gagal (${err.message}). FALLBACK ke COMPACTION SUMMARY (non-LLM).`,
+        `Compaction: LLM summary failed (${err.message}). Falling back to COMPACTION SUMMARY (non-LLM).`,
       );
       return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
     }
@@ -199,9 +199,9 @@ export class CompactionService {
     }
 
     const summaryText = `[COMPACTION SUMMARY]
-- Ringkasan Percakapan Sebelumnya: ${userPrompts.slice(-3).join(' | ')}
-- Berkas Yang Tersentuh: ${Array.from(touchedFiles).join(', ') || 'N/A'}
-- Catatan: Histori lama telah diringkas untuk menghemat memori konteks AI.`;
+- Previous Conversation Summary: ${userPrompts.slice(-3).join(' | ')}
+- Touched Files: ${Array.from(touchedFiles).join(', ') || 'N/A'}
+- Note: Older history has been summarized to conserve AI context memory.`;
 
     const summaryMessage: ChatMessage = {
       role: 'user',

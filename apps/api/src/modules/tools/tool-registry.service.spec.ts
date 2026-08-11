@@ -17,7 +17,7 @@ describe('ToolRegistryService.validateArgs', () => {
     required: ['name'],
   };
 
-  it('menerima argumen yang valid', () => {
+  it('accepts valid arguments', () => {
     const result = service.validateArgs(
       { name: 'Beras', qty: 5, enabled: true, tags: ['a'], meta: { k: 1 } },
       parameters,
@@ -25,20 +25,20 @@ describe('ToolRegistryService.validateArgs', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('menolak boolean yang salah tipe', () => {
+  it('rejects a boolean of the wrong type', () => {
     const result = service.validateArgs({ name: 'x', enabled: 'true' }, parameters);
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('enabled');
     expect(result.errors[0]).toContain('boolean');
   });
 
-  it('menolak object yang bukan object (array)', () => {
+  it('rejects an object that is not an object (array)', () => {
     const asArray = service.validateArgs({ name: 'x', meta: [] }, parameters);
     expect(asArray.valid).toBe(false);
     expect(asArray.errors[0]).toContain('meta');
   });
 
-  it('null untuk field optional dianggap absent (lolos)', () => {
+  it('treats null for an optional field as absent (passes)', () => {
     const result = service.validateArgs({ name: 'x', meta: null }, parameters);
     expect(result.valid).toBe(true);
   });

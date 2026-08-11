@@ -21,7 +21,7 @@ function successResult(): ToolResult {
   };
 }
 
-describe('SelfHealingService (Gap #11-13)', () => {
+describe('SelfHealingService (workspace isolation guard)', () => {
   let registryMock: { executeTool: ReturnType<typeof vi.fn> };
   let service: SelfHealingService;
 
@@ -30,85 +30,46 @@ describe('SelfHealingService (Gap #11-13)', () => {
     service = new SelfHealingService(registryMock as any, {} as any);
   });
 
-  describe('#11 fallback tool mapping uses real registered names', () => {
-    it('falls back read -> list end-to-end', async () => {
-      registryMock.executeTool.mockImplementation((name: string) => {
-        if (name === 'read') return errorResult('file not found: a.txt', 'ENOENT');
-        if (name === 'list') return successResult();
-        return errorResult(`unknown tool ${name}`);
-      });
+  describe('executeWithIsolation', () => {
+    it('executes the tool once and returns the result verbatim (no retries)', async () => {
+      const failure = errorResult('file not found: a.txt', 'ENOENT');
+      registryMock.executeTool.mockResolvedValue(failure);
 
-      const result = await service.executeWithHealing('read', {
+      const result = await service.executeWithIsolation('read', {
         filePath: 'a.txt',
       });
 
-      expect(result.healed).toBe(true);
-      expect(registryMock.executeTool).toHaveBeenCalledWith(
-        'list',
-        { filePath: 'a.txt' },
-      );
-      expect(result.attempts.map((a) => a.strategy)).toContain(
-        'fallback:list',
-      );
+      expect(result).toBe(failure);
+      expect(registryMock.executeTool).toHaveBeenCalledTimes(1);
     });
 
-    it('falls back search_workspace -> list end-to-end', async () => {
-      registryMock.executeTool.mockImplementation((name: string) => {
-        if (name === 'search_workspace') return errorResult('file not found: x');
-        if (name === 'list') return successResult();
-        return errorResult(`unknown tool ${name}`);
-      });
+    it('returns success results unchanged', async () => {
+      registryMock.executeTool.mockResolvedValue(successResult());
 
-      const result = await service.executeWithHealing('search_workspace', {
-        query: 'x',
-      });
-
-      expect(result.healed).toBe(true);
-      expect(result.attempts.map((a) => a.strategy)).toContain(
-        'fallback:list',
-      );
-    });
-  });
-
-  describe('#12 adaptive retry loop', () => {
-    it('re-evaluates strategy when the error changes between retries', async () => {
-      // Tool has no fallback mapping so the strategy error is never masked.
-      // read sequence: [1] initial ENOENT, [2] path_correction retry -> new
-      // BAD_ARGS error, [3] fix_params retry -> success.
-      const readCalls = { n: 0 };
-      registryMock.executeTool.mockImplementation(() => {
-        readCalls.n++;
-        if (readCalls.n === 1) return errorResult('file not found: a.txt', 'ENOENT');
-        if (readCalls.n === 2) return errorResult('invalid argument: parameter wajib diisi', 'BAD_ARGS');
-        return successResult();
-      });
-
-      const result = await service.executeWithHealing('some_tool', {
-        filePath: 'a.txt',
-        limit: 10,
-      });
-
-      expect(result.healed).toBe(true);
-      expect(result.attempts.map((a) => a.strategy)).toEqual([
-        'path_correction',
-        'fix_params',
-      ]);
-    });
-
-    it('skips re-running the identical strategy when error does not change', async () => {
-      // Tool has no fallback mapping. path_correction cannot fix ENOENT, but
-      // the guard must ensure it is NOT retried 3x with the same error.
-      registryMock.executeTool.mockImplementation(() =>
-        errorResult('file not found: a.txt', 'ENOENT'),
-      );
-
-      const result = await service.executeWithHealing('some_tool', {
+      const result = await service.executeWithIsolation('read', {
         filePath: 'a.txt',
       });
 
-      expect(result.healed).toBe(false);
-      expect(result.attempts).toHaveLength(1);
-      expect(result.attempts[0].strategy).toBe('path_correction');
+      expect(result.status).toBe('success');
+    });
+
+    it('returns an isolation violation instead of executing when path escapes the workspace', async () => {
+      const prismaMock = {
+        workspace: {
+          findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:\\workspace' }),
+        },
+      };
+      const svc = new SelfHealingService(registryMock as any, prismaMock as any);
+
+      const result = await svc.executeWithIsolation(
+        'read',
+        { filePath: '../secret.txt' },
+        'ws-1',
+      );
+
+      expect(result.status).toBe('error');
+      expect(result.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
+      expect(registryMock.executeTool).not.toHaveBeenCalled();
     });
   });
 

@@ -19,7 +19,7 @@ describe('SubAgentRunnerService', () => {
       ]),
     };
     mockSelfHealing = {
-      executeWithHealing: vi.fn(),
+      executeWithIsolation: vi.fn(),
     };
 
     service = new SubAgentRunnerService(
@@ -31,23 +31,23 @@ describe('SubAgentRunnerService', () => {
 
   it('should spawn a sub-agent that returns text without tool calls', async () => {
     mockAiService.chat.mockResolvedValue({
-      content: 'Data berhasil dianalisis: Total omzet Rp 150.000.000',
+      content: 'Data analyzed: Total revenue Rp 150.000.000',
       toolCalls: [],
       usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
     });
 
     const task: SubAgentTask = {
       taskId: 'sub_1',
-      taskName: 'Analisis Data Excel',
-      taskDescription: 'Analisis data omzet dari file Excel',
+      taskName: 'Excel Data Analysis',
+      taskDescription: 'Analyze revenue data from the Excel file',
     };
 
     const result = await service.spawnSubAgent(task);
 
     expect(result.status).toBe('success');
     expect(result.taskId).toBe('sub_1');
-    expect(result.taskName).toBe('Analisis Data Excel');
-    expect(result.content).toContain('Total omzet');
+    expect(result.taskName).toBe('Excel Data Analysis');
+    expect(result.content).toContain('Total revenue');
     expect(result.metadata.rounds).toBe(1);
     expect(result.metadata.durationMs).toBeGreaterThanOrEqual(0);
   });
@@ -71,26 +71,22 @@ describe('SubAgentRunnerService', () => {
 
     // Round 2: AI returns final text
     mockAiService.chat.mockResolvedValueOnce({
-      content: 'File berhasil dibaca. Total 50 baris data.',
+      content: 'File read successfully. Total 50 rows of data.',
       toolCalls: [],
       usage: { promptTokens: 200, completionTokens: 80, totalTokens: 280 },
     });
 
-    mockSelfHealing.executeWithHealing.mockResolvedValue({
-      finalResult: {
-        status: 'success',
-        data: { rows: 50 },
-        preview: 'Membaca data.xlsx — 50 baris',
-        metadata: { toolName: 'read', displayName: 'Read File', executionTime: 120 },
-      },
-      healed: false,
-      attempts: [],
+    mockSelfHealing.executeWithIsolation.mockResolvedValue({
+      status: 'success',
+      data: { rows: 50 },
+      preview: 'Reading data.xlsx — 50 rows',
+      metadata: { toolName: 'read', displayName: 'Read File', executionTime: 120 },
     });
 
     const task: SubAgentTask = {
       taskId: 'sub_2',
-      taskName: 'Baca File Excel',
-      taskDescription: 'Baca file data.xlsx dan hitung jumlah baris',
+      taskName: 'Read Excel File',
+      taskDescription: 'Read data.xlsx and count the rows',
       workspaceId: 'ws-123',
     };
 
@@ -102,7 +98,7 @@ describe('SubAgentRunnerService', () => {
     expect(result.toolOutputs[0].status).toBe('success');
     expect(result.metadata.rounds).toBe(2);
 
-    expect(mockSelfHealing.executeWithHealing).toHaveBeenCalledWith(
+    expect(mockSelfHealing.executeWithIsolation).toHaveBeenCalledWith(
       'read',
       { path: 'data.xlsx' },
       'ws-123'
@@ -112,15 +108,15 @@ describe('SubAgentRunnerService', () => {
   it('should run multiple sub-agents in parallel', async () => {
     // Both sub-agents return immediately
     mockAiService.chat.mockResolvedValue({
-      content: 'Tugas selesai',
+      content: 'Task done',
       toolCalls: [],
       usage: { promptTokens: 50, completionTokens: 20, totalTokens: 70 },
     });
 
     const tasks: SubAgentTask[] = [
-      { taskId: 'p1', taskName: 'Baca PDF 1', taskDescription: 'Baca faktur-1.pdf' },
-      { taskId: 'p2', taskName: 'Baca PDF 2', taskDescription: 'Baca faktur-2.pdf' },
-      { taskId: 'p3', taskName: 'Baca PDF 3', taskDescription: 'Baca faktur-3.pdf' },
+      { taskId: 'p1', taskName: 'Read PDF 1', taskDescription: 'Read invoice-1.pdf' },
+      { taskId: 'p2', taskName: 'Read PDF 2', taskDescription: 'Read invoice-2.pdf' },
+      { taskId: 'p3', taskName: 'Read PDF 3', taskDescription: 'Read invoice-3.pdf' },
     ];
 
     const results = await service.spawnParallel(tasks);
@@ -151,15 +147,15 @@ describe('SubAgentRunnerService', () => {
 
     // After blocked, AI returns final text
     mockAiService.chat.mockResolvedValueOnce({
-      content: 'Tidak bisa export, hanya bisa membaca file.',
+      content: 'Cannot export, only read files.',
       toolCalls: [],
       usage: { promptTokens: 150, completionTokens: 40, totalTokens: 190 },
     });
 
     const task: SubAgentTask = {
       taskId: 'sub_scoped',
-      taskName: 'Baca Saja',
-      taskDescription: 'Hanya baca file, jangan export',
+      taskName: 'Read Only',
+      taskDescription: 'Only read files, do not export',
       allowedTools: ['read'],
     };
 
@@ -170,7 +166,7 @@ describe('SubAgentRunnerService', () => {
     expect(result.toolOutputs[0].status).toBe('blocked');
     expect(result.toolOutputs[0].toolName).toBe('generate_export');
     // self-healing should NOT be called for blocked tools
-    expect(mockSelfHealing.executeWithHealing).not.toHaveBeenCalled();
+    expect(mockSelfHealing.executeWithIsolation).not.toHaveBeenCalled();
   });
 
   it('should handle sub-agent errors gracefully', async () => {
@@ -178,8 +174,8 @@ describe('SubAgentRunnerService', () => {
 
     const task: SubAgentTask = {
       taskId: 'sub_err',
-      taskName: 'Tugas Gagal',
-      taskDescription: 'Tugas yang akan gagal',
+      taskName: 'Failed Task',
+      taskDescription: 'A task that will fail',
     };
 
     const result = await service.spawnSubAgent(task);
@@ -192,7 +188,7 @@ describe('SubAgentRunnerService', () => {
 
   it('should call progress callback during execution', async () => {
     mockAiService.chat.mockResolvedValue({
-      content: 'Selesai',
+      content: 'Done',
       toolCalls: [],
       usage: { promptTokens: 50, completionTokens: 20, totalTokens: 70 },
     });
@@ -202,7 +198,7 @@ describe('SubAgentRunnerService', () => {
 
     const task: SubAgentTask = {
       taskId: 'sub_cb',
-      taskName: 'Tugas Callback',
+      taskName: 'Callback Task',
       taskDescription: 'Test progress callbacks',
     };
 

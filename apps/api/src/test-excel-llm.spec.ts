@@ -29,11 +29,11 @@ describe('Test LLM Reading Excel', () => {
       data: { title: 'Test Excel LLM', workspaceId: workspace.id }
     });
 
-    console.log('\n💬 Prompt: "Tolong baca testing.xlsx dan sebutkan 3 pelanggan pertama beserta nominalnya."');
+    console.log('\n💬 Prompt: "Please read testing.xlsx and show the first 3 customers with their amounts."');
     
     const agentResult = await agentRunner.runAgentSync({
       chatId: chat.id,
-      userContent: 'Tolong baca file testing.xlsx dan sebutkan 3 pelanggan pertama di tabel tersebut beserta nominal uangnya secara singkat.',
+      userContent: 'Please read file testing.xlsx and show the first 3 customers with their amounts accurately.',
       chatMode: 'workspace',
       historyMessages: [],
       idempotencyKey: 'test-excel-llm-' + Date.now()

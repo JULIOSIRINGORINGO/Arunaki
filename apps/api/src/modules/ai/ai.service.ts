@@ -426,8 +426,8 @@ export class AiService {
       const providerError = result.data?.error?.message || result.data?.message;
       const errorDetail = providerError
         ? `: ${providerError}`
-        : ' (Penyedia AI memberikan respon kosong / server model gratis sedang sibuk)';
-      throw new Error(`Gagal menerima respon dari AI${errorDetail}`);
+        : ' (the AI provider returned an empty response / a free model server is busy)';
+      throw new Error(`Failed to receive a response from the AI${errorDetail}`);
     }
 
     let content = choice.message?.content || '';
@@ -474,7 +474,7 @@ export class AiService {
 
     if (!content && rawToolCalls.length === 0) {
       content =
-        'Maaf, saya tidak dapat memberikan jawaban saat ini. Silakan coba lagi.';
+        'Sorry, I am unable to provide an answer right now. Please try again.';
     }
 
     return {
@@ -692,7 +692,7 @@ ${modelAdditions}`,
 ---
 ${posturePrompt}
 
-## Peta Knowledge Graph
+## Knowledge Graph Map
 ${safeKnowledgeContext}`;
 
     const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;

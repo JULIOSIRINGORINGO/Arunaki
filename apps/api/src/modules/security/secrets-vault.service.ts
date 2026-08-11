@@ -35,8 +35,8 @@ export class SecretsVaultService {
 
     if (!secretSource) {
       throw new Error(
-        'SecretsVaultService memerlukan env ARUNAKI_VAULT_KEY atau APP_SECRET (32+ karakter). ' +
-          'Tanpa itu, kunci master tidak aman (hardcoded fallback telah dihapus).',
+        'SecretsVaultService requires the ARUNAKI_VAULT_KEY or APP_SECRET env (32+ characters). ' +
+          'Without it, the master key is not secure (hardcoded fallback has been removed).',
       );
     }
 
@@ -49,7 +49,7 @@ export class SecretsVaultService {
    */
   encryptSecret(plainText: string): EncryptedPayload {
     if (!plainText) {
-      throw new Error('Tidak dapat mengenskripsi string kosong');
+      throw new Error('Cannot encrypt an empty string');
     }
 
     const iv = crypto.randomBytes(12);
@@ -72,7 +72,7 @@ export class SecretsVaultService {
    */
   decryptSecret(payload: EncryptedPayload): string {
     if (!payload || !payload.cipherText || !payload.iv || !payload.tag) {
-      throw new Error('Payload terenkripsi tidak valid');
+      throw new Error('Encrypted payload is invalid');
     }
 
     try {
@@ -87,8 +87,8 @@ export class SecretsVaultService {
       decrypted += decipher.final('utf8');
       return decrypted;
     } catch (err: any) {
-      this.logger.error(`Gagal mengembalikan rahasia: integrity check failed (${err.message})`);
-      throw new Error('Gagal mendekripsi rahasia: data telah diubah atau kunci master salah.');
+      this.logger.error(`Failed to retrieve secret: integrity check failed (${err.message})`);
+      throw new Error('Failed to decrypt secret: data has been altered or the master key is wrong.');
     }
   }
 
@@ -98,7 +98,7 @@ export class SecretsVaultService {
   storeSecret(keyName: string, plainText: string): void {
     const encrypted = this.encryptSecret(plainText);
     this.vault.set(keyName, encrypted);
-    this.logger.log(`Rahasia [${keyName}] telah disimpan secara terenkripsi di vault.`);
+    this.logger.log(`Secret [${keyName}] has been stored encrypted in the vault.`);
   }
 
   /**

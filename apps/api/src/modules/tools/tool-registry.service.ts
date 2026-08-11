@@ -202,7 +202,7 @@ export class ToolRegistryService {
 
     for (const field of required) {
       if (args[field] === undefined || args[field] === null) {
-        errors.push(`Field "${field}" wajib diisi`);
+        errors.push(`Field "${field}" is required`);
       }
     }
 
@@ -212,22 +212,22 @@ export class ToolRegistryService {
 
       const expectedType = schema.type;
       if (expectedType === 'string' && typeof value !== 'string') {
-        errors.push(`Field "${key}" harus bertipe string`);
+        errors.push(`Field "${key}" must be a string`);
       }
       if (expectedType === 'number' && typeof value !== 'number') {
-        errors.push(`Field "${key}" harus bertipe number`);
+        errors.push(`Field "${key}" must be a number`);
       }
       if (expectedType === 'array' && !Array.isArray(value)) {
-        errors.push(`Field "${key}" harus berupa array`);
+        errors.push(`Field "${key}" must be an array`);
       }
       if (expectedType === 'boolean' && typeof value !== 'boolean') {
-        errors.push(`Field "${key}" harus bertipe boolean`);
+        errors.push(`Field "${key}" must be a boolean`);
       }
       if (
         expectedType === 'object' &&
         (Array.isArray(value) || typeof value !== 'object')
       ) {
-        errors.push(`Field "${key}" harus berupa object`);
+        errors.push(`Field "${key}" must be an object`);
       }
 
       const enumValues = schema.enum;
@@ -237,7 +237,7 @@ export class ToolRegistryService {
         !enumValues.includes(value)
       ) {
         errors.push(
-          `Field "${key}" harus salah satu dari: ${enumValues.join(', ')}`,
+          `Field "${key}" must be one of: ${enumValues.join(', ')}`,
         );
       }
     }
@@ -257,7 +257,7 @@ export class ToolRegistryService {
       return {
         status: 'error',
         data: {},
-        preview: `Tool "${name}" tidak dikenali`,
+        preview: `Tool "${name}" is not recognized`,
         metadata: {
           toolName: name,
           displayName: name,
@@ -280,7 +280,7 @@ export class ToolRegistryService {
       return {
         status: 'error',
         data: { receivedArgs: args },
-        preview: `Input tidak valid: ${validation.errors.join('; ')}`,
+        preview: `Invalid input: ${validation.errors.join('; ')}`,
         metadata: {
           toolName: name,
           displayName: tool.capability.displayName,
@@ -323,8 +323,8 @@ export class ToolRegistryService {
           status: 'error',
           data: {},
           preview: isTimeout
-            ? `Tool "${name}" timeout setelah ${timeoutMs}ms`
-            : `Tool "${name}" gagal: ${e.message}`,
+            ? `Tool "${name}" timed out after ${timeoutMs}ms`
+            : `Tool "${name}" failed: ${e.message}`,
           metadata: {
             toolName: name,
             displayName: tool.capability.displayName,
@@ -354,8 +354,8 @@ export class ToolRegistryService {
         status: 'error',
         data: {},
         preview: isTimeout
-          ? `Tool "${name}" timeout setelah ${timeoutMs}ms`
-          : `Tool "${name}" gagal: ${e.message}`,
+          ? `Tool "${name}" timed out after ${timeoutMs}ms`
+          : `Tool "${name}" failed: ${e.message}`,
         metadata: {
           toolName: name,
           displayName: tool.capability.displayName,
@@ -461,7 +461,7 @@ export class ToolRegistryService {
         finalResult: Promise.resolve({
           status: 'error',
           data: {},
-          preview: `Tool "${name}" tidak dikenali`,
+          preview: `Tool "${name}" is not recognized`,
           metadata: { toolName: name, displayName: name, executionTime: 0 },
           error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
         }),
@@ -491,7 +491,7 @@ export class ToolRegistryService {
         finalResult: Promise.resolve({
           status: 'error',
           data: { receivedArgs: args },
-          preview: `Input tidak valid: ${validation.errors.join('; ')}`,
+          preview: `Invalid input: ${validation.errors.join('; ')}`,
           metadata: {
             toolName: name,
             displayName: tool.capability.displayName,
@@ -527,7 +527,7 @@ export class ToolRegistryService {
       type: 'progress',
       toolName: name,
       progress: 0,
-      message: `Memulai eksekusi ${tool.capability.displayName}...`,
+      message: `Starting execution of ${tool.capability.displayName}...`,
     };
 
     try {
@@ -570,7 +570,7 @@ export class ToolRegistryService {
             type: 'complete',
             toolName: name,
             progress: 100,
-            message: `Selesai: ${tool.capability.displayName}`,
+            message: `Completed: ${tool.capability.displayName}`,
             data: result.data,
             preview: result.preview,
             metadata: result.metadata,
@@ -588,8 +588,8 @@ export class ToolRegistryService {
         toolName: name,
         progress: 0,
         message: isTimeout
-          ? `Tool "${name}" timeout setelah ${timeoutMs}ms`
-          : `Tool "${name}" gagal: ${e.message}`,
+          ? `Tool "${name}" timed out after ${timeoutMs}ms`
+          : `Tool "${name}" failed: ${e.message}`,
         error: {
           code: isTimeout ? 'TOOL_TIMEOUT' : 'EXECUTION_FAILED',
           message: e.message,

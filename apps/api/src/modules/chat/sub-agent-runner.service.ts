@@ -4,7 +4,6 @@ import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { currentRunBudget } from '../ai/token-budget.service.js';
-
 /**
  * SubAgentRunnerService — Isolated sub-agent execution engine.
  *
@@ -251,7 +250,7 @@ export class SubAgentRunnerService {
       const budget = currentRunBudget();
       budget?.consume(aiResponse.usage?.totalTokens || 0);
       if (budget?.exceeded) {
-        finalContent = `Sub-agent ${task.taskName} dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) terlampaui.`;
+        finalContent = `Sub-agent ${task.taskName} stopped: the token budget limit (${budget.limit.toLocaleString('en-US')} tokens) was exceeded.`;
         break;
       }
 
@@ -284,7 +283,7 @@ export class SubAgentRunnerService {
           const blockedResult: ToolResult = {
             status: 'error',
             data: {},
-            preview: `Tool "${funcName}" tidak diizinkan untuk sub-agent ini.`,
+            preview: `Tool "${funcName}" is not allowed for this sub-agent.`,
             metadata: {
               toolName: funcName,
               displayName: funcName,
@@ -292,7 +291,7 @@ export class SubAgentRunnerService {
             },
             error: {
               code: 'TOOL_NOT_ALLOWED',
-              message: `Sub-agent "${task.taskName}" tidak memiliki akses ke tool "${funcName}".`,
+              message: `Sub-agent "${task.taskName}" does not have access to the tool "${funcName}".`,
             },
           };
 
@@ -319,14 +318,12 @@ export class SubAgentRunnerService {
           data: { toolName: funcName, args },
         });
 
-        // Execute with self-healing
-        const healResult = await this.selfHealingService.executeWithHealing(
+        // Execute with workspace isolation; failures return to the model verbatim.
+        const result = await this.selfHealingService.executeWithIsolation(
           funcName,
           args,
           task.workspaceId,
         );
-
-        const result = healResult.finalResult;
 
         onProgress?.({
           taskId: task.taskId,
@@ -363,6 +360,10 @@ export class SubAgentRunnerService {
 
   /**
    * Build a focused system prompt for a sub-agent.
+   *
+   * OpenCode pattern: the parent agent specifies exactly what to return in
+   * its prompt, and the sub-agent ends with a SINGLE final message that the
+   * parent reads verbatim.
    */
   private buildSubAgentSystemPrompt(task: SubAgentTask): string {
     const parts = [
@@ -372,8 +373,9 @@ export class SubAgentRunnerService {
       'Instructions:',
       '- Execute ONLY the requested task; do not perform unrelated actions.',
       '- Use available tools to complete the task.',
-      '- Provide final results in a clear and concise format.',
-      '- If the task cannot be completed, explain the blocker clearly.',
+      '- End with a SINGLE final message containing exactly the information requested by the parent agent (results, totals, findings). Keep it concise.',
+      '- The final message is returned to the parent agent verbatim; it is not shown to the user.',
+      '- If the task cannot be completed, explain the blocker clearly in the final message.',
     ];
 
     if (task.additionalContext) {

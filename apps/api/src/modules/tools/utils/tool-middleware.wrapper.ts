@@ -38,7 +38,7 @@ export function wrapWorkspaceIsolation(tool: Tool, workspaceDir?: string): Tool 
           return {
             status: 'error',
             data: {},
-            preview: `Akses ditolak: Path "${pathArg}" mencoba keluar dari workspace.`,
+            preview: `Access denied: Path "${pathArg}" attempted to escape the workspace.`,
             metadata: {
               toolName: tool.name,
               displayName: tool.capability?.displayName || tool.name,
@@ -70,14 +70,14 @@ export function wrapActionableError(tool: Tool): Tool {
       const result = await originalExecute(args);
 
       if (result.status === 'error' && result.error) {
-        let suggestedAction = 'Periksa kembali parameter input atau periksa status file.';
+        let suggestedAction = 'Check the input parameters again or check the file status.';
 
         if (result.error.code === 'FILE_NOT_FOUND' || result.error.message.includes('not found')) {
-          suggestedAction = 'Gunakan tool "search_workspace" atau "list" untuk menemukan path file yang benar.';
+          suggestedAction = 'Use the "search_workspace" or "list" tool to find the correct file path.';
         } else if (result.error.code === 'INVALID_ARGS') {
-          suggestedAction = 'Sesuaikan argumen fungsi agar memenuhi skema parameter.';
+          suggestedAction = 'Adjust the function arguments to match the parameter schema.';
         } else if (result.error.code === 'WORKSPACE_ISOLATION_VIOLATION') {
-          suggestedAction = 'Gunakan path relatif di dalam folder workspace saja.';
+          suggestedAction = 'Use only relative paths inside the workspace folder.';
         }
 
         return {

@@ -120,14 +120,14 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
   sendCommand(method: string, args: Record<string, any> = {}, timeoutMs = 15000): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.isConnected) {
-        reject(new Error('Desktop app tidak terhubung. Jalankan aplikasi desktop Arunaki.'));
+        reject(new Error('Desktop app is not connected. Run the Arunaki desktop app.'));
         return;
       }
 
       const id = `dsk_${++this.nextId}`;
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`Desktop command "${method}" timeout setelah ${timeoutMs}ms`));
+        reject(new Error(`Desktop command "${method}" timed out after ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.pending.set(id, { resolve, reject, timer });

@@ -78,7 +78,7 @@ describe('System Integration & Stress Testing', () => {
           { function: { name: 'read' } },
         ]),
       };
-      const mockSelfHealing = { executeWithHealing: vi.fn() };
+      const mockSelfHealing = { executeWithIsolation: vi.fn() };
 
       const subAgentService = new SubAgentRunnerService(
         mockAiService as any,

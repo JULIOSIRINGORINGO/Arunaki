@@ -18,7 +18,6 @@ import {
   createRunBudget,
   enterRunBudget,
 } from '../ai/token-budget.service.js';
-import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -75,7 +74,6 @@ export class AgentRunnerService {
     private readonly harnessRegistry: HarnessRegistryService,
     private readonly todoStore: TodoStoreService,
     private readonly quarantine: ContextQuarantine,
-    private readonly toolLoopDetector: ToolLoopDetectorService,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
@@ -214,9 +212,9 @@ export class AgentRunnerService {
       budget.consume(aiResponse.usage?.totalTokens || 0);
       if (budget.exceeded) {
         this.logger.warn(
-          `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${round + 1}. Menghentikan run.`,
+          `Token budget exceeded: ${budget.used}/${budget.limit} tokens after round ${round + 1}. Stopping the run.`,
         );
-        finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+        finalContent = `Run stopped: the token budget limit (${budget.limit.toLocaleString('en-US')} tokens) was exceeded after ${budget.used.toLocaleString('en-US')} tokens. Please break the task into smaller parts or continue in a new session.`;
         reachedMaxRounds = false;
         break;
       }
@@ -234,7 +232,7 @@ export class AgentRunnerService {
       // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
       const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
       if (askUserToolCall) {
-        let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+        let message = 'Please provide additional information to process this request.';
         try { 
           const args = JSON.parse(askUserToolCall.function.arguments || '{}');
           if (args.message) message = args.message;
@@ -275,27 +273,17 @@ export class AgentRunnerService {
 
         let result: ToolResult;
         try {
-          const loopCheck = this.toolLoopDetector.checkAndRecord(params.chatId, funcName, args);
-          if (loopCheck.isLooping) {
-            result = {
-              status: 'error',
-              data: {},
-              preview: loopCheck.message || `Circuit breaker tripped for ${funcName}`,
-              metadata: { toolName: funcName, displayName: funcName, errorType: 'circuit_breaker', executionTime: 0 } as any,
-            };
-          } else {
-            const safeArgs = params.workspaceId
-              ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
-              : { ...args, runId: todoRunId };
-            if (params.workspaceId) {
-              await this.selfHealingService.validateToolPaths(
-                funcName,
-                safeArgs,
-                params.workspaceId,
-              );
-            }
-            result = await this.toolRegistryService.executeTool(funcName, safeArgs);
+          const safeArgs = params.workspaceId
+            ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+            : { ...args, runId: todoRunId };
+          if (params.workspaceId) {
+            await this.selfHealingService.validateToolPaths(
+              funcName,
+              safeArgs,
+              params.workspaceId,
+            );
           }
+          result = await this.toolRegistryService.executeTool(funcName, safeArgs);
         } catch (e) {
           const isIsolation = e.message?.includes('Access denied');
           result = {
@@ -366,8 +354,8 @@ export class AgentRunnerService {
 
     if (!finalContent) {
       finalContent = reachedMaxRounds
-        ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
-        : 'Pekerjaan telah selesai.';
+        ? 'Agent reached the maximum step limit. Results so far may be incomplete — please continue your request if needed.'
+        : 'The task has been completed.';
     }
 
     const artifactRecords = await Promise.all(
@@ -481,7 +469,7 @@ export class AgentRunnerService {
     try {
       onEvent({
         type: 'thinking',
-        data: 'Memproses pesan dan mengumpulkan konteks...',
+        data: 'Processing message and gathering context...',
       });
 
       const knowledgeContext = this.quarantine.sanitizeText(
@@ -510,7 +498,6 @@ export class AgentRunnerService {
           content: m.content,
         })),
       ];
-      this.toolLoopDetector.clearSession(params.chatId);
 
       // Extract artifacts from this round
       const newArtifacts: string[] = [];
@@ -539,9 +526,9 @@ export class AgentRunnerService {
         budget.consume(aiResponse.usage?.totalTokens || 0);
         if (budget.exceeded) {
           this.logger.warn(
-            `Token budget terlampaui: ${budget.used}/${budget.limit} tokens setelah round ${round + 1}. Menghentikan run.`,
+            `Token budget exceeded: ${budget.used}/${budget.limit} tokens after round ${round + 1}. Stopping the run.`,
           );
-          finalContent = `Run dihentikan: batas token budget (${budget.limit.toLocaleString('id-ID')} token) sudah terlampaui setelah ${budget.used.toLocaleString('id-ID')} token. Silakan pecah tugas menjadi bagian yang lebih kecil atau lanjutkan di sesi baru.`;
+          finalContent = `Run stopped: the token budget limit (${budget.limit.toLocaleString('en-US')} tokens) was exceeded after ${budget.used.toLocaleString('en-US')} tokens. Please break the task into smaller parts or continue in a new session.`;
           onEvent({ type: 'error', data: finalContent });
           reachedMaxRounds = false;
           break;
@@ -560,7 +547,7 @@ export class AgentRunnerService {
       // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
       const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
       if (askUserToolCall) {
-        let message = 'Tolong berikan data tambahan untuk memproses perintah ini.';
+        let message = 'Please provide additional information to process this request.';
         try { 
           const args = JSON.parse(askUserToolCall.function.arguments || '{}');
           if (args.message) message = args.message;
@@ -601,7 +588,8 @@ export class AgentRunnerService {
             });
           }
 
-          // Use self-healing wrapper for each tool call
+          // Execute each tool call; failures return to the model verbatim so
+          // it can self-correct on the next round.
           const healingPromises = aiResponse.toolCalls.map(async (toolCall) => {
             let args: Record<string, any> = {};
             try {
@@ -614,41 +602,13 @@ export class AgentRunnerService {
               ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
               : { ...args, runId: todoRunId };
 
-            const loopCheck = this.toolLoopDetector.checkAndRecord(params.chatId, toolCall.function.name, args);
-            if (loopCheck.isLooping) {
-              return {
-                toolCall,
-                result: {
-                  status: 'error',
-                  data: {},
-                  preview: loopCheck.message || `Circuit breaker tripped for ${toolCall.function.name}`,
-                  metadata: { toolName: toolCall.function.name, displayName: toolCall.function.name, errorType: 'circuit_breaker', executionTime: 0 } as any,
-                },
-              };
-            }
-
-            const healResult = await this.selfHealingService.executeWithHealing(
+            const result = await this.selfHealingService.executeWithIsolation(
               toolCall.function.name,
               safeArgs,
               params.workspaceId || undefined,
             );
 
-            // Emit self-healing events if recovery was attempted
-            if (healResult.healed) {
-              onEvent({
-                type: 'self_heal',
-                data: {
-                  toolName: toolCall.function.name,
-                  attempts: healResult.attempts.length,
-                  strategy:
-                    healResult.attempts[healResult.attempts.length - 1]
-                      ?.strategy,
-                  timestamp: new Date().toISOString(),
-                },
-              });
-            }
-
-            return { toolCall, result: healResult.finalResult };
+            return { toolCall, result };
           });
 
           const healedResults = await Promise.all(healingPromises);
@@ -714,8 +674,8 @@ export class AgentRunnerService {
 
       if (!finalContent) {
         finalContent = reachedMaxRounds
-          ? 'Agent mencapai batas maksimal langkah kerja. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan jika perlu.'
-          : 'Pekerjaan telah selesai.';
+          ? 'Agent reached the maximum step limit. Results so far may be incomplete — please continue your request if needed.'
+          : 'The task has been completed.';
       }
 
       const artifactRecords = await Promise.all(

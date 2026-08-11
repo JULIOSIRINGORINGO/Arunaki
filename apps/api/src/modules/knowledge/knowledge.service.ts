@@ -42,7 +42,7 @@ export class KnowledgeService extends BaseService<Knowledge> {
   // ─── AI Context (RAG & Map) ─────────────────────────
   async getKnowledgeMap(): Promise<string> {
     const { nodes, edges } = await this.repository.findActiveWithEdges();
-    if (nodes.length === 0) return 'Knowledge Graph Kosong.';
+    if (nodes.length === 0) return 'Knowledge Graph is empty.';
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const connections = new Map<string, string[]>();
@@ -62,22 +62,22 @@ export class KnowledgeService extends BaseService<Knowledge> {
     return nodes
       .map((k) => {
         const conn = connections.get(k.id);
-        const connStr = conn && conn.length > 0 ? ` (Terkoneksi ke: ${conn.join(', ')})` : '';
-        return `- ${k.title} [Tipe: ${k.type}]${connStr}`;
+        const connStr = conn && conn.length > 0 ? ` (Connected to: ${conn.join(', ')})` : '';
+        return `- ${k.title} [Type: ${k.type}]${connStr}`;
       })
       .join('\n');
   }
 
   async searchNodes(query: string): Promise<string> {
     const { nodes, edges } = await this.repository.findActiveWithEdges();
-    if (nodes.length === 0) return 'Data tidak ditemukan.';
+    if (nodes.length === 0) return 'No data found.';
 
     const q = query.toLowerCase();
     const targetNode = nodes.find(n => n.title.toLowerCase().includes(q) || n.type.toLowerCase().includes(q));
     
-    if (!targetNode) return 'Node tidak ditemukan dalam Knowledge Graph.';
+    if (!targetNode) return 'Node not found in the Knowledge Graph.';
 
-    // Cari node yang terhubung langsung
+    // Find directly connected nodes
     const connectedIds = new Set<string>();
     connectedIds.add(targetNode.id);
     

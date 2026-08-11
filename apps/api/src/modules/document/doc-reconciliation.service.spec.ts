@@ -30,8 +30,8 @@ describe('DocumentReconciliationService', () => {
     expect(report.summary.matchCount).toBe(2);
     expect(report.summary.mismatchCount).toBe(0);
     expect(report.summary.matchPercentage).toBe(100);
-    expect(report.formattedTableMarkdown).toContain('Akurasi:** 100%');
-    expect(report.formattedTableMarkdown).toContain('✅ COCOK');
+    expect(report.formattedTableMarkdown).toContain('Accuracy:** 100%');
+    expect(report.formattedTableMarkdown).toContain('✅ MATCH');
   });
 
   it('should detect value mismatches and missing entries correctly', () => {
@@ -59,8 +59,8 @@ describe('DocumentReconciliationService', () => {
     expect(report.summary.mismatchCount).toBe(1);
     expect(report.summary.missingCount).toBe(2);
     expect(report.summary.matchPercentage).toBe(25);
-    expect(report.formattedTableMarkdown).toContain('⚠️ SELISIH');
-    expect(report.formattedTableMarkdown).toContain('❌ TIDAK ADA');
+    expect(report.formattedTableMarkdown).toContain('⚠️ MISMATCH');
+    expect(report.formattedTableMarkdown).toContain('❌ MISSING');
   });
 
   it('should cross-reference occurrences across text documents', () => {

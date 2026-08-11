@@ -20,10 +20,10 @@ export class KnowledgeBuilderTool {
         return {
           status: 'error',
           data: {},
-          preview: 'Judul dan konten wajib diisi',
+          preview: 'Title and content are required',
           metadata: {
             toolName: 'save_knowledge',
-            displayName: 'Simpan Knowledge',
+            displayName: 'Save Knowledge',
             executionTime: 0,
           },
           error: {
@@ -52,7 +52,7 @@ export class KnowledgeBuilderTool {
         this.logger.log(`Knowledge created: ${title}`);
       }
 
-      const preview = `Knowledge berhasil disimpan!\n\nJudul: ${knowledge.title}\nTipe: ${knowledge.type}\nStatus: ${knowledge.active ? 'Aktif' : 'Nonaktif'}\n\n${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`;
+      const preview = `Knowledge saved successfully!\n\nTitle: ${knowledge.title}\nType: ${knowledge.type}\nStatus: ${knowledge.active ? 'Active' : 'Inactive'}\n\n${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`;
 
       return {
         status: 'success',
@@ -75,7 +75,7 @@ export class KnowledgeBuilderTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal menyimpan knowledge: ${error.message}`,
+        preview: `Failed to save knowledge: ${error.message}`,
         metadata: {
           toolName: 'save_knowledge',
           displayName: 'Simpan Knowledge',

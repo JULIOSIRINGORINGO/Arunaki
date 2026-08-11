@@ -195,7 +195,7 @@ export class KnowledgeController {
         } else {
           cb(
             new BadRequestException(
-              `Format ${ext} tidak didukung. Gunakan: PDF, DOCX, TXT, Markdown, CSV`,
+              `Format ${ext} is not supported. Use: PDF, DOCX, TXT, Markdown, CSV`,
             ),
             false,
           );
@@ -208,7 +208,7 @@ export class KnowledgeController {
     @Body() body: { positionX?: string; positionY?: string },
   ) {
     if (!file) {
-      return errorResponse('NO_FILE', 'Tidak ada file yang diunggah');
+      return errorResponse('NO_FILE', 'No file was uploaded');
     }
 
     try {
@@ -260,7 +260,7 @@ export class KnowledgeController {
           text = file.buffer.toString('utf-8');
           break;
         default:
-          return errorResponse('UNSUPPORTED', `Format ${ext} tidak didukung`);
+          return errorResponse('UNSUPPORTED', `Format ${ext} is not supported`);
       }
 
       const title = path.basename(file.originalname, ext);

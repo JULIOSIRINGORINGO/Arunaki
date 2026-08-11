@@ -58,14 +58,14 @@ export class WorkspaceService extends BaseService<Workspace> {
     const workspace = await this.findById(id);
     
     if (workspace.rootPath && workspace.rootPath !== folderPath) {
-      throw new BadRequestException('Workspace sudah terhubung ke folder lain');
+      throw new BadRequestException('Workspace is already connected to another folder');
     }
 
     // Validate folder exists and is readable
     try {
       await fs.access(folderPath, fs.constants.R_OK);
     } catch {
-      throw new BadRequestException('Folder tidak dapat diakses');
+      throw new BadRequestException('Folder is not accessible');
     }
 
     // Update workspace with root path

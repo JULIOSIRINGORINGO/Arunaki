@@ -25,7 +25,7 @@ describe('DesktopBridgeService', () => {
 
   it('should reject sendCommand when desktop app is not connected', async () => {
     await expect(service.sendCommand('ping')).rejects.toThrow(
-      'Desktop app tidak terhubung',
+      'Desktop app is not connected',
     );
   });
 

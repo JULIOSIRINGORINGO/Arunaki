@@ -46,7 +46,7 @@ describe('ToolMiddlewareWrapper', () => {
     const res1 = await wrapped.execute({ filePath: '../etc/passwd' });
     expect(res1.status).toBe('error');
     expect(res1.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
-    expect(res1.preview).toContain('Akses ditolak');
+    expect(res1.preview).toContain('Access denied');
 
     const res2 = await wrapped.execute({ targetPath: '../../secret.key' });
     expect(res2.status).toBe('error');
@@ -80,7 +80,7 @@ describe('ToolMiddlewareWrapper', () => {
         data: {},
         preview: 'Invalid arguments',
         metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 2 },
-        error: { code: 'INVALID_ARGS', message: 'Field "path" wajib diisi' },
+        error: { code: 'INVALID_ARGS', message: 'Field "path" is required' },
       }),
     };
 
@@ -88,7 +88,7 @@ describe('ToolMiddlewareWrapper', () => {
     const res = await wrapped.execute({});
 
     expect(res.status).toBe('error');
-    expect(res.data.suggested_action).toContain('skema parameter');
+    expect(res.data.suggested_action).toContain('parameter schema');
   });
 
   it('should apply full pipeline wrapper correctly', async () => {

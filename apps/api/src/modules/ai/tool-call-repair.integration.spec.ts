@@ -83,7 +83,7 @@ describe('tool call repair integration', () => {
         new Response(
           JSON.stringify({
             model: 'test-model',
-            choices: [{ message: { content: 'File berhasil dibaca.' } }],
+            choices: [{ message: { content: 'File read successfully.' } }],
             usage: {},
           }),
         ),
@@ -124,7 +124,7 @@ describe('tool call repair integration', () => {
 
     expect(execute).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledWith({ path: 'laporan.txt' });
-    expect(result.content).toBe('File berhasil dibaca.');
+    expect(result.content).toBe('File read successfully.');
     expect(result.toolOutputs).toMatchObject([
       { toolName: 'read', status: 'success' },
     ]);

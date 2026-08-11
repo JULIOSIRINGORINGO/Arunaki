@@ -104,7 +104,7 @@ export class DocumentReconciliationService {
           sourceValues: { [sourceName]: srcVal, [targetName]: null },
           hasMismatch: true,
           status: 'MISSING_IN_TARGET',
-          details: [`Entri "${key}" ditemukan di ${sourceName} tetapi tidak ada di ${targetName}`],
+          details: [`Entry "${key}" found in ${sourceName} but missing in ${targetName}`],
         });
       } else if (!srcVal && tgtVal) {
         missingCount++;
@@ -113,7 +113,7 @@ export class DocumentReconciliationService {
           sourceValues: { [sourceName]: null, [targetName]: tgtVal },
           hasMismatch: true,
           status: 'MISSING_IN_SOURCE',
-          details: [`Entri "${key}" ditemukan di ${targetName} tetapi tidak ada di ${sourceName}`],
+          details: [`Entry "${key}" found in ${targetName} but missing in ${sourceName}`],
         });
       } else if (srcVal && tgtVal) {
         const details: string[] = [];
@@ -140,7 +140,7 @@ export class DocumentReconciliationService {
               if (isNaN(n1) || isNaN(n2) || Math.abs(n1 - n2) > 0.01) {
                 hasMismatch = true;
                 details.push(
-                  `Field "${field}" berbeda: ${sourceName} = "${s1}" vs ${targetName} = "${s2}"`,
+                  `Field "${field}" differs: ${sourceName} = "${s1}" vs ${targetName} = "${s2}"`,
                 );
               }
             }
@@ -163,7 +163,7 @@ export class DocumentReconciliationService {
             sourceValues: { [sourceName]: srcVal, [targetName]: tgtVal },
             hasMismatch: false,
             status: 'MATCH',
-            details: ['Data cocok sempurna'],
+            details: ['Data matches perfectly'],
           });
         }
       }
@@ -173,20 +173,20 @@ export class DocumentReconciliationService {
     const matchPercentage = total > 0 ? Math.round((matchCount / total) * 100) : 100;
 
     // Construct Markdown Audit Table
-    const tableHeader = `| ID / Kunci | Status Rekonsiliasi | Catatan Selisih / Perbedaan |\n| --- | --- | --- |\n`;
+    const tableHeader = `| ID / Key | Reconciliation Status | Discrepancy Notes |\n| --- | --- | --- |\n`;
     const tableRows = discrepancies
       .map((d) => {
         const badge =
           d.status === 'MATCH'
-            ? '✅ COCOK'
+            ? '✅ MATCH'
             : d.status === 'MISMATCH'
-              ? '⚠️ SELISIH'
-              : '❌ TIDAK ADA';
+              ? '⚠️ MISMATCH'
+              : '❌ MISSING';
         return `| **${d.key}** | ${badge} | ${d.details.join('; ')} |`;
       })
       .join('\n');
 
-    const formattedTableMarkdown = `[CANVAS]\n### 📊 Laporan Audit & Rekonsiliasi Dokumen\n\n**Sumber:** \`${sourceName}\` vs \`${targetName}\`  \n**Total Entri:** ${total} | **Cocok:** ${matchCount} | **Selisih:** ${mismatchCount} | **Hilang:** ${missingCount} | **Akurasi:** ${matchPercentage}%\n\n${tableHeader}${tableRows}\n[/CANVAS]`;
+    const formattedTableMarkdown = `[CANVAS]\n### 📊 Document Audit & Reconciliation Report\n\n**Source:** \`${sourceName}\` vs \`${targetName}\`  \n**Total Entries:** ${total} | **Match:** ${matchCount} | **Mismatch:** ${mismatchCount} | **Missing:** ${missingCount} | **Accuracy:** ${matchPercentage}%\n\n${tableHeader}${tableRows}\n[/CANVAS]`;
 
     return {
       summary: {

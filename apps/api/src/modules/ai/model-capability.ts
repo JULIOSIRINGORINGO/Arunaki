@@ -12,7 +12,7 @@ export interface ModelCapability {
    * actual response. Without this, a 32000-token context yields
    * max_tokens=1024 and a reasoning model exhausts it on thinking →
    * finish_reason "length", content:null, tool_calls:0 → Arunaki's
-   * generic "Maaf, saya tidak dapat memberikan jawaban" fallback.
+   * generic "Sorry, I am unable to provide an answer right now" fallback.
    */
   reasoningEffort?: 'low' | 'medium' | 'high';
 }

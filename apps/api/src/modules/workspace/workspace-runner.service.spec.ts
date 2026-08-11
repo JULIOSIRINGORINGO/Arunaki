@@ -21,7 +21,6 @@ import { SkillService } from '../skills/skill.service.js';
 import { SelfHealingService } from '../ai/self-healing.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { PromptInjectionDetector } from '../ai/prompt-injection-detector.service.js';
-import { ToolLoopDetectorService } from '../ai/tool-loop-detector.service.js';
 import { CompactionService } from '../ai/compaction.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
@@ -74,7 +73,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: AiService,
           useValue: {
             chat: vi.fn().mockResolvedValue({
-              content: 'Selesai membuat laporan.',
+              content: 'Finished creating report.',
               toolCalls: [],
             }),
           },
@@ -101,7 +100,6 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: PromptInjectionDetector,
           useValue: { scan: vi.fn().mockReturnValue({ isInjection: false }) },
         },
-        { provide: ToolLoopDetectorService, useValue: { checkLoop: vi.fn() } },
         { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn() } } },
         { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
@@ -116,12 +114,12 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
     runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
   });
 
-  it('harus memvalidasi instansiasi WorkspaceRunnerService dari NestJS Container tanpa circular dependency', () => {
+  it('validates WorkspaceRunnerService instantiation from the NestJS Container without circular dependency', () => {
     expect(runnerService).toBeDefined();
     expect(typeof runnerService.runWorkspaceAgentGenerator).toBe('function');
   });
 
-  it('harus dapat memeriksa status running workspace (isRunning)', () => {
+  it('checks the running workspace status (isRunning)', () => {
     const isRunning = runnerService.isRunning('test-workspace-id');
     expect(isRunning).toBe(false);
   });
@@ -181,21 +179,16 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         {
           provide: SelfHealingService,
           useValue: {
-            executeWithHealing: vi.fn().mockImplementation(async () => {
+            executeWithIsolation: vi.fn().mockImplementation(async () => {
               active++;
               maxActive = Math.max(maxActive, active);
               await new Promise((r) => setTimeout(r, 30));
               active--;
-              return {
-                finalResult: { status: 'success', data: { text: 'ok' } },
-                healed: false,
-                attempts: [],
-              };
+              return { status: 'success', data: { text: 'ok' } };
             }),
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
         { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         {
           provide: PrismaService,
@@ -223,14 +216,14 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
     runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
   });
 
-  it('menjalankan read-only tools secara paralel dan mempertahankan urutan tool_calls', async () => {
+  it('runs read-only tools in parallel while preserving the tool_calls order', async () => {
     const doneOrder: string[] = [];
     const events: any[] = [];
 
     for await (const event of runnerService.runWorkspaceAgentGenerator({
       workspaceId: 'ws-parallel-test',
-      userGoal: 'bacakan file a.txt dan cari x',
-      historyMessages: [{ role: 'user', content: 'bacakan file a.txt dan cari x' }],
+      userGoal: 'read a.txt and search for x',
+      historyMessages: [{ role: 'user', content: 'read a.txt and search for x' }],
     })) {
       events.push(event);
       if (event.type === 'tool_done') {
@@ -298,20 +291,16 @@ describe('WorkspaceRunnerService todo list injection', () => {
         {
           provide: SelfHealingService,
           useValue: {
-            executeWithHealing: vi.fn().mockImplementation(async (name: string, args: any) => {
+            executeWithIsolation: vi.fn().mockImplementation(async (name: string, args: any) => {
               if (name === 'todo_write' && Array.isArray(args?.todos)) {
                 todoStore.set(args.workspaceId || 'ws-todo-test', args.todos);
               }
-              return {
-                finalResult: { status: 'success', data: { text: 'ok' } },
-                healed: false,
-                attempts: [],
-              };
+              return { status: 'success', data: { text: 'ok' } };
             }),
           },
         },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) }, source: { findFirst: vi.fn().mockResolvedValue(null) } } },
         { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
@@ -326,11 +315,11 @@ describe('WorkspaceRunnerService todo list injection', () => {
     runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
   });
 
-  it('menyuntikkan todo list yang ditulis LLM ke context di round berikutnya', async () => {
+  it('injects the LLM-written todo list into the context on the next round', async () => {
     for await (const _ of runnerService.runWorkspaceAgentGenerator({
       workspaceId: 'ws-todo-test',
-      userGoal: 'buat laporan 10 langkah',
-      historyMessages: [{ role: 'user', content: 'buat laporan 10 langkah' }],
+      userGoal: 'create a 10-step report',
+      historyMessages: [{ role: 'user', content: 'create a 10-step report' }],
     })) {
       // drain generator
     }
@@ -352,9 +341,8 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
 
   beforeEach(async () => {
     healMock = vi.fn().mockImplementation(async (name: string) => ({
-      finalResult: { status: 'success', data: { text: `ran:${name}` } },
-      healed: false,
-      attempts: [],
+      status: 'success',
+      data: { text: `ran:${name}` },
     }));
 
     const module: TestingModule = await Test.createTestingModule({
@@ -387,9 +375,9 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
         { provide: BackgroundReviewService, useValue: {} },
         { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
         { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
-        { provide: SelfHealingService, useValue: { executeWithHealing: healMock } },
+        { provide: SelfHealingService, useValue: { executeWithIsolation: healMock } },
         { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: ToolLoopDetectorService, useValue: { checkAndRecord: vi.fn().mockReturnValue({ isLooping: false }), clearSession: vi.fn() } },
+        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
         { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) } } },
         { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
@@ -404,11 +392,11 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
     runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
   });
 
-  it('menolak tool yang tidak dideklarasikan di subset tanpa mengeksekusinya', async () => {
+  it('rejects tools not declared in the subset without executing them', async () => {
     for await (const _ of runnerService.runWorkspaceAgentGenerator({
       workspaceId: 'ws-reject-test',
-      userGoal: 'bacakan file a.txt',
-      historyMessages: [{ role: 'user', content: 'bacakan file a.txt' }],
+      userGoal: 'read file a.txt',
+      historyMessages: [{ role: 'user', content: 'read file a.txt' }],
     })) {
       // consume stream
     }

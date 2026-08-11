@@ -70,7 +70,7 @@ describe("Test Models Catalog", () => {
         data: { title: `Test Model ${model.id}`, workspaceId: workspace.id }
       });
 
-      const prompt = 'Sebutkan 1 file apa saja yang ada di direktori kerja saya saat ini (gunakan tools untuk melihat file). Jawab dengan sangat singkat.';
+      const prompt = 'Mention 1 file that is currently in my working directory (use tools to list files). Reply very briefly.';
       logger.log(`💬 Prompt: "${prompt}"\n`);
       
       try {

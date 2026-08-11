@@ -12,8 +12,8 @@ describe('TrajectoryAuditService — Execution Audit Trail', () => {
     const runId = 'run_1001';
     const chatId = 'chat_99';
 
-    auditService.recordStep(runId, chatId, 'agent_start', { userContent: 'Hitung total omzet' });
-    auditService.recordStep(runId, chatId, 'thinking', { message: 'Membaca data' });
+    auditService.recordStep(runId, chatId, 'agent_start', { userContent: 'Calculate total revenue' });
+    auditService.recordStep(runId, chatId, 'thinking', { message: 'Reading data' });
     auditService.recordStep(runId, chatId, 'tool_start', { toolName: 'read' });
     auditService.recordStep(runId, chatId, 'tool_done', { toolName: 'read' }, 150);
     auditService.recordStep(runId, chatId, 'agent_complete', { toolCount: 1 });

@@ -226,8 +226,8 @@ export class WorkspaceController {
       return successResponse({
         aborted,
         message: aborted
-          ? 'Analisis sedang dibatalkan.'
-          : 'Tidak ada analisis yang sedang berjalan.',
+          ? 'Analysis is being cancelled.'
+          : 'No analysis is currently running.',
       });
     } catch (error) {
       return errorResponse('ABORT_FAILED', error.message);
@@ -247,8 +247,8 @@ export class WorkspaceController {
       return successResponse({
         queued,
         message: queued
-          ? 'Follow-up diterima dan akan diproses.'
-          : 'Tidak ada analisis yang sedang berjalan untuk menerima follow-up.',
+          ? 'Follow-up received and will be processed.'
+          : 'No analysis is currently running to accept a follow-up.',
       });
     } catch (error) {
       return errorResponse('STEER_FAILED', error.message);
@@ -269,9 +269,9 @@ export class WorkspaceController {
         resolved,
         message: resolved
           ? body.approved
-            ? 'Aksi disetujui.'
-            : 'Aksi ditolak.'
-          : 'Tidak ada aksi yang menunggu persetujuan.',
+            ? 'Action approved.'
+            : 'Action rejected.'
+          : 'No action is waiting for approval.',
       });
     } catch (error) {
       return errorResponse('APPROVE_FAILED', error.message);

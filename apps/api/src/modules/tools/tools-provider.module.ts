@@ -1436,7 +1436,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_press_key',
-        displayName: 'Tekan Tombol Keyboard',
+        displayName: 'Press Keyboard Key',
         description:
           'Presses a keyboard key on the web page. Use for keyboard shortcuts ' +
           '(Ctrl+C to copy, Enter to submit, Tab to move fields, Escape to close dialogs, ' +
@@ -1448,15 +1448,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { key: args.key },
-              preview: `Menekan tombol: ${args.key}`,
-              metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
+              preview: `Pressed key: ${args.key}`,
+              metadata: { toolName: 'browser_press_key', displayName: 'Press Keyboard Key', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_press_key', displayName: 'Tekan Tombol Keyboard', executionTime: 0 },
+              metadata: { toolName: 'browser_press_key', displayName: 'Press Keyboard Key', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1479,7 +1479,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_go_back',
-        displayName: 'Kembali Halaman',
+        displayName: 'Back Page',
         description: 'Navigates back to the previous page in the browser.',
         tags: ['browser', 'navigate', 'back'],
         handler: async (args) => {
@@ -1488,15 +1488,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: {},
-              preview: 'Kembali ke halaman sebelumnya',
-              metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
+              preview: 'Back to previous page',
+              metadata: { toolName: 'browser_go_back', displayName: 'Back Page', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_go_back', displayName: 'Kembali Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_go_back', displayName: 'Back Page', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1514,7 +1514,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'browser_go_forward',
-        displayName: 'Maju Halaman',
+        displayName: 'Forward Page',
         description: 'Navigates forward to the next page in the browser.',
         tags: ['browser', 'navigate', 'forward'],
         handler: async (args) => {
@@ -1523,15 +1523,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: {},
-              preview: 'Maju ke halaman berikutnya',
-              metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
+              preview: 'Forward to next page',
+              metadata: { toolName: 'browser_go_forward', displayName: 'Forward Page', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'browser_go_forward', displayName: 'Maju Halaman', executionTime: 0 },
+              metadata: { toolName: 'browser_go_forward', displayName: 'Forward Page', executionTime: 0 },
               error: { code: 'BROWSER_ERROR', message: err.message },
             };
           }
@@ -1550,7 +1550,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_open_file',
-        displayName: 'Buka File di Desktop',
+        displayName: 'Open File on Desktop',
         description:
           'Opens a file in the default desktop application (PDF in a PDF viewer, ' +
           'TXT in Notepad, CSV in Excel, images in a Photo viewer, etc.). ' +
@@ -1563,15 +1563,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { path: args.path },
-              preview: `Membuka file: ${args.path.split(/[\\/]/).pop()}`,
-              metadata: { toolName: 'desktop_open_file', displayName: 'Buka File di Desktop', executionTime: 0 },
+              preview: `Opened file: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_file', displayName: 'Open File on Desktop', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_open_file', displayName: 'Buka File di Desktop', executionTime: 0 },
+              metadata: { toolName: 'desktop_open_file', displayName: 'Open File on Desktop', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1593,7 +1593,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_open_excel',
-        displayName: 'Buka Excel',
+        displayName: 'Open Excel',
         description:
           'Opens an Excel file (.xlsx, .xls) in the Microsoft Excel desktop application ' +
           'via COM. The file opens visible on the user screen.',
@@ -1604,15 +1604,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { path: args.path, hwnd: r.hwnd },
-              preview: `Membuka Excel: ${args.path.split(/[\\/]/).pop()}`,
-              metadata: { toolName: 'desktop_open_excel', displayName: 'Buka Excel', executionTime: 0 },
+              preview: `Opened Excel: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_excel', displayName: 'Open Excel', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_open_excel', displayName: 'Buka Excel', executionTime: 0 },
+              metadata: { toolName: 'desktop_open_excel', displayName: 'Open Excel', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1635,7 +1635,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_open_word',
-        displayName: 'Buka Word',
+        displayName: 'Open Word',
         description:
           'Opens a Word file (.docx, .doc) in the Microsoft Word desktop application ' +
           'via COM. The file opens visible on the user screen.',
@@ -1646,15 +1646,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { path: args.path },
-              preview: `Membuka Word: ${args.path.split(/[\\/]/).pop()}`,
-              metadata: { toolName: 'desktop_open_word', displayName: 'Buka Word', executionTime: 0 },
+              preview: `Opened Word: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_word', displayName: 'Open Word', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_open_word', displayName: 'Buka Word', executionTime: 0 },
+              metadata: { toolName: 'desktop_open_word', displayName: 'Open Word', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1677,7 +1677,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'desktop_open_ppt',
-        displayName: 'Buka PowerPoint',
+        displayName: 'Open PowerPoint',
         description:
           'Opens a PowerPoint file (.pptx, .ppt) in the Microsoft PowerPoint desktop application ' +
           'via COM. The file opens visible on the user screen.',
@@ -1688,15 +1688,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { path: args.path },
-              preview: `Membuka PowerPoint: ${args.path.split(/[\\/]/).pop()}`,
-              metadata: { toolName: 'desktop_open_ppt', displayName: 'Buka PowerPoint', executionTime: 0 },
+              preview: `Opened PowerPoint: ${args.path.split(/[\\/]/).pop()}`,
+              metadata: { toolName: 'desktop_open_ppt', displayName: 'Open PowerPoint', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_open_ppt', displayName: 'Buka PowerPoint', executionTime: 0 },
+              metadata: { toolName: 'desktop_open_ppt', displayName: 'Open PowerPoint', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1731,7 +1731,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { screenshot: r.screenshot },
-              preview: 'Screenshot desktop berhasil diambil',
+              preview: 'Desktop screenshot captured successfully',
               metadata: { toolName: 'desktop_screenshot', displayName: 'Screenshot Desktop', executionTime: 0 },
             };
           } catch (err) {
@@ -1818,13 +1818,13 @@ export class ToolsProviderModule implements OnModuleInit {
             const actionSummary = (args.actions || [])
               .map((a: any) => {
                 switch (a.action) {
-                  case 'write_cell': return `Tulis ${a.cell}="${a.value}"`;
-                  case 'insert_row': return `Sisipkan baris ${a.row}`;
-                  case 'delete_row': return `Hapus baris ${a.row}`;
-                  case 'insert_column': return `Sisipkan kolom ${a.column}`;
-                  case 'delete_column': return `Hapus kolom ${a.column}`;
+                  case 'write_cell': return `Write ${a.cell}="${a.value}"`;
+                  case 'insert_row': return `Insert row ${a.row}`;
+                  case 'delete_row': return `Delete row ${a.row}`;
+                  case 'insert_column': return `Insert column ${a.column}`;
+                  case 'delete_column': return `Delete column ${a.column}`;
                   case 'set_format': return `Format ${a.range}`;
-                  case 'save': return 'Simpan';
+                  case 'save': return 'Save';
                   default: return a.action;
                 }
               })
@@ -1833,7 +1833,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { path: filePath, results: r.results, actionsExecuted: r.actionsExecuted },
-              preview: `Excel berhasil diedit (${(args.actions || []).length} aksi: ${actionSummary}). Backup otomatis tersimpan.`,
+              preview: `Excel edited successfully (${(args.actions || []).length} actions: ${actionSummary}). Automatic backup saved.`,
               metadata: {
                 toolName: 'desktop_excel_edit',
                 displayName: 'Edit File Excel (Native)',
@@ -1897,7 +1897,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'desktop_word_type',
         mutating: true,
-        displayName: 'Ketik Teks Word',
+        displayName: 'Type Text in Word',
         description:
           'Types text or paragraphs directly into the active desktop Word document.',
         tags: ['desktop', 'word', 'type', 'text', 'interactive'],
@@ -1912,15 +1912,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { length: (args.text || '').length, smoothStream: !!args.smoothStream },
-              preview: `Mengetik ${(args.text || '').length} karakter di Word${args.smoothStream ? ' (live stream)' : ''}`,
-              metadata: { toolName: 'desktop_word_type', displayName: 'Ketik Teks Word', executionTime: 0 },
+              preview: `Typed ${(args.text || '').length} characters in Word${args.smoothStream ? ' (live stream)' : ''}`,
+              metadata: { toolName: 'desktop_word_type', displayName: 'Type Text in Word', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_word_type', displayName: 'Ketik Teks Word', executionTime: 0 },
+              metadata: { toolName: 'desktop_word_type', displayName: 'Type Text in Word', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1943,7 +1943,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'desktop_word_format',
         mutating: true,
-        displayName: 'Format Dokumen Word',
+        displayName: 'Format Word Document',
         description:
           'Formats text/selection in a Word document (Heading 1, Heading 2, Bold, Font Size).',
         tags: ['desktop', 'word', 'format', 'style', 'interactive'],
@@ -1958,15 +1958,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { style: args.style },
-              preview: 'Memformat teks di Word',
-              metadata: { toolName: 'desktop_word_format', displayName: 'Format Dokumen Word', executionTime: 0 },
+              preview: 'Formatted text in Word',
+              metadata: { toolName: 'desktop_word_format', displayName: 'Format Word Document', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_word_format', displayName: 'Format Dokumen Word', executionTime: 0 },
+              metadata: { toolName: 'desktop_word_format', displayName: 'Format Word Document', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -1988,7 +1988,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'desktop_send_keys',
         mutating: true,
-        displayName: 'Kirim Shortcut Keyboard Desktop',
+        displayName: 'Send Desktop Keyboard Shortcut',
         description:
           'Presses keyboard key combinations/shortcuts in the active desktop application window ' +
           '(e.g. "^s" for Ctrl+S, "{ENTER}", "{TAB}", "^z").',
@@ -2013,8 +2013,8 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Kombinasi keyboard "${args.keys}" tidak diizinkan. Hanya shortcut yang telah di-whitelist yang diperbolehkan.`,
-              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+              preview: `Keyboard combination "${args.keys}" is not allowed. Only whitelisted shortcuts are permitted.`,
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Send Desktop Keyboard Shortcut', executionTime: 0 },
               error: { code: 'KEYS_NOT_WHITELISTED', message: `Key combination "${args.keys}" is not in the allowed whitelist` },
             };
           }
@@ -2024,15 +2024,15 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'success' as const,
               data: { keys: args.keys },
-              preview: `Mengirim shortcut keyboard: ${args.keys}`,
-              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+              preview: `Sent keyboard shortcut: ${args.keys}`,
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Send Desktop Keyboard Shortcut', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
               preview: err.message,
-              metadata: { toolName: 'desktop_send_keys', displayName: 'Kirim Shortcut Keyboard Desktop', executionTime: 0 },
+              metadata: { toolName: 'desktop_send_keys', displayName: 'Send Desktop Keyboard Shortcut', executionTime: 0 },
               error: { code: 'DESKTOP_ERROR', message: err.message },
             };
           }
@@ -2055,16 +2055,16 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'doc_reconcile',
-        displayName: 'Audit & Rekonsiliasi Dokumen',
+        displayName: 'Audit & Reconcile Documents',
         description:
           'Compares 2 sets of structured data (Excel, PDF, Word, CSV) to reconcile entries, note value differences, and detect missing data.',
         tags: ['audit', 'reconcile', 'reconciliation', 'compare', 'matrix'],
         handler: async (args) => {
           try {
             const report = this.docReconciliationService.reconcileDocuments(
-              args.sourceName || 'Dokumen A',
+              args.sourceName || 'Document A',
               args.sourceRows || [],
-              args.targetName || 'Dokumen B',
+              args.targetName || 'Document B',
               args.targetRows || [],
               args.matchKey || 'id',
             );
@@ -2072,14 +2072,14 @@ export class ToolsProviderModule implements OnModuleInit {
               status: 'success' as const,
               data: report,
               preview: report.formattedTableMarkdown,
-              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Rekonsiliasi Dokumen', executionTime: 0 },
+              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Reconcile Documents', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Gagal merekonsiliasi dokumen: ${err.message}`,
-              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Rekonsiliasi Dokumen', executionTime: 0 },
+              preview: `Failed to reconcile documents: ${err.message}`,
+              metadata: { toolName: 'doc_reconcile', displayName: 'Audit & Reconcile Documents', executionTime: 0 },
               error: { code: 'RECONCILE_ERROR', message: err.message },
             };
           }
@@ -2102,7 +2102,7 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'doc_cross_reference',
-        displayName: 'Pencarian Silang Dokumen Workspace',
+        displayName: 'Cross-Reference Workspace Documents',
         description:
           'Searches for entity relationships, invoice numbers, or specific keywords across all workspace document text.',
         tags: ['cross_reference', 'search', 'audit', 'workspace'],
@@ -2113,22 +2113,22 @@ export class ToolsProviderModule implements OnModuleInit {
               args.documents || [],
             );
             const summary = matches.length > 0
-              ? `Ditemukan ${matches.length} dokumen yang memuat "${args.query}":\n` +
-                matches.map((m) => `- **${m.documentName}** (${m.occurrenceCount} kali): "${m.contextSnippet}"`).join('\n')
-              : `Teks "${args.query}" tidak ditemukan di dokumen yang diperiksa.`;
+              ? `Found ${matches.length} documents containing "${args.query}":\n` +
+                matches.map((m) => `- **${m.documentName}** (${m.occurrenceCount} times): "${m.contextSnippet}"`).join('\n')
+              : `Text "${args.query}" not found in the examined documents.`;
 
             return {
               status: 'success' as const,
               data: { query: args.query, matches },
               preview: summary,
-              metadata: { toolName: 'doc_cross_reference', displayName: 'Pencarian Silang Dokumen Workspace', executionTime: 0 },
+              metadata: { toolName: 'doc_cross_reference', displayName: 'Cross-Reference Workspace Documents', executionTime: 0 },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Gagal melakukan pencarian silang: ${err.message}`,
-              metadata: { toolName: 'doc_cross_reference', displayName: 'Pencarian Silang Dokumen Workspace', executionTime: 0 },
+              preview: `Failed to perform cross-reference search: ${err.message}`,
+              metadata: { toolName: 'doc_cross_reference', displayName: 'Cross-Reference Workspace Documents', executionTime: 0 },
               error: { code: 'CROSS_REF_ERROR', message: err.message },
             };
           }
@@ -2160,19 +2160,21 @@ export class ToolsProviderModule implements OnModuleInit {
     this.registry.register(
       ToolAdapter.from({
         name: 'agent_spawn',
-        displayName: 'Delegasi Sub-Agent',
+        displayName: 'Sub-Agent Delegation',
         description:
-          'Delegates sub-tasks to independent sub-agents that run in parallel in the background. ' +
+          'Launch a new agent to handle complex, multistep tasks autonomously. ' +
           'Use to break large work into several sub-tasks done simultaneously ' +
           '(e.g. read 3 PDF files in parallel, or process Excel while reading Word). ' +
-          'Each sub-agent has isolated context and restricted tools.',
+          'Each sub-agent has isolated context and restricted tools, and returns a single final message. ' +
+          'Do NOT use for simple reads, greps, or searches you can do yourself in one tool call. ' +
+          'Give each sub-task a detailed prompt and specify exactly what it should return.',
         tags: ['agent', 'delegation', 'parallel', 'spawn', 'sub-agent'],
         handler: async (args) => {
           try {
             const tasks = (args.tasks || []).map((t: any, i: number) => ({
               taskId: t.taskId || `sub_${Date.now()}_${i}`,
-              taskName: t.taskName || `Sub-tugas ${i + 1}`,
-              taskDescription: t.taskDescription || t.description || '',
+              taskName: t.taskName || t.description || `Sub-task ${i + 1}`,
+              taskDescription: t.taskDescription || t.description || t.prompt || '',
               allowedTools: t.allowedTools || [],
               maxRounds: t.maxRounds || 5,
               additionalContext: t.additionalContext || '',
@@ -2183,9 +2185,9 @@ export class ToolsProviderModule implements OnModuleInit {
               return {
                 status: 'error' as const,
                 data: {},
-                preview: 'Tidak ada sub-tugas yang didefinisikan.',
-                metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: 0 },
-                error: { code: 'NO_TASKS', message: 'Array tasks kosong.' },
+                preview: 'No sub-tasks defined.',
+                metadata: { toolName: 'agent_spawn', displayName: 'Sub-Agent Delegation', executionTime: 0 },
+                error: { code: 'NO_TASKS', message: 'The tasks array is empty.' },
               };
             }
 
@@ -2198,7 +2200,7 @@ export class ToolsProviderModule implements OnModuleInit {
               .map((r: any) => {
                 const icon = r.status === 'success' ? '✅' : '❌';
                 const toolInfo = r.toolOutputs.length > 0
-                  ? ` (${r.toolOutputs.length} tools digunakan)`
+                  ? ` (${r.toolOutputs.length} tools used)`
                   : '';
                 return `${icon} **${r.taskName}**: ${r.status === 'success' ? r.content.substring(0, 200) : r.error}${toolInfo}`;
               })
@@ -2220,15 +2222,15 @@ export class ToolsProviderModule implements OnModuleInit {
                 totalCount: results.length,
                 totalDurationMs,
               },
-              preview: `${successCount}/${results.length} sub-agent selesai (${totalDurationMs}ms):\n${summary}`,
-              metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: totalDurationMs },
+              preview: `${successCount}/${results.length} sub-agents completed (${totalDurationMs}ms):\n${summary}`,
+              metadata: { toolName: 'agent_spawn', displayName: 'Sub-Agent Delegation', executionTime: totalDurationMs },
             };
           } catch (err) {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Gagal menjalankan sub-agent: ${err.message}`,
-              metadata: { toolName: 'agent_spawn', displayName: 'Delegasi Sub-Agent', executionTime: 0 },
+              preview: `Failed to run sub-agents: ${err.message}`,
+              metadata: { toolName: 'agent_spawn', displayName: 'Sub-Agent Delegation', executionTime: 0 },
               error: { code: 'SPAWN_ERROR', message: err.message },
             };
           }
@@ -2243,7 +2245,7 @@ export class ToolsProviderModule implements OnModuleInit {
                 type: 'object',
                 properties: {
                   taskName: { type: 'string', description: 'Short sub-task name (e.g. "Read Invoice PDF")' },
-                  taskDescription: { type: 'string', description: 'Detailed instructions for the sub-agent' },
+                  taskDescription: { type: 'string', description: 'Detailed, autonomous prompt for the sub-agent. Specify exactly what it should return.' },
                   allowedTools: {
                     type: 'array',
                     items: { type: 'string' },
@@ -2267,7 +2269,7 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'schedule_cron_job',
         mutating: true,
-        displayName: 'Jadwalkan Laporan & Tugas Cron Berkala',
+        displayName: 'Schedule Recurring Cron Reports & Tasks',
         description:
           'Schedules automatic report execution or recurring agent tasks in the background. ' +
           'Supports cron expressions (e.g. "0 17 * * 5" for every Friday at 5 PM) or frequency text ("daily", "weekly", "monthly").',
@@ -2416,7 +2418,7 @@ export class ToolsProviderModule implements OnModuleInit {
             return {
               status: 'error' as const,
               data: {},
-              preview: `Gagal menghapus jadwal cron: ${err.message}`,
+              preview: `Failed to delete cron schedule: ${err.message}`,
               metadata: { toolName: 'delete_cron_job', displayName: 'Delete Cron Job', executionTime: 0 },
               error: { code: 'DELETE_ERROR', message: err.message },
             };
@@ -2446,19 +2448,19 @@ export class ToolsProviderModule implements OnModuleInit {
         );
       case 'pdf':
         return this.documentGeneratorTool.generatePdf(
-          args.title || 'Dokumen',
+          args.title || 'Document',
           args.content || '',
           filename,
         );
       case 'docx':
         return this.documentGeneratorTool.generateDocx(
-          args.title || 'Dokumen',
+          args.title || 'Document',
           args.content || '',
           filename,
         );
       case 'pptx':
         return this.documentGeneratorTool.generatePptx(
-          args.title || 'Presentasi',
+          args.title || 'Presentation',
           args.slides || [{ content: args.content || '' }],
           filename,
         );

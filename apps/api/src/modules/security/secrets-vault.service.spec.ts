@@ -51,7 +51,7 @@ describe('SecretsVaultService — AES-256-GCM Encryption', () => {
     };
 
     expect(() => vaultService.decryptSecret(tamperedPayload)).toThrow(
-      'Gagal mendekripsi rahasia',
+      'Failed to decrypt secret',
     );
   });
 

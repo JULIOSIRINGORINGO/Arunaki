@@ -69,7 +69,7 @@ export class FileService extends BaseService<File> {
       const safeFilename = path.basename(file.originalname);
       if (!safeFilename || safeFilename.includes('..')) {
         throw new Error(
-          `Nama file '${file.originalname}' tidak valid atau berpotensi path traversal.`,
+          `Filename '${file.originalname}' is invalid or may contain path traversal.`,
         );
       }
 
@@ -80,7 +80,7 @@ export class FileService extends BaseService<File> {
 
       const ext = path.extname(safeFilename).toLowerCase().replace('.', '');
 
-      // Gunakan relativePath jika ada, agar struktur folder terlihat
+      // Use relativePath if available, so the folder structure is visible
       const relativePath = relativePaths?.[i];
       const displayName = relativePath
         ? relativePath.replace(/^.*[\\/]/, '') === safeFilename
