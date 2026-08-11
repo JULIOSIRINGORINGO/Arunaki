@@ -6,6 +6,7 @@ import {
   StreamingContextScrubber,
 } from '../ai/context-manager.js';
 import { ContextRegistry } from '../ai/context/context-registry.service.js';
+import { getSystemDateTimeContext } from '../ai/context/date-time-context.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
@@ -500,14 +501,8 @@ export class WorkspaceRunnerService {
       add(['write', 'edit', 'read']);
     }
 
-    // A referenced file (@file) already exists in the workspace, so it must be
-    // edited in place with a patch (surgical, opencode-style). Remove `write`
-    // so the model cannot silently rewrite the whole file instead.
-    // Reuses the SAME extraction as readMentionedFiles() so the toolset always
-    // matches which @files actually get pre-read/resolved.
-    if (extractMentionedFilenames(goal).length > 0) {
-      wanted.delete('write');
-    }
+    // Keep both write and edit available for referenced files so model can choose
+    // surgical patch (edit) or full content update (write).
 
     // Goal keywords → add relevant tools (using gClean so @ file names don't trigger the wrong tool).
     if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
@@ -540,6 +535,7 @@ export class WorkspaceRunnerService {
       add(['list_skills', 'view_skill', 'search_skills']);
     }
     if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
+    if (/(?:hitung|kalkulasi|calculate|total|jumlah|rumus)/.test(g)) add(['calculate']);
 
     // URL/web search: only when the user explicitly asks to search the internet.
     if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
@@ -629,7 +625,7 @@ export class WorkspaceRunnerService {
         workspaceId,
       );
 
-      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\nRoot Path: ${rootPath || 'N/A'}\nDetected File List:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
+      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\n${getSystemDateTimeContext()}\nRoot Path: ${rootPath || 'N/A'}\nDetected File List:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
 
       if (skillsContext) {
         context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
@@ -665,6 +661,7 @@ export class WorkspaceRunnerService {
       workspaceId,
       userGoal,
       historyMessages,
+      modelId,
     } = params;
 
     let lease: any;
@@ -872,7 +869,7 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
-          const aiResponse = await this.aiService.chat(messages, tools);
+          const aiResponse = await this.aiService.chat(messages, tools, modelId ? { preferredProviderId: modelId } : undefined);
 
           // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
           aiResponse.toolCalls = aiResponse.toolCalls || [];
@@ -1461,4 +1458,5 @@ export interface WorkspaceRunParams {
     role: 'user' | 'assistant' | 'system';
     content: string;
   }>;
+  modelId?: string;
 }

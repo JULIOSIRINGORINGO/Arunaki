@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const API_BASE = 'http://127.0.0.1:3000/api/v1';
-const WORKSPACE_ID = 'cmshh81u8000bvg78c4ay5hgk';
+const WORKSPACE_ID = process.env.WORKSPACE_ID || 'cmsj3htjg0008vtzs4oi4bzic';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
-const WORKSPACE_ROOT = 'E:\\JS\\laporan-test';
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
 
 const instruction = `Update laporan hari ini di file @${TARGET_FILE} dengan data berikut, dan hitung ulang semua total secara otomatis:
 
@@ -95,6 +95,7 @@ async function runTest() {
         workspaceId: WORKSPACE_ID,
         userGoal: instruction,
         historyMessages: [],
+        modelId: 'gpt-oss-120b',
       },
       (event: any) => {
         if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName}`);

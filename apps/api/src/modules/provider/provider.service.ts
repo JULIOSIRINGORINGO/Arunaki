@@ -101,6 +101,7 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async getById(id: string): Promise<ProviderConfig | null> {
+    if (!this.repository) return null;
     const provider = await this.repository.findById(id);
     if (!provider) return null;
 
