@@ -3,7 +3,42 @@ import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { FileService } from '../../file/file.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
-import * as Patch from './apply-patch.js';
+
+/**
+ * OpenCode-faithful edit tool.
+ * Pure oldString → newString replacement with CRLF normalization and BOM handling.
+ * No patch engine, no complex modes — exactly how OpenCode does it.
+ */
+
+// ── Helpers (ported 1:1 from OpenCode edit.ts) ──────────────────────
+
+const normalizeLineEndings = (text: string) => text.replace(/\r\n/g, '\n');
+
+const detectLineEnding = (text: string): '\n' | '\r\n' =>
+  text.includes('\r\n') ? '\r\n' : '\n';
+
+const convertToLineEnding = (text: string, ending: '\n' | '\r\n') =>
+  ending === '\n'
+    ? normalizeLineEndings(text)
+    : normalizeLineEndings(text).replace(/\n/g, '\r\n');
+
+const splitBom = (text: string) =>
+  text.startsWith('\uFEFF') ? { bom: true, text: text.slice(1) } : { bom: false, text };
+
+const joinBom = (text: string, bom: boolean) => (bom ? `\uFEFF${text}` : text);
+
+const countOccurrences = (content: string, search: string): number => {
+  if (search === '') return content.length + 1;
+  let count = 0;
+  let offset = 0;
+  while ((offset = content.indexOf(search, offset)) !== -1) {
+    count++;
+    offset += search.length;
+  }
+  return count;
+};
+
+// ── Service ─────────────────────────────────────────────────────────
 
 @Injectable()
 export class EditToolService {
@@ -14,29 +49,49 @@ export class EditToolService {
     @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
   ) {}
 
-  /**
-   * Performs surgical edits on an existing file using dual-mode execution:
-   * Mode 1: Exact string replacement (`oldText` & `newText`) with CRLF normalization
-   * Mode 2: Opencode patch dry-run engine (`patchText`) with CRLF normalization
-   */
   async execute(params: {
     workspaceId: string;
-    filename: string;
-    patchText?: string;
-    oldText?: string;
-    newText?: string;
-    content?: string;
+    path: string;
+    oldString: string;
+    newString: string;
+    replaceAll?: boolean;
   }): Promise<ToolResult> {
-    let { workspaceId, filename, patchText, oldText, newText, content } = params as any;
+    const { workspaceId, oldString, newString, replaceAll } = params;
+    const filename = params.path;
     const startTime = Date.now();
 
-    // Smart parameter resolution fallback (for LLMs passing content instead of patchText/oldText)
-    if (!patchText && (!oldText || !newText) && typeof content === 'string') {
-      if (content.includes('*** Begin Patch') || content.includes('*** Update File:')) {
-        patchText = content;
-      }
+    // ── Validate input ──────────────────────────────────────────────
+    if (!filename) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Missing required parameter: path',
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'MISSING_PATH', message: 'path parameter is required' },
+      };
     }
 
+    if (typeof oldString !== 'string' || typeof newString !== 'string') {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Missing required parameters: oldString and newString',
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'MISSING_PARAMS', message: 'oldString and newString are required' },
+      };
+    }
+
+    if (oldString === newString) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'oldString and newString must differ',
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'IDENTICAL_STRINGS', message: 'oldString and newString are identical' },
+      };
+    }
+
+    // ── Resolve workspace root path ─────────────────────────────────
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { rootPath: true },
@@ -55,6 +110,8 @@ export class EditToolService {
     const rootPath = workspace.rootPath;
     let targetPath = path.join(rootPath, filename);
     const fsPromises = await import('fs/promises');
+
+    // ── Resolve file path (physical → DB fallback) ──────────────────
     let fileExists = false;
     try {
       await fsPromises.access(targetPath);
@@ -69,144 +126,89 @@ export class EditToolService {
         const match = files.find(
           (f) =>
             f.name.toLowerCase() === filename.toLowerCase() ||
-            f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
             f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
         );
-        if (match) targetPath = match.path;
+        if (match) {
+          targetPath = match.path;
+          fileExists = true;
+        }
       } catch {
-        /* Fallback */
+        /* fallback */
       }
     }
 
+    if (!fileExists) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `File "${filename}" not found in workspace.`,
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'FILE_NOT_FOUND', message: `File "${filename}" not found` },
+      };
+    }
+
+    // ── Read, normalize, replace, write ─────────────────────────────
     try {
-      const original = await fsPromises.readFile(targetPath, 'utf-8');
-      const hasCrlf = original.includes('\r\n');
+      const raw = await fsPromises.readFile(targetPath, 'utf-8');
+      const lineEnding = detectLineEnding(raw);
+      const { bom, text: content } = splitBom(raw);
+      const normalized = normalizeLineEndings(content);
+      const normOld = normalizeLineEndings(oldString);
+      const normNew = normalizeLineEndings(newString);
 
-      // Mode 1: Exact String Replacement (oldText & newText)
-      if (typeof oldText === 'string' && typeof newText === 'string') {
-        const normOriginal = original.replace(/\r\n/g, '\n');
-        const normOld = oldText.replace(/\r\n/g, '\n');
-        const normNew = newText.replace(/\r\n/g, '\n');
+      const occurrences = countOccurrences(normalized, normOld);
 
-        if (!normOriginal.includes(normOld)) {
-          return {
-            status: 'error',
-            data: {},
-            preview: `Failed to edit "${filename}": target oldText was not found in file.`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-            error: { code: 'OLD_TEXT_NOT_FOUND', message: 'Target oldText not found in file' },
-          };
-        }
-        const updatedContent = normOriginal.replace(normOld, normNew);
-        const finalContent = hasCrlf
-          ? updatedContent.replace(/\r?\n/g, '\r\n')
-          : updatedContent;
-        await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
-        return {
-          status: 'success',
-          data: { path: targetPath, filename, editsApplied: 1 },
-          preview: `Successfully edited "${filename}" using string replacement.`,
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
-        };
-      }
-
-      // Mode 2: Opencode Diff Patch Engine (patchText)
-      if (!patchText || !patchText.trim()) {
-        if (typeof content === 'string' && content.trim()) {
-          // If model passed full new content into edit tool without patch formatting, write content safely
-          const finalContent = hasCrlf ? content.replace(/\r?\n/g, '\r\n') : content;
-          await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
-          return {
-            status: 'success',
-            data: { path: targetPath, filename, editsApplied: 1 },
-            preview: `Successfully updated content of "${filename}".`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
-          };
-        }
-
+      if (occurrences === 0) {
         return {
           status: 'error',
           data: {},
-          preview: 'Empty patch — provide a valid patch with *** Begin Patch / *** End Patch headers or oldText/newText parameters.',
+          preview: `oldString not found in "${filename}". Read the file first and copy the exact text.`,
           metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'EMPTY_PATCH', message: 'patchText parameter is empty' },
+          error: { code: 'OLD_STRING_NOT_FOUND', message: 'oldString not found in file content' },
         };
       }
 
-      let hunks: Patch.Hunk[];
-      try {
-        hunks = Patch.parse(patchText);
-      } catch (e: any) {
+      if (occurrences > 1 && !replaceAll) {
         return {
           status: 'error',
           data: {},
-          preview: `Invalid patch format: ${e.message}`,
+          preview: `oldString appears ${occurrences} times in "${filename}". Use replaceAll: true or provide more context to make it unique.`,
           metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'INVALID_PATCH', message: e.message },
+          error: { code: 'AMBIGUOUS_MATCH', message: `oldString has ${occurrences} occurrences; set replaceAll: true or add context` },
         };
       }
 
-      if (hunks.length === 0) {
-        return {
-          status: 'success',
-          data: { path: targetPath, filename, editsApplied: 0 },
-          preview: `No changes detected in patch for "${filename}".`,
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 0 },
-        };
+      let updated: string;
+      let replacements: number;
+
+      if (replaceAll) {
+        updated = normalized.split(normOld).join(normNew);
+        replacements = occurrences;
+      } else {
+        updated = normalized.replace(normOld, normNew);
+        replacements = 1;
       }
 
-      const badHunk = hunks.find(
-        (h) =>
-          h.type !== 'update' ||
-          (!!h.path &&
-            h.path.split('/').pop()?.toLowerCase() !== filename.split('/').pop()?.toLowerCase()),
-      );
-      if (badHunk) {
-        return {
-          status: 'error',
-          data: {},
-          preview:
-            badHunk.type === 'delete'
-              ? 'Use delete tool to remove files.'
-              : badHunk.type === 'add'
-                ? 'Use write tool to create new files.'
-                : `Patch target "${badHunk.path}" does not match file "${filename}". Correct the header path.`,
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'INVALID_PATCH_TARGET', message: 'Patch targets an invalid file or unsupported hunk' },
-        };
-      }
-
-      let currentContent = original.replace(/\r\n/g, '\n');
-      let editsApplied = 0;
-
-      for (const hunk of hunks) {
-        if (hunk.type === 'update') {
-          const update = Patch.derive(hunk, currentContent, filename);
-          currentContent = Patch.joinBom(update.content, update.bom);
-          editsApplied += hunk.chunks.length;
-        }
-      }
-
-      const finalContent = hasCrlf ? currentContent.replace(/\r?\n/g, '\r\n') : currentContent;
+      const finalContent = joinBom(convertToLineEnding(updated, lineEnding), bom);
       await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
 
       return {
         status: 'success',
-        data: { path: targetPath, filename, editsApplied },
-        preview: `Successfully edited "${filename}" with ${editsApplied} patch section(s).`,
+        data: { path: targetPath, filename, replacements },
+        preview: `Edited "${filename}" (${replacements} replacement${replacements > 1 ? 's' : ''}).`,
         metadata: {
           toolName: 'edit',
           displayName: 'Edit File',
           executionTime: Date.now() - startTime,
           filename,
-          editsApplied,
+          replacements,
         },
       };
     } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Failed to edit file "${filename}": ${e.message}`,
+        preview: `Failed to edit "${filename}": ${e.message}`,
         metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
         error: { code: 'EDIT_FAILED', message: e.message },
       };

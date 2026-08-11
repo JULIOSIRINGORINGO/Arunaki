@@ -126,10 +126,10 @@ export class WorkspaceToolsService {
 
   async editWorkspaceFile(params: {
     workspaceId: string;
-    filename: string;
-    patchText?: string;
-    oldText?: string;
-    newText?: string;
+    path: string;
+    oldString: string;
+    newString: string;
+    replaceAll?: boolean;
   }): Promise<ToolResult> {
     return this.editTool.execute(params);
   }

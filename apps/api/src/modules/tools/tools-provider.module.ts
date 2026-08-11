@@ -899,92 +899,47 @@ export class ToolsProviderModule implements OnModuleInit {
         mutating: true,
         displayName: 'Edit File',
         description:
-          'Edit a file in the workspace with a precise patch. Your patch language is a stripped-down, file-oriented diff format designed to be easy to parse and safe to apply. You can think of it as a high-level envelope:\n' +
-          '*** Begin Patch\n' +
-          '[ one or more file sections ]\n' +
-          '*** End Patch\n' +
-          '\n' +
-          'Each operation starts with a header. To patch an existing file in place, use:\n' +
-          '*** Update File: <path>\n' +
-          '@@ <first context line>\n' +
-          ' <unchanged context line>\n' +
-          '- <line to remove>\n' +
-          '+ <line to add>\n' +
-          '\n' +
-          'It is important to remember:\n' +
-          '- Read the file FIRST and copy context lines exactly as they appear in the file.\n' +
-          '- Prefix removed lines with `-`, added lines with `+`, and unchanged context lines with a single space.\n' +
-          '- Context lines in one section must be contiguous in the file. For changes in different parts of the file, add separate `@@` sections.\n' +
-          '- For a NEW period rollover: update the date/period header, replace only the running-period data lines, keep cumulative/balance sections, and recompute totals.\n' +
-          '- The patch is validated before anything is written. If any context line does not match, NOTHING is changed and an error is returned — then read the file again and retry with corrected context lines.',
+          'Make a targeted edit to an existing file in the workspace. Specify the exact text to find (oldString) and the text to replace it with (newString). ' +
+          'The oldString must match EXACTLY — read the file first and copy the target text precisely, including whitespace and line breaks. ' +
+          'For multiple edits to the same file, call this tool multiple times in sequence. ' +
+          'To create a new file or fully rewrite, use the write tool instead.',
         tags: ['edit', 'update', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,
-            filename: args.filename || args.path,
-            patchText: args.patchText || args.patch,
-            oldText: args.oldText,
-            newText: args.newText,
+            path: args.path || args.filename,
+            oldString: args.oldString || args.oldText || args.old_string || '',
+            newString: args.newString || args.newText || args.new_string || '',
+            replaceAll: args.replaceAll || args.replace_all || false,
           }),
         parameters: {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filename: {
+            path: {
               type: 'string',
-              description: 'Existing file name to edit (e.g. laporan.txt)',
+              description: 'File path to edit (e.g. REKAPAN TERBARU2.txt)',
             },
-            oldText: {
+            oldString: {
               type: 'string',
-              description: 'Exact string to find and replace in the file (for direct string replacement)',
+              description: 'Exact text to find and replace. Must match file content exactly.',
             },
-            newText: {
+            newString: {
               type: 'string',
-              description: 'New string to replace oldText with',
+              description: 'Replacement text. Must differ from oldString.',
             },
-            patchText: {
-              type: 'string',
-              description:
-                'The full patch text that describes all changes to be made, wrapped in *** Begin Patch / *** End Patch.',
+            replaceAll: {
+              type: 'boolean',
+              description: 'Replace all occurrences of oldString (default false)',
             },
           },
-          required: ['filename'],
+          required: ['path', 'oldString', 'newString'],
         },
         estimatedLatency: 'fast',
         timeoutMs: 60000,
       }),
     );
 
-    this.registry.register(
-      ToolAdapter.from({
-        name: 'apply_patch',
-        mutating: true,
-        displayName: 'Apply Patch',
-        description: 'Alias for edit tool. Applies a patch or string replacement to a file in the workspace.',
-        tags: ['edit', 'update', 'patch', 'workspace', 'file'],
-        handler: (args) =>
-          this.workspaceToolsService.editWorkspaceFile({
-            workspaceId: args.workspaceId,
-            filename: args.filename || args.path,
-            patchText: args.patchText || args.patch,
-            oldText: args.oldText,
-            newText: args.newText,
-          }),
-        parameters: {
-          type: 'object',
-          properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID' },
-            filename: { type: 'string', description: 'Target file name' },
-            patchText: { type: 'string', description: 'Patch content' },
-            oldText: { type: 'string', description: 'Old text to replace' },
-            newText: { type: 'string', description: 'New text replacement' },
-          },
-          required: ['filename'],
-        },
-        estimatedLatency: 'fast',
-        timeoutMs: 60000,
-      }),
-    );
 
     // ─── Skills ─────────────────────────────────────────────────────
     this.registry.register(
