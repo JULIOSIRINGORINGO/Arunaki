@@ -1,12 +1,13 @@
 const { spawn } = require('node:child_process');
 const http = require('node:http');
+const path = require('node:path');
 
 const processes = [];
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
-function start(name, args) {
+function start(name, args, options = {}) {
   const child = spawn(npm, args, {
-    cwd: process.cwd(),
+    cwd: options.cwd || process.cwd(),
     env: process.env,
     stdio: 'inherit',
     windowsHide: false,
@@ -63,8 +64,10 @@ process.on('SIGTERM', () => {
 });
 
 (async () => {
-  // 1. Start API first
-  start('API', ['run', 'dev:api']);
+  const rootDir = process.cwd();
+
+  // 1. Start API first in apps/api directory
+  start('API', ['run', 'start:dev'], { cwd: path.join(rootDir, 'apps/api') });
 
   // 2. Wait until API is reachable
   console.log('[dev-app] Menunggu API di port 3000...');
@@ -76,8 +79,8 @@ process.on('SIGTERM', () => {
   }
   console.log('[dev-app] API siap.');
 
-  // 3. Start Web (Vite proxy needs API running)
-  start('Web', ['run', 'dev:web']);
+  // 3. Start Web (Vite proxy needs API running) in apps/web directory
+  start('Web', ['run', 'dev'], { cwd: path.join(rootDir, 'apps/web') });
 
   // 4. Wait for Vite to be ready before starting Electron
   console.log('[dev-app] Menunggu Frontend (Vite) di port 5173...');
@@ -89,5 +92,5 @@ process.on('SIGTERM', () => {
   }
   
   console.log('[dev-app] Frontend siap, memulai Desktop (Electron)...');
-  start('Desktop', ['run', 'dev:desktop']);
+  start('Desktop', ['run', 'dev'], { cwd: path.join(rootDir, 'apps/desktop') });
 })();
