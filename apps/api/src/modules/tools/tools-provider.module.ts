@@ -898,16 +898,26 @@ export class ToolsProviderModule implements OnModuleInit {
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,
-            filename: args.filename,
-            patchText: args.patchText,
+            filename: args.filename || args.path,
+            patchText: args.patchText || args.patch,
+            oldText: args.oldText,
+            newText: args.newText,
           }),
         parameters: {
           type: 'object',
           properties: {
-            workspaceId: { type: 'string', description: 'Workspace ID (required)' },
+            workspaceId: { type: 'string', description: 'Workspace ID' },
             filename: {
               type: 'string',
               description: 'Existing file name to edit (e.g. laporan.txt)',
+            },
+            oldText: {
+              type: 'string',
+              description: 'Exact string to find and replace in the file (for direct string replacement)',
+            },
+            newText: {
+              type: 'string',
+              description: 'New string to replace oldText with',
             },
             patchText: {
               type: 'string',
@@ -915,7 +925,38 @@ export class ToolsProviderModule implements OnModuleInit {
                 'The full patch text that describes all changes to be made, wrapped in *** Begin Patch / *** End Patch.',
             },
           },
-          required: ['filename', 'patchText'],
+          required: ['filename'],
+        },
+        estimatedLatency: 'fast',
+        timeoutMs: 60000,
+      }),
+    );
+
+    this.registry.register(
+      ToolAdapter.from({
+        name: 'apply_patch',
+        mutating: true,
+        displayName: 'Apply Patch',
+        description: 'Alias for edit tool. Applies a patch or string replacement to a file in the workspace.',
+        tags: ['edit', 'update', 'patch', 'workspace', 'file'],
+        handler: (args) =>
+          this.workspaceToolsService.editWorkspaceFile({
+            workspaceId: args.workspaceId,
+            filename: args.filename || args.path,
+            patchText: args.patchText || args.patch,
+            oldText: args.oldText,
+            newText: args.newText,
+          }),
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string', description: 'Workspace ID' },
+            filename: { type: 'string', description: 'Target file name' },
+            patchText: { type: 'string', description: 'Patch content' },
+            oldText: { type: 'string', description: 'Old text to replace' },
+            newText: { type: 'string', description: 'New text replacement' },
+          },
+          required: ['filename'],
         },
         estimatedLatency: 'fast',
         timeoutMs: 60000,

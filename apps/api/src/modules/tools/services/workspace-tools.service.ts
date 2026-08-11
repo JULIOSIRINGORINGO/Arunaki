@@ -803,9 +803,11 @@ export class WorkspaceToolsService {
   async editWorkspaceFile(params: {
     workspaceId: string;
     filename: string;
-    patchText: string;
+    patchText?: string;
+    oldText?: string;
+    newText?: string;
   }): Promise<ToolResult> {
-    const { workspaceId, filename, patchText } = params;
+    const { workspaceId, filename, patchText, oldText, newText } = params;
     const startTime = Date.now();
 
     const workspace = await this.prisma.workspace.findUnique({
@@ -849,6 +851,27 @@ export class WorkspaceToolsService {
 
     try {
       const original = await fsPromises.readFile(targetPath, 'utf-8');
+
+      // Mode 1: Exact String Replacement (oldText / newText)
+      if (typeof oldText === 'string' && typeof newText === 'string') {
+        if (!original.includes(oldText)) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Gagal mengedit "${filename}": oldText tidak ditemukan di dalam file.`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'OLD_TEXT_NOT_FOUND', message: 'oldText not found in target file' },
+          };
+        }
+        const updatedContent = original.replace(oldText, newText);
+        await fsPromises.writeFile(targetPath, updatedContent, 'utf-8');
+        return {
+          status: 'success',
+          data: { path: targetPath, filename, editsApplied: 1 },
+          preview: `Berhasil mengedit "${filename}" (string replace).`,
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
+        };
+      }
 
       if (!patchText || !patchText.trim()) {
         return {
