@@ -796,7 +796,7 @@ export class ToolsProviderModule implements OnModuleInit {
         name: 'write',
         mutating: true,
         displayName: 'Create File',
-        description: 'Writes full content to a file in the workspace.',
+        description: 'Creates a NEW file in the workspace. DO NOT use write to edit an existing file — use edit instead.',
         tags: ['write', 'create', 'export', 'workspace', 'file'],
         handler: (args) =>
           this.workspaceToolsService.writeWorkspaceFile({

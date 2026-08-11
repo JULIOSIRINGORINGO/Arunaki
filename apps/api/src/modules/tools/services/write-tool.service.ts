@@ -28,25 +28,23 @@ export class WriteToolService {
     const { workspaceId, filename, format, content, rows, title } = params;
     const startTime = Date.now();
 
-    let rootPath: string | null = null;
-    let defaultSourceId: string | undefined = undefined;
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true, sources: { select: { id: true } } },
+    });
 
-    if (this.prisma) {
-      try {
-        const workspace = await this.prisma.workspace.findUnique({
-          where: { id: workspaceId },
-          select: { rootPath: true, sources: { select: { id: true } } },
-        });
-        rootPath = workspace?.rootPath || null;
-        defaultSourceId = workspace?.sources[0]?.id;
-      } catch {
-        /* Fallback */
-      }
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace root path is not connected.',
+        metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+      };
     }
 
-    if (!rootPath) {
-      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
-    }
+    const rootPath = workspace.rootPath;
+    const defaultSourceId = workspace.sources[0]?.id;
 
     const cleanFilename = filename.replace(/[/\\?%*:|"<>]/g, '_');
     const finalFilename = cleanFilename.endsWith(`.${format}`)

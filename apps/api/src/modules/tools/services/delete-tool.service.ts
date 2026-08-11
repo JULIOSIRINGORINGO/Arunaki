@@ -19,19 +19,22 @@ export class DeleteToolService {
     const { workspaceId, filename } = params;
     const startTime = Date.now();
 
-    let rootPath: string | null = null;
-    if (this.prisma) {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { rootPath: true },
-      });
-      rootPath = workspace?.rootPath || null;
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace root path is not connected.',
+        metadata: { toolName: 'delete', displayName: 'Delete File', executionTime: Date.now() - startTime },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+      };
     }
 
-    if (!rootPath) {
-      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
-    }
-
+    const rootPath = workspace.rootPath;
     let targetPath = path.join(rootPath, filename);
     const fsPromises = await import('fs/promises');
     let fileExists = false;

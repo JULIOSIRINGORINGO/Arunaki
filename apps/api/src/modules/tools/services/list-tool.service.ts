@@ -16,19 +16,12 @@ export class ListToolService {
   async execute(workspaceId: string): Promise<ToolResult> {
     const startTime = Date.now();
 
-    let rootPath: string | null = null;
-    if (this.prisma) {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { rootPath: true },
-      });
-      rootPath = workspace?.rootPath || null;
-    }
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
 
-    if (!rootPath) {
-      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
-    }
-
+    const rootPath = workspace?.rootPath || null;
     let filesToDescribe: { name: string; type: string; size: number; path: string }[] = [];
 
     if (rootPath) {

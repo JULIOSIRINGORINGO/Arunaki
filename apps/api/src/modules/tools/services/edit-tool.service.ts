@@ -16,8 +16,8 @@ export class EditToolService {
 
   /**
    * Performs surgical edits on an existing file using dual-mode execution:
-   * Mode 1: Exact string replacement (`oldText` & `newText`)
-   * Mode 2: Opencode patch dry-run engine (`patchText`)
+   * Mode 1: Exact string replacement (`oldText` & `newText`) with CRLF normalization
+   * Mode 2: Opencode patch dry-run engine (`patchText`) with CRLF normalization
    */
   async execute(params: {
     workspaceId: string;
@@ -25,23 +25,34 @@ export class EditToolService {
     patchText?: string;
     oldText?: string;
     newText?: string;
+    content?: string;
   }): Promise<ToolResult> {
-    const { workspaceId, filename, patchText, oldText, newText } = params;
+    let { workspaceId, filename, patchText, oldText, newText, content } = params as any;
     const startTime = Date.now();
 
-    let rootPath: string | null = null;
-    if (this.prisma) {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { rootPath: true },
-      });
-      rootPath = workspace?.rootPath || null;
+    // Smart parameter resolution fallback (for LLMs passing content instead of patchText/oldText)
+    if (!patchText && (!oldText || !newText) && typeof content === 'string') {
+      if (content.includes('*** Begin Patch') || content.includes('*** Update File:')) {
+        patchText = content;
+      }
     }
 
-    if (!rootPath) {
-      rootPath = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+
+    if (!workspace?.rootPath) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Workspace root path is not connected.',
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+      };
     }
 
+    const rootPath = workspace.rootPath;
     let targetPath = path.join(rootPath, filename);
     const fsPromises = await import('fs/promises');
     let fileExists = false;
@@ -69,10 +80,15 @@ export class EditToolService {
 
     try {
       const original = await fsPromises.readFile(targetPath, 'utf-8');
+      const hasCrlf = original.includes('\r\n');
 
       // Mode 1: Exact String Replacement (oldText & newText)
       if (typeof oldText === 'string' && typeof newText === 'string') {
-        if (!original.includes(oldText)) {
+        const normOriginal = original.replace(/\r\n/g, '\n');
+        const normOld = oldText.replace(/\r\n/g, '\n');
+        const normNew = newText.replace(/\r\n/g, '\n');
+
+        if (!normOriginal.includes(normOld)) {
           return {
             status: 'error',
             data: {},
@@ -81,8 +97,11 @@ export class EditToolService {
             error: { code: 'OLD_TEXT_NOT_FOUND', message: 'Target oldText not found in file' },
           };
         }
-        const updatedContent = original.replace(oldText, newText);
-        await fsPromises.writeFile(targetPath, updatedContent, 'utf-8');
+        const updatedContent = normOriginal.replace(normOld, normNew);
+        const finalContent = hasCrlf
+          ? updatedContent.replace(/\r?\n/g, '\r\n')
+          : updatedContent;
+        await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
         return {
           status: 'success',
           data: { path: targetPath, filename, editsApplied: 1 },
@@ -93,10 +112,22 @@ export class EditToolService {
 
       // Mode 2: Opencode Diff Patch Engine (patchText)
       if (!patchText || !patchText.trim()) {
+        if (typeof content === 'string' && content.trim()) {
+          // If model passed full new content into edit tool without patch formatting, write content safely
+          const finalContent = hasCrlf ? content.replace(/\r?\n/g, '\r\n') : content;
+          await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
+          return {
+            status: 'success',
+            data: { path: targetPath, filename, editsApplied: 1 },
+            preview: `Successfully updated content of "${filename}".`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, filename, editsApplied: 1 },
+          };
+        }
+
         return {
           status: 'error',
           data: {},
-          preview: 'Empty patch — provide a valid patch with *** Begin Patch / *** End Patch headers.',
+          preview: 'Empty patch — provide a valid patch with *** Begin Patch / *** End Patch headers or oldText/newText parameters.',
           metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
           error: { code: 'EMPTY_PATCH', message: 'patchText parameter is empty' },
         };
@@ -145,18 +176,19 @@ export class EditToolService {
         };
       }
 
-      let content = original;
+      let currentContent = original.replace(/\r\n/g, '\n');
       let editsApplied = 0;
 
       for (const hunk of hunks) {
         if (hunk.type === 'update') {
-          const update = Patch.derive(hunk, content, filename);
-          content = Patch.joinBom(update.content, update.bom);
+          const update = Patch.derive(hunk, currentContent, filename);
+          currentContent = Patch.joinBom(update.content, update.bom);
           editsApplied += hunk.chunks.length;
         }
       }
 
-      await fsPromises.writeFile(targetPath, content, 'utf-8');
+      const finalContent = hasCrlf ? currentContent.replace(/\r?\n/g, '\r\n') : currentContent;
+      await fsPromises.writeFile(targetPath, finalContent, 'utf-8');
 
       return {
         status: 'success',
