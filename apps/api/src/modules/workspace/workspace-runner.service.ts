@@ -501,8 +501,8 @@ export class WorkspaceRunnerService {
       add(['write', 'edit', 'read']);
     }
 
-    // Keep both write and edit available for referenced files so model can choose
-    // surgical patch (edit) or full content update (write).
+    // Keep all file tools available (read, write, edit) so model can perform
+    // surgical patch edits or full writes as needed.
 
     // Goal keywords → add relevant tools (using gClean so @ file names don't trigger the wrong tool).
     if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);

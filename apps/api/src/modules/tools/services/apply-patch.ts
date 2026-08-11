@@ -39,7 +39,20 @@ const stripHeredoc = (input: string) =>
   input.match(/^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/)?.[2] ?? input;
 
 export function parse(patchText: string): Hunk[] {
-  const lines = stripHeredoc(patchText.trim()).split('\n');
+  let cleanText = patchText.trim();
+  // Strip code block markers if present (e.g. ```patch ... ``` or ```diff ... ```)
+  cleanText = cleanText.replace(/^```(?:patch|diff|markdown)?\r?\n/i, '').replace(/\r?\n```$/i, '').trim();
+  cleanText = stripHeredoc(cleanText);
+
+  // Auto-repair missing Begin/End Patch markers if an operation header is present
+  if (!cleanText.includes('*** Begin Patch') && /(?:\*\*\* (?:Update|Add|Delete) File:)/.test(cleanText)) {
+    cleanText = '*** Begin Patch\n' + cleanText;
+  }
+  if (!cleanText.includes('*** End Patch') && cleanText.includes('*** Begin Patch')) {
+    cleanText = cleanText + '\n*** End Patch';
+  }
+
+  const lines = cleanText.split('\n');
   const begin = lines.findIndex((line) => line.trim() === '*** Begin Patch');
   const end = lines.findIndex((line) => line.trim() === '*** End Patch');
   if (begin === -1 || end === -1 || begin >= end) {
