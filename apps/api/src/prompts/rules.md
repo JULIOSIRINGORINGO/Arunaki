@@ -37,7 +37,8 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
 - **Unstructured / Messy Files (Kasus 3)**: When editing messy files without clear section dividers, NEVER delete surrounding text. Always anchor your insertion under the nearest existing header or at the end of the relevant list block.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
 - **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
-- **Order Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. IF the original file already has a date/period header at the top, update it first in your first `@@` chunk. If the file has NO date header, preserve its structure as-is and do NOT force-add a date.
+- **Sequential Top-to-Bottom Order**: Process the file sequentially from line 1 down to the bottom. Group all your edits (headers, body entries, totals) into a SINGLE `edit` call with ordered `@@` chunks from top to bottom.
+- **In-Place Updates Only**: Update existing fields and headers in-place. Never introduce new header fields or sections that were not present in the original file.
 - **Rollover logic**: When updating to a new period — update date header (if present), REPLACE period data with new data, KEEP cumulative balances, recompute all totals following the same formula pattern already in the file.
 
 ## 6. Output Contract
