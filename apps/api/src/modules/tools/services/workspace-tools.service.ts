@@ -109,8 +109,12 @@ export class WorkspaceToolsService {
     return backupPath;
   }
 
-  async readWorkspaceFile(filePath: string, workspaceId: string): Promise<ToolResult> {
-    return this.readTool.execute({ filePath, workspaceId });
+  async readWorkspaceFile(
+    filePath: string,
+    workspaceId: string,
+    opts?: { offset?: number; limit?: number },
+  ): Promise<ToolResult> {
+    return this.readTool.execute({ filePath, workspaceId, ...opts });
   }
 
   async writeWorkspaceFile(params: {

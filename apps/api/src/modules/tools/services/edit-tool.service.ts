@@ -108,7 +108,9 @@ export class EditToolService {
     }
 
     const rootPath = workspace.rootPath;
-    let targetPath = path.join(rootPath, filename);
+    let targetPath = path.isAbsolute(filename)
+      ? filename
+      : path.join(rootPath, filename);
     const fsPromises = await import('fs/promises');
 
     // ── Resolve file path (physical → DB fallback) ──────────────────

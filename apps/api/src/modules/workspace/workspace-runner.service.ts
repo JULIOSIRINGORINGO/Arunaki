@@ -128,8 +128,8 @@ export class WorkspaceRunnerService {
     @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore: TodoStoreService,
     @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
   ) {}
-  private async readMentionedFiles(workspaceId: string, goal: string, messages: ChatMessage[]): Promise<Set<string>> {
-    const mentioned = new Set<string>();
+  private async readMentionedFiles(workspaceId: string, goal: string): Promise<Map<string, string>> {
+    const contents = new Map<string, string>();
     for (const filename of extractMentionedFilenames(goal)) {
       try {
         const finalResult = await this.selfHealingService.executeWithIsolation(
@@ -141,17 +141,16 @@ export class WorkspaceRunnerService {
           this.logger.warn(`Pre-read for mentioned file "${filename}" returned status: ${finalResult.preview}`);
           continue;
         }
-        mentioned.add(filename);
         const text = (finalResult.data as Record<string, unknown>)?.content || (finalResult.data as Record<string, unknown>)?.text;
         const content = typeof text === 'string'
           ? text.slice(0, 12000)
           : ToolResultFormatter.formatForLlm('read', finalResult);
-        messages.push({ role: 'user', content: `[Context: User mentioned file "${filename}" with @. File content pre-read below. Use this content directly.]\n\n=== REFERENCED FILE: ${filename} ===\n${content}\n=== END REFERENCED FILE ===` });
+        contents.set(filename, content);
       } catch (err: any) {
         this.logger.warn(`Failed to pre-read mentioned file "${filename}": ${err.message}`);
       }
     }
-    return mentioned;
+    return contents;
   }
 
   /**
@@ -491,10 +490,6 @@ export class WorkspaceRunnerService {
 
     // Catalog meta-tools & core workspace file tools — always available.
     add([
-      'tool_search',
-      'tool_describe',
-      'tool_call',
-      'tool_search_code',
       'read',
       'write',
       'edit',
@@ -540,7 +535,6 @@ export class WorkspaceRunnerService {
       add(['list_skills', 'view_skill', 'search_skills']);
     }
     if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
-    if (/(?:hitung|kalkulasi|calculate|total|jumlah|rumus)/.test(g)) add(['calculate']);
 
     // URL/web search: only when the user explicitly asks to search the internet.
     if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
@@ -802,20 +796,25 @@ export class WorkspaceRunnerService {
       const safeGoal = injectionResult.detected
         ? injectionResult.sanitized
         : userGoal;
-      const mentionedFiles = await this.readMentionedFiles(workspaceId, safeGoal, messages);
-      this.mentionedFiles.set(workspaceId, mentionedFiles);
-      const readTargets = new Set(
-        [...mentionedFiles].map((filename) => path.basename(filename).toLowerCase()),
-      );
+      const mentionedFileContents = await this.readMentionedFiles(workspaceId, safeGoal);
+      this.mentionedFiles.set(workspaceId, new Set(mentionedFileContents.keys()));
+
+      // opencode-style: resolve @file mentions inline into the user message.
+      // The file content is appended to the goal as a "Called the Read tool"
+      // part so the model treats it as already-read input — no separate read.
+      let goalContent = safeGoal;
+      for (const [filename, content] of mentionedFileContents) {
+        goalContent += `\n\nCalled the Read tool with the following input: ${JSON.stringify({ filePath: filename })}\n${content}`;
+      }
 
       // Crucial fix: Append current user goal to messages array so LLM knows what tool to call!
       const hasGoalInMessages = messages.some(
-        (m) => m.role === 'user' && m.content === safeGoal,
+        (m) => m.role === 'user' && m.content === goalContent,
       );
       if (!hasGoalInMessages) {
         messages.push({
           role: 'user',
-          content: safeGoal,
+          content: goalContent,
         });
       }
 
@@ -848,20 +847,20 @@ export class WorkspaceRunnerService {
        const budget = createRunBudget();
        enterRunBudget(budget);
 
-       // DUAL-LOOP: Outer loop (steering) + Inner loop (tool calls)
-       for (let turn = 0; turn < 5; turn++) {
-         // Inner loop: tool execution
-         for (let round = 0; round < MAX_ROUNDS; round++) {
-           // Check abort before each round
-           if (abortController.signal.aborted) {
-             this.setState(runState, 'aborting', onEvent);
-             onEvent({
-              type: 'error',
-              data: { message: 'Analysis cancelled by user.' },
-            });
-            return;
-          }
-          runState.round = turn * MAX_ROUNDS + round + 1;
+       // SINGLE-LOOP (opencode-style): call LLM → run tools → feed results
+       // back → repeat until the model stops returning tool_calls. max_steps
+       // is a hard safety bound; normal runs exit when toolCalls is empty.
+       for (let round = 0; round < MAX_ROUNDS; round++) {
+            // Check abort before each round
+            if (abortController.signal.aborted) {
+              this.setState(runState, 'aborting', onEvent);
+              onEvent({
+               type: 'error',
+               data: { message: 'Analysis cancelled by user.' },
+             });
+             return;
+           }
+           runState.round = round + 1;
 
           // Inject current todo list (working memory) so LLM stays anchored
           // across long runs. Single [TODO] message updated in place per round.
@@ -877,7 +876,11 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
+          const roundStart = Date.now();
           const aiResponse = await this.aiService.chat(messages, tools, modelId ? { preferredProviderId: modelId } : undefined);
+          this.logger.log(
+            `[round] ${runState.round} took ${Date.now() - roundStart}ms; toolCalls=${aiResponse.toolCalls?.length ?? 0} usage=${JSON.stringify(aiResponse.usage)}`,
+          );
 
           // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
           aiResponse.toolCalls = aiResponse.toolCalls || [];
@@ -1001,7 +1004,6 @@ export class WorkspaceRunnerService {
           );
           // Internal harness tools stay callable regardless of subset.
           declaredTools.add('ask_user');
-          declaredTools.add('todo_write');
           declaredTools.add('agent_spawn');
 
           // Separate mutating vs read-only tools for parallel execution
@@ -1018,8 +1020,9 @@ export class WorkspaceRunnerService {
           for (const toolCall of aiResponse.toolCalls) {
             const funcName = toolCall.function.name;
             let args: Record<string, any> = {};
+            const rawArgsRaw = toolCall.function.arguments || '';
             try {
-              const rawArgs = toolCall.function.arguments || '{}';
+              const rawArgs = rawArgsRaw || '{}';
               try {
                 args = JSON.parse(rawArgs);
               } catch {
@@ -1034,6 +1037,14 @@ export class WorkspaceRunnerService {
               }
             } catch {
               args = {};
+              this.logger.warn(
+                `[tool-call] ${funcName} JSON.parse failed. Raw arguments: ${JSON.stringify(rawArgsRaw.slice(0, 300))}`,
+              );
+            }
+            if (Object.keys(args).length === 0 && rawArgsRaw.length > 0 && rawArgsRaw !== '{}') {
+              this.logger.warn(
+                `[tool-call] ${funcName} parsed to EMPTY object. Raw arguments: ${JSON.stringify(rawArgsRaw.slice(0, 300))}`,
+              );
             }
 
             if (!declaredTools.has(funcName)) {
@@ -1049,19 +1060,6 @@ export class WorkspaceRunnerService {
                   'Use one of those tools.',
               });
               continue;
-            }
-
-            if (funcName === 'read') {
-              const target = path.basename(String(args.filePath || args.filename || '')).toLowerCase();
-              if (target && readTargets.has(target)) {
-                messages.push({
-                  role: 'tool',
-                  tool_call_id: toolCall.id,
-                  content: `File "${target}" has already been read in this run. Use the supplied file content and continue with the task.`,
-                });
-                continue;
-              }
-              if (target) readTargets.add(target);
             }
 
             // Circuit Breaker (OpenClaw pattern): failed tool results return
@@ -1268,48 +1266,44 @@ export class WorkspaceRunnerService {
              modelCtx.contextWindow,
            );
            if (compactResult.wasCompacted) {
-             messages.length = 0;
-             messages.push(...compactResult.compactedMessages);
-           }
-        }
+              messages.length = 0;
+              messages.push(...compactResult.compactedMessages);
+            }
 
-        if (!reachedMaxRounds) {
-          break; // Inner loop completed with a final answer
-        }
-
-        // Check for steering input before next turn
-        const steeringInputs = this.steeringQueue.get(workspaceId) || [];
-        if (steeringInputs.length === 0) {
-          break; // No steering, exit outer loop
-        }
-
-        // Inject steering input and continue outer loop
-        const steering = steeringInputs.shift()!;
-        if (steeringInputs.length === 0) {
-          this.steeringQueue.delete(workspaceId);
-        }
-        messages.push({
-          role: 'user',
-          content: steering.message,
-        });
-        this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
-        onEvent({
-          type: 'steering',
-          data: { message: 'Follow-up received, continuing analysis...' },
-        });
-        reachedMaxRounds = true;
-      }
+            // opencode-style: keep looping while the model keeps returning
+            // tool_calls. If a steering/follow-up input arrived mid-run, inject
+            // it and continue the loop; otherwise just continue with tool
+            // results already fed back to the model.
+            const steeringInputs = this.steeringQueue.get(workspaceId) || [];
+            if (steeringInputs.length > 0) {
+              const steering = steeringInputs.shift()!;
+              if (steeringInputs.length === 0) {
+                this.steeringQueue.delete(workspaceId);
+              }
+              messages.push({
+                role: 'user',
+                content: steering.message,
+              });
+              this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
+              onEvent({
+                type: 'steering',
+                data: { message: 'Follow-up received, continuing analysis...' },
+              });
+            }
+         }
 
       if (reachedMaxRounds) {
         this.logger.warn(
           'Workspace agent reached max round limit without completion.',
         );
-        if (!finalContent) {
+      }
+      if (!finalContent) {
+        if (reachedMaxRounds) {
           finalContent =
             'Agent reached maximum step limit. Results so far may be incomplete -- please continue your request if needed.';
+        } else {
+          finalContent = 'Autonomous workspace task completed.';
         }
-      } else if (!finalContent) {
-        finalContent = 'Autonomous workspace task completed.';
       }
 
       const artifactRecords = await Promise.all(

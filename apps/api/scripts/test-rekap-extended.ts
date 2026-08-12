@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const API_BASE = 'http://127.0.0.1:3000/api/v1';
-const WORKSPACE_ID = process.env.WORKSPACE_ID || 'cmsj3htjg0008vtzs4oi4bzic';
+const WORKSPACE_ID = process.env.WORKSPACE_ID || 'cmshh81u8000bvg78c4ay5hgk';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || 'E:\\LAPORAN';
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || 'E:\\JS\\laporan-test';
 
 const instruction = `Update laporan hari ini di file @${TARGET_FILE} dengan data berikut, dan hitung ulang semua total secara otomatis:
 
@@ -41,6 +41,7 @@ async function runTest() {
 
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), 90_000);
+  const t0 = Date.now();
   try {
     const response = await fetch(`${API_BASE}/workspaces/${WORKSPACE_ID}/agent/stream`, {
       method: 'POST',
@@ -68,15 +69,14 @@ async function runTest() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const event = JSON.parse(line.slice(6));
-        if (event.type === 'tool_call') console.log(`[tool_call] ${event.data?.name} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
-        if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName}`);
+        if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
         if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
         if (event.type === 'error') error = event.data?.message || 'unknown';
         if (event.type === 'done') sawDone = true;
       }
       if (sawDone) break;
     }
-    if (abortController.signal.aborted) throw new Error('Agent stream exceeded 90 seconds');
+    if (abortController.signal.aborted) throw new Error(`Agent stream exceeded 90 seconds (${Math.round((Date.now() - t0) / 1000)}s elapsed) — HARNESS FAIL`);
     if (error) throw new Error(`Agent error: ${error}`);
     if (!sawDone) throw new Error('Agent stream ended without a done event');
   } catch (fetchErr: any) {

@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import * as fs from 'fs';
 import * as path from 'path';
+import { generateText, streamText, tool, jsonSchema, type ToolSet } from 'ai';
+import type { ModelMessage } from '@ai-sdk/provider-utils';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { repairToolCalls } from './tool-call-repair.js';
 import {
   ProviderService,
@@ -121,21 +125,6 @@ export class AiService {
   }
 
   /**
-   * Apply reasoning-model request options (reasoning_effort) to a request
-   * body. Reasoning models emit long thinking before any content/tool_calls;
-   * bounding the effort keeps them from exhausting max_tokens on thinking.
-   */
-  private applyReasoningOptions(
-    body: Record<string, any>,
-    model: string,
-  ): void {
-    const effort = getModelCapability(model).reasoningEffort;
-    if (effort) {
-      body.reasoning_effort = effort;
-    }
-  }
-
-  /**
    * Get active provider config from DB, fallback to .env
    */
   private async getProviderConfig(): Promise<ProviderConfig> {
@@ -182,66 +171,122 @@ export class AiService {
     };
   }
 
+  private readonly sdkProviders = new Map<string, any>();
+
   /**
-   * Build request headers for a provider.
+   * Build a LanguageModel instance for a provider via the AI SDK
+   * (createOpenAI for OpenAI-compatible endpoints like Kenari, createAnthropic
+   * for native Anthropic). Instances are cached per provider credential+base.
    */
-  private buildHeaders(provider: ProviderConfig): Record<string, string> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${provider.apiKey}`,
-      'Content-Type': 'application/json',
-    };
+  private getSdkModel(provider: ProviderConfig): any {
+    const key = `${provider.type}|${provider.baseUrl}|${provider.apiKey}|${provider.model}`;
+    let sdk = this.sdkProviders.get(key);
+    if (!sdk) {
+      const headers: Record<string, string> = {};
+      if (provider.baseUrl.includes('openrouter.ai')) {
+        headers['HTTP-Referer'] = 'https://arunaki.app';
+        headers['X-Title'] = 'Arunaki AI Assistant';
+      }
+      if (provider.headerPrefix) headers['HTTP-Referer'] = provider.headerPrefix;
+      if (provider.headerTitle) headers['X-Title'] = provider.headerTitle;
 
-    // OpenRouter requires HTTP-Referer
-    if (provider.baseUrl.includes('openrouter.ai')) {
-      headers['HTTP-Referer'] = 'https://arunaki.app';
-      headers['X-Title'] = 'Arunaki AI Assistant';
+      if (provider.type === 'anthropic') {
+        sdk = createAnthropic({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+      } else {
+        sdk = createOpenAI({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+      }
+      this.sdkProviders.set(key, sdk);
     }
-
-    // Custom headers from provider config
-    if (provider.headerPrefix) {
-      headers['HTTP-Referer'] = provider.headerPrefix;
-    }
-    if (provider.headerTitle) {
-      headers['X-Title'] = provider.headerTitle;
-    }
-
-    return headers;
+    return sdk.chat(provider.model);
   }
 
   /**
-   * Make a single API request to a provider.
-   * Returns the response or throws on network/timeout errors.
+   * Convert legacy ChatMessage[] (OpenAI wire format) into AI SDK ModelMessage[].
+   */
+  private toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
+    return messages.map((m) => {
+      if (m.role === 'system') {
+        return { role: 'system', content: m.content ?? '' } as ModelMessage;
+      }
+      if (m.role === 'user') {
+        return { role: 'user', content: m.content ?? '' } as ModelMessage;
+      }
+      if (m.role === 'assistant') {
+        const parts: Array<{ type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }> = [];
+        if (m.content) parts.push({ type: 'text', text: m.content });
+        for (const tc of m.tool_calls ?? []) {
+          let input: unknown;
+          try { input = JSON.parse(tc.function.arguments); } catch { input = tc.function.arguments; }
+          parts.push({ type: 'tool-call', toolCallId: tc.id, toolName: tc.function.name, input });
+        }
+        return { role: 'assistant', content: parts } as ModelMessage;
+      }
+      // role === 'tool'
+      return {
+        role: 'tool',
+        content: [{
+          type: 'tool-result',
+          toolCallId: m.tool_call_id ?? '',
+          toolName: m.name ?? '',
+          output: { type: 'text', value: m.content ?? '' },
+        }],
+      } as ModelMessage;
+    });
+  }
+
+  /**
+   * Convert ToolDefinition[] into an AI SDK ToolSet (no execute → the SDK
+   * returns tool calls without running them; the runner executes them).
+   */
+  private toSdkTools(tools: ToolDefinition[]): ToolSet {
+    const sdk: ToolSet = {};
+    for (const t of tools) {
+      const fn = t.function;
+      sdk[fn.name] = tool({
+        description: fn.description,
+        inputSchema: jsonSchema(fn.parameters),
+      });
+    }
+    return sdk;
+  }
+
+  /**
+   * Build AI SDK providerOptions (reasoning effort etc.) for a request.
+   */
+  private buildProviderOptions(provider: ProviderConfig, model: string): Record<string, any> | undefined {
+    const effort = getModelCapability(model).reasoningEffort;
+    if (!effort) return undefined;
+    return provider.type === 'anthropic'
+      ? { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } }
+      : { openai: { reasoningEffort: effort } };
+  }
+
+  /**
+   * Make a single AI SDK (non-streaming) request to a provider.
+   * Throws on HTTP/network errors with statusCode/responseBody attached so the
+   * fallback layer can classify them.
    */
   private async makeRequest(
     provider: ProviderConfig,
     body: Record<string, any>,
-    timeoutMs = 60000,
-  ): Promise<{ response: Response; statusCode: number }> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+    timeoutMs = 180000,
+  ): Promise<{ data: any; statusCode: number }> {
+    const canUseTools = (body.tools?.length ?? 0) > 0;
     try {
-      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: this.buildHeaders(provider),
-        body: JSON.stringify(body),
-        signal: controller.signal,
+      const data = await generateText({
+        model: this.getSdkModel(provider),
+        messages: this.toSdkMessages(body.messages),
+        allowSystemInMessages: true,
+        temperature: body.temperature ?? 0.7,
+        maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+        ...(canUseTools ? { tools: this.toSdkTools(body.tools) } : {}),
+        ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+        maxRetries: 0,
+        timeout: timeoutMs,
       });
-      clearTimeout(timeoutId);
-      if (!response.ok && response.status >= 400 && response.status < 500) {
-        const errBody = await response.clone().text();
-        const toolNames = (body.tools || []).map((t: any) => t?.function?.name);
-        const msgInfo = (body.messages || []).map((m: any) => `${m.role}:${m.content ? m.content.length : 0}${m.tool_calls ? '+tc' : ''}`);
-        this.logger.warn(`[${provider.name}] ${response.status} req: model=${body.model} max_tokens=${body.max_tokens} tools=[${toolNames.join(',')}] msgs=[${msgInfo.join(',')}]`);
-        this.logger.warn(`[${provider.name}] ${response.status} body: ${errBody.slice(0, 400)}`);
-      }
-      return { response, statusCode: response.status };
+      return { data, statusCode: 200 };
     } catch (err: any) {
-      clearTimeout(timeoutId);
-      const isAbort = err.name === 'AbortError';
-      throw new Error(
-        isAbort ? `Request timed out after ${timeoutMs}ms` : err.message,
-      );
+      throw err;
     }
   }
 
@@ -396,17 +441,16 @@ export class AiService {
     );
 
     const body: Record<string, any> = {
-      model: provider.model,
       messages: preparedMessages,
       temperature: 0.7,
-      max_tokens: scaleMaxTokens(provider.model),
+      maxOutputTokens: scaleMaxTokens(provider.model),
+      providerOptions: this.buildProviderOptions(provider, provider.model),
     };
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
     }
-    this.applyReasoningOptions(body, provider.model);
 
     const result = await runWithModelFallback({
       provider,
@@ -421,16 +465,9 @@ export class AiService {
       logger: this.logger,
     });
 
-    const choice = result.data.choices?.[0];
-    if (!choice) {
-      const providerError = result.data?.error?.message || result.data?.message;
-      const errorDetail = providerError
-        ? `: ${providerError}`
-        : ' (the AI provider returned an empty response / a free model server is busy)';
-      throw new Error(`Failed to receive a response from the AI${errorDetail}`);
-    }
+    const data = result.data;
 
-    let content = choice.message?.content || '';
+    let content = data.text || '';
 
     // Model fallback often generates HTML-escaped tags (e.g. &lt;function)
     // We must unescape them so repairToolCalls and stripping regex can catch them.
@@ -445,7 +482,15 @@ export class AiService {
     const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     content = cleanContent || content.replace(/<\/?think>/gi, '').trim();
 
-    let rawToolCalls = choice.message?.tool_calls || [];
+    let rawToolCalls: ToolCall[] = (data.toolCalls || []).map((tc: any) => ({
+      id: tc.toolCallId,
+      type: 'function',
+      function: {
+        name: tc.toolName,
+        arguments:
+          typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input ?? {}),
+      },
+    }));
 
     // Tool Call Repair (OpenClaw tool-call-repair approach): cheap/free models
     // often leak tool calls as TEXT in various formats instead of the native
@@ -477,14 +522,17 @@ export class AiService {
         'Sorry, I am unable to provide an answer right now. Please try again.';
     }
 
+    const promptTokens = data.usage?.inputTokens ?? 0;
+    const completionTokens = data.usage?.outputTokens ?? 0;
+
     return {
       content,
       model: result.model,
       toolCalls: rawToolCalls,
       usage: {
-        promptTokens: result.data.usage?.prompt_tokens || 0,
-        completionTokens: result.data.usage?.completion_tokens || 0,
-        totalTokens: result.data.usage?.total_tokens || 0,
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
       },
       attempts: result.attempts.map((a) => ({
         providerId: a.providerId,
@@ -521,21 +569,20 @@ export class AiService {
     );
 
     const body: Record<string, any> = {
-      model: provider.model,
       messages: preparedMessages,
       temperature: 0.7,
-      max_tokens: scaleMaxTokens(provider.model),
+      maxOutputTokens: scaleMaxTokens(provider.model),
+      providerOptions: this.buildProviderOptions(provider, provider.model),
     };
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
     }
-    this.applyReasoningOptions(body, provider.model);
 
     for await (const chunk of streamWithFallback({
       provider,
       body,
-      makeRequest: (p, b) => this.makeRequest(p, b),
+      makeRequest: (p, b) => this.makeRequestStream(p, b),
       getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
@@ -548,13 +595,63 @@ export class AiService {
         if (cleaned) {
           yield { type: 'content', content: cleaned };
         }
-      } else if (chunk.type === 'tool_call') {
-        yield chunk;
-      } else if (chunk.type === 'done') {
-        yield chunk;
-      } else if (chunk.type === 'error') {
+      } else {
         yield chunk;
       }
+    }
+  }
+
+  /**
+   * AI SDK streaming request. Yields content/tool_call/done chunks; throws on
+   * HTTP errors (APICallError) so streamWithFallback can classify and rotate.
+   */
+  private async *makeRequestStream(
+    provider: ProviderConfig,
+    body: Record<string, any>,
+  ): AsyncGenerator<StreamChunk> {
+    const canUseTools = (body.tools?.length ?? 0) > 0;
+    let done = false;
+
+    try {
+      const result = streamText({
+        model: this.getSdkModel(provider),
+        messages: this.toSdkMessages(body.messages),
+        allowSystemInMessages: true,
+        temperature: body.temperature ?? 0.7,
+        maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+        ...(canUseTools ? { tools: this.toSdkTools(body.tools) } : {}),
+        ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+        maxRetries: 0,
+      });
+
+      for await (const part of result.stream) {
+        if (part.type === 'text-delta') {
+          yield { type: 'content', content: part.text };
+        } else if (part.type === 'tool-call') {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: part.toolCallId,
+              name: part.toolName,
+              arguments:
+                typeof part.input === 'string'
+                  ? part.input
+                  : JSON.stringify(part.input ?? {}),
+            },
+          };
+        } else if (part.type === 'finish') {
+          done = true;
+          break;
+        } else if (part.type === 'error') {
+          throw part.error;
+        }
+      }
+    } catch (err: any) {
+      throw err;
+    }
+
+    if (!done) {
+      throw new Error('Stream ended without a finish event');
     }
   }
 

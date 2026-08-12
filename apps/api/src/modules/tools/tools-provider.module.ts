@@ -11,7 +11,6 @@ import { ToolRegistryService } from './tool-registry.service.js';
 import { ToolAdapter } from './services/tool-adapter.js';
 import { AskUserTool } from './services/ask-user.tool.js';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
-import { EnterpriseCalculatorTool } from './services/enterprise-calculator.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
 import { DocumentReaderTool } from './services/document-reader.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
@@ -62,7 +61,6 @@ import { AiModule } from '../ai/ai.module.js';
     ToolRegistryService,
     AskUserTool,
     TextExtractorTool,
-    EnterpriseCalculatorTool,
     DocumentGeneratorTool,
     DocumentReaderTool,
     DataQueryTool,
@@ -92,7 +90,6 @@ import { AiModule } from '../ai/ai.module.js';
     ToolRegistryService,
     AskUserTool,
     TextExtractorTool,
-    EnterpriseCalculatorTool,
     DocumentGeneratorTool,
     DocumentReaderTool,
     DataQueryTool,
@@ -128,7 +125,6 @@ export class ToolsProviderModule implements OnModuleInit {
   ) {}
 
   private get textExtractorTool() { return this.moduleRef.get(TextExtractorTool, { strict: false }); }
-  private get calculatorTool() { return this.moduleRef.get(EnterpriseCalculatorTool, { strict: false }); }
   private get documentGeneratorTool() { return this.moduleRef.get(DocumentGeneratorTool, { strict: false }); }
   private get documentReaderTool() { return this.moduleRef.get(DocumentReaderTool, { strict: false }); }
   private get askUser() { return this.moduleRef.get(AskUserTool, { strict: false }); }
@@ -442,44 +438,7 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     );
 
-    // ─── Calculation & Export ───────────────────────────────────────
-    this.registry.register(
-      ToolAdapter.from({
-        name: 'calculate',
-        displayName: 'Calculate Financials',
-        description:
-          'Performs numeric calculations — subtotal, tax, discount, total, or any math operation.',
-        tags: ['calculate', 'math', 'finance', 'tax', 'discount', 'total'],
-        handler: (args) =>
-          this.calculatorTool.calculateFinancials(
-            args.items || [],
-            args.taxPercent || 0,
-            args.discountPercent || 0,
-          ),
-        parameters: {
-          type: 'object',
-          properties: {
-            items: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  qty: { type: 'number' },
-                  price: { type: 'number' },
-                },
-              },
-            },
-            taxPercent: { type: 'number' },
-            discountPercent: { type: 'number' },
-          },
-          required: ['items'],
-        },
-        outputType: 'calculation',
-        timeoutMs: 3000,
-      }),
-    );
-
+    // ─── Export ─────────────────────────────────────────────────────
     this.registry.register(
       ToolAdapter.from({
         name: 'generate_export',
@@ -767,19 +726,28 @@ export class ToolsProviderModule implements OnModuleInit {
       ToolAdapter.from({
         name: 'read',
         displayName: 'Read File',
-        description: 'Reads content from a file in the workspace.',
+        description: 'Reads content from a file in the workspace. Output is line-numbered; use offset/limit to page through large files.',
         tags: ['read', 'pdf', 'docx', 'xlsx', 'csv', 'workspace'],
         handler: (args) =>
           this.workspaceToolsService.readWorkspaceFile(
             args.filePath,
             args.workspaceId,
+            { offset: args.offset, limit: args.limit },
           ),
         parameters: {
           type: 'object',
           properties: {
             filePath: {
               type: 'string',
-              description: 'File name or path',
+              description: 'The path to the file to read',
+            },
+            offset: {
+              type: 'number',
+              description: 'The line number to start reading from (1-indexed)',
+            },
+            limit: {
+              type: 'number',
+              description: 'The maximum number of lines to read (defaults to 2000)',
             },
             workspaceId: { type: 'string', description: 'Workspace ID' },
           },

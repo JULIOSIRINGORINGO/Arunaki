@@ -21,8 +21,8 @@ export interface ModelCapability {
 // (OpenRouter `openai/gpt-oss-120b:free`, Groq `gpt-oss-120b`, Kenari `gpt-oss-120b`, etc.)
 const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // OpenAI GPT-OSS
-  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096, reasoningEffort: 'low' },
+  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096, reasoningEffort: 'low' },
 
   // Google Gemma 4 — confirmed support tools
   'gemma-4-31b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
@@ -103,6 +103,7 @@ export function getModelCapability(modelName: string): ModelCapability {
 export function scaleMaxTokens(modelName: string): number {
   const cap = getModelCapability(modelName);
   if (cap.reasoningEffort) return 8192;
+  if (cap.maxTokens) return cap.maxTokens;
   const ctx = cap.contextWindow ?? 128000;
   if (ctx <= 16000) return 2048;
   return 4096;

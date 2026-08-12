@@ -31,7 +31,7 @@ export interface FallbackOptions {
   makeRequest: (
     provider: FallbackProvider,
     body: Record<string, any>,
-  ) => Promise<{ response: Response; statusCode: number }>;
+  ) => Promise<{ data: any; statusCode: number }>;
   getNextProvider: (currentId: string, triedIds?: string[]) => Promise<FallbackProvider | null>;
   classifyError: (
     statusCode: number,
@@ -65,44 +65,58 @@ export async function runWithModelFallback(
           `[${provider.name}] Request attempt (retry=${retryCount}, rotation=${rotationCount})`,
         );
 
-        const requestBody = { ...options.body, model: provider.model };
-        const { response, statusCode } = await options.makeRequest(
-          provider,
-          requestBody,
-        );
+        const { data } = await options.makeRequest(provider, options.body);
 
-        if (response.ok) {
-          if (provider.id !== 'env-fallback' && options.recordUsage) {
-            await options.recordUsage(provider.id).catch(() => {});
-          }
+        if (provider.id !== 'env-fallback' && options.recordUsage) {
+          await options.recordUsage(provider.id).catch(() => {});
+        }
 
-          const data = await response.json();
+        attempts.push({
+          providerId: provider.id,
+          providerName: provider.name,
+          retry: retryCount,
+          rotation: rotationCount,
+          outcome: 'success',
+        });
 
+        return {
+          data,
+          model: data?.modelId ?? data?.model ?? provider.model,
+          attempts,
+        };
+      } catch (err: any) {
+        lastError = err?.message || 'unknown error';
+
+        const statusCode = err?.statusCode ?? 0;
+        const errorBody =
+          (err?.responseBody as string) ?? err?.body ?? err?.message ?? '';
+
+        // Network/timeout errors carry no status code → retry with backoff.
+        if (statusCode === 0) {
+          log.warn(`[${provider.name}] Network error: ${lastError}`);
           attempts.push({
             providerId: provider.id,
             providerName: provider.name,
             retry: retryCount,
             rotation: rotationCount,
-            outcome: 'success',
-            statusCode,
+            outcome: 'retry',
+            error: lastError,
           });
-
-          return {
-            data,
-            model: data.model,
-            attempts,
-          };
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+            await jitteredBackoff(retryCount);
+            continue;
+          }
+          break;
         }
 
-        const errorBody = await response.text();
         const classified = options.classifyError(statusCode, errorBody);
-        lastError = classified.message || `HTTP ${statusCode}: ${errorBody.substring(0, 150)}`;
+        lastError = classified.message || `HTTP ${statusCode}`;
 
         log.warn(
           `[${provider.name}] HTTP ${statusCode} → action: ${classified.action}`,
         );
 
-        lastError = classified.message;
         attempts.push({
           providerId: provider.id,
           providerName: provider.name,
@@ -140,23 +154,6 @@ export async function runWithModelFallback(
         if (classified.action === 'fatal') {
           throw new Error(classified.message);
         }
-      } catch (err: any) {
-        lastError = err.message;
-        log.warn(`[${provider.name}] Network error: ${err.message}`);
-        attempts.push({
-          providerId: provider.id,
-          providerName: provider.name,
-          retry: retryCount,
-          rotation: rotationCount,
-          outcome: 'retry',
-          error: err.message,
-        });
-        retryCount++;
-        if (retryCount < MAX_RETRIES_PER_PROVIDER) {
-          await jitteredBackoff(retryCount);
-          continue;
-        }
-        break;
       }
     }
 

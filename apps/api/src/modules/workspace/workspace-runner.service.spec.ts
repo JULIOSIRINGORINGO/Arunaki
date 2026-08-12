@@ -32,6 +32,7 @@ const mockToolDefinitions = () =>
   [
     'read',
     'write',
+    'edit',
     'search_workspace',
     'list',
     'todo_write',
@@ -358,8 +359,9 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'c1', function: { name: 'calculate', arguments: '{"items":[{"qty":1,"price":100}]}' } },
-                  { id: 'c2', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
+                  { id: 'c1', function: { name: 'web_search', arguments: '{"query":"test"}' } },
+                  { id: 'c2', function: { name: 'edit', arguments: '{"filename":"a.txt"}' } },
+                  { id: 'c3', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
                 ],
               })
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
@@ -392,7 +394,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
     runnerService = module.get<WorkspaceRunnerService>(WorkspaceRunnerService);
   });
 
-  it('rejects tools not declared in the subset without executing them', async () => {
+  it('rejects tools not declared in the subset while running declared ones', async () => {
     for await (const _ of runnerService.runWorkspaceAgentGenerator({
       workspaceId: 'ws-reject-test',
       userGoal: 'read file a.txt',
@@ -402,7 +404,8 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
     }
 
     const calledNames = healMock.mock.calls.map((c: any[]) => c[0]);
-    expect(calledNames).not.toContain('calculate');
+    expect(calledNames).not.toContain('web_search');
+    expect(calledNames).toContain('edit');
     expect(calledNames).toContain('read');
   });
 });

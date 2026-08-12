@@ -17,7 +17,7 @@ export interface StreamFallbackOptions {
   makeRequest: (
     provider: ProviderConfig,
     body: Record<string, any>,
-  ) => Promise<{ response: Response; statusCode: number }>;
+  ) => AsyncGenerator<StreamChunk>;
   getNextProvider: (currentId: string) => Promise<ProviderConfig | null>;
   classifyError: (
     statusCode: number,
@@ -44,34 +44,56 @@ export async function* streamWithFallback(
 
     while (retryCount < MAX_RETRIES_PER_PROVIDER) {
       try {
-        const requestBody = { ...options.body, model: provider.model, stream: true };
-        const { response, statusCode } = await options.makeRequest(
-          provider,
-          requestBody,
-        );
+        const chunks = options.makeRequest(provider, options.body);
 
-        if (response.ok) {
-          if (provider.id !== 'env-fallback' && options.recordUsage) {
-            await options.recordUsage(provider.id).catch(() => {});
-          }
-
-          for await (const chunk of parseSSEStream(response)) {
-            if (chunk.type === 'content') {
-              yield chunk;
-            } else if (chunk.type === 'tool_call') {
-              yield chunk;
-            } else if (chunk.type === 'done') {
-              yield chunk;
-              return;
-            }
-          }
-          yield { type: 'done' };
-          return;
+        if (provider.id !== 'env-fallback' && options.recordUsage) {
+          await options.recordUsage(provider.id).catch(() => {});
         }
 
-        const errorBody = await response.text();
+        let anyChunk = false;
+        for await (const chunk of chunks) {
+          anyChunk = true;
+          if (chunk.type === 'error') {
+            yield chunk;
+            return;
+          }
+          if (chunk.type === 'done') {
+            yield chunk;
+            return;
+          }
+          yield chunk;
+        }
+
+        if (!anyChunk) {
+          lastError = 'Empty stream (no chunks received)';
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+            await jitteredBackoff(retryCount);
+            continue;
+          }
+          break;
+        }
+
+        yield { type: 'done' };
+        return;
+      } catch (err: any) {
+        const statusCode = err?.statusCode ?? 0;
+        const errorBody =
+          (err?.responseBody as string) ?? err?.body ?? err?.message ?? '';
+        lastError = err?.message || 'unknown error';
+
+        // Network/timeout errors carry no status code → retry with backoff.
+        if (statusCode === 0) {
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+            await jitteredBackoff(retryCount);
+            continue;
+          }
+          break;
+        }
+
         const classified = options.classifyError(statusCode, errorBody);
-        lastError = classified.message || `HTTP ${statusCode}: ${errorBody.substring(0, 150)}`;
+        lastError = classified.message || `HTTP ${statusCode}`;
 
         if (provider.id !== 'env-fallback' && options.recordError) {
           await options.recordError(
@@ -100,14 +122,6 @@ export async function* streamWithFallback(
           yield { type: 'error', error: classified.message };
           return;
         }
-      } catch (err: any) {
-        lastError = err.message;
-        retryCount++;
-        if (retryCount < MAX_RETRIES_PER_PROVIDER) {
-          await jitteredBackoff(retryCount);
-          continue;
-        }
-        break;
       }
     }
 
@@ -122,64 +136,6 @@ export async function* streamWithFallback(
   }
 
   yield { type: 'error', error: `All providers exhausted. Last error: ${lastError || 'unknown'}` };
-}
-
-async function* parseSSEStream(response: Response): AsyncGenerator<StreamChunk> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-
-        if (trimmed.startsWith('data: ')) {
-          const data = trimmed.slice(6);
-          try {
-            const parsed = JSON.parse(data);
-            const choice = parsed.choices?.[0];
-            if (!choice) continue;
-
-            const delta = choice.delta;
-            if (delta?.content) {
-              yield { type: 'content', content: delta.content };
-            }
-            if (delta?.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                yield {
-                  type: 'tool_call',
-                  toolCall: {
-                    id: tc.id || '',
-                    name: tc.function?.name || '',
-                    arguments: tc.function?.arguments || '',
-                  },
-                };
-              }
-            }
-            if (choice.finish_reason) {
-              yield { type: 'done' };
-            }
-          } catch {
-            // Ignore parse errors
-          }
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
 }
 
 async function jitteredBackoff(retryCount: number): Promise<void> {

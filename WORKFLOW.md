@@ -1286,3 +1286,23 @@ apps/web/src/
 7. **Commit after each module** — Small, focused commits.
 8. **Knowledge Base is source of truth** — AI output format driven by KB, not hardcoded rules.
 9. **Modular system prompt** — No domain-specific rules in code; KB controls behavior.
+
+---
+
+## Phase 45: Full AI SDK Migration ✅ DONE
+
+**Goal:** Migrate all raw fetch endpoints communicating with AI providers to use Vercel AI SDK (`ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`) perfectly mirroring Opencode's implementation.
+
+### 45.1 AI Service Migration (`ai.service.ts`)
+- [x] Replaced manual fetch with `generateText` and `streamText`.
+- [x] Used `createOpenAI` and `createAnthropic` for respective model providers.
+- [x] Refactored `toSdkMessages` and `toSdkTools` to match standard `ModelMessage` schemas (including `tool-result` and `tool-call`).
+
+### 45.2 Provider Fallback & Tools (`model-fallback.ts`, `vision-ai.tool.ts`)
+- [x] Handled `APICallError` inside `runWithModelFallback` for smooth token limits and failure rotation.
+- [x] Stripped raw `fetch` out of `vision-ai.tool.ts` and migrated to `generateText` for multimodal inference.
+- [x] Fixed decommissioned model (`deepseek-r1-distill-llama-70b`) in `provider-catalog.service.ts` to allow graceful fallback.
+
+### 45.3 Verification
+- [x] 100% of LLM communication logic now runs through Vercel AI SDK.
+- [x] `test-rekap-extended.ts` passes the initial round using AI SDK tool format.

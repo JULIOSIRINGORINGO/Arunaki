@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 
 @Injectable()
 export class VisionAiTool {
@@ -10,11 +12,21 @@ export class VisionAiTool {
   private readonly apiKey: string;
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
   private readonly visionModel: string;
+  private readonly sdk: any;
 
   constructor(private readonly config?: ConfigService) {
     this.apiKey = this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
     this.visionModel =
       this.config?.get<string>('VISION_MODEL') || process.env.VISION_MODEL || 'google/gemini-2.0-flash-001';
+      
+    this.sdk = createOpenAI({
+      baseURL: this.baseUrl,
+      apiKey: this.apiKey,
+      headers: {
+        'HTTP-Referer': 'https://arunaki.app',
+        'X-Title': 'Arunaki Vision AI',
+      },
+    });
   }
 
   async analyzeImage(
@@ -81,54 +93,35 @@ export class VisionAiTool {
         imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
-      const body = {
-        model: this.visionModel,
+      const { text, usage } = await generateText({
+        model: this.sdk.chat(this.visionModel),
         messages: [
           {
             role: 'user',
             content: [
               { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: imageUrl } },
+              { type: 'image', image: new URL(imageUrl) },
             ],
           },
         ],
         temperature: 0.2,
-        max_tokens: 2048,
-      };
-
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://arunaki.app',
-          'X-Title': 'Arunaki Vision AI',
-        },
-        body: JSON.stringify(body),
+        maxOutputTokens: 2048,
       });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Vision AI HTTP ${response.status}: ${errText}`);
-      }
-
-      const data = await response.json();
-      const extractedText = data.choices?.[0]?.message?.content || '';
 
       return {
         status: 'success',
         data: {
           imageSource: imageSource.length > 100 ? '[Base64 Data]' : imageSource,
-          analysis: extractedText,
+          analysis: text,
         },
-        preview: extractedText,
+        preview: text,
         metadata: {
           toolName: 'vision_ai',
           displayName: 'Vision AI',
           executionTime: Date.now() - startTime,
         },
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Vision AI analysis failed: ${error.message}`);
       return {
         status: 'error',
