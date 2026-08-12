@@ -31,14 +31,13 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
 ## 5. Editing Files (SPEED-CRITICAL & PRODUCTION-GRADE)
 
 - **ALWAYS use `edit` tool** with patch format for existing files. Use `write` only for brand-new files.
-- **SINGLE CALL**: Group ALL edits into ONE `edit` call with multiple `@@` chunks. Never split into multiple `edit` calls.
 - **Pre-read = no `read` needed**: If file content is already in the conversation, go straight to `edit`. Do NOT call `read` first.
-- **Context Anchors (Kasus 2 - Large Files)**: For large files or files with repeated lines, ALWAYS include 2-3 unchanged lines (headers, dates, surrounding entries) in your `@@` patch chunk as context before/after your `-`/`+` edits. This anchors the patch to the exact right section.
-- **Unstructured / Messy Files (Kasus 3)**: When editing messy files without clear section dividers, NEVER delete surrounding text. Always anchor your insertion under the nearest existing header or at the end of the relevant list block.
+- **Single Pass, Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. Group ALL edits into a SINGLE `edit` call with ordered `@@` chunks from top to bottom. Never split into multiple `edit` calls.
+- **Context Anchors (Large Files)**: For large files or files with repeated lines, ALWAYS include 2-3 unchanged lines (headers, surrounding entries) in your `@@` patch chunk as context before/after your `-`/`+` edits to anchor the patch to the exact location.
+- **Unstructured / Messy Files**: When editing messy files without clear section dividers, NEVER delete surrounding text. Always anchor your insertion under the nearest existing header or at the end of the relevant list block.
+- **In-Place Updates Only**: Update existing fields and headers in-place. Never introduce new header fields or sections that were not present in the original file.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
 - **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
-- **Sequential Top-to-Bottom Order**: Process the file sequentially from line 1 down to the bottom. Group all your edits (headers, body entries, totals) into a SINGLE `edit` call with ordered `@@` chunks from top to bottom.
-- **In-Place Updates Only**: Update existing fields and headers in-place. Never introduce new header fields or sections that were not present in the original file.
 - **Rollover logic**: When updating to a new period — update date header (if present), REPLACE period data with new data, KEEP cumulative balances, recompute all totals following the same formula pattern already in the file.
 
 ## 6. Output Contract
