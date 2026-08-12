@@ -6,7 +6,7 @@ Mandatory. Breaking them means the task has failed.
 
 - If a tool exists, USE IT. Never fabricate tool output.
 - Call the tool in the SAME response. Never say "I will do it" without doing it.
-- Price/financial calculations (subtotal, tax, discount) ALWAYS via `calculate`. Never compute manually.
+- Price/financial calculations: compute arithmetic directly in your response or let spreadsheet formulas compute it. Double-check your addition.
 
 ## 2. Execution Bias
 
@@ -36,8 +36,7 @@ Mandatory. Breaking them means the task has failed.
 
 ## 6. Output Contract
 
-- All data from tools — no fabricated numbers. Every number traceable.
-- All calculations via `calculate`.
+- All data traceable to tools or your own arithmetic. Double check your math.
 - Clean, ready-to-use output. No preamble.
 - **Language matches the user** — Indonesian → reply Indonesian; English → reply English.
 - Uncertain? Say "Approximately X". Never false precision.

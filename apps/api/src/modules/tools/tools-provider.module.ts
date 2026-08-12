@@ -867,41 +867,36 @@ export class ToolsProviderModule implements OnModuleInit {
         mutating: true,
         displayName: 'Edit File',
         description:
-          'Make a targeted edit to an existing file in the workspace. Specify the exact text to find (oldString) and the text to replace it with (newString). ' +
-          'The oldString must match EXACTLY — read the file first and copy the target text precisely, including whitespace and line breaks. ' +
-          'For multiple edits to the same file, call this tool multiple times in sequence. ' +
-          'To create a new file or fully rewrite, use the write tool instead.',
-        tags: ['edit', 'update', 'workspace', 'file'],
+          'Make a targeted edit to an existing file in the workspace using a strict patch format. ' +
+          'Provide the exact patch text using the format:\n' +
+          '*** Begin Patch\n' +
+          '*** Update File: <filename>\n' +
+          '@@\n' +
+          '- old line 1\n' +
+          '- old line 2\n' +
+          '+ new line 1\n' +
+          '+ new line 2\n' +
+          '*** End Patch\n' +
+          'The old lines MUST match the file content exactly. You can include multiple @@ chunks in one patch.\n' +
+          'CRITICAL: Use ONLY `@@` as the chunk separator. DO NOT use unified diff line numbers like `@@ -1,4 +1,4 @@`.',
+        tags: ['edit', 'update', 'workspace', 'file', 'patch'],
         handler: (args) =>
           this.workspaceToolsService.editWorkspaceFile({
             workspaceId: args.workspaceId,
-            path: args.path || args.filename,
-            oldString: args.oldString || args.oldText || args.old_string || '',
-            newString: args.newString || args.newText || args.new_string || '',
-            replaceAll: args.replaceAll || args.replace_all || false,
+            path: args.path,
+            patchText: args.patchText || args.patch_text,
           }),
         parameters: {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            path: {
+            path: { type: 'string', description: 'The absolute or relative path of the file to edit. You MUST provide this either here or in *** Update File: inside patchText.' },
+            patchText: {
               type: 'string',
-              description: 'File path to edit (e.g. REKAPAN TERBARU2.txt)',
-            },
-            oldString: {
-              type: 'string',
-              description: 'Exact text to find and replace. Must match file content exactly.',
-            },
-            newString: {
-              type: 'string',
-              description: 'Replacement text. Must differ from oldString.',
-            },
-            replaceAll: {
-              type: 'boolean',
-              description: 'Replace all occurrences of oldString (default false)',
+              description: 'The patch text containing the edits.',
             },
           },
-          required: ['path', 'oldString', 'newString'],
+          required: ['patchText'],
         },
         estimatedLatency: 'fast',
         timeoutMs: 60000,

@@ -131,9 +131,7 @@ export class WorkspaceToolsService {
   async editWorkspaceFile(params: {
     workspaceId: string;
     path: string;
-    oldString: string;
-    newString: string;
-    replaceAll?: boolean;
+    patchText: string;
   }): Promise<ToolResult> {
     return this.editTool.execute(params);
   }

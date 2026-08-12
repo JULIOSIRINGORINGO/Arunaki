@@ -106,7 +106,7 @@ function parseAdd(lines: string[], start: number): { content: string; next: numb
   let index = start;
   while (index < lines.length && !lines[index]!.startsWith('***')) {
     if (!lines[index]!.startsWith('+')) throw new PatchError(`Invalid add file line: ${lines[index]}`);
-    content.push(lines[index]!.slice(1));
+    content.push(lines[index]!.slice(1).replace(/^\d+:\s?/, ''));
     index++;
   }
   return { content: content.join('\n'), next: index };
@@ -116,14 +116,20 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
   const chunks: UpdateFileChunk[] = [];
   let index = start;
   while (index < lines.length && !lines[index]!.startsWith('***')) {
-    if (!lines[index]!.startsWith('@@')) {
-      throw new PatchError(`Invalid update file line: ${lines[index]}`);
+    let changeContext: string | undefined;
+    if (lines[index]!.startsWith('@@')) {
+      let rawContext = lines[index]!.slice(2).trim() || undefined;
+      // If the context is just unified diff line numbers (e.g. -1,4 +1,4 @@), ignore it
+      if (rawContext && /^-?\d+(,\d+)?\s*\+\d+(,\d+)?\s*(@@)?$/.test(rawContext)) {
+        rawContext = undefined;
+      }
+      changeContext = rawContext;
+      index++;
     }
-    const changeContext = lines[index]!.slice(2).trim() || undefined;
     const oldLines: string[] = [];
     const newLines: string[] = [];
     let endOfFile = false;
-    index++;
+    
     while (index < lines.length && !lines[index]!.startsWith('@@')) {
       const line = lines[index]!;
       if (line === '*** End of File') {
@@ -133,11 +139,17 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
       }
       if (line.startsWith('***')) break;
       if (line.startsWith(' ')) {
-        oldLines.push(line.slice(1));
-        newLines.push(line.slice(1));
-      } else if (line.startsWith('-')) oldLines.push(line.slice(1));
-      else if (line.startsWith('+')) newLines.push(line.slice(1));
-      else throw new PatchError(`Invalid update chunk line: ${line}`);
+        const text = line.slice(1).replace(/^\d+:\s?/, '');
+        oldLines.push(text);
+        newLines.push(text);
+      } else if (line.startsWith('-')) {
+        oldLines.push(line.slice(1).replace(/^\d+:\s?/, ''));
+      } else if (line.startsWith('+')) {
+        newLines.push(line.slice(1).replace(/^\d+:\s?/, ''));
+      } else if (line === '') {
+        oldLines.push('');
+        newLines.push('');
+      } else throw new PatchError(`Invalid update chunk line: ${line}`);
       index++;
     }
     chunks.push({ oldLines, newLines, changeContext, endOfFile: endOfFile || undefined });
@@ -201,7 +213,7 @@ function computeReplacements(
 
 function seek(lines: string[], pattern: string[], start: number, eof = false): number {
   if (pattern.length === 0) return -1;
-  for (const compare of [exact, rstrip, trim, normalized]) {
+  for (const compare of [exact, rstrip, trim, normalized, alphanumeric]) {
     if (eof) {
       const offset = lines.length - pattern.length;
       if (offset >= start && matches(lines, pattern, offset, compare)) return offset;
@@ -226,6 +238,7 @@ const exact = (left: string, right: string) => left === right;
 const rstrip = (left: string, right: string) => left.trimEnd() === right.trimEnd();
 const trim = (left: string, right: string) => left.trim() === right.trim();
 const normalized = (left: string, right: string) => normalize(left.trim()) === normalize(right.trim());
+const alphanumeric = (left: string, right: string) => left.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === right.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
 const normalize = (value: string) =>
   value

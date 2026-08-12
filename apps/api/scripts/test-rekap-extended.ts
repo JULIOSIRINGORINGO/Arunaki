@@ -118,7 +118,7 @@ async function runTest() {
     { name: 'Total BNI = 200 RB', pass: /TOTAL TF BNI\s*[:=]\s*200\s*RB/i.test(content) },
     { name: 'Total CASH = 150 RB', pass: /TOTAL CASH\s*[:=]\s*150\s*RB/i.test(content) },
     { name: 'Total Pengeluaran = 570 RB (7+3+5+30+250+175+100)', pass: /TOTAL PENGELUARAN\s*[:=]\s*570\s*RB/i.test(content) },
-    { name: 'Total Uang di Laci = 605 RB (825+200+150-570)', pass: /TOTAL UANG DI LACI\s*[:=]\s*605\s*RB/i.test(content) },
+    { name: 'Total Uang di Laci = -420 RB (150 CASH - 570 PENGELUARAN)', pass: /TOTAL UANG DI LACI\s*[:=]\s*-420\s*RB/i.test(content) },
     { name: 'Pengeluaran LISTRIK 250 ada', pass: /LISTRIK[\s=:]*250/i.test(content) },
   ];
 
