@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { toast } from "sonner";
-import { WorkstationHeader } from "../components/workstation/WorkstationHeader";
 import { WorkstationLeftExplorer } from "../components/workstation/WorkstationLeftExplorer";
 import { WorkstationCenterPanel, CenterTab } from "../components/workstation/WorkstationCenterPanel";
 import { WorkstationRightChat } from "../components/workstation/WorkstationRightChat";
@@ -66,7 +65,6 @@ export function UnifiedWorkstationPage() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
-  const [isCanvasOpen, setIsCanvasOpen] = useState(false);
 
   const [inputPrompt, setInputPrompt] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -175,7 +173,6 @@ export function UnifiedWorkstationPage() {
           createdAt: new Date().toISOString(),
         }
       );
-      setIsCanvasOpen(true);
 
       const existingIndex = tabs.findIndex((t) => t.id === canvasTabId);
       const canvasTab: CenterTab = {
@@ -207,10 +204,6 @@ export function UnifiedWorkstationPage() {
         }
         return next;
       });
-
-      if (tabId === "canvas-active") {
-        setIsCanvasOpen(false);
-      }
     },
     [activeTabId]
   );
@@ -329,16 +322,7 @@ export function UnifiedWorkstationPage() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#F4EFE6] text-[#1A191B] overflow-hidden select-none">
-      <WorkstationHeader
-        onToggleLeft={() => setLeftCollapsed(!leftCollapsed)}
-        onToggleRight={() => setRightCollapsed(!rightCollapsed)}
-        activeWorkspace={activeWorkspace}
-        onOpenFolderModal={() => setShowFolderModal(true)}
-        isCanvasOpen={isCanvasOpen}
-        onTriggerCanvas={() => handleTriggerCanvas()}
-      />
-
+    <div className="flex flex-col h-full w-full bg-[#0A0A0A] text-white overflow-hidden select-none">
       <div className="flex-1 flex overflow-hidden relative">
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
