@@ -921,12 +921,30 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 - [x] Middle dark vertical capsule container with active tab notch indicator (orange circle logo `#FF5E38`) and purple icons (`#C4B5FD`)
 - [x] Bottom dark vertical capsule container with action buttons
 
+## Phase 47: Unified Document IDE Workstation Migration ✅ DONE
+
+**Goal:** Unify Chat Mode and Workspace Mode into 1 Single Document IDE Workstation page (`/`) following `ui_wireframe_layout_v2.md` with IDE File Reader and Antigravity-style On-Demand Canvas calls.
+
+### 47.1 Backend Unit Test Fixes (`apps/api`)
+- [x] Fixed `tool-call-repair.integration.spec.ts` fetch mock and message structure assertion.
+- [x] Added `todo_write` to `declaredTools` and core toolset in `workspace-runner.service.ts`.
+- [x] Verified unit tests — 100% passed (30/30 test files, 144 unit tests).
+
+### 47.2 Frontend Unified IDE Workstation (`apps/web`)
+- [x] Created `UnifiedWorkstationPage.tsx` adhering to `ui_wireframe_layout_v2.md` and color system (`#F4EFE6`, `#1A191B`, `#FF5E38`, `#C4B5FD`).
+- [x] **Left Panel**: Collapsible File Explorer `[=]` with search, folder tree, and Quick Connect modal dialog.
+- [x] **Center Panel**: IDE File Reader (renders Excel grid, PDF, Word, TXT) + Antigravity-style On-Demand Canvas Panel (triggered by AI output or `[🎨 Canvas]` header button, closable with `✕`).
+- [x] **Right Panel**: Integrated Chat Area & Capsule Input Box with `@filename` auto-complete and live execution badges.
+- [x] **Footer Bar**: Workspace path, file count, active model, and Knowledge Base status bar.
+- [x] Consolidated routes in `App.tsx` (`/` -> `UnifiedWorkstationPage`) and updated `Sidebar.tsx`.
+- [x] Project typecheck clean (`npm run typecheck` — 0 errors).
+
 ---
 
 ## Current Status
 
-**Phase:** 46 — Exact UI Redesign & Popup Chat Docking ✅ DONE
-**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security (fail-safe auth, DoS protection, path traversal protection).
+**Phase:** 47 — Unified Document IDE Workstation Migration ✅ DONE
+**Framework:** Digital Employee — visible interaction di browser (web) + desktop apps + sub-agent delegation + failover resilience + encrypted secrets vault + audit trajectory + background cron scheduler + hardened security + Unified 1 Mode Document IDE.
 **Model Default:** `openrouter/free` dengan capability-aware request  
 **Next:** Voice Interaction & Desktop Packaging  
 

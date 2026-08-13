@@ -1005,6 +1005,7 @@ export class WorkspaceRunnerService {
           // Internal harness tools stay callable regardless of subset.
           declaredTools.add('ask_user');
           declaredTools.add('agent_spawn');
+          declaredTools.add('todo_write');
 
           // Separate mutating vs read-only tools for parallel execution
 

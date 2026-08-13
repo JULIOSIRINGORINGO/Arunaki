@@ -26,29 +26,23 @@ Dokumen ini membantu AI Agent memahami:
 
 ## 2. Design Philosophy
 
-### 2.1 Dua Pengalaman Utama
+### 2.1 Unified Document IDE Workstation (1 Mode IDE Layout)
 
-Arunaki memiliki **dua mode kerja utama** yang berbeda secara fundamental:
+Arunaki mengadopsi **1 Mode Document IDE Workstation Terpadu** yang menggabungkan AI Assistant Mode dan Workspace Agent Mode ke dalam satu antarmuka terpadu sesuai wireframe `ui_wireframe_layout_v2.md`:
 
-#### 1. AI Assistant Mode (Chat Mode)
-- **Persona**: Conversational AI yang membantu
-- **Context**: No Workspace needed
-- **Focus**: Dialog dan knowledge sharing
-- **Feel**: Personal, responsive, smart
-
-#### 2. Workspace Agent Mode (Workspace Mode)
-- **Persona**: Professional workspace agent
-- **Context**: Workspace-centric
-- **Focus**: Task execution dan productivity
-- **Feel**: Focused, powerful, efficient
+- **Panel Kiri (Eksplore Folder)**: Pohon berkas workspace, pencarian file, dan modal buka folder.
+- **Panel Tengah (Main Content / Editor)**:
+  - **Peran Utama**: IDE File Reader & Document Viewer (Excel grid, Word, PDF, CSV, TXT).
+  - **Panggilan Canvas (On-Demand)**: Seperti artifact pada Antigravity IDE, Canvas Panel (tabel kalkulasi & draf dokumen) dipanggil di Panel Tengah secara *on-demand* saat dipicu AI chat dan dapat ditutup dengan tombol `✕`.
+- **Panel Kanan (Chat Area & Chat Box)**: Interaksi AI terpadu (mendeteksi mode General Chat saat tanpa folder, dan upgrade otomatis ke Workspace Document Agent saat folder terhubung dengan dukungan `@filename`).
+- **Footer Bar (Main Menu Knowledge & Status Bar)**: Status path folder, jumlah file, AI model, dan indikator Knowledge Base.
 
 ### 2.2 Unified Application
 
-Meskipun berbeda, keduanya terasa sebagai **satu aplikasi yang kohesif**:
-- Navigasi global yang sama
-- Design language yang konsisten
-- Transisi yang mulus antar mode
-- Shared user identity & settings
+Seluruh antarmuka berjalan sebagai **satu aplikasi yang kohesif**:
+- Navigasi vertikal pill gantung yang konsisten.
+- Design language unified (`#F4EFE6` Cream, `#1A191B` Dark Charcoal, `#FF5E38` Coral Orange, `#C4B5FD` Soft Lilac).
+- Transisi yang mulus tanpa perpindahan halaman yang membingungkan.
 
 ---
 

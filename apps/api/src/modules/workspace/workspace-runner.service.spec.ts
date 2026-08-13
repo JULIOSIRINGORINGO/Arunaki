@@ -267,7 +267,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
       .mockResolvedValueOnce({
         content: null,
         toolCalls: [
-          { id: 'call_1', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
+          { id: 'call_1', function: { name: 'todo_write', arguments: '{"todos":[{"id":1,"content":"Baca file","status":"in_progress"},{"id":2,"content":"Hitung total","status":"pending"}]}' } },
         ],
       })
       .mockResolvedValue({ content: 'Laporan selesai.', toolCalls: [] });

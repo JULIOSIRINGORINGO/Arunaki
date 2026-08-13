@@ -34,11 +34,11 @@ export function Sidebar({ onOpenChatPopup: _onOpenChatPopup, isChatOpen: _isChat
 
       {/* 2. Middle Main Navigation Vertical Pill - Exact 56px (w-14) width, stretches flex-1 */}
       <div className="w-14 flex-1 bg-[#1A191B] rounded-full py-4 flex flex-col items-center gap-3.5 shadow-lg border border-stone-800/50 relative">
-        {/* Chat AI Tab Button */}
+        {/* Workstation IDE Utama Tab Button */}
         <NavLink
           to="/"
           className="w-14 h-10 flex items-center justify-center cursor-pointer group relative"
-          title="Chat AI Utama"
+          title="Workstation IDE Utama"
         >
           {/* Bleeding Cream Tab Background with Vector-Perfect SVG Fillet Curves */}
           <div
