@@ -85,8 +85,28 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async getActiveConfig(): Promise<ProviderConfig | null> {
+    return this.buildActiveConfig(false);
+  }
+
+  /**
+   * Active provider config, but null while the provider is cooling down —
+   * used by the AI layer so a degraded provider gets skipped and the
+   * request starts directly on the fallback provider instead of hanging.
+   */
+  async getActiveConfigRespectingCooldown(): Promise<ProviderConfig | null> {
+    return this.buildActiveConfig(true);
+  }
+
+  private async buildActiveConfig(respectCooldown: boolean): Promise<ProviderConfig | null> {
     const provider = this.repository ? await this.repository.findActive() : null;
     if (!provider) return null;
+
+    if (respectCooldown && provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date()) {
+      this.logger.warn(
+        `Active provider ${provider.name} is in cooldown until ${provider.cooldownUntil.toISOString()} — deferring to fallback provider`,
+      );
+      return null;
+    }
 
     return {
       id: provider.id,
@@ -131,6 +151,18 @@ export class ProviderService extends BaseService<Provider> {
 
   classifyError(statusCode: number, body: string): ClassifiedError {
     const message = `HTTP ${statusCode}`;
+
+    // Cloudflare origin timeouts (522/523/524) mean the upstream hung — the
+    // request never got a real answer. Retrying the same origin only burns
+    // another timeout window, so rotate immediately to the next provider.
+    if (statusCode >= 522 && statusCode <= 524) {
+      return {
+        action: 'rotate',
+        statusCode,
+        message: `${message}: origin timeout`,
+        cooldownSeconds: 60,
+      };
+    }
 
     // 5xx (incl. 503) + 400 are transient-ish for cheap/free/flaky upstreams —
     // retry with backoff first (runWithModelFallback retries 3x before rotate).
@@ -238,6 +270,17 @@ export class ProviderService extends BaseService<Provider> {
 
     this.logger.warn('No secondary API key available for fallback candidate rotation');
     return null;
+  }
+
+  /**
+   * Check if the active provider is currently in cooldown.
+   * Used by the AI layer to skip a degraded provider and start on the
+   * fallback provider instead of wasting another timeout window.
+   */
+  async isActiveProviderCoolingDown(): Promise<boolean> {
+    const provider = this.repository ? await this.repository.findActive() : null;
+    if (!provider) return false;
+    return !!provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date();
   }
 
   async setCooldown(id: string, seconds: number): Promise<void> {

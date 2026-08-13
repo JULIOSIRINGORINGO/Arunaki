@@ -129,7 +129,8 @@ export class AiService {
    */
   private async getProviderConfig(): Promise<ProviderConfig> {
     try {
-      const dbConfig = await this.providerService.getActiveConfig();
+      // Try active DB provider, but skip if it is cooling down (to avoid repeated hangs)
+    const dbConfig = await this.providerService.getActiveConfigRespectingCooldown();
       if (dbConfig) {
         return {
           ...dbConfig,
