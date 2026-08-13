@@ -536,54 +536,56 @@ export function ModelProviderSettings({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {allAvailableModels.map((m) => {
-                      const isSelected = p.model === m;
-                      return (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => handleSelectModel(p, m)}
-                          className={cn(
-                            "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
-                            isSelected
-                              ? "bg-[#262626] border-white text-white shadow-xs"
-                              : "bg-[#121212] border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#333333]"
-                          )}
-                        >
-                          <div className="truncate pr-2">
-                            <span className="font-mono text-xs block truncate font-medium">{m}</span>
-                            <span className="text-[9px] text-[#737373]">{isSelected ? "● Aktif Dipakai" : "Klik untuk aktifkan"}</span>
-                          </div>
-                          {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />}
-                        </button>
-                      );
-                    })}
+                  <div className="max-h-[380px] overflow-y-auto pr-1 space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {allAvailableModels.map((m) => {
+                        const isSelected = p.model === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => handleSelectModel(p, m)}
+                            className={cn(
+                              "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
+                              isSelected
+                                ? "bg-[#262626] border-white text-white shadow-xs"
+                                : "bg-[#121212] border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#333333]"
+                            )}
+                          >
+                            <div className="truncate pr-2">
+                              <span className="font-mono text-xs block truncate font-medium">{m}</span>
+                              <span className="text-[9px] text-[#737373]">{isSelected ? "● Aktif Dipakai" : "Klik untuk aktifkan"}</span>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
 
-                    {/* Inline + Add Model Button */}
-                    {addingModelProviderId === p.id ? (
-                      <form onSubmit={(e) => handleAddNewModelSubmit(p, e)} className="flex items-center gap-1 bg-[#121212] p-1.5 rounded-lg border border-[#333333]">
-                        <input
-                          type="text"
-                          value={newModelInput}
-                          onChange={(e) => setNewModelInput(e.target.value)}
-                          placeholder="Nama model baru (misal: cx/gpt-5.6-terra)"
-                          autoFocus
-                          className="w-full bg-transparent text-xs text-white px-1.5 focus:outline-none placeholder-[#737373] font-mono"
-                        />
-                        <button type="submit" className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded cursor-pointer shrink-0">Add</button>
-                        <button type="button" onClick={() => setAddingModelProviderId(null)} className="px-1 text-xs text-[#A3A3A3] hover:text-white cursor-pointer shrink-0">✕</button>
-                      </form>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setAddingModelProviderId(p.id); setNewModelInput(""); }}
-                        className="p-2.5 rounded-lg border border-dashed border-[#333333] hover:border-[#525252] text-[#A3A3A3] hover:text-white flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer bg-[#121212]/50"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ Add Model</span>
-                      </button>
-                    )}
+                      {/* Inline + Add Model Button */}
+                      {addingModelProviderId === p.id ? (
+                        <form onSubmit={(e) => handleAddNewModelSubmit(p, e)} className="flex items-center gap-1 bg-[#121212] p-1.5 rounded-lg border border-[#333333]">
+                          <input
+                            type="text"
+                            value={newModelInput}
+                            onChange={(e) => setNewModelInput(e.target.value)}
+                            placeholder="Nama model baru (misal: cx/gpt-5.6-terra)"
+                            autoFocus
+                            className="w-full bg-transparent text-xs text-white px-1.5 focus:outline-none placeholder-[#737373] font-mono"
+                          />
+                          <button type="submit" className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded cursor-pointer shrink-0">Add</button>
+                          <button type="button" onClick={() => setAddingModelProviderId(null)} className="px-1 text-xs text-[#A3A3A3] hover:text-white cursor-pointer shrink-0">✕</button>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setAddingModelProviderId(p.id); setNewModelInput(""); }}
+                          className="p-2.5 rounded-lg border border-dashed border-[#333333] hover:border-[#525252] text-[#A3A3A3] hover:text-white flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer bg-[#121212]/50"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Add Model</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

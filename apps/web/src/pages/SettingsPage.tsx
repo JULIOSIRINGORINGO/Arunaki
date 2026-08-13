@@ -79,11 +79,11 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden select-none p-6">
-      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col h-full bg-[#0A0A0A] text-[#FFFFFF] overflow-y-auto select-none p-6">
+      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col min-h-0">
         <h1 className="text-xl font-bold text-white mb-4">System & AI Settings</h1>
 
-        <div className="flex items-center gap-2 border-b border-[#262626] pb-3 mb-6 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-[#262626] pb-3 mb-6 overflow-x-auto shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -105,7 +105,7 @@ export function SettingsPage() {
           })}
         </div>
 
-        <div className="flex-1 bg-[#121212] rounded-xl border border-[#262626] p-6 overflow-y-auto">
+        <div className="flex-1 bg-[#121212] rounded-xl border border-[#262626] p-6 overflow-y-auto min-h-0">
           {activeTab === "ai" && (
             <ModelProviderSettings
               providers={providers}
