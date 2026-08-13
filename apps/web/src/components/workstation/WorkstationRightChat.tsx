@@ -81,7 +81,17 @@ export function WorkstationRightChat({
     );
   }
 
-  const allMessages = [...chatMessages, ...optimisticMessages];
+  const allMessages = useMemo(() => {
+    if (isStreaming) {
+      const dbKeys = new Set(chatMessages.map((m) => `${m.role}:${m.content.trim()}`));
+      const uniqueOptimistic = optimisticMessages.filter(
+        (m) => m.content.trim().length > 0 && !dbKeys.has(`${m.role}:${m.content.trim()}`)
+      );
+      return [...chatMessages, ...uniqueOptimistic];
+    }
+    return chatMessages.length > 0 ? chatMessages : optimisticMessages;
+  }, [chatMessages, optimisticMessages, isStreaming]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -254,7 +264,14 @@ export function WorkstationRightChat({
                     : "bg-[#1E1E1E] text-[#E5E5E5] border-border-strong rounded-tl-none"
                 )}
               >
-                <Markdown>{msg.content}</Markdown>
+                {msg.content ? (
+                  <Markdown>{msg.content}</Markdown>
+                ) : (
+                  <div className="flex items-center gap-2 text-[#A3A3A3] py-0.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="text-[11px]">Memproses...</span>
+                  </div>
+                )}
               </div>
             </div>
           ))

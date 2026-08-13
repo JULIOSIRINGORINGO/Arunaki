@@ -406,7 +406,15 @@ export class WorkspaceRunnerService {
     });
   }
 
+  private readonly lastSyncedMap = new Map<string, number>();
+
   async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
+    const lastSynced = this.lastSyncedMap.get(workspaceId) || 0;
+    if (Date.now() - lastSynced < 15000) {
+      return;
+    }
+    this.lastSyncedMap.set(workspaceId, Date.now());
+
     try {
       const workspace = await this.prisma.workspace.findUnique({
         where: { id: workspaceId },
@@ -877,7 +885,40 @@ export class WorkspaceRunnerService {
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
           const roundStart = Date.now();
-          const aiResponse = await this.aiService.chat(messages, tools, modelId ? { preferredProviderId: modelId } : undefined);
+          let aiResponse: { content: string; toolCalls: any[]; usage?: any } = { content: '', toolCalls: [] };
+          let isStreamed = false;
+
+          try {
+            let streamedText = '';
+            const streamedToolCalls: any[] = [];
+
+            for await (const chunk of this.aiService.chatStream(messages, tools)) {
+              if (chunk.type === 'content' && chunk.content) {
+                streamedText += chunk.content;
+                onEvent({ type: 'text_delta', data: chunk.content });
+                isStreamed = true;
+              } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+                streamedToolCalls.push({
+                  id: chunk.toolCall.id,
+                  type: 'function',
+                  function: {
+                    name: chunk.toolCall.name,
+                    arguments: chunk.toolCall.arguments,
+                  },
+                });
+              }
+            }
+
+            aiResponse = {
+              content: streamedText,
+              toolCalls: streamedToolCalls,
+              usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+            };
+          } catch (streamErr: any) {
+            this.logger.warn(`chatStream failed or unsupported, falling back to chat: ${streamErr.message}`);
+            aiResponse = await this.aiService.chat(messages, tools, modelId ? { preferredProviderId: modelId } : undefined);
+          }
+
           this.logger.log(
             `[round] ${runState.round} took ${Date.now() - roundStart}ms; toolCalls=${aiResponse.toolCalls?.length ?? 0} usage=${JSON.stringify(aiResponse.usage)}`,
           );
@@ -929,7 +970,10 @@ export class WorkspaceRunnerService {
 
           if (aiResponse.toolCalls.length === 0) {
             finalContent = this.scrubber.scrub(aiResponse.content);
-            onEvent({ type: 'text_delta', data: finalContent });
+            if (!isStreamed) {
+              onEvent({ type: 'text_delta', data: finalContent });
+            }
+            onEvent({ type: 'done', data: { content: finalContent, artifacts: createdArtifactIds } });
             reachedMaxRounds = false;
             this.logger.log(
               'Workspace agent finished goal execution within round limit.',
@@ -1028,7 +1072,7 @@ export class WorkspaceRunnerService {
                 args = JSON.parse(rawArgs);
               } catch {
                 const cleaned = rawArgs
-                  .replace(/[\u0000-\u001F]+/g, (match) => {
+                  .replace(/[\u0000-\u001F]+/g, (match: string) => {
                     if (match === '\n') return '\\n';
                     if (match === '\r') return '\\r';
                     if (match === '\t') return '\\t';

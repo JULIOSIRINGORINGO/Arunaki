@@ -151,6 +151,10 @@ export function UnifiedWorkstationPage() {
   }, []);
 
   useEffect(() => {
+    setOptimisticMessages([]);
+  }, [selectedWorkspaceId, activeChatId]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages, optimisticMessages, isStreaming]);
 
@@ -247,110 +251,122 @@ export function UnifiedWorkstationPage() {
     setInputPrompt("");
 
     const userMessageId = `user-${Date.now()}`;
-    const newMsg: Message = {
+    const assistantMessageId = `assistant-${Date.now()}`;
+
+    const newUserMsg: Message = {
       id: userMessageId,
       role: "user",
       content: userText,
       createdAt: new Date().toISOString(),
     };
 
-    setOptimisticMessages((prev) => [...prev, newMsg]);
+    const newAssistantMsg: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      createdAt: new Date().toISOString(),
+    };
+
+    setOptimisticMessages((prev) => [...prev, newUserMsg, newAssistantMsg]);
     setIsStreaming(true);
 
-    if (selectedWorkspaceId) {
-      try {
-        await fetchEventSource(`${API_BASE}/workspaces/${selectedWorkspaceId}/agent/stream`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userGoal: userText }),
-          onmessage(msg) {
-            try {
-              const event = JSON.parse(msg.data);
-              if (event.type === "tool_live_status") {
-                setLiveStatus(event.data);
-              } else if (event.type === "text_delta" && event.data) {
-                const canvasText = extractCanvasContent(event.data);
-                if (canvasText) {
-                  handleTriggerCanvas({
-                    id: `canvas-${Date.now()}`,
-                    title: "Calculation / Structured Document",
-                    brandColorHeader: "#1A191B",
-                    plainTextContent: canvasText,
-                    createdAt: new Date().toISOString(),
-                  });
-                }
-              }
-            } catch {}
-          },
-          onclose() {
-            setIsStreaming(false);
-            setLiveStatus(null);
-            queryClient.invalidateQueries({ queryKey: ["chat-messages"] });
-            refetchFiles();
-          },
-          onerror(err) {
-            setIsStreaming(false);
-            setLiveStatus(null);
-            toast.error("Failed to run workspace agent");
-            throw err;
-          },
-        });
-      } catch {
-        setIsStreaming(false);
-      }
-    } else {
-      let chatIdToUse = activeChatId;
-      if (!chatIdToUse) {
-        try {
-          const createRes = await apiFetch(`${API_BASE}/chat`, {
-            method: "POST",
-            body: JSON.stringify({ title: userText.slice(0, 30) }),
-          });
-          const createJson = await createRes.json();
-          chatIdToUse = createJson.data.id;
-          setSearchParams({ chatId: chatIdToUse });
-        } catch {
-          setIsStreaming(false);
-          toast.error("Failed to create a new conversation");
-          return;
-        }
-      }
+    const apiKey = import.meta.env.VITE_ARUNAKI_API_KEY;
+    const streamHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (apiKey) {
+      streamHeaders["x-api-key"] = apiKey;
+    }
 
+    let chatIdToUse = activeChatId;
+    if (!chatIdToUse) {
       try {
-        await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
+        const createRes = await apiFetch(`${API_BASE}/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: userText }),
-          onmessage(msg) {
-            try {
-              const event = JSON.parse(msg.data);
-              if (event.type === "text_delta" && event.data) {
-                const canvasText = extractCanvasContent(event.data);
-                if (canvasText) {
-                  handleTriggerCanvas({
-                    id: `canvas-${Date.now()}`,
-                    title: "AI Canvas Response",
-                    brandColorHeader: "#1A191B",
-                    plainTextContent: canvasText,
-                    createdAt: new Date().toISOString(),
-                  });
-                }
-              }
-            } catch {}
-          },
-          onclose() {
-            setIsStreaming(false);
-            queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
-          },
-          onerror(err) {
-            setIsStreaming(false);
-            toast.error("Failed to send chat message");
-            throw err;
-          },
+          body: JSON.stringify({
+            mode: selectedWorkspaceId ? "workspace" : "chat",
+            workspaceId: selectedWorkspaceId || undefined,
+            title: userText.slice(0, 30),
+          }),
         });
+        const createJson = await createRes.json();
+        chatIdToUse = createJson.data.id;
+        setSearchParams({ chatId: chatIdToUse });
       } catch {
         setIsStreaming(false);
+        toast.error("Failed to create a new conversation");
+        return;
       }
+    }
+
+    try {
+      await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
+        method: "POST",
+        headers: streamHeaders,
+        body: JSON.stringify({ content: userText }),
+        onmessage(msg) {
+          try {
+            const event = JSON.parse(msg.data);
+            if (event.type === "tool_live_status") {
+              setLiveStatus(event.data);
+            } else if (event.type === "text_delta" && event.data) {
+              setOptimisticMessages((prev) => {
+                const exists = prev.some((m) => m.id === assistantMessageId);
+                if (!exists) {
+                  return [
+                    ...prev,
+                    { id: assistantMessageId, role: "assistant", content: event.data, createdAt: new Date().toISOString() },
+                  ];
+                }
+                return prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? { ...m, content: m.content + event.data }
+                    : m
+                );
+              });
+              const canvasText = extractCanvasContent(event.data);
+              if (canvasText) {
+                handleTriggerCanvas({
+                  id: `canvas-${Date.now()}`,
+                  title: selectedWorkspaceId ? "Calculation / Structured Document" : "AI Canvas Response",
+                  brandColorHeader: "#1A191B",
+                  plainTextContent: canvasText,
+                  createdAt: new Date().toISOString(),
+                });
+              }
+            } else if (event.type === "done") {
+              setIsStreaming(false);
+              setLiveStatus(null);
+              queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
+              setOptimisticMessages([]);
+              refetchFiles();
+            } else if (event.type === "error") {
+              setIsStreaming(false);
+              setLiveStatus(null);
+              if (event.data?.message) {
+                toast.error(event.data.message);
+                setOptimisticMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantMessageId
+                      ? { ...m, content: m.content || `⚠️ Error: ${event.data.message}` }
+                      : m
+                  )
+                );
+              }
+            }
+          } catch {}
+        },
+        openWhenHidden: true,
+        onclose() {
+          setIsStreaming(false);
+          setLiveStatus(null);
+        },
+        onerror(err) {
+          setIsStreaming(false);
+          setLiveStatus(null);
+          throw err;
+        },
+      });
+    } catch {
+      setIsStreaming(false);
     }
   };
 

@@ -122,7 +122,7 @@ export class WorkspaceController {
   async streamAgent(
     @Param('id') id: string,
     @Body()
-    body: { goal: string; historyMessages?: any[]; modelId?: string },
+    body: { goal?: string; userGoal?: string; historyMessages?: any[]; modelId?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -152,12 +152,14 @@ export class WorkspaceController {
         return res.end();
       }
 
+      const goal = body.goal || body.userGoal || '';
+
       await this.workspaceRunnerService.runWorkspaceAgentStream(
         {
           workspaceId: id,
-          userGoal: body.goal,
+          userGoal: goal,
           historyMessages: body.historyMessages || [
-            { role: 'user', content: body.goal },
+            { role: 'user', content: goal },
           ],
           modelId: body.modelId,
         },

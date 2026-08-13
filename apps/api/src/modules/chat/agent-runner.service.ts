@@ -522,7 +522,38 @@ export class AgentRunnerService {
           messages.splice(todoIdx, 1);
         }
 
-        const aiResponse = await this.aiService.chat(messages, tools);
+        let aiResponse: { content: string; toolCalls: any[]; usage?: any } = { content: '', toolCalls: [] };
+        try {
+          let streamedText = '';
+          const streamedToolCalls: any[] = [];
+          for await (const chunk of this.aiService.chatStream(messages, tools)) {
+            if (chunk.type === 'content' && chunk.content) {
+              streamedText += chunk.content;
+              onEvent({ type: 'text_delta', data: chunk.content });
+            } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+              streamedToolCalls.push({
+                id: chunk.toolCall.id,
+                type: 'function',
+                function: {
+                  name: chunk.toolCall.name,
+                  arguments: chunk.toolCall.arguments,
+                },
+              });
+            }
+          }
+          aiResponse = {
+            content: streamedText,
+            toolCalls: streamedToolCalls,
+            usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          };
+        } catch (err: any) {
+          this.logger.warn(`chatStream failed, falling back to chat: ${err.message}`);
+          aiResponse = await this.aiService.chat(messages, tools);
+          if (aiResponse.content) {
+            onEvent({ type: 'text_delta', data: aiResponse.content });
+          }
+        }
+
         budget.consume(aiResponse.usage?.totalTokens || 0);
         if (budget.exceeded) {
           this.logger.warn(
@@ -534,15 +565,11 @@ export class AgentRunnerService {
           break;
         }
 
-      if (aiResponse.content) {
-        onEvent({ type: 'text_delta', data: aiResponse.content + (aiResponse.toolCalls.length > 0 ? '\n\n' : '') });
-      }
-
-      if (aiResponse.toolCalls.length === 0) {
-        finalContent = aiResponse.content;
-        reachedMaxRounds = false;
-        break;
-      }
+        if (aiResponse.toolCalls.length === 0) {
+          finalContent = aiResponse.content;
+          reachedMaxRounds = false;
+          break;
+        }
 
       // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
       const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
