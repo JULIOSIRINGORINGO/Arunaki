@@ -1,315 +1,26 @@
 import { useState, useMemo } from "react";
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  FileText, 
-  FileImage, 
-  FileSpreadsheet, 
-  File, 
-  Folder, 
-  FolderOpen, 
-  Search, 
-  FilePlus, 
-  FolderPlus, 
-  RotateCw, 
-  Trash2, 
-  Edit3, 
-  X, 
-  FileCode, 
-  Sparkles 
+import {
+  FolderOpen,
+  Search,
+  FilePlus,
+  FolderPlus,
+  RotateCw,
 } from "lucide-react";
-import { toast } from "sonner";
+import {
+  FileItem,
+  NativeNode,
+  TreeNode,
+  buildTree,
+  nativeToTreeNodes,
+} from "./tree-utils";
+import { TreeNodeItem } from "./TreeNodeItem";
 import { API_BASE, apiFetch } from "../../lib/api";
 
-interface FileItem {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-}
-
-// Native tree node from Electron IPC (getFolderTree)
-interface NativeNode {
-  name: string;
-  path: string;
-  type: "file" | "directory";
-  size?: number;
-  ext?: string;
-  children?: NativeNode[];
-}
-
-interface TreeNode {
-  name: string;
-  isDir: boolean;
-  children: TreeNode[];
-  file?: FileItem;
-  nativePath?: string;
-  size?: number;
-}
-
-
-
-
-function buildTree(files: FileItem[]): TreeNode[] {
-  const root: TreeNode[] = [];
-
-  for (const file of files) {
-    const parts = file.name.replace(/\\/g, "/").split("/");
-    let current = root;
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      const isLast = i === parts.length - 1;
-
-      if (isLast) {
-        current.push({ name: part, isDir: false, children: [], file });
-      } else {
-        let existing = current.find((n) => n.name === part && n.isDir);
-        if (!existing) {
-          existing = { name: part, isDir: true, children: [] };
-          current.push(existing);
-        }
-        current = existing.children;
-      }
-    }
-  }
-
-  const sortNodes = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => {
-      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-    nodes.forEach((n) => {
-      if (n.isDir) sortNodes(n.children);
-    });
-  };
-  sortNodes(root);
-
-  return root;
-}
-
-// Convert native Electron tree to TreeNode format
-function nativeToTreeNodes(nodes: NativeNode[]): TreeNode[] {
-  return nodes.map((n) => ({
-    name: n.name,
-    isDir: n.type === "directory",
-    nativePath: n.path,
-    size: n.size,
-    children: n.children ? nativeToTreeNodes(n.children) : [],
-  }));
-}
-
-function getFileIcon(name: string) {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (["docx", "doc"].includes(ext))
-    return <FileText className="w-4 h-4 text-blue-600 shrink-0 font-bold" />;
-  if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-red-500 shrink-0" />;
-  if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext))
-    return <FileImage className="w-4 h-4 text-blue-500 shrink-0" />;
-  if (["xlsx", "xls", "xlsm", "csv"].includes(ext))
-    return <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />;
-  if (["json", "js", "ts", "tsx", "html", "css", "py"].includes(ext))
-    return <FileCode className="w-4 h-4 text-purple-500 shrink-0" />;
-  if (["md", "txt"].includes(ext)) return <FileText className="w-4 h-4 text-gray-500 shrink-0" />;
-  return <File className="w-4 h-4 text-gray-400 shrink-0" />;
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
-}
-
-function TreeNodeItem({
-  node,
-  depth,
-  onFileClick,
-  onDeletePath,
-  onRenameClick,
-  onAnalyzeFile,
-  activeAgentAction,
-}: {
-  node: TreeNode;
-  depth: number;
-  onFileClick?: (path: string, name: string) => void;
-  onDeletePath?: (path: string, name: string) => void;
-  onRenameClick?: (path: string, currentName: string) => void;
-  onAnalyzeFile?: (name: string, path?: string) => void;
-  activeAgentAction?: { toolName: string; args?: any } | null;
-}) {
-  const [open, setOpen] = useState(depth < 2);
-  const isAgentTarget = Boolean(
-    activeAgentAction?.args?.filename &&
-      (activeAgentAction.args.filename.endsWith(node.name) ||
-        node.name.endsWith(activeAgentAction.args.filename))
-  );
-
-  if (node.isDir) {
-    return (
-      <div>
-        <div
-          className="group flex items-center justify-between py-[3px] px-1 hover:bg-gray-100/80 rounded-md transition-colors text-sm text-gray-700 select-none cursor-pointer"
-          style={{ paddingLeft: `${depth * 14 + 4}px` }}
-          onClick={() => setOpen(!open)}
-        >
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="shrink-0 text-gray-400">
-              {open ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </span>
-            {open ? (
-              <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
-            ) : (
-              <Folder className="w-4 h-4 text-amber-500 shrink-0" />
-            )}
-            <span className="truncate font-medium text-gray-800 text-xs">{node.name}</span>
-          </div>
-
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {node.nativePath && onRenameClick && (
-              <button
-                type="button"
-                title="Ubah Nama Folder"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRenameClick(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
-              >
-                <Edit3 className="w-3 h-3" />
-              </button>
-            )}
-            {node.nativePath && onDeletePath && (
-              <button
-                type="button"
-                title="Hapus Folder"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeletePath(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            )}
-            {node.children.length > 0 && (
-              <span className="text-[10px] text-gray-400 font-mono px-1">
-                {node.children.length}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {open && node.children.length > 0 && (
-          <div>
-            {node.children.map((child, i) => (
-              <TreeNodeItem
-                key={`${child.name}-${i}`}
-                node={child}
-                depth={depth + 1}
-                onFileClick={onFileClick}
-                onDeletePath={onDeletePath}
-                onRenameClick={onRenameClick}
-                onAnalyzeFile={onAnalyzeFile}
-                activeAgentAction={activeAgentAction}
-              />
-            ))}
-          </div>
-        )}
-        {open && node.children.length === 0 && (
-          <div
-            className="text-[11px] text-gray-400 italic py-1"
-            style={{ paddingLeft: `${(depth + 1) * 14 + 4}px` }}
-          >
-            folder kosong
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      onClick={() =>
-        node.nativePath
-          ? onFileClick?.(node.nativePath, node.name)
-          : onFileClick?.(node.name, node.name)
-      }
-      className={`group flex items-center justify-between py-[3px] px-1 rounded-md transition-all text-xs text-gray-600 select-none cursor-pointer ${
-        isAgentTarget ? "bg-amber-100/90 text-amber-900 font-semibold ring-1 ring-amber-400 animate-pulse" : "hover:bg-gray-100/90"
-      }`}
-      style={{ paddingLeft: `${depth * 14 + 4}px` }}
-    >
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        {getFileIcon(node.name)}
-        <span className="truncate group-hover:text-gray-900 font-normal">{node.name}</span>
-        {isAgentTarget && (
-          <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[9px] font-bold shrink-0 animate-pulse">
-            🤖 AI Working...
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-gray-400 font-mono group-hover:hidden">
-          {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
-        </span>
-
-        <div className="hidden group-hover:flex items-center gap-0.5">
-          {onAnalyzeFile && (
-            <button
-              type="button"
-              title="Minta AI Analisis File Ini"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAnalyzeFile(node.name, node.nativePath);
-              }}
-              className="p-1 hover:bg-amber-100 hover:text-amber-700 rounded text-amber-500 transition-colors"
-            >
-              <Sparkles className="w-3 h-3" />
-            </button>
-          )}
-          {node.nativePath && onRenameClick && (
-            <button
-              type="button"
-              title="Ubah Nama File"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRenameClick(node.nativePath!, node.name);
-              }}
-              className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400"
-            >
-              <Edit3 className="w-3 h-3" />
-            </button>
-          )}
-          {node.nativePath && onDeletePath && (
-            <button
-              type="button"
-              title="Hapus File"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeletePath(node.nativePath!, node.name);
-              }}
-              className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface FileTreeProps {
+export interface FileTreeProps {
   files: FileItem[];
   workspaceName: string;
   workspaceFolderPath?: string;
-  nativeTree?: NativeNode[]; // from Electron IPC
+  nativeTree?: NativeNode[];
   onFileClick?: (path: string, name: string, content?: string) => void;
   onRefresh?: () => void;
   onCreateFile?: (fileName: string) => void;
@@ -323,7 +34,6 @@ interface FileTreeProps {
 export default function FileTree({
   files,
   workspaceName,
-  workspaceFolderPath,
   nativeTree,
   onFileClick,
   onRefresh,
@@ -335,12 +45,8 @@ export default function FileTree({
   activeAgentAction,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
-
-  // New File / Folder Prompt Modal
   const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
   const [newItemName, setNewItemName] = useState("");
-
-  // Rename File / Folder Modal
   const [renameModalState, setRenameModalState] = useState<{ oldPath: string; oldName: string } | null>(null);
   const [renameNewName, setRenameNewName] = useState("");
 
@@ -359,10 +65,7 @@ export default function FileTree({
         .map((node) => {
           if (node.isDir) {
             const children = filterNodes(node.children);
-            if (
-              children.length > 0 ||
-              node.name.toLowerCase().includes(lower)
-            ) {
+            if (children.length > 0 || node.name.toLowerCase().includes(lower)) {
               return { ...node, children };
             }
             return null;
@@ -375,50 +78,20 @@ export default function FileTree({
     return filterNodes(tree);
   }, [tree, search]);
 
-  const countFiles = (nodes: TreeNode[]): number =>
-    nodes.reduce(
-      (sum, n) => sum + (n.isDir ? countFiles(n.children) : 1),
-      0
-    );
-  const totalFiles = countFiles(tree);
-
   const handleItemClick = async (filePath: string, fileName: string) => {
     try {
-      const ext = fileName.split('.').pop()?.toLowerCase() || '';
-      // Office Files -> Open Native OS Office Application (Excel / Word / PPT)
-      if (['xlsx', 'xlsm', 'xls', 'docx', 'doc', 'pptx', 'ppt'].includes(ext)) {
-        if (['xlsx', 'xlsm', 'xls'].includes(ext) && (window as any).arunakiDesktop?.openExcelNative) {
-          (window as any).arunakiDesktop.openExcelNative(filePath);
-          toast.info(`Membuka "${fileName}" di Microsoft Excel Desktop...`);
-        } else if ((window as any).arunakiDesktop?.openPath) {
-          (window as any).arunakiDesktop.openPath(filePath);
-          toast.info(`Membuka "${fileName}" di aplikasi OS bawaan...`);
-        } else {
-          toast.info("Fitur buka aplikasi Office hanya tersedia di aplikasi Desktop Arunaki.");
-        }
-        return;
-      }
-
-      // Read actual file content from disk or Web API
       let fileContent = "";
       if ((window as any).arunakiDesktop?.readFile) {
         const res = await (window as any).arunakiDesktop.readFile(filePath);
-        if (res?.content) {
-          fileContent = res.content;
-        }
+        if (res?.content) fileContent = res.content;
       } else {
         const targetFile = files.find((f) => f.name.endsWith(fileName) || fileName.endsWith(f.name));
         if (targetFile?.id) {
-try {
-              const res = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
-              if (!res.ok) throw new Error("Failed to fetch");
-              const data = await res.json();
-              if (data.data?.content) {
-                fileContent = data.data.content;
-              }
-            } catch {
-              // ignore
-            }
+          try {
+            const res = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
+            const data = await res.json();
+            if (data.data?.content) fileContent = data.data.content;
+          } catch {}
         }
       }
 
@@ -427,44 +100,19 @@ try {
       }
     } catch (err: any) {
       console.error("Error opening file:", err);
-      if (onFileClick) {
-        onFileClick(filePath, fileName, "");
-      }
     }
   };
 
   const handleCreateNewItemSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
-
-    if (promptModal === "file" && onCreateFile) {
-      onCreateFile(newItemName.trim());
-    } else if (promptModal === "folder" && onCreateFolder) {
-      onCreateFolder(newItemName.trim());
-    }
+    if (promptModal === "file" && onCreateFile) onCreateFile(newItemName.trim());
+    else if (promptModal === "folder" && onCreateFolder) onCreateFolder(newItemName.trim());
     setPromptModal(null);
-    setNewItemName("");
-  };
-
-  const handleOpenRenameModal = (path: string, currentName: string) => {
-    setRenameModalState({ oldPath: path, oldName: currentName });
-    setRenameNewName(currentName);
-  };
-
-  const handleRenameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!renameModalState || !renameNewName.trim()) return;
-
-    if (onRenamePath) {
-      onRenamePath(renameModalState.oldPath, renameModalState.oldName, renameNewName.trim());
-    }
-    setRenameModalState(null);
-    setRenameNewName("");
   };
 
   return (
     <div className="flex flex-col h-full bg-white rounded-[24px] border border-stone-800/10 shadow-sm overflow-hidden">
-      {/* Black Header Capsule Toolbar */}
       <div className="flex items-center justify-between px-5 h-11 min-h-[44px] bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
         <div className="flex items-center gap-2 min-w-0">
           <FolderOpen className="w-4 h-4 text-[#C4B5FD] shrink-0" />
@@ -473,7 +121,6 @@ try {
           </span>
         </div>
 
-        {/* Action Icons */}
         <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
@@ -494,7 +141,7 @@ try {
               setNewItemName("");
               setPromptModal("folder");
             }}
-            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-[#FF5E38] rounded-lg transition-colors cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </button>
@@ -512,7 +159,6 @@ try {
         </div>
       </div>
 
-      {/* Search Input */}
       <div className="p-2 border-b border-gray-100 bg-white">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -526,7 +172,6 @@ try {
         </div>
       </div>
 
-      {/* Tree Content */}
       <div className="flex-1 overflow-y-auto p-1.5 min-h-0">
         {filteredTree.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-6">
@@ -539,9 +184,12 @@ try {
                 key={`${node.name}-${i}`}
                 node={node}
                 depth={0}
-                onFileClick={handleItemClick}
+                onFileClick={(p, n) => handleItemClick(p, n)}
                 onDeletePath={onDeletePath}
-                onRenameClick={handleOpenRenameModal}
+                onRenameClick={(p, n) => {
+                  setRenameModalState({ oldPath: p, oldName: n });
+                  setRenameNewName(n);
+                }}
                 onAnalyzeFile={onAnalyzeFile}
                 activeAgentAction={activeAgentAction}
               />
@@ -550,66 +198,33 @@ try {
         )}
       </div>
 
-      {/* Footer Info */}
-      <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50/40 text-[10px] text-gray-400 flex items-center justify-between">
-        <span>{totalFiles} file terdaftar</span>
-        {workspaceFolderPath && <span className="truncate max-w-[120px] font-mono">{workspaceFolderPath}</span>}
-      </div>
-
-      {/* Modal Prompt Tambah File / Folder */}
       {promptModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
-                {promptModal === "file" ? (
-                  <>
-                    <FilePlus className="w-4 h-4 text-blue-500" /> Tambah File Baru
-                  </>
-                ) : (
-                  <>
-                    <FolderPlus className="w-4 h-4 text-amber-500" /> Tambah Folder Baru
-                  </>
-                )}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setPromptModal(null)}
-                className="text-gray-400 hover:text-gray-600 rounded p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-xs w-full shadow-xl border border-gray-200">
+            <h4 className="text-xs font-bold text-gray-900 mb-3">
+              {promptModal === "file" ? "Tambah File Baru" : "Tambah Folder Baru"}
+            </h4>
             <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">
-                  Nama {promptModal === "file" ? "File (contoh: catatan.txt, data.json)" : "Folder"}
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  placeholder={promptModal === "file" ? "nama-file.txt" : "nama-folder"}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder={promptModal === "file" ? "contoh: Laporan.xlsx" : "contoh: DokumenUsaha"}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#FF5E38]"
+              />
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setPromptModal(null)}
-                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md"
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg font-medium"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={!newItemName.trim()}
-                  className="px-3 py-1.5 text-xs bg-gray-900 hover:bg-black text-white font-medium rounded-md disabled:opacity-50"
+                  className="px-3 py-1 bg-[#FF5E38] text-white text-xs rounded-lg font-medium"
                 >
-                  Buat {promptModal === "file" ? "File" : "Folder"}
+                  Buat
                 </button>
               </div>
             </form>
@@ -617,51 +232,39 @@ try {
         </div>
       )}
 
-      {/* Modal Prompt Rename File / Folder */}
       {renameModalState && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-full max-w-sm p-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-blue-500" /> Ubah Nama File / Folder
-              </h3>
-              <button
-                type="button"
-                onClick={() => setRenameModalState(null)}
-                className="text-gray-400 hover:text-gray-600 rounded p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleRenameSubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">
-                  Nama Baru
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={renameNewName}
-                  onChange={(e) => setRenameNewName(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-xs w-full shadow-xl border border-gray-200">
+            <h4 className="text-xs font-bold text-gray-900 mb-3">Ubah Nama File / Folder</h4>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (onRenamePath && renameNewName.trim()) {
+                  onRenamePath(renameModalState.oldPath, renameModalState.oldName, renameNewName.trim());
+                }
+                setRenameModalState(null);
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="text"
+                value={renameNewName}
+                onChange={(e) => setRenameNewName(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#FF5E38]"
+              />
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setRenameModalState(null)}
-                  className="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md"
+                  className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg font-medium"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={!renameNewName.trim() || renameNewName === renameModalState.oldName}
-                  className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md disabled:opacity-50"
+                  className="px-3 py-1 bg-[#FF5E38] text-white text-xs rounded-lg font-medium"
                 >
-                  Ubah Nama
+                  Simpan
                 </button>
               </div>
             </form>
