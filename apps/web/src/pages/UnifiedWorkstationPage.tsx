@@ -155,7 +155,9 @@ export function UnifiedWorkstationPage() {
   }, [selectedWorkspaceId, activeChatId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    });
   }, [chatMessages, optimisticMessages, isStreaming]);
 
   const handleOpenFileTab = useCallback(
