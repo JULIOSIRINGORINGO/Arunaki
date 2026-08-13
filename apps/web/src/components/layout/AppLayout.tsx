@@ -33,9 +33,15 @@ export function AppLayout() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden font-sans select-none">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Menu Standar ("File", "Edit", "Tampilan", "Bantuan") + Logo Avatar */}
-      <header className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#2D2D2D]">
-        <div className="flex items-center gap-4">
+      {/* 1. HEADER ATAS (IDE TOPBAR): Integrated Window Drag Titlebar + IDE Menu + Logo Avatar */}
+      <header
+        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#2D2D2D]"
+        style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
+      >
+        <div
+          className="flex items-center gap-4"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        >
           <span className="text-[#FFFFFF] font-bold text-xs tracking-wider uppercase pr-3 border-r border-[#2D2D2D]">
             ARUNAKI IDE
           </span>
@@ -70,7 +76,10 @@ export function AppLayout() {
         </div>
 
         {/* Right side: Logo & Avatar */}
-        <div className="flex items-center gap-3">
+        <div
+          className="flex items-center gap-3"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        >
           <div className="w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#2D2D2D]">
             <ArunakiLogo className="w-4 h-4" fill="#FFFFFF" />
           </div>
