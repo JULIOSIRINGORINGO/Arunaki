@@ -32,7 +32,7 @@ function MarkdownContent({ content }: { content: string }) {
           <tr className="border-b border-gray-100 last:border-0">{children}</tr>
         ),
         th: ({ children }) => (
-          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <th className="text-left py-2 px-3 text-xs font-semibold text-gray-400">
             {children}
           </th>
         ),

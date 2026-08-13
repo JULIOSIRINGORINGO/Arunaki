@@ -92,7 +92,7 @@ export function WorkstationCenterPanel({
                   <FileSpreadsheet className="w-5 h-5 text-[#E5E5E5]" />
                   <h2 className="font-bold text-xs text-[#FFFFFF]">{activeTab.title}</h2>
                   <span className="text-[10px] text-[#A3A3A3] bg-[#262626] px-2 py-0.5 rounded font-mono border border-[#383838]">
-                    {activeTab.fileType?.toUpperCase()}
+                    {activeTab.fileType}
                   </span>
                 </div>
                 <span className="text-xs text-[#A3A3A3] truncate max-w-md">{activeTab.path}</span>

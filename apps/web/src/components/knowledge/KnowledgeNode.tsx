@@ -90,7 +90,7 @@ export function KnowledgeNode({ data, selected }: KnowledgeNodeProps) {
           <h3 className="text-xs font-bold text-white truncate">
             {data.title}
           </h3>
-          <p className="text-[9px] text-orange-100 font-mono uppercase tracking-wider truncate mt-0.5">
+          <p className="text-[9px] text-orange-100 font-mono tracking-wide truncate mt-0.5">
             {data.type}
           </p>
         </div>

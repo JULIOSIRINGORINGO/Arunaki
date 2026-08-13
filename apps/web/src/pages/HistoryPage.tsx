@@ -52,7 +52,7 @@ export function HistoryPage() {
         {mockHistory.map((group) => (
           <div key={group.group} className="space-y-2">
             <div className="flex items-center gap-2.5 mb-2.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#A3A3A3] tracking-wide">
                 <Clock size={11} />
                 {group.group}
               </div>

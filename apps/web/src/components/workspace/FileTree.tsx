@@ -112,7 +112,7 @@ export default function FileTree({
               <ChevronRight className="w-3.5 h-3.5" />
             )}
           </span>
-          <span className="text-[#FFFFFF] font-bold text-xs uppercase tracking-wider truncate">
+          <span className="text-[#FFFFFF] font-semibold text-xs tracking-wide truncate">
             {workspaceName || "Workspace"}
           </span>
         </button>
