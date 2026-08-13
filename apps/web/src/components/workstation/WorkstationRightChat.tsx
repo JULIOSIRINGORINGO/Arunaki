@@ -1,6 +1,6 @@
 import { RefObject } from "react";
 import Markdown from "react-markdown";
-import { Bot, X, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
+import { Bot, PanelRightClose, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "../chat/LiveExecutionBadge";
 import { LiveMirrorCard } from "../chat/LiveMirrorCard";
 import { cn } from "../../lib/utils";
@@ -50,16 +50,17 @@ export function WorkstationRightChat({
 
   return (
     <aside className="w-80 bg-[#121212] text-[#FFFFFF] border-l border-[#2D2D2D] flex flex-col shrink-0">
-      <div className="p-3 border-b border-[#2D2D2D] flex items-center justify-between">
-        <span className="text-xs font-bold tracking-wider text-[#A3A3A3] uppercase flex items-center gap-2">
-          <Bot className="w-4 h-4 text-[#FFFFFF]" />
-          CHAT AREA
+      <div className="px-3 py-2.5 border-b border-[#2D2D2D] flex items-center justify-between">
+        <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
+          <Bot className="w-3.5 h-3.5 text-[#A3A3A3]" />
+          Chat
         </span>
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1 rounded transition-colors cursor-pointer"
+          className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          title="Tutup Panel Chat"
         >
-          <X className="w-4 h-4" />
+          <PanelRightClose className="w-4 h-4" />
         </button>
       </div>
 

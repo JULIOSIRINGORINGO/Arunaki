@@ -1,4 +1,4 @@
-import { Folder, FolderOpen, Search, X } from "lucide-react";
+import { Folder, Search, PanelLeftClose } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 
 interface WorkspaceFile {
@@ -21,7 +21,7 @@ interface WorkstationLeftExplorerProps {
   activeWorkspace: Workspace | null;
   workspaceFiles: WorkspaceFile[];
   onOpenFileTab: (path: string, name: string, content?: string) => void;
-  onOpenFolderModal: () => void;
+  onOpenFolderModal?: () => void;
 }
 
 export function WorkstationLeftExplorer({
@@ -30,25 +30,27 @@ export function WorkstationLeftExplorer({
   activeWorkspace,
   workspaceFiles,
   onOpenFileTab,
-  onOpenFolderModal,
 }: WorkstationLeftExplorerProps) {
   if (collapsed) return null;
 
   return (
-    <aside className="w-64 bg-[#121212] text-[#FFFFFF] border-r border-[#2D2D2D] flex flex-col shrink-0">
-      <div className="p-3 border-b border-[#2D2D2D] flex items-center justify-between">
-        <span className="text-xs font-bold tracking-wider text-[#A3A3A3] uppercase flex items-center gap-2">
-          <Folder className="w-4 h-4 text-[#FFFFFF]" />
-          EKSPLORE FOLDER
+    <aside className="w-64 bg-[#121212] text-[#FFFFFF] border-r border-[#262626] flex flex-col shrink-0">
+      {/* 1. Header Panel: Title Case 1 Kata ("Eksplore") & Tombol Toggle Modern */}
+      <div className="px-3 py-2.5 border-b border-[#262626] flex items-center justify-between">
+        <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
+          <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
+          Eksplore
         </span>
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1 rounded transition-colors cursor-pointer"
+          className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          title="Tutup Panel Eksplore"
         >
-          <X className="w-4 h-4" />
+          <PanelLeftClose className="w-4 h-4" />
         </button>
       </div>
 
+      {/* 2. File Explorer Tree / Area Empty State Minimalis */}
       {activeWorkspace ? (
         <div className="flex-1 flex flex-col p-2 overflow-y-auto">
           <div className="mb-2 px-1">
@@ -57,7 +59,7 @@ export function WorkstationLeftExplorer({
               <input
                 type="text"
                 placeholder="Cari file..."
-                className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                className="w-full bg-[#181818] border border-[#262626] rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#404040]"
               />
             </div>
           </div>
@@ -71,15 +73,10 @@ export function WorkstationLeftExplorer({
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <FolderOpen className="w-10 h-10 text-[#525252] mb-2" />
-          <p className="text-xs text-[#A3A3A3] mb-3">Belum ada folder workspace yang dibuka</p>
-          <button
-            onClick={onOpenFolderModal}
-            className="w-full py-2 bg-[#262626] hover:bg-[#333333] border border-[#404040] text-white rounded-md text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Buka Folder Workspace
-          </button>
+        /* 3. Placeholder Kosong Minimalis (No Button, Soft Opacity Icon) */
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Folder className="w-8 h-8 text-[#A3A3A3] opacity-35 mb-2 stroke-[1.5]" />
+          <p className="text-xs text-[#737373] font-normal">Belum ada folder terbuka</p>
         </div>
       )}
     </aside>
