@@ -162,8 +162,8 @@ export function ModelProviderSettings({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-[#F4EFE6]">Custom LLM Provider Catalogs</h3>
-          <p className="text-xs text-stone-400">
+          <h3 className="text-sm font-bold text-white">Custom LLM Provider Catalogs</h3>
+          <p className="text-xs text-[#A3A3A3]">
             Manage API keys, endpoint URLs, and dynamic model fallback.
           </p>
         </div>
@@ -172,7 +172,7 @@ export function ModelProviderSettings({
             resetForm();
             setShowAddForm(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5E38] hover:bg-[#e04e2a] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Provider</span>
@@ -180,18 +180,18 @@ export function ModelProviderSettings({
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleSave} className="p-4 bg-[#252428] rounded-2xl border border-stone-700 space-y-4">
+        <form onSubmit={handleSave} className="p-4 bg-[#181818] rounded-xl border border-[#262626] space-y-4">
           <h4 className="text-xs font-bold text-white">
             {editingId ? "Edit Provider" : "Add New Provider"}
           </h4>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Provider Type</label>
+              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Provider Type</label>
               <select
                 value={form.type}
                 onChange={(e) => handleTypeChange(e.target.value)}
-                className="w-full bg-[#1A191B] border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#525252]"
               >
                 {PROVIDER_TYPES.map((pt) => (
                   <option key={pt.value} value={pt.value}>{pt.label}</option>
@@ -200,26 +200,26 @@ export function ModelProviderSettings({
             </div>
 
             <div>
-              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Display Name</label>
+              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Display Name</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Example: OpenRouter Primary"
-                className="w-full bg-[#1A191B] border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] text-stone-300 mb-1 font-medium">API Key</label>
+            <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">API Key</label>
             <input
               type="password"
               value={form.apiKey}
               onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
               placeholder="sk-..."
-              className="w-full bg-[#1A191B] border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+              className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
             />
           </div>
 
@@ -227,13 +227,13 @@ export function ModelProviderSettings({
             <button
               type="button"
               onClick={resetForm}
-              className="px-3 py-1.5 bg-[#1A191B] text-stone-400 text-xs rounded-lg font-medium cursor-pointer"
+              className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] text-white text-xs rounded-lg font-medium cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-3 py-1.5 bg-[#FF5E38] text-white text-xs rounded-lg font-semibold cursor-pointer"
+              className="px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-lg font-semibold cursor-pointer"
             >
               Save
             </button>
@@ -243,27 +243,27 @@ export function ModelProviderSettings({
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-[#FF5E38] animate-spin" />
+          <Loader2 className="w-6 h-6 text-white animate-spin" />
         </div>
       ) : (
         <div className="space-y-2">
           {providers.map((p) => (
             <div
               key={p.id}
-              className="p-3 bg-[#252428] rounded-xl border border-stone-800 flex items-center justify-between text-xs"
+              className="p-3 bg-[#181818] rounded-xl border border-[#262626] flex items-center justify-between text-xs"
             >
               <div className="flex items-center gap-3">
                 <div
                   onClick={() => handleToggleActive(p)}
                   className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border ${
-                    p.active ? "bg-[#FF5E38] border-[#FF5E38] text-white" : "border-stone-600"
+                    p.active ? "bg-white border-white text-black" : "border-[#525252]"
                   }`}
                 >
-                  {p.active && <Check className="w-3 h-3" />}
+                  {p.active && <Check className="w-3 h-3 stroke-[3]" />}
                 </div>
                 <div>
                   <span className="font-semibold text-white">{p.name}</span>
-                  <span className="text-[10px] text-stone-400 block">{p.model}</span>
+                  <span className="text-[10px] text-[#A3A3A3] block">{p.model}</span>
                 </div>
               </div>
 
@@ -271,14 +271,14 @@ export function ModelProviderSettings({
                 <button
                   onClick={() => handleTestConnection(p.id)}
                   disabled={testingId === p.id}
-                  className="px-2.5 py-1 bg-[#1A191B] hover:bg-stone-800 text-[#C4B5FD] text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3" />}
+                  {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
                   <span>Tes</span>
                 </button>
                 <button
                   onClick={() => handleDelete(p.id)}
-                  className="p-1 text-stone-400 hover:text-red-400 rounded cursor-pointer"
+                  className="p-1 text-[#A3A3A3] hover:text-red-400 rounded cursor-pointer transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

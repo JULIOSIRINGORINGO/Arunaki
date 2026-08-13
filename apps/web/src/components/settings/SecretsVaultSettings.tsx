@@ -35,16 +35,16 @@ export function SecretsVaultSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-bold text-[#F4EFE6] flex items-center gap-2">
-          <Shield className="w-4 h-4 text-[#FF5E38]" />
+        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+          <Shield className="w-4 h-4 text-emerald-400" />
           Encrypted Secrets Vault (AES-256-GCM)
         </h3>
-        <p className="text-xs text-stone-400">
+        <p className="text-xs text-[#A3A3A3]">
           Securely store API keys and credentials encrypted on your local device.
         </p>
       </div>
 
-      <form onSubmit={handleAddSecret} className="p-4 bg-[#252428] rounded-2xl border border-stone-800 space-y-3">
+      <form onSubmit={handleAddSecret} className="p-4 bg-[#181818] rounded-xl border border-[#262626] space-y-3">
         <h4 className="text-xs font-bold text-white">Save New Secret Key</h4>
         <div className="grid grid-cols-2 gap-3">
           <input
@@ -52,20 +52,20 @@ export function SecretsVaultSettings() {
             placeholder="Key Name (e.g. OPENAI_API_KEY)"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
-            className="bg-[#1A191B] border border-stone-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#FF5E38]"
+            className="bg-[#121212] border border-[#262626] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
           />
           <input
             type="password"
             placeholder="Secret Key Value"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
-            className="bg-[#1A191B] border border-stone-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#FF5E38]"
+            className="bg-[#121212] border border-[#262626] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5E38] hover:bg-[#e04e2a] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Encrypt & Save</span>
@@ -77,15 +77,15 @@ export function SecretsVaultSettings() {
         {secrets.map((s) => (
           <div
             key={s.key}
-            className="p-3 bg-[#252428] rounded-xl border border-stone-800 flex items-center justify-between text-xs"
+            className="p-3 bg-[#181818] rounded-xl border border-[#262626] flex items-center justify-between text-xs"
           >
             <div>
               <span className="font-bold text-white block">{s.key}</span>
-              <span className="text-[10px] text-stone-400 font-mono">{s.masked} • {s.domain}</span>
+              <span className="text-[10px] text-[#A3A3A3] font-mono">{s.masked} • {s.domain}</span>
             </div>
             <button
               onClick={() => handleDeleteSecret(s.key)}
-              className="p-1 text-stone-400 hover:text-red-400 rounded cursor-pointer"
+              className="p-1 text-[#A3A3A3] hover:text-red-400 rounded cursor-pointer transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
