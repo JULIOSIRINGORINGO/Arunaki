@@ -1,5 +1,7 @@
-import { Folder, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
+import { NativeNode } from "../workspace/tree-utils";
 
 interface WorkspaceFile {
   id: string;
@@ -24,6 +26,8 @@ interface WorkstationLeftExplorerProps {
   onOpenFolderModal?: () => void;
 }
 
+type LoadState = "idle" | "loading" | "done" | "error";
+
 export function WorkstationLeftExplorer({
   collapsed,
   onClose,
@@ -31,7 +35,72 @@ export function WorkstationLeftExplorer({
   workspaceFiles,
   onOpenFileTab,
 }: WorkstationLeftExplorerProps) {
-  /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
+  const [nativeTree, setNativeTree] = useState<NativeNode[]>([]);
+  const [loadState, setLoadState] = useState<LoadState>("idle");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const lastLoadedPath = useRef<string | null>(null);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Core: load native filesystem tree via Electron IPC
+  // ─────────────────────────────────────────────────────────────────────────
+  const loadNativeTree = useCallback(async (rootPath: string, force = false) => {
+    const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+
+    if (!desktop?.getFolderTree) {
+      // Running in browser (non-Electron) — skip native read, fall through to API files
+      console.log("[Explorer] Not running in Electron — no getFolderTree available");
+      setLoadState("done");
+      return;
+    }
+
+    // Avoid re-loading same path unless forced
+    if (!force && lastLoadedPath.current === rootPath) return;
+
+    console.log(`[Explorer] Loading native tree for: ${rootPath}`);
+    setLoadState("loading");
+
+    try {
+      const result = await desktop.getFolderTree(rootPath);
+      console.log("[Explorer] getFolderTree result:", result);
+
+      if (result?.tree && Array.isArray(result.tree)) {
+        console.log(`[Explorer] Got ${result.tree.length} root entries from disk`);
+        setNativeTree(result.tree as NativeNode[]);
+        lastLoadedPath.current = rootPath;
+        setLoadState("done");
+      } else {
+        console.warn("[Explorer] getFolderTree returned unexpected shape:", result);
+        setNativeTree([]);
+        setLoadState("error");
+      }
+    } catch (err: any) {
+      console.error("[Explorer] getFolderTree error:", err);
+      setNativeTree([]);
+      setLoadState("error");
+    }
+  }, []);
+
+  // Load whenever active workspace (or its rootPath) changes
+  useEffect(() => {
+    if (!activeWorkspace?.rootPath) {
+      setNativeTree([]);
+      setLoadState("idle");
+      lastLoadedPath.current = null;
+      return;
+    }
+    loadNativeTree(activeWorkspace.rootPath);
+  }, [activeWorkspace?.rootPath, loadNativeTree]);
+
+  const handleRefresh = useCallback(async () => {
+    if (!activeWorkspace?.rootPath || isRefreshing) return;
+    setIsRefreshing(true);
+    await loadNativeTree(activeWorkspace.rootPath, true);
+    setIsRefreshing(false);
+  }, [activeWorkspace?.rootPath, isRefreshing, loadNativeTree]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Collapsed strip
+  // ─────────────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
       <aside className="w-10 bg-[#121212] border-r border-[#383838] flex flex-col items-center py-2 shrink-0 select-none">
@@ -49,35 +118,90 @@ export function WorkstationLeftExplorer({
     );
   }
 
-  /* Full Expanded Panel */
+  // ─────────────────────────────────────────────────────────────────────────
+  // Decide what the FileTree receives
+  // When a native tree is available (Electron), use it.
+  // Fall back to API-indexed files (workspaceFiles) in browser-only mode.
+  // ─────────────────────────────────────────────────────────────────────────
+  const hasNative = nativeTree.length > 0;
+  const apiFiles = workspaceFiles.map((f) => ({
+    id: f.id,
+    name: f.name,
+    type: f.type,
+    size: f.size,
+  }));
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Full expanded panel
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <aside className="w-64 bg-[#121212] text-[#FFFFFF] border-r border-[#383838] flex flex-col shrink-0">
-      {/* 1. Header Panel: Title Case ("Eksplore") & Tombol Toggle Collapse */}
+      {/* Panel Header */}
       <div className="px-3 py-2.5 border-b border-[#383838] flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
           <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
           Eksplore
         </span>
-        <button
-          onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-          title="Tutup Panel Eksplore"
-        >
-          <PanelLeftClose className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {/* Refresh button — only shown when workspace is connected */}
+          {activeWorkspace?.rootPath && (
+            <button
+              onClick={handleRefresh}
+              className={`text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer ${isRefreshing ? "animate-spin" : ""}`}
+              title="Refresh Eksplore (Baca Ulang dari Disk)"
+              disabled={isRefreshing}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            title="Tutup Panel Eksplore"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* 2. File Explorer Tree / Area Empty State Minimalis (Rata & Rapi Tanpa Searchbar) */}
+      {/* File Explorer Area */}
       {activeWorkspace ? (
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <FileTree
-            files={workspaceFiles}
-            workspaceName={activeWorkspace?.name || "Workspace"}
-            onFileClick={(path, name, content) => onOpenFileTab(path, name, content)}
-          />
+        <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
+          {loadState === "loading" ? (
+            /* Loading skeleton */
+            <div className="flex flex-col gap-1 px-3 py-3 animate-pulse">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-4 rounded bg-[#262626]"
+                  style={{ width: `${60 + Math.random() * 30}%`, opacity: 1 - i * 0.1 }}
+                />
+              ))}
+            </div>
+          ) : loadState === "error" ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center">
+              <Folder className="w-7 h-7 text-[#737373] opacity-40 mb-2 stroke-[1.5]" />
+              <p className="text-xs text-[#737373]">Gagal membaca folder</p>
+              <button
+                onClick={handleRefresh}
+                className="mt-2 text-[10px] text-[#A3A3A3] hover:text-white underline cursor-pointer"
+              >
+                Coba lagi
+              </button>
+            </div>
+          ) : (
+            <FileTree
+              files={hasNative ? [] : apiFiles}
+              nativeTree={hasNative ? nativeTree : undefined}
+              workspaceName={activeWorkspace.name || "Workspace"}
+              workspaceFolderPath={activeWorkspace.rootPath || undefined}
+              onFileClick={(p, n, content) => onOpenFileTab(p, n, content)}
+              onRefresh={handleRefresh}
+            />
+          )}
         </div>
       ) : (
-        /* 3. Placeholder Kosong Minimalis (No Button, Soft Opacity Icon) */
+        /* No workspace connected */
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Folder className="w-8 h-8 text-[#A3A3A3] opacity-35 mb-2 stroke-[1.5]" />
           <p className="text-xs text-[#737373] font-normal">Belum ada folder terbuka</p>

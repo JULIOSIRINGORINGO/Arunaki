@@ -165,6 +165,22 @@ app.whenReady().then(() => {
 
   // VS Code-like: get full folder tree (structure only, no file content)
   ipcMain.handle('fs:getFolderTree', async (_event, folderPath) => {
+    // Normalize the incoming path so Windows backslash paths work correctly
+    const normalizedPath = path.normalize(folderPath);
+    console.log(`[main] fs:getFolderTree called with: "${folderPath}" → normalized: "${normalizedPath}"`);
+
+    // Verify the folder actually exists before scanning
+    try {
+      const stat = await fs.stat(normalizedPath);
+      if (!stat.isDirectory()) {
+        console.warn(`[main] fs:getFolderTree: path is not a directory: "${normalizedPath}"`);
+        return { tree: [], folderName: path.basename(normalizedPath), folderPath: normalizedPath, error: 'Not a directory' };
+      }
+    } catch (err) {
+      console.error(`[main] fs:getFolderTree: cannot stat path "${normalizedPath}":`, err.message);
+      return { tree: [], folderName: path.basename(normalizedPath), folderPath: normalizedPath, error: err.message };
+    }
+
     const IGNORED = new Set([
       'node_modules', '.git', 'dist', 'build', '.next', '.venv',
       '__pycache__', '.idea', '.vscode', 'coverage', '.cache', '.nuxt',
@@ -175,7 +191,8 @@ app.whenReady().then(() => {
       let entries;
       try {
         entries = await fs.readdir(dir, { withFileTypes: true });
-      } catch {
+      } catch (err) {
+        console.warn(`[main] readdir failed for "${dir}":`, err.message);
         return [];
       }
 
@@ -203,7 +220,7 @@ app.whenReady().then(() => {
               ext: path.extname(entry.name).toLowerCase().replace('.', ''),
             });
           } catch {
-            // skip
+            // skip unreadable files silently
           }
         }
       }
@@ -217,9 +234,10 @@ app.whenReady().then(() => {
       return nodes;
     };
 
-    const tree = await buildTree(folderPath);
-    workspaceRoot = path.resolve(folderPath);
-    return { tree, folderName: path.basename(folderPath), folderPath };
+    const tree = await buildTree(normalizedPath);
+    workspaceRoot = path.resolve(normalizedPath);
+    console.log(`[main] fs:getFolderTree done — ${tree.length} root entries, workspaceRoot set to "${workspaceRoot}"`);
+    return { tree, folderName: path.basename(normalizedPath), folderPath: normalizedPath };
   });
 
   // Read individual file content on demand
