@@ -331,7 +331,7 @@ export function ModelProviderSettings({
         <form onSubmit={handleSave} className="p-4 bg-[#181818] rounded-xl border border-[#262626] space-y-4 shadow-lg">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-white flex items-center gap-2">
-              <Settings2 className="w-4 h-4 text-emerald-400" />
+              <Settings2 className="w-4 h-4 text-white" />
               {editingId ? "Sunting Provider Connection" : "Tambah Provider Connection Baru"}
             </h4>
             <span className="text-[10px] text-[#A3A3A3]">Simpan URL & API Key 1x</span>
@@ -408,7 +408,7 @@ export function ModelProviderSettings({
               disabled={isTestingForm}
               className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] text-white text-xs rounded-lg font-medium cursor-pointer flex items-center gap-1.5 border border-[#333333] transition-colors"
             >
-              {isTestingForm ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <Wifi className="w-3.5 h-3.5 text-emerald-400" />}
+              {isTestingForm ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Wifi className="w-3.5 h-3.5 text-[#A3A3A3]" />}
               <span>{isTestingForm ? "Testing Ping..." : "Test Connection"}</span>
             </button>
 
@@ -436,7 +436,7 @@ export function ModelProviderSettings({
           <Loader2 className="w-6 h-6 text-white animate-spin" />
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {providers.map((p) => {
             const result = testResults[p.id];
             const defaultModelsForType = DEFAULT_MODELS[p.type] || DEFAULT_MODELS["openai-compatible"] || [];
@@ -454,15 +454,15 @@ export function ModelProviderSettings({
                     : "bg-[#121212] border-[#262626] opacity-90 hover:opacity-100"
                 )}
               >
-                {/* 1-Line Compact Provider Row Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                {/* 2-Line Provider Card Header */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
                     <button
                       type="button"
                       onClick={() => handleToggleActive(p)}
                       title={p.active ? "Provider Utama (Aktif)" : "Jadikan Provider Utama"}
                       className={cn(
-                        "px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0",
+                        "px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0 mt-0.5",
                         p.active
                           ? "bg-white text-black border-white"
                           : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
@@ -472,30 +472,29 @@ export function ModelProviderSettings({
                       <span>{p.active ? "Provider Utama" : "Set Utama"}</span>
                     </button>
 
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-white text-sm">{p.name}</h4>
-                      <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded text-[#A3A3A3]">
-                        {p.type}
-                      </span>
-                      <span className="text-[11px] text-[#737373] font-mono">
-                        {p.baseUrl || "Default API Endpoint"}
-                      </span>
-                      <span className="text-[11px] font-mono text-emerald-400 font-medium px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded">
-                        Model: {p.model}
-                      </span>
-                      {result && (
-                        <span
-                          className={cn(
-                            "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
-                            result.success
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : "bg-red-500/10 text-red-400 border-red-500/20"
-                          )}
-                        >
-                          <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-400" : "bg-red-400")} />
-                          {result.success ? `success (${result.timeMs}ms)` : `failed (${result.error || result.status})`}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-white text-sm">{p.name}</h4>
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded text-[#A3A3A3]">
+                          {p.type}
                         </span>
-                      )}
+                        {result && (
+                          <span
+                            className={cn(
+                              "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 font-mono",
+                              result.success
+                                ? "bg-[#262626] text-white border-[#404040]"
+                                : "bg-red-500/10 text-red-400 border-red-500/20"
+                            )}
+                          >
+                            <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-white" : "bg-red-400")} />
+                            {result.success ? `success (${result.timeMs}ms)` : `failed (${result.error || result.status})`}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#737373] font-mono mt-1">
+                        {p.baseUrl || "Default API Endpoint"}
+                      </p>
                     </div>
                   </div>
 
@@ -505,7 +504,7 @@ export function ModelProviderSettings({
                       disabled={testingId === p.id}
                       className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                     >
-                      {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
+                      {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin text-white" /> : <Wifi className="w-3 h-3 text-[#A3A3A3]" />}
                       <span>{testingId === p.id ? "Testing..." : "Tes"}</span>
                     </button>
                     <button
@@ -518,7 +517,7 @@ export function ModelProviderSettings({
                           : "bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border-[#333333]"
                       )}
                     >
-                      <Bot className="w-3 h-3" />
+                      <Bot className="w-3 h-3 text-[#A3A3A3]" />
                       <span>{isExpanded ? "Tutup Model" : `Kelola Model (${allAvailableModels.length})`}</span>
                     </button>
                     <button
@@ -541,7 +540,7 @@ export function ModelProviderSettings({
                   <div className="pt-3 border-t border-[#262626] space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                        <Bot className="w-3.5 h-3.5 text-[#A3A3A3]" />
                         Available Models ({allAvailableModels.length})
                       </span>
                       <div className="flex items-center gap-2">
@@ -552,7 +551,7 @@ export function ModelProviderSettings({
                           className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[10px] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
                           title="Ambil daftar semua model yang tersedia secara otomatis dari API Provider"
                         >
-                          <RefreshCw className={cn("w-3 h-3 text-emerald-400", fetchingModelsProviderId === p.id && "animate-spin")} />
+                          <RefreshCw className={cn("w-3 h-3 text-[#A3A3A3]", fetchingModelsProviderId === p.id && "animate-spin")} />
                           <span>{fetchingModelsProviderId === p.id ? "Syncing..." : "Sync Models dari API"}</span>
                         </button>
                         <span className="text-[10px] text-[#737373]">Klik model untuk memilih</span>
@@ -579,7 +578,7 @@ export function ModelProviderSettings({
                                 <span className="font-mono text-xs block truncate font-medium">{m}</span>
                                 <span className="text-[9px] text-[#737373]">{isSelected ? "● Aktif Dipakai" : "Klik untuk aktifkan"}</span>
                               </div>
-                              {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />}
+                              {isSelected && <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />}
                             </button>
                           );
                         })}
