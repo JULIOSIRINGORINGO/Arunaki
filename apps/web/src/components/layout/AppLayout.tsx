@@ -96,9 +96,9 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container (Icons Only, No Text) */}
-      <footer className="h-11 bg-[#121212] px-4 flex items-center justify-center shrink-0 border-t border-[#383838]">
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1E1E1E] border border-[#383838] shadow-md">
+      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container (Icons Only, Balanced Breathing Room) */}
+      <footer className="h-14 bg-[#121212] px-4 py-2 flex items-center justify-center shrink-0 border-t border-[#383838]">
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E1E1E] border border-[#383838] shadow-md">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
