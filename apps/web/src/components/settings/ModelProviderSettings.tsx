@@ -70,6 +70,13 @@ export function ModelProviderSettings({
   const [isTestingForm, setIsTestingForm] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; status?: number; error?: string; timeMs?: number }>>({});
 
+  // Collapsible Models Catalog per Provider
+  const [expandedModelsProviderId, setExpandedModelsProviderId] = useState<string | null>(null);
+
+  const toggleExpandModels = (id: string) => {
+    setExpandedModelsProviderId((prev) => (prev === id ? null : id));
+  };
+
   // 9Router-style Custom Models per Provider State
   const [addingModelProviderId, setAddingModelProviderId] = useState<string | null>(null);
   const [newModelInput, setNewModelInput] = useState("");
@@ -435,62 +442,64 @@ export function ModelProviderSettings({
             const defaultModelsForType = DEFAULT_MODELS[p.type] || DEFAULT_MODELS["openai-compatible"] || [];
             const customModels = customModelsMap[p.id] || [];
             const allAvailableModels = Array.from(new Set([p.model, ...customModels, ...defaultModelsForType]));
+            const isExpanded = expandedModelsProviderId === p.id;
 
             return (
               <div
                 key={p.id}
                 className={cn(
-                  "p-4 rounded-xl border space-y-4 transition-all",
+                  "p-3.5 rounded-xl border transition-all space-y-3",
                   p.active
                     ? "bg-[#181818] border-[#333333] shadow-md"
                     : "bg-[#121212] border-[#262626] opacity-90 hover:opacity-100"
                 )}
               >
-                {/* Header Provider Connection */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#262626]">
+                {/* 1-Line Compact Provider Row Header */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => handleToggleActive(p)}
                       title={p.active ? "Provider Utama (Aktif)" : "Jadikan Provider Utama"}
                       className={cn(
-                        "px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border",
+                        "px-2.5 py-1 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border shrink-0",
                         p.active
                           ? "bg-white text-black border-white"
                           : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
                       )}
                     >
                       <Check className={cn("w-3.5 h-3.5", p.active && "stroke-[3]")} />
-                      <span>{p.active ? "Provider Utama" : "Set Provider Utama"}</span>
+                      <span>{p.active ? "Provider Utama" : "Set Utama"}</span>
                     </button>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-white text-sm">{p.name}</h4>
-                        <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded text-[#A3A3A3]">
-                          {p.type}
-                        </span>
-                        {result && (
-                          <span
-                            className={cn(
-                              "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
-                              result.success
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                : "bg-red-500/10 text-red-400 border-red-500/20"
-                            )}
-                          >
-                            <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-400" : "bg-red-400")} />
-                            {result.success ? `success (${result.timeMs}ms)` : `failed (${result.error || result.status})`}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-[#737373] font-mono mt-0.5">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-white text-sm">{p.name}</h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded text-[#A3A3A3]">
+                        {p.type}
+                      </span>
+                      <span className="text-[11px] text-[#737373] font-mono">
                         {p.baseUrl || "Default API Endpoint"}
-                      </p>
+                      </span>
+                      <span className="text-[11px] font-mono text-emerald-400 font-medium px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                        Model: {p.model}
+                      </span>
+                      {result && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                            result.success
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 border-red-500/20"
+                          )}
+                        >
+                          <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-400" : "bg-red-400")} />
+                          {result.success ? `success (${result.timeMs}ms)` : `failed (${result.error || result.status})`}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => handleTestConnection(p.id)}
                       disabled={testingId === p.id}
@@ -498,6 +507,19 @@ export function ModelProviderSettings({
                     >
                       {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
                       <span>{testingId === p.id ? "Testing..." : "Tes"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandModels(p.id)}
+                      className={cn(
+                        "px-2.5 py-1 border text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1 font-medium",
+                        isExpanded
+                          ? "bg-white text-black border-white"
+                          : "bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border-[#333333]"
+                      )}
+                    >
+                      <Bot className="w-3 h-3" />
+                      <span>{isExpanded ? "Tutup Model" : `Kelola Model (${allAvailableModels.length})`}</span>
                     </button>
                     <button
                       onClick={() => handleEdit(p)}
@@ -514,80 +536,82 @@ export function ModelProviderSettings({
                   </div>
                 </div>
 
-                {/* Available Models Catalog Section (9Router Style) */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Bot className="w-3.5 h-3.5 text-emerald-400" />
-                      Available Models ({allAvailableModels.length})
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleFetchModelsForProvider(p)}
-                        disabled={fetchingModelsProviderId === p.id}
-                        className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[10px] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
-                        title="Ambil daftar semua model yang tersedia secara otomatis dari API Provider"
-                      >
-                        <RefreshCw className={cn("w-3 h-3 text-emerald-400", fetchingModelsProviderId === p.id && "animate-spin")} />
-                        <span>{fetchingModelsProviderId === p.id ? "Syncing..." : "Sync Models dari API"}</span>
-                      </button>
-                      <span className="text-[10px] text-[#737373]">Klik model untuk memilih</span>
-                    </div>
-                  </div>
-
-                  <div className="max-h-[380px] overflow-y-auto pr-1 space-y-2">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {allAvailableModels.map((m) => {
-                        const isSelected = p.model === m;
-                        return (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => handleSelectModel(p, m)}
-                            className={cn(
-                              "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-[#262626] border-white text-white shadow-xs"
-                                : "bg-[#121212] border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#333333]"
-                            )}
-                          >
-                            <div className="truncate pr-2">
-                              <span className="font-mono text-xs block truncate font-medium">{m}</span>
-                              <span className="text-[9px] text-[#737373]">{isSelected ? "● Aktif Dipakai" : "Klik untuk aktifkan"}</span>
-                            </div>
-                            {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />}
-                          </button>
-                        );
-                      })}
-
-                      {/* Inline + Add Model Button */}
-                      {addingModelProviderId === p.id ? (
-                        <form onSubmit={(e) => handleAddNewModelSubmit(p, e)} className="flex items-center gap-1 bg-[#121212] p-1.5 rounded-lg border border-[#333333]">
-                          <input
-                            type="text"
-                            value={newModelInput}
-                            onChange={(e) => setNewModelInput(e.target.value)}
-                            placeholder="Nama model baru (misal: cx/gpt-5.6-terra)"
-                            autoFocus
-                            className="w-full bg-transparent text-xs text-white px-1.5 focus:outline-none placeholder-[#737373] font-mono"
-                          />
-                          <button type="submit" className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded cursor-pointer shrink-0">Add</button>
-                          <button type="button" onClick={() => setAddingModelProviderId(null)} className="px-1 text-xs text-[#A3A3A3] hover:text-white cursor-pointer shrink-0">✕</button>
-                        </form>
-                      ) : (
+                {/* Collapsible Available Models Catalog Section */}
+                {isExpanded && (
+                  <div className="pt-3 border-t border-[#262626] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                        Available Models ({allAvailableModels.length})
+                      </span>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => { setAddingModelProviderId(p.id); setNewModelInput(""); }}
-                          className="p-2.5 rounded-lg border border-dashed border-[#333333] hover:border-[#525252] text-[#A3A3A3] hover:text-white flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer bg-[#121212]/50"
+                          onClick={() => handleFetchModelsForProvider(p)}
+                          disabled={fetchingModelsProviderId === p.id}
+                          className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[10px] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
+                          title="Ambil daftar semua model yang tersedia secara otomatis dari API Provider"
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ Add Model</span>
+                          <RefreshCw className={cn("w-3 h-3 text-emerald-400", fetchingModelsProviderId === p.id && "animate-spin")} />
+                          <span>{fetchingModelsProviderId === p.id ? "Syncing..." : "Sync Models dari API"}</span>
                         </button>
-                      )}
+                        <span className="text-[10px] text-[#737373]">Klik model untuk memilih</span>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[340px] overflow-y-auto pr-1 space-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {allAvailableModels.map((m) => {
+                          const isSelected = p.model === m;
+                          return (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => handleSelectModel(p, m)}
+                              className={cn(
+                                "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
+                                isSelected
+                                  ? "bg-[#262626] border-white text-white shadow-xs"
+                                  : "bg-[#121212] border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#333333]"
+                              )}
+                            >
+                              <div className="truncate pr-2">
+                                <span className="font-mono text-xs block truncate font-medium">{m}</span>
+                                <span className="text-[9px] text-[#737373]">{isSelected ? "● Aktif Dipakai" : "Klik untuk aktifkan"}</span>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+
+                        {/* Inline + Add Model Button */}
+                        {addingModelProviderId === p.id ? (
+                          <form onSubmit={(e) => handleAddNewModelSubmit(p, e)} className="flex items-center gap-1 bg-[#121212] p-1.5 rounded-lg border border-[#333333]">
+                            <input
+                              type="text"
+                              value={newModelInput}
+                              onChange={(e) => setNewModelInput(e.target.value)}
+                              placeholder="Nama model baru (misal: cx/gpt-5.6-terra)"
+                              autoFocus
+                              className="w-full bg-transparent text-xs text-white px-1.5 focus:outline-none placeholder-[#737373] font-mono"
+                            />
+                            <button type="submit" className="px-2 py-1 bg-white text-black text-[10px] font-bold rounded cursor-pointer shrink-0">Add</button>
+                            <button type="button" onClick={() => setAddingModelProviderId(null)} className="px-1 text-xs text-[#A3A3A3] hover:text-white cursor-pointer shrink-0">✕</button>
+                          </form>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setAddingModelProviderId(p.id); setNewModelInput(""); }}
+                            className="p-2.5 rounded-lg border border-dashed border-[#333333] hover:border-[#525252] text-[#A3A3A3] hover:text-white flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer bg-[#121212]/50"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ Add Model</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
