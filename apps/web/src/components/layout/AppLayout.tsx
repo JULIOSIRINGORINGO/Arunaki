@@ -33,18 +33,19 @@ export function AppLayout() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden font-sans select-none">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Integrated Window Drag Titlebar + IDE Menu + Logo Avatar */}
+      {/* 1. HEADER ATAS (IDE TOPBAR): Integrated Window Drag Titlebar + Logo (Left) + IDE Menu + Avatar (Right) */}
       <header
-        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#2D2D2D]"
+        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#383838]"
         style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
       >
         <div
-          className="flex items-center gap-4"
+          className="flex items-center gap-3"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          <span className="text-[#FFFFFF] font-bold text-xs tracking-wider uppercase pr-3 border-r border-[#2D2D2D]">
-            ARUNAKI IDE
-          </span>
+          {/* Logo 'A' dipindahkan ke posisi paling kiri sebelum menu File */}
+          <div className="w-6 h-6 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#383838] shrink-0">
+            <ArunakiLogo className="w-3.5 h-3.5" fill="#FFFFFF" />
+          </div>
 
           <nav className="flex items-center gap-1">
             <button
@@ -75,17 +76,14 @@ export function AppLayout() {
           </nav>
         </div>
 
-        {/* Right side: Logo & Avatar */}
+        {/* Right side: User Profile Avatar */}
         <div
           className="flex items-center gap-3"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          <div className="w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#2D2D2D]">
-            <ArunakiLogo className="w-4 h-4" fill="#FFFFFF" />
-          </div>
           <button
             onClick={() => navigate("/settings")}
-            className="w-7 h-7 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white border border-[#2D2D2D] transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white border border-[#383838] transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
             <User className="w-3.5 h-3.5" />
@@ -99,7 +97,7 @@ export function AppLayout() {
       </main>
 
       {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Horizontal Curved Capsule Bar */}
-      <footer className="h-10 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-t border-[#2D2D2D] text-xs">
+      <footer className="h-10 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-t border-[#383838] text-xs">
         <div className="flex items-center gap-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -114,8 +112,8 @@ export function AppLayout() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer border",
                   isActive
-                    ? "bg-[#262626] text-[#FFFFFF] border-[#525252] shadow-sm font-bold"
-                    : "bg-[#181818] text-[#A3A3A3] border-[#2D2D2D] hover:text-[#FFFFFF] hover:bg-[#262626]"
+                    ? "bg-[#262626] text-[#FFFFFF] border-[#666666] shadow-sm font-bold"
+                    : "bg-[#181818] text-[#A3A3A3] border-[#383838] hover:text-[#FFFFFF] hover:bg-[#262626]"
                 )}
               >
                 <Icon className="w-3.5 h-3.5 text-[#E5E5E5]" />

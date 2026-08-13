@@ -37,7 +37,7 @@ export function WorkstationCenterPanel({
     <main className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden relative">
       {/* Top Multi-Tab Bar */}
       {tabs.length > 0 && (
-        <div className="h-9 bg-[#121212] border-b border-[#2D2D2D] flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
+        <div className="h-9 bg-[#121212] border-b border-[#383838] flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -47,7 +47,7 @@ export function WorkstationCenterPanel({
                 className={cn(
                   "flex items-center gap-2 px-3 py-1 rounded-t-md text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-t border-x border-transparent",
                   isActive
-                    ? "bg-[#171717] text-[#FFFFFF] border-[#2D2D2D] font-semibold"
+                    ? "bg-[#171717] text-[#FFFFFF] border-[#383838] font-semibold"
                     : "text-[#A3A3A3] hover:bg-[#1E1E1E] hover:text-[#FFFFFF]"
                 )}
               >
@@ -77,7 +77,7 @@ export function WorkstationCenterPanel({
         {activeTab ? (
           activeTab.type === "canvas" ? (
             /* ON-DEMAND CANVAS PANEL */
-            <div className="h-full w-full bg-[#171717] rounded-xl p-4 border border-[#2D2D2D] flex flex-col text-white">
+            <div className="h-full w-full bg-[#171717] rounded-xl p-4 border border-[#383838] flex flex-col text-white">
               <CanvasPanel
                 isOpen={true}
                 onClose={() => onCloseTab("canvas-active")}
@@ -86,19 +86,19 @@ export function WorkstationCenterPanel({
             </div>
           ) : (
             /* IDE FILE READER / DOCUMENT VIEWER */
-            <div className="h-full w-full bg-[#171717] rounded-xl p-5 border border-[#2D2D2D] flex flex-col text-white">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#2D2D2D]">
+            <div className="h-full w-full bg-[#171717] rounded-xl p-5 border border-[#383838] flex flex-col text-white">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#383838]">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-[#E5E5E5]" />
                   <h2 className="font-bold text-xs text-[#FFFFFF]">{activeTab.title}</h2>
-                  <span className="text-[10px] text-[#A3A3A3] bg-[#262626] px-2 py-0.5 rounded font-mono">
+                  <span className="text-[10px] text-[#A3A3A3] bg-[#262626] px-2 py-0.5 rounded font-mono border border-[#383838]">
                     {activeTab.fileType?.toUpperCase()}
                   </span>
                 </div>
                 <span className="text-xs text-[#A3A3A3] truncate max-w-md">{activeTab.path}</span>
               </div>
 
-              <div className="flex-1 overflow-auto bg-[#121212] p-4 rounded-lg border border-[#2D2D2D] font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap">
+              <div className="flex-1 overflow-auto bg-[#121212] p-4 rounded-lg border border-[#383838] font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap">
                 {activeTab.content}
               </div>
             </div>
@@ -106,7 +106,7 @@ export function WorkstationCenterPanel({
         ) : (
           /* WELCOME / GETTING STARTED VIEW */
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-[#171717] border border-[#2D2D2D] flex items-center justify-center mb-4 shadow-none">
+            <div className="w-16 h-16 rounded-full bg-[#171717] border border-[#383838] flex items-center justify-center mb-4 shadow-none">
               <ArunakiLogo className="w-9 h-9" fill="#FFFFFF" />
             </div>
             <h1 className="text-lg font-bold text-white mb-2 tracking-tight">
@@ -119,7 +119,7 @@ export function WorkstationCenterPanel({
             <div className="grid grid-cols-2 gap-4 max-w-lg w-full text-left">
               <div
                 onClick={onOpenFolderModal}
-                className="p-4 bg-[#171717] rounded-xl border border-[#2D2D2D] hover:border-[#525252] transition-all cursor-pointer group"
+                className="p-4 bg-[#171717] rounded-xl border border-[#383838] hover:border-[#666666] transition-all cursor-pointer group"
               >
                 <FolderOpen className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
                 <h3 className="text-xs font-bold text-white">Buka Folder Workspace</h3>
@@ -128,7 +128,7 @@ export function WorkstationCenterPanel({
 
               <div
                 onClick={onTriggerCanvas}
-                className="p-4 bg-[#171717] rounded-xl border border-[#2D2D2D] hover:border-[#525252] transition-all cursor-pointer group"
+                className="p-4 bg-[#171717] rounded-xl border border-[#383838] hover:border-[#666666] transition-all cursor-pointer group"
               >
                 <Sparkles className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
                 <h3 className="text-xs font-bold text-white">Panggil AI Canvas</h3>
