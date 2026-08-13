@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Check, Loader2, Wifi } from "lucide-react";
 import { API_BASE, apiFetch } from "../../lib/api";
+import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 
 export interface Provider {
@@ -20,6 +21,7 @@ export interface Provider {
 }
 
 const PROVIDER_TYPES = [
+  { value: "9router", label: "9Router (Local Gateway)", defaultUrl: "http://localhost:20128/v1" },
   { value: "openrouter", label: "OpenRouter", defaultUrl: "https://openrouter.ai/api/v1" },
   { value: "kenari", label: "Kenari (Kenari.id)", defaultUrl: "https://api.kenari.id/v1" },
   { value: "openai", label: "OpenAI", defaultUrl: "https://api.openai.com/v1" },
@@ -29,6 +31,14 @@ const PROVIDER_TYPES = [
 ];
 
 const DEFAULT_MODELS: Record<string, string[]> = {
+  "9router": [
+    "cx/gpt-5.6-terra",
+    "cx/gpt-5.5",
+    "cx/gpt-5.4-mini",
+    "cx/gpt-5.6-luna",
+    "deepseek-r1",
+    "claude-3-5-sonnet",
+  ],
   openrouter: [
     "nvidia/nemotron-3-ultra-550b-a55b:free",
     "google/gemini-2.5-flash",
@@ -40,7 +50,7 @@ const DEFAULT_MODELS: Record<string, string[]> = {
   anthropic: ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"],
   ollama: ["llama3.1", "mistral", "codellama", "gemma2"],
   kenari: ["gpt-oss-120b", "deepseek-v4-flash", "llama-3-1-70b-instruct"],
-  "openai-compatible": [],
+  "openai-compatible": ["cx/gpt-5.6-terra", "cx/gpt-5.5", "cx/gpt-5.4-mini"],
 };
 
 interface ModelProviderSettingsProps {
@@ -158,6 +168,20 @@ export function ModelProviderSettings({
     }
   };
 
+  const handleEdit = (p: Provider) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name,
+      type: p.type,
+      baseUrl: p.baseUrl,
+      apiKey: p.apiKey || "",
+      model: p.model,
+      headerPrefix: p.headerPrefix || "",
+      headerTitle: p.headerTitle || "",
+    });
+    setShowAddForm(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -181,9 +205,12 @@ export function ModelProviderSettings({
 
       {showAddForm && (
         <form onSubmit={handleSave} className="p-4 bg-[#181818] rounded-xl border border-[#262626] space-y-4">
-          <h4 className="text-xs font-bold text-white">
-            {editingId ? "Edit Provider" : "Add New Provider"}
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-white">
+              {editingId ? "Edit Provider Catalog" : "Add New Provider Catalog"}
+            </h4>
+            <span className="text-[10px] text-[#A3A3A3]">Atur URL Endpoint & Nama Model</span>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -205,10 +232,50 @@ export function ModelProviderSettings({
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Example: OpenRouter Primary"
+                placeholder="Example: 9Router Local / OpenRouter Primary"
                 className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
                 required
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Base URL / Endpoint</label>
+              <input
+                type="text"
+                value={form.baseUrl}
+                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+                placeholder="http://localhost:20128/v1"
+                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Model ID / Name</label>
+              <input
+                type="text"
+                value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })}
+                placeholder="e.g. deepseek-v4-flash, gpt-4o, gemini-2.5-flash"
+                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                required
+              />
+              {DEFAULT_MODELS[form.type]?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {DEFAULT_MODELS[form.type].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setForm({ ...form, model: m })}
+                      className="px-1.5 py-0.5 bg-[#262626] hover:bg-[#333333] text-[10px] text-[#A3A3A3] hover:text-white rounded border border-[#333333] transition-colors"
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -218,7 +285,7 @@ export function ModelProviderSettings({
               type="password"
               value={form.apiKey}
               onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-              placeholder="sk-..."
+              placeholder="sk-... (Leave empty if local proxy without key)"
               className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
             />
           </div>
@@ -235,7 +302,7 @@ export function ModelProviderSettings({
               type="submit"
               className="px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-lg font-semibold cursor-pointer"
             >
-              Save
+              Save Provider
             </button>
           </div>
         </form>
@@ -250,20 +317,44 @@ export function ModelProviderSettings({
           {providers.map((p) => (
             <div
               key={p.id}
-              className="p-3 bg-[#181818] rounded-xl border border-[#262626] flex items-center justify-between text-xs"
+              className={cn(
+                "p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all",
+                p.active
+                  ? "bg-[#181818] border-[#333333]"
+                  : "bg-[#121212] border-[#262626] opacity-75 hover:opacity-100"
+              )}
             >
               <div className="flex items-center gap-3">
-                <div
+                <button
+                  type="button"
                   onClick={() => handleToggleActive(p)}
-                  className={`w-4 h-4 rounded flex items-center justify-center cursor-pointer border ${
-                    p.active ? "bg-white border-white text-black" : "border-[#525252]"
-                  }`}
+                  title={p.active ? "Model Utama (Aktif)" : "Jadikan Model Utama"}
+                  className={cn(
+                    "px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border",
+                    p.active
+                      ? "bg-white text-black border-white"
+                      : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
+                  )}
                 >
-                  {p.active && <Check className="w-3 h-3 stroke-[3]" />}
-                </div>
+                  <Check className={cn("w-3 h-3", p.active && "stroke-[3]")} />
+                  <span>{p.active ? "Utama" : "Set Utama"}</span>
+                </button>
+
                 <div>
-                  <span className="font-semibold text-white">{p.name}</span>
-                  <span className="text-[10px] text-[#A3A3A3] block">{p.model}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white">{p.name}</span>
+                    <span className="text-[10px] text-[#737373] font-mono px-1.5 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded">
+                      {p.type}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] font-mono text-emerald-400 font-medium">
+                      {p.model}
+                    </span>
+                    <span className="text-[10px] text-[#737373]">
+                      ({p.baseUrl || "Default API URL"})
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -275,6 +366,12 @@ export function ModelProviderSettings({
                 >
                   {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
                   <span>Tes</span>
+                </button>
+                <button
+                  onClick={() => handleEdit(p)}
+                  className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer"
+                >
+                  Edit
                 </button>
                 <button
                   onClick={() => handleDelete(p.id)}
