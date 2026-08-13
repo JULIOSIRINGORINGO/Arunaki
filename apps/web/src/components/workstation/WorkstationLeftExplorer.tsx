@@ -181,12 +181,14 @@ export function WorkstationLeftExplorer({
           ) : loadState === "error" ? (
             <div className="flex flex-col items-center justify-center p-6 text-center">
               <Folder className="w-7 h-7 text-[#737373] opacity-40 mb-2 stroke-[1.5]" />
-              <p className="text-xs text-[#737373]">Gagal membaca folder</p>
+              <p className="text-xs text-[#737373] text-center py-6 font-mono">
+                Failed to read folder
+              </p>
               <button
                 onClick={handleRefresh}
                 className="mt-2 text-[10px] text-[#A3A3A3] hover:text-white underline cursor-pointer"
               >
-                Coba lagi
+                Try again
               </button>
             </div>
           ) : (
@@ -204,7 +206,7 @@ export function WorkstationLeftExplorer({
         /* No workspace connected */
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Folder className="w-8 h-8 text-[#A3A3A3] opacity-35 mb-2 stroke-[1.5]" />
-          <p className="text-xs text-[#737373] font-normal">Belum ada folder terbuka</p>
+          <p className="text-xs text-[#737373] font-normal">No folder opened</p>
         </div>
       )}
     </aside>

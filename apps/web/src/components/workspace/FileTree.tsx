@@ -170,7 +170,7 @@ export default function FileTree({
         <div className="flex-1 overflow-y-auto py-1 min-h-0">
           {tree.length === 0 ? (
             <p className="text-xs text-[#737373] text-center py-6 font-mono">
-              (Belum ada file di workspace ini)
+              No files found in this workspace
             </p>
           ) : (
             <div className="space-y-0.5">

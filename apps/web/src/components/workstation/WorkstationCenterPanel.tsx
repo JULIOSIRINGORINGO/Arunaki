@@ -1,5 +1,4 @@
-import { Sparkles, FileText, FileSpreadsheet, X, FolderOpen } from "lucide-react";
-import { ArunakiLogo } from "../common/ArunakiLogo";
+import { FileText, FileSpreadsheet, X, Sparkles } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
 
@@ -18,8 +17,6 @@ interface WorkstationCenterPanelProps {
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   canvasData: CanvasData | null;
-  onOpenFolderModal: () => void;
-  onTriggerCanvas: () => void;
 }
 
 export function WorkstationCenterPanel({
@@ -28,8 +25,6 @@ export function WorkstationCenterPanel({
   onSelectTab,
   onCloseTab,
   canvasData,
-  onOpenFolderModal,
-  onTriggerCanvas,
 }: WorkstationCenterPanelProps) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
@@ -104,38 +99,38 @@ export function WorkstationCenterPanel({
             </div>
           )
         ) : (
-          /* WELCOME / GETTING STARTED VIEW */
-          <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-[#171717] border border-[#383838] flex items-center justify-center mb-4 shadow-none">
-              <ArunakiLogo className="w-9 h-9" fill="#FFFFFF" />
-            </div>
-            <h1 className="text-lg font-bold text-white mb-2 tracking-tight">
-              Arunaki IDE Document Workstation
-            </h1>
-            <p className="text-xs text-[#A3A3A3] max-w-md mb-6 leading-relaxed">
-              Lingkungan kerja terpadu untuk membaca, menghitung, dan merekap dokumen bisnis secara otomatis.
+          /* EDITORIAL TYPOGRAPHIC EMPTY STATE — no buttons, no cards */
+          <div className="h-full flex flex-col items-center justify-center text-center select-none">
+            <p
+              style={{
+                fontFamily: "'Instrument Serif', 'Playfair Display', serif",
+                fontStyle: "normal",
+                fontWeight: 400,
+                fontSize: "clamp(36px, 5vw, 60px)",
+                color: "#ffffff",
+                lineHeight: 1.1,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Arunaki
             </p>
-
-            <div className="grid grid-cols-2 gap-4 max-w-lg w-full text-left">
-              <div
-                onClick={onOpenFolderModal}
-                className="p-4 bg-[#171717] rounded-xl border border-[#383838] hover:border-[#666666] transition-all cursor-pointer group"
-              >
-                <FolderOpen className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
-                <h3 className="text-xs font-bold text-white">Buka Folder Workspace</h3>
-                <p className="text-[11px] text-[#A3A3A3]">Hubungkan folder lokal berisi file kantor</p>
-              </div>
-
-              <div
-                onClick={onTriggerCanvas}
-                className="p-4 bg-[#171717] rounded-xl border border-[#383838] hover:border-[#666666] transition-all cursor-pointer group"
-              >
-                <Sparkles className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
-                <h3 className="text-xs font-bold text-white">Panggil AI Canvas</h3>
-                <p className="text-[11px] text-[#A3A3A3]">Buka panel draf terstruktur & kalkulasi</p>
-              </div>
-            </div>
+            <p
+              style={{
+                fontFamily: "'Instrument Serif', 'Playfair Display', serif",
+                fontStyle: "italic",
+                fontWeight: 400,
+                fontSize: "clamp(20px, 2.8vw, 34px)",
+                color: "#ffffff",
+                opacity: 0.5,
+                lineHeight: 1.2,
+                marginTop: "0.25rem",
+                letterSpacing: "0.01em",
+              }}
+            >
+              Document Workstation
+            </p>
           </div>
+
         )}
       </div>
     </main>

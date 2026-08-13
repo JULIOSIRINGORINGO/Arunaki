@@ -338,8 +338,6 @@ export function UnifiedWorkstationPage() {
           onSelectTab={setActiveTabId}
           onCloseTab={handleCloseTab}
           canvasData={canvasData}
-          onOpenFolderModal={() => setShowFolderModal(true)}
-          onTriggerCanvas={() => handleTriggerCanvas()}
         />
 
         <WorkstationRightChat

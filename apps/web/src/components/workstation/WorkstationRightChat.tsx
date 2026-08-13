@@ -138,11 +138,11 @@ export function WorkstationRightChat({
             }}
             placeholder={
               activeWorkspace
-                ? "Beri tugas (contoh: Rekap @Laporan.xlsx ke Excel)..."
-                : "Ketik pertanyaan atau tugas di sini..."
+                ? "Type a command or ask about your documents..."
+                : "Type a command or ask about your documents..."
             }
             rows={2}
-            className="w-full bg-transparent text-xs text-[#FFFFFF] placeholder-[#737373] resize-none focus:outline-none"
+            className="w-full bg-transparent text-xs text-[#FFFFFF] placeholder-serif placeholder-[#777777] resize-none focus:outline-none"
           />
 
           <div className="flex items-center justify-between pt-1 border-t border-[#383838] mt-1">

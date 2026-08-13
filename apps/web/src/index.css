@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap');
 @import "tailwindcss";
 
 @layer base {
@@ -53,5 +54,14 @@
   * {
     scrollbar-width: thin;
     scrollbar-color: #2D2D2D transparent;
+  }
+
+  /* Serif italic placeholder styling for chat inputs */
+  .placeholder-serif::placeholder {
+    font-family: 'Instrument Serif', 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: #777777;
+    opacity: 1;
   }
 }
