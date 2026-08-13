@@ -1,6 +1,6 @@
 import { RefObject } from "react";
 import Markdown from "react-markdown";
-import { Bot, PanelRightClose, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
+import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, Loader2 } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "../chat/LiveExecutionBadge";
 import { LiveMirrorCard } from "../chat/LiveMirrorCard";
 import { cn } from "../../lib/utils";
@@ -44,7 +44,23 @@ export function WorkstationRightChat({
   isStreaming,
   onSendMessage,
 }: WorkstationRightChatProps) {
-  if (collapsed) return null;
+  /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
+  if (collapsed) {
+    return (
+      <aside className="w-10 bg-[#121212] border-l border-[#262626] flex flex-col items-center py-2 shrink-0 select-none">
+        <button
+          onClick={onClose}
+          className="text-[#A3A3A3] hover:text-white p-1.5 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          title="Buka Panel Chat"
+        >
+          <PanelRightOpen className="w-4 h-4 text-[#FFFFFF]" />
+        </button>
+        <div className="mt-4 flex flex-col items-center gap-4 text-[#A3A3A3]">
+          <Bot className="w-4 h-4 opacity-40" />
+        </div>
+      </aside>
+    );
+  }
 
   const allMessages = [...chatMessages, ...optimisticMessages];
 

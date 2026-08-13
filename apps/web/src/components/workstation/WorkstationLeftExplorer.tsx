@@ -1,4 +1,4 @@
-import { Folder, Search, PanelLeftClose } from "lucide-react";
+import { Folder, Search, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 
 interface WorkspaceFile {
@@ -31,11 +31,28 @@ export function WorkstationLeftExplorer({
   workspaceFiles,
   onOpenFileTab,
 }: WorkstationLeftExplorerProps) {
-  if (collapsed) return null;
+  /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
+  if (collapsed) {
+    return (
+      <aside className="w-10 bg-[#121212] border-r border-[#262626] flex flex-col items-center py-2 shrink-0 select-none">
+        <button
+          onClick={onClose}
+          className="text-[#A3A3A3] hover:text-white p-1.5 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          title="Buka Panel Eksplore"
+        >
+          <PanelLeftOpen className="w-4 h-4 text-[#FFFFFF]" />
+        </button>
+        <div className="mt-4 flex flex-col items-center gap-4 text-[#A3A3A3]">
+          <Folder className="w-4 h-4 opacity-40" />
+        </div>
+      </aside>
+    );
+  }
 
+  /* Full Expanded Panel */
   return (
     <aside className="w-64 bg-[#121212] text-[#FFFFFF] border-r border-[#262626] flex flex-col shrink-0">
-      {/* 1. Header Panel: Title Case 1 Kata ("Eksplore") & Tombol Toggle Modern */}
+      {/* 1. Header Panel: Title Case ("Eksplore") & Tombol Toggle Collapse */}
       <div className="px-3 py-2.5 border-b border-[#262626] flex items-center justify-between">
         <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
           <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
