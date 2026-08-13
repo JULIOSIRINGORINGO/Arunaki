@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -109,6 +110,7 @@ export class ProviderController {
     }
   }
 
+  @Put(':id')
   @Patch(':id')
   async update(
     @Param('id') id: string,
