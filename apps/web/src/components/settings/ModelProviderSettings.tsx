@@ -340,64 +340,72 @@ export function ModelProviderSettings({
       {showAddForm && (
         <form onSubmit={handleSave} className="p-5 bg-[#181818] rounded-xl border border-[#262626] space-y-4 shadow-xl">
           <div className="flex items-center justify-between pb-2 border-b border-[#262626]">
-            <h4 className="text-xs font-bold text-white flex items-center gap-2">
-              <Settings2 className="w-4 h-4 text-white" />
-              {editingId ? "Sunting Provider Connection" : "Tambah Provider Connection Baru"}
-            </h4>
-            <span className="text-[10px] text-[#A3A3A3]">Simpan URL, API Key & Katalog Model</span>
+            <div>
+              <h4 className="text-xs font-bold text-white flex items-center gap-2">
+                <Settings2 className="w-4 h-4 text-white" />
+                {editingId ? `Sunting Model Provider: ${form.name}` : "Tambah Provider Connection Baru"}
+              </h4>
+              <p className="text-[10px] text-[#A3A3A3] mt-0.5 font-mono">{form.baseUrl}</p>
+            </div>
+            <span className="text-[10px] text-[#A3A3A3]">{editingId ? "Pilih Model Aktif" : "Simpan URL & API Key"}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Provider Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#525252]"
-              >
-                {PROVIDER_TYPES.map((pt) => (
-                  <option key={pt.value} value={pt.value}>{pt.label}</option>
-                ))}
-              </select>
-            </div>
+          {/* Text Inputs ONLY shown when ADDING a new Provider, HIDDEN when Editing! */}
+          {!editingId && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Provider Type</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => handleTypeChange(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#525252]"
+                  >
+                    {PROVIDER_TYPES.map((pt) => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Display Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Contoh: Kenari.id / 9Router Local / OpenRouter"
-                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
-                required
-              />
-            </div>
-          </div>
+                <div>
+                  <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Display Name</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Contoh: Kenari.id / 9Router Local / OpenRouter"
+                    className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                    required
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Base URL / Endpoint</label>
-              <input
-                type="text"
-                value={form.baseUrl}
-                onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
-                placeholder="http://localhost:20128/v1"
-                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
-                required
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Base URL / Endpoint</label>
+                  <input
+                    type="text"
+                    value={form.baseUrl}
+                    onChange={(e) => setForm({ ...form, baseUrl: e.target.value })}
+                    placeholder="http://localhost:20128/v1"
+                    className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                    required
+                  />
+                </div>
 
-            <div>
-              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">API Key</label>
-              <input
-                type="password"
-                value={form.apiKey}
-                onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                placeholder="sk-... (Kosongkan jika local proxy tanpa key)"
-                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
-              />
-            </div>
-          </div>
+                <div>
+                  <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">API Key</label>
+                  <input
+                    type="password"
+                    value={form.apiKey}
+                    onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+                    placeholder="sk-... (Kosongkan jika local proxy tanpa key)"
+                    className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Integrated Available Models Selector inside Edit Form (9Router Style) */}
           <div className="pt-2 space-y-2">
@@ -591,7 +599,7 @@ export function ModelProviderSettings({
                       onClick={() => handleEdit(p)}
                       className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer font-medium"
                     >
-                      Sunting API & URL
+                      Sunting Model
                     </button>
                     <button
                       onClick={() => handleDelete(p.id)}
