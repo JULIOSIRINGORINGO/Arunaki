@@ -74,18 +74,32 @@ export function nativeToTreeNodes(nodes: NativeNode[]): TreeNode[] {
 }
 
 export function getFileIcon(name: string) {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-  if (["docx", "doc"].includes(ext))
-    return <FileText className="w-4 h-4 text-[#E5E5E5] shrink-0 font-bold" />;
-  if (["pdf"].includes(ext)) return <FileText className="w-4 h-4 text-[#E5E5E5] shrink-0" />;
-  if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext))
-    return <FileImage className="w-4 h-4 text-[#A3A3A3] shrink-0" />;
-  if (["xlsx", "xls", "xlsm", "csv"].includes(ext))
-    return <FileSpreadsheet className="w-4 h-4 text-[#E5E5E5] shrink-0" />;
-  if (["json", "js", "ts", "tsx", "html", "css", "py"].includes(ext))
-    return <FileCode className="w-4 h-4 text-[#A3A3A3] shrink-0" />;
-  if (["md", "txt"].includes(ext)) return <FileText className="w-4 h-4 text-[#A3A3A3] shrink-0" />;
-  return <File className="w-4 h-4 text-[#737373] shrink-0" />;
+  const lowerName = name.toLowerCase();
+  const ext = lowerName.split(".").pop() || "";
+
+  if (["docx", "doc"].includes(ext)) {
+    return <FileText className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0 stroke-[1.8]" />;
+  }
+  if (["pdf"].includes(ext)) {
+    return <FileText className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0 stroke-[1.8]" />;
+  }
+  if (["jpg", "jpeg", "png", "gif", "svg", "webp", "ico"].includes(ext)) {
+    return <FileImage className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 stroke-[1.8]" />;
+  }
+  if (["xlsx", "xls", "xlsm", "csv"].includes(ext)) {
+    return <FileSpreadsheet className="w-3.5 h-3.5 text-[#FFFFFF] shrink-0 stroke-[1.8]" />;
+  }
+  if (
+    ["json", "js", "jsx", "ts", "tsx", "html", "css", "py", "sh", "cmd", "ps1"].includes(ext) ||
+    lowerName.startsWith(".env") ||
+    lowerName === ".gitignore"
+  ) {
+    return <FileCode className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 stroke-[1.8]" />;
+  }
+  if (["md", "txt", "log"].includes(ext)) {
+    return <FileText className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 stroke-[1.8]" />;
+  }
+  return <File className="w-3.5 h-3.5 text-[#737373] shrink-0 stroke-[1.8]" />;
 }
 
 export function formatSize(bytes?: number): string {
