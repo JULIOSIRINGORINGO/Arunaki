@@ -45,7 +45,7 @@ interface WorkstationRightChatProps {
   setInputPrompt: (val: string) => void;
   isStreaming: boolean;
   onSendMessage: () => void;
-  width?: number;
+  width?: number | string;
   files?: WorkspaceFile[];
 }
 

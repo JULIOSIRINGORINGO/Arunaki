@@ -58,8 +58,6 @@ export function UnifiedWorkstationPage() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  const [leftWidth, setLeftWidth] = useState(256);
-  const [rightWidth, setRightWidth] = useState(320);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [nativeFileNames, setNativeFileNames] = useState<string[]>([]);
 
@@ -72,30 +70,38 @@ export function UnifiedWorkstationPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const startDrag = useCallback(
     (side: "left" | "right", e: React.MouseEvent) => {
       e.preventDefault();
+      const container = containerRef.current;
+      if (!container) return;
+
       const startX = e.clientX;
-      const startWidth = side === "left" ? leftWidth : rightWidth;
-      let rafId: number | null = null;
+      const computedStyle = getComputedStyle(container);
+      const startWidth = side === "left"
+        ? parseInt(computedStyle.getPropertyValue("--left-panel-width") || "256", 10)
+        : parseInt(computedStyle.getPropertyValue("--right-panel-width") || "320", 10);
+
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
 
       const onMove = (ev: MouseEvent) => {
-        if (rafId !== null) return;
-        rafId = requestAnimationFrame(() => {
-          rafId = null;
-          const delta = ev.clientX - startX;
-          if (side === "left") {
-            setLeftWidth(Math.max(160, Math.min(480, startWidth + delta)));
-          } else {
-            setRightWidth(Math.max(240, Math.min(600, startWidth - delta)));
-          }
-        });
+        const delta = ev.clientX - startX;
+        if (side === "left") {
+          const newW = Math.max(160, Math.min(480, startWidth + delta));
+          container.style.setProperty("--left-panel-width", `${newW}px`);
+        } else {
+          const newW = Math.max(240, Math.min(600, startWidth - delta));
+          container.style.setProperty("--right-panel-width", `${newW}px`);
+        }
       };
 
       const onUp = () => {
-        if (rafId !== null) cancelAnimationFrame(rafId);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
@@ -103,7 +109,7 @@ export function UnifiedWorkstationPage() {
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [leftWidth, rightWidth]
+    []
   );
 
   // 1. Fetch Workspaces
@@ -383,7 +389,11 @@ export function UnifiedWorkstationPage() {
 
   return (
     <div className="flex flex-col h-full w-full bg-[#0A0A0A] text-white overflow-hidden select-none">
-      <div className="flex-1 flex overflow-hidden relative">
+      <div
+        ref={containerRef}
+        className="flex-1 flex overflow-hidden relative"
+        style={{ "--left-panel-width": "256px", "--right-panel-width": "320px" } as React.CSSProperties}
+      >
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
           onClose={() => setLeftCollapsed(!leftCollapsed)}
@@ -391,12 +401,12 @@ export function UnifiedWorkstationPage() {
           workspaceFiles={workspaceFiles}
           onOpenFileTab={handleOpenFileTab}
           onOpenFolderModal={() => setShowFolderModal(true)}
-          width={leftWidth}
+          width="var(--left-panel-width, 256px)"
           onNativeFilesChange={setNativeFileNames}
         />
 
         <div
-          className="w-1 cursor-col-resize bg-transparent shrink-0"
+          className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
           onMouseDown={(e) => startDrag("left", e)}
         />
 
@@ -409,7 +419,7 @@ export function UnifiedWorkstationPage() {
         />
 
         <div
-          className="w-1 cursor-col-resize bg-transparent shrink-0"
+          className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
           onMouseDown={(e) => startDrag("right", e)}
         />
 
@@ -425,7 +435,7 @@ export function UnifiedWorkstationPage() {
           setInputPrompt={setInputPrompt}
           isStreaming={isStreaming}
           onSendMessage={handleSendMessage}
-          width={rightWidth}
+          width="var(--right-panel-width, 320px)"
           files={mentionFiles}
         />
       </div>

@@ -36,7 +36,7 @@ interface WorkstationLeftExplorerProps {
   workspaceFiles: WorkspaceFile[];
   onOpenFileTab: (path: string, name: string, content?: string) => void;
   onOpenFolderModal?: () => void;
-  width?: number;
+  width?: number | string;
   onNativeFilesChange?: (names: string[]) => void;
 }
 
