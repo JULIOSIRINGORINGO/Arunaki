@@ -388,15 +388,27 @@ export function ModelProviderSettings({
             </div>
 
             <div>
-              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">API Key</label>
+              <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">Active Model ID / Name</label>
               <input
-                type="password"
-                value={form.apiKey}
-                onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                placeholder="sk-... (Kosongkan jika local proxy tanpa key)"
-                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                type="text"
+                value={form.model}
+                onChange={(e) => setForm({ ...form, model: e.target.value })}
+                placeholder="e.g. deepseek-v4-flash, cx/gpt-5.6-terra"
+                className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white font-mono placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+                required
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-[#A3A3A3] mb-1 font-medium">API Key</label>
+            <input
+              type="password"
+              value={form.apiKey}
+              onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+              placeholder="sk-... (Kosongkan jika local proxy tanpa key)"
+              className="w-full bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+            />
           </div>
 
           {/* Integrated Available Models Selector inside Edit Form (9Router Style) */}
