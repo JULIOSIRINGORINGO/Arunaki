@@ -10,8 +10,8 @@ interface LiveMirrorCardProps {
 
 export function LiveMirrorCard({
   screenshotUrl,
-  title = "Cermin Layar Desktop (Live Mirror)",
-  subtitle = "Tampilan real-time aplikasi desktop yang dioperasikan Arunaki",
+  title = "Desktop Live Mirror",
+  subtitle = "Real-time view of the desktop app operated by Arunaki",
   timestamp,
 }: LiveMirrorCardProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -41,7 +41,7 @@ export function LiveMirrorCard({
             type="button"
             onClick={() => setFullScreen(!fullScreen)}
             className="p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 transition-colors"
-            title={fullScreen ? "Kecilkan" : "Perbesar Fullscreen"}
+            title={fullScreen ? "Minimize" : "Maximize Fullscreen"}
           >
             {fullScreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
@@ -50,7 +50,7 @@ export function LiveMirrorCard({
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             className="p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 transition-colors"
-            title={collapsed ? "Buka Mirror" : "Sembunyikan Mirror"}
+            title={collapsed ? "Open Mirror" : "Hide Mirror"}
           >
             {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>

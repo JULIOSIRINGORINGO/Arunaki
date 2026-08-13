@@ -3,6 +3,18 @@ import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
 
+const flattenFileNames = (nodes: NativeNode[]): string[] => {
+  const out: string[] = [];
+  const walk = (list: NativeNode[]) => {
+    for (const n of list) {
+      if (n.type === "file") out.push(n.name);
+      if (n.children) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return out;
+};
+
 interface WorkspaceFile {
   id: string;
   name: string;
@@ -24,6 +36,8 @@ interface WorkstationLeftExplorerProps {
   workspaceFiles: WorkspaceFile[];
   onOpenFileTab: (path: string, name: string, content?: string) => void;
   onOpenFolderModal?: () => void;
+  width?: number;
+  onNativeFilesChange?: (names: string[]) => void;
 }
 
 type LoadState = "idle" | "loading" | "done" | "error";
@@ -34,6 +48,8 @@ export function WorkstationLeftExplorer({
   activeWorkspace,
   workspaceFiles,
   onOpenFileTab,
+  width,
+  onNativeFilesChange,
 }: WorkstationLeftExplorerProps) {
   const [nativeTree, setNativeTree] = useState<NativeNode[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
@@ -91,6 +107,11 @@ export function WorkstationLeftExplorer({
     loadNativeTree(activeWorkspace.rootPath);
   }, [activeWorkspace?.rootPath, loadNativeTree]);
 
+  // Report flattened native file names so the chat @ mention can reference real files
+  useEffect(() => {
+    onNativeFilesChange?.(flattenFileNames(nativeTree));
+  }, [nativeTree, onNativeFilesChange]);
+
   const handleRefresh = useCallback(async () => {
     if (!activeWorkspace?.rootPath || isRefreshing) return;
     setIsRefreshing(true);
@@ -103,11 +124,11 @@ export function WorkstationLeftExplorer({
   // ─────────────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <aside className="w-10 bg-[#121212] border-r border-[#383838] flex flex-col items-center py-2 shrink-0 select-none">
+      <aside className="w-10 bg-[#121212] border-r border-border-strong flex flex-col items-center py-2 shrink-0 select-none">
         <button
           onClick={onClose}
           className="text-[#A3A3A3] hover:text-white p-1.5 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-          title="Buka Panel Eksplore"
+          title="Open Explorer Panel"
         >
           <PanelLeftOpen className="w-4 h-4 text-[#FFFFFF]" />
         </button>
@@ -135,9 +156,9 @@ export function WorkstationLeftExplorer({
   // Full expanded panel
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <aside className="w-64 bg-[#121212] text-[#FFFFFF] border-r border-[#383838] flex flex-col shrink-0">
+    <aside className="bg-[#121212] text-[#FFFFFF] border-r border-border-strong flex flex-col shrink-0" style={{ width }}>
       {/* Panel Header */}
-      <div className="px-3 py-2.5 border-b border-[#383838] flex items-center justify-between shrink-0">
+      <div className="h-9 px-3 box-border border-b border-border-strong flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
           <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
           Eksplore
@@ -148,7 +169,7 @@ export function WorkstationLeftExplorer({
             <button
               onClick={handleRefresh}
               className={`text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer ${isRefreshing ? "animate-spin" : ""}`}
-              title="Refresh Eksplore (Baca Ulang dari Disk)"
+              title="Refresh Explorer (Re-read from Disk)"
               disabled={isRefreshing}
             >
               <RotateCw className="w-3.5 h-3.5" />
@@ -157,7 +178,7 @@ export function WorkstationLeftExplorer({
           <button
             onClick={onClose}
             className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-            title="Tutup Panel Eksplore"
+            title="Close Explorer Panel"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>

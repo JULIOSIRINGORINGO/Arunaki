@@ -55,7 +55,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         <span>{categoryLabel}</span>
       </span>
       <span className="text-gray-300">|</span>
-      <span className="truncate max-w-xs">{preview || `Mengeksekusi ${toolName}...`}</span>
+      <span className="truncate max-w-xs">{preview || `Executing ${toolName}...`}</span>
       <Loader2 size={12} className="animate-spin text-gray-400 ml-1" />
     </div>
   );

@@ -41,10 +41,10 @@ export function ConnectFolderModal({
       onSelectWorkspace(newWs.id);
       onClose();
       setFolderInputPath("");
-      toast.success(`Folder terhubung: ${newWs.name}`);
+      toast.success(`Folder connected: ${newWs.name}`);
       onRefreshWorkspaces();
     } catch {
-      toast.error("Gagal menghubungkan folder workspace");
+      toast.error("Failed to connect workspace folder");
     }
   };
 
@@ -54,8 +54,7 @@ export function ConnectFolderModal({
         <div className="flex items-center justify-between pb-3 border-b border-[#2D2D2D] mb-4">
           <h3 className="font-bold text-sm text-white flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-[#E5E5E5]" />
-            Hubungkan Folder Workspace
-          </h3>
+            Connect Workspace Folder          </h3>
           <button
             onClick={onClose}
             className="text-[#A3A3A3] hover:text-white p-1 rounded cursor-pointer"
@@ -67,13 +66,13 @@ export function ConnectFolderModal({
         <form onSubmit={handleConnectFolderSubmit} className="space-y-4">
           <div>
             <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
-              Path Folder Lokal
+              Local Folder Path
             </label>
             <input
               type="text"
               value={folderInputPath}
               onChange={(e) => setFolderInputPath(e.target.value)}
-              placeholder="Contoh: E:\DocumentWorkspaces\Garment"
+              placeholder="Example: E:\DocumentWorkspaces\Garment"
               className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md px-3 py-2 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
             />
           </div>
@@ -81,7 +80,7 @@ export function ConnectFolderModal({
           {workspaces.length > 0 && (
             <div>
               <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
-                Atau Pilih Workspace Terbaru:
+                Or Select Recent Workspace:
               </label>
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                 {workspaces.map((ws) => (
@@ -90,7 +89,7 @@ export function ConnectFolderModal({
                     onClick={() => {
                       onSelectWorkspace(ws.id);
                       onClose();
-                      toast.success(`Dihubungkan ke ${ws.name}`);
+                      toast.success(`Connected to ${ws.name}`);
                     }}
                     className="p-2 rounded-md bg-[#1E1E1E] hover:bg-[#262626] border border-[#2D2D2D] transition-colors cursor-pointer flex items-center justify-between text-xs"
                   >
@@ -110,13 +109,13 @@ export function ConnectFolderModal({
               onClick={onClose}
               className="px-4 py-2 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white rounded-md text-xs font-semibold cursor-pointer"
             >
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-white text-black hover:bg-[#E5E5E5] rounded-md text-xs font-semibold cursor-pointer"
             >
-              Hubungkan
+              Connect
             </button>
           </div>
         </form>

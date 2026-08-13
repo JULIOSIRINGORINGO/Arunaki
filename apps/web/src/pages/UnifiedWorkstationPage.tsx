@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -58,7 +58,10 @@ export function UnifiedWorkstationPage() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [leftWidth, setLeftWidth] = useState(256);
+  const [rightWidth, setRightWidth] = useState(320);
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [nativeFileNames, setNativeFileNames] = useState<string[]>([]);
 
   const [tabs, setTabs] = useState<CenterTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -70,6 +73,29 @@ export function UnifiedWorkstationPage() {
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const startDrag = useCallback(
+    (side: "left" | "right", e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = side === "left" ? leftWidth : rightWidth;
+      const onMove = (ev: MouseEvent) => {
+        const delta = ev.clientX - startX;
+        if (side === "left") {
+          setLeftWidth(Math.max(160, Math.min(480, startWidth + delta)));
+        } else {
+          setRightWidth(Math.max(240, Math.min(600, startWidth - delta)));
+        }
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [leftWidth, rightWidth]
+  );
 
   // 1. Fetch Workspaces
   const { data: workspaces = [], refetch: refetchWorkspaces } = useQuery<Workspace[]>({
@@ -94,6 +120,14 @@ export function UnifiedWorkstationPage() {
     },
     enabled: !!selectedWorkspaceId,
   });
+
+  const mentionFiles = useMemo(
+    () =>
+      Array.from(
+        new Set([...workspaceFiles.map((f) => f.name), ...nativeFileNames])
+      ).map((name) => ({ name })),
+    [workspaceFiles, nativeFileNames]
+  );
 
   // 3. Fetch Chat Messages
   const { data: chatMessages = [] } = useQuery<Message[]>({
@@ -136,7 +170,7 @@ export function UnifiedWorkstationPage() {
           if (targetFile?.id) {
             const response = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
             const json = await response.json();
-            fileContent = json.data?.content || json.data || "Beberapa baris isi dokumen...";
+            fileContent = json.data?.content || json.data || "A few lines of document content...";
           }
         }
 
@@ -146,13 +180,13 @@ export function UnifiedWorkstationPage() {
           title: fileName,
           path: filePath,
           fileType: fileName.split(".").pop() || "txt",
-          content: fileContent || "Dokumen kosong...",
+          content: fileContent || "Empty document...",
         };
 
         setTabs((prev) => [...prev, newTab]);
         setActiveTabId(tabId);
       } catch {
-        toast.error(`Gagal membaca isi file ${fileName}`);
+        toast.error(`Failed to read file ${fileName}`);
       }
     },
     [tabs, workspaceFiles]
@@ -168,7 +202,7 @@ export function UnifiedWorkstationPage() {
           id: "canvas-1",
           title: "Workspace Canvas",
           brandColorHeader: "#1A191B",
-          plainTextContent: "# Draf Laporan Dokumen\n\nIsi canvas dapat diedit langsung...",
+          plainTextContent: "# Draft Report Document\n\nCanvas content can be edited directly...",
           createdAt: new Date().toISOString(),
         }
       );
@@ -239,7 +273,7 @@ export function UnifiedWorkstationPage() {
                 if (canvasText) {
                   handleTriggerCanvas({
                     id: `canvas-${Date.now()}`,
-                    title: "Kalkulasi / Dokumen Terstruktur",
+                    title: "Calculation / Structured Document",
                     brandColorHeader: "#1A191B",
                     plainTextContent: canvasText,
                     createdAt: new Date().toISOString(),
@@ -257,7 +291,7 @@ export function UnifiedWorkstationPage() {
           onerror(err) {
             setIsStreaming(false);
             setLiveStatus(null);
-            toast.error("Gagal menjalankan agent workspace");
+            toast.error("Failed to run workspace agent");
             throw err;
           },
         });
@@ -277,7 +311,7 @@ export function UnifiedWorkstationPage() {
           setSearchParams({ chatId: chatIdToUse });
         } catch {
           setIsStreaming(false);
-          toast.error("Gagal membuat percakapan baru");
+          toast.error("Failed to create a new conversation");
           return;
         }
       }
@@ -310,7 +344,7 @@ export function UnifiedWorkstationPage() {
           },
           onerror(err) {
             setIsStreaming(false);
-            toast.error("Gagal mengirim pesan chat");
+            toast.error("Failed to send chat message");
             throw err;
           },
         });
@@ -330,6 +364,13 @@ export function UnifiedWorkstationPage() {
           workspaceFiles={workspaceFiles}
           onOpenFileTab={handleOpenFileTab}
           onOpenFolderModal={() => setShowFolderModal(true)}
+          width={leftWidth}
+          onNativeFilesChange={setNativeFileNames}
+        />
+
+        <div
+          className="w-1 cursor-col-resize bg-transparent shrink-0"
+          onMouseDown={(e) => startDrag("left", e)}
         />
 
         <WorkstationCenterPanel
@@ -338,6 +379,11 @@ export function UnifiedWorkstationPage() {
           onSelectTab={setActiveTabId}
           onCloseTab={handleCloseTab}
           canvasData={canvasData}
+        />
+
+        <div
+          className="w-1 cursor-col-resize bg-transparent shrink-0"
+          onMouseDown={(e) => startDrag("right", e)}
         />
 
         <WorkstationRightChat
@@ -352,6 +398,8 @@ export function UnifiedWorkstationPage() {
           setInputPrompt={setInputPrompt}
           isStreaming={isStreaming}
           onSendMessage={handleSendMessage}
+          width={rightWidth}
+          files={mentionFiles}
         />
       </div>
 

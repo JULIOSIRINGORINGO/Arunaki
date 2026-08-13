@@ -1,4 +1,4 @@
-import { FileText, FileSpreadsheet, X, Sparkles } from "lucide-react";
+import { FileText, X, Sparkles } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
 
@@ -32,7 +32,7 @@ export function WorkstationCenterPanel({
     <main className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden relative">
       {/* Top Multi-Tab Bar */}
       {tabs.length > 0 && (
-        <div className="h-9 bg-[#121212] border-b border-[#383838] flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
+        <div className="h-9 bg-[#121212] border-b border-border-strong flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -40,9 +40,9 @@ export function WorkstationCenterPanel({
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1 rounded-t-md text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-t border-x border-transparent",
+                  "flex items-center gap-2 px-3 py-1 text-xs font-medium cursor-pointer transition-colors max-w-[200px] group",
                   isActive
-                    ? "bg-[#171717] text-[#FFFFFF] border-[#383838] font-semibold"
+                    ? "bg-[#252526] text-[#FFFFFF] font-semibold"
                     : "text-[#A3A3A3] hover:bg-[#1E1E1E] hover:text-[#FFFFFF]"
                 )}
               >
@@ -68,11 +68,11 @@ export function WorkstationCenterPanel({
       )}
 
       {/* Dynamic Content Body */}
-      <div className="flex-1 p-4 overflow-auto bg-[#0A0A0A]">
+      <div className="flex-1 relative overflow-hidden bg-[#0A0A0A]">
         {activeTab ? (
           activeTab.type === "canvas" ? (
             /* ON-DEMAND CANVAS PANEL */
-            <div className="h-full w-full bg-[#171717] rounded-xl p-4 border border-[#383838] flex flex-col text-white">
+            <div className="h-full w-full flex flex-col text-white">
               <CanvasPanel
                 isOpen={true}
                 onClose={() => onCloseTab("canvas-active")}
@@ -81,56 +81,22 @@ export function WorkstationCenterPanel({
             </div>
           ) : (
             /* IDE FILE READER / DOCUMENT VIEWER */
-            <div className="h-full w-full bg-[#171717] rounded-xl p-5 border border-[#383838] flex flex-col text-white">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#383838]">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-[#E5E5E5]" />
-                  <h2 className="font-bold text-xs text-[#FFFFFF]">{activeTab.title}</h2>
-                  <span className="text-[10px] text-[#A3A3A3] bg-[#262626] px-2 py-0.5 rounded font-mono border border-[#383838]">
-                    {activeTab.fileType}
-                  </span>
-                </div>
-                <span className="text-xs text-[#A3A3A3] truncate max-w-md">{activeTab.path}</span>
-              </div>
-
-              <div className="flex-1 overflow-auto bg-[#121212] p-4 rounded-lg border border-[#383838] font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap">
+            <div className="h-full w-full flex flex-col bg-transparent text-white">
+              <div className="flex-1 overflow-auto bg-transparent p-4 font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap">
                 {activeTab.content}
               </div>
             </div>
           )
         ) : (
-          /* EDITORIAL TYPOGRAPHIC EMPTY STATE — no buttons, no cards */
-          <div className="h-full flex flex-col items-center justify-center text-center select-none">
-            <p
-              style={{
-                fontFamily: "'Instrument Serif', 'Playfair Display', serif",
-                fontStyle: "normal",
-                fontWeight: 400,
-                fontSize: "clamp(36px, 5vw, 60px)",
-                color: "#ffffff",
-                lineHeight: 1.1,
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Arunaki
-            </p>
-            <p
-              style={{
-                fontFamily: "'Instrument Serif', 'Playfair Display', serif",
-                fontStyle: "italic",
-                fontWeight: 400,
-                fontSize: "clamp(20px, 2.8vw, 34px)",
-                color: "#ffffff",
-                opacity: 0.5,
-                lineHeight: 1.2,
-                marginTop: "0.25rem",
-                letterSpacing: "0.01em",
-              }}
-            >
-              Document Workstation
-            </p>
+          /* CENTER SVG WORDMARK — no text, no buttons, clean */
+          <div className="h-full flex items-center justify-center select-none">
+            <img
+              src="/text-center.svg"
+              alt=""
+              className="max-w-[70%] max-h-[40%] object-contain opacity-90"
+              draggable={false}
+            />
           </div>
-
         )}
       </div>
     </main>

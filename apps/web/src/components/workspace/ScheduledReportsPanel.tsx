@@ -65,15 +65,15 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
       });
 
       if (res.ok) {
-        toast.success(`Jadwal laporan "${name}" berhasil ditambahkan!`);
+        toast.success(`Report schedule "${name}" added successfully!`);
         setIsModalOpen(false);
         setName("");
         fetchSchedules();
       } else {
-        toast.error("Gagal menambahkan jadwal laporan");
+        toast.error("Failed to add report schedule");
       }
     } catch {
-      toast.error("Gagal terhubung ke server");
+      toast.error("Failed to connect to server");
     }
   };
 
@@ -86,7 +86,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
         fetchSchedules();
       }
     } catch {
-      toast.error("Gagal mengubah status jadwal");
+      toast.error("Failed to toggle schedule status");
     }
   };
 
@@ -96,11 +96,11 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success("Jadwal dihapus");
+        toast.success("Schedule deleted");
         fetchSchedules();
       }
     } catch {
-      toast.error("Gagal menghapus jadwal");
+      toast.error("Failed to delete schedule");
     }
   };
 
@@ -111,22 +111,22 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
         method: "POST",
       });
       if (res.ok) {
-        toast.success(`Laporan "${reportName}" berhasil di-generate & tersimpan di Studio Artifact Store!`);
+        toast.success(`Report "${reportName}" generated & saved to Studio Artifact Store!`);
         fetchSchedules();
       } else {
-        toast.error("Gagal men-generate laporan");
+        toast.error("Failed to generate report");
       }
     } catch {
-      toast.error("Gagal terhubung ke server");
+      toast.error("Failed to connect to server");
     } finally {
       setRunningId(null);
     }
   };
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return "Belum pernah";
+    if (!dateStr) return "Never";
     try {
-      return new Date(dateStr).toLocaleString("id-ID", {
+      return new Date(dateStr).toLocaleString("en-US", {
         day: "numeric",
         month: "short",
         hour: "2-digit",
@@ -146,10 +146,10 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
           </div>
           <div>
             <h3 className="text-xs font-bold text-surface-900 tracking-tight">
-              Jadwal Laporan Otomatis (Proactive Cron)
+              Automatic Report Scheduling (Proactive Cron)
             </h3>
             <p className="text-[11px] text-surface-500">
-              Otomasi latar belakang pembuat laporan RUG, Laba Rugi, & Neraca
+              Background automation for RUG, Income Statement, & Balance Sheet reports
             </p>
           </div>
         </div>
@@ -158,20 +158,20 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
         >
           <Plus size={13} />
-          <span>Tambah Jadwal</span>
+          <span>Add Schedule</span>
         </button>
       </div>
 
       {loading ? (
         <div className="py-6 text-center text-xs text-surface-400 animate-pulse">
-          Memuat jadwal laporan...
+          Loading report schedules...
         </div>
       ) : schedules.length === 0 ? (
         <div className="py-6 text-center space-y-1.5">
           <Calendar className="w-6 h-6 text-surface-300 mx-auto" />
-          <p className="text-xs font-medium text-surface-500">Belum ada jadwal laporan otomatis</p>
+          <p className="text-xs font-medium text-surface-500">No automatic report schedules yet</p>
           <p className="text-[11px] text-surface-400">
-            Klik "Tambah Jadwal" untuk menjadwalkan pembuatan laporan rutin.
+            Click "Add Schedule" to schedule recurring report generation.
           </p>
         </div>
       ) : (
@@ -192,7 +192,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-[11px] text-surface-500">
-                  <span>Terakhir: <strong>{formatDate(sch.lastRunAt)}</strong></span>
+                  <span>Last run: <strong>{formatDate(sch.lastRunAt)}</strong></span>
                 </div>
               </div>
 
@@ -200,7 +200,7 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
                 <button
                   onClick={() => handleManualRun(sch.id, sch.name)}
                   disabled={runningId === sch.id}
-                  title="Jalankan Laporan Sekarang (Test Instan)"
+                  title="Run Report Now (Instant Test)"
                   className="px-2.5 py-1.5 bg-accent/15 hover:bg-accent/25 text-accent rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   {runningId === sch.id ? (
@@ -208,21 +208,21 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
                   ) : (
                     <Play size={12} />
                   )}
-                  <span>Jalankan</span>
+                  <span>Run</span>
                 </button>
                 <button
                   onClick={() => handleToggle(sch.id)}
                   className={`p-1.5 rounded-md transition-colors ${
                     sch.active ? "text-emerald-600 hover:bg-emerald-50" : "text-surface-400 hover:bg-surface-200"
                   }`}
-                  title={sch.active ? "Aktif (Klik untuk nonaktifkan)" : "Non-aktif (Klik untuk aktifkan)"}
+                  title={sch.active ? "Active (click to deactivate)" : "Inactive (click to activate)"}
                 >
                   {sch.active ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
                 </button>
                 <button
                   onClick={() => handleDelete(sch.id)}
                   className="p-1.5 rounded-md text-surface-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                  title="Hapus Jadwal"
+                  title="Delete Schedule"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -232,21 +232,21 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
         </div>
       )}
 
-      {/* Modal Tambah Jadwal */}
+      {/* Add Schedule Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white border border-surface-200 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
             <h3 className="text-sm font-bold text-surface-900 border-b border-surface-100 pb-2">
-              Tambah Jadwal Laporan Otomatis
+              Add Automatic Report Schedule
             </h3>
             <form onSubmit={handleCreate} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-surface-700 mb-1">Nama Laporan</label>
+                <label className="block text-xs font-medium text-surface-700 mb-1">Report Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Contoh: Laporan Laba Rugi Mingguan"
+                  placeholder="Example: Weekly Income Statement Report"
                   className="w-full px-3 py-2 border border-surface-300 rounded-lg text-xs"
                   required
                 />
@@ -254,35 +254,35 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-surface-700 mb-1">Jenis Laporan</label>
+                  <label className="block text-xs font-medium text-surface-700 mb-1">Report Type</label>
                   <select
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
                     className="w-full px-3 py-2 border border-surface-300 rounded-lg text-xs"
                   >
-                    <option value="laba_rugi">Laba Rugi</option>
-                    <option value="rug">RUG (Ringkasan Usaha)</option>
-                    <option value="neraca">Neraca Keuangan</option>
-                    <option value="stok">Rekap Stok</option>
+                    <option value="laba_rugi">Income Statement</option>
+                    <option value="rug">RUG (Business Summary)</option>
+                    <option value="neraca">Balance Sheet</option>
+                    <option value="stok">Stock Recap</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-surface-700 mb-1">Frekuensi Cron</label>
+                  <label className="block text-xs font-medium text-surface-700 mb-1">Cron Frequency</label>
                   <select
                     value={frequency}
                     onChange={(e) => setFrequency(e.target.value)}
                     className="w-full px-3 py-2 border border-surface-300 rounded-lg text-xs"
                   >
-                    <option value="daily">Harian (Jam 17:00)</option>
-                    <option value="weekly">Mingguan (Hari Jumat)</option>
-                    <option value="monthly">Bulanan (Tgl 1)</option>
+                    <option value="daily">Daily (5:00 PM)</option>
+                    <option value="weekly">Weekly (Friday)</option>
+                    <option value="monthly">Monthly (1st)</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-surface-700 mb-1">Format Output</label>
+                <label className="block text-xs font-medium text-surface-700 mb-1">Output Format</label>
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value)}
@@ -300,13 +300,13 @@ export function ScheduledReportsPanel({ workspaceId }: ScheduledReportsPanelProp
                   onClick={() => setIsModalOpen(false)}
                   className="px-3.5 py-1.5 text-xs text-surface-600 hover:bg-surface-100 rounded-lg"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-gray-800"
                 >
-                  Simpan Jadwal
+                  Save Schedule
                 </button>
               </div>
             </form>

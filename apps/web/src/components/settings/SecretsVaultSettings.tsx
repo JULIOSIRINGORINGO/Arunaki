@@ -24,12 +24,12 @@ export function SecretsVaultSettings() {
     ]);
     setNewKey("");
     setNewValue("");
-    toast.success("Secret disimpan secara terenkripsi ke Secrets Vault!");
+    toast.success("Secret saved encrypted to Secrets Vault!");
   };
 
   const handleDeleteSecret = (key: string) => {
     setSecrets((prev) => prev.filter((s) => s.key !== key));
-    toast.success(`Secret ${key} dihapus.`);
+    toast.success(`Secret ${key} deleted.`);
   };
 
   return (
@@ -40,23 +40,23 @@ export function SecretsVaultSettings() {
           Encrypted Secrets Vault (AES-256-GCM)
         </h3>
         <p className="text-xs text-stone-400">
-          Simpan API key rahasia dan kredensial terenskripsi secara aman di perangkat lokal.
+          Securely store API keys and credentials encrypted on your local device.
         </p>
       </div>
 
       <form onSubmit={handleAddSecret} className="p-4 bg-[#252428] rounded-2xl border border-stone-800 space-y-3">
-        <h4 className="text-xs font-bold text-white">Simpan Kunci Rahasia Baru</h4>
+        <h4 className="text-xs font-bold text-white">Save New Secret Key</h4>
         <div className="grid grid-cols-2 gap-3">
           <input
             type="text"
-            placeholder="Nama Kunci (contoh: OPENAI_API_KEY)"
+            placeholder="Key Name (e.g. OPENAI_API_KEY)"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             className="bg-[#1A191B] border border-stone-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#FF5E38]"
           />
           <input
             type="password"
-            placeholder="Nilai Kunci Rahasia"
+            placeholder="Secret Key Value"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             className="bg-[#1A191B] border border-stone-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#FF5E38]"
@@ -68,7 +68,7 @@ export function SecretsVaultSettings() {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5E38] hover:bg-[#e04e2a] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Encryp & Ensimpan</span>
+            <span>Encrypt & Save</span>
           </button>
         </div>
       </form>

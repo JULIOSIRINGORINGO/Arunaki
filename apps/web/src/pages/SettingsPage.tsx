@@ -38,7 +38,7 @@ export function SettingsPage() {
   return (
     <div className="flex-1 flex flex-col h-full bg-[#1A191B] text-[#F4EFE6] overflow-hidden select-none p-6">
       <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col">
-        <h1 className="text-xl font-bold text-white mb-4">Pengaturan System & AI Provider</h1>
+        <h1 className="text-xl font-bold text-white mb-4">System & AI Provider Settings</h1>
 
         <div className="flex items-center gap-2 border-b border-stone-800 pb-3 mb-6 overflow-x-auto">
           {tabs.map((tab) => {
@@ -75,22 +75,22 @@ export function SettingsPage() {
 
           {activeTab === "profile" && (
             <div className="space-y-4 text-xs text-stone-300">
-              <h3 className="font-bold text-white text-sm">Profil Pengguna</h3>
-              <p>Pengaturan akun lokal dan preferensi tema aplikasi.</p>
+              <h3 className="font-bold text-white text-sm">User Profile</h3>
+              <p>Local account settings and application theme preferences.</p>
             </div>
           )}
 
           {activeTab === "integrations" && (
             <div className="space-y-4 text-xs text-stone-300">
-              <h3 className="font-bold text-white text-sm">Integrasi Aplikasi Desktop</h3>
-              <p>Microsoft Excel Desktop, Word, dan aplikasi pembaca PDF lokal.</p>
+              <h3 className="font-bold text-white text-sm">Desktop App Integrations</h3>
+              <p>Microsoft Excel Desktop, Word, and local PDF reader applications.</p>
             </div>
           )}
 
           {activeTab === "workspace" && (
             <div className="space-y-4 text-xs text-stone-300">
-              <h3 className="font-bold text-white text-sm">Penyimpanan Workspace</h3>
-              <p>Direktori dokumen lokal terhubung dan indeks pencarian FTS5.</p>
+              <h3 className="font-bold text-white text-sm">Workspace Storage</h3>
+              <p>Local document directory connected with FTS5 search index.</p>
             </div>
           )}
         </div>

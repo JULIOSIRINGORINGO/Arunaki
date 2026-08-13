@@ -102,29 +102,29 @@ export function ModelProviderSettings({
           method: "PUT",
           body: JSON.stringify(form),
         });
-        toast.success("Provider berhasil diperbarui!");
+        toast.success("Provider updated successfully!");
       } else {
         await apiFetch(`${API_BASE}/providers`, {
           method: "POST",
           body: JSON.stringify(form),
         });
-        toast.success("Provider berhasil ditambahkan!");
+        toast.success("Provider added successfully!");
       }
       resetForm();
       onRefresh();
     } catch {
-      toast.error("Gagal menyimpan provider.");
+      toast.error("Failed to save provider.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Hapus provider ini?")) return;
+    if (!confirm("Delete this provider?")) return;
     try {
       await apiFetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
-      toast.success("Provider berhasil dihapus!");
+      toast.success("Provider deleted successfully!");
       onRefresh();
     } catch {
-      toast.error("Gagal menghapus provider.");
+      toast.error("Failed to delete provider.");
     }
   };
 
@@ -134,10 +134,10 @@ export function ModelProviderSettings({
         method: "PUT",
         body: JSON.stringify({ active: !provider.active }),
       });
-      toast.success(`Provider ${provider.active ? "dinonaktifkan" : "diaktifkan"}`);
+      toast.success(`Provider ${provider.active ? "deactivated" : "activated"}`);
       onRefresh();
     } catch {
-      toast.error("Gagal memperbarui status provider.");
+      toast.error("Failed to update provider status.");
     }
   };
 
@@ -147,12 +147,12 @@ export function ModelProviderSettings({
       const res = await apiFetch(`${API_BASE}/providers/${id}/test`, { method: "POST" });
       const data = await res.json();
       if (data.data?.success) {
-        toast.success("Koneksi berhasil!");
+        toast.success("Connection successful!");
       } else {
-        toast.error(`Koneksi gagal: ${data.data?.error || "Unknown error"}`);
+        toast.error(`Connection failed: ${data.data?.error || "Unknown error"}`);
       }
     } catch (err: any) {
-      toast.error(`Koneksi gagal: ${err.message}`);
+      toast.error(`Connection failed: ${err.message}`);
     } finally {
       setTestingId(null);
     }
@@ -164,7 +164,7 @@ export function ModelProviderSettings({
         <div>
           <h3 className="text-sm font-bold text-[#F4EFE6]">Custom LLM Provider Catalogs</h3>
           <p className="text-xs text-stone-400">
-            Kelola kunci API, URL Endpoint, dan dynamic model fallback.
+            Manage API keys, endpoint URLs, and dynamic model fallback.
           </p>
         </div>
         <button
@@ -175,19 +175,19 @@ export function ModelProviderSettings({
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF5E38] hover:bg-[#e04e2a] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Tambah Provider</span>
+          <span>Add Provider</span>
         </button>
       </div>
 
       {showAddForm && (
         <form onSubmit={handleSave} className="p-4 bg-[#252428] rounded-2xl border border-stone-700 space-y-4">
           <h4 className="text-xs font-bold text-white">
-            {editingId ? "Edit Provider" : "Tambah Provider Baru"}
+            {editingId ? "Edit Provider" : "Add New Provider"}
           </h4>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Tipe Provider</label>
+              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Provider Type</label>
               <select
                 value={form.type}
                 onChange={(e) => handleTypeChange(e.target.value)}
@@ -200,12 +200,12 @@ export function ModelProviderSettings({
             </div>
 
             <div>
-              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Nama Tampilan</label>
+              <label className="block text-[11px] text-stone-300 mb-1 font-medium">Display Name</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Contoh: OpenRouter Primary"
+                placeholder="Example: OpenRouter Primary"
                 className="w-full bg-[#1A191B] border border-stone-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
                 required
               />
@@ -229,13 +229,13 @@ export function ModelProviderSettings({
               onClick={resetForm}
               className="px-3 py-1.5 bg-[#1A191B] text-stone-400 text-xs rounded-lg font-medium cursor-pointer"
             >
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
               className="px-3 py-1.5 bg-[#FF5E38] text-white text-xs rounded-lg font-semibold cursor-pointer"
             >
-              Simpan
+              Save
             </button>
           </div>
         </form>

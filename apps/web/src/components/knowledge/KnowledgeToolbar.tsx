@@ -34,7 +34,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
           <Search className="w-3.5 h-3.5 text-[#c4b5fd] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari knowledge..."
+            placeholder="Search knowledge..."
             className="w-full pl-8 pr-3 py-1.5 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-gray-600 focus:bg-gray-800 transition-colors"
           />
         </div>
@@ -53,7 +53,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
             )}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Tambah</span>
+            <span>Add</span>
           </button>
 
           {isAdding && (
@@ -63,7 +63,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-800 rounded-xl transition-colors group"
               >
                 <Type className="w-4 h-4 text-[#c4b5fd]" />
-                Dokumen Teks
+                Text Document
               </button>
               
               <button
@@ -71,7 +71,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-800 rounded-xl transition-colors group"
               >
                 <Database className="w-4 h-4 text-[#c4b5fd]" />
-                Data Terstruktur
+                Structured Data
               </button>
 
               <button
@@ -79,7 +79,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-800 rounded-xl transition-colors group"
               >
                 <ShieldCheck className="w-4 h-4 text-[#c4b5fd]" />
-                Aturan SOP
+                Rules SOP
               </button>
               
               <div className="h-px bg-gray-800 my-1" />
@@ -90,8 +90,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
               >
                 <UploadCloud className="w-4 h-4 text-[#c4b5fd]" />
                 Upload File...
-              </button>
-            </div>
+              </button>            </div>
           )}
         </div>
       </div>

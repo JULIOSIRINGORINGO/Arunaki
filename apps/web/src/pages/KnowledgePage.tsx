@@ -212,20 +212,20 @@ function FlowEditor() {
   // ─── Node Actions ──────────────────────────────────────────────────────
 
   const handleAddNode = async (type: string, x: number, y: number) => {
-    let title = 'Knowledge Baru';
+    let title = 'New Knowledge';
     let nodeColor = '#3B82F6';
     let icon = 'file-text';
 
     if (type === 'catalog') {
-      title = 'Katalog Produk';
+      title = 'Product Catalog';
       nodeColor = '#3B82F6'; // Blue
       icon = 'database';
     } else if (type === 'rules') {
-      title = 'Aturan / SOP';
+      title = 'Rules / SOP';
       nodeColor = '#10B981'; // Emerald
       icon = 'shield-check';
     } else if (type === 'template') {
-      title = 'Template Laporan';
+      title = 'Report Template';
       nodeColor = '#8B5CF6'; // Purple
       icon = 'type';
     }
@@ -423,7 +423,7 @@ function FlowEditor() {
         <div className="w-full h-full flex items-center justify-center bg-[#0A0A0A]">
           <div className="flex flex-col items-center gap-4">
             <div className="w-8 h-8 border-2 border-[#2D2D2D] border-t-white rounded-full animate-spin" />
-            <p className="text-sm text-[#A3A3A3] font-medium">Memuat Knowledge Graph...</p>
+            <p className="text-sm text-[#A3A3A3] font-medium">Loading Knowledge Graph...</p>
           </div>
         </div>
       ) : (
@@ -492,10 +492,10 @@ function FlowEditor() {
                 <div className="flex items-center justify-center gap-3">
                   <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
                   <span className="text-sm font-semibold text-gray-900">
-                    {extractStep === "uploading" && "Mengunggah file..."}
-                    {extractStep === "extracting" && "Sedang mengekstraksi teks dari dokumen..."}
-                    {extractStep === "saving" && "Menyimpan ke Knowledge Graph..."}
-                    {extractStep === "done" && "Berhasil disimpan!"}
+                    {extractStep === "uploading" && "Uploading file..."}
+                    {extractStep === "extracting" && "Extracting text from document..."}
+                    {extractStep === "saving" && "Saving to Knowledge Graph..."}
+                    {extractStep === "done" && "Saved successfully!"}
                   </span>
                 </div>
 
@@ -524,9 +524,9 @@ function FlowEditor() {
                           isDone ? "text-emerald-600" : isCurrent ? "text-gray-900" : "text-gray-400"
                         )}>
                           {step === "uploading" && "Upload file"}
-                          {step === "extracting" && "Ekstraksi teks"}
-                          {step === "saving" && "Buat Node & Koneksi"}
-                          {step === "done" && "Selesai"}
+                          {step === "extracting" && "Text extraction"}
+                          {step === "saving" && "Create Node & Connections"}
+                          {step === "done" && "Complete"}
                         </span>
                       </div>
                     );
@@ -542,8 +542,8 @@ function FlowEditor() {
                       <UploadCloud className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">Tambah Dokumen Node</h3>
-                      <p className="text-xs text-gray-500">Node ini akan terhubung otomatis ke AI</p>
+                      <h3 className="text-lg font-bold text-gray-900">Add Document Node</h3>
+                      <p className="text-xs text-gray-500">This node will be automatically linked to the AI</p>
                     </div>
                   </div>
                   <button
@@ -586,17 +586,17 @@ function FlowEditor() {
                         onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
                         className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
                       >
-                        Ganti file
+                        Change file
                       </button>
                     </>
                   ) : (
                     <>
                       <UploadCloud className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-sm font-semibold text-gray-700">
-                        Klik atau seret file dokumen ke sini
+                        Click or drag a document file here
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        Mendukung PDF, DOCX, TXT, Markdown, CSV
+                        Supports PDF, DOCX, TXT, Markdown, CSV
                       </p>
                     </>
                   )}
@@ -607,7 +607,7 @@ function FlowEditor() {
                     onClick={() => { setUploadOpen(false); setSelectedFile(null); }}
                     className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     onClick={createDoc}
@@ -617,7 +617,7 @@ function FlowEditor() {
                       !selectedFile && "opacity-50 cursor-not-allowed"
                     )}
                   >
-                    Upload & Buat Node
+                    Upload & Create Node
                   </button>
                 </div>
               </>

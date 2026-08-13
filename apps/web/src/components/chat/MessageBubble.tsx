@@ -134,7 +134,7 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
 
   const isKnowledgeCommand =
     message.content.toLowerCase().includes("/knowledge") ||
-    message.content.toLowerCase().includes("simpan ke knowledge base");
+    message.content.toLowerCase().includes("save to knowledge base");
 
   const hasChips = hasStructuredTable || isKnowledgeCommand;
 
@@ -156,24 +156,24 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
                     type="button"
                     onClick={() =>
                       onActionChipClick(
-                        "Tolong buatkan file Excel (.xlsx) dari rekap data ini agar bisa di-download."
+                        "Please create an Excel (.xlsx) file from this data recap so I can download it."
                       )
                     }
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium border border-emerald-200 transition-colors cursor-pointer"
                   >
-                    <span>📊 Unduh File Excel</span>
+                    <span>📊 Download Excel File</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() =>
                       onActionChipClick(
-                        "Tolong buatkan file PDF (.pdf) resmi dari rekap data ini."
+                        "Please create an official PDF (.pdf) file from this data recap."
                       )
                     }
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-medium border border-blue-200 transition-colors cursor-pointer"
                   >
-                    <span>📄 Unduh File PDF</span>
+                    <span>📄 Download PDF File</span>
                   </button>
                 </>
               )}
@@ -183,12 +183,12 @@ export function MessageBubble({ message, onActionChipClick }: MessageBubbleProps
                   type="button"
                   onClick={() =>
                     onActionChipClick(
-                      "Simpan format dan aturan dari percakapan ini ke Knowledge Base saya."
+                      "Save the format and rules from this conversation to my Knowledge Base."
                     )
                   }
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium border border-amber-200 transition-colors cursor-pointer"
                 >
-                  <span>💾 Simpan ke Knowledge</span>
+                  <span>💾 Save to Knowledge</span>
                 </button>
               )}
             </div>

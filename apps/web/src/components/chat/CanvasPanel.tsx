@@ -163,7 +163,7 @@ export function CanvasPanel({
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0" />
           <h2 className="text-xs font-bold text-white tracking-wide truncate">
-            {showArtifacts ? "Riwayat File" : canvasData?.title || "Canvas"}
+            {showArtifacts ? "File History" : canvasData?.title || "Canvas"}
           </h2>
         </div>
 
@@ -177,7 +177,7 @@ export function CanvasPanel({
                   ? "text-white bg-[#262626]"
                   : "text-[#A3A3A3] hover:text-white hover:bg-[#262626]"
               )}
-              title="Riwayat File"
+              title="File History"
             >
               <History className="w-3.5 h-3.5" />
             </button>
@@ -217,7 +217,7 @@ export function CanvasPanel({
               <button
                 onClick={handleDownloadTxt}
                 className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-                title="Download File Teks (.txt)"
+                title="Download Text File (.txt)"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -227,7 +227,7 @@ export function CanvasPanel({
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-            title={isExpanded ? "Kecilkan Canvas" : "Perbesar Canvas"}
+            title={isExpanded ? "Minimize Canvas" : "Maximize Canvas"}
           >
             {isExpanded ? (
               <Minimize2 className="w-3.5 h-3.5" />
@@ -238,7 +238,7 @@ export function CanvasPanel({
           <button
             onClick={onClose}
             className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-            title="Tutup Canvas"
+            title="Close Canvas"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -252,7 +252,7 @@ export function CanvasPanel({
             {artifacts.length === 0 ? (
               <div className="text-center space-y-2 text-[#737373] py-8">
                 <History className="w-5 h-5 text-[#A3A3A3] mx-auto" />
-                <p className="text-xs">Belum ada file yang di-generate</p>
+                <p className="text-xs">No generated files yet</p>
               </div>
             ) : (
               artifacts.map((artifact) => {
@@ -309,14 +309,14 @@ export function CanvasPanel({
             {isEditing ? (
               <div className="flex-1 flex flex-col space-y-3 min-h-0">
                 <div className="flex items-center justify-between text-xs text-[#A3A3A3] font-medium">
-                  <span>Edit Teks/Tabel Canvas</span>
-                  <span className="text-white font-semibold">Mode Edit Aktif</span>
+                  <span>Edit Canvas Text/Table</span>
+                  <span className="text-white font-semibold">Edit Mode Active</span>
                 </div>
                 <textarea
                   value={editedText}
                   onChange={(e) => setEditedText(e.target.value)}
                   className="w-full flex-1 min-h-[240px] p-3 text-xs text-white font-mono bg-[#121212] border border-[#2D2D2D] rounded-lg focus:outline-none focus:border-[#525252] resize-none leading-relaxed"
-                  placeholder="Ketik atau edit isi Canvas di sini..."
+                  placeholder="Type or edit the Canvas content here..."
                 />
                 <div className="flex items-center gap-2 pt-2">
                   <button
@@ -324,7 +324,7 @@ export function CanvasPanel({
                     className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span>Terapkan & Update AI</span>
+                    <span>Apply & Update AI</span>
                   </button>
                   <button
                     onClick={() => {
@@ -333,7 +333,7 @@ export function CanvasPanel({
                     }}
                     className="px-3 py-2 rounded-lg bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white text-xs font-medium transition-colors cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -363,7 +363,7 @@ export function CanvasPanel({
             <div className="w-10 h-10 rounded-xl bg-[#1E1E1E] border border-[#2D2D2D] flex items-center justify-center mx-auto mb-2">
               <Sparkles className="w-4 h-4 text-[#737373]" />
             </div>
-            <p className="text-xs font-semibold text-[#737373]">Canvas Kosong</p>
+            <p className="text-xs font-semibold text-[#737373]">Empty Canvas</p>
           </div>
         )}
       </div>

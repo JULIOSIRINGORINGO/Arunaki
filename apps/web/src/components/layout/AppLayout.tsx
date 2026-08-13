@@ -27,15 +27,15 @@ export function AppLayout() {
   const navItems = [
     { path: "/", label: "Workstation", icon: MessageSquare },
     { path: "/knowledge", label: "Knowledge", icon: BookOpen },
-    { path: "/history", label: "Riwayat", icon: History },
+    { path: "/history", label: "History", icon: History },
     { path: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden font-sans select-none">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Pure Text Menu ("File", "Edit", "Tampilan", "Bantuan") */}
+      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Pure Text Menu ("File", "Edit", "View", "Help") */}
       <header
-        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#383838]"
+        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-border-strong"
         style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
       >
         <div
@@ -43,7 +43,7 @@ export function AppLayout() {
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           {/* Logo 'A' di paling kiri */}
-          <div className="w-6 h-6 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#383838] shrink-0">
+          <div className="w-6 h-6 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-border-strong shrink-0">
             <ArunakiLogo className="w-3.5 h-3.5" fill="#FFFFFF" />
           </div>
 
@@ -65,13 +65,13 @@ export function AppLayout() {
               onClick={() => navigate("/")}
               className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
             >
-              Tampilan
+              View
             </button>
             <button
               onClick={() => navigate("/knowledge")}
               className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
             >
-              Bantuan
+              Help
             </button>
           </nav>
         </div>
@@ -83,7 +83,7 @@ export function AppLayout() {
         >
           <button
             onClick={() => navigate("/settings")}
-            className="w-7 h-7 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white border border-[#383838] transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white border border-border-strong transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
             <User className="w-3.5 h-3.5" />
@@ -97,8 +97,8 @@ export function AppLayout() {
       </main>
 
       {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container (Icons Only, Balanced Breathing Room) */}
-      <footer className="h-14 bg-[#121212] px-4 py-2 flex items-center justify-center shrink-0 border-t border-[#383838]">
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E1E1E] border border-[#383838] shadow-md">
+      <footer className="h-14 bg-[#121212] px-4 py-2 flex items-center justify-center shrink-0 border-t border-border-strong">
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E1E1E] border border-border-strong shadow-md">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -113,7 +113,7 @@ export function AppLayout() {
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
                   isActive
-                    ? "bg-[#262626] text-[#FFFFFF] border border-[#525252] shadow-xs"
+                    ? "bg-[#262626] text-[#FFFFFF] border border-border-strong shadow-xs"
                     : "text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#262626]"
                 )}
               >

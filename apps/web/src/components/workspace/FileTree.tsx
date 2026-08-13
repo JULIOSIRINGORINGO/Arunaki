@@ -99,7 +99,7 @@ export default function FileTree({
   return (
     <div className="flex flex-col h-full bg-[#121212] overflow-hidden text-xs select-none">
       {/* 1. PROJECT ROOT BAR: Root Name + Chevron Toggle (Left) + 4 Quick Actions (Right) */}
-      <div className="flex items-center justify-between px-3 h-8 bg-[#161616] shrink-0 border-b border-[#383838]">
+      <div className="flex items-center justify-between px-3 h-8 bg-[#161616] shrink-0 border-b border-border-strong">
         <button
           onClick={() => setIsRootExpanded(!isRootExpanded)}
           className="flex items-center gap-1.5 min-w-0 text-left hover:text-white transition-colors cursor-pointer group"
@@ -121,7 +121,7 @@ export default function FileTree({
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             type="button"
-            title="New File (Tambah File Baru)"
+            title="New File"
             onClick={() => {
               setNewItemName("");
               setPromptModal("file");
@@ -133,7 +133,7 @@ export default function FileTree({
 
           <button
             type="button"
-            title="New Folder (Tambah Folder Baru)"
+            title="New Folder"
             onClick={() => {
               setNewItemName("");
               setPromptModal("folder");
@@ -146,7 +146,7 @@ export default function FileTree({
           {onRefresh && (
             <button
               type="button"
-              title="Refresh Explorer (Muat Ulang)"
+              title="Refresh Explorer"
               onClick={onRefresh}
               className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
             >
@@ -156,7 +156,7 @@ export default function FileTree({
 
           <button
             type="button"
-            title="Collapse All Folders (Tutup Semua Folder)"
+            title="Collapse All Folders"
             onClick={handleCollapseAll}
             className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
           >
@@ -198,17 +198,17 @@ export default function FileTree({
       {/* Modals for Create & Rename */}
       {promptModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[#383838]">
+          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-border-strong">
             <h4 className="text-xs font-bold text-white mb-3">
-              {promptModal === "file" ? "Tambah File Baru" : "Tambah Folder Baru"}
+              {promptModal === "file" ? "New File" : "New Folder"}
             </h4>
             <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
               <input
                 type="text"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                placeholder={promptModal === "file" ? "contoh: Laporan.xlsx" : "contoh: DokumenUsaha"}
-                className="w-full bg-[#1E1E1E] border border-[#383838] rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#666666]"
+                placeholder={promptModal === "file" ? "example: Report.xlsx" : "example: BusinessDocs"}
+                className="w-full bg-[#1E1E1E] border border-border-strong rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-border-strong"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
@@ -217,13 +217,13 @@ export default function FileTree({
                   onClick={() => setPromptModal(null)}
                   className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
                 >
-                  Buat
+                  Create
                 </button>
               </div>
             </form>
@@ -233,8 +233,8 @@ export default function FileTree({
 
       {renameModalState && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[#383838]">
-            <h4 className="text-xs font-bold text-white mb-3">Ubah Nama File / Folder</h4>
+          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-border-strong">
+            <h4 className="text-xs font-bold text-white mb-3">Rename File / Folder</h4>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -249,7 +249,7 @@ export default function FileTree({
                 type="text"
                 value={renameNewName}
                 onChange={(e) => setRenameNewName(e.target.value)}
-                className="w-full bg-[#1E1E1E] border border-[#383838] rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#666666]"
+                className="w-full bg-[#1E1E1E] border border-border-strong rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-border-strong"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
@@ -258,13 +258,13 @@ export default function FileTree({
                   onClick={() => setRenameModalState(null)}
                   className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
                 >
-                  Simpan
+                  Save
                 </button>
               </div>
             </form>

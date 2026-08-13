@@ -42,7 +42,7 @@ export function TreeNodeItem({
     return (
       <div>
         <div
-          className="group flex items-center justify-between py-[3px] px-1.5 hover:bg-[#1E1E1E] transition-colors text-xs text-[#E5E5E5] select-none cursor-pointer border-l-2 border-transparent hover:border-[#525252]"
+          className="group flex items-center justify-between py-[3px] px-1.5 hover:bg-[#1E1E1E] transition-colors text-xs text-[#E5E5E5] select-none cursor-pointer border-l-2 border-transparent hover:border-border-strong"
           style={{ paddingLeft: `${depth * 12 + 12}px` }}
           onClick={() => setOpen(!open)}
         >
@@ -68,7 +68,7 @@ export function TreeNodeItem({
             {node.nativePath && onRenameClick && (
               <button
                 type="button"
-                title="Ubah Nama Folder"
+                title="Rename Folder"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRenameClick(node.nativePath!, node.name);
@@ -81,7 +81,7 @@ export function TreeNodeItem({
             {node.nativePath && onDeletePath && (
               <button
                 type="button"
-                title="Hapus Folder"
+                title="Delete Folder"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDeletePath(node.nativePath!, node.name);
@@ -156,7 +156,7 @@ export function TreeNodeItem({
           {onAnalyzeFile && (
             <button
               type="button"
-              title="Minta AI Analisis File Ini"
+              title="Ask AI to Analyze This File"
               onClick={(e) => {
                 e.stopPropagation();
                 onAnalyzeFile(node.name, node.nativePath);
@@ -169,7 +169,7 @@ export function TreeNodeItem({
           {node.nativePath && onRenameClick && (
             <button
               type="button"
-              title="Ubah Nama File"
+              title="Rename File"
               onClick={(e) => {
                 e.stopPropagation();
                 onRenameClick(node.nativePath!, node.name);
@@ -182,7 +182,7 @@ export function TreeNodeItem({
           {node.nativePath && onDeletePath && (
             <button
               type="button"
-              title="Hapus File"
+              title="Delete File"
               onClick={(e) => {
                 e.stopPropagation();
                 onDeletePath(node.nativePath!, node.name);

@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Instrument+Serif:ital,wght@0,400;0,700;1,400&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --color-border-strong: #A3A3A3;
+}
 
 @layer base {
   *, ::before, ::after {
@@ -63,5 +67,20 @@
     font-size: 14px;
     color: #777777;
     opacity: 1;
+  }
+
+  /* Serif italic text matching the chat placeholder font */
+  .serif-italic {
+    font-family: 'Instrument Serif', 'Playfair Display', serif;
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  /* Hide scrollbar but keep scrolling */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

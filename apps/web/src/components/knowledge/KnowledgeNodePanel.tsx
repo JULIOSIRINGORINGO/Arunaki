@@ -70,7 +70,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   };
 
   const handleDelete = async () => {
-    if (!confirm('Hapus node ini?')) return;
+    if (!confirm('Delete this node?')) return;
     try {
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'DELETE',
@@ -125,8 +125,8 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             {/* Status Toggle */}
             <div className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50">
               <div>
-                <div className="text-xs font-semibold text-gray-900">Status Node</div>
-                <div className="text-[10px] text-gray-500 mt-0.5">Berikan akses ke AI</div>
+                <div className="text-xs font-semibold text-gray-900">Node Status</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Grant access to AI</div>
               </div>
               <button
                 onClick={toggleActive}
@@ -138,15 +138,15 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 )}
               >
                 {nodeData.active ? (
-                  <><CheckCircle2 className="w-3.5 h-3.5" /> Aktif</>
+                  <><CheckCircle2 className="w-3.5 h-3.5" /> Active</>
                 ) : (
-                  <><XCircle className="w-3.5 h-3.5" /> Non-Aktif</>
+                  <><XCircle className="w-3.5 h-3.5" /> Inactive</>
                 )}
               </button>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Judul Knowledge</label>
+              <label className="text-xs font-semibold text-gray-700">Knowledge Title</label>
               <input
                 type="text"
                 value={title}
@@ -156,21 +156,21 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Tipe Node</label>
+              <label className="text-xs font-semibold text-gray-700">Node Type</label>
               <select
                 value={type}
                 onChange={e => setType(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900"
               >
-                <option value="catalog">Katalog Data</option>
-                <option value="rules">Aturan & SOP</option>
-                <option value="template">Template Laporan</option>
+                <option value="catalog">Data Catalog</option>
+                <option value="rules">Rules & SOP</option>
+                <option value="template">Report Template</option>
                 <option value="custom">Custom</option>
               </select>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Isi Knowledge (Markdown)</label>
+              <label className="text-xs font-semibold text-gray-700">Knowledge Content (Markdown)</label>
               <textarea
                 value={content}
                 onChange={e => setContent(e.target.value)}
@@ -184,7 +184,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             <button
               onClick={handleDelete}
               className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-              title="Hapus Node"
+              title="Delete Node"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -195,7 +195,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
               className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-xs font-semibold rounded-xl hover:bg-gray-800 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              {saving ? 'Menyimpan...' : 'Simpan'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </>
