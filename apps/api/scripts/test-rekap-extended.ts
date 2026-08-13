@@ -42,6 +42,7 @@ async function runTest() {
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), 90_000);
   const t0 = Date.now();
+  let doneAt = 0;
   try {
     const response = await fetch(`${API_BASE}/workspaces/${WORKSPACE_ID}/agent/stream`, {
       method: 'POST',
@@ -72,13 +73,14 @@ async function runTest() {
         if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
         if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
         if (event.type === 'error') error = event.data?.message || 'unknown';
-        if (event.type === 'done') sawDone = true;
+        if (event.type === 'done') { sawDone = true; doneAt = Date.now(); }
       }
       if (sawDone) break;
     }
     if (abortController.signal.aborted) throw new Error(`Agent stream exceeded 90 seconds (${Math.round((Date.now() - t0) / 1000)}s elapsed) — HARNESS FAIL`);
     if (error) throw new Error(`Agent error: ${error}`);
     if (!sawDone) throw new Error('Agent stream ended without a done event');
+    console.log(`⏱️ Agent stream completed in ${Math.round((doneAt - t0) / 100) / 10}s (done event)`);
   } catch (fetchErr: any) {
     console.error(`❌ ${fetchErr.message}`);
     process.exit(1);
