@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
@@ -42,13 +42,13 @@ interface WorkstationLeftExplorerProps {
 
 type LoadState = "idle" | "loading" | "done" | "error";
 
-export function WorkstationLeftExplorer({
+function WorkstationLeftExplorerComponent({
   collapsed,
   onClose,
   activeWorkspace,
   workspaceFiles,
   onOpenFileTab,
-  width,
+  width = 256,
   onNativeFilesChange,
 }: WorkstationLeftExplorerProps) {
   const [nativeTree, setNativeTree] = useState<NativeNode[]>([]);
@@ -233,3 +233,5 @@ export function WorkstationLeftExplorer({
     </aside>
   );
 }
+
+export const WorkstationLeftExplorer = memo(WorkstationLeftExplorerComponent);

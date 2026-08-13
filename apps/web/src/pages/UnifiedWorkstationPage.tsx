@@ -79,18 +79,27 @@ export function UnifiedWorkstationPage() {
       e.preventDefault();
       const startX = e.clientX;
       const startWidth = side === "left" ? leftWidth : rightWidth;
+      let rafId: number | null = null;
+
       const onMove = (ev: MouseEvent) => {
-        const delta = ev.clientX - startX;
-        if (side === "left") {
-          setLeftWidth(Math.max(160, Math.min(480, startWidth + delta)));
-        } else {
-          setRightWidth(Math.max(240, Math.min(600, startWidth - delta)));
-        }
+        if (rafId !== null) return;
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          const delta = ev.clientX - startX;
+          if (side === "left") {
+            setLeftWidth(Math.max(160, Math.min(480, startWidth + delta)));
+          } else {
+            setRightWidth(Math.max(240, Math.min(600, startWidth - delta)));
+          }
+        });
       };
+
       const onUp = () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup", onUp);
       };
+
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },

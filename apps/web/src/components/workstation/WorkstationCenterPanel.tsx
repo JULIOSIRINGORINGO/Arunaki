@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { FileText, X, Sparkles } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
@@ -19,7 +20,7 @@ interface WorkstationCenterPanelProps {
   canvasData: CanvasData | null;
 }
 
-export function WorkstationCenterPanel({
+function WorkstationCenterPanelComponent({
   tabs,
   activeTabId,
   onSelectTab,
@@ -102,3 +103,5 @@ export function WorkstationCenterPanel({
     </main>
   );
 }
+
+export const WorkstationCenterPanel = memo(WorkstationCenterPanelComponent);

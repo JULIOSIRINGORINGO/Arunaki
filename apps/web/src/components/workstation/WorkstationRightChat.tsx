@@ -1,4 +1,4 @@
-import { RefObject, useRef, useLayoutEffect, useState, useEffect, useMemo, useCallback } from "react";
+import { RefObject, useRef, useLayoutEffect, useState, useEffect, useMemo, useCallback, memo } from "react";
 import Markdown from "react-markdown";
 import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, Loader2, BookOpen, Search, Calculator, FileText, FilePlus, FileSearch, Eraser } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "../chat/LiveExecutionBadge";
@@ -25,6 +25,7 @@ interface Message {
 interface Workspace {
   id: string;
   name: string;
+  rootPath: string | null;
 }
 
 interface WorkspaceFile {
@@ -48,7 +49,7 @@ interface WorkstationRightChatProps {
   files?: WorkspaceFile[];
 }
 
-export function WorkstationRightChat({
+function WorkstationRightChatComponent({
   collapsed,
   onClose,
   chatMessages,
@@ -386,3 +387,5 @@ export function WorkstationRightChat({
     </aside>
   );
 }
+
+export const WorkstationRightChat = memo(WorkstationRightChatComponent);
