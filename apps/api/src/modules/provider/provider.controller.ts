@@ -221,6 +221,67 @@ export class ProviderController {
     }
   }
 
+  @Post('fetch-models')
+  async fetchModelsFromApi(
+    @Body()
+    body: {
+      baseUrl: string;
+      apiKey?: string;
+    },
+  ) {
+    try {
+      if (!body.baseUrl) {
+        return errorResponse('VALIDATION_FAILED', 'baseUrl is required');
+      }
+
+      const url = `${body.baseUrl.replace(/\/$/, '')}/models`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: body.apiKey ? `Bearer ${body.apiKey}` : '',
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        return errorResponse('FETCH_MODELS_FAILED', `HTTP ${response.status}: ${errText.substring(0, 150)}`);
+      }
+
+      const data = await response.json();
+      let models: string[] = [];
+
+      if (Array.isArray(data.data)) {
+        models = data.data.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+      } else if (Array.isArray(data.models)) {
+        models = data.models.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+      } else if (Array.isArray(data)) {
+        models = data.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+      }
+
+      return successResponse({ models });
+    } catch (error: any) {
+      return errorResponse('FETCH_MODELS_FAILED', error.message);
+    }
+  }
+
+  @Post(':id/fetch-models')
+  async fetchModelsById(@Param('id') id: string) {
+    try {
+      const p = await this.providerService.getById(id);
+      if (!p) {
+        return errorResponse('NOT_FOUND', 'Provider not found');
+      }
+      return this.fetchModelsFromApi({
+        baseUrl: p.baseUrl,
+        apiKey: p.apiKey,
+      });
+    } catch (error: any) {
+      return errorResponse('FETCH_MODELS_FAILED', error.message);
+    }
+  }
+
   @Delete(':id')
   async delete(@Param('id') id: string) {
     try {

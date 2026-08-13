@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Check, Loader2, Wifi, Bot, Settings2 } from "lucide-react";
+import { Plus, Trash2, Check, Loader2, Wifi, Bot, Settings2, RefreshCw } from "lucide-react";
 import { API_BASE, apiFetch } from "../../lib/api";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
@@ -179,6 +179,32 @@ export function ModelProviderSettings({
       onRefresh();
     } catch {
       toast.error("Failed to switch model.");
+    }
+  };
+
+  const [fetchingModelsProviderId, setFetchingModelsProviderId] = useState<string | null>(null);
+
+  const handleFetchModelsForProvider = async (provider: Provider) => {
+    setFetchingModelsProviderId(provider.id);
+    try {
+      const res = await apiFetch(`${API_BASE}/providers/${provider.id}/fetch-models`, { method: "POST" });
+      const data = await res.json();
+      const fetchedModels: string[] = data.data?.models || [];
+
+      if (fetchedModels.length > 0) {
+        setCustomModelsMap((prev) => {
+          const existing = prev[provider.id] || [];
+          const merged = Array.from(new Set([...existing, ...fetchedModels]));
+          return { ...prev, [provider.id]: merged };
+        });
+        toast.success(`Berhasil menarik ${fetchedModels.length} model otomatis dari API ${provider.name}!`);
+      } else {
+        toast.info(`API tersambung tetapi tidak mengembalikan daftar model.`);
+      }
+    } catch (err: any) {
+      toast.error(`Gagal mengambil model: ${err.message}`);
+    } finally {
+      setFetchingModelsProviderId(null);
     }
   };
 
@@ -495,7 +521,19 @@ export function ModelProviderSettings({
                       <Bot className="w-3.5 h-3.5 text-emerald-400" />
                       Available Models ({allAvailableModels.length})
                     </span>
-                    <span className="text-[10px] text-[#737373]">Klik model mana saja untuk memilih model aktif</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleFetchModelsForProvider(p)}
+                        disabled={fetchingModelsProviderId === p.id}
+                        className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[10px] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium"
+                        title="Ambil daftar semua model yang tersedia secara otomatis dari API Provider"
+                      >
+                        <RefreshCw className={cn("w-3 h-3 text-emerald-400", fetchingModelsProviderId === p.id && "animate-spin")} />
+                        <span>{fetchingModelsProviderId === p.id ? "Syncing..." : "Sync Models dari API"}</span>
+                      </button>
+                      <span className="text-[10px] text-[#737373]">Klik model untuk memilih</span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
