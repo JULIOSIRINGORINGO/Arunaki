@@ -941,6 +941,31 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 48: Large Files Clean Code Refactoring ✅ DONE
+
+**Goal:** Refactor monolithic files (>1,000 lines) into modular, SRP-compliant services and strategy builders while preserving 100% backward compatibility and test coverage.
+
+### 48.1 Monolithic Tools Module Refactoring (`tools-provider.module.ts`)
+- [x] Reduced `tools-provider.module.ts` from **2,459 lines down to 176 lines**.
+- [x] Created `WorkspaceFileToolsRegistrar` (`apps/api/src/modules/tools/services/registrars/workspace-file-tools.registrar.ts`).
+- [x] Created `BusinessDomainToolsRegistrar` (`apps/api/src/modules/tools/services/registrars/business-domain-tools.registrar.ts`).
+- [x] Created `HarnessMetaToolsRegistrar` (`apps/api/src/modules/tools/services/registrars/harness-meta-tools.registrar.ts`).
+
+### 48.2 Document Generator Tool Decomposition (`document-generator.tool.ts`)
+- [x] Reduced `document-generator.tool.ts` from **1,294 lines down to 169 lines**.
+- [x] Created `ExcelReportBuilder` (`apps/api/src/modules/tools/services/generators/excel-report-builder.ts`).
+- [x] Created `PdfReportBuilder` (`apps/api/src/modules/tools/services/generators/pdf-report-builder.ts`).
+- [x] Created `DocxReportBuilder` (`apps/api/src/modules/tools/services/generators/docx-report-builder.ts`).
+
+### 48.3 Workspace Runner Execution Phase Modularization (`workspace-runner.service.ts`)
+- [x] Extracted `WorkspacePhaseTrackerService` (`apps/api/src/modules/workspace/services/workspace-phase-tracker.service.ts`).
+
+### 48.4 Verification
+- [x] `npm run typecheck` — **0 errors**.
+- [x] `npx vitest run` — **30/30 passed (144 unit tests)**.
+
+---
+
 ## Current Status
 
 **Phase:** 47 — Unified Document IDE Workstation Migration ✅ DONE
