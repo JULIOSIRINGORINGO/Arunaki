@@ -326,7 +326,7 @@ export function UnifiedWorkstationPage() {
       <div className="flex-1 flex overflow-hidden relative">
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
-          onClose={() => setLeftCollapsed(true)}
+          onClose={() => setLeftCollapsed(!leftCollapsed)}
           activeWorkspace={activeWorkspace}
           workspaceFiles={workspaceFiles}
           onOpenFileTab={handleOpenFileTab}
@@ -345,7 +345,7 @@ export function UnifiedWorkstationPage() {
 
         <WorkstationRightChat
           collapsed={rightCollapsed}
-          onClose={() => setRightCollapsed(true)}
+          onClose={() => setRightCollapsed(!rightCollapsed)}
           chatMessages={chatMessages}
           optimisticMessages={optimisticMessages}
           liveStatus={liveStatus}
