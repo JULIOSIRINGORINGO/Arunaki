@@ -67,13 +67,15 @@ export function ModelProviderSettings({
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [isTestingForm, setIsTestingForm] = useState(false);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; status?: number; error?: string; timeMs?: number }>>({});
 
   const [form, setForm] = useState({
     name: "",
-    type: "openrouter",
-    baseUrl: "https://openrouter.ai/api/v1",
+    type: "9router",
+    baseUrl: "http://localhost:20128/v1",
     apiKey: "",
-    model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    model: "cx/gpt-5.6-terra",
     headerPrefix: "",
     headerTitle: "",
   });
@@ -81,10 +83,10 @@ export function ModelProviderSettings({
   const resetForm = () => {
     setForm({
       name: "",
-      type: "openrouter",
-      baseUrl: "https://openrouter.ai/api/v1",
+      type: "9router",
+      baseUrl: "http://localhost:20128/v1",
       apiKey: "",
-      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
+      model: "cx/gpt-5.6-terra",
       headerPrefix: "",
       headerTitle: "",
     });
@@ -153,18 +155,62 @@ export function ModelProviderSettings({
 
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
+    const startMs = Date.now();
     try {
       const res = await apiFetch(`${API_BASE}/providers/${id}/test`, { method: "POST" });
       const data = await res.json();
-      if (data.data?.success) {
-        toast.success("Connection successful!");
+      const elapsed = Date.now() - startMs;
+      const isOk = data.data?.success;
+
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: !!isOk,
+          status: data.data?.status || (isOk ? 200 : 500),
+          error: data.data?.error,
+          timeMs: elapsed,
+        },
+      }));
+
+      if (isOk) {
+        toast.success(`Ping successful! (${elapsed}ms)`);
       } else {
-        toast.error(`Connection failed: ${data.data?.error || "Unknown error"}`);
+        toast.error(`Connection failed: ${data.data?.error || "Invalid response"}`);
       }
     } catch (err: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { success: false, error: err.message },
+      }));
       toast.error(`Connection failed: ${err.message}`);
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleTestFormConnection = async () => {
+    setIsTestingForm(true);
+    const startMs = Date.now();
+    try {
+      const res = await apiFetch(`${API_BASE}/providers/test`, {
+        method: "POST",
+        body: JSON.stringify({
+          baseUrl: form.baseUrl,
+          apiKey: form.apiKey,
+          model: form.model,
+        }),
+      });
+      const data = await res.json();
+      const elapsed = Date.now() - startMs;
+      if (data.data?.success) {
+        toast.success(`Test Ping Successful! (${elapsed}ms) — Model ${form.model} responding.`);
+      } else {
+        toast.error(`Test Ping Failed: ${data.data?.error || "No response"}`);
+      }
+    } catch (err: any) {
+      toast.error(`Test Ping Error: ${err.message}`);
+    } finally {
+      setIsTestingForm(false);
     }
   };
 
@@ -290,20 +336,32 @@ export function ModelProviderSettings({
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-between items-center pt-2 border-t border-[#262626]">
             <button
               type="button"
-              onClick={resetForm}
-              className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] text-white text-xs rounded-lg font-medium cursor-pointer"
+              onClick={handleTestFormConnection}
+              disabled={isTestingForm}
+              className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] text-white text-xs rounded-lg font-medium cursor-pointer flex items-center gap-1.5 border border-[#333333] transition-colors"
             >
-              Cancel
+              {isTestingForm ? <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" /> : <Wifi className="w-3.5 h-3.5 text-emerald-400" />}
+              <span>{isTestingForm ? "Testing Ping..." : "Test Connection"}</span>
             </button>
-            <button
-              type="submit"
-              className="px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-lg font-semibold cursor-pointer"
-            >
-              Save Provider
-            </button>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-3 py-1.5 bg-[#262626] hover:bg-[#333333] text-white text-xs rounded-lg font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-lg font-semibold cursor-pointer"
+              >
+                Save Provider
+              </button>
+            </div>
           </div>
         </form>
       )}
@@ -314,74 +372,90 @@ export function ModelProviderSettings({
         </div>
       ) : (
         <div className="space-y-2">
-          {providers.map((p) => (
-            <div
-              key={p.id}
-              className={cn(
-                "p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all",
-                p.active
-                  ? "bg-[#181818] border-[#333333]"
-                  : "bg-[#121212] border-[#262626] opacity-75 hover:opacity-100"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleToggleActive(p)}
-                  title={p.active ? "Model Utama (Aktif)" : "Jadikan Model Utama"}
-                  className={cn(
-                    "px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border",
-                    p.active
-                      ? "bg-white text-black border-white"
-                      : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
-                  )}
-                >
-                  <Check className={cn("w-3 h-3", p.active && "stroke-[3]")} />
-                  <span>{p.active ? "Utama" : "Set Utama"}</span>
-                </button>
+          {providers.map((p) => {
+            const result = testResults[p.id];
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "p-3.5 rounded-xl border flex items-center justify-between text-xs transition-all",
+                  p.active
+                    ? "bg-[#181818] border-[#333333]"
+                    : "bg-[#121212] border-[#262626] opacity-75 hover:opacity-100"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(p)}
+                    title={p.active ? "Model Utama (Aktif)" : "Jadikan Model Utama"}
+                    className={cn(
+                      "px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer border",
+                      p.active
+                        ? "bg-white text-black border-white"
+                        : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
+                    )}
+                  >
+                    <Check className={cn("w-3 h-3", p.active && "stroke-[3]")} />
+                    <span>{p.active ? "Utama" : "Set Utama"}</span>
+                  </button>
 
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white">{p.name}</span>
-                    <span className="text-[10px] text-[#737373] font-mono px-1.5 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded">
-                      {p.type}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] font-mono text-emerald-400 font-medium">
-                      {p.model}
-                    </span>
-                    <span className="text-[10px] text-[#737373]">
-                      ({p.baseUrl || "Default API URL"})
-                    </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-white">{p.name}</span>
+                      <span className="text-[10px] text-[#737373] font-mono px-1.5 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded">
+                        {p.type}
+                      </span>
+                      {result && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                            result.success
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 border-red-500/20"
+                          )}
+                        >
+                          <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-400" : "bg-red-400")} />
+                          {result.success ? `success (${result.timeMs}ms)` : `failed (${result.error || result.status})`}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] font-mono text-emerald-400 font-medium">
+                        {p.model}
+                      </span>
+                      <span className="text-[10px] text-[#737373]">
+                        ({p.baseUrl || "Default API URL"})
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleTestConnection(p.id)}
-                  disabled={testingId === p.id}
-                  className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
-                  <span>Tes</span>
-                </button>
-                <button
-                  onClick={() => handleEdit(p)}
-                  className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  className="p-1 text-[#A3A3A3] hover:text-red-400 rounded cursor-pointer transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleTestConnection(p.id)}
+                    disabled={testingId === p.id}
+                    className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    {testingId === p.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wifi className="w-3 h-3 text-emerald-400" />}
+                    <span>{testingId === p.id ? "Testing..." : "Tes"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleEdit(p)}
+                    className="px-2.5 py-1 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white border border-[#333333] text-[11px] rounded-lg transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    className="p-1 text-[#A3A3A3] hover:text-red-400 rounded cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -154,19 +154,18 @@ export class ProviderController {
     },
   ) {
     try {
-      if (!body.baseUrl || !body.apiKey || !body.model) {
+      if (!body.baseUrl || !body.model) {
         return errorResponse(
           'VALIDATION_FAILED',
-          'baseUrl, apiKey, and model are required',
+          'baseUrl and model are required',
         );
       }
 
-      // Test by sending a minimal chat completion request
       const url = `${body.baseUrl.replace(/\/$/, '')}/chat/completions`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${body.apiKey}`,
+          Authorization: body.apiKey ? `Bearer ${body.apiKey}` : '',
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://arunaki.app',
           'X-Title': 'Arunaki Connection Test',
@@ -202,6 +201,23 @@ export class ProviderController {
         success: false,
         error: error.message,
       });
+    }
+  }
+
+  @Post(':id/test')
+  async testProviderById(@Param('id') id: string) {
+    try {
+      const p = await this.providerService.getById(id);
+      if (!p) {
+        return errorResponse('NOT_FOUND', 'Provider not found');
+      }
+      return this.testConnection({
+        baseUrl: p.baseUrl,
+        apiKey: p.apiKey,
+        model: p.model,
+      });
+    } catch (error: any) {
+      return errorResponse('TEST_FAILED', error.message);
     }
   }
 
