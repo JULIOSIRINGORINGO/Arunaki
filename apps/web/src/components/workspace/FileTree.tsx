@@ -109,14 +109,15 @@ export default function FileTree({
     if (promptModal === "file" && onCreateFile) onCreateFile(newItemName.trim());
     else if (promptModal === "folder" && onCreateFolder) onCreateFolder(newItemName.trim());
     setPromptModal(null);
+    setNewItemName("");
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-[24px] border border-stone-800/10 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 h-11 min-h-[44px] bg-[#1A191B] shrink-0 border-b border-stone-800/40 select-none">
+    <div className="flex flex-col h-full bg-[#121212] rounded-xl border border-[#2D2D2D] shadow-none overflow-hidden text-xs">
+      <div className="flex items-center justify-between px-3 h-10 bg-[#171717] shrink-0 border-b border-[#2D2D2D] select-none">
         <div className="flex items-center gap-2 min-w-0">
-          <FolderOpen className="w-4 h-4 text-[#C4B5FD] shrink-0" />
-          <span className="text-[#F4EFE6] font-bold text-xs tracking-wide truncate" title={workspaceName}>
+          <FolderOpen className="w-4 h-4 text-[#A3A3A3] shrink-0" />
+          <span className="text-[#FFFFFF] font-bold text-xs tracking-wide truncate" title={workspaceName}>
             {workspaceName || "Workspace"}
           </span>
         </div>
@@ -129,7 +130,7 @@ export default function FileTree({
               setNewItemName("");
               setPromptModal("file");
             }}
-            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
+            className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
           >
             <FilePlus className="w-3.5 h-3.5" />
           </button>
@@ -141,7 +142,7 @@ export default function FileTree({
               setNewItemName("");
               setPromptModal("folder");
             }}
-            className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-[#FF5E38] rounded-lg transition-colors cursor-pointer"
+            className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </button>
@@ -151,7 +152,7 @@ export default function FileTree({
               type="button"
               title="Refresh Struktur Direktori"
               onClick={onRefresh}
-              className="p-1.5 hover:bg-stone-800 text-[#C4B5FD] hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
             >
               <RotateCw className="w-3.5 h-3.5" />
             </button>
@@ -159,22 +160,22 @@ export default function FileTree({
         </div>
       </div>
 
-      <div className="p-2 border-b border-gray-100 bg-white">
+      <div className="p-2 border-b border-[#2D2D2D] bg-[#121212]">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#737373]" />
           <input
             type="text"
             placeholder="Cari file atau folder..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-7 pr-2 py-1 border border-gray-200 rounded-md text-xs bg-gray-50/50 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-gray-300"
+            className="w-full pl-7 pr-2 py-1 border border-[#2D2D2D] rounded-md text-xs bg-[#1E1E1E] text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
           />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-1.5 min-h-0">
         {filteredTree.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-6">
+          <p className="text-xs text-[#737373] text-center py-6">
             {search ? "File/folder tidak ditemukan" : "Belum ada file di workspace ini"}
           </p>
         ) : (
@@ -199,9 +200,9 @@ export default function FileTree({
       </div>
 
       {promptModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 max-w-xs w-full shadow-xl border border-gray-200">
-            <h4 className="text-xs font-bold text-gray-900 mb-3">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[#2D2D2D]">
+            <h4 className="text-xs font-bold text-white mb-3">
               {promptModal === "file" ? "Tambah File Baru" : "Tambah Folder Baru"}
             </h4>
             <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
@@ -210,19 +211,19 @@ export default function FileTree({
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={promptModal === "file" ? "contoh: Laporan.xlsx" : "contoh: DokumenUsaha"}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#FF5E38]"
+                className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#525252]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setPromptModal(null)}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg font-medium"
+                  className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-[#FF5E38] text-white text-xs rounded-lg font-medium"
+                  className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
                 >
                   Buat
                 </button>
@@ -233,9 +234,9 @@ export default function FileTree({
       )}
 
       {renameModalState && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 max-w-xs w-full shadow-xl border border-gray-200">
-            <h4 className="text-xs font-bold text-gray-900 mb-3">Ubah Nama File / Folder</h4>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[#2D2D2D]">
+            <h4 className="text-xs font-bold text-white mb-3">Ubah Nama File / Folder</h4>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -250,19 +251,19 @@ export default function FileTree({
                 type="text"
                 value={renameNewName}
                 onChange={(e) => setRenameNewName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-[#FF5E38]"
+                className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#525252]"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setRenameModalState(null)}
-                  className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg font-medium"
+                  className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-[#FF5E38] text-white text-xs rounded-lg font-medium"
+                  className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
                 >
                   Simpan
                 </button>

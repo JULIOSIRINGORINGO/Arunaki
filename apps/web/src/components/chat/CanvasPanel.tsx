@@ -154,14 +154,14 @@ export function CanvasPanel({
   return (
     <aside
       className={cn(
-        "bg-white rounded-[24px] overflow-hidden flex flex-col h-full shrink-0 transition-all duration-200 shadow-sm border border-stone-200/50",
+        "bg-[#171717] rounded-xl overflow-hidden flex flex-col h-full shrink-0 transition-all duration-200 shadow-none border border-[#2D2D2D] text-white",
         isExpanded ? "w-[480px] lg:w-[520px]" : "w-[340px] xl:w-[380px]"
       )}
     >
-      {/* Dark Top Header Bar (Matching Chat Panel Header Bar) */}
-      <div className="bg-[#1A191B] h-11 min-h-[44px] px-5 flex items-center justify-between shrink-0 select-none text-white">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-[#C4B5FD] shrink-0" />
+      {/* Top Header Bar */}
+      <div className="bg-[#121212] h-10 px-4 flex items-center justify-between shrink-0 select-none border-b border-[#2D2D2D]">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0" />
           <h2 className="text-xs font-bold text-white tracking-wide truncate">
             {showArtifacts ? "Riwayat File" : canvasData?.title || "Canvas"}
           </h2>
@@ -172,10 +172,10 @@ export function CanvasPanel({
             <button
               onClick={() => setShowArtifacts(!showArtifacts)}
               className={cn(
-                "p-1.5 rounded-lg transition-colors cursor-pointer text-xs",
+                "p-1 rounded transition-colors cursor-pointer text-xs",
                 showArtifacts
-                  ? "text-[#FF5E38] bg-stone-800"
-                  : "text-stone-300 hover:text-white hover:bg-stone-800/80"
+                  ? "text-white bg-[#262626]"
+                  : "text-[#A3A3A3] hover:text-white hover:bg-[#262626]"
               )}
               title="Riwayat File"
             >
@@ -188,10 +188,10 @@ export function CanvasPanel({
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={cn(
-                  "p-1.5 rounded-lg transition-colors cursor-pointer text-xs",
+                  "p-1 rounded transition-colors cursor-pointer text-xs",
                   isEditing
-                    ? "text-[#FF5E38] bg-stone-800"
-                    : "text-stone-300 hover:text-white hover:bg-stone-800/80"
+                    ? "text-white bg-[#262626]"
+                    : "text-[#A3A3A3] hover:text-white hover:bg-[#262626]"
                 )}
                 title={isEditing ? "Mode Preview" : "Edit Canvas"}
               >
@@ -201,7 +201,7 @@ export function CanvasPanel({
               {pendingDownload && (
                 <button
                   onClick={handleDownloadFile}
-                  className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800/80 transition-colors cursor-pointer"
+                  className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
                   title={`Download ${getFileLabel(pendingDownload.mimeType)}`}
                 >
                   <FileText className="w-3.5 h-3.5" />
@@ -209,14 +209,14 @@ export function CanvasPanel({
               )}
               <button
                 onClick={handleDownloadCsv}
-                className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800/80 transition-colors cursor-pointer"
+                className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
                 title="Download File CSV"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={handleDownloadTxt}
-                className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800/80 transition-colors cursor-pointer"
+                className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
                 title="Download File Teks (.txt)"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -226,7 +226,7 @@ export function CanvasPanel({
 
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800/80 transition-colors cursor-pointer"
+            className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
             title={isExpanded ? "Kecilkan Canvas" : "Perbesar Canvas"}
           >
             {isExpanded ? (
@@ -237,7 +237,7 @@ export function CanvasPanel({
           </button>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-300 hover:text-white hover:bg-stone-800/80 transition-colors cursor-pointer"
+            className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
             title="Tutup Canvas"
           >
             <X className="w-3.5 h-3.5" />
@@ -245,13 +245,13 @@ export function CanvasPanel({
         </div>
       </div>
 
-      {/* White Canvas Body View */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-0 bg-white">
+      {/* Canvas Body View */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-0 bg-[#171717]">
         {showArtifacts ? (
           <div className="w-full space-y-2 self-start">
             {artifacts.length === 0 ? (
-              <div className="text-center space-y-2 text-stone-400 py-8">
-                <History className="w-5 h-5 text-stone-300 mx-auto" />
+              <div className="text-center space-y-2 text-[#737373] py-8">
+                <History className="w-5 h-5 text-[#A3A3A3] mx-auto" />
                 <p className="text-xs">Belum ada file yang di-generate</p>
               </div>
             ) : (
@@ -264,24 +264,24 @@ export function CanvasPanel({
                 return (
                   <div
                     key={artifact.id}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-stone-200/90 shadow-2xs hover:border-stone-300 transition-colors group"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-[#1E1E1E] border border-[#2D2D2D] transition-colors group"
                   >
-                    <div className="p-2 rounded-lg bg-stone-50 text-stone-500 shrink-0">
+                    <div className="p-2 rounded bg-[#262626] text-white shrink-0">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-stone-900 truncate">
+                      <p className="text-xs font-medium text-white truncate">
                         {artifact.filename}
                       </p>
-                      <p className="text-xs text-stone-400 truncate">
+                      <p className="text-[11px] text-[#A3A3A3] truncate">
                         {artifact.preview}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-stone-300">{time}</span>
+                      <span className="text-[10px] text-[#737373]">{time}</span>
                       <button
                         onClick={() => handleDownloadArtifact(artifact)}
-                        className="p-1.5 rounded-lg text-stone-400 hover:text-[#FF5E38] hover:bg-stone-100 transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#333333] transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
                         title={`Download ${artifact.filename}`}
                       >
                         <Download className="w-3.5 h-3.5" />
@@ -293,35 +293,35 @@ export function CanvasPanel({
             )}
           </div>
         ) : canvasData ? (
-          <div className="relative w-full h-full flex flex-col justify-between p-6 rounded-2xl bg-white border border-stone-200/90 shadow-2xs space-y-4 overflow-y-auto">
+          <div className="relative w-full h-full flex flex-col justify-between p-4 rounded-xl bg-[#1E1E1E] border border-[#2D2D2D] space-y-4 overflow-y-auto">
             <button
               onClick={handleCopy}
-              className="absolute top-3.5 right-3.5 p-2 rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-all cursor-pointer border border-transparent hover:border-stone-200 shadow-2xs z-10"
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-all cursor-pointer border border-[#2D2D2D] z-10"
               title={copied ? "Tersalin!" : "Salin Teks (Copy)"}
             >
               {copied ? (
-                <CopyCheck className="w-4 h-4 text-emerald-600" />
+                <CopyCheck className="w-3.5 h-3.5 text-white" />
               ) : (
-                <Copy className="w-4 h-4" />
+                <Copy className="w-3.5 h-3.5" />
               )}
             </button>
 
             {isEditing ? (
               <div className="flex-1 flex flex-col space-y-3 min-h-0">
-                <div className="flex items-center justify-between text-xs text-stone-500 font-medium">
+                <div className="flex items-center justify-between text-xs text-[#A3A3A3] font-medium">
                   <span>Edit Teks/Tabel Canvas</span>
-                  <span className="text-[#FF5E38] font-semibold">Mode Edit Aktif</span>
+                  <span className="text-white font-semibold">Mode Edit Aktif</span>
                 </div>
                 <textarea
                   value={editedText}
                   onChange={(e) => setEditedText(e.target.value)}
-                  className="w-full flex-1 min-h-[240px] p-3 text-sm text-stone-900 font-mono bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF5E38]/20 focus:border-[#FF5E38] resize-none leading-relaxed"
+                  className="w-full flex-1 min-h-[240px] p-3 text-xs text-white font-mono bg-[#121212] border border-[#2D2D2D] rounded-lg focus:outline-none focus:border-[#525252] resize-none leading-relaxed"
                   placeholder="Ketik atau edit isi Canvas di sini..."
                 />
                 <div className="flex items-center gap-2 pt-2">
                   <button
                     onClick={handleSaveAndSend}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#FF5E38] hover:bg-[#e04f2e] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Terapkan & Update AI</span>
@@ -331,27 +331,27 @@ export function CanvasPanel({
                       setEditedText(canvasData.plainTextContent);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-colors cursor-pointer"
+                    className="px-3 py-2 rounded-lg bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white text-xs font-medium transition-colors cursor-pointer"
                   >
                     Batal
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-stone-900 leading-relaxed selection:bg-orange-100 pr-8 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-stone-600 [&_td]:py-2 [&_td]:px-3 [&_td]:text-stone-800 [&_tr]:border-b [&_tr]:border-stone-100 [&_strong]:font-semibold [&_strong]:text-stone-900">
+              <div className="text-xs text-[#E5E5E5] leading-relaxed pr-6 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-[#A3A3A3] [&_td]:py-2 [&_td]:px-3 [&_td]:text-[#E5E5E5] [&_tr]:border-b [&_tr]:border-[#2D2D2D] [&_strong]:font-semibold [&_strong]:text-white">
                 <Markdown>{canvasData.plainTextContent}</Markdown>
               </div>
             )}
 
             {pendingDownload && (
-              <div className="pt-3 border-t border-stone-100">
+              <div className="pt-3 border-t border-[#2D2D2D]">
                 <button
                   onClick={handleDownloadFile}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1A191B] text-white text-sm font-medium hover:bg-stone-800 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white text-black text-xs font-medium hover:bg-[#E5E5E5] transition-colors cursor-pointer"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-3.5 h-3.5" />
                   <span>Download {getFileLabel(pendingDownload.mimeType)}</span>
-                  <span className="text-stone-400 text-xs">
+                  <span className="text-[#525252] text-xs">
                     ({pendingDownload.filename})
                   </span>
                 </button>
@@ -359,11 +359,11 @@ export function CanvasPanel({
             )}
           </div>
         ) : (
-          <div className="text-center space-y-2 text-stone-400">
-            <div className="w-12 h-12 rounded-2xl bg-stone-50 border border-stone-200/60 flex items-center justify-center mx-auto mb-2">
-              <Sparkles className="w-5 h-5 text-stone-400" />
+          <div className="text-center space-y-2 text-[#737373]">
+            <div className="w-10 h-10 rounded-xl bg-[#1E1E1E] border border-[#2D2D2D] flex items-center justify-center mx-auto mb-2">
+              <Sparkles className="w-4 h-4 text-[#737373]" />
             </div>
-            <p className="text-xs font-bold text-stone-400">Canvas Kosong</p>
+            <p className="text-xs font-semibold text-[#737373]">Canvas Kosong</p>
           </div>
         )}
       </div>

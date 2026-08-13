@@ -416,14 +416,14 @@ function FlowEditor() {
   };
 
   return (
-    <div className="flex-1 h-[calc(100vh-60px)] relative">
+    <div className="flex-1 h-full relative bg-[#0A0A0A] text-white">
 
 
       {loading ? (
-        <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
+        <div className="w-full h-full flex items-center justify-center bg-[#0A0A0A]">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
-            <p className="text-sm text-gray-500 font-medium">Memuat Knowledge Graph...</p>
+            <div className="w-8 h-8 border-2 border-[#2D2D2D] border-t-white rounded-full animate-spin" />
+            <p className="text-sm text-[#A3A3A3] font-medium">Memuat Knowledge Graph...</p>
           </div>
         </div>
       ) : (
@@ -438,7 +438,7 @@ function FlowEditor() {
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-gray-50/50"
+          className="bg-[#0A0A0A]"
           defaultEdgeOptions={{
             type: 'smoothstep',
             animated: true,

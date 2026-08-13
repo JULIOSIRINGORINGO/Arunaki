@@ -1,4 +1,3 @@
-/* Hallmark · macrostructure: Timeline List · theme: Studio · accent: green */
 import { Clock, Search, MessageSquare } from "lucide-react";
 
 const mockHistory = [
@@ -27,57 +26,51 @@ const mockHistory = [
 
 export function HistoryPage() {
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="flex-1 flex flex-col h-full bg-[#0A0A0A] text-[#FFFFFF] p-8 max-w-2xl mx-auto overflow-y-auto">
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-surface-900">
-          Riwayat Chat
+        <h1 className="text-lg font-bold text-white tracking-tight">
+          Riwayat Percakapan AI
         </h1>
-        <p className="text-[13px] text-surface-500 mt-0.5">
-          Lihat percakapan sebelumnya
+        <p className="text-xs text-[#A3A3A3] mt-0.5">
+          Lihat percakapan dan sesi workspace sebelumnya
         </p>
       </div>
 
       <div className="relative mb-6">
         <Search
           size={14}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-[#737373]"
         />
         <input
           type="text"
-          placeholder="Cari riwayat..."
-          className="w-full pl-9 pr-3 py-2 bg-surface-100 border border-surface-200 rounded-lg text-[13px] text-surface-900 placeholder:text-surface-500 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all duration-150"
+          placeholder="Cari riwayat percakapan..."
+          className="w-full pl-9 pr-3 py-2 bg-[#171717] border border-[#2D2D2D] rounded-xl text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
         />
       </div>
 
       <div className="space-y-6">
         {mockHistory.map((group) => (
-          <div key={group.group} className="animate-fade-in">
+          <div key={group.group} className="space-y-2">
             <div className="flex items-center gap-2.5 mb-2.5">
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-surface-500 uppercase tracking-wider">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#A3A3A3] uppercase tracking-wider">
                 <Clock size={11} />
                 {group.group}
               </div>
-              <div className="flex-1 h-px bg-surface-200" />
+              <div className="flex-1 h-px bg-[#2D2D2D]" />
             </div>
 
-            <div className="space-y-px ml-4">
+            <div className="space-y-2">
               {group.items.map((item) => (
-                <button
+                <div
                   key={item.id}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-100 transition-colors text-left group"
+                  className="flex items-center justify-between p-3 rounded-xl bg-[#171717] border border-[#2D2D2D] hover:border-[#525252] transition-colors cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-md bg-surface-200 group-hover:bg-accent/10 flex items-center justify-center transition-colors">
-                    <MessageSquare size={12} className="text-surface-500 group-hover:text-accent transition-colors" />
+                  <div className="flex items-center gap-3">
+                    <MessageSquare size={14} className="text-[#A3A3A3]" />
+                    <span className="text-xs text-white font-medium">{item.title}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-surface-700 group-hover:text-surface-900 truncate transition-colors">
-                      {item.title}
-                    </p>
-                  </div>
-                  <span className="text-[11px] text-surface-500 shrink-0">
-                    {item.time}
-                  </span>
-                </button>
+                  <span className="text-[10px] text-[#737373] font-mono">{item.time}</span>
+                </div>
               ))}
             </div>
           </div>

@@ -49,16 +49,16 @@ export function ConnectFolderModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1A191B] text-white rounded-2xl max-w-md w-full p-5 border border-stone-700 shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-stone-800 mb-4">
-          <h3 className="font-bold text-sm text-[#F4EFE6] flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-[#FF5E38]" />
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-[#171717] text-white rounded-xl max-w-md w-full p-5 border border-[#2D2D2D] shadow-2xl">
+        <div className="flex items-center justify-between pb-3 border-b border-[#2D2D2D] mb-4">
+          <h3 className="font-bold text-sm text-white flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-[#E5E5E5]" />
             Hubungkan Folder Workspace
           </h3>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-white p-1 rounded cursor-pointer"
+            className="text-[#A3A3A3] hover:text-white p-1 rounded cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -66,7 +66,7 @@ export function ConnectFolderModal({
 
         <form onSubmit={handleConnectFolderSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-stone-300 mb-1.5 font-medium">
+            <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
               Path Folder Lokal
             </label>
             <input
@@ -74,13 +74,13 @@ export function ConnectFolderModal({
               value={folderInputPath}
               onChange={(e) => setFolderInputPath(e.target.value)}
               placeholder="Contoh: E:\DocumentWorkspaces\Garment"
-              className="w-full bg-[#252428] border border-stone-700 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-[#FF5E38]"
+              className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md px-3 py-2 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
             />
           </div>
 
           {workspaces.length > 0 && (
             <div>
-              <label className="block text-xs text-stone-400 mb-1.5 font-medium">
+              <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
                 Atau Pilih Workspace Terbaru:
               </label>
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -92,10 +92,10 @@ export function ConnectFolderModal({
                       onClose();
                       toast.success(`Dihubungkan ke ${ws.name}`);
                     }}
-                    className="p-2 rounded-xl bg-[#252428] hover:bg-[#2f2e33] border border-stone-800 transition-colors cursor-pointer flex items-center justify-between text-xs"
+                    className="p-2 rounded-md bg-[#1E1E1E] hover:bg-[#262626] border border-[#2D2D2D] transition-colors cursor-pointer flex items-center justify-between text-xs"
                   >
                     <span className="font-medium text-white truncate">{ws.name}</span>
-                    <span className="text-[10px] text-stone-400 truncate max-w-[150px]">
+                    <span className="text-[10px] text-[#737373] truncate max-w-[150px]">
                       {ws.rootPath}
                     </span>
                   </div>
@@ -104,17 +104,17 @@ export function ConnectFolderModal({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2D2D2D]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-[#252428] hover:bg-stone-800 text-stone-300 rounded-xl text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white rounded-md text-xs font-semibold cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-[#FF5E38] hover:bg-[#e04e2a] text-white rounded-xl text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 bg-white text-black hover:bg-[#E5E5E5] rounded-md text-xs font-semibold cursor-pointer"
             >
               Hubungkan
             </button>

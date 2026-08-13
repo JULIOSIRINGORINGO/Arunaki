@@ -16,23 +16,23 @@ export function WorkstationFooter({
   fileCount,
 }: WorkstationFooterProps) {
   return (
-    <footer className="h-8 bg-[#1A191B] text-stone-400 px-4 flex items-center justify-between text-[11px] shrink-0 border-t border-stone-800">
+    <footer className="h-7 bg-[#121212] text-[#A3A3A3] px-4 flex items-center justify-between text-[11px] shrink-0 border-t border-[#2D2D2D]">
       <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5 text-stone-300">
-          <Folder className="w-3.5 h-3.5 text-[#FF5E38]" />
+        <span className="flex items-center gap-1.5 text-[#E5E5E5]">
+          <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
           {activeWorkspace ? activeWorkspace.rootPath || activeWorkspace.name : "Tanpa Workspace"}
         </span>
         {activeWorkspace && (
-          <span className="text-stone-500">• {fileCount} file terhubung</span>
+          <span className="text-[#737373]">• {fileCount} file terhubung</span>
         )}
       </div>
 
       <div className="flex items-center gap-4">
-        <span className="flex items-center gap-1.5 text-[#C4B5FD]">
+        <span className="flex items-center gap-1.5 text-[#E5E5E5]">
           <BookOpen className="w-3.5 h-3.5" />
-          Knowledge Base: Active (Garment)
+          Knowledge Base Active
         </span>
-        <span className="text-stone-500">• Model: Nemotron-3</span>
+        <span className="text-[#737373]">• Model: Nemotron-3</span>
       </div>
     </footer>
   );

@@ -34,10 +34,10 @@ export function WorkstationCenterPanel({
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   return (
-    <main className="flex-1 flex flex-col bg-[#F4EFE6] overflow-hidden relative">
+    <main className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden relative">
       {/* Top Multi-Tab Bar */}
       {tabs.length > 0 && (
-        <div className="h-10 bg-[#EAE3D2] border-b border-stone-300 flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
+        <div className="h-9 bg-[#121212] border-b border-[#2D2D2D] flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -45,16 +45,16 @@ export function WorkstationCenterPanel({
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-t-lg text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-t border-x border-transparent",
+                  "flex items-center gap-2 px-3 py-1 rounded-t-md text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-t border-x border-transparent",
                   isActive
-                    ? "bg-[#F4EFE6] text-[#1A191B] border-stone-300 shadow-sm font-semibold"
-                    : "text-stone-600 hover:bg-stone-300/50"
+                    ? "bg-[#171717] text-[#FFFFFF] border-[#2D2D2D] font-semibold"
+                    : "text-[#A3A3A3] hover:bg-[#1E1E1E] hover:text-[#FFFFFF]"
                 )}
               >
                 {tab.type === "canvas" ? (
-                  <Sparkles className="w-3.5 h-3.5 text-[#FF5E38] shrink-0" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0" />
                 ) : (
-                  <FileText className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0" />
                 )}
                 <span className="truncate">{tab.title}</span>
                 <button
@@ -62,7 +62,7 @@ export function WorkstationCenterPanel({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-opacity"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -73,11 +73,11 @@ export function WorkstationCenterPanel({
       )}
 
       {/* Dynamic Content Body */}
-      <div className="flex-1 p-4 overflow-auto">
+      <div className="flex-1 p-4 overflow-auto bg-[#0A0A0A]">
         {activeTab ? (
           activeTab.type === "canvas" ? (
             /* ON-DEMAND CANVAS PANEL */
-            <div className="h-full w-full bg-white rounded-2xl p-4 shadow-md border border-stone-200 flex flex-col">
+            <div className="h-full w-full bg-[#171717] rounded-xl p-4 border border-[#2D2D2D] flex flex-col text-white">
               <CanvasPanel
                 isOpen={true}
                 onClose={() => onCloseTab("canvas-active")}
@@ -86,19 +86,19 @@ export function WorkstationCenterPanel({
             </div>
           ) : (
             /* IDE FILE READER / DOCUMENT VIEWER */
-            <div className="h-full w-full bg-white rounded-2xl p-6 shadow-md border border-stone-200 flex flex-col">
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-200">
+            <div className="h-full w-full bg-[#171717] rounded-xl p-5 border border-[#2D2D2D] flex flex-col text-white">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#2D2D2D]">
                 <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-[#FF5E38]" />
-                  <h2 className="font-bold text-sm text-[#1A191B]">{activeTab.title}</h2>
-                  <span className="text-xs text-stone-400 bg-stone-100 px-2 py-0.5 rounded">
+                  <FileSpreadsheet className="w-5 h-5 text-[#E5E5E5]" />
+                  <h2 className="font-bold text-xs text-[#FFFFFF]">{activeTab.title}</h2>
+                  <span className="text-[10px] text-[#A3A3A3] bg-[#262626] px-2 py-0.5 rounded font-mono">
                     {activeTab.fileType?.toUpperCase()}
                   </span>
                 </div>
-                <span className="text-xs text-stone-400 truncate max-w-md">{activeTab.path}</span>
+                <span className="text-xs text-[#A3A3A3] truncate max-w-md">{activeTab.path}</span>
               </div>
 
-              <div className="flex-1 overflow-auto bg-stone-50 p-4 rounded-xl border border-stone-200 font-mono text-xs text-stone-800 leading-relaxed whitespace-pre-wrap">
+              <div className="flex-1 overflow-auto bg-[#121212] p-4 rounded-lg border border-[#2D2D2D] font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap">
                 {activeTab.content}
               </div>
             </div>
@@ -106,33 +106,33 @@ export function WorkstationCenterPanel({
         ) : (
           /* WELCOME / GETTING STARTED VIEW */
           <div className="h-full flex flex-col items-center justify-center text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-[#1A191B] flex items-center justify-center mb-4 shadow-lg">
-              <ArunakiLogo className="w-10 h-10" fill="#FF5E38" />
+            <div className="w-16 h-16 rounded-full bg-[#171717] border border-[#2D2D2D] flex items-center justify-center mb-4 shadow-none">
+              <ArunakiLogo className="w-9 h-9" fill="#FFFFFF" />
             </div>
-            <h1 className="text-xl font-bold text-[#1A191B] mb-2">
-              Selamat Datang di Arunaki Document Workstation
+            <h1 className="text-lg font-bold text-white mb-2 tracking-tight">
+              Arunaki IDE Document Workstation
             </h1>
-            <p className="text-xs text-stone-500 max-w-md mb-6 leading-relaxed">
-              IDE Dokumen terpadu untuk mengolah spreadsheet Excel, dokumen Word, dan PDF secara mandiri.
+            <p className="text-xs text-[#A3A3A3] max-w-md mb-6 leading-relaxed">
+              Lingkungan kerja terpadu untuk membaca, menghitung, dan merekap dokumen bisnis secara otomatis.
             </p>
 
             <div className="grid grid-cols-2 gap-4 max-w-lg w-full text-left">
               <div
                 onClick={onOpenFolderModal}
-                className="p-4 bg-white rounded-xl border border-stone-300 hover:border-[#FF5E38] transition-colors cursor-pointer shadow-sm group"
+                className="p-4 bg-[#171717] rounded-xl border border-[#2D2D2D] hover:border-[#525252] transition-all cursor-pointer group"
               >
-                <FolderOpen className="w-6 h-6 text-[#FF5E38] mb-2 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xs font-bold text-[#1A191B]">Buka Folder Workspace</h3>
-                <p className="text-[11px] text-stone-400">Hubungkan folder lokal berisi file kantor</p>
+                <FolderOpen className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
+                <h3 className="text-xs font-bold text-white">Buka Folder Workspace</h3>
+                <p className="text-[11px] text-[#A3A3A3]">Hubungkan folder lokal berisi file kantor</p>
               </div>
 
               <div
                 onClick={onTriggerCanvas}
-                className="p-4 bg-white rounded-xl border border-stone-300 hover:border-[#C4B5FD] transition-colors cursor-pointer shadow-sm group"
+                className="p-4 bg-[#171717] rounded-xl border border-[#2D2D2D] hover:border-[#525252] transition-all cursor-pointer group"
               >
-                <Sparkles className="w-6 h-6 text-[#C4B5FD] mb-2 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xs font-bold text-[#1A191B]">Panggil AI Canvas</h3>
-                <p className="text-[11px] text-stone-400">Buka panel draf terstruktur & kalkulasi</p>
+                <Sparkles className="w-5 h-5 text-[#E5E5E5] mb-2 group-hover:scale-105 transition-transform" />
+                <h3 className="text-xs font-bold text-white">Panggil AI Canvas</h3>
+                <p className="text-[11px] text-[#A3A3A3]">Buka panel draf terstruktur & kalkulasi</p>
               </div>
             </div>
           </div>

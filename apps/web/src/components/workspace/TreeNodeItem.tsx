@@ -32,12 +32,12 @@ export function TreeNodeItem({
     return (
       <div>
         <div
-          className="group flex items-center justify-between py-[3px] px-1 hover:bg-gray-100/80 rounded-md transition-colors text-sm text-gray-700 select-none cursor-pointer"
+          className="group flex items-center justify-between py-[3px] px-1 hover:bg-[#262626] rounded-md transition-colors text-xs text-[#E5E5E5] select-none cursor-pointer"
           style={{ paddingLeft: `${depth * 14 + 4}px` }}
           onClick={() => setOpen(!open)}
         >
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="shrink-0 text-gray-400">
+            <span className="shrink-0 text-[#A3A3A3]">
               {open ? (
                 <ChevronDown className="w-3.5 h-3.5" />
               ) : (
@@ -45,11 +45,11 @@ export function TreeNodeItem({
               )}
             </span>
             {open ? (
-              <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
+              <FolderOpen className="w-4 h-4 text-[#FFFFFF] shrink-0" />
             ) : (
-              <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+              <Folder className="w-4 h-4 text-[#A3A3A3] shrink-0" />
             )}
-            <span className="truncate font-medium text-gray-800 text-xs">{node.name}</span>
+            <span className="truncate font-medium text-[#FFFFFF] text-xs">{node.name}</span>
           </div>
 
           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -61,7 +61,7 @@ export function TreeNodeItem({
                   e.stopPropagation();
                   onRenameClick(node.nativePath!, node.name);
                 }}
-                className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400 cursor-pointer"
+                className="p-1 hover:bg-[#333333] hover:text-white rounded text-[#A3A3A3] cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
               </button>
@@ -74,13 +74,13 @@ export function TreeNodeItem({
                   e.stopPropagation();
                   onDeletePath(node.nativePath!, node.name);
                 }}
-                className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400 cursor-pointer"
+                className="p-1 hover:bg-red-900/50 hover:text-red-300 rounded text-[#A3A3A3] cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
             )}
             {node.children.length > 0 && (
-              <span className="text-[10px] text-gray-400 font-mono px-1">
+              <span className="text-[10px] text-[#737373] font-mono px-1">
                 {node.children.length}
               </span>
             )}
@@ -105,7 +105,7 @@ export function TreeNodeItem({
         )}
         {open && node.children.length === 0 && (
           <div
-            className="text-[11px] text-gray-400 italic py-1"
+            className="text-[11px] text-[#737373] italic py-1"
             style={{ paddingLeft: `${(depth + 1) * 14 + 4}px` }}
           >
             folder kosong
@@ -122,23 +122,23 @@ export function TreeNodeItem({
           ? onFileClick?.(node.nativePath, node.name)
           : onFileClick?.(node.name, node.name)
       }
-      className={`group flex items-center justify-between py-[3px] px-1 rounded-md transition-all text-xs text-gray-600 select-none cursor-pointer ${
-        isAgentTarget ? "bg-amber-100/90 text-amber-900 font-semibold ring-1 ring-amber-400 animate-pulse" : "hover:bg-gray-100/90"
+      className={`group flex items-center justify-between py-[3px] px-1 rounded-md transition-all text-xs text-[#A3A3A3] select-none cursor-pointer ${
+        isAgentTarget ? "bg-[#262626] text-white font-semibold ring-1 ring-white animate-pulse" : "hover:bg-[#262626] hover:text-white"
       }`}
       style={{ paddingLeft: `${depth * 14 + 4}px` }}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {getFileIcon(node.name)}
-        <span className="truncate group-hover:text-gray-900 font-normal">{node.name}</span>
+        <span className="truncate group-hover:text-white font-normal">{node.name}</span>
         {isAgentTarget && (
-          <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[9px] font-bold shrink-0 animate-pulse">
-            🤖 AI Working...
+          <span className="ml-1 px-1.5 py-0.5 rounded bg-white text-black text-[9px] font-bold shrink-0 animate-pulse">
+            AI Working...
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-gray-400 font-mono group-hover:hidden">
+        <span className="text-[10px] text-[#737373] font-mono group-hover:hidden">
           {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
         </span>
 
@@ -151,7 +151,7 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onAnalyzeFile(node.name, node.nativePath);
               }}
-              className="p-1 hover:bg-amber-100 hover:text-amber-700 rounded text-amber-500 transition-colors cursor-pointer"
+              className="p-1 hover:bg-[#333333] hover:text-white rounded text-[#A3A3A3] transition-colors cursor-pointer"
             >
               <Sparkles className="w-3 h-3" />
             </button>
@@ -164,7 +164,7 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onRenameClick(node.nativePath!, node.name);
               }}
-              className="p-1 hover:bg-gray-200 hover:text-gray-900 rounded text-gray-400 cursor-pointer"
+              className="p-1 hover:bg-[#333333] hover:text-white rounded text-[#A3A3A3] cursor-pointer"
             >
               <Edit3 className="w-3 h-3" />
             </button>
@@ -177,7 +177,7 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onDeletePath(node.nativePath!, node.name);
               }}
-              className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400 cursor-pointer"
+              className="p-1 hover:bg-red-900/50 hover:text-red-300 rounded text-[#A3A3A3] cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />
             </button>
