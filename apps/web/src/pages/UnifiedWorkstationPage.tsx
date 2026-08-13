@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { WorkstationLeftExplorer } from "../components/workstation/WorkstationLeftExplorer";
 import { WorkstationCenterPanel, CenterTab } from "../components/workstation/WorkstationCenterPanel";
 import { WorkstationRightChat } from "../components/workstation/WorkstationRightChat";
-import { WorkstationFooter } from "../components/workstation/WorkstationFooter";
 import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal";
 import { CanvasData } from "../components/chat/CanvasPanel";
 import { LiveStatusData } from "../components/chat/LiveExecutionBadge";
@@ -357,8 +356,6 @@ export function UnifiedWorkstationPage() {
           onSendMessage={handleSendMessage}
         />
       </div>
-
-      <WorkstationFooter activeWorkspace={activeWorkspace} fileCount={workspaceFiles.length} />
 
       <ConnectFolderModal
         isOpen={showFolderModal}

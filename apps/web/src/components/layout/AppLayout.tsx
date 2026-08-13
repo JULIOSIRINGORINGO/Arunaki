@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { MessageSquare, BookOpen, History, Settings, FolderOpen, User } from "lucide-react";
+import { MessageSquare, BookOpen, History, Settings, User } from "lucide-react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 
@@ -25,15 +25,15 @@ export function AppLayout() {
   };
 
   const navItems = [
-    { path: "/", label: "WORKSTATION", icon: MessageSquare },
-    { path: "/knowledge", label: "KNOWLEDGE", icon: BookOpen },
-    { path: "/history", label: "RIWAYAT", icon: History },
-    { path: "/settings", label: "SETTINGS", icon: Settings },
+    { path: "/", label: "Workstation", icon: MessageSquare },
+    { path: "/knowledge", label: "Knowledge", icon: BookOpen },
+    { path: "/history", label: "Riwayat", icon: History },
+    { path: "/settings", label: "Settings", icon: Settings },
   ];
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden font-sans select-none">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Integrated Window Drag Titlebar + Logo (Left) + IDE Menu + Avatar (Right) */}
+      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Pure Text Menu ("File", "Edit", "Tampilan", "Bantuan") */}
       <header
         className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-[#383838]"
         style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
@@ -42,18 +42,18 @@ export function AppLayout() {
           className="flex items-center gap-3"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          {/* Logo 'A' dipindahkan ke posisi paling kiri sebelum menu File */}
+          {/* Logo 'A' di paling kiri */}
           <div className="w-6 h-6 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-[#383838] shrink-0">
             <ArunakiLogo className="w-3.5 h-3.5" fill="#FFFFFF" />
           </div>
 
+          {/* Menu Header Teks Murni (Tanpa ikon folder) */}
           <nav className="flex items-center gap-1">
             <button
               onClick={handleOpenFolder}
-              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer flex items-center gap-1.5"
+              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-[#E5E5E5]" />
-              <span>File</span>
+              File
             </button>
             <button
               onClick={() => navigate("/")}
@@ -96,9 +96,9 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Horizontal Curved Capsule Bar */}
-      <footer className="h-10 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-t border-[#383838] text-xs">
-        <div className="flex items-center gap-2">
+      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container (Icons Only, No Text) */}
+      <footer className="h-11 bg-[#121212] px-4 flex items-center justify-center shrink-0 border-t border-[#383838]">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1E1E1E] border border-[#383838] shadow-md">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -109,26 +109,18 @@ export function AppLayout() {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
+                title={item.label}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer border",
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
                   isActive
-                    ? "bg-[#262626] text-[#FFFFFF] border-[#666666] shadow-sm font-bold"
-                    : "bg-[#181818] text-[#A3A3A3] border-[#383838] hover:text-[#FFFFFF] hover:bg-[#262626]"
+                    ? "bg-[#262626] text-[#FFFFFF] border border-[#525252] shadow-xs"
+                    : "text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#262626]"
                 )}
               >
-                <Icon className="w-3.5 h-3.5 text-[#E5E5E5]" />
-                <span>{item.label}</span>
+                <Icon className="w-4 h-4" />
               </button>
             );
           })}
-        </div>
-
-        <div className="flex items-center gap-4 text-[11px] text-[#A3A3A3]">
-          <span className="flex items-center gap-1 text-[#E5E5E5]">
-            <BookOpen className="w-3.5 h-3.5" />
-            Knowledge Active
-          </span>
-          <span>• Arunaki IDE v1.0</span>
         </div>
       </footer>
     </div>
