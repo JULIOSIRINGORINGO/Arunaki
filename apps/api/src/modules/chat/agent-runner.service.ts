@@ -14,6 +14,7 @@ import { SessionStateEventsService, SessionEventType } from './session-state-eve
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
+import { InputProvenanceFactory } from '../ai/input-provenance.js';
 import {
   createRunBudget,
   enterRunBudget,
@@ -743,6 +744,19 @@ export class AgentRunnerService {
           createdAt: a!.createdAt,
         };
       });
+
+      // Persist assistant message to DB BEFORE emitting done event to frontend
+      try {
+        await this.messageService.createMessage({
+          chatHistoryId: params.chatId,
+          role: 'assistant',
+          content: finalContent,
+          idempotencyKey: `run:${todoRunId}:assistant`,
+          provenance: InputProvenanceFactory.internalSystem(),
+        });
+      } catch (err: any) {
+        this.logger.warn(`Failed to persist assistant message: ${err.message}`);
+      }
 
       onEvent({
         type: 'done',
