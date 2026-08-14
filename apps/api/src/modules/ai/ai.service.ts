@@ -795,7 +795,9 @@ ${modelAdditions}`,
 ${posturePrompt}
 
 ## Knowledge Graph Map
-${safeKnowledgeContext}`;
+${safeKnowledgeContext}
+
+${this.buildTemporalContextSection()}`;
 
     const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;
 
@@ -940,13 +942,24 @@ ${toolList || 'No tools available.'}
   private buildTemporalContextSection(): string {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
+    const daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const monthsIndo = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const dayName = daysIndo[now.getDay()];
+    const monthName = monthsIndo[now.getMonth()];
     const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const formattedDate = `${now.getDate()} ${monthName} ${now.getFullYear()}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
+
     return [
-      '=== TEMPORAL CONTEXT ===',
-      `Current date: ${dateStr}`,
-      `Current time: ${timeStr}`,
-      'Always reference dates and times relative to the current date.',
+      '=== TEMPORAL CONTEXT (REAL-TIME SYSTEM DATE & TIME) ===',
+      `Hari ini: ${dayName}`,
+      `Tanggal: ${formattedDate} (${dateStr})`,
+      `Waktu sekarang: ${timeStr}`,
+      'Kamu MEMILIKI AKSES PENUH ke tanggal, hari, dan waktu real-time komputer/sistem saat ini.',
+      'Gunakan tanggal dan hari real-time ini secara akurat saat menjawab pertanyaan hari/tanggal pengguna, membuat catatan harian, atau mengupdate laporan bisnis.',
       '=== END TEMPORAL CONTEXT ===',
     ].join('\n');
   }
