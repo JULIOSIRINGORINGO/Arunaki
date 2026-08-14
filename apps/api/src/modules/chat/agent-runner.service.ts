@@ -373,10 +373,8 @@ export class AgentRunnerService {
       }
     }
 
-    if (!finalContent) {
-      finalContent = reachedMaxRounds
-        ? 'Agent reached the maximum step limit. Results so far may be incomplete — please continue your request if needed.'
-        : 'The task has been completed.';
+    if (!finalContent || finalContent.trim() === '') {
+      finalContent = this.buildFallbackContent(toolOutputs, reachedMaxRounds);
     }
 
     const artifactRecords = await Promise.all(
@@ -525,6 +523,7 @@ export class AgentRunnerService {
 
       let finalContent = '';
       const createdArtifactIds: string[] = [];
+      const toolOutputs: Array<{ toolName: string; args: any; result: ToolResult }> = [];
 
       const MAX_ROUNDS = 5;
       let reachedMaxRounds = true;
@@ -662,11 +661,13 @@ export class AgentRunnerService {
           const healedResults = await Promise.all(healingPromises);
 
           for (const { toolCall, result } of healedResults) {
+            const parsedArgs = (() => { try { return JSON.parse(toolCall.function.arguments || '{}'); } catch { return {}; } })();
+            toolOutputs.push({ toolName: toolCall.function.name, args: parsedArgs, result });
             this.harnessRegistry.onToolResult({
               chatId,
               runId: params.idempotencyKey || '',
               toolName: toolCall.function.name,
-              args: (() => { try { return JSON.parse(toolCall.function.arguments || '{}'); } catch { return {}; } })(),
+              args: parsedArgs,
               result,
             });
             if (result.status === 'success' && result.metadata?.contentBase64) {
@@ -720,10 +721,11 @@ export class AgentRunnerService {
         }
       }
 
-      if (!finalContent) {
-        finalContent = reachedMaxRounds
-          ? 'Agent reached the maximum step limit. Results so far may be incomplete — please continue your request if needed.'
-          : 'The task has been completed.';
+      if (!finalContent || finalContent.trim() === '') {
+        finalContent = this.buildFallbackContent(toolOutputs, reachedMaxRounds);
+        if (onEvent) {
+          onEvent({ type: 'text_delta', data: finalContent });
+        }
       }
 
       const artifactRecords = await Promise.all(
@@ -815,5 +817,26 @@ export class AgentRunnerService {
       default:
         return 'document';
     }
+  }
+
+  private buildFallbackContent(
+    toolOutputs: Array<{ toolName: string; args: any; result: ToolResult }>,
+    reachedMaxRounds: boolean,
+  ): string {
+    if (reachedMaxRounds) {
+      return 'Batas langkah maksimum telah tercapai. Hasil sejauh ini mungkin belum lengkap — silakan lanjutkan permintaan Anda jika diperlukan.';
+    }
+
+    if (toolOutputs.length > 0) {
+      const previews = toolOutputs
+        .map((t) => t.result.preview)
+        .filter(Boolean);
+      if (previews.length > 0) {
+        return `Tugas berhasil dilaksanakan:\n` + previews.map((p) => `• ${p}`).join('\n');
+      }
+      return 'Tugas berhasil dilaksanakan. Data dan dokumen telah diperbarui sesuai instruksi Anda.';
+    }
+
+    return 'Permintaan Anda telah selesai diproses.';
   }
 }
