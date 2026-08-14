@@ -21,8 +21,8 @@ export interface ModelCapability {
 // (OpenRouter `openai/gpt-oss-120b:free`, Groq `gpt-oss-120b`, Kenari `gpt-oss-120b`, etc.)
 const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // OpenAI GPT-OSS
-  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096, reasoningEffort: 'low' },
-  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096, reasoningEffort: 'low' },
+  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
 
   // Google Gemma 4 — confirmed support tools
   'gemma-4-31b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
