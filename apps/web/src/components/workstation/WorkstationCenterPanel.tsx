@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import { FileText, X, Sparkles, Check } from "lucide-react";
+import { FileText, X, Sparkles } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
 
@@ -140,6 +140,21 @@ function WorkstationCenterPanelComponent({
               active: true,
             },
           }));
+
+          // FULLY AUTONOMOUS AUTO-DISMISS TIMER (3.5s): Settle diff highlights automatically without any user click
+          const timer = setTimeout(() => {
+            setDiffStates((prev) => {
+              if (prev[tabId]?.active) {
+                return {
+                  ...prev,
+                  [tabId]: { ...prev[tabId], active: false },
+                };
+              }
+              return prev;
+            });
+          }, 3500);
+
+          return () => clearTimeout(timer);
         }
       }
 
@@ -157,7 +172,7 @@ function WorkstationCenterPanelComponent({
   const activeDiff = activeTab ? diffStates[activeTab.id] : null;
   const isDiffActive = !!(activeDiff && activeDiff.active);
 
-  const handleAcceptDiff = (tabId: string) => {
+  const handleDismissDiff = (tabId: string) => {
     setDiffStates((prev) => ({
       ...prev,
       [tabId]: { ...prev[tabId], active: false },
@@ -167,9 +182,8 @@ function WorkstationCenterPanelComponent({
   const handleTextChange = (val: string) => {
     if (!activeTab) return;
     setEditedContents((prev) => ({ ...prev, [activeTab.id]: val }));
-    // Typing clears diff highlights
     if (diffStates[activeTab.id]?.active) {
-      handleAcceptDiff(activeTab.id);
+      handleDismissDiff(activeTab.id);
     }
   };
 
@@ -198,7 +212,7 @@ function WorkstationCenterPanelComponent({
       } else {
         activeTab.content = contentToSave;
       }
-      handleAcceptDiff(tabId);
+      handleDismissDiff(tabId);
     } catch (err) {
       console.error("[WorkstationCenterPanel] Save failed:", err);
     }
@@ -259,7 +273,7 @@ function WorkstationCenterPanelComponent({
                 )}
                 <span className="truncate">{tab.title}</span>
                 {tabHasDiff ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Live Diff Update" />
+                  <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse shrink-0" title="Live Diff Update" />
                 ) : tabIsModified ? (
                   <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Belum disimpan" />
                 ) : null}
@@ -291,51 +305,43 @@ function WorkstationCenterPanelComponent({
               />
             </div>
           ) : isDiffActive && activeDiff ? (
-            /* CURSOR / ANTIGRAVITY LIVE DIFF INTERACTIVE VIEW */
+            /* CURSOR / ANTIGRAVITY SUBTLE MONOCHROME LIVE DIFF VIEW (AUTO-SETTLING) */
             <div className="h-full w-full flex flex-col bg-[#0A0A0A] font-mono text-xs overflow-hidden select-text">
-              {/* Sleek Diff Header Bar */}
-              <div className="h-8 bg-[#161618] border-b border-[#27272A] px-4 flex items-center justify-between text-xs select-none shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="font-semibold text-emerald-400 text-xs">AI Live File Diff Applied</span>
-                  <span className="text-[#A1A1AA] text-[11px] font-mono">
-                    +{activeDiff.addedCount} lines / -{activeDiff.deletedCount} lines
+              {/* Minimalist Dark Header Bar */}
+              <div className="h-7 bg-[#121212] border-b border-[#262626] px-3 flex items-center justify-between text-xs select-none shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse" />
+                  <span className="font-mono text-[#A1A1AA] text-[11px]">AI Live Diff</span>
+                  <span className="text-[#71717A] text-[11px] font-mono">
+                    +{activeDiff.addedCount} / -{activeDiff.deletedCount}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleAcceptDiff(activeTab.id)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-[#27272A] hover:bg-[#3F3F46] text-white rounded text-[11px] font-medium transition-colors border border-[#3F3F46]"
-                  >
-                    <Check className="w-3 h-3 text-emerald-400" />
-                    <span>Terima Perubahan</span>
-                  </button>
-                </div>
+                <span className="text-[#52525B] text-[10px] italic">Auto-settling...</span>
               </div>
 
-              {/* Line Diff Viewer Body */}
-              <div className="flex-1 overflow-auto p-2 bg-[#0D0D0E] font-mono text-xs leading-relaxed">
+              {/* Line Diff Viewer Body (Subtle Dark Monochrome Tint) */}
+              <div className="flex-1 overflow-auto p-2 bg-[#0A0A0A] font-mono text-xs leading-relaxed">
                 {activeDiff.diffLines.map((line, idx) => {
                   if (line.type === "added") {
                     return (
-                      <div key={idx} className="flex items-start bg-[#122618] border-l-2 border-emerald-500 text-[#86EFAC] px-2 py-0.5 whitespace-pre font-mono">
+                      <div key={idx} className="flex items-start bg-[#141C16] border-l-2 border-[#22C55E]/60 text-[#E4E4E7] px-2 py-0.5 whitespace-pre font-mono">
                         <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber}</span>
-                        <span className="text-emerald-500 mr-2 select-none shrink-0">+</span>
+                        <span className="text-[#4ADE80] font-bold mr-2 select-none shrink-0">+</span>
                         <span className="break-all">{line.content}</span>
                       </div>
                     );
                   }
                   if (line.type === "deleted") {
                     return (
-                      <div key={idx} className="flex items-start bg-[#2E1618] border-l-2 border-red-500 text-[#FCA5A5] opacity-80 px-2 py-0.5 whitespace-pre font-mono">
+                      <div key={idx} className="flex items-start bg-[#1C1617] border-l-2 border-[#EF4444]/60 text-[#71717A] px-2 py-0.5 whitespace-pre font-mono">
                         <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.oldLineNumber}</span>
-                        <span className="text-red-500 mr-2 select-none shrink-0">-</span>
+                        <span className="text-[#F87171] font-bold mr-2 select-none shrink-0">-</span>
                         <span className="line-through break-all">{line.content}</span>
                       </div>
                     );
                   }
                   return (
-                    <div key={idx} className="flex items-start text-[#D4D4D8] px-2 py-0.5 whitespace-pre font-mono hover:bg-[#18181B]">
+                    <div key={idx} className="flex items-start text-[#D4D4D8] px-2 py-0.5 whitespace-pre font-mono hover:bg-[#121212]">
                       <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber || line.oldLineNumber}</span>
                       <span className="w-4 select-none shrink-0" />
                       <span className="break-all">{line.content}</span>
