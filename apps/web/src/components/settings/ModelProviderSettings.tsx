@@ -116,6 +116,26 @@ export function ModelProviderSettings({
     setEditingId(null);
   };
 
+  const getSelectedModels = (modelStr: string): string[] => {
+    if (!modelStr) return [];
+    return modelStr.split(',').map((s) => s.trim()).filter(Boolean);
+  };
+
+  const handleToggleModelSelection = (m: string) => {
+    const current = getSelectedModels(form.model);
+    let updated: string[];
+    if (current.includes(m)) {
+      if (current.length <= 1) {
+        toast.info("Minimal 1 model harus terpilih.");
+        return;
+      }
+      updated = current.filter((id) => id !== m);
+    } else {
+      updated = [...current, m];
+    }
+    setForm((f) => ({ ...f, model: updated.join(', ') }));
+  };
+
   const handleTypeChange = (type: string) => {
     const pt = PROVIDER_TYPES.find((p) => p.value === type);
     const defaults = DEFAULT_MODELS[type] || DEFAULT_MODELS["openai-compatible"] || [];
@@ -144,7 +164,8 @@ export function ModelProviderSettings({
 
     const defaults = DEFAULT_MODELS[p.type] || DEFAULT_MODELS["openai-compatible"] || [];
     const custom = customModelsMap[p.id] || [];
-    const combined = Array.from(new Set([p.model, ...custom, ...defaults]));
+    const existingModels = getSelectedModels(p.model);
+    const combined = Array.from(new Set([...existingModels, ...custom, ...defaults]));
     setFormAvailableModels(combined);
     setIsAddingFormModel(false);
     setFormNewModelInput("");
@@ -420,19 +441,25 @@ export function ModelProviderSettings({
                   <RefreshCw className={cn("w-3 h-3 text-[#A3A3A3]", isFetchingFormModels && "animate-spin")} />
                   <span>{isFetchingFormModels ? "Syncing..." : "Sync Models dari API"}</span>
                 </button>
-                <span className="text-[10px] text-[#737373]">Klik model untuk memilih model aktif</span>
+                <span className="text-[10px] text-[#737373]">
+                  {getSelectedModels(form.model).length > 1
+                    ? `Pool (${getSelectedModels(form.model).length} model terpilih)`
+                    : "Klik model untuk memilih 1 atau lebih model aktif"}
+                </span>
               </div>
             </div>
 
             <div className="max-h-[260px] overflow-y-auto pr-1 space-y-2">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {formAvailableModels.map((m) => {
-                  const isSelected = form.model === m;
+                  const selectedList = getSelectedModels(form.model);
+                  const isSelected = selectedList.includes(m);
+                  const isPrimary = selectedList[0] === m;
                   return (
                     <button
                       key={m}
                       type="button"
-                      onClick={() => setForm({ ...form, model: m })}
+                      onClick={() => handleToggleModelSelection(m)}
                       className={cn(
                         "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
                         isSelected
@@ -442,7 +469,13 @@ export function ModelProviderSettings({
                     >
                       <div className="truncate pr-2">
                         <span className="font-mono text-xs block truncate font-medium">{m}</span>
-                        <span className="text-[9px] text-[#737373]">{isSelected ? "● Selected Active" : "Klik untuk pilih"}</span>
+                        <span className="text-[9px] text-[#737373]">
+                          {isPrimary
+                            ? "● Primary Active"
+                            : isSelected
+                            ? "✓ Fallback Active"
+                            : "Klik untuk pilih"}
+                        </span>
                       </div>
                       {isSelected && <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />}
                     </button>
@@ -564,19 +597,25 @@ export function ModelProviderSettings({
                           <RefreshCw className={cn("w-3 h-3 text-[#A3A3A3]", isFetchingFormModels && "animate-spin")} />
                           <span>{isFetchingFormModels ? "Syncing..." : "Sync Models dari API"}</span>
                         </button>
-                        <span className="text-[10px] text-[#737373]">Klik model untuk memilih model aktif</span>
+                        <span className="text-[10px] text-[#737373]">
+                          {getSelectedModels(form.model).length > 1
+                            ? `Pool (${getSelectedModels(form.model).length} model terpilih)`
+                            : "Klik model untuk memilih 1 atau lebih model aktif"}
+                        </span>
                       </div>
                     </div>
 
                     <div className="max-h-[260px] overflow-y-auto pr-1 space-y-2">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {formAvailableModels.map((m) => {
-                          const isSelected = form.model === m;
+                          const selectedList = getSelectedModels(form.model);
+                          const isSelected = selectedList.includes(m);
+                          const isPrimary = selectedList[0] === m;
                           return (
                             <button
                               key={m}
                               type="button"
-                              onClick={() => setForm({ ...form, model: m })}
+                              onClick={() => handleToggleModelSelection(m)}
                               className={cn(
                                 "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
                                 isSelected
@@ -586,7 +625,13 @@ export function ModelProviderSettings({
                             >
                               <div className="truncate pr-2">
                                 <span className="font-mono text-xs block truncate font-medium">{m}</span>
-                                <span className="text-[9px] text-[#737373]">{isSelected ? "● Selected Active" : "Klik untuk pilih"}</span>
+                                <span className="text-[9px] text-[#737373]">
+                                  {isPrimary
+                                    ? "● Primary Active"
+                                    : isSelected
+                                    ? "✓ Fallback Active"
+                                    : "Klik untuk pilih"}
+                                </span>
                               </div>
                               {isSelected && <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />}
                             </button>
@@ -711,9 +756,16 @@ export function ModelProviderSettings({
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-[#737373] font-mono mt-1">
-                        {p.baseUrl || "Default API Endpoint"}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <p className="text-[11px] text-[#737373] font-mono">
+                          {p.baseUrl || "Default API Endpoint"}
+                        </p>
+                        {p.model && (
+                          <span className="text-[10px] text-[#A3A3A3] font-mono px-1.5 py-0.5 bg-[#0A0A0A] border border-[#262626] rounded">
+                            Model Pool ({getSelectedModels(p.model).length}): {p.model}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

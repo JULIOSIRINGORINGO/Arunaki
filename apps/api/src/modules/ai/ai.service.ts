@@ -132,9 +132,13 @@ export class AiService {
       // Try active DB provider, but skip if it is cooling down (to avoid repeated hangs)
     const dbConfig = await this.providerService.getActiveConfigRespectingCooldown();
       if (dbConfig) {
+        const primaryModel = dbConfig.model
+          ? dbConfig.model.split(',')[0].trim()
+          : dbConfig.model;
         return {
           ...dbConfig,
           baseUrl: dbConfig.baseUrl.replace(/\/$/, ''),
+          model: primaryModel,
         };
       }
     } catch (err: any) {
