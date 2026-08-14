@@ -125,6 +125,21 @@ function WorkstationCenterPanelComponent({
               <div
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCloseTab(tab.id);
+                  }
+                }}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCloseTab(tab.id);
+                  }
+                }}
+                title="Klik tengah (scroll wheel) untuk menutup tab"
                 className={cn(
                   "flex items-center gap-2 px-3 py-1 text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-r border-[#1E1E1E]",
                   isActive
