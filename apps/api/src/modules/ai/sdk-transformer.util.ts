@@ -1,6 +1,35 @@
-import { ToolSet, tool, jsonSchema } from 'ai';
+import { ToolSet, tool, jsonSchema, generateText, streamText } from 'ai';
 import type { ModelMessage } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import type { ChatMessage, ToolDefinition } from './ai.service.js';
+import type { ProviderConfig } from '../provider/provider.service.js';
+import type { StreamChunk } from './stream-chat.js';
+import { getModelCapability, scaleMaxTokens } from './model-capability.js';
+
+const sdkProviders = new Map<string, any>();
+
+export function getSdkModel(provider: ProviderConfig): any {
+  const key = `${provider.type}|${provider.baseUrl}|${provider.apiKey}|${provider.model}`;
+  let sdk = sdkProviders.get(key);
+  if (!sdk) {
+    const headers: Record<string, string> = {};
+    if (provider.baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://arunaki.app';
+      headers['X-Title'] = 'Arunaki AI Assistant';
+    }
+    if (provider.headerPrefix) headers['HTTP-Referer'] = provider.headerPrefix;
+    if (provider.headerTitle) headers['X-Title'] = provider.headerTitle;
+
+    if (provider.type === 'anthropic') {
+      sdk = createAnthropic({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+    } else {
+      sdk = createOpenAI({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+    }
+    sdkProviders.set(key, sdk);
+  }
+  return sdk.chat(provider.model);
+}
 
 export function toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
   return messages.map((m) => {
@@ -60,11 +89,77 @@ export function toSdkTools(tools: ToolDefinition[]): ToolSet {
 
 export function buildProviderOptions(
   provider: { type?: string; model?: string },
-  modelCapabilities: any,
+  model: string,
 ): Record<string, any> | undefined {
-  const caps = modelCapabilities.getCapabilities(provider.model || '');
-  if (!caps.reasoning) return undefined;
-  return {
-    openai: { reasoningEffort: 'medium' },
-  };
+  const effort = getModelCapability(model).reasoningEffort;
+  if (!effort) return undefined;
+  return provider.type === 'anthropic'
+    ? { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } }
+    : { openai: { reasoningEffort: effort } };
+}
+
+export async function makeSdkRequest(
+  provider: ProviderConfig,
+  body: Record<string, any>,
+  timeoutMs = 180000,
+): Promise<{ data: any; statusCode: number }> {
+  const canUseTools = (body.tools?.length ?? 0) > 0;
+  const data = await generateText({
+    model: getSdkModel(provider),
+    messages: toSdkMessages(body.messages),
+    allowSystemInMessages: true,
+    temperature: body.temperature ?? 0.7,
+    maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+    ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
+    ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+    maxRetries: 0,
+    timeout: timeoutMs,
+  });
+  return { data, statusCode: 200 };
+}
+
+export async function *makeSdkRequestStream(
+  provider: ProviderConfig,
+  body: Record<string, any>,
+): AsyncGenerator<StreamChunk> {
+  const canUseTools = (body.tools?.length ?? 0) > 0;
+  let done = false;
+
+  const result = streamText({
+    model: getSdkModel(provider),
+    messages: toSdkMessages(body.messages),
+    allowSystemInMessages: true,
+    temperature: body.temperature ?? 0.7,
+    maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+    ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
+    ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+    maxRetries: 0,
+  });
+
+  for await (const part of result.stream) {
+    if (part.type === 'text-delta') {
+      yield { type: 'content', content: part.text };
+    } else if (part.type === 'tool-call') {
+      yield {
+        type: 'tool_call',
+        toolCall: {
+          id: part.toolCallId,
+          name: part.toolName,
+          arguments:
+            typeof part.input === 'string'
+              ? part.input
+              : JSON.stringify(part.input ?? {}),
+        },
+      };
+    } else if (part.type === 'finish') {
+      done = true;
+      break;
+    } else if (part.type === 'error') {
+      throw part.error;
+    }
+  }
+
+  if (!done) {
+    throw new Error('Stream ended without a finish event');
+  }
 }

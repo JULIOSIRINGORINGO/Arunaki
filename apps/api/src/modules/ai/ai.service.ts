@@ -19,8 +19,10 @@ import {
   AutoPostureDetector,
   PostureDetectionResult,
 } from './auto-posture-detector.service.js';
-import { runWithModelFallback } from './model-fallback.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
+
+export type { ProviderConfig, StreamChunk };
+import { runWithModelFallback } from './model-fallback.js';
 import { modelSupportsTools, scaleMaxTokens, getModelCapability } from './model-capability.js';
 import {
   cacheStablePromptPrefix,
@@ -82,6 +84,8 @@ import {
   toSdkMessages,
   toSdkTools,
   buildProviderOptions,
+  makeSdkRequest,
+  makeSdkRequestStream,
 } from './sdk-transformer.util.js';
 
 @Injectable()
@@ -184,65 +188,7 @@ export class AiService {
     };
   }
 
-  private readonly sdkProviders = new Map<string, any>();
 
-  /**
-   * Build a LanguageModel instance for a provider via the AI SDK
-   * (createOpenAI for OpenAI-compatible endpoints like Kenari, createAnthropic
-   * for native Anthropic). Instances are cached per provider credential+base.
-   */
-  private getSdkModel(provider: ProviderConfig): any {
-    const key = `${provider.type}|${provider.baseUrl}|${provider.apiKey}|${provider.model}`;
-    let sdk = this.sdkProviders.get(key);
-    if (!sdk) {
-      const headers: Record<string, string> = {};
-      if (provider.baseUrl.includes('openrouter.ai')) {
-        headers['HTTP-Referer'] = 'https://arunaki.app';
-        headers['X-Title'] = 'Arunaki AI Assistant';
-      }
-      if (provider.headerPrefix) headers['HTTP-Referer'] = provider.headerPrefix;
-      if (provider.headerTitle) headers['X-Title'] = provider.headerTitle;
-
-      if (provider.type === 'anthropic') {
-        sdk = createAnthropic({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
-      } else {
-        sdk = createOpenAI({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
-      }
-      this.sdkProviders.set(key, sdk);
-    }
-    return sdk.chat(provider.model);
-  }
-
-
-
-  /**
-   * Make a single AI SDK (non-streaming) request to a provider.
-   * Throws on HTTP/network errors with statusCode/responseBody attached so the
-   * fallback layer can classify them.
-   */
-  private async makeRequest(
-    provider: ProviderConfig,
-    body: Record<string, any>,
-    timeoutMs = 180000,
-  ): Promise<{ data: any; statusCode: number }> {
-    const canUseTools = (body.tools?.length ?? 0) > 0;
-    try {
-      const data = await generateText({
-        model: this.getSdkModel(provider),
-        messages: toSdkMessages(body.messages),
-        allowSystemInMessages: true,
-        temperature: body.temperature ?? 0.7,
-        maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-        ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
-        ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
-        maxRetries: 0,
-        timeout: timeoutMs,
-      });
-      return { data, statusCode: 200 };
-    } catch (err: any) {
-      throw err;
-    }
-  }
 
   /**
    * Sleep with jittered exponential backoff.
@@ -409,7 +355,7 @@ export class AiService {
     const result = await runWithModelFallback({
       provider,
       body,
-      makeRequest: (p, b) => this.makeRequest(p, b),
+      makeRequest: (p, b) => makeSdkRequest(p, b),
       getNextProvider: (currentId, triedIds = []) => this.providerService.getNextAvailable(currentId, triedIds),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
@@ -536,7 +482,7 @@ export class AiService {
     for await (const chunk of streamWithFallback({
       provider,
       body,
-      makeRequest: (p, b) => this.makeRequestStream(p, b),
+      makeRequest: (p, b) => makeSdkRequestStream(p, b),
       getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
@@ -555,92 +501,7 @@ export class AiService {
     }
   }
 
-  /**
-   * AI SDK streaming request. Yields content/tool_call/done chunks; throws on
-   * HTTP errors (APICallError) so streamWithFallback can classify and rotate.
-   */
-  private async *makeRequestStream(
-    provider: ProviderConfig,
-    body: Record<string, any>,
-  ): AsyncGenerator<StreamChunk> {
-    const canUseTools = (body.tools?.length ?? 0) > 0;
-    let done = false;
 
-    try {
-      const result = streamText({
-        model: this.getSdkModel(provider),
-        messages: toSdkMessages(body.messages),
-        allowSystemInMessages: true,
-        temperature: body.temperature ?? 0.7,
-        maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-        ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
-        ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
-        maxRetries: 0,
-      });
-
-      for await (const part of result.stream) {
-        if (part.type === 'text-delta') {
-          yield { type: 'content', content: part.text };
-        } else if (part.type === 'tool-call') {
-          yield {
-            type: 'tool_call',
-            toolCall: {
-              id: part.toolCallId,
-              name: part.toolName,
-              arguments:
-                typeof part.input === 'string'
-                  ? part.input
-                  : JSON.stringify(part.input ?? {}),
-            },
-          };
-        } else if (part.type === 'finish') {
-          done = true;
-          break;
-        } else if (part.type === 'error') {
-          throw part.error;
-        }
-      }
-    } catch (err: any) {
-      throw err;
-    }
-
-    if (!done) {
-      throw new Error('Stream ended without a finish event');
-    }
-  }
-
-  /**
-   * Load a prompt file from the prompts directory.
-   */
-  private loadPrompt(filename: string): string {
-    try {
-      // Try dist/src/prompts (production) first, then src/prompts (dev)
-      const distPath = path.join(
-        __dirname,
-        '..',
-        '..',
-        'src',
-        'prompts',
-        filename,
-      );
-      const srcPath = path.join(
-        __dirname,
-        '..',
-        '..',
-        '..',
-        'src',
-        'prompts',
-        filename,
-      );
-      const filePath = fs.existsSync(distPath) ? distPath : srcPath;
-      return fs.readFileSync(filePath, 'utf-8').trim();
-    } catch (err: any) {
-      this.logger.error(
-        `Failed to load prompt file "${filename}": ${err.message}`,
-      );
-      return `<!-- Failed to load ${filename} -->`;
-    }
-  }
 
   getSystemPrompt(
     mode: 'chat' | 'workspace',
