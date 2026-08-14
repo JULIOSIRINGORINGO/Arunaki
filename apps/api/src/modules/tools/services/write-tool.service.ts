@@ -24,8 +24,9 @@ export class WriteToolService {
     content?: string;
     rows?: Record<string, any>[];
     title?: string;
+    overwrite?: boolean;
   }): Promise<ToolResult> {
-    const { workspaceId, filename, format, content, rows, title } = params;
+    const { workspaceId, filename, format, content, rows, title, overwrite } = params;
     const startTime = Date.now();
 
     const workspace = await this.prisma.workspace.findUnique({
@@ -46,13 +47,31 @@ export class WriteToolService {
     const rootPath = workspace.rootPath;
     const defaultSourceId = workspace.sources[0]?.id;
 
-    const cleanFilename = filename.replace(/[/\\?%*:|"<>]/g, '_');
+    const normalizedFilename = filename.replace(/^@+/, '').trim();
+    const cleanFilename = normalizedFilename.replace(/[/\\?%*:|"<>]/g, '_');
     const finalFilename = cleanFilename.endsWith(`.${format}`)
       ? cleanFilename
       : `${cleanFilename}.${format}`;
     const targetPath = path.join(rootPath, finalFilename);
 
     try {
+      const fsPromises = await import('fs/promises');
+      try {
+        await fsPromises.stat(targetPath);
+        // File exists!
+        if (!overwrite) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `File "${finalFilename}" already exists. To overwrite, you must explicitly set the 'overwrite' parameter to true.`,
+            metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+            error: { code: 'FILE_EXISTS', message: 'File already exists and overwrite is not true.' },
+          };
+        }
+      } catch (err: any) {
+        // File doesn't exist, safe to write
+      }
+
       if (format === 'xlsx' || format === 'csv') {
         const XLSX = await import('xlsx');
         let workbook: any;

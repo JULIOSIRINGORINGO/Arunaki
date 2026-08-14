@@ -27,7 +27,12 @@ export class SystemPromptBuilderService {
 
   loadPrompt(filename: string): string {
     try {
-      const promptPath = path.resolve(process.cwd(), 'apps/api/src/prompts', filename);
+      // __dirname points to .../apps/api/dist/modules/ai/ or .../apps/api/src/modules/ai/
+      // We need to navigate up to apps/api/ then into src/prompts/
+      const baseDir = path.resolve(__dirname, '..', '..', '..', 'src', 'prompts');
+      const fromCwd = path.resolve(process.cwd(), 'src', 'prompts', filename);
+      const fromDirname = path.resolve(baseDir, filename);
+      const promptPath = fs.existsSync(fromDirname) ? fromDirname : (fs.existsSync(fromCwd) ? fromCwd : path.resolve(process.cwd(), 'apps', 'api', 'src', 'prompts', filename));
       return fs.readFileSync(promptPath, 'utf-8');
     } catch (err: any) {
       this.logger.warn(

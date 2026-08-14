@@ -64,6 +64,7 @@ export class WorkspaceFileToolsRegistrar {
             content: args.content,
             rows: args.rows,
             title: args.title,
+            overwrite: args.overwrite,
           }),
         parameters: {
           type: 'object',
@@ -71,6 +72,7 @@ export class WorkspaceFileToolsRegistrar {
             workspaceId: { type: 'string', description: 'Workspace ID' },
             filePath: { type: 'string', description: 'File path' },
             content: { type: 'string', description: 'File content' },
+            overwrite: { type: 'boolean', description: 'Set true ONLY if you intend to overwrite an existing file' },
           },
           required: ['workspaceId', 'filePath', 'content'],
         },

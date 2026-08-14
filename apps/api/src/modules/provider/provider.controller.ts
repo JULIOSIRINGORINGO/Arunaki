@@ -223,7 +223,7 @@ export class ProviderController {
       return this.testConnection({
         baseUrl: p.baseUrl,
         apiKey: p.apiKey,
-        model: p.model,
+        model: p.model ? p.model.split(',')[0].trim() : '',
       });
     } catch (error: any) {
       return errorResponse('TEST_FAILED', error.message);

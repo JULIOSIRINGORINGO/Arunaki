@@ -259,6 +259,12 @@ function WorkstationRightChatComponent({
         ) : (
           allMessages.map((msg, idx) => {
             const isUser = msg.role === "user";
+            
+            // Hide empty assistant bubbles while working/processing
+            if (!isUser && (!msg.content || msg.content.trim() === "")) {
+              return null;
+            }
+
             return (
               <div
                 key={msg.id || idx}
@@ -422,7 +428,7 @@ function WorkstationRightChatComponent({
             </div>
 
             <button
-              onClick={onSendMessage}
+              onClick={() => onSendMessage()}
               disabled={!inputPrompt.trim()}
               className="w-7 h-7 bg-white hover:bg-[#E5E5E5] disabled:opacity-30 text-black rounded-full flex items-center justify-center transition-colors cursor-pointer"
               title={isStreaming ? "Tambah ke antrian" : "Kirim pesan"}

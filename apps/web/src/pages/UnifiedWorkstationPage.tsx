@@ -329,15 +329,7 @@ export function UnifiedWorkstationPage() {
     } catch {}
   }, [selectedWorkspaceId]);
 
-  // Real-time live file polling while streaming SSE is active
-  useEffect(() => {
-    if (!isStreaming) return;
-    const interval = setInterval(() => {
-      refetchFiles();
-      reloadOpenTabsContent();
-    }, 1200);
-    return () => clearInterval(interval);
-  }, [isStreaming, refetchFiles, reloadOpenTabsContent]);
+  // Real-time live file polling while streaming SSE is active (REMOVED: we now rely strictly on SSE events to trigger re-fetches to avoid DDOSing our own backend)
 
   const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
 
