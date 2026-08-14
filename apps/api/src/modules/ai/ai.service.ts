@@ -942,23 +942,20 @@ ${toolList || 'No tools available.'}
   private buildTemporalContextSection(): string {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    const daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const daysEng = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const monthsEng = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    const dayIndo = daysIndo[now.getDay()];
-    const dayEng = daysEng[now.getDay()];
-    const monthEng = monthsEng[now.getMonth()];
+
+    // Native Node.js OS clock & locale formatters
+    const dayIndo = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(now);
+    const dayEng = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
+    const dateFormattedIndo = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+    const dateFormattedEng = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+
     const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const dateFormatted = `${now.getDate()} ${monthEng} ${now.getFullYear()}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
 
     return [
       '=== TEMPORAL CONTEXT (REAL-TIME SYSTEM DATE & TIME) ===',
       `Current Day: ${dayEng} (${dayIndo})`,
-      `Current Date: ${dateFormatted} (${dateIso})`,
+      `Current Date: ${dateFormattedEng} / ${dateFormattedIndo} (${dateIso})`,
       `Current Time: ${timeStr}`,
       'The system has real-time access to the local system date and time.',
       'Use this temporal context to accurately answer date/time queries and update daily reports in the user\'s language.',
