@@ -52,30 +52,19 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     const preview = status.preview || '';
 
     setSteps((prev) => {
-      let label = "Menganalisis instruksi & konteks";
+      let label = "Analyzing";
       let iconType: 'thinking' | 'tool' | 'text' = 'thinking';
 
       if (type === 'thinking') {
-        label = preview ? `Analisis: ${preview}` : "Menganalisis instruksi & konteks dokumen";
+        label = "Analyzing";
         iconType = 'thinking';
       } else if (type === 'tool_start' || type === 'tool_live_status') {
         iconType = 'tool';
-        const t = toolName.toLowerCase();
-        if (t.includes("excel") || t.includes("spreadsheet")) {
-          label = `Mengolah Tabel Excel: ${preview || toolName}`;
-        } else if (t.includes("word") || t.includes("docx")) {
-          label = `Mengedit Dokumen Word: ${preview || toolName}`;
-        } else if (t.includes("knowledge") || t.includes("memory") || t.includes("rag")) {
-          label = `Mencari di Knowledge Base: ${preview || toolName}`;
-        } else if (t.includes("read") || t.includes("file") || t.includes("search")) {
-          label = `Mengakses File Workspace: ${preview || toolName}`;
-        } else if (t.includes("browser")) {
-          label = `Navigasi Web Browser: ${preview || toolName}`;
-        } else {
-          label = `Aksi Desktop: ${preview || toolName}`;
-        }
+        const displayTool = toolName ? toolName : 'desktop_action';
+        const detail = preview ? ` → ${preview}` : '';
+        label = `Executing: ${displayTool}${detail}`;
       } else if (type === 'text_delta') {
-        label = "Menyusun jawaban & laporan...";
+        label = "Synthesizing";
         iconType = 'text';
       }
 
@@ -103,7 +92,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   if (!status || !active || steps.length === 0) return null;
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
-  const summaryHeader = `Aktivitas Agen (${steps.length} langkah)`;
+  const summaryHeader = `Exploring ${steps.length} task${steps.length > 1 ? 's' : ''}`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
@@ -134,7 +123,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
           <Loader2 size={12} className="animate-spin text-zinc-400" />
           <span className="font-semibold text-zinc-200">{summaryHeader}</span>
           {completedCount > 0 && (
-            <span className="text-[10px] text-zinc-500">({completedCount} selesai)</span>
+            <span className="text-[10px] text-zinc-500">({completedCount} done)</span>
           )}
         </div>
         <div className="flex items-center gap-1 text-zinc-400 hover:text-zinc-200">
@@ -165,7 +154,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
             );
           })}
           <div className="pt-1 flex items-center gap-1.5 text-zinc-500 text-[10px]">
-            <span className="animate-pulse">Bekerja...</span>
+            <span className="animate-pulse">Working...</span>
           </div>
         </div>
       )}
