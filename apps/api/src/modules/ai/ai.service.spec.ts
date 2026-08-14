@@ -1,12 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AiService } from './ai.service.js';
+import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+import { ModelRouterService } from './model-router.service.js';
+import { AutoPostureDetector } from './auto-posture-detector.service.js';
+import { ContextManager } from './context-manager.js';
 
-describe('AiService - System Prompt Caching Stabilitity', () => {
+describe('AiService & SystemPromptBuilderService - System Prompt Caching Stability', () => {
   let service: AiService;
+  let promptBuilder: SystemPromptBuilderService;
   let mockConfig: any;
   let mockProviderService: any;
   let mockToolRegistryService: any;
-  let mockContextRegistry: any;
 
   beforeEach(() => {
     mockConfig = {
@@ -26,24 +30,35 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
       getToolDirectoryText: vi.fn().mockReturnValue('Mock Directory Text'),
     };
 
-    mockContextRegistry = {};
+    const postureDetector = new AutoPostureDetector();
+    const modelRouter = new ModelRouterService();
+    const contextManager = new ContextManager(
+      { contextLength: 32000, threshold: 0.25, targetRatio: 0.2, toolPruneChars: 1000, toolPreviewChars: 250, injectionMaxChars: 2000, useLlmSummary: true },
+      { chat: vi.fn() },
+    );
+
+    promptBuilder = new SystemPromptBuilderService(
+      postureDetector,
+      modelRouter,
+      mockToolRegistryService as any,
+      contextManager,
+    );
 
     service = new AiService(
       mockConfig,
       mockProviderService,
-      mockToolRegistryService
+      mockToolRegistryService as any,
+      promptBuilder,
     );
 
-    // Mock internal methods that load files or read DB to ensure deterministic tests
-    vi.spyOn(service as any, 'loadPrompt').mockImplementation((filename: string) => {
+    // Mock internal methods that load files to ensure deterministic tests
+    vi.spyOn(promptBuilder as any, 'loadPrompt').mockImplementation((filename: string) => {
       return `Mock content for ${filename}`;
     });
-    
-    vi.spyOn(service as any, 'buildToolListSummary').mockReturnValue('Mock Tool List');
-    
-    // Mock the contextual builders
-    vi.spyOn(service as any, 'buildWorkspaceMemorySection').mockReturnValue('Mock Workspace Memory');
-    vi.spyOn(service as any, 'buildTemporalContextSection').mockReturnValue('Mock Temporal Context');
+
+    vi.spyOn(promptBuilder as any, 'buildToolListSummary').mockReturnValue('Mock Tool List');
+    vi.spyOn(promptBuilder as any, 'buildWorkspaceMemorySection').mockReturnValue('Mock Workspace Memory');
+    vi.spyOn(promptBuilder as any, 'buildTemporalContextSection').mockReturnValue('Mock Temporal Context');
   });
 
   it('should maintain an identical static prefix for workspace mode regardless of dynamic workspaceContext', () => {
@@ -56,7 +71,7 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
 
     // The static prefix MUST be identical to ensure LLM prompt caching is not invalidated
     expect(prefix1).toBe(prefix2);
-    
+
     // Ensure the dynamic content actually made it to the end
     expect(prompt1).toContain('Folder A context');
     expect(prompt2).toContain('Folder B entirely different context');
@@ -72,7 +87,7 @@ describe('AiService - System Prompt Caching Stabilitity', () => {
 
     // The static prefix MUST be identical to ensure LLM prompt caching is not invalidated
     expect(prefix1).toBe(prefix2);
-    
+
     // Ensure the dynamic content actually made it to the end
     expect(prompt1).toContain('Knowledge Base Context 1');
     expect(prompt2).toContain('Completely Different KB Context 2');
