@@ -10,10 +10,10 @@ export class ProjectionAssembler {
   assemble(params: ContextAssemblyParams): ContextProjection[] {
     const projections: ContextProjection[] = [];
 
-    this.add(projections, 'workspace', 'Workspace', 'workspace', params.workspaceContext, 100, 7000);
-    this.add(projections, 'knowledge', 'Knowledge', 'knowledge', params.knowledgeContext, 90, 7000);
-    this.add(projections, 'memory', 'Memory', 'memory', params.memoryContext, 80, 5000);
-    this.add(projections, 'skills', 'Skills', 'skills', params.skillsContext, 70, 5000);
+    this.add(projections, 'workspace', 'Workspace', 'workspace', params.workspaceContext, 100, 4000);
+    this.add(projections, 'knowledge', 'Knowledge', 'knowledge', params.knowledgeContext, 90, 2000);
+    this.add(projections, 'memory', 'Memory', 'memory', params.memoryContext, 80, 2000);
+    this.add(projections, 'skills', 'Skills', 'skills', params.skillsContext, 70, 2000);
 
     for (const projection of params.additionalProjections || []) {
       if (typeof projection?.content === 'string' && projection.content.trim()) {

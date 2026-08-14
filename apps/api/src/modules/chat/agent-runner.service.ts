@@ -78,7 +78,27 @@ export class AgentRunnerService {
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
     try {
-      return await this.knowledgeService.getKnowledgeMap();
+      const parts: string[] = [];
+
+      // 1. If userContent is provided, search for relevant Knowledge node contents
+      if (userContent.trim()) {
+        const searchResult = await this.knowledgeService.searchNodes(userContent);
+        if (
+          searchResult &&
+          searchResult !== 'No data found.' &&
+          searchResult !== 'Node not found in the Knowledge Graph.'
+        ) {
+          parts.push(`=== RELEVANT KNOWLEDGE NODES ===\n${searchResult}`);
+        }
+      }
+
+      // 2. Append high-level Knowledge Map Index
+      const map = await this.knowledgeService.getKnowledgeMap();
+      if (map && map !== 'Knowledge Graph is empty.') {
+        parts.push(`=== KNOWLEDGE MAP INDEX ===\n${map}`);
+      }
+
+      return parts.join('\n\n');
     } catch {
       return '';
     }
