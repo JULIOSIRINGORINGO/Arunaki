@@ -85,11 +85,25 @@ export function modelSupportsTools(modelName: string): boolean {
  * Get capability for a model, or sensible defaults.
  */
 export function getModelCapability(modelName: string): ModelCapability {
-  return lookupCapability(modelName) ?? {
+  const cap = lookupCapability(modelName);
+  if (cap) return cap;
+
+  // Auto-detect if unknown model is a reasoning model by name keywords (e.g., r1, reasoner, o1, o3)
+  const lower = modelName.toLowerCase();
+  const isReasoning =
+    lower.includes('reasoner') ||
+    lower.includes('reasoning') ||
+    lower.includes('-r1') ||
+    lower.includes('deepseek-r') ||
+    lower.includes('o1-') ||
+    lower.includes('o3-');
+
+  return {
     supportsTools: true,
     supportsTemperature: true,
     supportsSystemPrompt: true,
-    contextWindow: 32000,
+    contextWindow: 128000,
+    ...(isReasoning ? { reasoningEffort: 'medium' as const } : {}),
   };
 }
 
