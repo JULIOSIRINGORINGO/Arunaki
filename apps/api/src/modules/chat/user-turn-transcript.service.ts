@@ -24,7 +24,7 @@ export interface TurnTranscript {
 export class UserTurnTranscriptService {
   private readonly logger = new Logger(UserTurnTranscriptService.name);
   private readonly transcripts = new BoundedMap<string, TurnTranscript>(1000);
-  private readonly TURN_TIMEOUT_MS = 300_000;
+  private readonly TURN_TIMEOUT_MS = 25_000;
 
   createTurn(runId: string, sessionKey: string, messageCountBefore: number): TurnTranscript {
     const existing = this.transcripts.get(runId);

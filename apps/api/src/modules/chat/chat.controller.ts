@@ -369,13 +369,17 @@ export class ChatController {
 
       const runId = body.idempotencyKey || randomUUID();
 
-      // Late media check
+      // Late media check — release stale active turns older than 10s
       const activeTurn = this.transcriptService.hasActiveTurn(id);
       if (activeTurn) {
-        res.write(
-          `data: ${JSON.stringify({ type: 'error', data: { message: 'Another request is being processed. Please wait.' } })}\n\n`,
-        );
-        return res.end();
+        if (Date.now() - activeTurn.createdAt > 10_000) {
+          this.transcriptService.markFailed(activeTurn.runId);
+        } else {
+          res.write(
+            `data: ${JSON.stringify({ type: 'error', data: { message: 'Another request is being processed. Please wait.' } })}\n\n`,
+          );
+          return res.end();
+        }
       }
 
       // Create user message with idempotency key
