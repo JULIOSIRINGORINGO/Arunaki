@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "main.cjs",
   "scripts": {
-    "dev": "electron ."
+    "dev": "npx electron ."
   },
   "dependencies": {
     "winax": "^3.6.9",
