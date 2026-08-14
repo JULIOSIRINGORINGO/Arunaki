@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import { FileText, X, Sparkles, Save, Check, Edit3 } from "lucide-react";
+import { FileText, X, Sparkles } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
 
@@ -33,7 +33,6 @@ function WorkstationCenterPanelComponent({
 
   // Per-tab local edited content state to allow live editing
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
-  const [saveStatus, setSaveStatus] = useState<Record<string, "idle" | "saving" | "saved" | "error">>({});
 
   // Sync activeTab initial content into state
   useEffect(() => {
@@ -51,10 +50,6 @@ function WorkstationCenterPanelComponent({
     ? (editedContents[activeTab.id] !== undefined ? editedContents[activeTab.id] : (activeTab.content || ""))
     : "";
 
-  const isModified = activeTab && activeTab.type === "file"
-    ? editedContents[activeTab.id] !== undefined && editedContents[activeTab.id] !== (activeTab.content || "")
-    : false;
-
   const handleTextChange = (val: string) => {
     if (!activeTab) return;
     setEditedContents((prev) => ({ ...prev, [activeTab.id]: val }));
@@ -65,8 +60,6 @@ function WorkstationCenterPanelComponent({
     const tabId = activeTab.id;
     const filePath = activeTab.path;
     const contentToSave = editedContents[tabId] !== undefined ? editedContents[tabId] : (activeTab.content || "");
-
-    setSaveStatus((prev) => ({ ...prev, [tabId]: "saving" }));
 
     try {
       // 1. Electron IPC save
@@ -90,14 +83,8 @@ function WorkstationCenterPanelComponent({
       } else {
         activeTab.content = contentToSave;
       }
-
-      setSaveStatus((prev) => ({ ...prev, [tabId]: "saved" }));
-      setTimeout(() => {
-        setSaveStatus((prev) => ({ ...prev, [tabId]: "idle" }));
-      }, 2000);
     } catch (err) {
       console.error("[WorkstationCenterPanel] Save failed:", err);
-      setSaveStatus((prev) => ({ ...prev, [tabId]: "error" }));
     }
   }, [activeTab, editedContents, onUpdateTabContent]);
 
@@ -171,50 +158,7 @@ function WorkstationCenterPanelComponent({
         </div>
       )}
 
-      {/* Header Bar for Active File Controls */}
-      {activeTab && activeTab.type === "file" && (
-        <div className="h-9 bg-[#121212] border-b border-[#262626] px-4 flex items-center justify-between shrink-0 select-none">
-          <div className="flex items-center gap-2 overflow-hidden pr-2">
-            <Edit3 className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0" />
-            <span className="text-xs font-mono text-[#A3A3A3] truncate">
-              {activeTab.path || activeTab.title}
-            </span>
-            {isModified && (
-              <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono shrink-0">
-                ● Belum Disimpan
-              </span>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleSaveFile}
-              disabled={saveStatus[activeTab.id] === "saving"}
-              className={cn(
-                "px-2.5 py-1 rounded text-xs font-medium cursor-pointer transition-all flex items-center gap-1.5 border font-mono",
-                saveStatus[activeTab.id] === "saved"
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                  : isModified
-                  ? "bg-white text-black border-white hover:bg-neutral-200"
-                  : "bg-[#262626] text-[#A3A3A3] hover:text-white border-[#333333]"
-              )}
-              title="Simpan file ke disk (Ctrl+S)"
-            >
-              {saveStatus[activeTab.id] === "saved" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
-                  <span>Tersimpan!</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{saveStatus[activeTab.id] === "saving" ? "Menyimpan..." : "Simpan (Ctrl+S)"}</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Dynamic Content Body */}
       <div className="flex-1 relative overflow-hidden bg-[#0A0A0A]">
