@@ -34,13 +34,13 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
 - **Pre-read = no `read` needed**: If file content is already in the conversation, go straight to `edit`. Do NOT call `read` first.
 - **Single Pass, Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. Group ALL edits into a SINGLE `edit` call with ordered `@@` chunks from top to bottom. Never split into multiple `edit` calls.
 - **Daily Report Rollover Rule (CRITICAL)**:
-  - **New Date Rollover**: When the user requests to update a report to a NEW DATE (e.g. "update ke hari ini", changing date header from yesterday to today):
+  - **New Date Rollover**: When the user requests to update a report to a NEW DATE or new period (changing date header from previous period to current period):
     1. Update the Date Header to the new date.
     2. **REPLACE yesterday's transaction entries** under `PEMASUKAN` / `PENGELUARAN` with the new date's transaction entries. Do NOT append new entries onto yesterday's entries when advancing to a new date!
     3. **KEEP cumulative balances & unpaid notes** (e.g. `NOTE BELUM BAYAR`, `SISA PEMBAYARAN`, `DEPOSIT`) unless explicitly instructed to clear them.
     4. Recompute all totals (`TOTAL PEMASUKAN`, `TOTAL TF`, `CASH`, `SELISIH`) from scratch based ONLY on the new date's entries.
   - **Same Date Addition**: Only append entries if the date header is NOT changing and the user is adding transactions to the SAME day.
-  - **Ambiguity Handling**: If the user provides partial data on a date update and it is ambiguous whether to append or replace, execute the rollover using the new entries and politely confirm: *"Saya telah memperbarui laporan ke [Tanggal] dengan data baru ini. Jika Anda ingin menggabungkan dengan transaksi kemarin, silakan beri tahu!"*.
+  - **Ambiguity Handling**: If the user provides partial data on a date update and it is ambiguous whether to append or replace, execute the rollover using the new entries and politely offer confirmation in your reply.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
 - **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
 
