@@ -1,4 +1,18 @@
-import { Monitor, Camera, Globe, Loader2, FileSpreadsheet, FileText, Keyboard, Sparkles, Cpu } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Monitor,
+  Camera,
+  Globe,
+  Loader2,
+  FileSpreadsheet,
+  FileText,
+  Keyboard,
+  Sparkles,
+  Cpu,
+  ChevronDown,
+  ChevronUp,
+  Check,
+} from "lucide-react";
 
 export interface LiveStatusData {
   type?: 'thinking' | 'tool_start' | 'tool_live_status' | 'tool_done' | 'text_delta';
@@ -8,79 +22,143 @@ export interface LiveStatusData {
   timestamp?: string;
 }
 
+interface StepItem {
+  id: string;
+  label: string;
+  status: 'completed' | 'running';
+  iconType: 'thinking' | 'tool' | 'text';
+  toolName?: string;
+}
+
 interface LiveExecutionBadgeProps {
   status: LiveStatusData | null;
   active?: boolean;
 }
 
 export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadgeProps) {
-  if (!status || !active) return null;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [steps, setSteps] = useState<StepItem[]>([]);
 
-  const type = status.type || (status.toolName ? 'tool_start' : 'thinking');
-  const toolName = status.toolName || '';
-  const preview = status.preview || '';
+  useEffect(() => {
+    if (!status) {
+      setSteps([]);
+      return;
+    }
 
-  // Stage 1: Analyzing Phase
-  if (type === 'thinking') {
-    return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono bg-[#18181b] text-zinc-300 border border-zinc-800 shadow-md transition-all animate-fade-in my-1.5">
-        <Sparkles size={13} className="text-zinc-400 animate-spin" />
-        <span className="text-zinc-200 font-semibold">Analyzing...</span>
-        <span className="text-zinc-600">•</span>
-        <span className="text-zinc-400 text-[10px]">{preview || "Understanding intent & context"}</span>
-        <Loader2 size={11} className="animate-spin text-zinc-500 ml-1" />
-      </div>
-    );
-  }
+    const type = status.type || (status.toolName ? 'tool_start' : 'thinking');
+    const toolName = status.toolName || '';
+    const preview = status.preview || '';
 
-  // Stage 3: Synthesizing / Responding Phase
-  if (type === 'text_delta') {
-    return (
-      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono bg-[#18181b] text-zinc-300 border border-zinc-800 shadow-md transition-all animate-fade-in my-1.5">
-        <Cpu size={13} className="text-emerald-400 animate-pulse" />
-        <span className="text-zinc-200 font-semibold">Synthesizing...</span>
-        <span className="text-zinc-600">•</span>
-        <span className="text-zinc-400 text-[10px]">Generating response</span>
-        <Loader2 size={11} className="animate-spin text-zinc-500 ml-1" />
-      </div>
-    );
-  }
+    setSteps((prev) => {
+      let label = "Analyzing intent & context";
+      let iconType: 'thinking' | 'tool' | 'text' = 'thinking';
 
-  // Stage 2: Tool Execution Phase (Working / Desktop Action)
-  let icon = <Monitor size={12} className="text-zinc-300 animate-pulse" />;
-  let categoryLabel = "Desktop";
+      if (type === 'thinking') {
+        label = preview ? `Analyzed: ${preview}` : "Analyzed intent & context";
+        iconType = 'thinking';
+      } else if (type === 'tool_start' || type === 'tool_live_status') {
+        const category = toolName.includes("excel")
+          ? "Excel"
+          : toolName.includes("word")
+          ? "Word"
+          : toolName.includes("browser")
+          ? "Web Browser"
+          : "Desktop";
+        label = `Executed ${category}: ${preview || toolName}`;
+        iconType = 'tool';
+      } else if (type === 'text_delta') {
+        label = "Synthesizing response...";
+        iconType = 'text';
+      }
 
-  if (toolName.includes("excel")) {
-    icon = <FileSpreadsheet size={12} className="text-zinc-300 animate-pulse" />;
-    categoryLabel = "Excel";
-  } else if (toolName.includes("word")) {
-    icon = <FileText size={12} className="text-zinc-300 animate-pulse" />;
-    categoryLabel = "Word";
-  } else if (toolName.includes("browser")) {
-    icon = <Globe size={12} className="text-zinc-300 animate-pulse" />;
-    categoryLabel = "Web";
-  } else if (toolName.includes("screenshot")) {
-    icon = <Camera size={12} className="text-zinc-300 animate-pulse" />;
-    categoryLabel = "Shot";
-  } else if (toolName.includes("send_keys") || toolName.includes("key")) {
-    icon = <Keyboard size={12} className="text-zinc-300 animate-pulse" />;
-    categoryLabel = "Keys";
-  }
+      // Avoid duplicate consecutive identical step labels
+      const last = prev[prev.length - 1];
+      if (last && last.label === label) {
+        return prev;
+      }
 
-  const rawPreview = preview || `Executing ${toolName}...`;
-  const shortPreview = rawPreview.length > 25 ? rawPreview.slice(0, 25) + "..." : rawPreview;
+      // Mark all previous steps as completed
+      const updatedPrev = prev.map((s) => ({ ...s, status: 'completed' as const }));
+      return [
+        ...updatedPrev,
+        {
+          id: `${Date.now()}-${Math.random()}`,
+          label,
+          status: 'running',
+          iconType,
+          toolName,
+        },
+      ];
+    });
+  }, [status?.type, status?.toolName, status?.preview]);
+
+  if (!status || !active || steps.length === 0) return null;
+
+  const completedCount = steps.filter((s) => s.status === 'completed').length;
+  const summaryHeader = `Exploring ${steps.length} task${steps.length > 1 ? 's' : ''}`;
+
+  const renderStepIcon = (step: StepItem) => {
+    if (step.iconType === 'thinking') {
+      return <Sparkles size={12} className="text-zinc-400 shrink-0 mt-0.5" />;
+    }
+    if (step.iconType === 'text') {
+      return <Cpu size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
+    }
+    const t = step.toolName || '';
+    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("word")) return <FileText size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("browser")) return <Globe size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("screenshot")) return <Camera size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("key")) return <Keyboard size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    return <Monitor size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+  };
 
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-mono bg-[#18181b] text-zinc-200 border border-zinc-700/80 shadow-md transition-all animate-fade-in my-1.5">
-      <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-      </span>
-      {icon}
-      <span className="font-semibold text-zinc-200">Working: {categoryLabel}</span>
-      <span className="text-zinc-600">•</span>
-      <span className="truncate max-w-[170px] text-zinc-400">{shortPreview}</span>
-      <Loader2 size={11} className="animate-spin text-zinc-400 ml-1" />
+    <div className="my-2 rounded-lg bg-[#141416] border border-[#27272a] text-zinc-200 font-mono text-[11px] shadow-xl overflow-hidden animate-fade-in max-w-sm">
+      {/* Collapsible Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between px-3 py-1.5 bg-[#1a1a1c] hover:bg-[#222225] transition-colors border-b border-[#27272a] cursor-pointer text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Loader2 size={12} className="animate-spin text-zinc-400" />
+          <span className="font-semibold text-zinc-200">{summaryHeader}</span>
+          {completedCount > 0 && (
+            <span className="text-[10px] text-zinc-500">({completedCount} done)</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-zinc-400 hover:text-zinc-200">
+          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        </div>
+      </button>
+
+      {/* Expanded Trace List */}
+      {isExpanded && (
+        <div className="px-3 py-2 space-y-1.5 bg-[#121214]">
+          {steps.map((step) => {
+            const isCompleted = step.status === 'completed';
+            return (
+              <div key={step.id} className="flex items-start gap-2 text-zinc-300">
+                {isCompleted ? (
+                  <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />
+                ) : (
+                  renderStepIcon(step)
+                )}
+                <span
+                  className={`truncate max-w-[260px] ${
+                    isCompleted ? "text-zinc-500" : "text-zinc-200 font-medium"
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </div>
+            );
+          })}
+          <div className="pt-1 flex items-center gap-1.5 text-zinc-500 text-[10px]">
+            <span className="animate-pulse">Working...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
