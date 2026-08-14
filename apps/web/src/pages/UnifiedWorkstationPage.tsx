@@ -286,6 +286,7 @@ export function UnifiedWorkstationPage() {
 
     setOptimisticMessages((prev) => [...prev, newUserMsg, newAssistantMsg]);
     setIsStreaming(true);
+    setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
     const apiKey = import.meta.env.VITE_ARUNAKI_API_KEY;
     const streamHeaders: Record<string, string> = { "Content-Type": "application/json" };
@@ -309,6 +310,7 @@ export function UnifiedWorkstationPage() {
         setSearchParams({ chatId: chatIdToUse });
       } catch {
         setIsStreaming(false);
+        setLiveStatus(null);
         toast.error("Failed to create a new conversation");
         return;
       }
@@ -322,9 +324,12 @@ export function UnifiedWorkstationPage() {
         onmessage(msg) {
           try {
             const event = JSON.parse(msg.data);
-            if (event.type === "tool_live_status") {
-              setLiveStatus(event.data);
+            if (event.type === "thinking") {
+              setLiveStatus({ type: "thinking", preview: event.data || "Analyzing request & context" });
+            } else if (event.type === "tool_live_status" || event.type === "tool_start") {
+              setLiveStatus({ type: "tool_start", ...event.data });
             } else if (event.type === "text_delta" && event.data) {
+              setLiveStatus({ type: "text_delta", preview: "Generating response" });
               setOptimisticMessages((prev) => {
                 const exists = prev.some((m) => m.id === assistantMessageId);
                 if (!exists) {
