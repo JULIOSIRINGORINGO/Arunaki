@@ -23,10 +23,13 @@ export class ProviderController {
     try {
       const items = await this.providerService.findAll();
       // Mask API keys in response
-      const masked = items.map((item: any) => ({
-        ...item,
-        apiKey: item.apiKey ? `${item.apiKey.substring(0, 8)}...` : '',
-      }));
+      const masked = items.map((item: any) => {
+        const decrypted = this.providerService.decryptApiKey(item.apiKey);
+        return {
+          ...item,
+          apiKey: decrypted ? `${decrypted.substring(0, 8)}...` : '',
+        };
+      });
       return successResponse(masked);
     } catch (error: any) {
       return errorResponse('FETCH_FAILED', error.message);
@@ -67,11 +70,10 @@ export class ProviderController {
       if (!item) {
         return errorResponse('NOT_FOUND', 'Provider not found');
       }
+      const decrypted = this.providerService.decryptApiKey((item as any).apiKey);
       return successResponse({
         ...item,
-        apiKey: (item as any).apiKey
-          ? `${(item as any).apiKey.substring(0, 8)}...`
-          : '',
+        apiKey: decrypted ? `${decrypted.substring(0, 8)}...` : '',
       });
     } catch (error: any) {
       return errorResponse('NOT_FOUND', error.message);
@@ -101,9 +103,10 @@ export class ProviderController {
       }
 
       const item = await this.providerService.createProvider(body);
+      const decrypted = this.providerService.decryptApiKey(item.apiKey);
       return successResponse({
         ...item,
-        apiKey: `${item.apiKey.substring(0, 8)}...`,
+        apiKey: decrypted ? `${decrypted.substring(0, 8)}...` : '',
       });
     } catch (error: any) {
       return errorResponse('CREATE_FAILED', error.message);
@@ -126,10 +129,14 @@ export class ProviderController {
     },
   ) {
     try {
+      if (body.apiKey && body.apiKey.includes('...')) {
+        delete body.apiKey;
+      }
       const item = await this.providerService.updateProvider(id, body);
+      const decrypted = this.providerService.decryptApiKey(item.apiKey);
       return successResponse({
         ...item,
-        apiKey: item.apiKey ? `${item.apiKey.substring(0, 8)}...` : '',
+        apiKey: decrypted ? `${decrypted.substring(0, 8)}...` : '',
       });
     } catch (error: any) {
       return errorResponse('UPDATE_FAILED', error.message);

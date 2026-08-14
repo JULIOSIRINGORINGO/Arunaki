@@ -63,12 +63,17 @@ export class ProviderService extends BaseService<Provider> {
     }
   }
 
-  private decryptApiKey(key: string): string {
+  public decryptApiKey(key: string): string {
     if (!key || !this.vaultService) return key;
     try {
       const payload = JSON.parse(key);
       if (payload && payload.cipherText && payload.iv) {
-        return this.vaultService.decryptSecret(payload);
+        try {
+          return this.vaultService.decryptSecret(payload);
+        } catch (error: any) {
+          this.logger.warn(`Failed to decrypt API key: ${error.message}`);
+          return '';
+        }
       }
     } catch {
       // Return plaintext for legacy keys
@@ -311,12 +316,12 @@ export class ProviderService extends BaseService<Provider> {
     id: string,
     data: Partial<Provider>,
   ): Promise<Provider> {
-    if (data.apiKey === '') {
+    if (data.apiKey === '' || (data.apiKey && data.apiKey.includes('...'))) {
       delete data.apiKey;
     } else if (data.apiKey) {
       data.apiKey = this.encryptApiKey(data.apiKey);
     }
-    return this.repository.update(id, data);
+    return this.repository.update(id, { ...data, cooldownUntil: null });
   }
 
   async findAllForPool(): Promise<Provider[]> {

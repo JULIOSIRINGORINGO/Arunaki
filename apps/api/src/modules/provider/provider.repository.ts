@@ -66,7 +66,7 @@ export class ProviderRepository extends PrismaBaseRepository<Provider> {
     // Activate the selected one
     await this.prisma.provider.update({
       where: { id },
-      data: { active: true },
+      data: { active: true, cooldownUntil: null },
     });
   }
 
