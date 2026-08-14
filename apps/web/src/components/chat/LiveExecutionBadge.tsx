@@ -12,6 +12,8 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
+  Database,
+  FileSearch,
 } from "lucide-react";
 
 export interface LiveStatusData {
@@ -50,24 +52,30 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     const preview = status.preview || '';
 
     setSteps((prev) => {
-      let label = "Analyzing intent & context";
+      let label = "Menganalisis instruksi & konteks";
       let iconType: 'thinking' | 'tool' | 'text' = 'thinking';
 
       if (type === 'thinking') {
-        label = preview ? `Analyzed: ${preview}` : "Analyzed intent & context";
+        label = preview ? `Analisis: ${preview}` : "Menganalisis instruksi & konteks dokumen";
         iconType = 'thinking';
       } else if (type === 'tool_start' || type === 'tool_live_status') {
-        const category = toolName.includes("excel")
-          ? "Excel"
-          : toolName.includes("word")
-          ? "Word"
-          : toolName.includes("browser")
-          ? "Web Browser"
-          : "Desktop";
-        label = `Executed ${category}: ${preview || toolName}`;
         iconType = 'tool';
+        const t = toolName.toLowerCase();
+        if (t.includes("excel") || t.includes("spreadsheet")) {
+          label = `Mengolah Tabel Excel: ${preview || toolName}`;
+        } else if (t.includes("word") || t.includes("docx")) {
+          label = `Mengedit Dokumen Word: ${preview || toolName}`;
+        } else if (t.includes("knowledge") || t.includes("memory") || t.includes("rag")) {
+          label = `Mencari di Knowledge Base: ${preview || toolName}`;
+        } else if (t.includes("read") || t.includes("file") || t.includes("search")) {
+          label = `Mengakses File Workspace: ${preview || toolName}`;
+        } else if (t.includes("browser")) {
+          label = `Navigasi Web Browser: ${preview || toolName}`;
+        } else {
+          label = `Aksi Desktop: ${preview || toolName}`;
+        }
       } else if (type === 'text_delta') {
-        label = "Synthesizing response...";
+        label = "Menyusun jawaban & laporan...";
         iconType = 'text';
       }
 
@@ -95,7 +103,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   if (!status || !active || steps.length === 0) return null;
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
-  const summaryHeader = `Exploring ${steps.length} task${steps.length > 1 ? 's' : ''}`;
+  const summaryHeader = `Aktivitas Agen (${steps.length} langkah)`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
@@ -104,11 +112,13 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     if (step.iconType === 'text') {
       return <Cpu size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
     }
-    const t = step.toolName || '';
-    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
-    if (t.includes("word")) return <FileText size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
-    if (t.includes("browser")) return <Globe size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
-    if (t.includes("screenshot")) return <Camera size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    const t = (step.toolName || '').toLowerCase();
+    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
+    if (t.includes("word")) return <FileText size={12} className="text-blue-400 shrink-0 mt-0.5" />;
+    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-amber-400 shrink-0 mt-0.5" />;
+    if (t.includes("read") || t.includes("file")) return <FileSearch size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("browser")) return <Globe size={12} className="text-indigo-400 shrink-0 mt-0.5" />;
+    if (t.includes("screenshot")) return <Camera size={12} className="text-purple-400 shrink-0 mt-0.5" />;
     if (t.includes("key")) return <Keyboard size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
     return <Monitor size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
   };
@@ -124,7 +134,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
           <Loader2 size={12} className="animate-spin text-zinc-400" />
           <span className="font-semibold text-zinc-200">{summaryHeader}</span>
           {completedCount > 0 && (
-            <span className="text-[10px] text-zinc-500">({completedCount} done)</span>
+            <span className="text-[10px] text-zinc-500">({completedCount} selesai)</span>
           )}
         </div>
         <div className="flex items-center gap-1 text-zinc-400 hover:text-zinc-200">
@@ -155,7 +165,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
             );
           })}
           <div className="pt-1 flex items-center gap-1.5 text-zinc-500 text-[10px]">
-            <span className="animate-pulse">Working...</span>
+            <span className="animate-pulse">Bekerja...</span>
           </div>
         </div>
       )}
