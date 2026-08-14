@@ -321,10 +321,42 @@ export function UnifiedWorkstationPage() {
     return () => clearInterval(interval);
   }, [isStreaming, refetchFiles, reloadOpenTabsContent]);
 
-  const handleSendMessage = async () => {
-    if (!inputPrompt.trim() || isStreaming) return;
-    const userText = inputPrompt.trim();
-    setInputPrompt("");
+  const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
+
+  const handleRemoveQueuedPrompt = useCallback((index: number) => {
+    setQueuedPrompts((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const processNextQueuedPrompt = useCallback(() => {
+    setQueuedPrompts((prevQueue) => {
+      if (prevQueue.length > 0) {
+        const [nextPrompt, ...remaining] = prevQueue;
+        setTimeout(() => {
+          handleSendMessage(nextPrompt);
+        }, 350);
+        return remaining;
+      }
+      return prevQueue;
+    });
+  }, []);
+
+  const handleSendMessage = async (textOverride?: string) => {
+    const rawText = textOverride !== undefined ? textOverride : inputPrompt;
+    if (!rawText.trim()) return;
+
+    // If currently streaming another turn, QUEUE the message (Google Antigravity pattern)!
+    if (isStreaming && textOverride === undefined) {
+      const textToQueue = rawText.trim();
+      setQueuedPrompts((prev) => [...prev, textToQueue]);
+      setInputPrompt("");
+      toast.info("Pesan masuk ke antrian dan akan diproses otomatis setelah ini");
+      return;
+    }
+
+    const userText = rawText.trim();
+    if (textOverride === undefined) {
+      setInputPrompt("");
+    }
 
     const userMessageId = `user-${Date.now()}`;
     const assistantMessageId = `assistant-${Date.now()}`;
@@ -424,6 +456,7 @@ export function UnifiedWorkstationPage() {
               }, 400);
               refetchFiles();
               reloadOpenTabsContent();
+              processNextQueuedPrompt();
             } else if (event.type === "error") {
               setIsStreaming(false);
               setLiveStatus(null);
@@ -437,6 +470,7 @@ export function UnifiedWorkstationPage() {
                   )
                 );
               }
+              processNextQueuedPrompt();
             }
           } catch {}
         },
@@ -444,15 +478,18 @@ export function UnifiedWorkstationPage() {
         onclose() {
           setIsStreaming(false);
           setLiveStatus(null);
+          processNextQueuedPrompt();
         },
         onerror(err) {
           setIsStreaming(false);
           setLiveStatus(null);
+          processNextQueuedPrompt();
           throw err;
         },
       });
     } catch {
       setIsStreaming(false);
+      processNextQueuedPrompt();
     }
   };
 
@@ -506,6 +543,8 @@ export function UnifiedWorkstationPage() {
           onSendMessage={handleSendMessage}
           width="var(--right-panel-width, 320px)"
           files={mentionFiles}
+          queuedPrompts={queuedPrompts}
+          onRemoveQueuedPrompt={handleRemoveQueuedPrompt}
         />
       </div>
 

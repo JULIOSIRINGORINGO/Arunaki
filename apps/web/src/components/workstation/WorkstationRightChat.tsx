@@ -1,6 +1,6 @@
-import { RefObject, useRef, useLayoutEffect, useState, useEffect, useMemo, useCallback, memo } from "react";
+import { RefObject, useRef, useLayoutEffect, useState, useMemo, memo } from "react";
 import Markdown from "react-markdown";
-import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, Loader2, BookOpen, Search, Calculator, FileText, FilePlus, FileSearch, Eraser } from "lucide-react";
+import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, BookOpen, Search, Calculator, FileText, FilePlus, FileSearch, Eraser, Clock, X } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "../chat/LiveExecutionBadge";
 import { LiveMirrorCard } from "../chat/LiveMirrorCard";
 import { cn } from "../../lib/utils";
@@ -47,6 +47,8 @@ interface WorkstationRightChatProps {
   onSendMessage: () => void;
   width?: number | string;
   files?: WorkspaceFile[];
+  queuedPrompts?: string[];
+  onRemoveQueuedPrompt?: (index: number) => void;
 }
 
 function WorkstationRightChatComponent({
@@ -63,6 +65,8 @@ function WorkstationRightChatComponent({
   onSendMessage,
   width,
   files = [],
+  queuedPrompts = [],
+  onRemoveQueuedPrompt,
 }: WorkstationRightChatProps) {
   /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
   if (collapsed) {
@@ -99,228 +103,258 @@ function WorkstationRightChatComponent({
   }, [chatMessages, optimisticMessages]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "0px";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
-  }, [inputPrompt]);
-
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionIndex, setMentionIndex] = useState(0);
   const [showCommands, setShowCommands] = useState(false);
-  const [filteredCommands, setFilteredCommands] = useState(COMMANDS);
+  const [commandFilter, setCommandFilter] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const inputWrapperRef = useRef<HTMLDivElement>(null);
+
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState("");
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const filteredCommands = useMemo(() => {
+    if (!commandFilter) return COMMANDS;
+    return COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(commandFilter.toLowerCase()));
+  }, [commandFilter]);
 
   const mentionResults = useMemo(() => {
-    if (mentionQuery === null) return [];
-    const q = mentionQuery.toLowerCase();
-    return files.map((f) => f.name).filter((n) => n.toLowerCase().includes(q)).slice(0, 12);
-  }, [mentionQuery, files]);
+    const names = files.map((f) => f.name).filter(Boolean);
+    if (!mentionFilter) return names.slice(0, 8);
+    return names
+      .filter((n) => n.toLowerCase().includes(mentionFilter.toLowerCase()))
+      .slice(0, 8);
+  }, [files, mentionFilter]);
 
-  useEffect(() => setMentionIndex(0), [mentionResults.length, mentionQuery]);
+  useLayoutEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  }, [inputPrompt]);
 
-  useEffect(() => {
-    if (inputPrompt.startsWith("/")) {
-      const query = inputPrompt.toLowerCase();
-      const filtered = COMMANDS.filter(
-        (cmd) =>
-          cmd.name.toLowerCase().includes(query) ||
-          cmd.description.toLowerCase().includes(query)
-      );
-      setFilteredCommands(filtered);
-      setShowCommands(filtered.length > 0);
+  const handleInputChange = (val: string) => {
+    setInputPrompt(val);
+
+    const mentionMatch = val.match(/@(\w*)$/);
+    if (mentionMatch) {
+      setShowMentions(true);
+      setMentionFilter(mentionMatch[1]);
+      setMentionIndex(0);
+    } else {
+      setShowMentions(false);
+    }
+
+    if (val.startsWith("/")) {
+      setShowCommands(true);
+      setCommandFilter(val);
       setSelectedCommandIndex(0);
     } else {
       setShowCommands(false);
     }
-  }, [inputPrompt]);
+  };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        inputWrapperRef.current &&
-        !inputWrapperRef.current.contains(event.target as Node)
-      ) {
-        setShowCommands(false);
-        setMentionQuery(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleInputChange = useCallback(
-    (value: string) => {
-      setInputPrompt(value);
-      const atIndex = value.lastIndexOf("@");
-      if (atIndex !== -1) {
-        const query = value.slice(atIndex + 1);
-        if (/^[\w.\- ]*$/.test(query)) {
-          setMentionQuery(query);
-          setShowCommands(false);
-          return;
-        }
-      }
-      setMentionQuery(null);
-    },
-    [setInputPrompt]
-  );
-
-  const insertMention = useCallback(
-    (fileName: string) => {
-      if (mentionQuery === null) return;
-      const atIndex = inputPrompt.lastIndexOf("@");
-      const before = inputPrompt.slice(0, atIndex);
-      const next = `${before}@${fileName} `;
-      setInputPrompt(next);
-      setMentionQuery(null);
-      requestAnimationFrame(() => {
-        textareaRef.current?.focus();
-        const len = next.length;
-        textareaRef.current?.setSelectionRange(len, len);
-      });
-    },
-    [mentionQuery, inputPrompt, setInputPrompt]
-  );
-
-  const handleCommandSelect = useCallback(
-    (command: string) => {
-      setInputPrompt(command + " ");
-      setShowCommands(false);
-      textareaRef.current?.focus();
-    },
-    [setInputPrompt]
-  );
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (mentionQuery !== null && mentionResults.length > 0) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMentions && mentionResults.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setMentionIndex((i) => (i + 1) % mentionResults.length);
-      } else if (e.key === "ArrowUp") {
+        setMentionIndex((prev) => (prev + 1) % mentionResults.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
         e.preventDefault();
-        setMentionIndex((i) => (i - 1 + mentionResults.length) % mentionResults.length);
-      } else if (e.key === "Enter" || e.key === "Tab") {
+        setMentionIndex((prev) => (prev - 1 + mentionResults.length) % mentionResults.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         insertMention(mentionResults[mentionIndex]);
-      } else if (e.key === "Escape") {
-        setMentionQuery(null);
+        return;
       }
-    } else if (showCommands) {
+      if (e.key === "Escape") {
+        setShowMentions(false);
+        return;
+      }
+    }
+
+    if (showCommands && filteredCommands.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedCommandIndex((prev) => (prev < filteredCommands.length - 1 ? prev + 1 : 0));
-      } else if (e.key === "ArrowUp") {
+        setSelectedCommandIndex((prev) => (prev + 1) % filteredCommands.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedCommandIndex((prev) => (prev > 0 ? prev - 1 : filteredCommands.length - 1));
-      } else if (e.key === "Tab" || e.key === "Enter") {
+        setSelectedCommandIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
         handleCommandSelect(filteredCommands[selectedCommandIndex].name);
-      } else if (e.key === "Escape") {
-        setShowCommands(false);
+        return;
       }
-    } else if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Escape") {
+        setShowCommands(false);
+        return;
+      }
+    }
+
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       onSendMessage();
     }
   };
 
+  const insertMention = (filename: string) => {
+    const updated = inputPrompt.replace(/@\w*$/, `@${filename} `);
+    setInputPrompt(updated);
+    setShowMentions(false);
+    if (textareaRef.current) textareaRef.current.focus();
+  };
+
+  const handleCommandSelect = (cmdName: string) => {
+    setInputPrompt(`${cmdName} `);
+    setShowCommands(false);
+    if (textareaRef.current) textareaRef.current.focus();
+  };
+
   return (
-    <aside className="bg-[#121212] text-[#FFFFFF] border-l border-border-strong flex flex-col shrink-0" style={{ width }}>
-      <div className="h-9 px-3 box-border border-b border-border-strong flex items-center justify-between shrink-0">
-        <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
-          <Bot className="w-3.5 h-3.5 text-[#A3A3A3]" />
-          Chat
-        </span>
+    <aside
+      className="bg-[#121212] border-l border-border-strong flex flex-col h-full shrink-0 select-text overflow-hidden"
+      style={{ width: width || 320 }}
+    >
+      {/* Panel Header */}
+      <div className="h-9 px-3 border-b border-border-strong flex items-center justify-between bg-[#121212] shrink-0 select-none">
+        <div className="flex items-center gap-2">
+          <Bot className="w-4 h-4 text-[#A3A3A3]" />
+          <span className="text-xs font-semibold text-[#FFFFFF]">Chat</span>
+        </div>
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-          title="Close Chat Panel"
+          className="text-[#A3A3A3] hover:text-white p-1 rounded hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          title="Close Panel"
         >
-          <PanelRightClose className="w-4 h-4" />
+          <PanelRightClose className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Chat Stream Messages */}
-      <div className="flex-1 p-3 overflow-y-auto space-y-3">
+      {/* Messages List Area */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-4 font-sans text-xs">
         {allMessages.length === 0 ? (
-          <div className="flex flex-col items-center text-center">
-            <Sparkles className="w-5 h-5 text-[#E5E5E5] mx-auto mb-2" />
-            <p className="serif-italic text-[20px] text-white leading-snug">
-              Working Automation<br />with Arunaki
+          <div className="h-full flex flex-col items-center justify-center text-center p-4 select-none">
+            <div className="w-10 h-10 rounded-full bg-[#1E1E1E] flex items-center justify-center mb-3">
+              <Sparkles className="w-5 h-5 text-[#A3A3A3]" />
+            </div>
+            <p className="text-xs font-medium text-white mb-1">Workspace Agent</p>
+            <p className="text-[11px] text-[#A3A3A3] max-w-[200px]">
+              Tanyakan sesuatu atau berikan instruksi dokumen.
             </p>
           </div>
         ) : (
-          allMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className={cn(
-                "flex flex-col gap-1 text-xs",
-                msg.role === "user" ? "items-end" : "items-start"
-              )}
-            >
+          allMessages.map((msg, idx) => {
+            const isUser = msg.role === "user";
+            return (
               <div
+                key={msg.id || idx}
                 className={cn(
-                  "p-3 rounded-xl max-w-[90%] leading-relaxed border",
-                  msg.role === "user"
-                    ? "bg-[#262626] text-white border-border-strong rounded-tr-none"
-                    : "bg-[#1E1E1E] text-[#E5E5E5] border-border-strong rounded-tl-none"
+                  "flex flex-col gap-1 max-w-[92%]",
+                  isUser ? "ml-auto items-end" : "mr-auto items-start"
                 )}
               >
-                {msg.content ? (
-                  <Markdown>{msg.content}</Markdown>
-                ) : (
-                  <div className="flex items-center gap-2 text-[#A3A3A3] py-0.5">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span className="text-[11px]">Memproses...</span>
-                  </div>
-                )}
+                <div
+                  className={cn(
+                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",
+                    isUser
+                      ? "bg-[#262626] text-white rounded-br-xs border border-[#333333]"
+                      : "bg-[#18181B] text-[#E4E4E7] rounded-bl-xs border border-[#27272A] shadow-sm"
+                  )}
+                >
+                  <Markdown
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                      strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                      ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
+                      li: ({ children }) => <li className="leading-snug">{children}</li>,
+                      code: ({ children }) => (
+                        <code className="bg-[#121212] text-white px-1.5 py-0.5 rounded font-mono text-[11px] border border-[#262626]">
+                          {children}
+                        </code>
+                      ),
+                      pre: ({ children }) => (
+                        <pre className="bg-[#121212] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[#262626] text-white">
+                          {children}
+                        </pre>
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </Markdown>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
-        {/* Live Execution Status Badge */}
-        {liveStatus && <LiveExecutionBadge status={liveStatus} />}
-        {liveStatus?.screenshot && (
-          <LiveMirrorCard screenshotUrl={liveStatus.screenshot} title="Live Desktop Execution" />
+        {/* Live Execution Telemetry Badge & Mirror Card */}
+        {isStreaming && (
+          <div className="mr-auto items-start max-w-[92%] space-y-2">
+            <LiveExecutionBadge status={liveStatus} />
+            <LiveMirrorCard screenshotUrl={liveStatus?.screenshot || ""} timestamp={liveStatus?.timestamp} />
+          </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Capsule Chat Input Box */}
-      <div className="p-3 border-t border-border-strong bg-[#121212]">
-        <div ref={inputWrapperRef} className="bg-[#1E1E1E] rounded-xl p-2.5 border border-border-strong focus-within:border-border-strong transition-colors relative">
-          {mentionQuery !== null && (
+      {/* Input Prompt Box & Queued Messages Card Area */}
+      <div className="p-3 bg-[#121212] border-t border-border-strong shrink-0 select-none">
+        {/* Antigravity Queued Messages Card */}
+        {queuedPrompts.length > 0 && (
+          <div className="mb-2 px-3 py-2 bg-[#18181B] border border-[#27272A] rounded-xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between text-[11px] text-[#A1A1AA] font-mono">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#38BDF8] animate-pulse" />
+                <span className="font-semibold text-white">Antrian Pesan ({queuedPrompts.length})</span>
+              </div>
+              <span className="text-[10px] text-[#71717A]">Diproses otomatis</span>
+            </div>
+            {queuedPrompts.map((promptText, idx) => (
+              <div key={idx} className="flex items-center justify-between bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1 text-xs text-[#E4E4E7]">
+                <span className="truncate max-w-[210px] font-mono text-[11px] text-[#D4D4D8]">{promptText}</span>
+                <button
+                  onClick={() => onRemoveQueuedPrompt?.(idx)}
+                  className="text-[#71717A] hover:text-red-400 p-0.5 rounded transition-colors"
+                  title="Batalkan antrian"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="relative bg-[#1E1E1E] border border-border-strong focus-within:border-[#777777] rounded-2xl p-2.5 transition-colors">
+          {showMentions && mentionResults.length > 0 && (
             <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[#1E1E1E] border border-border-strong rounded-xl shadow-2xl overflow-hidden">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[#A3A3A3] bg-[#262626] border-b border-border-strong">
                 Select file to attach
               </div>
-              {mentionResults.length === 0 ? (
-                <div className="px-3 py-2.5 text-[11px] text-[#777777]">No matching files</div>
-              ) : (
-                <div className="max-h-44 overflow-y-auto">
-                  {mentionResults.map((name, i) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onMouseEnter={() => setMentionIndex(i)}
-                      onClick={() => insertMention(name)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors flex items-center gap-1.5",
-                        i === mentionIndex ? "bg-[#262626] text-white" : "text-[#E5E5E5] hover:bg-[#1E1E1E]"
-                      )}
-                    >
-                      <FileText className="w-3.5 h-3.5 shrink-0 text-[#A3A3A3]" />
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="max-h-44 overflow-y-auto">
+                {mentionResults.map((name, i) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onMouseEnter={() => setMentionIndex(i)}
+                    onClick={() => insertMention(name)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors flex items-center gap-1.5",
+                      i === mentionIndex ? "bg-[#262626] text-white" : "text-[#E5E5E5] hover:bg-[#1E1E1E]"
+                    )}
+                  >
+                    <FileText className="w-3.5 h-3.5 shrink-0 text-[#A3A3A3]" />
+                    {name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -381,10 +415,15 @@ function WorkstationRightChatComponent({
 
             <button
               onClick={onSendMessage}
-              disabled={!inputPrompt.trim() || isStreaming}
+              disabled={!inputPrompt.trim()}
               className="w-7 h-7 bg-white hover:bg-[#E5E5E5] disabled:opacity-30 text-black rounded-full flex items-center justify-center transition-colors cursor-pointer"
+              title={isStreaming ? "Tambah ke antrian" : "Kirim pesan"}
             >
-              {isStreaming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {isStreaming ? (
+                <Clock className="w-3.5 h-3.5 text-black" />
+              ) : (
+                <Send className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
         </div>
