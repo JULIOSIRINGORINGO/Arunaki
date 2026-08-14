@@ -33,14 +33,14 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
 - **ALWAYS use `edit` tool** with patch format for existing files. Use `write` only for brand-new files.
 - **Pre-read = no `read` needed**: If file content is already in the conversation, go straight to `edit`. Do NOT call `read` first.
 - **Single Pass, Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. Group ALL edits into a SINGLE `edit` call with ordered `@@` chunks from top to bottom. Never split into multiple `edit` calls.
-- **Daily Report Rollover Rule (CRITICAL)**:
-  - **New Date Rollover**: When the user requests to update a report to a NEW DATE or new period (changing date header from previous period to current period):
-    1. Update the Date Header to the new date.
-    2. **REPLACE yesterday's transaction entries** under `PEMASUKAN` / `PENGELUARAN` with the new date's transaction entries. Do NOT append new entries onto yesterday's entries when advancing to a new date!
-    3. **KEEP cumulative balances & unpaid notes** (e.g. `NOTE BELUM BAYAR`, `SISA PEMBAYARAN`, `DEPOSIT`) unless explicitly instructed to clear them.
-    4. Recompute all totals (`TOTAL PEMASUKAN`, `TOTAL TF`, `CASH`, `SELISIH`) from scratch based ONLY on the new date's entries.
-  - **Same Date Addition**: Only append entries if the date header is NOT changing and the user is adding transactions to the SAME day.
-  - **Ambiguity Handling**: If the user provides partial data on a date update and it is ambiguous whether to append or replace, execute the rollover using the new entries and politely offer confirmation in your reply.
+- **Universal Period Rollover Rule**:
+  - When advancing any document or report to a NEW date or period (changing date/period header from previous to current period):
+    1. Update the date/period header to the current period.
+    2. **REPLACE period-specific transaction entries** with the new period's transaction entries (do NOT stack/append previous period entries onto current period entries).
+    3. **PRESERVE standing balances & carry-over notes** (e.g. pending items, unpaid balances, initial deposits) unless explicitly instructed to reset them.
+    4. Recompute all summary metrics and totals from scratch using the document's existing formula pattern based ONLY on current period entries.
+  - **Same-Period Addition**: Append entries only if the date/period is unchanged and the user is adding line items within the same period.
+  - **Ambiguity Handling**: If the user provides partial data for a period update and it is ambiguous whether to append or replace, execute the rollover using current entries and offer polite confirmation in your reply.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
 - **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
 
