@@ -943,23 +943,25 @@ ${toolList || 'No tools available.'}
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const daysIndo = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const monthsIndo = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    const daysEng = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthsEng = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    const dayName = daysIndo[now.getDay()];
-    const monthName = monthsIndo[now.getMonth()];
-    const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const formattedDate = `${now.getDate()} ${monthName} ${now.getFullYear()}`;
+    const dayIndo = daysIndo[now.getDay()];
+    const dayEng = daysEng[now.getDay()];
+    const monthEng = monthsEng[now.getMonth()];
+    const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const dateFormatted = `${now.getDate()} ${monthEng} ${now.getFullYear()}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
 
     return [
       '=== TEMPORAL CONTEXT (REAL-TIME SYSTEM DATE & TIME) ===',
-      `Hari ini: ${dayName}`,
-      `Tanggal: ${formattedDate} (${dateStr})`,
-      `Waktu sekarang: ${timeStr}`,
-      'Kamu MEMILIKI AKSES PENUH ke tanggal, hari, dan waktu real-time komputer/sistem saat ini.',
-      'Gunakan tanggal dan hari real-time ini secara akurat saat menjawab pertanyaan hari/tanggal pengguna, membuat catatan harian, atau mengupdate laporan bisnis.',
+      `Current Day: ${dayEng} (${dayIndo})`,
+      `Current Date: ${dateFormatted} (${dateIso})`,
+      `Current Time: ${timeStr}`,
+      'The system has real-time access to the local system date and time.',
+      'Use this temporal context to accurately answer date/time queries and update daily reports in the user\'s language.',
       '=== END TEMPORAL CONTEXT ===',
     ].join('\n');
   }
