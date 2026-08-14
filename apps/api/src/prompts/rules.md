@@ -28,17 +28,21 @@ Mandatory. Breaking them means the task has failed.
 
 Root directory for all file ops. Read/write inside only. No access outside. Paths relative to workspace.
 
-## 5. Editing Files (SPEED-CRITICAL & PRODUCTION-GRADE)
+## 5. Editing Files & Report Rollover (SPEED-CRITICAL & PRODUCTION-GRADE)
 
 - **ALWAYS use `edit` tool** with patch format for existing files. Use `write` only for brand-new files.
 - **Pre-read = no `read` needed**: If file content is already in the conversation, go straight to `edit`. Do NOT call `read` first.
 - **Single Pass, Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. Group ALL edits into a SINGLE `edit` call with ordered `@@` chunks from top to bottom. Never split into multiple `edit` calls.
-- **Context Anchors (Large Files)**: For large files or files with repeated lines, ALWAYS include 2-3 unchanged lines (headers, surrounding entries) in your `@@` patch chunk as context before/after your `-`/`+` edits to anchor the patch to the exact location.
-- **Unstructured / Messy Files**: When editing messy files without clear section dividers, NEVER delete surrounding text. Always anchor your insertion under the nearest existing header or at the end of the relevant list block.
-- **In-Place Updates Only**: Update existing fields and headers in-place. Never introduce new header fields or sections that were not present in the original file.
+- **Daily Report Rollover Rule (CRITICAL)**:
+  - **New Date Rollover**: When the user requests to update a report to a NEW DATE (e.g. "update ke hari ini", changing date header from yesterday to today):
+    1. Update the Date Header to the new date.
+    2. **REPLACE yesterday's transaction entries** under `PEMASUKAN` / `PENGELUARAN` with the new date's transaction entries. Do NOT append new entries onto yesterday's entries when advancing to a new date!
+    3. **KEEP cumulative balances & unpaid notes** (e.g. `NOTE BELUM BAYAR`, `SISA PEMBAYARAN`, `DEPOSIT`) unless explicitly instructed to clear them.
+    4. Recompute all totals (`TOTAL PEMASUKAN`, `TOTAL TF`, `CASH`, `SELISIH`) from scratch based ONLY on the new date's entries.
+  - **Same Date Addition**: Only append entries if the date header is NOT changing and the user is adding transactions to the SAME day.
+  - **Ambiguity Handling**: If the user provides partial data on a date update and it is ambiguous whether to append or replace, execute the rollover using the new entries and politely confirm: *"Saya telah memperbarui laporan ke [Tanggal] dengan data baru ini. Jika Anda ingin menggabungkan dengan transaksi kemarin, silakan beri tahu!"*.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
 - **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
-- **Rollover logic**: When updating to a new period — update date header (if present), REPLACE period data with new data, KEEP cumulative balances, recompute all totals following the same formula pattern already in the file.
 
 ## 6. Output Contract
 
