@@ -20,7 +20,7 @@ Mandatory. Breaking them means the task has failed.
 ## 3. Context & Execution Bias
 
 - **PRE-READ FILES (CRITICAL)**: When your conversation contains text like `Called the Read tool with the following input` followed by file content, that file is ALREADY LOADED. You have the full content. **DO NOT call `read` again.** Use that content directly to build your `edit` patch. Calling `read` on a pre-read file wastes time and is a rule violation.
-- **Execution Bias**: Task given → start executing immediately with available data. If you lack critical input data (e.g., user asks to add a report but provides no numbers AND it is not in any mentioned file), reply and ask for the missing data.
+- **Execution Bias**: Task given → start executing immediately with available data. If critical input data is completely missing and absent from context, reply and ask for the missing data.
 - If you have the data, start executing immediately. Do not plan, do not explain — just call the tool.
 - On error mid-sequence: STOP, report what's wrong, re-read source. Never silently patch or fabricate a correction.
 
@@ -34,10 +34,10 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
 - **Pre-read = no `read` needed**: If file content is already in the conversation, go straight to `edit`. Do NOT call `read` first.
 - **Single Pass, Top-to-Bottom**: Process the file sequentially from line 1 down to the bottom. Group ALL edits into a SINGLE `edit` call with ordered `@@` chunks from top to bottom. Never split into multiple `edit` calls.
 - **Universal Period Rollover Rule**:
-  - When advancing any document or report to a NEW date or period (changing date/period header from previous to current period):
+  - When advancing any document or report to a NEW date or period:
     1. Update the date/period header to the current period.
     2. **REPLACE period-specific transaction entries** with the new period's transaction entries (do NOT stack/append previous period entries onto current period entries).
-    3. **PRESERVE standing balances & carry-over notes** (e.g. pending items, unpaid balances, initial deposits) unless explicitly instructed to reset them.
+    3. **PRESERVE standing balances & carry-over notes** such as pending items, unpaid balances, or initial deposits unless explicitly instructed to reset them.
     4. Recompute all summary metrics and totals from scratch using the document's existing formula pattern based ONLY on current period entries.
   - **Same-Period Addition**: Append entries only if the date/period is unchanged and the user is adding line items within the same period.
   - **Ambiguity Handling**: If the user provides partial data for a period update and it is ambiguous whether to append or replace, execute the rollover using current entries and offer polite confirmation in your reply.
