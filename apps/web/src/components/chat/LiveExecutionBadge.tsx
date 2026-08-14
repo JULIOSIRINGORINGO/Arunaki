@@ -17,46 +17,42 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 
   const { toolName, preview } = status;
 
-  // Determine icon & category based on toolName
-  let icon = <Monitor size={14} className="text-emerald-500 animate-pulse" />;
-  let categoryLabel = "Desktop App";
-  let badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+  // Determine icon & category based on toolName (Sleek Dark Monochrome)
+  let icon = <Monitor size={12} className="text-zinc-400 animate-pulse" />;
+  let categoryLabel = "Desktop";
 
   if (toolName.includes("excel")) {
-    icon = <FileSpreadsheet size={14} className="text-emerald-600 animate-pulse" />;
-    categoryLabel = "Excel Desktop";
-    badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-300";
+    icon = <FileSpreadsheet size={12} className="text-zinc-300 animate-pulse" />;
+    categoryLabel = "Excel";
   } else if (toolName.includes("word")) {
-    icon = <FileText size={14} className="text-blue-600 animate-pulse" />;
-    categoryLabel = "Word Desktop";
-    badgeColor = "bg-blue-50 text-blue-800 border-blue-300";
+    icon = <FileText size={12} className="text-zinc-300 animate-pulse" />;
+    categoryLabel = "Word";
   } else if (toolName.includes("browser")) {
-    icon = <Globe size={14} className="text-indigo-600 animate-pulse" />;
-    categoryLabel = "Browser Web";
-    badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-300";
+    icon = <Globe size={12} className="text-zinc-300 animate-pulse" />;
+    categoryLabel = "Web";
   } else if (toolName.includes("screenshot")) {
-    icon = <Camera size={14} className="text-purple-600 animate-bounce" />;
-    categoryLabel = "Screenshot Captured";
-    badgeColor = "bg-purple-50 text-purple-800 border-purple-300";
+    icon = <Camera size={12} className="text-zinc-300 animate-pulse" />;
+    categoryLabel = "Shot";
   } else if (toolName.includes("send_keys") || toolName.includes("key")) {
-    icon = <Keyboard size={14} className="text-amber-600 animate-pulse" />;
-    categoryLabel = "Keyboard Shortcut";
-    badgeColor = "bg-amber-50 text-amber-800 border-amber-300";
+    icon = <Keyboard size={12} className="text-zinc-300 animate-pulse" />;
+    categoryLabel = "Keys";
   }
 
+  // Format short preview string
+  const rawPreview = preview || `Executing ${toolName}...`;
+  const shortPreview = rawPreview.length > 28 ? rawPreview.slice(0, 28) + "..." : rawPreview;
+
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border shadow-xs transition-all animate-fade-in ${badgeColor}`}>
-      <span className="flex items-center gap-1.5 font-semibold">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-        </span>
-        {icon}
-        <span>{categoryLabel}</span>
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono bg-[#1c1c1e] text-[#d4d4d8] border border-[#2c2c2e] shadow-sm transition-all animate-fade-in my-1">
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-zinc-300"></span>
       </span>
-      <span className="text-gray-300">|</span>
-      <span className="truncate max-w-xs">{preview || `Executing ${toolName}...`}</span>
-      <Loader2 size={12} className="animate-spin text-gray-400 ml-1" />
+      {icon}
+      <span className="font-medium text-zinc-300">{categoryLabel}</span>
+      <span className="text-zinc-600">•</span>
+      <span className="truncate max-w-[180px] text-zinc-400">{shortPreview}</span>
+      <Loader2 size={11} className="animate-spin text-zinc-500 ml-0.5" />
     </div>
   );
 }
