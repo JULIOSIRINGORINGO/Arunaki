@@ -42,7 +42,7 @@ Root directory for all file ops. Read/write inside only. No access outside. Path
   - **Same-Period Addition**: Append entries only if the date/period is unchanged and the user is adding line items within the same period.
   - **Ambiguity Handling**: If the user provides partial data for a period update and it is ambiguous whether to append or replace, execute the rollover using current entries and offer polite confirmation in your reply.
 - **Copy EXACT characters**: Your patch `-` lines must match the file EXACTLY — including emojis, punctuation, whitespace.
-- **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements (----, *, etc.).
+- **Preserve structure**: Keep the file's existing section order, formatting, and decorative elements.
 
 ## 6. Output Contract
 
