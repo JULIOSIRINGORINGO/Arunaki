@@ -269,32 +269,57 @@ export function UnifiedWorkstationPage() {
       const json = await res.json();
       const latestFiles: WorkspaceFile[] = json.data || [];
 
-      setTabs((prevTabs) => {
-        prevTabs.forEach(async (tab) => {
-          if (tab.type !== "file") return;
-          const targetFile = latestFiles.find(
-            (f) => f.name === tab.title || f.path === tab.path
-          );
-          if (!targetFile?.id) return;
-          try {
-            const contentRes = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
-            const contentJson = await contentRes.json();
-            const freshContent = typeof contentJson.data?.content === "string"
-              ? contentJson.data.content
-              : typeof contentJson.data === "string"
-              ? contentJson.data
-              : "";
-            if (freshContent) {
-              setTabs((curr) =>
-                curr.map((t) => (t.id === tab.id ? { ...t, content: freshContent } : t))
-              );
-            }
-          } catch {}
+      setTabs((currentTabs) => {
+        const fileTabs = currentTabs.filter((t) => t.type === "file");
+        if (fileTabs.length === 0) return currentTabs;
+
+        Promise.all(
+          fileTabs.map(async (tab) => {
+            const targetFile = latestFiles.find(
+              (f) => f.name === tab.title || f.path === tab.path
+            );
+            if (!targetFile?.id) return null;
+            try {
+              const contentRes = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
+              const contentJson = await contentRes.json();
+              const freshContent =
+                typeof contentJson.data?.content === "string"
+                  ? contentJson.data.content
+                  : typeof contentJson.data === "string"
+                  ? contentJson.data
+                  : null;
+              if (freshContent !== null) {
+                return { tabId: tab.id, content: freshContent };
+              }
+            } catch {}
+            return null;
+          })
+        ).then((results) => {
+          const updates = results.filter(Boolean) as Array<{ tabId: string; content: string }>;
+          if (updates.length > 0) {
+            setTabs((latest) =>
+              latest.map((t) => {
+                const u = updates.find((item) => item.tabId === t.id);
+                return u ? { ...t, content: u.content } : t;
+              })
+            );
+          }
         });
-        return prevTabs;
+
+        return currentTabs;
       });
     } catch {}
   }, [selectedWorkspaceId]);
+
+  // Real-time live file polling while streaming SSE is active
+  useEffect(() => {
+    if (!isStreaming) return;
+    const interval = setInterval(() => {
+      refetchFiles();
+      reloadOpenTabsContent();
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [isStreaming, refetchFiles, reloadOpenTabsContent]);
 
   const handleSendMessage = async () => {
     if (!inputPrompt.trim() || isStreaming) return;
@@ -362,6 +387,8 @@ export function UnifiedWorkstationPage() {
               setLiveStatus({ type: "thinking", preview: event.data || "Analyzing request & context" });
             } else if (event.type === "tool_live_status" || event.type === "tool_start") {
               setLiveStatus({ type: "tool_start", ...event.data });
+              refetchFiles();
+              reloadOpenTabsContent();
             } else if (event.type === "text_delta" && event.data) {
               setLiveStatus({ type: "text_delta", preview: "Generating response" });
               setOptimisticMessages((prev) => {

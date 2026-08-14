@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import { FileText, X, Sparkles } from "lucide-react";
+import { FileText, X, Sparkles, Check } from "lucide-react";
 import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
 import { cn } from "../../lib/utils";
 
@@ -21,6 +21,70 @@ interface WorkstationCenterPanelProps {
   onUpdateTabContent?: (tabId: string, newContent: string) => void;
 }
 
+export interface DiffLine {
+  type: "unchanged" | "added" | "deleted";
+  oldLineNumber?: number;
+  newLineNumber?: number;
+  content: string;
+}
+
+/**
+ * Line-by-line diff algorithm (LCS-based) for Cursor/Antigravity style live diff highlights
+ */
+function computeLineDiff(oldText: string, newText: string): DiffLine[] {
+  const oldLines = oldText ? oldText.split("\n") : [];
+  const newLines = newText ? newText.split("\n") : [];
+
+  const N = oldLines.length;
+  const M = newLines.length;
+
+  // LCS Matrix
+  const L: number[][] = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
+
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < M; j++) {
+      if (oldLines[i] === newLines[j]) {
+        L[i + 1][j + 1] = L[i][j] + 1;
+      } else {
+        L[i + 1][j + 1] = Math.max(L[i + 1][j], L[i][j + 1]);
+      }
+    }
+  }
+
+  let i = N;
+  let j = M;
+  const result: DiffLine[] = [];
+
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      result.unshift({
+        type: "unchanged",
+        oldLineNumber: i,
+        newLineNumber: j,
+        content: oldLines[i - 1],
+      });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || L[i][j - 1] >= L[i - 1][j])) {
+      result.unshift({
+        type: "added",
+        newLineNumber: j,
+        content: newLines[j - 1],
+      });
+      j--;
+    } else if (i > 0 && (j === 0 || L[i][j - 1] < L[i - 1][j])) {
+      result.unshift({
+        type: "deleted",
+        oldLineNumber: i,
+        content: oldLines[i - 1],
+      });
+      i--;
+    }
+  }
+
+  return result;
+}
+
 function WorkstationCenterPanelComponent({
   tabs,
   activeTabId,
@@ -33,13 +97,55 @@ function WorkstationCenterPanelComponent({
 
   // Per-tab local edited content state to allow live editing
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
+  // Track previous content per tab to compute live diffs when AI updates files
+  const [previousContents, setPreviousContents] = useState<Record<string, string>>({});
+  // Live diff view state per tab
+  const [diffStates, setDiffStates] = useState<
+    Record<
+      string,
+      {
+        diffLines: DiffLine[];
+        addedCount: number;
+        deletedCount: number;
+        active: boolean;
+      }
+    >
+  >({});
 
-  // Sync activeTab content into state whenever activeTab or activeTab.content changes
+  // Sync activeTab content into state & detect AI file edits for live diff view
   useEffect(() => {
     if (activeTab && activeTab.type === "file" && activeTab.content !== undefined) {
+      const tabId = activeTab.id;
+      const newContent = activeTab.content || "";
+      const oldContent = previousContents[tabId];
+
       setEditedContents((prev) => ({
         ...prev,
-        [activeTab.id]: activeTab.content || "",
+        [tabId]: newContent,
+      }));
+
+      // Trigger Live Diff view if content was updated externally (by AI tool call)
+      if (oldContent !== undefined && oldContent !== newContent && oldContent.trim().length > 0) {
+        const lines = computeLineDiff(oldContent, newContent);
+        const added = lines.filter((l) => l.type === "added").length;
+        const deleted = lines.filter((l) => l.type === "deleted").length;
+
+        if (added > 0 || deleted > 0) {
+          setDiffStates((prev) => ({
+            ...prev,
+            [tabId]: {
+              diffLines: lines,
+              addedCount: added,
+              deletedCount: deleted,
+              active: true,
+            },
+          }));
+        }
+      }
+
+      setPreviousContents((prev) => ({
+        ...prev,
+        [tabId]: newContent,
       }));
     }
   }, [activeTab?.id, activeTab?.content]);
@@ -48,9 +154,23 @@ function WorkstationCenterPanelComponent({
     ? (editedContents[activeTab.id] !== undefined ? editedContents[activeTab.id] : (activeTab.content || ""))
     : "";
 
+  const activeDiff = activeTab ? diffStates[activeTab.id] : null;
+  const isDiffActive = !!(activeDiff && activeDiff.active);
+
+  const handleAcceptDiff = (tabId: string) => {
+    setDiffStates((prev) => ({
+      ...prev,
+      [tabId]: { ...prev[tabId], active: false },
+    }));
+  };
+
   const handleTextChange = (val: string) => {
     if (!activeTab) return;
     setEditedContents((prev) => ({ ...prev, [activeTab.id]: val }));
+    // Typing clears diff highlights
+    if (diffStates[activeTab.id]?.active) {
+      handleAcceptDiff(activeTab.id);
+    }
   };
 
   const handleSaveFile = useCallback(async () => {
@@ -60,14 +180,12 @@ function WorkstationCenterPanelComponent({
     const contentToSave = editedContents[tabId] !== undefined ? editedContents[tabId] : (activeTab.content || "");
 
     try {
-      // 1. Electron IPC save
       if ((window as any).arunakiDesktop?.writeFile) {
         const res = await (window as any).arunakiDesktop.writeFile(filePath, contentToSave);
         if (res?.error) {
           throw new Error(res.error);
         }
       } else {
-        // 2. Web API save fallback
         await fetch("/api/v1/workspace/files", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -75,12 +193,12 @@ function WorkstationCenterPanelComponent({
         }).catch(() => {});
       }
 
-      // Update parent tab content
       if (onUpdateTabContent) {
         onUpdateTabContent(tabId, contentToSave);
       } else {
         activeTab.content = contentToSave;
       }
+      handleAcceptDiff(tabId);
     } catch (err) {
       console.error("[WorkstationCenterPanel] Save failed:", err);
     }
@@ -106,6 +224,8 @@ function WorkstationCenterPanelComponent({
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             const tabIsModified = editedContents[tab.id] !== undefined && editedContents[tab.id] !== (tab.content || "");
+            const tabHasDiff = diffStates[tab.id]?.active;
+
             return (
               <div
                 key={tab.id}
@@ -138,9 +258,11 @@ function WorkstationCenterPanelComponent({
                   <FileText className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0" />
                 )}
                 <span className="truncate">{tab.title}</span>
-                {tabIsModified && (
+                {tabHasDiff ? (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" title="Live Diff Update" />
+                ) : tabIsModified ? (
                   <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Belum disimpan" />
-                )}
+                ) : null}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -156,10 +278,8 @@ function WorkstationCenterPanelComponent({
         </div>
       )}
 
-
-
       {/* Dynamic Content Body */}
-      <div className="flex-1 relative overflow-hidden bg-[#0A0A0A]">
+      <div className="flex-1 relative overflow-hidden bg-[#0A0A0A] flex flex-col">
         {activeTab ? (
           activeTab.type === "canvas" ? (
             /* ON-DEMAND CANVAS PANEL */
@@ -170,8 +290,62 @@ function WorkstationCenterPanelComponent({
                 canvasData={canvasData}
               />
             </div>
+          ) : isDiffActive && activeDiff ? (
+            /* CURSOR / ANTIGRAVITY LIVE DIFF INTERACTIVE VIEW */
+            <div className="h-full w-full flex flex-col bg-[#0A0A0A] font-mono text-xs overflow-hidden select-text">
+              {/* Sleek Diff Header Bar */}
+              <div className="h-8 bg-[#161618] border-b border-[#27272A] px-4 flex items-center justify-between text-xs select-none shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-semibold text-emerald-400 text-xs">AI Live File Diff Applied</span>
+                  <span className="text-[#A1A1AA] text-[11px] font-mono">
+                    +{activeDiff.addedCount} lines / -{activeDiff.deletedCount} lines
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleAcceptDiff(activeTab.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-[#27272A] hover:bg-[#3F3F46] text-white rounded text-[11px] font-medium transition-colors border border-[#3F3F46]"
+                  >
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>Terima Perubahan</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Line Diff Viewer Body */}
+              <div className="flex-1 overflow-auto p-2 bg-[#0D0D0E] font-mono text-xs leading-relaxed">
+                {activeDiff.diffLines.map((line, idx) => {
+                  if (line.type === "added") {
+                    return (
+                      <div key={idx} className="flex items-start bg-[#122618] border-l-2 border-emerald-500 text-[#86EFAC] px-2 py-0.5 whitespace-pre font-mono">
+                        <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber}</span>
+                        <span className="text-emerald-500 mr-2 select-none shrink-0">+</span>
+                        <span className="break-all">{line.content}</span>
+                      </div>
+                    );
+                  }
+                  if (line.type === "deleted") {
+                    return (
+                      <div key={idx} className="flex items-start bg-[#2E1618] border-l-2 border-red-500 text-[#FCA5A5] opacity-80 px-2 py-0.5 whitespace-pre font-mono">
+                        <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.oldLineNumber}</span>
+                        <span className="text-red-500 mr-2 select-none shrink-0">-</span>
+                        <span className="line-through break-all">{line.content}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={idx} className="flex items-start text-[#D4D4D8] px-2 py-0.5 whitespace-pre font-mono hover:bg-[#18181B]">
+                      <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber || line.oldLineNumber}</span>
+                      <span className="w-4 select-none shrink-0" />
+                      <span className="break-all">{line.content}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
-            /* IDE LIVE INTERACTIVE EDITABLE DOCUMENT EDITOR */
+            /* STANDARD EDITABLE FILE EDITOR */
             <div className="h-full w-full flex flex-col bg-[#0A0A0A]">
               <textarea
                 value={currentContent}
@@ -183,7 +357,7 @@ function WorkstationCenterPanelComponent({
             </div>
           )
         ) : (
-          /* CENTER SVG WORDMARK — no text, no buttons, clean */
+          /* CENTER SVG WORDMARK */
           <div className="h-full flex items-center justify-center select-none">
             <img
               src="/text-center.svg"
