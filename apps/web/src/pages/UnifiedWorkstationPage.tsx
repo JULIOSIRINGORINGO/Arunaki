@@ -129,9 +129,18 @@ export function UnifiedWorkstationPage() {
     queryKey: ["workspace-files", selectedWorkspaceId],
     queryFn: async () => {
       if (!selectedWorkspaceId) return [];
-      const response = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
-      const json = await response.json();
-      return json.data || [];
+      try {
+        const response = await apiFetch(`${API_BASE}/files/workspace/${selectedWorkspaceId}`);
+        const json = await response.json();
+        if (Array.isArray(json.data) && json.data.length > 0) return json.data;
+      } catch {}
+      try {
+        const response = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
+        const json = await response.json();
+        return json.data || [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!selectedWorkspaceId,
   });
@@ -265,9 +274,16 @@ export function UnifiedWorkstationPage() {
   const reloadOpenTabsContent = useCallback(async () => {
     if (!selectedWorkspaceId) return;
     try {
-      const res = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
-      const json = await res.json();
-      const latestFiles: WorkspaceFile[] = json.data || [];
+      let latestFiles: WorkspaceFile[] = [];
+      try {
+        const res = await apiFetch(`${API_BASE}/files/workspace/${selectedWorkspaceId}`);
+        const json = await res.json();
+        latestFiles = json.data || [];
+      } catch {
+        const res = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
+        const json = await res.json();
+        latestFiles = json.data || [];
+      }
 
       setTabs((currentTabs) => {
         const fileTabs = currentTabs.filter((t) => t.type === "file");
@@ -276,7 +292,7 @@ export function UnifiedWorkstationPage() {
         Promise.all(
           fileTabs.map(async (tab) => {
             const targetFile = latestFiles.find(
-              (f) => f.name === tab.title || f.path === tab.path
+              (f) => f.name === tab.title || f.path === tab.path || tab.id.includes(f.name)
             );
             if (!targetFile?.id) return null;
             try {
@@ -300,7 +316,7 @@ export function UnifiedWorkstationPage() {
             setTabs((latest) =>
               latest.map((t) => {
                 const u = updates.find((item) => item.tabId === t.id);
-                return u ? { ...t, content: u.content } : t;
+                return u && u.content !== t.content ? { ...t, content: u.content } : t;
               })
             );
           }
@@ -421,6 +437,21 @@ export function UnifiedWorkstationPage() {
               setLiveStatus({ type: "tool_start", ...event.data });
               refetchFiles();
               reloadOpenTabsContent();
+
+              // Auto-open file tab in center panel if AI is editing a file and it's not open yet!
+              const toolData = event.data || {};
+              const targetPath =
+                toolData.args?.TargetFile ||
+                toolData.args?.path ||
+                toolData.args?.targetFile ||
+                toolData.targetFile ||
+                toolData.path;
+              if (targetPath && typeof targetPath === "string") {
+                const fileName = targetPath.split(/[/\\]/).pop();
+                if (fileName) {
+                  handleOpenFileTab(targetPath, fileName);
+                }
+              }
             } else if (event.type === "text_delta" && event.data) {
               setLiveStatus({ type: "text_delta", preview: "Generating response" });
               setOptimisticMessages((prev) => {

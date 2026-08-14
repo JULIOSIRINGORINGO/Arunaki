@@ -14,6 +14,7 @@ import type { Response } from 'express';
 import { WorkspaceService } from './workspace.service.js';
 import { WorkspaceInitService } from './workspace-init.service.js';
 import { WorkspaceRunnerService } from './workspace-runner.service.js';
+import { FileService } from '../file/file.service.js';
 import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
@@ -29,6 +30,7 @@ export class WorkspaceController {
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceInitService: WorkspaceInitService,
     private readonly workspaceRunnerService: WorkspaceRunnerService,
+    private readonly fileService: FileService,
   ) {}
 
   @Post()
@@ -58,6 +60,16 @@ export class WorkspaceController {
       return successResponse(workspace);
     } catch (error) {
       return errorResponse('NOT_FOUND', error.message);
+    }
+  }
+
+  @Get(':id/files')
+  async getWorkspaceFiles(@Param('id') id: string) {
+    try {
+      const files = await this.fileService.findByWorkspaceId(id);
+      return successResponse(files);
+    } catch (error) {
+      return errorResponse('FETCH_FAILED', error.message);
     }
   }
 
@@ -163,7 +175,7 @@ export class WorkspaceController {
           ],
           modelId: body.modelId,
         },
-        (event) => {
+        (event: any) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
         },
       );
