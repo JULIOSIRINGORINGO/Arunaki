@@ -147,19 +147,29 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async recordUsage(id: string): Promise<void> {
-    await this.repository.recordUsage(id);
+    const realId = id.split('::')[0];
+    if (this.repository && this.repository.recordUsage && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
+      await Promise.resolve(this.repository.recordUsage(realId)).catch(() => {});
+    }
   }
 
   async recordError(id: string, errorMessage: string): Promise<void> {
-    await this.repository.recordError(id, errorMessage);
+    const realId = id.split('::')[0];
+    if (this.repository && this.repository.recordError && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
+      await Promise.resolve(this.repository.recordError(realId, errorMessage)).catch(() => {});
+    }
+  }
+
+  async setCooldown(id: string, seconds: number): Promise<void> {
+    const realId = id.split('::')[0];
+    if (this.repository && this.repository.setCooldown && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
+      await Promise.resolve(this.repository.setCooldown(realId, seconds)).catch(() => {});
+    }
   }
 
   classifyError(statusCode: number, body: string): ClassifiedError {
     const message = `HTTP ${statusCode}`;
 
-    // Cloudflare origin timeouts (522/523/524) mean the upstream hung — the
-    // request never got a real answer. Retrying the same origin only burns
-    // another timeout window, so rotate immediately to the next provider.
     if (statusCode >= 522 && statusCode <= 524) {
       return {
         action: 'rotate',
@@ -169,10 +179,6 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    // 5xx (incl. 503) + 400 are transient-ish for cheap/free/flaky upstreams —
-    // retry with backoff first (runWithModelFallback retries 3x before rotate).
-    // Cheap providers (Kenari/deepseek, free tiers) intermittently reject valid
-    // requests; burning rotation + cooldown on first 400 makes them unusable.
     if ((statusCode >= 500 && statusCode < 600) || statusCode === 400) {
       if (statusCode === 400 && (body.includes('model_decommissioned') || body.includes('model_not_found') || body.includes('invalid_api_key'))) {
         return {
@@ -210,23 +216,46 @@ export class ProviderService extends BaseService<Provider> {
     currentProviderId?: string,
     triedProviderIds: string[] = [],
   ): Promise<ProviderConfig | null> {
-    // 1. Check active database providers not in cooldown, skipping those we already tried
-    const available: Provider[] = this.repository ? await this.repository.findAvailable().catch(() => []) : [];
-    const next = available.find(
-      (p) => p.id !== currentProviderId && !triedProviderIds.includes(p.id)
-    );
+    // 1. Check database providers not in cooldown
+    let available: Provider[] = [];
+    if (this.repository) {
+      if (typeof this.repository.findAvailable === 'function') {
+        available = await Promise.resolve(this.repository.findAvailable()).catch(() => []);
+      } else if (typeof this.repository.findAllEnabled === 'function') {
+        available = await Promise.resolve(this.repository.findAllEnabled()).catch(() => []);
+      }
+    }
+    if (!Array.isArray(available)) {
+      available = available ? [available] : [];
+    }
 
-    if (next) {
-      return {
-        id: next.id,
-        name: next.name,
-        type: next.type,
-        baseUrl: next.baseUrl,
-        apiKey: this.decryptApiKey(next.apiKey),
-        model: next.model,
-        headerPrefix: next.headerPrefix || undefined,
-        headerTitle: next.headerTitle || undefined,
-      };
+    for (const p of available) {
+      const models = (p.model || '').split(',').map((m) => m.trim()).filter(Boolean);
+      for (let i = 0; i < models.length; i++) {
+        const m = models[i];
+        const candidateId = models.length > 1 ? `${p.id}::${m}` : p.id;
+
+        const isTried =
+          triedProviderIds.includes(candidateId) ||
+          triedProviderIds.includes(p.id) ||
+          (currentProviderId &&
+            (currentProviderId === candidateId ||
+              (i === 0 && (currentProviderId === p.id || currentProviderId.startsWith(p.id + '::')))));
+
+        if (!isTried) {
+          this.logger.log(`Rotating to provider pool candidate [${p.name}] model: ${m}`);
+          return {
+            id: candidateId,
+            name: models.length > 1 ? `${p.name} (${m})` : p.name,
+            type: p.type,
+            baseUrl: p.baseUrl,
+            apiKey: this.decryptApiKey(p.apiKey),
+            model: m,
+            headerPrefix: p.headerPrefix || undefined,
+            headerTitle: p.headerTitle || undefined,
+          };
+        }
+      }
     }
 
     // 2. Check enabled database providers for registered fallback credentials
@@ -286,10 +315,6 @@ export class ProviderService extends BaseService<Provider> {
     const provider = this.repository ? await this.repository.findActive() : null;
     if (!provider) return false;
     return !!provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date();
-  }
-
-  async setCooldown(id: string, seconds: number): Promise<void> {
-    await this.repository.setCooldown(id, seconds);
   }
 
   async createProvider(data: Partial<Provider> & { name: string; baseUrl: string; apiKey: string; model: string }): Promise<Provider> {

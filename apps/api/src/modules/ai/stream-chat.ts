@@ -18,7 +18,7 @@ export interface StreamFallbackOptions {
     provider: ProviderConfig,
     body: Record<string, any>,
   ) => AsyncGenerator<StreamChunk>;
-  getNextProvider: (currentId: string) => Promise<ProviderConfig | null>;
+  getNextProvider: (currentId: string, triedIds?: string[]) => Promise<ProviderConfig | null>;
   classifyError: (
     statusCode: number,
     body: string,
@@ -128,7 +128,7 @@ export async function* streamWithFallback(
     rotationCount++;
     if (rotationCount > MAX_ROTATIONS) break;
 
-    const nextProvider = await options.getNextProvider(provider.id);
+    const nextProvider = await options.getNextProvider(provider.id, Array.from(triedProviders));
     if (!nextProvider) break;
 
     triedProviders.add(nextProvider.id);

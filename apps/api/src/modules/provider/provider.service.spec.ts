@@ -103,6 +103,34 @@ describe('ProviderService — Failover & Error Classification', () => {
       expect(next?.model).toBe('google/gemma-4-31b-it:free');
     });
 
+    it('should rotate through multi-model pool within the same provider before jumping elsewhere', async () => {
+      mockRepository.findAvailable.mockResolvedValue([
+        {
+          id: 'kenari',
+          name: 'Kenari',
+          type: 'openai-compatible',
+          baseUrl: 'https://kenari.id/v1',
+          apiKey: 'key1',
+          model: 'deepseek-v4-flash, deepseek-v4-flash:free, gpt-oss-120b',
+        },
+      ]);
+
+      // 1. Initial run failed on primary model deepseek-v4-flash (id: kenari::deepseek-v4-flash)
+      const next1 = await service.getNextAvailable('kenari::deepseek-v4-flash', ['kenari::deepseek-v4-flash']);
+      expect(next1).not.toBeNull();
+      expect(next1?.id).toBe('kenari::deepseek-v4-flash:free');
+      expect(next1?.model).toBe('deepseek-v4-flash:free');
+
+      // 2. Second run failed on deepseek-v4-flash:free
+      const next2 = await service.getNextAvailable('kenari::deepseek-v4-flash:free', [
+        'kenari::deepseek-v4-flash',
+        'kenari::deepseek-v4-flash:free',
+      ]);
+      expect(next2).not.toBeNull();
+      expect(next2?.id).toBe('kenari::gpt-oss-120b');
+      expect(next2?.model).toBe('gpt-oss-120b');
+    });
+
     it('should rotate to free candidate pool if no database provider available', async () => {
       mockRepository.findAvailable.mockResolvedValue([
         {
