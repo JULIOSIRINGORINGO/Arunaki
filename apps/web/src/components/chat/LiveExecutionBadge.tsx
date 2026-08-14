@@ -92,7 +92,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   if (!status || !active || steps.length === 0) return null;
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
-  const summaryHeader = `Exploring ${steps.length} task${steps.length > 1 ? 's' : ''}`;
+  const summaryHeader = `Executing ${steps.length} task${steps.length > 1 ? 's' : ''}`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
