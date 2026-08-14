@@ -49,6 +49,7 @@ interface WorkstationRightChatProps {
   files?: WorkspaceFile[];
   queuedPrompts?: string[];
   onRemoveQueuedPrompt?: (index: number) => void;
+  onSearchSection?: () => void;
 }
 
 function WorkstationRightChatComponent({
@@ -67,6 +68,7 @@ function WorkstationRightChatComponent({
   files = [],
   queuedPrompts = [],
   onRemoveQueuedPrompt,
+  onSearchSection,
 }: WorkstationRightChatProps) {
   /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
   if (collapsed) {
@@ -211,6 +213,12 @@ function WorkstationRightChatComponent({
   };
 
   const handleCommandSelect = (cmdName: string) => {
+    if (cmdName === "/search-section") {
+      setInputPrompt("");
+      setShowCommands(false);
+      onSearchSection?.();
+      return;
+    }
     setInputPrompt(`${cmdName} `);
     setShowCommands(false);
     if (textareaRef.current) textareaRef.current.focus();

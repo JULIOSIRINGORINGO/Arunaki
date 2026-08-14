@@ -7,6 +7,7 @@ import { WorkstationLeftExplorer } from "../components/workstation/WorkstationLe
 import { WorkstationCenterPanel, CenterTab } from "../components/workstation/WorkstationCenterPanel";
 import { WorkstationRightChat } from "../components/workstation/WorkstationRightChat";
 import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal";
+import { SearchSectionModal } from "../components/workstation/SearchSectionModal";
 import { CanvasData } from "../components/chat/CanvasPanel";
 import { LiveStatusData } from "../components/chat/LiveExecutionBadge";
 import { API_BASE, apiFetch } from "../lib/api";
@@ -59,6 +60,7 @@ export function UnifiedWorkstationPage() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showSearchSectionModal, setShowSearchSectionModal] = useState(false);
   const [nativeFileNames, setNativeFileNames] = useState<string[]>([]);
 
   const [tabs, setTabs] = useState<CenterTab[]>([]);
@@ -576,6 +578,7 @@ export function UnifiedWorkstationPage() {
           files={mentionFiles}
           queuedPrompts={queuedPrompts}
           onRemoveQueuedPrompt={handleRemoveQueuedPrompt}
+          onSearchSection={() => setShowSearchSectionModal(true)}
         />
       </div>
 
@@ -585,6 +588,13 @@ export function UnifiedWorkstationPage() {
         workspaces={workspaces}
         onSelectWorkspace={handleSelectWorkspace}
         onRefreshWorkspaces={refetchWorkspaces}
+      />
+
+      <SearchSectionModal
+        isOpen={showSearchSectionModal}
+        onClose={() => setShowSearchSectionModal(false)}
+        onSelectSession={(chatId) => setSearchParams({ chatId })}
+        workspaceId={selectedWorkspaceId}
       />
     </div>
   );
