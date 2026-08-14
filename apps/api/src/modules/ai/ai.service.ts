@@ -1,12 +1,6 @@
 import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
-import * as fs from 'fs';
-import * as path from 'path';
-import { generateText, streamText, tool, jsonSchema, type ToolSet } from 'ai';
-import type { ModelMessage } from '@ai-sdk/provider-utils';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { repairToolCalls } from './tool-call-repair.js';
 import {
   ProviderService,
@@ -14,22 +8,22 @@ import {
 } from '../provider/provider.service.js';
 import { ContextManager, ESTIMATED_CHARS_PER_TOKEN } from './context-manager.js';
 import { countTokens as tokenize } from './tokenizer.js';
-import { ModelRouterService, ModelHints } from './model-router.service.js';
-import {
-  AutoPostureDetector,
-  PostureDetectionResult,
-} from './auto-posture-detector.service.js';
+import { ModelRouterService } from './model-router.service.js';
+import { AutoPostureDetector } from './auto-posture-detector.service.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
-
-export type { ProviderConfig, StreamChunk };
 import { runWithModelFallback } from './model-fallback.js';
 import { modelSupportsTools, scaleMaxTokens, getModelCapability } from './model-capability.js';
-import {
-  cacheStablePromptPrefix,
-  hashStablePromptInput,
-  SYSTEM_PROMPT_CACHE_BOUNDARY,
-} from './system-prompt-cache.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
+import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+import {
+  toSdkMessages,
+  toSdkTools,
+  buildProviderOptions,
+  makeSdkRequest,
+  makeSdkRequestStream,
+} from './sdk-transformer.util.js';
+
+export type { ProviderConfig, StreamChunk };
 
 export interface ToolCall {
   id: string;
@@ -79,14 +73,6 @@ export interface ToolDefinition {
   };
 }
 
-import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
-import {
-  toSdkMessages,
-  toSdkTools,
-  buildProviderOptions,
-  makeSdkRequest,
-  makeSdkRequestStream,
-} from './sdk-transformer.util.js';
 
 @Injectable()
 export class AiService {
