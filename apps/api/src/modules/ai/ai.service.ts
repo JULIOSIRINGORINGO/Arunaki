@@ -77,6 +77,13 @@ export interface ToolDefinition {
   };
 }
 
+import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+import {
+  toSdkMessages,
+  toSdkTools,
+  buildProviderOptions,
+} from './sdk-transformer.util.js';
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -94,6 +101,7 @@ export class AiService {
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(ProviderService) private readonly providerService: ProviderService,
     @Optional() @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService?: ToolRegistryService,
+    @Optional() @Inject(SystemPromptBuilderService) private readonly systemPromptBuilder?: SystemPromptBuilderService,
   ) {
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
@@ -205,66 +213,7 @@ export class AiService {
     return sdk.chat(provider.model);
   }
 
-  /**
-   * Convert legacy ChatMessage[] (OpenAI wire format) into AI SDK ModelMessage[].
-   */
-  private toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
-    return messages.map((m) => {
-      if (m.role === 'system') {
-        return { role: 'system', content: m.content ?? '' } as ModelMessage;
-      }
-      if (m.role === 'user') {
-        return { role: 'user', content: m.content ?? '' } as ModelMessage;
-      }
-      if (m.role === 'assistant') {
-        const parts: Array<{ type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }> = [];
-        if (m.content) parts.push({ type: 'text', text: m.content });
-        for (const tc of m.tool_calls ?? []) {
-          let input: unknown;
-          try { input = JSON.parse(tc.function.arguments); } catch { input = tc.function.arguments; }
-          parts.push({ type: 'tool-call', toolCallId: tc.id, toolName: tc.function.name, input });
-        }
-        return { role: 'assistant', content: parts } as ModelMessage;
-      }
-      // role === 'tool'
-      return {
-        role: 'tool',
-        content: [{
-          type: 'tool-result',
-          toolCallId: m.tool_call_id ?? '',
-          toolName: m.name ?? '',
-          output: { type: 'text', value: m.content ?? '' },
-        }],
-      } as ModelMessage;
-    });
-  }
 
-  /**
-   * Convert ToolDefinition[] into an AI SDK ToolSet (no execute → the SDK
-   * returns tool calls without running them; the runner executes them).
-   */
-  private toSdkTools(tools: ToolDefinition[]): ToolSet {
-    const sdk: ToolSet = {};
-    for (const t of tools) {
-      const fn = t.function;
-      sdk[fn.name] = tool({
-        description: fn.description,
-        inputSchema: jsonSchema(fn.parameters),
-      });
-    }
-    return sdk;
-  }
-
-  /**
-   * Build AI SDK providerOptions (reasoning effort etc.) for a request.
-   */
-  private buildProviderOptions(provider: ProviderConfig, model: string): Record<string, any> | undefined {
-    const effort = getModelCapability(model).reasoningEffort;
-    if (!effort) return undefined;
-    return provider.type === 'anthropic'
-      ? { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } }
-      : { openai: { reasoningEffort: effort } };
-  }
 
   /**
    * Make a single AI SDK (non-streaming) request to a provider.
@@ -280,11 +229,11 @@ export class AiService {
     try {
       const data = await generateText({
         model: this.getSdkModel(provider),
-        messages: this.toSdkMessages(body.messages),
+        messages: toSdkMessages(body.messages),
         allowSystemInMessages: true,
         temperature: body.temperature ?? 0.7,
         maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-        ...(canUseTools ? { tools: this.toSdkTools(body.tools) } : {}),
+        ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
         ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
         maxRetries: 0,
         timeout: timeoutMs,
@@ -449,7 +398,7 @@ export class AiService {
       messages: preparedMessages,
       temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: this.buildProviderOptions(provider, provider.model),
+      providerOptions: buildProviderOptions(provider, provider.model),
     };
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
@@ -577,7 +526,7 @@ export class AiService {
       messages: preparedMessages,
       temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: this.buildProviderOptions(provider, provider.model),
+      providerOptions: buildProviderOptions(provider, provider.model),
     };
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
@@ -620,11 +569,11 @@ export class AiService {
     try {
       const result = streamText({
         model: this.getSdkModel(provider),
-        messages: this.toSdkMessages(body.messages),
+        messages: toSdkMessages(body.messages),
         allowSystemInMessages: true,
         temperature: body.temperature ?? 0.7,
         maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-        ...(canUseTools ? { tools: this.toSdkTools(body.tools) } : {}),
+        ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
         ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
         maxRetries: 0,
       });
@@ -700,109 +649,20 @@ export class AiService {
     historyMessages?: Array<{ role: string; content: string }>,
     tools?: any[],
   ): string {
-    // Get model hints for current provider
     const providerConfig = this.getProviderConfigSync();
-
-    // Detect posture from conversation history (chat mode only)
-    let posturePrompt = '';
-    if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
-      const postureResult =
-        this.postureDetector.detectPostureFromHistory(historyMessages);
-      posturePrompt = this.postureDetector.getPosturePrompt(
-        postureResult.posture,
-      );
-      this.logger.debug(
-        `Auto-posture: ${postureResult.posture} (${(postureResult.confidence * 100).toFixed(1)}%)`,
-      );
-    }
-
-    // Apply model-specific formatting
-    const modelAdditions = this.modelRouter.getSystemPromptAdditions(
-      providerConfig?.model || this.fallbackModel,
-    );
-
-    // Dynamic tool list from registry (used in both modes)
-    const toolList = this.buildToolListSummary(tools);
-
-    if (mode === 'workspace' && workspaceContext) {
-      // Workspace mode — load prompt files
-      const identity = this.loadPrompt('identity.md');
-      let rules = this.loadPrompt('rules.md');
-      const verification = this.loadPrompt('verification.md');
-      const memoryContext = this.loadPrompt('memory-context.md');
-
-      const safeWorkspaceContext = this.limitInjection(
+    const currentModel = providerConfig?.model || this.fallbackModel;
+    if (this.systemPromptBuilder) {
+      return this.systemPromptBuilder.getSystemPrompt(
+        mode,
+        this.fallbackModel,
+        currentModel,
         workspaceContext,
-        'workspace-context',
+        knowledgeContext,
+        historyMessages,
+        tools,
       );
-
-      // OpenClaw cache-boundary pattern: STABLE prefix (byte-identical across
-      // requests) + volatile suffix (per-turn). Provider serves cached_tokens
-      // on the prefix. Tool list, workspace context, memory and temporal are
-      // volatile and live BELOW the boundary so the prefix never changes.
-      const stablePrefix = cacheStablePromptPrefix(
-        hashStablePromptInput({ identity, rules, memoryContext, verification, modelAdditions }),
-        () => `${identity}
-
-${rules}
-
-${memoryContext}
-
-${verification}
-
-${modelAdditions}`,
-      );
-
-      const volatileSuffix = `${this.buildToolListSection(toolList)}
-
----
-${safeWorkspaceContext}
-
-${this.buildWorkspaceMemorySection()}
-
-${this.buildTemporalContextSection()}`;
-
-      const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;
-
-      this.checkPromptBudget(prompt, 'workspace');
-      return prompt;
     }
-
-    // Chat mode — load 3 modular prompt files
-    const identity = this.loadPrompt('chat-identity.md');
-    let rules = this.loadPrompt('chat-rules.md');
-    const knowledgeBuilder = this.loadPrompt('chat-knowledge-builder.md');
-
-    // Inject knowledge base into rules template
-    const safeKnowledgeContext = knowledgeContext
-      ? this.limitInjection(knowledgeContext, 'knowledge-base')
-      : '(No active Knowledge Base)';
-
-    const stablePrefix = cacheStablePromptPrefix(
-      hashStablePromptInput({ identity, rules, knowledgeBuilder, modelAdditions }),
-      () => `${identity}
-
-${rules}
-
-${knowledgeBuilder}
-
-${modelAdditions}`,
-    );
-
-    const volatileSuffix = `${this.buildToolListSection(toolList)}
-
----
-${posturePrompt}
-
-## Knowledge Graph Map
-${safeKnowledgeContext}
-
-${this.buildTemporalContextSection()}`;
-
-    const prompt = `${stablePrefix}${SYSTEM_PROMPT_CACHE_BOUNDARY}${volatileSuffix}`;
-
-    this.checkPromptBudget(prompt, 'chat');
-    return prompt;
+    return '';
   }
 
   /**
@@ -811,7 +671,6 @@ ${this.buildTemporalContextSection()}`;
    */
   private getProviderConfigSync(): ProviderConfig | null {
     try {
-      // We can't use async here, so use fallback directly
       return {
         id: 'env-fallback',
         name: '.env Fallback',
@@ -823,143 +682,5 @@ ${this.buildTemporalContextSection()}`;
     } catch {
       return null;
     }
-  }
-
-  /**
-   * Build a dynamic tool list summary from the tool registry.
-   * Categories are inferred from tool tags, not hardcoded names.
-   */
-  private buildToolListSection(toolList: string): string {
-    return `## Tools Available
-
-${toolList || 'No tools available.'}
-`;
-  }
-
-  private buildToolListSummary(tools?: any[]): string {
-    // If tools are provided (Tool RAG), extract their names to filter the capabilities
-    const includedNames = tools ? new Set(tools.map(t => t.function?.name || t.name)) : null;
-    
-    let caps = this.toolRegistryService?.getToolCapabilities();
-    if (includedNames && caps) {
-      caps = caps.filter(c => includedNames.has(c.name));
-    }
-    
-    if (!caps || caps.length === 0) {
-      return 'No tools available.';
-    }
-
-    const tagCategory: Record<string, string> = {
-      files: 'Workspace', workspace: 'Workspace',
-      read: 'Workspace', write: 'Workspace',
-      search: 'Workspace', fts: 'Workspace',
-      extract: 'Data', data: 'Data',
-      calculate: 'Data', math: 'Data', sql: 'Data',
-      export: 'Export', document: 'Export',
-      pdf: 'Export', docx: 'Export', xlsx: 'Export',
-      knowledge: 'Knowledge',
-      memory: 'Memory', recall: 'Memory', history: 'Memory',
-      skills: 'Skills', workflow: 'Skills',
-      browser: 'Interactive', desktop: 'Interactive', interactive: 'Interactive',
-      web: 'Web', internet: 'Web',
-      converter: 'Conversion', currency: 'Conversion', unit: 'Conversion',
-      draft: 'Communication', communication: 'Communication',
-      ocr: 'Vision', vision: 'Vision', image: 'Vision',
-    };
-
-    const categorized = new Map<string, { name: string; desc: string }[]>();
-    const other: { name: string; desc: string }[] = [];
-    const categoryOrder = ['Workspace', 'Data', 'Export', 'Knowledge', 'Memory', 'Skills', 'Vision', 'Web', 'Conversion', 'Communication', 'Interactive'];
-
-    for (const cap of caps) {
-      const entry = {
-        name: cap.name,
-        desc: cap.description?.split('.')[0]?.trim() || '',
-      };
-      let placed = false;
-      for (const tag of cap.tags || []) {
-        const category = tagCategory[tag];
-        if (category) {
-          if (!categorized.has(category)) categorized.set(category, []);
-          categorized.get(category)!.push(entry);
-          placed = true;
-          break;
-        }
-      }
-      if (!placed) other.push(entry);
-    }
-
-    const lines: string[] = [];
-    for (const category of categoryOrder) {
-      const tools = categorized.get(category);
-      if (!tools || tools.length === 0) continue;
-      lines.push(`**${category}:**`);
-      for (const t of tools) lines.push(`- \`${t.name}\` — ${t.desc}`);
-      lines.push('');
-    }
-    if (other.length > 0) {
-      lines.push('**Other:**');
-      for (const t of other) lines.push(`- \`${t.name}\` — ${t.desc}`);
-    }
-
-    return lines.join('\n').trim() || 'No tools available.';
-  }
-
-  /**
-   * Log a warning if the system prompt exceeds the context budget.
-   * Free models typically have 8K-32K context; paid models 128K+.
-   */
-  private checkPromptBudget(prompt: string, contextLabel: string): void {
-    try {
-      const tokens = this.enc.encode(prompt).length;
-      if (tokens > 6000) {
-        this.logger.warn(
-          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 6K threshold. Consider reducing prompt size.`,
-        );
-      } else if (tokens > 3000) {
-        this.logger.log(
-          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — moderate size.`,
-        );
-      } else {
-        this.logger.debug(
-          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — within budget.`,
-        );
-      }
-    } catch {
-      // Token counting is best-effort
-    }
-  }
-
-  private buildWorkspaceMemorySection(): string {
-    return [
-      '=== MEMORY (from prior sessions) ===',
-      'Use memory_search tool to recall relevant facts, preferences, decisions, and patterns from past interactions with this workspace.',
-      'Memory is automatically saved after each workspace run.',
-      '=== END MEMORY ===',
-    ].join('\n');
-  }
-
-  private buildTemporalContextSection(): string {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-
-    // Native Node.js OS clock & locale formatters
-    const dayIndo = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(now);
-    const dayEng = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
-    const dateFormattedIndo = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
-    const dateFormattedEng = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
-
-    const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
-
-    return [
-      '=== TEMPORAL CONTEXT (REAL-TIME SYSTEM DATE & TIME) ===',
-      `Current Day: ${dayEng} (${dayIndo})`,
-      `Current Date: ${dateFormattedEng} / ${dateFormattedIndo} (${dateIso})`,
-      `Current Time: ${timeStr}`,
-      'The system has real-time access to the local system date and time.',
-      'Use this temporal context to accurately answer date/time queries and update daily reports in the user\'s language.',
-      '=== END TEMPORAL CONTEXT ===',
-    ].join('\n');
   }
 }

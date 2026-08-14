@@ -14,6 +14,8 @@ import { ContextModule } from './context/context.module.js';
 
 import { ConfigModule } from '@nestjs/config';
 
+import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+
 @Module({
   imports: [
     ConfigModule,
@@ -31,6 +33,7 @@ import { ConfigModule } from '@nestjs/config';
     SelfHealingService,
     WorkspaceHeartbeatService,
     CompactionService,
+    SystemPromptBuilderService,
   ],
   exports: [
     AiService,
@@ -41,6 +44,7 @@ import { ConfigModule } from '@nestjs/config';
     SelfHealingService,
     WorkspaceHeartbeatService,
     CompactionService,
+    SystemPromptBuilderService,
     ContextModule,
   ],
 })
