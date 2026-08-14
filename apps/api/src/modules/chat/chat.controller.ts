@@ -255,10 +255,15 @@ export class ChatController {
       // Late media check — if there's an active turn, queue instead of starting new
       const activeTurn = this.transcriptService.hasActiveTurn(id);
       if (activeTurn) {
-        return errorResponse(
-          'TURN_IN_PROGRESS',
-          'Another request is being processed. Please wait.',
-        );
+        // Release stale active turns older than 10s (same logic as stream endpoint)
+        if (Date.now() - activeTurn.createdAt > 10_000) {
+          this.transcriptService.markFailed(activeTurn.runId);
+        } else {
+          return errorResponse(
+            'TURN_IN_PROGRESS',
+            'Another request is being processed. Please wait.',
+          );
+        }
       }
 
       // Create user message with idempotency key
@@ -445,6 +450,11 @@ export class ChatController {
 
       res.end();
     } catch (error) {
+      // Mark any active transcript turn as failed so hasActiveTurn releases the lock
+      const stuckTurn = this.transcriptService.hasActiveTurn(id);
+      if (stuckTurn) {
+        this.transcriptService.markFailed(stuckTurn.runId);
+      }
       res.write(
         `data: ${JSON.stringify({ type: 'error', data: { message: error.message } })}\n\n`,
       );
