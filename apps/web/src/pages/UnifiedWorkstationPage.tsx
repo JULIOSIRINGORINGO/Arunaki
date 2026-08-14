@@ -353,7 +353,9 @@ export function UnifiedWorkstationPage() {
               setIsStreaming(false);
               setLiveStatus(null);
               queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
-              setOptimisticMessages([]);
+              setTimeout(() => {
+                setOptimisticMessages([]);
+              }, 400);
               refetchFiles();
             } else if (event.type === "error") {
               setIsStreaming(false);

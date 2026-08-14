@@ -83,15 +83,20 @@ function WorkstationRightChatComponent({
   }
 
   const allMessages = useMemo(() => {
-    if (isStreaming) {
-      const dbKeys = new Set(chatMessages.map((m) => `${m.role}:${m.content.trim()}`));
-      const uniqueOptimistic = optimisticMessages.filter(
-        (m) => m.content.trim().length > 0 && !dbKeys.has(`${m.role}:${m.content.trim()}`)
-      );
-      return [...chatMessages, ...uniqueOptimistic];
-    }
-    return chatMessages.length > 0 ? chatMessages : optimisticMessages;
-  }, [chatMessages, optimisticMessages, isStreaming]);
+    if (optimisticMessages.length === 0) return chatMessages;
+    if (chatMessages.length === 0) return optimisticMessages;
+
+    const dbIds = new Set(chatMessages.map((m) => m.id));
+    const dbKeys = new Set(chatMessages.map((m) => `${m.role}:${m.content.trim()}`));
+
+    const uniqueOptimistic = optimisticMessages.filter((m) => {
+      if (m.id && dbIds.has(m.id)) return false;
+      if (m.content.trim() && dbKeys.has(`${m.role}:${m.content.trim()}`)) return false;
+      return true;
+    });
+
+    return [...chatMessages, ...uniqueOptimistic];
+  }, [chatMessages, optimisticMessages]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
