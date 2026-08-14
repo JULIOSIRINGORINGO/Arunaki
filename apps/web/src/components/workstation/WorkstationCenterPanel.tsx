@@ -34,17 +34,15 @@ function WorkstationCenterPanelComponent({
   // Per-tab local edited content state to allow live editing
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
 
-  // Sync activeTab initial content into state
+  // Sync activeTab content into state whenever activeTab or activeTab.content changes
   useEffect(() => {
     if (activeTab && activeTab.type === "file" && activeTab.content !== undefined) {
-      setEditedContents((prev) => {
-        if (prev[activeTab.id] === undefined) {
-          return { ...prev, [activeTab.id]: activeTab.content || "" };
-        }
-        return prev;
-      });
+      setEditedContents((prev) => ({
+        ...prev,
+        [activeTab.id]: activeTab.content || "",
+      }));
     }
-  }, [activeTab]);
+  }, [activeTab?.id, activeTab?.content]);
 
   const currentContent = activeTab && activeTab.type === "file"
     ? (editedContents[activeTab.id] !== undefined ? editedContents[activeTab.id] : (activeTab.content || ""))

@@ -262,6 +262,40 @@ export function UnifiedWorkstationPage() {
     [activeTabId]
   );
 
+  const reloadOpenTabsContent = useCallback(async () => {
+    if (!selectedWorkspaceId) return;
+    try {
+      const res = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
+      const json = await res.json();
+      const latestFiles: WorkspaceFile[] = json.data || [];
+
+      setTabs((prevTabs) => {
+        prevTabs.forEach(async (tab) => {
+          if (tab.type !== "file") return;
+          const targetFile = latestFiles.find(
+            (f) => f.name === tab.title || f.path === tab.path
+          );
+          if (!targetFile?.id) return;
+          try {
+            const contentRes = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
+            const contentJson = await contentRes.json();
+            const freshContent = typeof contentJson.data?.content === "string"
+              ? contentJson.data.content
+              : typeof contentJson.data === "string"
+              ? contentJson.data
+              : "";
+            if (freshContent) {
+              setTabs((curr) =>
+                curr.map((t) => (t.id === tab.id ? { ...t, content: freshContent } : t))
+              );
+            }
+          } catch {}
+        });
+        return prevTabs;
+      });
+    } catch {}
+  }, [selectedWorkspaceId]);
+
   const handleSendMessage = async () => {
     if (!inputPrompt.trim() || isStreaming) return;
     const userText = inputPrompt.trim();
@@ -362,6 +396,7 @@ export function UnifiedWorkstationPage() {
                 setOptimisticMessages([]);
               }, 400);
               refetchFiles();
+              reloadOpenTabsContent();
             } else if (event.type === "error") {
               setIsStreaming(false);
               setLiveStatus(null);
