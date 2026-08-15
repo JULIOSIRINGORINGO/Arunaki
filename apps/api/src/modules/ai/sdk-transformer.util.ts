@@ -31,15 +31,19 @@ export function getSdkModel(provider: ProviderConfig): any {
   return sdk.chat(provider.model);
 }
 
-export function toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
-  return messages.map((m) => {
+export function extractSystemAndMessages(messages: ChatMessage[]): {
+  system?: string;
+  messages: ModelMessage[];
+} {
+  const systemParts: string[] = [];
+  const modelMessages: ModelMessage[] = [];
+
+  for (const m of messages) {
     if (m.role === 'system') {
-      return { role: 'system', content: m.content ?? '' } as ModelMessage;
-    }
-    if (m.role === 'user') {
-      return { role: 'user', content: m.content ?? '' } as ModelMessage;
-    }
-    if (m.role === 'assistant') {
+      if (m.content) systemParts.push(m.content);
+    } else if (m.role === 'user') {
+      modelMessages.push({ role: 'user', content: m.content ?? '' } as ModelMessage);
+    } else if (m.role === 'assistant') {
       const parts: Array<
         | { type: 'text'; text: string }
         | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
@@ -59,20 +63,30 @@ export function toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
           input,
         });
       }
-      return { role: 'assistant', content: parts } as ModelMessage;
+      modelMessages.push({ role: 'assistant', content: parts } as ModelMessage);
+    } else if (m.role === 'tool') {
+      modelMessages.push({
+        role: 'tool',
+        content: [
+          {
+            type: 'tool-result',
+            toolCallId: m.tool_call_id ?? '',
+            toolName: m.name ?? '',
+            output: { type: 'text', value: m.content ?? '' },
+          },
+        ],
+      } as ModelMessage);
     }
-    return {
-      role: 'tool',
-      content: [
-        {
-          type: 'tool-result',
-          toolCallId: m.tool_call_id ?? '',
-          toolName: m.name ?? '',
-          output: { type: 'text', value: m.content ?? '' },
-        },
-      ],
-    } as ModelMessage;
-  });
+  }
+
+  return {
+    system: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
+    messages: modelMessages,
+  };
+}
+
+export function toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
+  return extractSystemAndMessages(messages).messages;
 }
 
 export function toSdkTools(tools: ToolDefinition[]): ToolSet {
@@ -105,10 +119,11 @@ export async function makeSdkRequest(
   timeoutMs = 180000,
 ): Promise<{ data: any; statusCode: number }> {
   const canUseTools = (body.tools?.length ?? 0) > 0;
+  const { system, messages } = extractSystemAndMessages(body.messages);
   const data = await generateText({
     model: getSdkModel(provider),
-    messages: toSdkMessages(body.messages),
-    allowSystemInMessages: true,
+    ...(system ? { system } : {}),
+    messages,
     temperature: body.temperature ?? 0.7,
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
     ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
@@ -130,18 +145,28 @@ export async function *makeSdkRequestStream(
   // Time to first token (TTFB) timeout catches a hung provider fast; the
   // total timeout guards against a slow/stalled generation so a sluggish
   // model gets rotated to a faster sibling model automatically.
-  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 20000;
-  const totalTimeoutMs = options.totalTimeoutMs ?? 60000;
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 45000;
+  const totalTimeoutMs = options.totalTimeoutMs ?? 120000;
+
+  console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);
 
   const controller = new AbortController();
   let gotFirstToken = false;
-  const firstTokenTimer = setTimeout(() => controller.abort(), firstTokenTimeoutMs);
-  const totalTimer = setTimeout(() => controller.abort(), totalTimeoutMs);
+  const firstTokenTimer = setTimeout(() => {
+    console.warn(`[makeSdkRequestStream] TTFB timeout after ${firstTokenTimeoutMs}ms`);
+    controller.abort();
+  }, firstTokenTimeoutMs);
+  const totalTimer = setTimeout(() => {
+    console.warn(`[makeSdkRequestStream] Total timeout after ${totalTimeoutMs}ms`);
+    controller.abort();
+  }, totalTimeoutMs);
+
+  const { system, messages } = extractSystemAndMessages(body.messages);
 
   const result = streamText({
     model: getSdkModel(provider),
-    messages: toSdkMessages(body.messages),
-    allowSystemInMessages: true,
+    ...(system ? { system } : {}),
+    messages,
     temperature: body.temperature ?? 0.7,
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
     abortSignal: controller.signal,
@@ -150,8 +175,10 @@ export async function *makeSdkRequestStream(
     maxRetries: 0,
   });
 
+  const pendingToolCalls = new Map<string, { id: string; name: string; args: string }>();
+
   try {
-    for await (const part of result.stream) {
+    for await (const part of result.fullStream) {
       if (!gotFirstToken) {
         gotFirstToken = true;
         clearTimeout(firstTokenTimer);
@@ -159,12 +186,23 @@ export async function *makeSdkRequestStream(
       if (part.type === 'text-delta') {
         const content = (part as any).textDelta ?? (part as any).text;
         if (content) yield { type: 'content', content };
+      } else if (part.type === 'tool-input-start') {
+        pendingToolCalls.set(part.id, {
+          id: part.id,
+          name: (part as any).toolName,
+          args: '',
+        });
+      } else if (part.type === 'tool-input-delta') {
+        const pending = pendingToolCalls.get(part.id);
+        if (pending) {
+          pending.args += (part as any).delta ?? (part as any).argsTextDelta ?? '';
+        }
       } else if (part.type === 'tool-call') {
         const rawArgs = (part as any).args ?? (part as any).input ?? {};
         yield {
           type: 'tool_call',
           toolCall: {
-            id: (part as any).toolCallId,
+            id: (part as any).toolCallId ?? (part as any).id,
             name: (part as any).toolName,
             arguments:
               typeof rawArgs === 'string'
@@ -172,14 +210,43 @@ export async function *makeSdkRequestStream(
                 : JSON.stringify(rawArgs),
           },
         };
-      } else if (part.type === 'finish') {
-        done = true;
-        break;
+        pendingToolCalls.delete((part as any).toolCallId ?? (part as any).id);
+      } else if (part.type === 'finish' || part.type === 'finish-step') {
+        for (const [, pending] of pendingToolCalls.entries()) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: pending.id,
+              name: pending.name,
+              arguments: pending.args,
+            },
+          };
+        }
+        pendingToolCalls.clear();
+        if (part.type === 'finish') {
+          done = true;
+          break;
+        }
       } else if (part.type === 'error') {
+        console.error('[makeSdkRequestStream part error]', (part as any).error);
         throw (part as any).error;
       }
     }
+
+    // Flush any trailing pending tool calls if stream ended without finish part
+    for (const [, pending] of pendingToolCalls.entries()) {
+      yield {
+        type: 'tool_call',
+        toolCall: {
+          id: pending.id,
+          name: pending.name,
+          arguments: pending.args,
+        },
+      };
+    }
+    pendingToolCalls.clear();
   } catch (err: any) {
+    console.error('[makeSdkRequestStream caught]', err?.message, 'aborted:', controller.signal.aborted);
     if (controller.signal.aborted) {
       const timeoutErr = new Error(
         gotFirstToken
@@ -197,7 +264,7 @@ export async function *makeSdkRequestStream(
     clearTimeout(totalTimer);
   }
 
-  if (!done) {
-    throw new Error('Stream ended without a finish event');
+  if (!done && !gotFirstToken) {
+    throw new Error('Stream ended without a finish event or any tokens');
   }
 }

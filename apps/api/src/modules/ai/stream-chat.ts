@@ -65,8 +65,7 @@ export async function* streamWithFallback(
         }
 
         if (!anyChunk) {
-          // Empty stream won't heal with a retry — record it and rotate
-          // immediately instead of burning 3 backoff rounds (~90s+).
+          console.warn(`[streamWithFallback] Empty stream from provider ${provider.name} (${provider.model})`);
           lastError = 'Empty stream (no chunks received)';
           if (provider.id !== 'env-fallback' && options.recordError) {
             await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
@@ -80,6 +79,7 @@ export async function* streamWithFallback(
         yield { type: 'done' };
         return;
       } catch (err: any) {
+        console.error(`[streamWithFallback ERROR] Provider ${provider.name} (${provider.model}):`, err?.message, 'statusCode:', err?.statusCode, 'responseBody:', err?.responseBody, err?.cause);
         const statusCode = err?.statusCode ?? 0;
         const errorBody =
           (err?.responseBody as string) ?? err?.body ?? err?.message ?? '';

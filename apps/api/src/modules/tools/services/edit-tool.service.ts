@@ -4,6 +4,7 @@ import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { FileService } from '../../file/file.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { parse, derive, joinBom } from './apply-patch.js';
+import { healPatchText, extractAndApplyFallback } from './patch-healer.js';
 import { promises as fsPromises } from 'fs';
 
 @Injectable()
@@ -22,10 +23,13 @@ export class EditToolService {
     filePath?: string;
     oldString?: string;
     newString?: string;
+    replacements?: Array<{ oldString: string; newString: string }>;
     [key: string]: any;
   }): Promise<ToolResult> {
-    let { workspaceId, patchText, path: filePath, filePath: altPath } = params;
-    filePath = filePath || altPath || params.filename || '';
+    const rawParams: Record<string, any> = params || {};
+    const workspaceId = rawParams.workspaceId;
+    let filePath: string = rawParams.filePath || rawParams.path || rawParams.filename || rawParams.file || '';
+    let patchText: string | undefined = rawParams.patchText ?? rawParams.patch ?? rawParams.diff ?? rawParams.patch_text;
     const startTime = Date.now();
 
     const workspace = await this.prisma.workspace.findUnique({
@@ -60,9 +64,107 @@ export class EditToolService {
       }
     }
 
+    // Multi-block replacements array when provided
+    const replacementsList = Array.isArray(params.replacements)
+      ? params.replacements
+      : (Array.isArray(params.changes)
+      ? params.changes
+      : (Array.isArray(params.edits)
+      ? params.edits
+      : null));
+
+    if (replacementsList && replacementsList.length > 0) {
+      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      let fileExists = false;
+      try {
+        await fsPromises.access(targetPath);
+        fileExists = true;
+      } catch {
+        fileExists = false;
+      }
+
+      if (!fileExists && this.fileService) {
+        try {
+          const files = await this.fileService.findByWorkspaceId(workspaceId);
+          const match = files.find(
+            (f) =>
+              f.name.toLowerCase() === filePath.toLowerCase() ||
+              f.name.toLowerCase().replace(/\.[^.]+$/, '') === filePath.toLowerCase(),
+          );
+          if (match) {
+            targetPath = match.path;
+            fileExists = true;
+          }
+        } catch {
+          /* fallback */
+        }
+      }
+
+      if (fileExists) {
+        let currentContent = await fsPromises.readFile(targetPath, 'utf-8');
+        let successCount = 0;
+        const stripLineNums = (s: string) => s.split('\n').map((l: string) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+
+        for (const item of replacementsList) {
+          const itemOld = item.oldString ?? item.old_str ?? item.find ?? item.search ?? item.target;
+          const itemNew = item.newString ?? item.new_str ?? item.replace ?? item.replacement ?? '';
+          if (itemOld === undefined) continue;
+
+          // 1. Exact match
+          if (currentContent.includes(itemOld)) {
+            currentContent = currentContent.replace(itemOld, itemNew);
+            successCount++;
+            continue;
+          }
+
+          // 2. CRLF normalized match
+          const normRaw = currentContent.replace(/\r\n/g, '\n');
+          const normOld = itemOld.replace(/\r\n/g, '\n');
+          const normNew = itemNew.replace(/\r\n/g, '\n');
+          if (normRaw.includes(normOld)) {
+            currentContent = normRaw.replace(normOld, normNew);
+            successCount++;
+            continue;
+          }
+
+          // 3. Line-number stripped match
+          const strippedOld = stripLineNums(normOld);
+          const strippedNew = stripLineNums(normNew);
+          if (strippedOld && normRaw.includes(strippedOld)) {
+            currentContent = normRaw.replace(strippedOld, strippedNew);
+            successCount++;
+            continue;
+          }
+        }
+
+        if (successCount > 0) {
+          await fsPromises.writeFile(targetPath, currentContent, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: successCount },
+            preview: `Successfully modified ${path.basename(targetPath)} (${successCount} replacement(s) applied and saved to disk).`,
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: successCount,
+            },
+          };
+        } else {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Could not match any target replacement chunks in ${path.basename(targetPath)}. Please ensure oldString exactly matches existing text.`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'NO_MATCH', message: 'No replacement matches found' },
+          };
+        }
+      }
+    }
+
     // Direct surgical replacement when oldString / newString are provided
-    const oldStr = params.oldString ?? params.old_str ?? params.find;
-    const newStr = params.newString ?? params.new_str ?? params.replace;
+    const oldStr = rawParams.oldString ?? rawParams.old_str ?? rawParams.find ?? rawParams.search ?? rawParams.target;
+    const newStr = rawParams.newString ?? rawParams.new_str ?? rawParams.replace ?? rawParams.replacement;
 
     if (oldStr !== undefined && newStr !== undefined) {
       let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
@@ -100,7 +202,7 @@ export class EditToolService {
           return {
             status: 'success',
             data: { files: [filePath], replacements: 1 },
-            preview: `Successfully replaced text in ${path.basename(targetPath)}.\n\nUpdated content:\n${updated.slice(0, 1500)}`,
+            preview: `Successfully modified ${path.basename(targetPath)} (applied and saved to disk).`,
             metadata: {
               toolName: 'edit',
               displayName: 'Edit File',
@@ -120,7 +222,27 @@ export class EditToolService {
           return {
             status: 'success',
             data: { files: [filePath], replacements: 1 },
-            preview: `Successfully replaced text in ${path.basename(targetPath)}.\n\nUpdated content:\n${updated.slice(0, 1500)}`,
+            preview: `Successfully modified ${path.basename(targetPath)} (applied and saved to disk).`,
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: 1,
+            },
+          };
+        }
+
+        // 3. Try stripped line-number prefix match (e.g. "1: REKAPAN..." -> "REKAPAN...")
+        const stripLineNums = (s: string) => s.split('\n').map((l: string) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+        const strippedOld = stripLineNums(normOld);
+        const strippedNew = stripLineNums(normNew);
+        if (strippedOld && normRaw.includes(strippedOld)) {
+          const updated = normRaw.replace(strippedOld, strippedNew);
+          await fsPromises.writeFile(targetPath, updated, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: 1 },
+            preview: `Successfully modified ${path.basename(targetPath)} (applied and saved to disk).`,
             metadata: {
               toolName: 'edit',
               displayName: 'Edit File',
@@ -149,22 +271,35 @@ export class EditToolService {
       };
     }
 
-    let finalPatchText = patchText.trim();
-    
-    // Bulletproof normalization: strip any LLM hallucinated headers and ensure standard structure
-    finalPatchText = finalPatchText.replace(/^\*\*\* Begin Patch\r?\n/i, '');
-    finalPatchText = finalPatchText.replace(/^\*\*\* Delete File:.*?\r?\n/i, '');
-    finalPatchText = finalPatchText.replace(/^\*\*\* Update File:.*?\r?\n/i, '');
-    finalPatchText = finalPatchText.replace(/^@@\r?\n/i, '');
-    finalPatchText = finalPatchText.replace(/^\*\*\* End Patch\r?\n?/i, '');
-    
-    finalPatchText = `*** Begin Patch\n*** Update File: ${filePath}\n@@\n${finalPatchText.trim()}\n*** End Patch`;
+    const finalPatchText = healPatchText(patchText, filePath);
 
-    let hunks;
-    
+    let hunks: any[] = [];
     try {
       hunks = parse(finalPatchText);
     } catch (e: any) {
+      // If strict parse fails, try direct fallback extraction on the target file
+      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      let fileExists = false;
+      try {
+        await fsPromises.access(targetPath);
+        fileExists = true;
+      } catch {
+        fileExists = false;
+      }
+      if (fileExists) {
+        const rawContent = await fsPromises.readFile(targetPath, 'utf-8');
+        const fallbackRes = extractAndApplyFallback(patchText, rawContent);
+        if (fallbackRes.success) {
+          await fsPromises.writeFile(targetPath, fallbackRes.updatedContent, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: fallbackRes.replacements },
+            preview: `Successfully applied healed patch to ${path.basename(targetPath)} (${fallbackRes.replacements} replacements).\n\nUpdated content:\n${fallbackRes.updatedContent.slice(0, 1500)}`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, replacements: fallbackRes.replacements },
+          };
+        }
+      }
+
       return {
         status: 'error',
         data: {},
@@ -248,33 +383,83 @@ export class EditToolService {
            filesModified.push(hunk.path);
         }
       } catch (e: any) {
-        return {
-          status: 'error',
-          data: {},
-          preview: `Patch failed to apply cleanly to "${hunk.path}": ${e.message}\n\nCurrent content of "${hunk.path}" is:\n${originalContent}`,
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'PATCH_APPLY_FAILED', message: e.message },
-        };
+        // Fallback for smaller models: try relaxed direct search & replace on each chunk!
+        let relaxedSuccess = false;
+        if (hunk.type === 'update' && hunk.chunks && hunk.chunks.length > 0) {
+          let modified = originalContent;
+          let appliedCount = 0;
+          for (const chunk of hunk.chunks) {
+            const oldStr = chunk.oldLines.join('\n');
+            const newStr = chunk.newLines.join('\n');
+            if (!oldStr) continue;
+            
+            // 1. Try raw replacement
+            if (modified.includes(oldStr)) {
+              modified = modified.replace(oldStr, newStr);
+              appliedCount++;
+            } else {
+              // 2. Try normalized CRLF replacement
+              const normMod = modified.replace(/\r\n/g, '\n');
+              const normOld = oldStr.replace(/\r\n/g, '\n');
+              const normNew = newStr.replace(/\r\n/g, '\n');
+              if (normMod.includes(normOld)) {
+                modified = normMod.replace(normOld, normNew);
+                appliedCount++;
+              } else {
+                // 3. Try stripped line-numbers replacement
+                const stripL = (s: string) => s.split('\n').map((l) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+                const sOld = stripL(normOld);
+                const sNew = stripL(normNew);
+                if (sOld && normMod.includes(sOld)) {
+                  modified = normMod.replace(sOld, sNew);
+                  appliedCount++;
+                }
+              }
+            }
+          }
+          if (appliedCount > 0) {
+            newFileContents.set(targetPath, modified);
+            replacements += appliedCount;
+            filesModified.push(hunk.path);
+            relaxedSuccess = true;
+          }
+        }
+
+        if (!relaxedSuccess) {
+          const fallbackRes = extractAndApplyFallback(finalPatchText, originalContent);
+          if (fallbackRes.success && fallbackRes.replacements > 0) {
+            newFileContents.set(targetPath, fallbackRes.updatedContent);
+            replacements += fallbackRes.replacements;
+            filesModified.push(hunk.path);
+            relaxedSuccess = true;
+          }
+        }
+
+        if (!relaxedSuccess) {
+          return {
+            status: 'error',
+            data: {},
+            preview: `Patch failed to apply cleanly to "${hunk.path}": ${e.message}\n\nCurrent content of "${hunk.path}" is:\n${originalContent}`,
+            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            error: { code: 'PATCH_APPLY_FAILED', message: e.message },
+          };
+        }
       }
     }
 
     // Apply writes
     try {
-      let latestSnippet = '';
       for (const [targetPath, content] of newFileContents.entries()) {
         if (content === null) {
           await fsPromises.unlink(targetPath);
         } else {
           await fsPromises.writeFile(targetPath, content, 'utf-8');
-          if (!latestSnippet) {
-            latestSnippet = `\n\nUpdated content of ${path.basename(targetPath)}:\n${content.slice(0, 1500)}`;
-          }
         }
       }
       return {
         status: 'success',
         data: { files: filesModified, replacements },
-        preview: `Successfully applied patch to ${filesModified.length} file(s) with ${replacements} replacement(s).${latestSnippet}`,
+        preview: `Successfully modified ${filesModified.map((f) => path.basename(f)).join(', ')} (${replacements} replacement(s) applied and saved to disk).`,
         metadata: {
           toolName: 'edit',
           displayName: 'Edit File',

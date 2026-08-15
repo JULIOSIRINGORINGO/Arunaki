@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AiService, ChatMessage, ToolDefinition } from '../ai/ai.service.js';
+import { repairToolCalls } from '../ai/tool-call-repair.js';
 import {
   ContextManager,
   StreamingContextScrubber,
@@ -931,7 +932,7 @@ export class WorkspaceRunnerService {
             let streamedText = '';
             const streamedToolCalls: any[] = [];
 
-            for await (const chunk of this.aiService.chatStream(messages, toolsToPass)) {
+            for await (const chunk of this.aiService.chatStream(messages, toolsToPass, modelId ? { preferredProviderId: modelId } : undefined)) {
               if (chunk.type === 'content' && chunk.content) {
                 streamedText += chunk.content;
                 onEvent({ type: 'text_delta', data: chunk.content });
@@ -965,29 +966,36 @@ export class WorkspaceRunnerService {
           // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
           aiResponse.toolCalls = aiResponse.toolCalls || [];
 
-          // Fallback parser for leaked raw tool syntax (e.g., DeepSeek v4 via non-native API)
-          if (aiResponse.toolCalls.length === 0 && aiResponse.content && aiResponse.content.includes('<|tool_call>')) {
-            const toolCallMatch = aiResponse.content.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);
-            if (toolCallMatch) {
-              const funcName = toolCallMatch[1];
-              let rawArgs = toolCallMatch[2].trim();
-              
-              // Handle custom quote escaping (e.g., <|"> -> ")
-              rawArgs = rawArgs.replace(/<\|">/g, '"');
-              // Handle unquoted keys in leaked JSON
-              rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
-              
-              aiResponse.toolCalls.push({
-                id: `call_fallback_${Date.now()}`,
-                type: 'function',
-                function: {
-                  name: funcName,
-                  arguments: rawArgs,
-                }
-              });
-              
-              // Remove the leaked syntax from the content
-              aiResponse.content = aiResponse.content.replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '').trim();
+          // Fallback parser for leaked raw tool syntax (e.g., DeepSeek v4 via non-native API or XML leaks)
+          if (aiResponse.toolCalls.length === 0 && aiResponse.content) {
+            const repaired = repairToolCalls(aiResponse.content);
+            if (repaired.length > 0) {
+              this.logger.log(`[WorkspaceRunner] Repaired ${repaired.length} tool call(s) from streamed text`);
+              aiResponse.toolCalls = repaired;
+              aiResponse.content = aiResponse.content
+                .replace(/<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
+                .replace(/<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
+                .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
+                .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
+                .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
+                .trim();
+            } else if (aiResponse.content.includes('<|tool_call>')) {
+              const toolCallMatch = aiResponse.content.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);
+              if (toolCallMatch) {
+                const funcName = toolCallMatch[1];
+                let rawArgs = toolCallMatch[2].trim();
+                rawArgs = rawArgs.replace(/<\|">/g, '"');
+                rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+                aiResponse.toolCalls.push({
+                  id: `call_fallback_${Date.now()}`,
+                  type: 'function',
+                  function: {
+                    name: funcName,
+                    arguments: rawArgs,
+                  }
+                });
+                aiResponse.content = aiResponse.content.replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '').trim();
+              }
             }
           }
 

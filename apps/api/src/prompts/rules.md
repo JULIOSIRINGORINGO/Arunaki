@@ -7,10 +7,11 @@
    - If conversation shows file content already loaded (`Called the Read tool...`), DO NOT call `read` again. Build `edit` patch directly.
 4. **Editing Existing Files (CRITICAL)**:
    - For ANY file that already exists or was pre-loaded via `Called the Read tool`, you MUST call `edit` with `oldString` and `newString` (or `patchText`).
-   - NEVER call `write` on an existing file, because `write` overwrites the whole file and destroys unmentioned templates, standing balances, and notes.
-   - Exact match: `oldString` or `-` lines must match existing file content exactly.
-   - Single pass: Group all changes into one `edit` call from top to bottom.
-5. **Period/Date Rollover**:
-   - New period (target date is newer than the document's current date — whatever phrasing the user uses to mean "advance to a new day"): Always update the document title date header to the target date directly in the same `edit` call, REPLACE previous period's transaction entries with new entries, PRESERVE pending/unpaid notes and standing balances, and recalculate all totals.
-   - Same period (target date matches the document's current date): Append new items and recompute totals.
-6. **Accuracy**: Compute all math directly and double-check totals. Never fabricate data.
+   - NEVER call `write` on an existing file unless explicitly asked to overwrite or recreate it from scratch, as `write` destroys all other existing content.
+   - Exact match: `oldString` or context lines must match existing file content exactly.
+   - Single pass: Group all modifications across the file into one unified `edit` call from top to bottom.
+5. **Document Structure & Formatting Fidelity**:
+   - Strictly adapt to the specific structure, layout, and style of the target file (whether invoice, inventory, log, table, or custom document).
+   - Only modify or replace the sections requested by the user, while preserving all other existing rows, headers, templates, and unmentioned data.
+   - If the user asks to append, append in the appropriate section matching the existing format. If the user asks to update or replace specific entries, modify only those entries.
+6. **Accuracy**: Compute all math and data transformations directly and double-check results. Never fabricate data.

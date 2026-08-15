@@ -84,7 +84,7 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'edit',
         displayName: 'Edit File',
-        description: 'Modifies an existing file by surgical patch or replacing specific text (oldString -> newString). ALWAYS use edit for existing files to preserve template sections, unpaid notes, and standing balances.',
+        description: 'Modifies an existing file by surgical replacement or patch (oldString -> newString or patchText). ALWAYS use edit for existing files to preserve all other sections, layout, and data.',
         tags: ['workspace', 'file', 'edit'],
         handler: async (args) =>
           services.editToolService.execute({
@@ -102,6 +102,18 @@ export class WorkspaceFileToolsRegistrar {
             patchText: { type: 'string', description: 'Optional unified diff patch text (@@ ... @@)' },
             oldString: { type: 'string', description: 'Optional exact existing text snippet to replace' },
             newString: { type: 'string', description: 'Optional new replacement text snippet' },
+            replacements: {
+              type: 'array',
+              description: 'Optional array of multiple { oldString, newString } replacements to apply in one go',
+              items: {
+                type: 'object',
+                properties: {
+                  oldString: { type: 'string', description: 'Existing text to replace' },
+                  newString: { type: 'string', description: 'New replacement text' },
+                },
+                required: ['oldString', 'newString'],
+              },
+            },
           },
           required: ['filePath'],
         },

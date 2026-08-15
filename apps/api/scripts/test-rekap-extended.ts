@@ -27,7 +27,9 @@ PRINT 5
 LAUNDRY 30
 LISTRIK 250
 TOKO SEMBAKO 175
-BENSIN 100`;
+BENSIN 100
+
+(Catatan: Pertahankan section SISA PEMBAYARAN PAK ARNOL dan template belanjaan tetap seperti semula)`;
 
 const INITIAL_TEMPLATE = `REKAPAN PENJUALAN 10 AGUSTUS 2026
 ----
@@ -105,13 +107,14 @@ async function runTest() {
   const t0 = Date.now();
   let doneAt = 0;
   try {
+    const targetModel = process.argv[2] || 'gemini-2-5-flash';
     const response = await fetch(`${API_BASE}/workspaces/${WORKSPACE_ID}/agent/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'deepseek-v4-flash' }),
+      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: targetModel }),
       signal: abortController.signal,
     });
     if (!response.ok || !response.body) {

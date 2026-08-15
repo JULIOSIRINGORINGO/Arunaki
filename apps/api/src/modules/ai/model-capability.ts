@@ -49,8 +49,12 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // Qwen
   'qwen3-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
-  // DeepSeek (Kenari) — reasoning model: natural effort, no forcing
-  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000 },
+  // DeepSeek (Kenari) — fast reasoning with low effort
+  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, reasoningEffort: 'low' },
+
+  // Gemini (Kenari)
+  'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000 },
+  'gemini-3-1-flash-lite': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000 },
 
   // OpenRouter auto-router pseudonyms — keep full name to avoid collision with `free`/`auto`
   'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },

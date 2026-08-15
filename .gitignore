@@ -13,6 +13,7 @@ coverage/
 .DS_Store
 Thumbs.db
 apps/api/prisma/dev.db
+apps/api/dev.db
 apps/api/workspace-data/
 
 # Ignored experimental / local files

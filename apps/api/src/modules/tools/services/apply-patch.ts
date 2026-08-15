@@ -121,9 +121,10 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
     let changeContext: string | undefined;
     if (lines[index]!.startsWith('@@')) {
       let rawContext = lines[index]!.slice(2).trim() || undefined;
-      // If the context is just unified diff line numbers (e.g. -1,53 +1,67 @@), ignore it
-      if (rawContext && (/^-?\d+/i.test(rawContext) || /@@/.test(rawContext) || /^-\d+/i.test(rawContext))) {
-        rawContext = undefined;
+      // Strip unified diff line numbers (e.g. -1,53 +1,67 @@) or stray signs
+      if (rawContext) {
+        rawContext = rawContext.replace(/^[-+\d,\s@]+/, '').trim();
+        if (!rawContext || rawContext.length < 2) rawContext = undefined;
       }
       changeContext = rawContext;
       index++;
@@ -151,7 +152,12 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
       } else if (line === '') {
         oldLines.push('');
         newLines.push('');
-      } else throw new PatchError(`Invalid update chunk line: ${line}`);
+      } else {
+        // Tolerant parsing for small models: line without diff prefix treated as context line
+        const cleaned = line.replace(/^\d+:\s?/, '');
+        oldLines.push(cleaned);
+        newLines.push(cleaned);
+      }
       index++;
     }
     chunks.push({ oldLines, newLines, changeContext, endOfFile: endOfFile || undefined });
@@ -188,9 +194,16 @@ function computeReplacements(
   let lineIndex = 0;
   for (const chunk of chunks) {
     if (chunk.changeContext) {
-      const context = seek(lines, [chunk.changeContext], lineIndex);
-      if (context === -1) throw new PatchError(`Failed to find context '${chunk.changeContext}' in ${path}`);
-      lineIndex = context + 1;
+      // 1. Try finding context at lineIndex
+      let context = seek(lines, [chunk.changeContext], lineIndex);
+      // 2. If not found at lineIndex, try from line 0
+      if (context === -1) {
+        context = seek(lines, [chunk.changeContext], 0);
+      }
+      // If found, update lineIndex; if not found, proceed smoothly
+      if (context !== -1) {
+        lineIndex = context + 1;
+      }
     }
     if (chunk.oldLines.length === 0) {
       replacements.push([lines.length, 0, chunk.newLines]);
@@ -203,6 +216,18 @@ function computeReplacements(
       oldLines = oldLines.slice(0, -1);
       if (newLines.at(-1) === '') newLines = newLines.slice(0, -1);
       found = seek(lines, oldLines, lineIndex, chunk.endOfFile);
+    }
+    // 3. Fallback: if not found from lineIndex, search from line 0
+    if (found === -1) {
+      found = seek(lines, oldLines, 0, chunk.endOfFile);
+    }
+    // 4. Fallback: line-number stripped seek (e.g. if model included line numbers)
+    if (found === -1) {
+      const strippedOld = oldLines.map((l) => l.replace(/^\d+:\s*/, ''));
+      found = seek(lines, strippedOld, 0, chunk.endOfFile);
+      if (found !== -1) {
+        oldLines = strippedOld;
+      }
     }
     if (found === -1) {
       throw new PatchError(`Failed to find expected lines in ${path}:\n${chunk.oldLines.join('\n')}`);

@@ -24,6 +24,8 @@ const XML_ISH_TAG_RE = /<\s*(?:tool_call|function_call|tool|function)[^>]*>([\s\
 const FENCED_JSON_RE = /```(?:json)?\s*([\s\S]*?)```/gi;
 const BARE_JSON_RE = /\{[\s\S]*?\}/g;
 const FUNCT_TAG_RE = /<\s*function\s*(?:\([^)]+\))?=\s*([\s\S]*?)\s*>\s*<\/\s*function\s*>/gi;
+const SLASH_FUNCTION_TAG_RE = /<\s*function\/([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
+const COLON_FUNCTION_TAG_RE = /<\s*function:([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
 
 /** Repair malformed JSON: strip code fences, collapse line breaks in strings, fix trailing commas. */
 export function repairJson(raw: string): string {
@@ -149,7 +151,70 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
     }
   }
 
-  // 1b. XML-ish tags (may contain multiple). Attribute form:
+  // 1b. <function/edit>{...}</function> and <function:edit>{...}</function> formats (DeepSeek/OpenCode)
+  SLASH_FUNCTION_TAG_RE.lastIndex = 0;
+  while ((m = SLASH_FUNCTION_TAG_RE.exec(content)) !== null) {
+    const fnName = m[1];
+    const rawArgs = m[2];
+    try {
+      const parsed = JSON.parse(repairJson(rawArgs));
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: {
+          name: fnName,
+          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+        },
+      };
+      if (!seen.has(fnName + call.function.arguments)) {
+        seen.add(fnName + call.function.arguments);
+        calls.push(call);
+      }
+    } catch {
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: { name: fnName, arguments: repairJson(rawArgs) },
+      };
+      if (!seen.has(fnName + call.function.arguments)) {
+        seen.add(fnName + call.function.arguments);
+        calls.push(call);
+      }
+    }
+  }
+
+  COLON_FUNCTION_TAG_RE.lastIndex = 0;
+  while ((m = COLON_FUNCTION_TAG_RE.exec(content)) !== null) {
+    const fnName = m[1];
+    const rawArgs = m[2];
+    try {
+      const parsed = JSON.parse(repairJson(rawArgs));
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: {
+          name: fnName,
+          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+        },
+      };
+      if (!seen.has(fnName + call.function.arguments)) {
+        seen.add(fnName + call.function.arguments);
+        calls.push(call);
+      }
+    } catch {
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: { name: fnName, arguments: repairJson(rawArgs) },
+      };
+      if (!seen.has(fnName + call.function.arguments)) {
+        seen.add(fnName + call.function.arguments);
+        calls.push(call);
+      }
+    }
+  }
+
+  // 1c. XML-ish tags (may contain multiple). Attribute form:
   //    <function_call name="edit">{"workspaceId":"w1"}</function_call> — name is on the tag.
   XML_ISH_TAG_RE.lastIndex = 0;
   while ((m = XML_ISH_TAG_RE.exec(content)) !== null) {

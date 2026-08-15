@@ -98,7 +98,7 @@ export class AiService {
       this.config.get<string>('AI_BASE_URL') || 'https://kenari.id/v1';
     this.fallbackModel =
       this.config.get<string>('AI_MODEL') ||
-      'deepseek-v4-flash';
+      'gpt-oss-120b';
     this.enc = this.getEncodingForModel(this.fallbackModel);
 
     // Initialize services
@@ -308,9 +308,16 @@ export class AiService {
     const trimmedMessages = messages;
 
     // Get starting provider (optionally pinned for logical failover retries)
-    let provider = options?.preferredProviderId
-      ? await this.providerService.getById(options.preferredProviderId)
-      : null;
+    let provider: ProviderConfig | null = null;
+    if (options?.preferredProviderId) {
+      provider = await this.providerService.getById(options.preferredProviderId);
+      if (!provider) {
+        const active = await this.providerService.getActiveConfig();
+        if (active) {
+          provider = { ...active, model: options.preferredProviderId };
+        }
+      }
+    }
     if (!provider) {
       provider = await this.getProviderConfig();
     }
@@ -442,11 +449,26 @@ export class AiService {
   async *chatStream(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
-    reasoningEffort?: string,
+    options?: { preferredProviderId?: string; reasoningEffort?: string } | string,
   ): AsyncGenerator<StreamChunk> {
     const trimmedMessages = messages;
 
-    const provider = await this.getProviderConfig();
+    const preferredId = typeof options === 'string' ? undefined : options?.preferredProviderId;
+    const reasoningEffort = typeof options === 'string' ? options : options?.reasoningEffort;
+
+    let provider: ProviderConfig | null = null;
+    if (preferredId) {
+      provider = await this.providerService.getById(preferredId);
+      if (!provider) {
+        const active = await this.providerService.getActiveConfig();
+        if (active) {
+          provider = { ...active, model: preferredId };
+        }
+      }
+    }
+    if (!provider) {
+      provider = await this.getProviderConfig();
+    }
     if (!provider.apiKey) {
       throw new Error(
         'No API key configured. Go to Settings → AI Models to add a provider.',
