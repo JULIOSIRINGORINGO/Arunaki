@@ -65,11 +65,14 @@ export async function* streamWithFallback(
         }
 
         if (!anyChunk) {
+          // Empty stream won't heal with a retry — record it and rotate
+          // immediately instead of burning 3 backoff rounds (~90s+).
           lastError = 'Empty stream (no chunks received)';
-          retryCount++;
-          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
-            await jitteredBackoff(retryCount);
-            continue;
+          if (provider.id !== 'env-fallback' && options.recordError) {
+            await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+          }
+          if (provider.id !== 'env-fallback' && options.setCooldown) {
+            await options.setCooldown(provider.id, 60).catch(() => {});
           }
           break;
         }

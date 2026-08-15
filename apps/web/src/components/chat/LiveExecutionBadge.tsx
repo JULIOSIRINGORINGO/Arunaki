@@ -40,6 +40,19 @@ interface LiveExecutionBadgeProps {
 export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadgeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [steps, setSteps] = useState<StepItem[]>([]);
+  const [waitingSec, setWaitingSec] = useState(0);
+
+  useEffect(() => {
+    if (!status || !active) return;
+    if (status.type !== 'thinking') {
+      setWaitingSec(0);
+      return;
+    }
+    setWaitingSec(0);
+    const start = Date.now();
+    const t = setInterval(() => setWaitingSec(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [status?.type, status?.toolName, active]);
 
   useEffect(() => {
     if (!status) {
@@ -154,7 +167,9 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
             );
           })}
           <div className="pt-1 flex items-center gap-1.5 text-zinc-500 text-[10px]">
-            <span className="animate-pulse">Working...</span>
+            <span className="animate-pulse">
+              {status.type === 'thinking' ? `Working... ${waitingSec}s` : 'Working...'}
+            </span>
           </div>
         </div>
       )}

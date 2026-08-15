@@ -81,7 +81,7 @@ export class BusinessDomainToolsRegistrar {
             workspaceId: { type: 'string' },
             filePath: { type: 'string' },
           },
-          required: ['workspaceId', 'filePath'],
+          required: ['filePath'],
         },
         timeoutMs: 10000,
       }),

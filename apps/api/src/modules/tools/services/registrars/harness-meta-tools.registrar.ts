@@ -121,7 +121,7 @@ export class HarnessMetaToolsRegistrar {
             workspaceId: { type: 'string' },
             parentRunId: { type: 'string' },
           },
-          required: ['tasks', 'workspaceId'],
+          required: ['tasks'],
         },
         timeoutMs: 60000,
       }),
