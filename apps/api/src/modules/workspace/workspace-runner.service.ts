@@ -552,7 +552,6 @@ export class WorkspaceRunnerService {
 
   async buildWorkspaceContext(workspaceId: string): Promise<string> {
     try {
-      await this.syncWorkspacePhysicalFiles(workspaceId);
       let businessType = 'generic';
       let rootPath: string | null = null;
       try {
@@ -570,94 +569,21 @@ export class WorkspaceRunnerService {
         // fallback to generic
       }
 
-      // Read physical directory directly if rootPath is specified and accessible
-      let filesToDescribe: { name: string; type: string; size: number; path: string }[] = [];
-      if (rootPath) {
-        try {
-          const fsPromises = await import('fs/promises');
-          const entries = await fsPromises.readdir(rootPath, { withFileTypes: true });
-          for (const entry of entries) {
-            if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
-              const fullPath = path.join(rootPath, entry.name);
-              if (entry.isFile()) {
-                const stat = await fsPromises.stat(fullPath);
-                const ext = path.extname(entry.name).toLowerCase().replace('.', '');
-                filesToDescribe.push({
-                  name: entry.name,
-                  type: ext || 'file',
-                  size: stat.size,
-                  path: fullPath,
-                });
-              }
-            }
-          }
-        } catch {
-          // ignore physical scan failure
-        }
+      let context = `Workspace Root: ${rootPath || 'N/A'}`;
+      if (businessType && businessType !== 'generic') {
+        context += ` (Domain: ${businessType})`;
       }
 
-      // Fallback to database files if physical scan yielded no files or rootPath is unreadable
-      if (filesToDescribe.length === 0) {
-        const dbFiles = await this.fileService.findByWorkspaceId(workspaceId);
-        filesToDescribe = dbFiles.map((f) => ({
-          name: f.name,
-          type: f.type || 'file',
-          size: f.size,
-          path: f.path,
-        }));
+      const modified = this.modifiedFiles.get(workspaceId) || [];
+      if (modified.length > 0) {
+        const recent = modified.slice(-3);
+        context += `\nRecently modified: ${recent.map((f) => f.filename).join(', ')}`;
       }
 
-      const fileList =
-        filesToDescribe.length > 0
-          ? filesToDescribe
-              .map(
-                (f) =>
-                  `- ${f.name} (Type: ${f.type}, Size: ${Math.round(f.size / 1024)} KB)`,
-              )
-              .join('\n')
-          : 'No files in this workspace yet.';
-
-      // Get domain config for this business type
-      const businessDomain = businessType !== 'generic' ? businessType : '';
-
-      // Auto-inject relevant skills (already filtered by domain in getSkillsContext)
-      const skillsContext = await this.skillService.getSkillsContext(
-        businessType,
-        workspaceId,
-      );
-
-      // Frozen snapshot: inject relevant memories at session start
-      const memoryContext = await this.memoryService.getMemoryContext(
-        businessType,
-        workspaceId,
-      );
-
-      let context = `=== WORKSPACE CONTEXT (ID: ${workspaceId}) ===\n${getSystemDateTimeContext()}\nRoot Path: ${rootPath || 'N/A'}\nDetected File List:\n${fileList}\n=== END WORKSPACE CONTEXT ===`;
-
-      if (skillsContext) {
-        context += `\n\n=== RELEVANT SKILLS ===\n${skillsContext}\n=== END SKILLS ===`;
-      }
-
-      if (memoryContext) {
-        context += `\n\n=== MEMORY SNAPSHOT ===\n${memoryContext}\n=== END MEMORY ===`;
-      }
-
-      if (businessDomain) {
-        context += `\n\n=== DOMAIN ===\nBusiness domain: ${businessDomain}\nUse list_skills / search_memories if domain details are needed.\n=== END DOMAIN ===`;
-      }
-
-       const modified = this.modifiedFiles.get(workspaceId) || [];
-       if (modified.length > 0) {
-         const recent = modified.slice(-10);
-         context += `\n\n=== FILES MODIFIED IN THIS RUN ===
- ${recent.map((f) => `- ${f.filename} (${f.timestamp.toLocaleTimeString('id-ID')})`).join('\n')}
- === END MODIFIED FILES ===`;
-       }
-
-       return context;
-     } catch {
-       return '';
-     }
+      return context;
+    } catch {
+      return '';
+    }
   }
 
   async runWorkspaceAgentStream(

@@ -113,7 +113,8 @@ export class SystemPromptBuilderService {
   }
 
   buildToolListSection(toolList: string): string {
-    return `## Tools Available\n\n${toolList || 'No tools available.'}\n`;
+    if (!toolList || toolList === 'No tools available.') return '';
+    return `## Available Tools\n${toolList}\n`;
   }
 
   buildToolListSummary(tools?: any[]): string {
@@ -123,81 +124,22 @@ export class SystemPromptBuilderService {
       caps = caps.filter(c => includedNames.has(c.name));
     }
     if (!caps || caps.length === 0) {
-      return 'No tools available.';
+      return '';
     }
-
-    const tagCategory: Record<string, string> = {
-      files: 'Workspace', workspace: 'Workspace',
-      read: 'Workspace', write: 'Workspace',
-      search: 'Workspace', fts: 'Workspace',
-      extract: 'Data', data: 'Data',
-      calculate: 'Data', math: 'Data', sql: 'Data',
-      export: 'Export', document: 'Export',
-      pdf: 'Export', docx: 'Export', xlsx: 'Export',
-      knowledge: 'Knowledge',
-      memory: 'Memory', recall: 'Memory', history: 'Memory',
-      skills: 'Skills', workflow: 'Skills',
-      browser: 'Interactive', desktop: 'Interactive', interactive: 'Interactive',
-      web: 'Web', internet: 'Web',
-      converter: 'Conversion', currency: 'Conversion', unit: 'Conversion',
-      draft: 'Communication', communication: 'Communication',
-      ocr: 'Vision', vision: 'Vision', image: 'Vision',
-    };
-
-    const categorized = new Map<string, { name: string; desc: string }[]>();
-    const other: { name: string; desc: string }[] = [];
-    const categoryOrder = ['Workspace', 'Data', 'Export', 'Knowledge', 'Memory', 'Skills', 'Vision', 'Web', 'Conversion', 'Communication', 'Interactive'];
-
-    for (const cap of caps) {
-      const entry = {
-        name: cap.name,
-        desc: cap.description?.split('.')[0]?.trim() || '',
-      };
-      let placed = false;
-      for (const tag of cap.tags || []) {
-        const category = tagCategory[tag];
-        if (category) {
-          if (!categorized.has(category)) categorized.set(category, []);
-          categorized.get(category)!.push(entry);
-          placed = true;
-          break;
-        }
-      }
-      if (!placed) other.push(entry);
-    }
-
-    const lines: string[] = [];
-    for (const category of categoryOrder) {
-      const tools = categorized.get(category);
-      if (!tools || tools.length === 0) continue;
-      lines.push(`**${category}:**`);
-      for (const t of tools) lines.push(`- \`${t.name}\` — ${t.desc}`);
-      lines.push('');
-    }
-    if (other.length > 0) {
-      lines.push('**Other:**');
-      for (const t of other) lines.push(`- \`${t.name}\` — ${t.desc}`);
-    }
-
-    return lines.join('\n').trim() || 'No tools available.';
+    return caps.map(c => `\`${c.name}\``).join(', ');
   }
 
   checkPromptBudget(prompt: string, contextLabel: string): void {
     try {
       const tokens = this.enc.encode(prompt).length;
-      if (tokens > 6000) {
-        this.logger.warn(`[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 6K threshold.`);
+      if (tokens > 4000) {
+        this.logger.warn(`[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 4K threshold.`);
       }
     } catch {}
   }
 
   buildWorkspaceMemorySection(): string {
-    return [
-      '=== MEMORY (from prior sessions) ===',
-      'Use memory_search tool to recall relevant facts, preferences, decisions, and patterns from past interactions with this workspace.',
-      'Memory is automatically saved after each workspace run.',
-      '=== END MEMORY ===',
-    ].join('\n');
+    return 'Memory: Use `memory_search` if historical facts/preferences are needed.';
   }
 
   buildTemporalContextSection(): string {
@@ -212,14 +154,6 @@ export class SystemPromptBuilderService {
     const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
 
-    return [
-      '=== TEMPORAL CONTEXT (REAL-TIME SYSTEM DATE & TIME) ===',
-      `Current Day: ${dayEng} (${dayIndo})`,
-      `Current Date: ${dateFormattedEng} / ${dateFormattedIndo} (${dateIso})`,
-      `Current Time: ${timeStr}`,
-      'The system has real-time access to the local system date and time.',
-      'Use this temporal context to accurately answer date/time queries and update daily reports in the user\'s language.',
-      '=== END TEMPORAL CONTEXT ===',
-    ].join('\n');
+    return `System Time: ${dayEng} (${dayIndo}), ${dateFormattedEng} / ${dateFormattedIndo} (${dateIso}) ${timeStr}`;
   }
 }

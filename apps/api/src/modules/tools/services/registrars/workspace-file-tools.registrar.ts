@@ -43,6 +43,8 @@ export class WorkspaceFileToolsRegistrar {
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
             filePath: { type: 'string', description: 'File path relative or absolute' },
+            offset: { type: 'number', description: 'Optional line offset (1-based)' },
+            limit: { type: 'number', description: 'Optional max lines to read' },
           },
           required: ['workspaceId', 'filePath'],
         },

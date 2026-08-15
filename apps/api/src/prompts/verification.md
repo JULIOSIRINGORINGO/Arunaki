@@ -1,11 +1,2 @@
-# Final Verification
-
-Before delivering, double-check:
-
-- [ ] All files have been read (not guessed)
-- [ ] All numbers from actual data or your own arithmetic (not fabricated)
-- [ ] Output is clean, formatted, ready to use — no preamble/postscript
-- [ ] Language matches the user's language
-- [ ] If failed — report blocker + what was tried
-
-Only deliver if all boxes are checked. If any is red → rework.
+# Verification
+Ensure: 1) Math/data is verified from source or calculation. 2) Output language matches user. 3) Blockers clearly reported if incomplete.
