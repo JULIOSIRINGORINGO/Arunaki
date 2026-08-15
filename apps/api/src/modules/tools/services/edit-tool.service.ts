@@ -26,7 +26,8 @@ export class EditToolService {
     replacements?: Array<{ oldString: string; newString: string }>;
     [key: string]: any;
   }): Promise<ToolResult> {
-    const rawParams: Record<string, any> = params || {};
+    const rawParams = (params || {}) as Record<string, any>;
+    this.logger.log(`[edit-tool] RAW PARAMS: ${JSON.stringify(rawParams).slice(0, 500)}`);
     const workspaceId = rawParams.workspaceId;
     let filePath: string = rawParams.filePath || rawParams.path || rawParams.filename || rawParams.file || '';
     let patchText: string | undefined = rawParams.patchText ?? rawParams.patch ?? rawParams.diff ?? rawParams.patch_text;

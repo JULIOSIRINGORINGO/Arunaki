@@ -97,16 +97,20 @@ export function extractAndApplyFallback(
   // Group lines into hunks
   let currentOld: string[] = [];
   let currentNew: string[] = [];
+  let currentMinus: string[] = [];
+  let currentPlus: string[] = [];
   let inHunk = false;
 
   const applyHunk = () => {
-    if (currentOld.length === 0 && currentNew.length === 0) return;
+    if (currentOld.length === 0 && currentNew.length === 0 && currentMinus.length === 0) return;
     const oldBlock = currentOld.join('\n');
     const newBlock = currentNew.join('\n');
+    let matched = false;
 
     if (oldBlock && content.includes(oldBlock)) {
       content = content.replace(oldBlock, newBlock);
       replacements++;
+      matched = true;
     } else if (oldBlock) {
       // Normalize CRLF
       const normContent = content.replace(/\r\n/g, '\n');
@@ -115,6 +119,7 @@ export function extractAndApplyFallback(
       if (normContent.includes(normOld)) {
         content = normContent.replace(normOld, normNew);
         replacements++;
+        matched = true;
       } else {
         // Line-by-line fuzzy search for the block
         const targetLines = normContent.split('\n');
@@ -124,11 +129,39 @@ export function extractAndApplyFallback(
           targetLines.splice(matchIdx, searchLines.length, ...normNew.split('\n'));
           content = targetLines.join('\n');
           replacements++;
+          matched = true;
         }
       }
     }
+
+    // Minus-lines fallback if context matching failed
+    if (!matched && currentMinus.length > 0) {
+      const minOld = currentMinus.join('\n');
+      const minNew = currentPlus.join('\n');
+      const normContent = content.replace(/\r\n/g, '\n');
+      const normMinOld = minOld.replace(/\r\n/g, '\n');
+      const normMinNew = minNew.replace(/\r\n/g, '\n');
+      if (normContent.includes(normMinOld)) {
+        content = normContent.replace(normMinOld, normMinNew);
+        replacements++;
+        matched = true;
+      } else {
+        const targetLines = normContent.split('\n');
+        const searchLines = normMinOld.split('\n');
+        const matchIdx = findFuzzyBlock(targetLines, searchLines);
+        if (matchIdx !== -1) {
+          targetLines.splice(matchIdx, searchLines.length, ...normMinNew.split('\n'));
+          content = targetLines.join('\n');
+          replacements++;
+          matched = true;
+        }
+      }
+    }
+
     currentOld = [];
     currentNew = [];
+    currentMinus = [];
+    currentPlus = [];
   };
 
   for (const rawLine of lines) {
@@ -139,12 +172,17 @@ export function extractAndApplyFallback(
       continue;
     }
     if (line.startsWith('-')) {
-      currentOld.push(line.slice(1));
+      const text = line.slice(1);
+      currentOld.push(text);
+      currentMinus.push(text);
     } else if (line.startsWith('+')) {
-      currentNew.push(line.slice(1));
+      const text = line.slice(1);
+      currentNew.push(text);
+      currentPlus.push(text);
     } else if (line.startsWith(' ')) {
-      currentOld.push(line.slice(1));
-      currentNew.push(line.slice(1));
+      const text = line.slice(1);
+      currentOld.push(text);
+      currentNew.push(text);
     } else if (inHunk && line.trim()) {
       // Unprefixed context line
       currentOld.push(line);

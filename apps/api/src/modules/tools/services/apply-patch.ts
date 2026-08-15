@@ -24,6 +24,8 @@ export type Hunk =
 export interface UpdateFileChunk {
   oldLines: string[];
   newLines: string[];
+  deletedLines?: string[];
+  addedLines?: string[];
   changeContext?: string;
   endOfFile?: boolean;
 }
@@ -131,6 +133,8 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
     }
     const oldLines: string[] = [];
     const newLines: string[] = [];
+    const deletedLines: string[] = [];
+    const addedLines: string[] = [];
     let endOfFile = false;
     
     while (index < lines.length && !lines[index]!.startsWith('@@')) {
@@ -146,9 +150,13 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
         oldLines.push(text);
         newLines.push(text);
       } else if (line.startsWith('-')) {
-        oldLines.push(line.slice(1).replace(/^\d+:\s?/, ''));
+        const text = line.slice(1).replace(/^\d+:\s?/, '');
+        oldLines.push(text);
+        deletedLines.push(text);
       } else if (line.startsWith('+')) {
-        newLines.push(line.slice(1).replace(/^\d+:\s?/, ''));
+        const text = line.slice(1).replace(/^\d+:\s?/, '');
+        newLines.push(text);
+        addedLines.push(text);
       } else if (line === '') {
         oldLines.push('');
         newLines.push('');
@@ -160,7 +168,14 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
       }
       index++;
     }
-    chunks.push({ oldLines, newLines, changeContext, endOfFile: endOfFile || undefined });
+    chunks.push({
+      oldLines,
+      newLines,
+      deletedLines: deletedLines.length > 0 ? deletedLines : undefined,
+      addedLines: addedLines.length > 0 ? addedLines : undefined,
+      changeContext,
+      endOfFile: endOfFile || undefined,
+    });
   }
   return { chunks, next: index };
 }
