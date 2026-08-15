@@ -336,12 +336,19 @@ export class AiService {
       provider.model,
     );
 
+    const providerOptions = buildProviderOptions(
+      provider,
+      provider.model,
+      options?.reasoningEffort,
+    );
+    // Anthropic extended thinking forces temperature=1; sending 0.7 would error.
+    const thinkingEnabled = !!providerOptions?.anthropic;
     const body: Record<string, any> = {
       messages: preparedMessages,
-      temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: buildProviderOptions(provider, provider.model, options?.reasoningEffort),
+      providerOptions,
     };
+    if (!thinkingEnabled) body.temperature = 0.7;
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
@@ -480,12 +487,20 @@ export class AiService {
       provider.model,
     );
 
+    const providerOptions = buildProviderOptions(
+      provider,
+      provider.model,
+      reasoningEffort,
+    );
+    // Anthropic extended thinking forces temperature=1; sending 0.7 would error.
+    const thinkingEnabled = !!providerOptions?.anthropic;
     const body: Record<string, any> = {
       messages: preparedMessages,
-      temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: buildProviderOptions(provider, provider.model, reasoningEffort),
+      providerOptions,
     };
+    if (!thinkingEnabled) body.temperature = 0.7;
+
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;

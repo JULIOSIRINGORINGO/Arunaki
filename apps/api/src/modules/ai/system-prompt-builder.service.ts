@@ -66,6 +66,10 @@ export class SystemPromptBuilderService {
       currentModel || fallbackModel,
     );
 
+    // Concise-reasoning steering: tells the model to stop deliberating and act.
+    // Enabled by default; disable with ARUNAKI_CONCISE_REASONING=false.
+    const reasoningDirective = this.buildReasoningDirective();
+
     // Dynamic tool list from registry
     const toolList = this.buildToolListSummary(tools);
 
@@ -81,8 +85,8 @@ export class SystemPromptBuilderService {
       );
 
       const stablePrefix = cacheStablePromptPrefix(
-        hashStablePromptInput({ identity, rules, memoryContext, verification, modelAdditions }),
-        () => `${identity}\n\n${rules}\n\n${memoryContext}\n\n${verification}\n\n${modelAdditions}`,
+        hashStablePromptInput({ identity, rules, memoryContext, verification, modelAdditions, reasoningDirective }),
+        () => `${identity}\n\n${rules}\n\n${memoryContext}\n\n${verification}\n\n${modelAdditions}${reasoningDirective}`,
       );
 
       const volatileSuffix = `${this.buildToolListSection(toolList)}\n\n---\n${safeWorkspaceContext}\n\n${this.buildWorkspaceMemorySection()}\n\n${this.buildTemporalContextSection()}`;
@@ -102,8 +106,8 @@ export class SystemPromptBuilderService {
       : '(No active Knowledge Base)';
 
     const stablePrefix = cacheStablePromptPrefix(
-      hashStablePromptInput({ identity, rules, knowledgeBuilder, modelAdditions }),
-      () => `${identity}\n\n${rules}\n\n${knowledgeBuilder}\n\n${modelAdditions}`,
+      hashStablePromptInput({ identity, rules, knowledgeBuilder, modelAdditions, reasoningDirective }),
+      () => `${identity}\n\n${rules}\n\n${knowledgeBuilder}\n\n${modelAdditions}${reasoningDirective}`,
     );
 
     const volatileSuffix = `${this.buildToolListSection(toolList)}\n\n---\n${posturePrompt}\n\n## Knowledge Graph Map\n${safeKnowledgeContext}\n\n${this.buildTemporalContextSection()}`;
@@ -155,5 +159,23 @@ export class SystemPromptBuilderService {
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
 
     return `System Time: ${dayEng} (${dayIndo}), ${dateFormattedEng} / ${dateFormattedIndo} (${dateIso}) ${timeStr}`;
+  }
+
+  /**
+   * Concise-reasoning steering directive injected into the system prompt.
+   * Reasoning-capable models (o1/o3, gpt-oss, deepseek-reasoner, claude thinking)
+   * spend the most time silently deliberating — the directive bounds that.
+   * Open-weights models are highly obedient to short system-prompt instructions
+   * (measured: gpt-oss-120b response time ~1.35s with this block vs tens of
+   * seconds unconstrained). Enabled by default for every model; disable with
+   * `ARUNAKI_CONCISE_REASONING=false` (or `ARUNAKI_REASONING_EFFORT=off`).
+   */
+  private buildReasoningDirective(): string {
+    if (process.env.ARUNAKI_CONCISE_REASONING === 'false') return '';
+    if ((process.env.ARUNAKI_REASONING_EFFORT || '').toLowerCase() === 'off') return '';
+    return `\n\n[REASONING EFFORT: LOW]
+- Keep internal reasoning extremely concise (under 30-50 words).
+- Do not write lengthy step-by-step deliberations in reasoning.
+- Immediately execute the appropriate tool call or output the response.`;
   }
 }

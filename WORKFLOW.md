@@ -966,6 +966,35 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
+## Phase 49: Reasoning Pruning & Budgeting (Reasoning Effort Optimization) ✅ DONE
+
+**Goal:** Cut the dominant latency source (LLM internal reasoning) via 3 levers: provider-level `reasoning_effort`/`budgetTokens` params, a `[REASONING EFFORT: LOW]` steering directive in the system prompt, and lean tool exposure.
+
+### 49.1 Provider Parameter (reasoning_effort / budgetTokens)
+- [x] `buildProviderOptions` (sdk-transformer.util.ts) now sends `reasoning_effort: 'low'` to **all** OpenAI-compatible reasoning models (o1/o3, gpt-oss via Kenari/vLLM, deepseek-reasoner, qwen thinking) — previously only o1/o3 got it, so gpt-oss-120b ran unconstrained (the ~270s final-round deliberation seen in `test-rekap-extended.ts`).
+- [x] Anthropic thinking budget lowered 2048 → **1024** (`ANTHROPIC_THINKING_BUDGET_TOKENS` env, default 1024).
+- [x] `model-capability.ts`: gpt-oss-20b/120b flagged `reasoningEffort: 'low'` + `supportsTools: true`; Claude thinking models (`claude-3-7-sonnet`, `claude-sonnet-4`, `claude-4-sonnet`) added; dynamic detection extended (gpt-oss, claude-3-7, claude-4).
+- [x] Anthropic extended thinking forces `temperature=1` — `ai.service.ts` now omits `temperature` when thinking is enabled (would otherwise 400).
+
+### 49.2 Steering Prompt Directive (Prompt-Level Budget)
+- [x] `SystemPromptBuilderService.buildReasoningDirective()` injects `[REASONING EFFORT: LOW]` (concise <30-50 word reasoning, immediate tool call/response) into both chat & workspace system prompts — cached in stable prefix so prompt cache invalidates correctly.
+- [x] Enabled by default for all models; flexible kill-switches: `ARUNAKI_CONCISE_REASONING=false` (skip directive) or `ARUNAKI_REASONING_EFFORT=off` (skip directive + all provider reasoning params).
+
+### 49.3 Lean Tool Exposure (already present — verified)
+- [x] Workspace mode: `selectToolsForGoal()` (workspace-runner.service.ts:593) — core file tools always + goal-keyword additions; never the full registry.
+- [x] Chat mode: `getRelevantToolDefinitions()` Tool-RAG (tool-registry.service.ts:99) — core set + top-scoring tools, capped at 15.
+- [x] Sub-agents: scoped by `allowedTools` list.
+
+### 49.4 Testing & Documentation
+- [x] New `sdk-transformer.util.spec.ts` — 5 tests (non-reasoning model → undefined, gpt-oss/deepseek → low, explicit override, anthropic budget env, `ARUNAKI_REASONING_EFFORT=off`).
+- [x] Build passes (`npx tsc -p tsconfig.build.json --noEmit` — 0 errors); AI module tests pass (14/14).
+- [x] `.env.example` documents the 3 new env vars.
+- [x] Dev log `docs/dev-logs/dev-log-2026-08-16-reasoning-pruning-budgeting.md` created.
+
+**Pre-existing (unrelated):** `context-manager.spec.ts` `estimateToolResultReduction` expects 14010 but code yields 14160 — test comment assumes `toolPreviewChars: 250`, default config is `200`. Confirmed failing on clean checkout; not touched.
+
+---
+
 ## Current Status
 
 **Phase:** 47 — Unified Document IDE Workstation Migration ✅ DONE

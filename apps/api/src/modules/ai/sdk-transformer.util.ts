@@ -101,21 +101,51 @@ export function toSdkTools(tools: ToolDefinition[]): ToolSet {
   return sdk;
 }
 
+// Reasoning-effort pruning (prompt-level + provider-level). Defaults:
+// - `reasoning_effort: 'low'` is sent to OpenAI-compatible providers whose model
+//   is reasoning-capable (o1/o3, gpt-oss, deepseek-reasoner, qwen thinking, ...).
+// - Anthropic thinking is bounded by ANTHROPIC_THINKING_BUDGET_TOKENS (default 1024).
+// - ARUNAKI_REASONING_EFFORT overrides the capability default (low|medium|high),
+//   or `off` disables all reasoning params entirely (full opt-out).
+const REASONING_EFFORT_VALUES = ['low', 'medium', 'high'] as const;
+
+function anthropicThinkingBudgetTokens(): number {
+  const n = parseInt(process.env.ANTHROPIC_THINKING_BUDGET_TOKENS || '1024', 10);
+  return Number.isFinite(n) && n > 0 ? n : 1024;
+}
+
 export function buildProviderOptions(
   provider: { type?: string; model?: string },
   model: string,
   reasoningEffortOverride?: string,
 ): Record<string, any> | undefined {
-  const effort = reasoningEffortOverride || getModelCapability(model).reasoningEffort;
+  if ((process.env.ARUNAKI_REASONING_EFFORT || '').toLowerCase() === 'off') {
+    return undefined;
+  }
+
+  const cap = getModelCapability(model);
+  const envEffort = (process.env.ARUNAKI_REASONING_EFFORT || '').toLowerCase();
+  const forcedEffort = REASONING_EFFORT_VALUES.includes(envEffort as any)
+    ? (envEffort as 'low' | 'medium' | 'high')
+    : undefined;
+  const effort = reasoningEffortOverride || forcedEffort || cap.reasoningEffort;
   if (!effort) return undefined;
+
   if (provider.type === 'anthropic') {
-    return { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } };
+    return {
+      anthropic: {
+        thinking: {
+          type: 'enabled',
+          budgetTokens: anthropicThinkingBudgetTokens(),
+        },
+      },
+    };
   }
-  const norm = (model || '').toLowerCase();
-  if (norm.startsWith('o1') || norm.startsWith('o3')) {
-    return { openai: { reasoningEffort: effort } };
-  }
-  return undefined;
+
+  // OpenAI & OpenAI-compatible endpoints (Kenari/vLLM serving gpt-oss, DeepSeek,
+  // Qwen thinking) accept `reasoning_effort` on the request body to bound how
+  // many tokens the model spends deliberating before answering.
+  return { openai: { reasoningEffort: effort } };
 }
 
 export async function makeSdkRequest(
@@ -130,7 +160,7 @@ export async function makeSdkRequest(
       model: getSdkModel(provider),
       ...(system ? { system } : {}),
       messages,
-      temperature: body.temperature ?? 0.7,
+      ...(body.temperature != null ? { temperature: body.temperature } : {}),
       maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
       ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
       ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
@@ -195,7 +225,7 @@ export async function *makeSdkRequestStream(
     model: getSdkModel(provider),
     ...(system ? { system } : {}),
     messages,
-    temperature: body.temperature ?? 0.7,
+    ...(body.temperature != null ? { temperature: body.temperature } : {}),
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
     abortSignal: controller.signal,
     ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),

@@ -12,8 +12,10 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // OpenAI & GPT-OSS
   'gpt-4o': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'gpt-4o-mini': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  'gpt-oss-20b': { supportsTools: false, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  'gpt-oss-120b': { supportsTools: false, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  // gpt-oss (open-weights, served via OpenAI-compatible endpoints like Kenari/vLLM)
+  // has a native `reasoning_effort` param — 'low' prunes the thinking budget massively.
+  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
+  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
 
   // Google Gemini & Gemma
   'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },
@@ -41,6 +43,10 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // Anthropic Claude
   'claude-3-5-sonnet': { supportsTools: true, supportsTemperature: true, contextWindow: 200000, maxTokens: 8192 },
   'claude-3-5-haiku': { supportsTools: true, supportsTemperature: true, contextWindow: 200000, maxTokens: 8192 },
+  // Thinking-capable Claude models — extended thinking with a bounded budget.
+  'claude-3-7-sonnet': { supportsTools: true, supportsTemperature: false, contextWindow: 200000, maxTokens: 8192, reasoningEffort: 'low' },
+  'claude-sonnet-4': { supportsTools: true, supportsTemperature: false, contextWindow: 200000, maxTokens: 8192, reasoningEffort: 'low' },
+  'claude-4-sonnet': { supportsTools: true, supportsTemperature: false, contextWindow: 200000, maxTokens: 8192, reasoningEffort: 'low' },
 
   // OpenRouter auto-router aliases
   'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
@@ -85,15 +91,19 @@ export function getModelCapability(modelName: string): ModelCapability {
 
   const lower = (modelName || '').toLowerCase();
   
-  // Dynamic reasoning detection (o1, o3, deepseek-r1, qwq, reasoner, thinking)
+  // Dynamic reasoning detection (o1, o3, gpt-oss, deepseek-r1, qwq, reasoner, thinking)
   const isReasoning =
     lower.includes('reasoner') ||
     lower.includes('reasoning') ||
+    lower.includes('gpt-oss') ||
     lower.includes('-r1') ||
     lower.includes('deepseek-r') ||
     lower.includes('qwq') ||
     lower.includes('o1-') ||
     lower.includes('o3-') ||
+    lower.includes('claude-3-7') ||
+    lower.includes('claude-4') ||
+    lower.includes('claude-sonnet-4') ||
     lower.includes('thinking');
 
   // Dynamic context window estimation
