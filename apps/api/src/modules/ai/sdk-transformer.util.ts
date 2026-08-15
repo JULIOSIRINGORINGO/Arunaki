@@ -145,7 +145,7 @@ export async function *makeSdkRequestStream(
   // Time to first token (TTFB) timeout catches a hung provider fast; the
   // total timeout guards against a slow/stalled generation so a sluggish
   // model gets rotated to a faster sibling model automatically.
-  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 45000;
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 35000;
   const totalTimeoutMs = options.totalTimeoutMs ?? 120000;
 
   console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);

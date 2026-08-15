@@ -4,59 +4,45 @@ export interface ModelCapability {
   supportsSystemPrompt?: boolean;
   maxTokens?: number;
   contextWindow?: number;
-  /**
-   * Reasoning models (DeepSeek V4, etc.) emit long `reasoning_content`
-   * before any content/tool_calls. `scaleMaxTokens` returns headroom so
-   * thinking never starves the actual response. Without this, a
-   * 32000-token context yields max_tokens=1024 and a reasoning model
-   * exhausts it on thinking → finish_reason "length", content:null,
-   * tool_calls:0 → Arunaki's generic fallback.
-   *
-   * NOTE: we deliberately do NOT force `reasoning_effort` (matching
-   * opencode's mature harness). Forcing it made every reasoning model
-   * "think" long before the first token, inflating TTFB and wall-clock.
-   * The model runs at its natural behavior; the timeout + rotate safety
-   * net in stream-chat.ts catches genuine hangs.
-   */
   reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
-// Registered ONCE by bare model name — works across all providers
-// (OpenRouter `openai/gpt-oss-120b:free`, Groq `gpt-oss-120b`, Kenari `gpt-oss-120b`, etc.)
+// Pre-configured baseline capabilities for well-known models across all providers
 const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
-  // OpenAI GPT-OSS
+  // OpenAI & GPT-OSS
+  'gpt-4o': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'gpt-4o-mini': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
 
-  // Google Gemma 4 — confirmed support tools
+  // Google Gemini & Gemma
+  'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },
+  'gemini-2-5-pro': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },
+  'gemini-3-1-flash-lite': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },
   'gemma-4-31b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
   'gemma-4-26b-a4b-it': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
-  // NVIDIA Nemotron — some support tools
-  'nemotron-3-super-120b-a12b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'nemotron-3-nano-30b-a3b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'nemotron-nano-9b-v2': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-  'nemotron-nano-12b-v2-vl': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-  'nemotron-3.5-content-safety': { supportsTools: false, supportsTemperature: false, contextWindow: 32000 },
-
-  // Cohere
-  'north-mini-code': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-
-  // Poolside
-  'laguna-m.1': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
-  'laguna-xs-2.1': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  // DeepSeek
+  'deepseek-chat': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'deepseek-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
+  'deepseek-reasoner': { supportsTools: true, supportsTemperature: false, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
 
   // Qwen
+  'qwen-2.5-72b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'qwen-2.5-32b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'qwen-2.5-coder-32b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
+  'qwen3-7-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
   'qwen3-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
-  // DeepSeek (Kenari) — fast reasoning with low effort
-  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, reasoningEffort: 'low' },
+  // StepFun & others
+  'step-3-7-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
 
-  // Gemini (Kenari)
-  'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000 },
-  'gemini-3-1-flash-lite': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000 },
+  // Anthropic Claude
+  'claude-3-5-sonnet': { supportsTools: true, supportsTemperature: true, contextWindow: 200000, maxTokens: 8192 },
+  'claude-3-5-haiku': { supportsTools: true, supportsTemperature: true, contextWindow: 200000, maxTokens: 8192 },
 
-  // OpenRouter auto-router pseudonyms — keep full name to avoid collision with `free`/`auto`
+  // OpenRouter auto-router aliases
   'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
   'openrouter/auto': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 };
@@ -64,13 +50,13 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
 /**
  * Normalize a provider-specific model slug to its bare name:
  * - strips vendor prefix:  `openai/gpt-oss-120b:free` → `gpt-oss-120b`
- * - strips tier suffix:    `:free`, `:extended`, `:paid`, `:nitro`
- * So one registry entry covers the same model across every provider.
+ * - strips tier suffix:    `:free`, `:extended`, `:paid`, `:nitro`, `:online`
  */
 export function normalizeModelName(modelName: string): string {
-  const withoutSuffix = modelName.replace(/:(free|extended|paid|nitro)$/i, '');
-  const slashIdx = withoutSuffix.indexOf('/');
-  return slashIdx > 0 ? withoutSuffix.slice(slashIdx + 1) : withoutSuffix;
+  if (!modelName) return '';
+  const withoutSuffix = modelName.replace(/:(free|extended|paid|nitro|online|exact)$/i, '');
+  const slashIdx = withoutSuffix.lastIndexOf('/');
+  return slashIdx >= 0 ? withoutSuffix.slice(slashIdx + 1) : withoutSuffix;
 }
 
 function lookupCapability(modelName: string): ModelCapability | undefined {
@@ -83,44 +69,51 @@ function lookupCapability(modelName: string): ModelCapability | undefined {
 
 /**
  * Check if a given model supports tool/function calling.
- * Defaults to true for unknown models (assume modern models support tools).
+ * Mature harness default: true for unknown models unless explicitly flagged false.
  */
 export function modelSupportsTools(modelName: string): boolean {
   return lookupCapability(modelName)?.supportsTools ?? true;
 }
 
 /**
- * Get capability for a model, or sensible defaults.
+ * Dynamic, mature capability resolver for any model from any provider.
+ * Uses pattern heuristics for unknown models so new models work immediately without code changes.
  */
 export function getModelCapability(modelName: string): ModelCapability {
   const cap = lookupCapability(modelName);
   if (cap) return cap;
 
-  // Auto-detect if unknown model is a reasoning model by name keywords (e.g., r1, reasoner, o1, o3)
-  const lower = modelName.toLowerCase();
+  const lower = (modelName || '').toLowerCase();
+  
+  // Dynamic reasoning detection (o1, o3, deepseek-r1, qwq, reasoner, thinking)
   const isReasoning =
     lower.includes('reasoner') ||
     lower.includes('reasoning') ||
     lower.includes('-r1') ||
     lower.includes('deepseek-r') ||
+    lower.includes('qwq') ||
     lower.includes('o1-') ||
-    lower.includes('o3-');
+    lower.includes('o3-') ||
+    lower.includes('thinking');
+
+  // Dynamic context window estimation
+  let contextWindow = 128000;
+  if (lower.includes('gemini')) contextWindow = 1000000;
+  else if (lower.includes('claude')) contextWindow = 200000;
+  else if (lower.includes('16k') || lower.includes('32k')) contextWindow = 32000;
 
   return {
     supportsTools: true,
-    supportsTemperature: true,
+    supportsTemperature: !isReasoning,
     supportsSystemPrompt: true,
-    contextWindow: 128000,
-    ...(isReasoning ? { maxTokens: 8192 } : {}),
+    contextWindow,
+    maxTokens: isReasoning ? 8192 : 4096,
+    reasoningEffort: isReasoning ? 'low' : undefined,
   };
 }
 
 /**
- * Scale max_tokens based on context window.
- * Small context (≤32K) → 1024, Medium (≤128K) → 2048, Large (>128K) → 4096.
- * Reasoning models need headroom for thinking even on a small context
- * window, otherwise finish_reason "length" truncates before any
- * content/tool_calls is emitted.
+ * Scale max output tokens based on model capability and context window.
  */
 export function scaleMaxTokens(modelName: string): number {
   const cap = getModelCapability(modelName);

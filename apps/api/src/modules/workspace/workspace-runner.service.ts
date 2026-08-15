@@ -973,11 +973,13 @@ export class WorkspaceRunnerService {
               this.logger.log(`[WorkspaceRunner] Repaired ${repaired.length} tool call(s) from streamed text`);
               aiResponse.toolCalls = repaired;
               aiResponse.content = aiResponse.content
+                .replace(/```(?:json|tool|function)?\s*\{[\s\S]*?\}\s*```/gi, '')
                 .replace(/<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
                 .replace(/<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
                 .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
                 .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
                 .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
+                .replace(/(?:Action|Tool|Function)\s*:\s*[a-zA-Z0-9_-]+\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*\{[\s\S]*?\}/gi, '')
                 .trim();
             } else if (aiResponse.content.includes('<|tool_call>')) {
               const toolCallMatch = aiResponse.content.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);

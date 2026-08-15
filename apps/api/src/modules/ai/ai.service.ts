@@ -312,9 +312,9 @@ export class AiService {
     if (options?.preferredProviderId) {
       provider = await this.providerService.getById(options.preferredProviderId);
       if (!provider) {
-        const active = await this.providerService.getActiveConfig();
-        if (active) {
-          provider = { ...active, model: options.preferredProviderId };
+        const base = (await this.providerService.getActiveConfig()) || (await this.getProviderConfig());
+        if (base) {
+          provider = { ...base, model: options.preferredProviderId };
         }
       }
     }
@@ -460,9 +460,9 @@ export class AiService {
     if (preferredId) {
       provider = await this.providerService.getById(preferredId);
       if (!provider) {
-        const active = await this.providerService.getActiveConfig();
-        if (active) {
-          provider = { ...active, model: preferredId };
+        const base = (await this.providerService.getActiveConfig()) || (await this.getProviderConfig());
+        if (base) {
+          provider = { ...base, model: preferredId };
         }
       }
     }

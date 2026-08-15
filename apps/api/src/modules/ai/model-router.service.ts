@@ -334,12 +334,13 @@ export class ModelRouterService {
     } else if (hints.family === 'gemini') {
       additions.push('\nGEMINI-SPECIFIC INSTRUCTIONS:');
       additions.push('- Gemini should be concise and direct. Avoid repeating tool descriptions.');
-    } else if (hints.family === 'llama') {
-      additions.push('\nLLAMA-SPECIFIC INSTRUCTIONS:');
-      additions.push('- Llama models must adhere strictly to JSON outputs for tools. Do not output conversational filler outside of tool calls when a tool is required.');
-    } else if (hints.family === 'openai') {
-      additions.push('\nOPENAI-SPECIFIC INSTRUCTIONS:');
-      additions.push('- Use standard JSON schemas for tool calls.');
+    } else {
+      // Open-weights, OpenAI-compatible, GPT-OSS, Qwen, DeepSeek, Llama & generic models
+      additions.push('\nSTRICT TOOL CALLING FORMAT:');
+      additions.push('- When a tool is needed, invoke provider-native tool calls or output ONLY a valid JSON object matching:');
+      additions.push('  {"name": "<tool_name>", "arguments": { "<param>": "<value>" }}');
+      additions.push('- Output valid JSON with proper double quotes and no trailing commas.');
+      additions.push('- Do NOT output conversational filler or preamble before or after tool calls.');
     }
 
     return additions.join('\n');
