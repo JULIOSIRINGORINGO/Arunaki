@@ -125,18 +125,41 @@ export async function makeSdkRequest(
 ): Promise<{ data: any; statusCode: number }> {
   const canUseTools = (body.tools?.length ?? 0) > 0;
   const { system, messages } = extractSystemAndMessages(body.messages);
-  const data = await generateText({
-    model: getSdkModel(provider),
-    ...(system ? { system } : {}),
-    messages,
-    temperature: body.temperature ?? 0.7,
-    maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-    ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
-    ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
-    maxRetries: 0,
-    timeout: timeoutMs,
-  });
-  return { data, statusCode: 200 };
+  try {
+    const data = await generateText({
+      model: getSdkModel(provider),
+      ...(system ? { system } : {}),
+      messages,
+      temperature: body.temperature ?? 0.7,
+      maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+      ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
+      ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+      maxRetries: 0,
+      timeout: timeoutMs,
+    });
+    return { data, statusCode: 200 };
+  } catch (err: any) {
+    // If generateText fails with 'Invalid JSON response' or unsupported non-streaming,
+    // seamlessly accumulate from makeSdkRequestStream (streaming) instead!
+    console.warn(`[makeSdkRequest] generateText failed (${err.message}), accumulating via stream...`);
+    let text = '';
+    const toolCalls: any[] = [];
+    for await (const chunk of makeSdkRequestStream(provider, body)) {
+      if (chunk.type === 'content' && chunk.content) {
+        text += chunk.content;
+      } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+        toolCalls.push({
+          toolCallId: chunk.toolCall.id,
+          toolName: chunk.toolCall.name,
+          input: chunk.toolCall.arguments,
+        });
+      }
+    }
+    return {
+      data: { text, toolCalls },
+      statusCode: 200,
+    };
+  }
 }
 
 export async function *makeSdkRequestStream(

@@ -1369,3 +1369,24 @@ apps/web/src/
   - 100% of standing template balance sections preserved (`PAK ARNOL = 402RB`, `BELANJAAN KE LABURA`, `TOTAL BELANJA KE BENDONG RP 98.000,-`, `SISA DEPOSIT RP 14.207.640,-`, `CI LISOI 10-02-2024`).
   - Strict tool integrity verified: Agent calls `edit` (surgical single-pass patch) and never overwrites with `write`.
   - Date rollover verified: Document title header automatically updated to today's date (`15 AGUSTUS 2026`).
+
+---
+
+## Phase 47: Universal Model Robustness & Self-Correction Harness ✅ DONE
+
+**Goal:** Ensure Arunaki executes reliably and flexibly across all model tiers (small 7B/20B, cheap open-weights 120B, and frontier models) without hardcoded model assumptions.
+
+### 47.1 Autonomous Self-Correction & Nudge Loop
+- [x] In `workspace-runner.service.ts`, added early-round detection for tasks requiring file operations.
+- [x] If a model returns 0 tool calls on Round 1-2 for a file mutation task, injected a high-priority `[System Action Required]` nudge and auto-continued the execution loop (up to 2 autonomous recovery attempts).
+- [x] Added automatic streaming fallback in `sdk-transformer.util.ts` (`makeSdkRequest`) for streaming-only endpoints (e.g. Kenari) that reject non-streaming `generateText`.
+
+### 47.2 Flexible Auto-Healing & Line-Number Stripper
+- [x] In `edit-tool.service.ts`, implemented 4-tier match fallback: Exact Match → CRLF Normalized Match → Line-Number Stripped Match (`^\s*\d+:\s*`) → Whitespace-Tolerant Block Match.
+- [x] In `model-router.service.ts`, added model-agnostic few-shot examples and strict line-number omission instructions for open-weights models.
+
+### 47.3 Verification & Testing
+- [x] Vitest tool-call repair test suite passed 7/7 tests in 13ms (`apps/api/test/tool-call-repair.spec.ts`).
+- [x] TypeScript build completed with 0 errors (`npm run build -w apps/api`).
+- [x] Verified autonomous nudge loop triggers and recovers empty/conversational turns without prematurely aborting the stream.
+

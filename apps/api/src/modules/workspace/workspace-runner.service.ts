@@ -878,12 +878,14 @@ export class WorkspaceRunnerService {
       // simple tasks resolve in 1-2 rounds without extra LLM planning roundtrip.
       this.setPhase(runState, 'analyzing', onEvent);
 
-       let finalContent = '';
-       const createdArtifactIds: string[] = [];
-       const MAX_ROUNDS = 25;
-       let reachedMaxRounds = true;
-       const budget = createRunBudget();
-       enterRunBudget(budget);
+        let finalContent = '';
+        const createdArtifactIds: string[] = [];
+        const MAX_ROUNDS = 25;
+        let reachedMaxRounds = true;
+        let executedToolCount = 0;
+        let nudgeAttempts = 0;
+        const budget = createRunBudget();
+        enterRunBudget(budget);
 
        // SINGLE-LOOP (opencode-style): call LLM → run tools → feed results
        // back → repeat until the model stops returning tool_calls. max_steps
@@ -963,6 +965,16 @@ export class WorkspaceRunnerService {
             aiResponse = await this.aiService.chat(messages, tools, modelId ? { preferredProviderId: modelId } : undefined);
           }
 
+          // If stream produced 0 content, 0 tool calls, and 0 reasoning, attempt non-streaming fallback
+          if ((aiResponse.content || '').trim().length === 0 && (aiResponse.toolCalls?.length ?? 0) === 0 && streamedReasoning.trim().length === 0) {
+            this.logger.warn(`chatStream returned empty output, attempting non-streaming chat fallback...`);
+            try {
+              aiResponse = await this.aiService.chat(messages, toolsToPass, modelId ? { preferredProviderId: modelId } : undefined);
+            } catch (chatErr: any) {
+              this.logger.error(`Non-streaming chat fallback failed: ${chatErr.message}`);
+            }
+          }
+
           this.logger.log(
             `[round] ${runState.round} took ${Date.now() - roundStart}ms; toolCalls=${aiResponse.toolCalls?.length ?? 0} usage=${JSON.stringify(aiResponse.usage)}`,
           );
@@ -1025,6 +1037,28 @@ export class WorkspaceRunnerService {
           }
 
           if (aiResponse.toolCalls.length === 0) {
+            const hasFileMutationIntent =
+              /@[\w.-]+/i.test(userGoal) ||
+              /\b(?:update|edit|ubah|rekap|hitung|tulis|buat|write|modify|replace|delete|hapus|patch)\b/i.test(userGoal);
+
+            const isEarlyRoundWithoutAction = runState.round <= 2 && hasFileMutationIntent && executedToolCount === 0;
+
+            if (isEarlyRoundWithoutAction && nudgeAttempts < 2) {
+              nudgeAttempts++;
+              this.logger.log(`[Self-Correction] Round ${runState.round} produced 0 tool calls for file mutation task. Injecting action nudge (attempt ${nudgeAttempts})...`);
+              if (aiResponse.content) {
+                messages.push({
+                  role: 'assistant',
+                  content: aiResponse.content,
+                });
+              }
+              messages.push({
+                role: 'user',
+                content: '[System Action Required] You did not execute any tool to apply the requested modifications. Please output a valid tool call (e.g. edit or write) using proper JSON format to apply the file changes directly now.',
+              });
+              continue;
+            }
+
             finalContent = this.scrubber.scrub(aiResponse.content);
             if (!isStreamed) {
               onEvent({ type: 'text_delta', data: finalContent });
@@ -1182,6 +1216,7 @@ export class WorkspaceRunnerService {
             // The round cap (MAX_ROUNDS) is the hard loop bound.
 
             if (this.toolRegistryService.isMutating(funcName)) {
+              executedToolCount++;
               mutatingCalls.push({ toolCall, args });
             } else {
               readOnlyCalls.push({ toolCall, args });

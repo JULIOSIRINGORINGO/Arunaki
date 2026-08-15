@@ -252,6 +252,45 @@ export class EditToolService {
             },
           };
         }
+
+        // 4. Try whitespace-tolerant line block match
+        const rawLines = normRaw.split('\n');
+        const oldLines = strippedOld.split('\n');
+        const newLines = strippedNew.split('\n');
+        const normalize = (l: string) => l.trim().replace(/\s+/g, ' ');
+        const normSearch = oldLines.map(normalize);
+        let matchIdx = -1;
+        if (oldLines.length > 0 && rawLines.length >= oldLines.length) {
+          for (let i = 0; i <= rawLines.length - oldLines.length; i++) {
+            let matches = true;
+            for (let j = 0; j < oldLines.length; j++) {
+              if (normalize(rawLines[i + j]!) !== normSearch[j]) {
+                matches = false;
+                break;
+              }
+            }
+            if (matches) {
+              matchIdx = i;
+              break;
+            }
+          }
+        }
+        if (matchIdx !== -1) {
+          rawLines.splice(matchIdx, oldLines.length, ...newLines);
+          const updated = rawLines.join('\n');
+          await fsPromises.writeFile(targetPath, updated, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: 1 },
+            preview: `Successfully modified ${path.basename(targetPath)} (applied and saved to disk).`,
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: 1,
+            },
+          };
+        }
       }
     }
 

@@ -337,8 +337,11 @@ export class ModelRouterService {
     } else {
       // Open-weights, OpenAI-compatible, GPT-OSS, Qwen, DeepSeek, Llama & generic models
       additions.push('\nSTRICT TOOL CALLING & EDITING RULES:');
-      additions.push('- When a tool is needed, invoke provider-native tool calls or output ONLY a valid JSON object matching:');
+      additions.push('- When a tool is needed, invoke provider-native tool calls or output a valid JSON object matching:');
       additions.push('  {"name": "<tool_name>", "arguments": { "<param>": "<value>" }}');
+      additions.push('- Example edit invocation:');
+      additions.push('  {"name": "edit", "arguments": {"filePath": "laporan.txt", "oldString": "TOTAL TF BCA : 1.182 RB", "newString": "TOTAL TF BCA : 2.007 RB"}}');
+      additions.push('- CRITICAL: Never include line numbers (e.g. "1: ", "2: ") in `oldString` or `newString`. Always use the actual file text.');
       additions.push('- For `edit` tool: specify `oldString` and `newString` (or `patchText`). When updating daily reports/recaps:');
       additions.push('  * Update the date header to today\'s date.');
       additions.push('  * Replace previous day\'s transactions with the new day\'s transactions under PEMASUKAN.');
