@@ -56,7 +56,7 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'write',
         displayName: 'Write File',
-        description: 'Creates a brand new file in the workspace. DO NOT use write to update existing files—use edit instead so templates and existing sections are preserved.',
+        description: 'Creates a brand new file in the workspace. Fails if the file already exists. To update or modify existing files, you MUST use the edit tool.',
         tags: ['workspace', 'file', 'write'],
         handler: async (args) =>
           services.writeToolService.execute({
@@ -66,15 +66,13 @@ export class WorkspaceFileToolsRegistrar {
             content: args.content,
             rows: args.rows,
             title: args.title,
-            overwrite: args.overwrite,
           }),
         parameters: {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filePath: { type: 'string', description: 'File path' },
+            filePath: { type: 'string', description: 'File path for the new file' },
             content: { type: 'string', description: 'File content' },
-            overwrite: { type: 'boolean', description: 'Set true ONLY when creating a file that replaces an old file completely' },
           },
           required: ['workspaceId', 'filePath', 'content'],
         },

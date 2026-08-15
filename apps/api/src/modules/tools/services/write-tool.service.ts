@@ -58,18 +58,19 @@ export class WriteToolService {
       const fsPromises = await import('fs/promises');
       try {
         await fsPromises.stat(targetPath);
-        // File exists!
-        if (!overwrite) {
-          return {
-            status: 'error',
-            data: {},
-            preview: `File "${finalFilename}" already exists. To overwrite, you must explicitly set the 'overwrite' parameter to true.`,
-            metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
-            error: { code: 'FILE_EXISTS', message: 'File already exists and overwrite is not true.' },
-          };
-        }
+        // File already exists - strictly enforce edit tool
+        return {
+          status: 'error',
+          data: {},
+          preview: `File "${finalFilename}" already exists. You must use the 'edit' tool (with oldString and newString, or patchText) to modify existing files.`,
+          metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+          error: {
+            code: 'FILE_ALREADY_EXISTS',
+            message: `File "${finalFilename}" already exists in the workspace. Calling write on existing files is forbidden. Call the 'edit' tool instead with oldString and newString to preserve existing sections and templates.`,
+          },
+        };
       } catch (err: any) {
-        // File doesn't exist, safe to write
+        // File doesn't exist, safe to write new file
       }
 
       if (format === 'xlsx' || format === 'csv') {

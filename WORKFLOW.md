@@ -1364,6 +1364,8 @@ apps/web/src/
 
 ### 46.2 Extended Autonomous Rekap Verification
 - [x] Ran `apps/api/scripts/test-rekap-extended.ts` with `deepseek-v4-flash`.
-- [x] 16/16 automated assertions passed:
+- [x] 17/17 automated assertions passed:
   - 100% of accounting totals calculated correctly (Pemasukan: 1.175 RB, Pengeluaran: 570 RB, Laci: 605 RB, BCA: 825 RB, BNI: 200 RB, Cash: 150 RB).
   - 100% of standing template balance sections preserved (`PAK ARNOL = 402RB`, `BELANJAAN KE LABURA`, `TOTAL BELANJA KE BENDONG RP 98.000,-`, `SISA DEPOSIT RP 14.207.640,-`, `CI LISOI 10-02-2024`).
+  - Strict tool integrity verified: Agent calls `edit` (surgical single-pass patch) and never overwrites with `write`.
+  - Date rollover verified: Document title header automatically updated to today's date (`15 AGUSTUS 2026`).

@@ -11,6 +11,6 @@
    - Exact match: `oldString` or `-` lines must match existing file content exactly.
    - Single pass: Group all changes into one `edit` call from top to bottom.
 5. **Period/Date Rollover**:
-   - Advancing to a new date: Update date header, REPLACE previous period's transaction entries with new entries, PRESERVE pending/unpaid notes and standing balances, and recalculate all totals.
+   - Advancing to a new date / "hari ini" instruction: Always update the document title date header to today's date directly in the same `edit` call, REPLACE previous period's transaction entries with new entries, PRESERVE pending/unpaid notes and standing balances, and recalculate all totals.
    - Same date/period: Append new items and recompute totals.
 6. **Accuracy**: Compute all math directly and double-check totals. Never fabricate data.

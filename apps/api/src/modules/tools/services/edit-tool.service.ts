@@ -28,40 +28,6 @@ export class EditToolService {
     filePath = filePath || altPath || params.filename || '';
     const startTime = Date.now();
 
-    // Auto-convert oldString/newString to patch format if patchText is not provided
-    if (!patchText && (params.oldString || params.old_str || params.find)) {
-      const oldStr = params.oldString || params.old_str || params.find || '';
-      const newStr = params.newString || params.new_str || params.replace || '';
-      const oldLines = oldStr.split(/\r?\n/).map((l: string) => `-${l}`).join('\n');
-      const newLines = newStr.split(/\r?\n/).map((l: string) => `+${l}`).join('\n');
-      patchText = `@@\n${oldLines}\n${newLines}`;
-    }
-
-    if (!patchText) {
-      return {
-        status: 'error',
-        data: {},
-        preview: 'Missing required parameter: patchText (or oldString/newString)',
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-        error: { code: 'MISSING_PARAMS', message: 'patchText or oldString/newString is required' },
-      };
-    }
-    
-    if (!filePath) {
-      const match = patchText.match(/\*\*\* Update File:\s*(.+)/i);
-      if (match && match[1]) {
-        filePath = match[1].trim();
-      } else {
-        return {
-          status: 'error',
-          data: {},
-          preview: 'Missing path parameter and no *** Update File: directive found in patch text.',
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'MISSING_PARAMS', message: 'path is required' },
-        };
-      }
-    }
-
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { rootPath: true },
@@ -78,7 +44,111 @@ export class EditToolService {
     }
 
     const rootPath = workspace.rootPath;
-    
+
+    if (!filePath) {
+      const match = (patchText || '').match(/\*\*\* Update File:\s*(.+)/i);
+      if (match && match[1]) {
+        filePath = match[1].trim();
+      } else {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Missing path parameter and no *** Update File: directive found in patch text.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'MISSING_PARAMS', message: 'filePath is required' },
+        };
+      }
+    }
+
+    // Direct surgical replacement when oldString / newString are provided
+    const oldStr = params.oldString ?? params.old_str ?? params.find;
+    const newStr = params.newString ?? params.new_str ?? params.replace;
+
+    if (oldStr !== undefined && newStr !== undefined) {
+      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      let fileExists = false;
+      try {
+        await fsPromises.access(targetPath);
+        fileExists = true;
+      } catch {
+        fileExists = false;
+      }
+
+      if (!fileExists && this.fileService) {
+        try {
+          const files = await this.fileService.findByWorkspaceId(workspaceId);
+          const match = files.find(
+            (f) =>
+              f.name.toLowerCase() === filePath.toLowerCase() ||
+              f.name.toLowerCase().replace(/\.[^.]+$/, '') === filePath.toLowerCase(),
+          );
+          if (match) {
+            targetPath = match.path;
+            fileExists = true;
+          }
+        } catch {
+          /* fallback */
+        }
+      }
+
+      if (fileExists) {
+        const rawContent = await fsPromises.readFile(targetPath, 'utf-8');
+        // 1. Try exact match
+        if (rawContent.includes(oldStr)) {
+          const updated = rawContent.replace(oldStr, newStr);
+          await fsPromises.writeFile(targetPath, updated, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: 1 },
+            preview: `Successfully replaced text in ${path.basename(targetPath)}.\n\nUpdated content:\n${updated.slice(0, 1500)}`,
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: 1,
+            },
+          };
+        }
+
+        // 2. Try normalized CRLF match
+        const normRaw = rawContent.replace(/\r\n/g, '\n');
+        const normOld = oldStr.replace(/\r\n/g, '\n');
+        const normNew = newStr.replace(/\r\n/g, '\n');
+        if (normRaw.includes(normOld)) {
+          const updated = normRaw.replace(normOld, normNew);
+          await fsPromises.writeFile(targetPath, updated, 'utf-8');
+          return {
+            status: 'success',
+            data: { files: [filePath], replacements: 1 },
+            preview: `Successfully replaced text in ${path.basename(targetPath)}.\n\nUpdated content:\n${updated.slice(0, 1500)}`,
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: 1,
+            },
+          };
+        }
+      }
+    }
+
+    // Auto-convert oldString/newString to patch format if patchText is not provided
+    if (!patchText && oldStr) {
+      const oldLines = oldStr.split(/\r?\n/).map((l: string) => `-${l}`).join('\n');
+      const newLines = (newStr || '').split(/\r?\n/).map((l: string) => `+${l}`).join('\n');
+      patchText = `@@\n${oldLines}\n${newLines}`;
+    }
+
+    if (!patchText) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Missing required parameter: patchText (or oldString/newString)',
+        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        error: { code: 'MISSING_PARAMS', message: 'patchText or oldString/newString is required' },
+      };
+    }
+
     let finalPatchText = patchText.trim();
     
     // Bulletproof normalization: strip any LLM hallucinated headers and ensure standard structure

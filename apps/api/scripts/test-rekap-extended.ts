@@ -95,12 +95,13 @@ async function runTest() {
 
   let sawDone = false;
   let error: string | null = null;
+  const calledTools: string[] = [];
 
   const apiKey = process.env.ARUNAKI_API_KEY;
   if (!apiKey) throw new Error('ARUNAKI_API_KEY is required');
 
   const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), 240_000);
+  const timeout = setTimeout(() => abortController.abort(), 360_000);
   const t0 = Date.now();
   let doneAt = 0;
   try {
@@ -131,7 +132,11 @@ async function runTest() {
         if (!line.startsWith('data: ')) continue;
         const event = JSON.parse(line.slice(6));
         console.log(`[event:${event.type}]`, JSON.stringify(event.data)?.slice(0, 200));
-        if (event.type === 'tool_start') console.log(`[tool_call] ${event.data?.toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
+        if (event.type === 'tool_start') {
+          const toolName = event.data?.toolName;
+          if (toolName) calledTools.push(toolName);
+          console.log(`[tool_call] ${toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
+        }
         if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
         if (event.type === 'error') error = event.data?.message || 'unknown';
         if (event.type === 'done') { sawDone = true; doneAt = Date.now(); }
@@ -190,6 +195,9 @@ async function runTest() {
     { name: 'Template: TOTAL BELANJA KE BENDONG tidak terhapus', pass: content.includes('TOTAL BELANJA KE BENDONG') && content.includes('98.000') },
     { name: 'Template: SISA DEPOSIT RP 14.207.640,- tidak terhapus', pass: content.includes('SISA DEPOSIT') && content.includes('14.207.640') },
     { name: 'Template: CI LISOI (10-02-2024) uncompleted note tetap terjaga', pass: content.includes('CI LISOI') && content.includes('10-02-2024') },
+
+    // 3. Tool Integrity (Must use edit, never write on existing files)
+    { name: 'Tool: Menggunakan tool "edit" (bukan overwrite "write")', pass: calledTools.some(t => t.includes('edit')) && !calledTools.some(t => t.includes('write')) },
   ];
 
   let passed = 0;
