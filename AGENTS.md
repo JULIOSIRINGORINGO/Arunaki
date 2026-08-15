@@ -123,6 +123,7 @@ If a requested task appears to require violating any of the above, treat it as a
 - Keep changes within the requested scope. If you notice unrelated issues, report them separately instead of fixing them inline.
 - Never delete or overwrite existing data-affecting code paths without the Approval Gate step above.
 - Do not skip phases in WORKFLOW.md. Complete current phase before moving to next.
+- **Machine-Specific / Local-Only Files Isolation (CRITICAL)** — Jangan pernah mem-push modifikasi yang bersifat khusus untuk lingkungan/mesin lokal atau OS tertentu (misalnya penyesuaian timeout startup pada `scripts/dev-app.cjs`, tuning path compiler lokal, atau file scratch/debug) ke repository GitHub. Gunakan `git update-index --skip-worktree <file>` pada file-file konfigurasi lokal tersebut agar tetap aktif di mesin saat ini tanpa mengotori commit atau menimpa lingkungan kerja komputer lain saat pull/push.
 
 ---
 
