@@ -40,6 +40,10 @@ export class ProviderService extends BaseService<Provider> {
     '503': 20,
   };
 
+  // Model-level cooldown (in-memory): a hung/slow model is skipped while
+  // sibling models on the same provider stay available. Keyed by `providerId::model`.
+  private readonly modelCooldowns = new Map<string, number>();
+
   private readonly catalogService: ProviderCatalogService;
 
   constructor(
@@ -52,8 +56,7 @@ export class ProviderService extends BaseService<Provider> {
     this.vaultService = vaultService || new SecretsVaultService();
   }
 
-  private encryptApiKey(key: string): string {
-    if (!key || !this.vaultService) return key;
+  private encryptApiKey(key: string): string {    if (!key || !this.vaultService) return key;
     try {
       const payload = this.vaultService.encryptSecret(key);
       return JSON.stringify(payload);
@@ -113,13 +116,34 @@ export class ProviderService extends BaseService<Provider> {
       return null;
     }
 
+    // Reorder models so the first non-cooled model is primary — a hung/slow
+    // model is skipped automatically while sibling models stay usable. If
+    // every model is cooled, defer to the fallback provider entirely.
+    let model = provider.model;
+    if (respectCooldown) {
+      const models = (provider.model || '')
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean);
+      if (models.length === 0) return null;
+      const cooled = models.filter((m) => this.isModelCoolingDown(`${provider.id}::${m}`));
+      const eligible = models.filter((m) => !this.isModelCoolingDown(`${provider.id}::${m}`));
+      if (eligible.length === 0) {
+        this.logger.warn(
+          `Active provider ${provider.name} has all models in cooldown — deferring to fallback provider`,
+        );
+        return null;
+      }
+      model = [...eligible, ...cooled].join(', ');
+    }
+
     return {
       id: provider.id,
       name: provider.name,
       type: provider.type,
       baseUrl: provider.baseUrl,
       apiKey: this.decryptApiKey(provider.apiKey),
-      model: provider.model,
+      model,
       headerPrefix: provider.headerPrefix || undefined,
       headerTitle: provider.headerTitle || undefined,
     };
@@ -161,6 +185,13 @@ export class ProviderService extends BaseService<Provider> {
   }
 
   async setCooldown(id: string, seconds: number): Promise<void> {
+    const parts = id.split('::');
+    if (parts.length > 1 && !parts[0].startsWith('fallback-') && !parts[0].startsWith('env-')) {
+      // Model-level cooldown: cool only this model, keep sibling models usable.
+      const key = `${parts[0]}::${parts[1]}`;
+      this.modelCooldowns.set(key, Date.now() + seconds * 1000);
+      return;
+    }
     const realId = id.split('::')[0];
     if (this.repository && this.repository.setCooldown && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
       await Promise.resolve(this.repository.setCooldown(realId, seconds)).catch(() => {});
@@ -243,6 +274,13 @@ export class ProviderService extends BaseService<Provider> {
               (i === 0 && (currentProviderId === p.id || currentProviderId.startsWith(p.id + '::')))));
 
         if (!isTried) {
+          const modelKey = models.length > 1 ? `${p.id}::${m}` : p.id;
+          if (this.isModelCoolingDown(modelKey)) {
+            this.logger.log(
+              `Skipping provider pool candidate [${p.name}] model: ${m} (model cooldown)`,
+            );
+            continue;
+          }
           this.logger.log(`Rotating to provider pool candidate [${p.name}] model: ${m}`);
           return {
             id: candidateId,
@@ -315,6 +353,13 @@ export class ProviderService extends BaseService<Provider> {
     const provider = this.repository ? await this.repository.findActive() : null;
     if (!provider) return false;
     return !!provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date();
+  }
+
+  isModelCoolingDown(modelKey: string): boolean {
+    if (!this.modelCooldowns.has(modelKey)) return false;
+    if ((this.modelCooldowns.get(modelKey) ?? 0) > Date.now()) return true;
+    this.modelCooldowns.delete(modelKey);
+    return false;
   }
 
   async createProvider(data: Partial<Provider> & { name: string; baseUrl: string; apiKey: string; model: string }): Promise<Provider> {

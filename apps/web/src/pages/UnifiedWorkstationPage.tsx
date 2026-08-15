@@ -69,6 +69,7 @@ export function UnifiedWorkstationPage() {
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
 
   const [inputPrompt, setInputPrompt] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
@@ -421,7 +422,10 @@ export function UnifiedWorkstationPage() {
       await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
         method: "POST",
         headers: streamHeaders,
-        body: JSON.stringify({ content: userText }),
+        body: JSON.stringify({
+          content: userText,
+          reasoningEffort: reasoningEffort || undefined,
+        }),
         onmessage(msg) {
           try {
             const event = JSON.parse(msg.data);
@@ -571,6 +575,8 @@ export function UnifiedWorkstationPage() {
           queuedPrompts={queuedPrompts}
           onRemoveQueuedPrompt={handleRemoveQueuedPrompt}
           onSearchSection={() => setShowSearchSectionModal(true)}
+          reasoningEffort={reasoningEffort}
+          setReasoningEffort={setReasoningEffort}
         />
       </div>
 

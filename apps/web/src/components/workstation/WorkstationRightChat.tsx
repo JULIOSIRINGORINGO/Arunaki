@@ -50,7 +50,16 @@ interface WorkstationRightChatProps {
   queuedPrompts?: string[];
   onRemoveQueuedPrompt?: (index: number) => void;
   onSearchSection?: () => void;
+  reasoningEffort: string;
+  setReasoningEffort: (val: string) => void;
 }
+
+const EFFORT_OPTIONS = [
+  { value: "", label: "Natural" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
 
 function WorkstationRightChatComponent({
   collapsed,
@@ -69,6 +78,8 @@ function WorkstationRightChatComponent({
   queuedPrompts = [],
   onRemoveQueuedPrompt,
   onSearchSection,
+  reasoningEffort,
+  setReasoningEffort,
 }: WorkstationRightChatProps) {
   /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
   if (collapsed) {
@@ -421,9 +432,18 @@ function WorkstationRightChatComponent({
                 <Paperclip className="w-3.5 h-3.5" />
               </button>
               {activeWorkspace && (
-                <span className="text-[10px] bg-[#262626] text-[#E5E5E5] px-2 py-0.5 rounded-full font-medium border border-border-strong">
-                  Workspace Agent
-                </span>
+                <select
+                  value={reasoningEffort}
+                  onChange={(e) => setReasoningEffort(e.target.value)}
+                  className="text-[10px] bg-[#262626] text-[#E5E5E5] px-1.5 py-0.5 rounded-full font-medium border border-border-strong outline-none cursor-pointer"
+                  title="Reasoning Effort"
+                >
+                  {EFFORT_OPTIONS.map((opt) => (
+                    <option key={opt.value || "natural"} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 

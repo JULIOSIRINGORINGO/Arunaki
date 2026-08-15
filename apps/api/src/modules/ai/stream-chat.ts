@@ -84,6 +84,18 @@ export async function* streamWithFallback(
 
         // Network/timeout errors carry no status code → retry with backoff.
         if (statusCode === 0) {
+          if (err?.isTimeout) {
+            // A hang (no first token) won't heal with a retry — rotate
+            // immediately and cooldown the model so later rounds skip it.
+            lastError = `Timeout: ${err?.message || 'provider did not respond'}`;
+            if (provider.id !== 'env-fallback' && options.recordError) {
+              await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+            }
+            if (provider.id !== 'env-fallback' && options.setCooldown) {
+              await options.setCooldown(provider.id, 300).catch(() => {});
+            }
+            break;
+          }
           retryCount++;
           if (retryCount < MAX_RETRIES_PER_PROVIDER) {
             await jitteredBackoff(retryCount);

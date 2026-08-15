@@ -30,6 +30,7 @@ export interface AgentRunParams {
     content: string;
   }>;
   idempotencyKey?: string;
+  reasoningEffort?: string;
 }
 
 export interface AgentStreamEvent {
@@ -228,7 +229,7 @@ export class AgentRunnerService {
         messages.splice(todoIdx, 1);
       }
 
-      const aiResponse = await this.aiService.chat(messages, tools);
+      const aiResponse = await this.aiService.chat(messages, tools, { reasoningEffort: params.reasoningEffort });
       usage = aiResponse.usage;
       budget.consume(aiResponse.usage?.totalTokens || 0);
       if (budget.exceeded) {
@@ -546,7 +547,7 @@ export class AgentRunnerService {
         try {
           let streamedText = '';
           const streamedToolCalls: any[] = [];
-          for await (const chunk of this.aiService.chatStream(messages, tools)) {
+          for await (const chunk of this.aiService.chatStream(messages, tools, params.reasoningEffort)) {
             if (chunk.type === 'content' && chunk.content) {
               streamedText += chunk.content;
               onEvent({ type: 'text_delta', data: chunk.content });
@@ -568,7 +569,7 @@ export class AgentRunnerService {
           };
         } catch (err: any) {
           this.logger.warn(`chatStream failed, falling back to chat: ${err.message}`);
-          aiResponse = await this.aiService.chat(messages, tools);
+          aiResponse = await this.aiService.chat(messages, tools, { reasoningEffort: params.reasoningEffort });
           if (aiResponse.content) {
             onEvent({ type: 'text_delta', data: aiResponse.content });
           }

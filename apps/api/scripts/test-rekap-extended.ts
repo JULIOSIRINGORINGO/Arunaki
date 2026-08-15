@@ -131,13 +131,14 @@ async function runTest() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const event = JSON.parse(line.slice(6));
-        console.log(`[event:${event.type}]`, JSON.stringify(event.data)?.slice(0, 200));
+        const elapsed = Math.round((Date.now() - t0) / 100) / 10;
+        console.log(`[+${elapsed}s][event:${event.type}]`, JSON.stringify(event.data)?.slice(0, 160));
         if (event.type === 'tool_start') {
           const toolName = event.data?.toolName;
           if (toolName) calledTools.push(toolName);
-          console.log(`[tool_call] ${toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
+          console.log(`[+${elapsed}s][tool_call] ${toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
         }
-        if (event.type === 'llm' || event.type === 'message') console.log(`[llm]`, String(event.data).slice(0, 150));
+        if (event.type === 'llm' || event.type === 'message') console.log(`[+${elapsed}s][llm]`, String(event.data).slice(0, 150));
         if (event.type === 'error') error = event.data?.message || 'unknown';
         if (event.type === 'done') { sawDone = true; doneAt = Date.now(); }
       }

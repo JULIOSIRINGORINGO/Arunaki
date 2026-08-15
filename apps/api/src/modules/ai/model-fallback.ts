@@ -93,6 +93,27 @@ export async function runWithModelFallback(
 
         // Network/timeout errors carry no status code → retry with backoff.
         if (statusCode === 0) {
+          if (err?.isTimeout) {
+            // A hang (no first token) won't heal with a retry — rotate
+            // immediately and cooldown the model so later rounds skip it.
+            lastError = `Timeout: ${err?.message || 'provider did not respond'}`;
+            log.warn(`[${provider.name}] ${lastError}`);
+            attempts.push({
+              providerId: provider.id,
+              providerName: provider.name,
+              retry: retryCount,
+              rotation: rotationCount,
+              outcome: 'rotate',
+              error: lastError,
+            });
+            if (provider.id !== 'env-fallback' && options.recordError) {
+              await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+            }
+            if (provider.id !== 'env-fallback' && options.setCooldown) {
+              await options.setCooldown(provider.id, 300).catch(() => {});
+            }
+            break;
+          }
           log.warn(`[${provider.name}] Network error: ${lastError}`);
           attempts.push({
             providerId: provider.id,

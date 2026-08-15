@@ -6,13 +6,17 @@ export interface ModelCapability {
   contextWindow?: number;
   /**
    * Reasoning models (DeepSeek V4, etc.) emit long `reasoning_content`
-   * before any content/tool_calls. If set, the request sends
-   * `reasoning_effort` to bound how long the model "thinks", and
-   * scaleMaxTokens returns a headroom so thinking never starves the
-   * actual response. Without this, a 32000-token context yields
-   * max_tokens=1024 and a reasoning model exhausts it on thinking →
-   * finish_reason "length", content:null, tool_calls:0 → Arunaki's
-   * generic "Sorry, I am unable to provide an answer right now" fallback.
+   * before any content/tool_calls. `scaleMaxTokens` returns headroom so
+   * thinking never starves the actual response. Without this, a
+   * 32000-token context yields max_tokens=1024 and a reasoning model
+   * exhausts it on thinking → finish_reason "length", content:null,
+   * tool_calls:0 → Arunaki's generic fallback.
+   *
+   * NOTE: we deliberately do NOT force `reasoning_effort` (matching
+   * opencode's mature harness). Forcing it made every reasoning model
+   * "think" long before the first token, inflating TTFB and wall-clock.
+   * The model runs at its natural behavior; the timeout + rotate safety
+   * net in stream-chat.ts catches genuine hangs.
    */
   reasoningEffort?: 'low' | 'medium' | 'high';
 }
@@ -45,8 +49,8 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // Qwen
   'qwen3-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
 
-  // DeepSeek (Kenari)
-  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000, reasoningEffort: 'medium' },
+  // DeepSeek (Kenari) — reasoning model: natural effort, no forcing
+  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 32000 },
 
   // OpenRouter auto-router pseudonyms — keep full name to avoid collision with `free`/`auto`
   'openrouter/free': { supportsTools: true, supportsTemperature: true, contextWindow: 128000 },
@@ -103,7 +107,7 @@ export function getModelCapability(modelName: string): ModelCapability {
     supportsTemperature: true,
     supportsSystemPrompt: true,
     contextWindow: 128000,
-    ...(isReasoning ? { reasoningEffort: 'medium' as const } : {}),
+    ...(isReasoning ? { maxTokens: 8192 } : {}),
   };
 }
 

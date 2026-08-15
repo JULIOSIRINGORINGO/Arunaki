@@ -90,8 +90,9 @@ export function toSdkTools(tools: ToolDefinition[]): ToolSet {
 export function buildProviderOptions(
   provider: { type?: string; model?: string },
   model: string,
+  reasoningEffortOverride?: string,
 ): Record<string, any> | undefined {
-  const effort = getModelCapability(model).reasoningEffort;
+  const effort = reasoningEffortOverride || getModelCapability(model).reasoningEffort;
   if (!effort) return undefined;
   return provider.type === 'anthropic'
     ? { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } }
@@ -121,9 +122,21 @@ export async function makeSdkRequest(
 export async function *makeSdkRequestStream(
   provider: ProviderConfig,
   body: Record<string, any>,
+  options: { firstTokenTimeoutMs?: number; totalTimeoutMs?: number } = {},
 ): AsyncGenerator<StreamChunk> {
   const canUseTools = (body.tools?.length ?? 0) > 0;
   let done = false;
+
+  // Time to first token (TTFB) timeout catches a hung provider fast; the
+  // total timeout guards against a slow/stalled generation so a sluggish
+  // model gets rotated to a faster sibling model automatically.
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 20000;
+  const totalTimeoutMs = options.totalTimeoutMs ?? 60000;
+
+  const controller = new AbortController();
+  let gotFirstToken = false;
+  const firstTokenTimer = setTimeout(() => controller.abort(), firstTokenTimeoutMs);
+  const totalTimer = setTimeout(() => controller.abort(), totalTimeoutMs);
 
   const result = streamText({
     model: getSdkModel(provider),
@@ -131,35 +144,57 @@ export async function *makeSdkRequestStream(
     allowSystemInMessages: true,
     temperature: body.temperature ?? 0.7,
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
-    abortSignal: AbortSignal.timeout(45000),
+    abortSignal: controller.signal,
     ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
     ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
     maxRetries: 0,
   });
 
-  for await (const part of result.stream) {
-    if (part.type === 'text-delta') {
-      const content = (part as any).textDelta ?? (part as any).text;
-      if (content) yield { type: 'content', content };
-    } else if (part.type === 'tool-call') {
-      const rawArgs = (part as any).args ?? (part as any).input ?? {};
-      yield {
-        type: 'tool_call',
-        toolCall: {
-          id: (part as any).toolCallId,
-          name: (part as any).toolName,
-          arguments:
-            typeof rawArgs === 'string'
-              ? rawArgs
-              : JSON.stringify(rawArgs),
-        },
-      };
-    } else if (part.type === 'finish') {
-      done = true;
-      break;
-    } else if (part.type === 'error') {
-      throw (part as any).error;
+  try {
+    for await (const part of result.stream) {
+      if (!gotFirstToken) {
+        gotFirstToken = true;
+        clearTimeout(firstTokenTimer);
+      }
+      if (part.type === 'text-delta') {
+        const content = (part as any).textDelta ?? (part as any).text;
+        if (content) yield { type: 'content', content };
+      } else if (part.type === 'tool-call') {
+        const rawArgs = (part as any).args ?? (part as any).input ?? {};
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: (part as any).toolCallId,
+            name: (part as any).toolName,
+            arguments:
+              typeof rawArgs === 'string'
+                ? rawArgs
+                : JSON.stringify(rawArgs),
+          },
+        };
+      } else if (part.type === 'finish') {
+        done = true;
+        break;
+      } else if (part.type === 'error') {
+        throw (part as any).error;
+      }
     }
+  } catch (err: any) {
+    if (controller.signal.aborted) {
+      const timeoutErr = new Error(
+        gotFirstToken
+          ? `LLM stream stalled after ${totalTimeoutMs}ms`
+          : `LLM provider did not respond within ${firstTokenTimeoutMs}ms (timeout)`,
+      );
+      (timeoutErr as any).statusCode = 0;
+      (timeoutErr as any).isTimeout = true;
+      (timeoutErr as any).name = 'TimeoutError';
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(firstTokenTimer);
+    clearTimeout(totalTimer);
   }
 
   if (!done) {

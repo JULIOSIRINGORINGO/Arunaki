@@ -303,7 +303,7 @@ export class AiService {
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
-    options?: { preferredProviderId?: string },
+    options?: { preferredProviderId?: string; reasoningEffort?: string },
   ): Promise<AiResponse> {
     const trimmedMessages = messages;
 
@@ -333,7 +333,7 @@ export class AiService {
       messages: preparedMessages,
       temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: buildProviderOptions(provider, provider.model),
+      providerOptions: buildProviderOptions(provider, provider.model, options?.reasoningEffort),
     };
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
@@ -442,6 +442,7 @@ export class AiService {
   async *chatStream(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
+    reasoningEffort?: string,
   ): AsyncGenerator<StreamChunk> {
     const trimmedMessages = messages;
 
@@ -461,7 +462,7 @@ export class AiService {
       messages: preparedMessages,
       temperature: 0.7,
       maxOutputTokens: scaleMaxTokens(provider.model),
-      providerOptions: buildProviderOptions(provider, provider.model),
+      providerOptions: buildProviderOptions(provider, provider.model, reasoningEffort),
     };
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {

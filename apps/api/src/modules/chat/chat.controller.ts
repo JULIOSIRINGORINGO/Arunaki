@@ -342,7 +342,7 @@ export class ChatController {
   @Post(':id/stream')
   async streamMessage(
     @Param('id') id: string,
-    @Body() body: { content: string; idempotencyKey?: string },
+    @Body() body: { content: string; idempotencyKey?: string; reasoningEffort?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -425,6 +425,7 @@ export class ChatController {
             content: m.content,
           })),
           idempotencyKey: runId,
+          reasoningEffort: body.reasoningEffort,
         },
         (event) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
