@@ -272,8 +272,16 @@ export class ToolRegistryService {
 
     const { tool, timeoutMs } = registered;
 
+    // Alias normalization for common tool argument variations (path vs filePath vs filename)
+    const normalizedArgs = { ...args };
+    if (!normalizedArgs.filePath && normalizedArgs.path) normalizedArgs.filePath = normalizedArgs.path;
+    if (!normalizedArgs.path && normalizedArgs.filePath) normalizedArgs.path = normalizedArgs.filePath;
+    if (!normalizedArgs.filePath && normalizedArgs.filename) normalizedArgs.filePath = normalizedArgs.filename;
+    if (!normalizedArgs.filename && normalizedArgs.filePath) normalizedArgs.filename = normalizedArgs.filePath;
+    if (!normalizedArgs.query && normalizedArgs.q) normalizedArgs.query = normalizedArgs.q;
+
     const validation = this.validateArgs(
-      args,
+      normalizedArgs,
       tool.definition.function.parameters,
     );
     if (!validation.valid) {

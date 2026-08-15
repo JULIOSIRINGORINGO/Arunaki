@@ -43,6 +43,109 @@ export function hasExplicitDeleteIntent(goal: string, filename: string): boolean
     && goal.toLowerCase().includes(filename.toLowerCase());
 }
 
+export function extractLooseArguments(raw: string): Record<string, any> {
+  const result: Record<string, any> = {};
+  if (!raw || typeof raw !== 'string') return result;
+
+  try {
+    const stringPropRegex = /"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/gs;
+    let match;
+    while ((match = stringPropRegex.exec(raw)) !== null) {
+      result[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t');
+    }
+  } catch {}
+
+  // Fallback for multiline patchText / content / oldString / newString
+  if (!result.patchText) {
+    const patchMatch = /"patchText"\s*:\s*"([\s\S]*)/.exec(raw);
+    if (patchMatch) {
+      let text = patchMatch[1];
+      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
+      else if (text.endsWith('"')) text = text.slice(0, -1);
+      result.patchText = text;
+    }
+  }
+  if (!result.content) {
+    const contentMatch = /"content"\s*:\s*"([\s\S]*)/.exec(raw);
+    if (contentMatch) {
+      let text = contentMatch[1];
+      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
+      else if (text.endsWith('"')) text = text.slice(0, -1);
+      result.content = text;
+    }
+  }
+  if (!result.filePath && !result.path) {
+    const fileMatch = /"(?:filePath|path|filename)"\s*:\s*"([^"]+)"/.exec(raw);
+    if (fileMatch) result.filePath = fileMatch[1];
+  }
+  if (!result.oldString) {
+    const oldMatch = /"(?:oldString|old_str|find)"\s*:\s*"([\s\S]*?)(?:",\s*"(?:newString|new_str|replace)"|$)/.exec(raw);
+    if (oldMatch) {
+      result.oldString = oldMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    }
+  }
+  if (!result.newString) {
+    const newMatch = /"(?:newString|new_str|replace)"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/.exec(raw);
+    if (newMatch) {
+      result.newString = newMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+    }
+  }
+
+  return result;
+}
+
+export function extractInlineFunctionCalls(content: string): Array<{
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}> {
+  const result: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
+  if (!content || typeof content !== 'string') return result;
+
+  // Pattern 1: <function/tool_name...>BODY</function> or <function/tool_name[...]>{...}
+  const funcRegex = /<function\/([a-zA-Z0-9_-]+)(?:\[.*?\])?>?([\s\S]*?)(?:<\/function>|$)/g;
+  let match;
+  let idx = 1;
+  while ((match = funcRegex.exec(content)) !== null) {
+    const name = match[1];
+    let args = match[2].trim();
+    if (args.startsWith('>')) args = args.slice(1).trim();
+    if (!args.startsWith('{') && args.includes('{')) {
+      args = args.slice(args.indexOf('{')).trim();
+    }
+    if (args.endsWith('</function>')) {
+      args = args.slice(0, -'</function>'.length).trim();
+    }
+    if (name && args) {
+      result.push({
+        id: `call_inline_${Date.now()}_${idx++}`,
+        type: 'function',
+        function: { name, arguments: args },
+      });
+    }
+  }
+
+  // Pattern 2: <tool_call>{"name": "...", "arguments": ...}</tool_call>
+  const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g;
+  while ((match = toolCallRegex.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      if (parsed.name) {
+        result.push({
+          id: `call_inline_${Date.now()}_${idx++}`,
+          type: 'function',
+          function: {
+            name: parsed.name,
+            arguments: typeof parsed.arguments === 'string' ? parsed.arguments : JSON.stringify(parsed.arguments || {}),
+          },
+        });
+      }
+    } catch {}
+  }
+
+  return result;
+}
+
 export interface WorkspaceStreamEvent {
   type:
     | 'thinking'
@@ -943,6 +1046,16 @@ export class WorkspaceRunnerService {
             });
           }
 
+          if (aiResponse.toolCalls.length === 0 && aiResponse.content) {
+            const inlineCalls = extractInlineFunctionCalls(aiResponse.content);
+            if (inlineCalls.length > 0) {
+              aiResponse.toolCalls.push(...inlineCalls);
+              this.logger.log(
+                `Extracted ${inlineCalls.length} inline function calls from model response`,
+              );
+            }
+          }
+
           messages.push({
             role: 'assistant',
             content: aiResponse.content || null,
@@ -1017,15 +1130,19 @@ export class WorkspaceRunnerService {
                 args = JSON.parse(cleaned);
               }
             } catch {
-              args = {};
-              this.logger.warn(
-                `[tool-call] ${funcName} JSON.parse failed. Raw arguments: ${JSON.stringify(rawArgsRaw.slice(0, 300))}`,
-              );
+              args = extractLooseArguments(rawArgsRaw);
+              if (Object.keys(args).length > 0) {
+                this.logger.log(
+                  `[tool-call] ${funcName} recovered arguments using loose extraction: ${JSON.stringify(Object.keys(args))}`,
+                );
+              } else {
+                this.logger.warn(
+                  `[tool-call] ${funcName} JSON.parse failed and loose extraction found 0 keys. Raw arguments: ${JSON.stringify(rawArgsRaw.slice(0, 300))}`,
+                );
+              }
             }
             if (Object.keys(args).length === 0 && rawArgsRaw.length > 0 && rawArgsRaw !== '{}') {
-              this.logger.warn(
-                `[tool-call] ${funcName} parsed to EMPTY object. Raw arguments: ${JSON.stringify(rawArgsRaw.slice(0, 300))}`,
-              );
+              args = extractLooseArguments(rawArgsRaw);
             }
 
             if (!declaredTools.has(funcName)) {
@@ -1169,7 +1286,11 @@ export class WorkspaceRunnerService {
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
                 throw new Error('Content still contains raw @file references and cannot be saved.');
               }
-              const enrichedArgs = { ...args, workspaceId };
+              const enrichedArgs: Record<string, any> = { ...args, workspaceId };
+              if (!enrichedArgs.filePath && !enrichedArgs.path && !enrichedArgs.filename && mentionedFiles.size === 1) {
+                enrichedArgs.filePath = [...mentionedFiles][0];
+                enrichedArgs.path = [...mentionedFiles][0];
+              }
               result = await this.selfHealingService.executeWithIsolation(
                 funcName,
                 enrichedArgs,

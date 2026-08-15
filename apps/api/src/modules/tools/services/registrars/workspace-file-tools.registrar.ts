@@ -56,7 +56,7 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'write',
         displayName: 'Write File',
-        description: 'Creates a new file or overwrites an existing file inside the workspace.',
+        description: 'Creates a brand new file in the workspace. DO NOT use write to update existing files—use edit instead so templates and existing sections are preserved.',
         tags: ['workspace', 'file', 'write'],
         handler: async (args) =>
           services.writeToolService.execute({
@@ -74,7 +74,7 @@ export class WorkspaceFileToolsRegistrar {
             workspaceId: { type: 'string', description: 'Workspace ID' },
             filePath: { type: 'string', description: 'File path' },
             content: { type: 'string', description: 'File content' },
-            overwrite: { type: 'boolean', description: 'Set true ONLY if you intend to overwrite an existing file' },
+            overwrite: { type: 'boolean', description: 'Set true ONLY when creating a file that replaces an old file completely' },
           },
           required: ['workspaceId', 'filePath', 'content'],
         },
@@ -86,7 +86,7 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'edit',
         displayName: 'Edit File',
-        description: 'Applies surgical updates to a file using unified diff (@@ ... @@) or exact oldString/newString replacement.',
+        description: 'Modifies an existing file by surgical patch or replacing specific text (oldString -> newString). ALWAYS use edit for existing files to preserve template sections, unpaid notes, and standing balances.',
         tags: ['workspace', 'file', 'edit'],
         handler: async (args) =>
           services.editToolService.execute({
@@ -101,9 +101,9 @@ export class WorkspaceFileToolsRegistrar {
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
             filePath: { type: 'string', description: 'File path relative to workspace' },
-            patchText: { type: 'string', description: 'Optional patch text in @@ format' },
-            oldString: { type: 'string', description: 'Optional exact text to replace' },
-            newString: { type: 'string', description: 'Optional replacement text' },
+            patchText: { type: 'string', description: 'Optional unified diff patch text (@@ ... @@)' },
+            oldString: { type: 'string', description: 'Optional exact existing text snippet to replace' },
+            newString: { type: 'string', description: 'Optional new replacement text snippet' },
           },
           required: ['workspaceId', 'filePath'],
         },

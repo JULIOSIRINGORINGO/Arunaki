@@ -29,8 +29,68 @@ LISTRIK 250
 TOKO SEMBAKO 175
 BENSIN 100`;
 
+const INITIAL_TEMPLATE = `REKAPAN PENJUALAN 10 AGUSTUS 2026
+----
+PEMASUKAN :
+
+CK AGUSTINO = 1.876RB(BRI) [ 45 PCS ]✅
+CK ROLLER = 1.182RB(BCA) [ 17PCS ]✅
+
+NOTE BELUM BAYAR :
+CI LISOI ( 2-2-2024)= 830RB✅
+CI LISOI ( 8-02-2024)= 1.860RB✅
+CI LISOI (9-02-2024)= 450RB✅
+CI LISOI (10-02-2024) = 140RB
+SOLAR (26-2-2025) = 970RB✅
+
+TOTAL = 4.250RB 
+
+----
+
+SISA PEMBAYARAN :
+PAK ARNOL = 402RB
+
+
+TOTAL =  402RB
+
+----
+PENGELUARAN :
+
+----
+TOTAL PEMASUKAN: 3.058 RB
+TOTAL TF BRI : 1.876 RB
+TOTAL TF BNI :  RB
+TOTAL TF BCA : 1.182 RB
+TOTAL TF MANDIRI : RB
+TOTAL CASH : RB 
+TOTAL TOKPED :  RB
+TOTAL SHOOPE :RB
+TOTAL PENGELUARAN : 0 RB
+TOTAL UANG DI LACI: 3.058 RB 
+         
+---- 
+SELISIH : 3.058 RB
+----        	
+BELANJAAN KE LABURA:
+DTF         = 147 RB
+BAJU        = 2.544 RB 50 [PCS]
+ 
+Sablon      = 2 PCS
+ 
+TOTAL       = 2.691 RB
+=========================================
+TOTAL BELANJA KE BENDONG RP 98.000,-
+SISA DEPOSIT RP 14.207.640,-
+`;
+
 async function runTest() {
   console.log('🚀 Starting extended re-total test...');
+  
+  // Setup: Reset target file to original full template
+  const targetFilePath = path.join(WORKSPACE_ROOT, TARGET_FILE);
+  fs.writeFileSync(targetFilePath, INITIAL_TEMPLATE, 'utf-8');
+  console.log(`📋 Initialized ${TARGET_FILE} with full original template (${INITIAL_TEMPLATE.length} chars)`);
+
   console.log('Instruksi:', instruction);
 
   let sawDone = false;
@@ -50,7 +110,7 @@ async function runTest() {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'gpt-oss-120b' }),
+      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: 'deepseek-v4-flash' }),
       signal: abortController.signal,
     });
     if (!response.ok || !response.body) {
@@ -100,8 +160,8 @@ async function runTest() {
   }
 
   const content = fs.readFileSync(resultPath, 'utf-8');
-  console.log('\n📄 File preview (first 900 chars):');
-  console.log(content.slice(0, 900));
+  console.log('\n📄 File preview (first 1200 chars):');
+  console.log(content.slice(0, 1200));
 
   // Validation checks
   const now = new Date();
@@ -111,6 +171,7 @@ async function runTest() {
   const todayText = `${day} ${monthLong} ${year}`;
 
   const checks = [
+    // 1. Calculations & New Transactions
     { name: 'Tanggal diperbarui ke hari ini', pass: content.toUpperCase().includes(todayText) },
     { name: 'CK DEDI ada (300)', pass: content.includes('CK DEDI') && content.includes('300RB') },
     { name: 'CK OWEN ada (200)', pass: content.includes('CK OWEN') && content.includes('200RB') },
@@ -122,6 +183,13 @@ async function runTest() {
     { name: 'Total CASH = 150 RB', pass: /TOTAL CASH\s*[:=]\s*150\s*RB/i.test(content) },
     { name: 'Total Pengeluaran = 570 RB (7+3+5+30+250+175+100)', pass: /TOTAL PENGELUARAN\s*[:=]\s*570\s*RB/i.test(content) },
     { name: 'Pengeluaran LISTRIK 250 ada', pass: /LISTRIK[\s=:]*250/i.test(content) },
+
+    // 2. Template Structure Integrity (No Lost/Corrupted Sections)
+    { name: 'Template: SISA PEMBAYARAN (PAK ARNOL) tidak terhapus', pass: content.includes('SISA PEMBAYARAN') && content.includes('PAK ARNOL') },
+    { name: 'Template: BELANJAAN KE LABURA tidak terhapus', pass: content.includes('BELANJAAN KE LABURA') && content.includes('147 RB') && content.includes('2.544 RB') },
+    { name: 'Template: TOTAL BELANJA KE BENDONG tidak terhapus', pass: content.includes('TOTAL BELANJA KE BENDONG') && content.includes('98.000') },
+    { name: 'Template: SISA DEPOSIT RP 14.207.640,- tidak terhapus', pass: content.includes('SISA DEPOSIT') && content.includes('14.207.640') },
+    { name: 'Template: CI LISOI (10-02-2024) uncompleted note tetap terjaga', pass: content.includes('CI LISOI') && content.includes('10-02-2024') },
   ];
 
   let passed = 0;

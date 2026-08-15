@@ -131,6 +131,7 @@ export async function *makeSdkRequestStream(
     allowSystemInMessages: true,
     temperature: body.temperature ?? 0.7,
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
+    abortSignal: AbortSignal.timeout(45000),
     ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
     ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
     maxRetries: 0,
@@ -138,24 +139,26 @@ export async function *makeSdkRequestStream(
 
   for await (const part of result.stream) {
     if (part.type === 'text-delta') {
-      yield { type: 'content', content: part.text };
+      const content = (part as any).textDelta ?? (part as any).text;
+      if (content) yield { type: 'content', content };
     } else if (part.type === 'tool-call') {
+      const rawArgs = (part as any).args ?? (part as any).input ?? {};
       yield {
         type: 'tool_call',
         toolCall: {
-          id: part.toolCallId,
-          name: part.toolName,
+          id: (part as any).toolCallId,
+          name: (part as any).toolName,
           arguments:
-            typeof part.input === 'string'
-              ? part.input
-              : JSON.stringify(part.input ?? {}),
+            typeof rawArgs === 'string'
+              ? rawArgs
+              : JSON.stringify(rawArgs),
         },
       };
     } else if (part.type === 'finish') {
       done = true;
       break;
     } else if (part.type === 'error') {
-      throw part.error;
+      throw (part as any).error;
     }
   }
 

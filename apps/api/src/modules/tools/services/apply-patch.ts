@@ -63,37 +63,39 @@ export function parse(patchText: string): Hunk[] {
   let index = begin + 1;
   while (index < end) {
     const line = lines[index]!;
-    if (line.startsWith('*** Add File:')) {
-      const path = line.slice('*** Add File:'.length).trim();
-      if (!path) throw new PatchError('Invalid add file path');
+    const addMatch = /^\*\*\*\s*Add File:?\s*(.*)/i.exec(line);
+    if (addMatch) {
+      const path = addMatch[1].trim();
       const parsed = parseAdd(lines, index + 1);
       hunks.push({ type: 'add', path, contents: parsed.content });
       index = parsed.next;
       continue;
     }
-    if (line.startsWith('*** Delete File:')) {
-      const path = line.slice('*** Delete File:'.length).trim();
-      if (!path) throw new PatchError('Invalid delete file path');
+    const delMatch = /^\*\*\*\s*Delete File:?\s*(.*)/i.exec(line);
+    if (delMatch) {
+      const path = delMatch[1].trim();
       hunks.push({ type: 'delete', path });
       index++;
       continue;
     }
-    if (line.startsWith('*** Update File:')) {
-      const path = line.slice('*** Update File:'.length).trim();
-      if (!path) throw new PatchError('Invalid update file path');
+    const updateMatch = /^\*\*\*\s*Update File:?\s*(.*)/i.exec(line);
+    if (updateMatch) {
+      const path = updateMatch[1].trim();
       let next = index + 1;
       let movePath: string | undefined;
-      if (lines[next]?.startsWith('*** Move to:')) {
-        movePath = lines[next]!.slice('*** Move to:'.length).trim();
-        if (!movePath) throw new PatchError('Invalid move file path');
+      const moveMatch = lines[next] ? /^\*\*\*\s*Move to:?\s*(.*)/i.exec(lines[next]!) : null;
+      if (moveMatch) {
+        movePath = moveMatch[1].trim();
         next++;
       }
       const parsed = parseUpdate(lines, next);
-      if (parsed.chunks.length === 0) {
-        throw new PatchError(`Invalid update hunk for ${path}: expected at least one @@ chunk`);
-      }
       hunks.push({ type: 'update', path, movePath, chunks: parsed.chunks });
       index = parsed.next;
+      continue;
+    }
+    // Skip empty lines or stray markers inside patch block
+    if (!line.trim() || line.startsWith('---') || line.startsWith('+++')) {
+      index++;
       continue;
     }
     throw new PatchError(`Invalid patch line: ${line}`);
@@ -119,8 +121,8 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
     let changeContext: string | undefined;
     if (lines[index]!.startsWith('@@')) {
       let rawContext = lines[index]!.slice(2).trim() || undefined;
-      // If the context is just unified diff line numbers (e.g. -1,4 +1,4 @@), ignore it
-      if (rawContext && /^-?\d+(,\d+)?\s*\+\d+(,\d+)?\s*(@@)?$/.test(rawContext)) {
+      // If the context is just unified diff line numbers (e.g. -1,53 +1,67 @@), ignore it
+      if (rawContext && (/^-?\d+/i.test(rawContext) || /@@/.test(rawContext) || /^-\d+/i.test(rawContext))) {
         rawContext = undefined;
       }
       changeContext = rawContext;

@@ -181,7 +181,7 @@ export class EditToolService {
         return {
           status: 'error',
           data: {},
-          preview: `Patch failed to apply cleanly to "${hunk.path}": ${e.message}`,
+          preview: `Patch failed to apply cleanly to "${hunk.path}": ${e.message}\n\nCurrent content of "${hunk.path}" is:\n${originalContent}`,
           metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
           error: { code: 'PATCH_APPLY_FAILED', message: e.message },
         };
@@ -190,17 +190,21 @@ export class EditToolService {
 
     // Apply writes
     try {
+      let latestSnippet = '';
       for (const [targetPath, content] of newFileContents.entries()) {
         if (content === null) {
           await fsPromises.unlink(targetPath);
         } else {
           await fsPromises.writeFile(targetPath, content, 'utf-8');
+          if (!latestSnippet) {
+            latestSnippet = `\n\nUpdated content of ${path.basename(targetPath)}:\n${content.slice(0, 1500)}`;
+          }
         }
       }
       return {
         status: 'success',
         data: { files: filesModified, replacements },
-        preview: `Successfully applied patch to ${filesModified.length} file(s) with ${replacements} replacement(s).`,
+        preview: `Successfully applied patch to ${filesModified.length} file(s) with ${replacements} replacement(s).${latestSnippet}`,
         metadata: {
           toolName: 'edit',
           displayName: 'Edit File',
