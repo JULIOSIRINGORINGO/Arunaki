@@ -810,6 +810,16 @@ export class WorkspaceRunnerService {
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
 
+          // If on the final safety round, disable tools and force a text-only summary (OpenCode pattern)
+          const isFinalRound = round >= MAX_ROUNDS - 1;
+          const toolsToPass = isFinalRound ? undefined : tools;
+          if (isFinalRound) {
+            messages.push({
+              role: 'user',
+              content: 'CRITICAL - MAXIMUM STEPS REACHED: Tools are now disabled. Please provide a clear final text summary of all work completed so far and any remaining recommendations.',
+            });
+          }
+
           const roundStart = Date.now();
           let aiResponse: { content: string; toolCalls: any[]; usage?: any } = { content: '', toolCalls: [] };
           let isStreamed = false;
@@ -818,7 +828,7 @@ export class WorkspaceRunnerService {
             let streamedText = '';
             const streamedToolCalls: any[] = [];
 
-            for await (const chunk of this.aiService.chatStream(messages, tools)) {
+            for await (const chunk of this.aiService.chatStream(messages, toolsToPass)) {
               if (chunk.type === 'content' && chunk.content) {
                 streamedText += chunk.content;
                 onEvent({ type: 'text_delta', data: chunk.content });

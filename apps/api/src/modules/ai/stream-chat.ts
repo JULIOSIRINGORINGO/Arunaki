@@ -92,6 +92,19 @@ export async function* streamWithFallback(
           break;
         }
 
+        const isContextOverflow =
+          statusCode === 413 ||
+          /context_length_exceeded|maximum context length|prompt is too long|token limit/i.test(errorBody);
+
+        if (isContextOverflow && Array.isArray(options.body.messages) && options.body.messages.length > 2) {
+          options.body.messages = emergencyCompactMessages(options.body.messages);
+          retryCount++;
+          if (retryCount < MAX_RETRIES_PER_PROVIDER) {
+            await jitteredBackoff(retryCount);
+            continue;
+          }
+        }
+
         const classified = options.classifyError(statusCode, errorBody);
         lastError = classified.message || `HTTP ${statusCode}`;
 
@@ -136,6 +149,42 @@ export async function* streamWithFallback(
   }
 
   yield { type: 'error', error: `All providers exhausted. Last error: ${lastError || 'unknown'}` };
+}
+
+function emergencyCompactMessages(messages: any[]): any[] {
+  if (!Array.isArray(messages) || messages.length <= 2) return messages;
+
+  const system = messages.filter((m) => m.role === 'system');
+  const nonSystem = messages.filter((m) => m.role !== 'system');
+
+  // Prune all tool results to max 500 chars
+  const pruned = nonSystem.map((msg) => {
+    if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 500) {
+      return {
+        ...msg,
+        content: msg.content.substring(0, 500) + '\n[...truncated for context recovery]',
+      };
+    }
+    return msg;
+  });
+
+  // Keep first message + last 3 messages, summarizing the rest
+  if (pruned.length > 4) {
+    const head = pruned.slice(0, 1);
+    const tail = pruned.slice(-3);
+    const middleCount = pruned.length - 4;
+    return [
+      ...system,
+      ...head,
+      {
+        role: 'system',
+        content: `[Context Recovery: ${middleCount} earlier messages compacted to fit token limit]`,
+      },
+      ...tail,
+    ];
+  }
+
+  return [...system, ...pruned];
 }
 
 async function jitteredBackoff(retryCount: number): Promise<void> {
