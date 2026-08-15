@@ -86,22 +86,26 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'edit',
         displayName: 'Edit File',
-        description: 'Applies surgical patch updates to a file inside the workspace.',
+        description: 'Applies surgical updates to a file using unified diff (@@ ... @@) or exact oldString/newString replacement.',
         tags: ['workspace', 'file', 'edit'],
         handler: async (args) =>
           services.editToolService.execute({
             workspaceId: args.workspaceId,
             patchText: args.patchText,
             path: args.filePath || args.path || '',
+            oldString: args.oldString || args.old_str,
+            newString: args.newString || args.new_str,
           }),
         parameters: {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filePath: { type: 'string', description: 'File path' },
-            patchText: { type: 'string', description: 'Patch text' },
+            filePath: { type: 'string', description: 'File path relative to workspace' },
+            patchText: { type: 'string', description: 'Optional patch text in @@ format' },
+            oldString: { type: 'string', description: 'Optional exact text to replace' },
+            newString: { type: 'string', description: 'Optional replacement text' },
           },
-          required: ['workspaceId', 'filePath', 'patchText'],
+          required: ['workspaceId', 'filePath'],
         },
         timeoutMs: 15000,
       }),

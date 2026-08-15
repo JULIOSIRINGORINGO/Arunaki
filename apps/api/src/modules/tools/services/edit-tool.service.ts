@@ -17,19 +17,33 @@ export class EditToolService {
 
   async execute(params: {
     workspaceId: string;
-    patchText: string;
-    path: string;
+    patchText?: string;
+    path?: string;
+    filePath?: string;
+    oldString?: string;
+    newString?: string;
+    [key: string]: any;
   }): Promise<ToolResult> {
-    let { workspaceId, patchText, path: filePath } = params;
+    let { workspaceId, patchText, path: filePath, filePath: altPath } = params;
+    filePath = filePath || altPath || params.filename || '';
     const startTime = Date.now();
+
+    // Auto-convert oldString/newString to patch format if patchText is not provided
+    if (!patchText && (params.oldString || params.old_str || params.find)) {
+      const oldStr = params.oldString || params.old_str || params.find || '';
+      const newStr = params.newString || params.new_str || params.replace || '';
+      const oldLines = oldStr.split(/\r?\n/).map((l: string) => `-${l}`).join('\n');
+      const newLines = newStr.split(/\r?\n/).map((l: string) => `+${l}`).join('\n');
+      patchText = `@@\n${oldLines}\n${newLines}`;
+    }
 
     if (!patchText) {
       return {
         status: 'error',
         data: {},
-        preview: 'Missing required parameter: patchText',
+        preview: 'Missing required parameter: patchText (or oldString/newString)',
         metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-        error: { code: 'MISSING_PARAMS', message: 'patchText is required' },
+        error: { code: 'MISSING_PARAMS', message: 'patchText or oldString/newString is required' },
       };
     }
     
