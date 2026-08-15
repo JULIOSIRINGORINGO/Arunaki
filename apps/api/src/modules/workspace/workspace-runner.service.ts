@@ -927,6 +927,7 @@ export class WorkspaceRunnerService {
           const roundStart = Date.now();
           let aiResponse: { content: string; toolCalls: any[]; usage?: any } = { content: '', toolCalls: [] };
           let isStreamed = false;
+          let streamedReasoning = '';
 
           try {
             let streamedText = '';
@@ -937,6 +938,9 @@ export class WorkspaceRunnerService {
                 streamedText += chunk.content;
                 onEvent({ type: 'text_delta', data: chunk.content });
                 isStreamed = true;
+              } else if (chunk.type === 'reasoning' && chunk.content) {
+                streamedReasoning += chunk.content;
+                onEvent({ type: 'thinking', data: chunk.content });
               } else if (chunk.type === 'tool_call' && chunk.toolCall) {
                 streamedToolCalls.push({
                   id: chunk.toolCall.id,
@@ -966,37 +970,40 @@ export class WorkspaceRunnerService {
           // Initialize toolCalls if undefined (some providers return undefined instead of empty array)
           aiResponse.toolCalls = aiResponse.toolCalls || [];
 
-          // Fallback parser for leaked raw tool syntax (e.g., DeepSeek v4 via non-native API or XML leaks)
-          if (aiResponse.toolCalls.length === 0 && aiResponse.content) {
-            const repaired = repairToolCalls(aiResponse.content);
-            if (repaired.length > 0) {
-              this.logger.log(`[WorkspaceRunner] Repaired ${repaired.length} tool call(s) from streamed text`);
-              aiResponse.toolCalls = repaired;
-              aiResponse.content = aiResponse.content
-                .replace(/```(?:json|tool|function)?\s*\{[\s\S]*?\}\s*```/gi, '')
-                .replace(/<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
-                .replace(/<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
-                .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
-                .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
-                .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
-                .replace(/(?:Action|Tool|Function)\s*:\s*[a-zA-Z0-9_-]+\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*\{[\s\S]*?\}/gi, '')
-                .trim();
-            } else if (aiResponse.content.includes('<|tool_call>')) {
-              const toolCallMatch = aiResponse.content.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);
-              if (toolCallMatch) {
-                const funcName = toolCallMatch[1];
-                let rawArgs = toolCallMatch[2].trim();
-                rawArgs = rawArgs.replace(/<\|">/g, '"');
-                rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
-                aiResponse.toolCalls.push({
-                  id: `call_fallback_${Date.now()}`,
-                  type: 'function',
-                  function: {
-                    name: funcName,
-                    arguments: rawArgs,
-                  }
-                });
-                aiResponse.content = aiResponse.content.replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '').trim();
+          // Fallback parser for leaked raw tool syntax or reasoning tool calls (e.g., GPT-OSS-120B / DeepSeek v4)
+          if (aiResponse.toolCalls.length === 0) {
+            const rawTextToSearch = aiResponse.content || streamedReasoning;
+            if (rawTextToSearch) {
+              const repaired = repairToolCalls(rawTextToSearch);
+              if (repaired.length > 0) {
+                this.logger.log(`[WorkspaceRunner] Repaired ${repaired.length} tool call(s) from streamed text/reasoning`);
+                aiResponse.toolCalls = repaired;
+                aiResponse.content = (aiResponse.content || '')
+                  .replace(/```(?:json|tool|function)?\s*\{[\s\S]*?\}\s*```/gi, '')
+                  .replace(/<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
+                  .replace(/<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
+                  .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
+                  .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
+                  .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
+                  .replace(/(?:Action|Tool|Function)\s*:\s*[a-zA-Z0-9_-]+\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*\{[\s\S]*?\}/gi, '')
+                  .trim();
+              } else if (rawTextToSearch.includes('<|tool_call>')) {
+                const toolCallMatch = rawTextToSearch.match(/<\|tool_call>call:([a-zA-Z0-9_]+)(.*?)(?:<tool_call\|>|<\|tool_call\|>|$)/s);
+                if (toolCallMatch) {
+                  const funcName = toolCallMatch[1];
+                  let rawArgs = toolCallMatch[2].trim();
+                  rawArgs = rawArgs.replace(/<\|">/g, '"');
+                  rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+                  aiResponse.toolCalls.push({
+                    id: `call_fallback_${Date.now()}`,
+                    type: 'function',
+                    function: {
+                      name: funcName,
+                      arguments: rawArgs,
+                    },
+                  });
+                  aiResponse.content = (aiResponse.content || '').replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '').trim();
+                }
               }
             }
           }

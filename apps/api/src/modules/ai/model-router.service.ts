@@ -336,9 +336,15 @@ export class ModelRouterService {
       additions.push('- Gemini should be concise and direct. Avoid repeating tool descriptions.');
     } else {
       // Open-weights, OpenAI-compatible, GPT-OSS, Qwen, DeepSeek, Llama & generic models
-      additions.push('\nSTRICT TOOL CALLING FORMAT:');
+      additions.push('\nSTRICT TOOL CALLING & EDITING RULES:');
       additions.push('- When a tool is needed, invoke provider-native tool calls or output ONLY a valid JSON object matching:');
       additions.push('  {"name": "<tool_name>", "arguments": { "<param>": "<value>" }}');
+      additions.push('- For `edit` tool: specify `oldString` and `newString` (or `patchText`). When updating daily reports/recaps:');
+      additions.push('  * Update the date header to today\'s date.');
+      additions.push('  * Replace previous day\'s transactions with the new day\'s transactions under PEMASUKAN.');
+      additions.push('  * Insert all individual expense lines under the PENGELUARAN section.');
+      additions.push('  * Recalculate and update all subtotal, total, and selisih lines accurately.');
+      additions.push('  * Keep all untouched template sections (deposit notes, uncompleted payments, vendor sections) intact.');
       additions.push('- Output valid JSON with proper double quotes and no trailing commas.');
       additions.push('- Do NOT output conversational filler or preamble before or after tool calls.');
     }

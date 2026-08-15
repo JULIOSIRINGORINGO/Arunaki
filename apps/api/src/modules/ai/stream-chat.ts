@@ -1,7 +1,7 @@
 import { ProviderConfig } from '../provider/provider.service.js';
 
 export interface StreamChunk {
-  type: 'content' | 'tool_call' | 'done' | 'error';
+  type: 'content' | 'reasoning' | 'tool_call' | 'done' | 'error';
   content?: string;
   toolCall?: {
     id: string;

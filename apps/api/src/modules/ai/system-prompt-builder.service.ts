@@ -114,7 +114,7 @@ export class SystemPromptBuilderService {
 
   buildToolListSection(toolList: string): string {
     if (!toolList || toolList === 'No tools available.') return '';
-    return `## Available Tools\n${toolList}\n`;
+    return `## Available Tools (Execute via tool calling or JSON schema)\n${toolList}\n`;
   }
 
   buildToolListSummary(tools?: any[]): string {
@@ -126,7 +126,7 @@ export class SystemPromptBuilderService {
     if (!caps || caps.length === 0) {
       return '';
     }
-    return caps.map(c => `\`${c.name}\``).join(', ');
+    return caps.map(c => `- \`${c.name}\`: ${c.description || ''}`).join('\n');
   }
 
   checkPromptBudget(prompt: string, contextLabel: string): void {

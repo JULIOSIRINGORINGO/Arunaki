@@ -12,8 +12,8 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // OpenAI & GPT-OSS
   'gpt-4o': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'gpt-4o-mini': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'gpt-oss-20b': { supportsTools: false, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
+  'gpt-oss-120b': { supportsTools: false, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
 
   // Google Gemini & Gemma
   'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },

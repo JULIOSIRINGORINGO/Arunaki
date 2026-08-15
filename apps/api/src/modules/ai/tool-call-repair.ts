@@ -29,7 +29,7 @@ const SLASH_FUNCTION_TAG_RE = /<\s*function\/([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s
 const COLON_FUNCTION_TAG_RE = /<\s*function:([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
 const ACTION_INPUT_RE = /(?:Action|Tool|Function)\s*:\s*([a-zA-Z0-9_-]+)\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*(\{[\s\S]*?\})/gi;
 
-/** Repair malformed JSON: strip code fences, collapse line breaks in strings, fix trailing commas & quotes. */
+/** Repair malformed JSON: strip code fences, fix trailing commas, auto-close unclosed strings and braces. */
 export function repairJson(raw: string): string {
   if (!raw) return '';
   let s = raw.trim();
@@ -39,8 +39,43 @@ export function repairJson(raw: string): string {
   s = s.replace(/^\s*(?:tool_call|tool_calls?|function|call|action)\s*[:=]\s*/i, '');
   // Remove trailing commas before } or ]
   s = s.replace(/,(\s*[}\]])/g, '$1');
-  // Collapse literal newlines inside string values
-  s = s.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"\s*\n\s*(?=[,}\]])/g, '"$1"');
+
+  // Auto-close unclosed strings and braces (for truncated streams)
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === '{') stack.push('}');
+      else if (ch === '[') stack.push(']');
+      else if (ch === '}' || ch === ']') {
+        if (stack.length > 0 && stack[stack.length - 1] === ch) {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  if (inString) {
+    s += '"';
+  }
+  while (stack.length > 0) {
+    s += stack.pop();
+  }
+
   return s.trim();
 }
 

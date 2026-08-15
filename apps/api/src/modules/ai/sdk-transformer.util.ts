@@ -108,9 +108,14 @@ export function buildProviderOptions(
 ): Record<string, any> | undefined {
   const effort = reasoningEffortOverride || getModelCapability(model).reasoningEffort;
   if (!effort) return undefined;
-  return provider.type === 'anthropic'
-    ? { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } }
-    : { openai: { reasoningEffort: effort } };
+  if (provider.type === 'anthropic') {
+    return { anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } } };
+  }
+  const norm = (model || '').toLowerCase();
+  if (norm.startsWith('o1') || norm.startsWith('o3')) {
+    return { openai: { reasoningEffort: effort } };
+  }
+  return undefined;
 }
 
 export async function makeSdkRequest(
@@ -145,7 +150,7 @@ export async function *makeSdkRequestStream(
   // Time to first token (TTFB) timeout catches a hung provider fast; the
   // total timeout guards against a slow/stalled generation so a sluggish
   // model gets rotated to a faster sibling model automatically.
-  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 35000;
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 65000;
   const totalTimeoutMs = options.totalTimeoutMs ?? 120000;
 
   console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);
@@ -184,8 +189,11 @@ export async function *makeSdkRequestStream(
         clearTimeout(firstTokenTimer);
       }
       if (part.type === 'text-delta') {
-        const content = (part as any).textDelta ?? (part as any).text;
+        const content = (part as any).text ?? (part as any).textDelta;
         if (content) yield { type: 'content', content };
+      } else if ((part as any).type === 'reasoning' || (part as any).type === 'reasoning-delta') {
+        const reasoning = (part as any).text ?? (part as any).reasoningDelta ?? (part as any).textDelta;
+        if (reasoning) yield { type: 'reasoning', content: reasoning };
       } else if (part.type === 'tool-input-start') {
         pendingToolCalls.set(part.id, {
           id: part.id,
