@@ -19,6 +19,8 @@ import { SourceModule } from '../source/source.module.js';
 import { ProviderModule } from '../provider/provider.module.js';
 import { ChatModule } from '../chat/chat.module.js';
 
+import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
+
 @Module({
   imports: [
     PrismaModule,
@@ -42,7 +44,13 @@ import { ChatModule } from '../chat/chat.module.js';
     WorkspaceRepository,
     WorkspaceInitService,
     WorkspaceRunnerService,
+    WorkspacePromptBuilderService,
   ],
-  exports: [WorkspaceService, WorkspaceInitService, WorkspaceRunnerService],
+  exports: [
+    WorkspaceService,
+    WorkspaceInitService,
+    WorkspaceRunnerService,
+    WorkspacePromptBuilderService,
+  ],
 })
 export class WorkspaceModule {}

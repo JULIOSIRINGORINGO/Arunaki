@@ -1440,3 +1440,26 @@ apps/web/src/
 - [x] TypeScript build completed with 0 errors (`npm run build -w apps/api`).
 - [x] Verified autonomous nudge loop triggers and recovers empty/conversational turns without prematurely aborting the stream.
 
+---
+
+## Phase 48: Monolithic Codebase Modularization & Maintainability Refactoring ✅ DONE
+
+**Goal:** Refactor massive monolithic files in backend and frontend to enhance modularity, testability, and long-term maintainability without breaking any existing features.
+
+### 48.1 Backend Modularization (`apps/api`)
+- [x] Extracted `tool-call-extractor.util.ts` containing pure regex and string parsing functions (`extractMentionedFilenames`, `hasExplicitDeleteIntent`, `extractLooseArguments`, `extractInlineFunctionCalls`).
+- [x] Extracted `WorkspacePromptBuilderService` (`workspace-prompt-builder.service.ts`) containing prompt preparation, physical file scanning, tool routing, and context assembly.
+- [x] Registered `WorkspacePromptBuilderService` into `WorkspaceModule` providers and exports.
+- [x] Refactored `WorkspaceRunnerService` to delegate parsing and context preparation to the new service and utility.
+- [x] Verified backend compilation: `npx nest build` succeeds with 0 errors.
+
+### 48.2 Frontend Modularization (`apps/web`)
+- [x] Extracted `ProviderCard.tsx` subcomponent for clean rendering of individual provider catalog cards.
+- [x] Extracted `ProviderForm.tsx` subcomponent for provider creation, editing, connection testing, and model pool selection.
+- [x] Refactored `ModelProviderSettings.tsx` to consume `ProviderCard` and `ProviderForm`.
+- [x] Verified frontend compilation: `npx tsc --noEmit` (0 errors) and `npm run build` succeeds (built in 56.75s).
+
+### 48.3 Verification & Benchmark
+- [x] Ran autonomous benchmark test `scripts/test-rekap-extended.ts` after refactoring: finished in 29.5s with 15/17 automated assertions passed.
+
+

@@ -35,122 +35,27 @@ import * as path from 'path';
 // already touched is the model double-checking, not doing new work. For slow
 // models (gpt-oss, qwen, ...) each verification round costs 30-160s — enough
 // to blow the total timeout. Once the run drags past this threshold with no
+import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
+import {
+  extractMentionedFilenames,
+  hasExplicitDeleteIntent,
+  extractLooseArguments,
+  extractInlineFunctionCalls,
+} from './utils/tool-call-extractor.util.js';
+
+export {
+  extractMentionedFilenames,
+  hasExplicitDeleteIntent,
+  extractLooseArguments,
+  extractInlineFunctionCalls,
+};
+
+// After ≥1 successful mutation, a subsequent round that only re-reads files
+// already touched is the model double-checking, not doing new work. For slow
+// models (gpt-oss, qwen, ...) each verification round costs 30-160s — enough
+// to blow the total timeout. Once the run drags past this threshold with no
 // new mutation, we conclude instead of letting it thrash.
 const VERIFY_TAIL_MS = 90_000;
-
-export function extractMentionedFilenames(text: string): string[] {
-  return [...text.matchAll(/@\[?([^\n@\]]+?\.[A-Za-z0-9]{1,10})\]?(?=\s|$|[.,;:!?])/g)]
-    .map((match) => match[1].trim().replace(/^\[|\]$/g, ''))
-    .filter(Boolean);
-}
-
-export function hasExplicitDeleteIntent(goal: string, filename: string): boolean {
-  return /\b(hapus|hapuskan|delete|remove)\b/i.test(goal)
-    && goal.toLowerCase().includes(filename.toLowerCase());
-}
-
-export function extractLooseArguments(raw: string): Record<string, any> {
-  const result: Record<string, any> = {};
-  if (!raw || typeof raw !== 'string') return result;
-
-  try {
-    const stringPropRegex = /"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/gs;
-    let match;
-    while ((match = stringPropRegex.exec(raw)) !== null) {
-      result[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t');
-    }
-  } catch {}
-
-  // Fallback for multiline patchText / content / oldString / newString
-  if (!result.patchText) {
-    const patchMatch = /"patchText"\s*:\s*"([\s\S]*)/.exec(raw);
-    if (patchMatch) {
-      let text = patchMatch[1];
-      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
-      else if (text.endsWith('"')) text = text.slice(0, -1);
-      result.patchText = text;
-    }
-  }
-  if (!result.content) {
-    const contentMatch = /"content"\s*:\s*"([\s\S]*)/.exec(raw);
-    if (contentMatch) {
-      let text = contentMatch[1];
-      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
-      else if (text.endsWith('"')) text = text.slice(0, -1);
-      result.content = text;
-    }
-  }
-  if (!result.filePath && !result.path) {
-    const fileMatch = /"(?:filePath|path|filename)"\s*:\s*"([^"]+)"/.exec(raw);
-    if (fileMatch) result.filePath = fileMatch[1];
-  }
-  if (!result.oldString) {
-    const oldMatch = /"(?:oldString|old_str|find)"\s*:\s*"([\s\S]*?)(?:",\s*"(?:newString|new_str|replace)"|$)/.exec(raw);
-    if (oldMatch) {
-      result.oldString = oldMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-    }
-  }
-  if (!result.newString) {
-    const newMatch = /"(?:newString|new_str|replace)"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/.exec(raw);
-    if (newMatch) {
-      result.newString = newMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
-    }
-  }
-
-  return result;
-}
-
-export function extractInlineFunctionCalls(content: string): Array<{
-  id: string;
-  type: 'function';
-  function: { name: string; arguments: string };
-}> {
-  const result: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
-  if (!content || typeof content !== 'string') return result;
-
-  // Pattern 1: <function/tool_name...>BODY</function> or <function/tool_name[...]>{...}
-  const funcRegex = /<function\/([a-zA-Z0-9_-]+)(?:\[.*?\])?>?([\s\S]*?)(?:<\/function>|$)/g;
-  let match;
-  let idx = 1;
-  while ((match = funcRegex.exec(content)) !== null) {
-    const name = match[1];
-    let args = match[2].trim();
-    if (args.startsWith('>')) args = args.slice(1).trim();
-    if (!args.startsWith('{') && args.includes('{')) {
-      args = args.slice(args.indexOf('{')).trim();
-    }
-    if (args.endsWith('</function>')) {
-      args = args.slice(0, -'</function>'.length).trim();
-    }
-    if (name && args) {
-      result.push({
-        id: `call_inline_${Date.now()}_${idx++}`,
-        type: 'function',
-        function: { name, arguments: args },
-      });
-    }
-  }
-
-  // Pattern 2: <tool_call>{"name": "...", "arguments": ...}</tool_call>
-  const toolCallRegex = /<tool_call>([\s\S]*?)<\/tool_call>/g;
-  while ((match = toolCallRegex.exec(content)) !== null) {
-    try {
-      const parsed = JSON.parse(match[1].trim());
-      if (parsed.name) {
-        result.push({
-          id: `call_inline_${Date.now()}_${idx++}`,
-          type: 'function',
-          function: {
-            name: parsed.name,
-            arguments: typeof parsed.arguments === 'string' ? parsed.arguments : JSON.stringify(parsed.arguments || {}),
-          },
-        });
-      }
-    } catch {}
-  }
-
-  return result;
-}
 
 export interface WorkspaceStreamEvent {
   type:
@@ -236,30 +141,17 @@ export class WorkspaceRunnerService {
     @Inject(forwardRef(() => EventEmitter2)) private readonly eventEmitter: EventEmitter2,
     @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore: TodoStoreService,
     @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
+    @Inject(forwardRef(() => WorkspacePromptBuilderService)) private readonly promptBuilder: WorkspacePromptBuilderService,
   ) {}
-  private async readMentionedFiles(workspaceId: string, goal: string): Promise<Map<string, string>> {
-    const contents = new Map<string, string>();
-    for (const filename of extractMentionedFilenames(goal)) {
-      try {
-        const finalResult = await this.selfHealingService.executeWithIsolation(
-          'read',
-          { workspaceId, filePath: filename },
-          workspaceId,
-        );
-        if (finalResult.status !== 'success') {
-          this.logger.warn(`Pre-read for mentioned file "${filename}" returned status: ${finalResult.preview}`);
-          continue;
-        }
-        const text = (finalResult.data as Record<string, unknown>)?.content || (finalResult.data as Record<string, unknown>)?.text;
-        const content = typeof text === 'string'
-          ? text.slice(0, 12000)
-          : ToolResultFormatter.formatForLlm('read', finalResult);
-        contents.set(filename, content);
-      } catch (err: any) {
-        this.logger.warn(`Failed to pre-read mentioned file "${filename}": ${err.message}`);
-      }
-    }
-    return contents;
+
+  /** Delegate physical sync to WorkspacePromptBuilderService */
+  async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
+    return this.promptBuilder.syncWorkspacePhysicalFiles(workspaceId);
+  }
+
+  /** Delegate context building to WorkspacePromptBuilderService */
+  async buildWorkspaceContext(workspaceId: string): Promise<string> {
+    return this.promptBuilder.buildWorkspaceContext(workspaceId, this.modifiedFiles.get(workspaceId) || []);
   }
 
   /**
@@ -515,186 +407,6 @@ export class WorkspaceRunnerService {
     });
   }
 
-  private readonly lastSyncedMap = new Map<string, number>();
-
-  async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
-    const lastSynced = this.lastSyncedMap.get(workspaceId) || 0;
-    if (Date.now() - lastSynced < 15000) {
-      return;
-    }
-    this.lastSyncedMap.set(workspaceId, Date.now());
-
-    try {
-      const workspace = await this.prisma.workspace.findUnique({
-        where: { id: workspaceId },
-        select: { rootPath: true },
-      });
-
-      if (!workspace?.rootPath) return;
-
-      const fsPromises = await import('fs/promises');
-      let entries: any[] = [];
-      try {
-        entries = await fsPromises.readdir(workspace.rootPath, { withFileTypes: true });
-      } catch {
-        return;
-      }
-
-      let source = await this.prisma.source.findFirst({
-        where: { workspaceId },
-      });
-      if (!source) {
-        source = await this.prisma.source.create({
-          data: {
-            workspaceId,
-            name: 'Local Directory',
-            type: 'local',
-            status: 'ready',
-          },
-        });
-      }
-
-      const existingDbFiles = await this.fileService.findByWorkspaceId(workspaceId);
-      const existingPaths = new Set(existingDbFiles.map((f) => f.path.toLowerCase()));
-      const existingNames = new Set(existingDbFiles.map((f) => f.name.toLowerCase()));
-
-      for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-        const fullPath = path.join(workspace.rootPath, entry.name);
-        if (entry.isFile()) {
-          const lowerPath = fullPath.toLowerCase();
-          const lowerName = entry.name.toLowerCase();
-          if (!existingPaths.has(lowerPath) && !existingNames.has(lowerName)) {
-            try {
-              const stat = await fsPromises.stat(fullPath);
-              const ext = path.extname(entry.name).toLowerCase().replace('.', '');
-              await this.fileService.createFile({
-                sourceId: source.id,
-                name: entry.name,
-                path: fullPath,
-                type: ext || 'file',
-                size: stat.size,
-              });
-              this.logger.log(`Synced new physical file to DB: ${entry.name}`);
-            } catch {
-              // ignore
-            }
-          }
-        }
-      }
-    } catch (err: any) {
-      this.logger.debug(`syncWorkspacePhysicalFiles failed: ${err.message}`);
-    }
-  }
-
-  /**
-   * Tool Router — send only the relevant tool subset, not the entire registry.
-   * Reduces LLM load: smaller payload + the agent is not confused about which
-   * tool to pick. The LLM remains free to choose from the given subset.
-   *
-   * Always include core workspace file ops; add more based on goal keywords.
-   * Does not decide the ACTION — only narrows the tool candidates.
-   */
-  private selectToolsForGoal(
-    goal: string,
-    allTools: ToolDefinition[],
-  ): ToolDefinition[] {
-    const gClean = goal.replace(/@\[?[^\n@\]]+\.[A-Za-z0-9]{1,10}\]?/g, '').toLowerCase();
-    const g = goal.toLowerCase();
-    const byName = (n: string) => allTools.find((t) => t.function.name === n);
-    const wanted = new Set<string>();
-    const add = (names: string[]) => names.forEach((n) => wanted.add(n));
-
-    // Catalog meta-tools & core workspace file tools — always available.
-    add([
-      'read',
-      'write',
-      'edit',
-      'search_workspace',
-      'list',
-    ]);
-
-    if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(gClean) || /@[^\s@]+\.[A-Za-z0-9]+/.test(goal)) {
-      add(['write', 'edit', 'read']);
-    }
-
-    // Keep all file tools available (read, write, edit) so model can perform
-    // surgical patch edits or full writes as needed.
-
-    // Goal keywords → add relevant tools (using gClean so @ file names don't trigger the wrong tool).
-    if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
-    if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
-      add(['doc_reconcile', 'doc_cross_reference']);
-    }
-    if (/(?:export|generate_export)/.test(g)) add(['generate_export']);
-    if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
-    if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
-    if (/(?:buka|desktop|word|excel|powerpoint|ppt|office|aplikasi|mengetik)/.test(g)) {
-      add([
-        'desktop_open_file',
-        'desktop_open_excel',
-        'desktop_open_word',
-        'desktop_open_ppt',
-        'desktop_excel_edit',
-        'desktop_word_type',
-        'desktop_word_format',
-        'desktop_send_keys',
-        'desktop_screenshot',
-      ]);
-    }
-    if (/(?:browser|website|web|google|internet|halaman)/.test(g)) {
-      add(['browser_navigate', 'browser_get_content', 'browser_type', 'browser_click', 'browser_screenshot']);
-    }
-    if (/(?:ingat|memory|recall|memori|pengalaman)/.test(g)) {
-      add(['list_memories', 'search_memories', 'save_memory']);
-    }
-    if (/(?:skill|workflow|prosedur|template kerja)/.test(g)) {
-      add(['list_skills', 'view_skill', 'search_skills']);
-    }
-    if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
-
-    // URL/web search: only when the user explicitly asks to search the internet.
-    if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
-
-    return allTools.filter((t) => wanted.has(t.function.name));
-  }
-
-  async buildWorkspaceContext(workspaceId: string): Promise<string> {
-    try {
-      let businessType = 'generic';
-      let rootPath: string | null = null;
-      try {
-        const workspace = await this.prisma.workspace.findUnique({
-          where: { id: workspaceId },
-          select: { businessType: true, rootPath: true },
-        });
-        if (workspace?.businessType) {
-          businessType = workspace.businessType;
-        }
-        if (workspace?.rootPath) {
-          rootPath = workspace.rootPath;
-        }
-      } catch {
-        // fallback to generic
-      }
-
-      let context = `Workspace Root: ${rootPath || 'N/A'}`;
-      if (businessType && businessType !== 'generic') {
-        context += ` (Domain: ${businessType})`;
-      }
-
-      const modified = this.modifiedFiles.get(workspaceId) || [];
-      if (modified.length > 0) {
-        const recent = modified.slice(-3);
-        context += `\nRecently modified: ${recent.map((f) => f.filename).join(', ')}`;
-      }
-
-      return context;
-    } catch {
-      return '';
-    }
-  }
-
   async runWorkspaceAgentStream(
     params: WorkspaceRunParams,
     onEvent: (event: WorkspaceStreamEvent) => void,
@@ -733,14 +445,13 @@ export class WorkspaceRunnerService {
     };
     this.activeRuns.set(workspaceId, runState);
 
-   try {
-       this.setState(runState, 'running', onEvent);
-       this.setPhase(runState, 'scanning', onEvent);
-         this.modifiedFiles.delete(workspaceId);
-         this.readFiles.delete(workspaceId);
-          this.mentionedFiles.delete(workspaceId);
-          this.todoStore.clear(workspaceId);
-
+    try {
+      this.setState(runState, 'running', onEvent);
+      this.setPhase(runState, 'scanning', onEvent);
+      this.modifiedFiles.delete(workspaceId);
+      this.readFiles.delete(workspaceId);
+      this.mentionedFiles.delete(workspaceId);
+      this.todoStore.clear(workspaceId);
 
       // Emit agent started event
       this.eventEmitter.emit('workspace.agent.started', {
@@ -754,114 +465,37 @@ export class WorkspaceRunnerService {
         data: 'Reading workspace context and processing request...',
       });
 
-      const workspaceContext = await this.buildWorkspaceContext(workspaceId);
-
-      // Smart recall: prefetch relevant memory and past conversations
-      let workspaceRootPath = '';
-      let recallContext = '';
-      try {
-        const ws = await this.prisma.workspace.findUnique({
-          where: { id: workspaceId },
-          select: { businessType: true, rootPath: true },
-        });
-        workspaceRootPath = ws?.rootPath || '';
-        recallContext = await this.smartRecallService.recall(
-          userGoal,
-          workspaceId,
-          ws?.businessType || 'generic',
-        );
-        if (recallContext) {
-          this.logger.log(
-            `Smart recall: found ${recallContext.length} chars of relevant context`,
-          );
-        }
-      } catch (err: any) {
-        this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
-      }
-
-      // Tool Router: send only the relevant tools, not the entire registry.
-      // Reduces LLM load (smaller payload, agent not confused about which
-      // tool to pick). The LLM remains free to choose from the relevant subset.
-      const allTools = this.toolRegistryService.getToolDefinitions();
-      const tools = this.selectToolsForGoal(userGoal, allTools);
-
-      // Resolve the active model's context budget once per run so compaction
-      // and the context engine scale to the real window (e.g. 32K for
-      // deepseek-v4-flash) instead of a fixed 128K default.
-      const modelCtx = await this.aiService.getActiveModelContext();
-
-      const systemPrompt = this.aiService.getSystemPrompt(
-        'workspace',
-        workspaceContext,
-        undefined,
-        historyMessages,
-        tools
-      );
-
-      const history = (historyMessages || []).map((message) => ({
-        role: message.role,
-        content: message.content,
-      })) as ChatMessage[];
-      const context = await this.contextRegistry.getActive().assemble({
-        mode: 'workspace',
+      const initial = await this.promptBuilder.buildInitialContext({
         workspaceId,
-        messages: history,
-        workspaceContext,
-        memoryContext: recallContext,
-        contextWindow: modelCtx.contextWindow,
+        userGoal,
+        historyMessages,
+        modifiedFiles: this.modifiedFiles.get(workspaceId) || [],
       });
-      const systemContent = context.systemPrompt
-        ? `${systemPrompt}\n\n${context.systemPrompt}`
-        : systemPrompt;
-      const messages: ChatMessage[] = [
-        { role: 'system', content: systemContent },
-        ...context.messages,
-      ];
 
-      // Prompt injection scan
-      const injectionResult = this.promptInjectionDetector.scan(userGoal);
-      if (injectionResult.detected && injectionResult.severity === 'high') {
-        this.promptInjectionDetector.logDetection(workspaceId, userGoal, injectionResult);
+      if (initial.injectionBlocked) {
         this.setState(runState, 'failed', onEvent);
-
-        // Emit agent failed event
         this.eventEmitter.emit('workspace.agent.failed', {
           workspaceId,
           goal: userGoal,
           reason: 'prompt_injection_blocked',
           timestamp: new Date(),
         });
-
         onEvent({
           type: 'error',
           data: { message: 'Input contains disallowed content. Please fix it and try again.' },
         });
         return;
       }
-      const safeGoal = injectionResult.detected
-        ? injectionResult.sanitized
-        : userGoal;
-      const mentionedFileContents = await this.readMentionedFiles(workspaceId, safeGoal);
+
+      const {
+        messages,
+        tools,
+        modelCtx,
+        safeGoal,
+        mentionedFileContents,
+        workspaceRootPath,
+      } = initial;
       this.mentionedFiles.set(workspaceId, new Set(mentionedFileContents.keys()));
-
-      // opencode-style: resolve @file mentions inline into the user message.
-      // The file content is appended to the goal as a "Called the Read tool"
-      // part so the model treats it as already-read input — no separate read.
-      let goalContent = safeGoal;
-      for (const [filename, content] of mentionedFileContents) {
-        goalContent += `\n\nCalled the Read tool with the following input: ${JSON.stringify({ filePath: filename })}\n${content}`;
-      }
-
-      // Crucial fix: Append current user goal to messages array so LLM knows what tool to call!
-      const hasGoalInMessages = messages.some(
-        (m) => m.role === 'user' && m.content === goalContent,
-      );
-      if (!hasGoalInMessages) {
-        messages.push({
-          role: 'user',
-          content: goalContent,
-        });
-      }
 
       // Generate autonomous reasoning plan
       if (abortController.signal.aborted) {
