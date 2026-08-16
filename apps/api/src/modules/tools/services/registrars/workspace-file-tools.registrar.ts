@@ -58,6 +58,7 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'Write File',
         description: 'Creates a brand new file in the workspace. Fails if the file already exists. To update or modify existing files, you MUST use the edit tool.',
         tags: ['workspace', 'file', 'write'],
+        mutating: true,
         handler: async (args) =>
           services.writeToolService.execute({
             workspaceId: args.workspaceId,
@@ -86,6 +87,7 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'Edit File',
         description: 'Modifies an existing file by surgical replacement or patch (oldString -> newString or patchText). ALWAYS use edit for existing files to preserve all other sections, layout, and data.',
         tags: ['workspace', 'file', 'edit'],
+        mutating: true,
         handler: async (args) =>
           services.editToolService.execute({
             workspaceId: args.workspaceId,
@@ -93,6 +95,7 @@ export class WorkspaceFileToolsRegistrar {
             path: args.filePath || args.path || '',
             oldString: args.oldString || args.old_str,
             newString: args.newString || args.new_str,
+            replacements: args.replacements || args.changes || args.edits,
           }),
         parameters: {
           type: 'object',
@@ -127,6 +130,7 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'Delete File',
         description: 'Deletes a file or directory from the workspace.',
         tags: ['workspace', 'file', 'delete'],
+        mutating: true,
         handler: async (args) =>
           services.deleteToolService.execute({
             workspaceId: args.workspaceId,
@@ -150,6 +154,7 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'Rename File',
         description: 'Renames or moves a file inside the workspace.',
         tags: ['workspace', 'file', 'rename'],
+        mutating: true,
         handler: async (args) =>
           services.renameToolService.execute({
             workspaceId: args.workspaceId,

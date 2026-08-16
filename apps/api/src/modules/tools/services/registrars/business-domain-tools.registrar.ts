@@ -118,6 +118,7 @@ export class BusinessDomainToolsRegistrar {
         displayName: 'Export Document',
         description: 'Converts structured data into Excel, CSV, PDF, Word, or PPTX.',
         tags: ['export', 'document', 'excel', 'pdf', 'word', 'powerpoint'],
+        mutating: true,
         handler: async (args) => {
           const { format, filename, title, sheetName, data, content, slides, outputPath } = args;
           if (format === 'xlsx') return services.documentGeneratorTool.generateExcel(sheetName || 'Sheet1', data || [], filename, outputPath);

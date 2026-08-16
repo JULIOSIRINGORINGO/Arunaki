@@ -31,7 +31,12 @@ import {
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
 import * as path from 'path';
 
-
+// After ≥1 successful mutation, a subsequent round that only re-reads files
+// already touched is the model double-checking, not doing new work. For slow
+// models (gpt-oss, qwen, ...) each verification round costs 30-160s — enough
+// to blow the total timeout. Once the run drags past this threshold with no
+// new mutation, we conclude instead of letting it thrash.
+const VERIFY_TAIL_MS = 90_000;
 
 export function extractMentionedFilenames(text: string): string[] {
   return [...text.matchAll(/@\[?([^\n@\]]+?\.[A-Za-z0-9]{1,10})\]?(?=\s|$|[.,;:!?])/g)]
@@ -884,6 +889,10 @@ export class WorkspaceRunnerService {
         let reachedMaxRounds = true;
         let executedToolCount = 0;
         let nudgeAttempts = 0;
+        const runStartTime = Date.now();
+        let mutationsApplied = 0;
+        let noProgressRounds = 0;
+        const touchedFiles = new Set<string>();
         const budget = createRunBudget();
         enterRunBudget(budget);
 
@@ -915,6 +924,7 @@ export class WorkspaceRunnerService {
           }
 
           if (runState.round > 1) this.setPhase(runState, 'analyzing', onEvent);
+          const roundMutationsStart = mutationsApplied;
 
           // If on the final safety round, disable tools and force a text-only summary (OpenCode pattern)
           const isFinalRound = round >= MAX_ROUNDS - 1;
@@ -1161,6 +1171,7 @@ export class WorkspaceRunnerService {
             toolCall: (typeof aiResponse.toolCalls)[0];
             args: Record<string, any>;
           }> = [];
+          let concludeRun = false;
 
           for (const toolCall of aiResponse.toolCalls) {
             const funcName = toolCall.function.name;
@@ -1211,6 +1222,42 @@ export class WorkspaceRunnerService {
               continue;
             }
 
+            // Harness hardening: weak models (gpt-oss, qwen, ...) sometimes
+            // emit a mutating tool call with zero arguments. Executing it just
+            // burns a full round on a guaranteed error. Feed back a corrective
+            // message immediately; if the run already applied changes and is
+            // thrashing (empty re-edits after success), conclude instead.
+            if (
+              this.toolRegistryService.isMutating(funcName) &&
+              Object.keys(args).length === 0
+            ) {
+              if (
+                mutationsApplied > 0 &&
+                noProgressRounds >= 2 &&
+                Date.now() - runStartTime > VERIFY_TAIL_MS
+              ) {
+                finalContent = aiResponse.content?.trim()
+                  ? aiResponse.content
+                  : 'Autonomous workspace task completed.';
+                reachedMaxRounds = false;
+                concludeRun = true;
+                break;
+              }
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content:
+                  `Error: tool "${funcName}" was called without any arguments. ` +
+                  (funcName === 'edit'
+                    ? 'edit requires "filePath" plus (patchText OR oldString+newString) to act. '
+                    : `${funcName} requires its target fields (e.g. "filePath") to act. `) +
+                  (mutationsApplied > 0
+                    ? 'The requested changes appear to already be applied. If all changes are done, reply with your final summary text and do NOT call any more tools.'
+                    : 'Reissue the tool call with the required fields.'),
+              });
+              continue;
+            }
+
             // Circuit Breaker (OpenClaw pattern): failed tool results return
             // to the model verbatim; the model self-corrects on the next turn.
             // The round cap (MAX_ROUNDS) is the hard loop bound.
@@ -1220,6 +1267,38 @@ export class WorkspaceRunnerService {
               mutatingCalls.push({ toolCall, args });
             } else {
               readOnlyCalls.push({ toolCall, args });
+            }
+          }
+
+          if (concludeRun) break;
+
+          // Verification-tail cutoff (OpenClaw pattern): after ≥1 successful
+          // mutation, a round that only re-reads files already touched — and
+          // drags past the time budget — is the model double-checking its own
+          // work, not making progress. Slow models burn 30-160s per such round;
+          // conclude here instead of waiting for MAX_ROUNDS or the timeout.
+          if (
+            mutationsApplied > 0 &&
+            noProgressRounds >= 2 &&
+            mutatingCalls.length === 0 &&
+            readOnlyCalls.length > 0 &&
+            Date.now() - runStartTime > VERIFY_TAIL_MS
+          ) {
+            const allKnownTargets = readOnlyCalls.every(({ args: ra }) => {
+              const base = path
+                .basename(String(ra.filename || ra.path || ra.filePath || ''))
+                .toLowerCase();
+              return !base || touchedFiles.has(base);
+            });
+            if (allKnownTargets) {
+              this.logger.log(
+                `[Harness] Round ${runState.round} only re-reads already-touched files after ${mutationsApplied} successful mutation(s) — concluding run.`,
+              );
+              finalContent = aiResponse.content?.trim()
+                ? aiResponse.content
+                : 'Autonomous workspace task completed.';
+              reachedMaxRounds = false;
+              break;
             }
           }
 
@@ -1288,6 +1367,10 @@ export class WorkspaceRunnerService {
                 const current = this.readFiles.get(workspaceId) || [];
                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
                 this.readFiles.set(workspaceId, current.slice(-30));
+                if (result.status === 'success') {
+                const rf = String(args.filename || args.path || args.filePath || '');
+                if (rf) touchedFiles.add(path.basename(rf).toLowerCase());
+                }
               }
 
               messages.push({
@@ -1399,7 +1482,12 @@ export class WorkspaceRunnerService {
 
               // Track modified files
               if (result.status === 'success') {
-                const filename = args.filename || args.path || 'unknown';
+                mutationsApplied++;
+                const filename = args.filename || args.path || args.filePath || 'unknown';
+                const fname = String(filename);
+                if (fname && fname !== 'unknown') {
+                  touchedFiles.add(path.basename(fname).toLowerCase());
+                }
                 const current = this.modifiedFiles.get(workspaceId) || [];
                 current.push({ filename, timestamp: new Date() });
                 this.modifiedFiles.set(workspaceId, current.slice(-30));
@@ -1410,6 +1498,15 @@ export class WorkspaceRunnerService {
                tool_call_id: toolCall.id,
                content: ToolResultFormatter.formatForLlm(funcName, result),
              });
+           }
+
+           // Track no-progress rounds (consecutive rounds with zero successful
+           // mutation). A done-but-verifying model keeps emitting reads/empty
+           // calls; 2+ no-progress rounds is the signal that work has stopped.
+           if (mutationsApplied > roundMutationsStart) {
+             noProgressRounds = 0;
+           } else {
+             noProgressRounds++;
            }
 
            // Compact history if the accumulated token budget is exceeded
