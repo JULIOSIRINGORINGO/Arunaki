@@ -1462,4 +1462,30 @@ apps/web/src/
 ### 48.3 Verification & Benchmark
 - [x] Ran autonomous benchmark test `scripts/test-rekap-extended.ts` after refactoring: finished in 29.5s with 15/17 automated assertions passed.
 
+---
+
+## Phase 49: Autonomous Living System Prompt (`ARUNAKI.md`) Engine & Desktop COM Registration ✅ DONE
+
+**Goal:** Create an autonomous background cartography engine that scans connected workspace files, synthesizes an operating system prompt (`.arunaki/ARUNAKI.md`), syncs it to the UI Knowledge Base, dynamically self-updates on user corrections, and injects it at 0ms latency into runtime chat without becoming a bottleneck.
+
+### 49.1 Desktop Tools Registration
+- [x] Created `desktop-tools.registrar.ts` and registered all 9 Desktop COM automation tools (`desktop_open_excel`, `desktop_excel_edit`, `desktop_open_word`, `desktop_word_type`, `desktop_word_format`, `desktop_open_ppt`, `desktop_open_file`, `desktop_send_keys`, `desktop_screenshot`).
+- [x] Registered `DesktopToolsRegistrar` into `ToolsProviderModule` and exported to global runtime registry.
+
+### 49.2 WorkspaceCartographerService & Living ARUNAKI.md
+- [x] Created `WorkspaceCartographerService` with non-blocking async scanning and 0ms in-memory cache.
+- [x] Implemented intelligent file sampling (max 40 lines per file) to prevent memory & token bloat.
+- [x] Implemented structured `ARUNAKI.md` synthesis (Domain profile, File Catalog & Relationships, Strict Syntax Invariants, User Preferences & Learned Corrections).
+- [x] Implemented dual-sync: writes physical `.arunaki/ARUNAKI.md` and syncs to Prisma Knowledge Base for the UI Knowledge Page.
+
+### 49.3 Runtime Injection & Dynamic Learning Loop
+- [x] In `WorkspacePromptBuilderService`, injected `ARUNAKI.md` as `# LOCAL WORKSPACE OPERATING RULES` with 0ms RAM cache.
+- [x] In `BackgroundReviewService`, added post-response learning hook to auto-patch `ARUNAKI.md` when user provides corrections in chat.
+
+### 49.4 Verification & Benchmark
+- [x] Build check: `npx nest build` passed with 0 errors.
+- [x] Verified generated `ARUNAKI.md` in database: accurately synthesized all customer prefixes (`CK`, `BG`, `CI`, `PAK`), bank codes (`BCA`, `BNI`, `BRI`), section headers, and immutable balances.
+- [x] End-to-end autonomous rekap benchmark passed successfully with surgical patch editing and template preservation.
+
+
 

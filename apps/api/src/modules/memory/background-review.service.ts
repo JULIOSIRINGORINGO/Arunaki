@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { MemoryService } from './memory.service.js';
 import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js';
 
@@ -18,6 +19,7 @@ export class BackgroundReviewService {
   constructor(
     private readonly memoryService: MemoryService,
     private readonly skillSelfImproveService: SkillSelfImproveService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 
   /**
@@ -76,6 +78,25 @@ export class BackgroundReviewService {
             importance: number;
           }>,
         );
+
+        // Dynamically patch living ARUNAKI.md rules file if workspaceId is present
+        if (workspaceId) {
+          try {
+            const { WorkspaceCartographerService } = await import(
+              '../workspace/services/workspace-cartographer.service.js'
+            );
+            const cartographer = this.moduleRef.get(WorkspaceCartographerService, { strict: false });
+            if (cartographer) {
+              for (const item of savedLearnings) {
+                if (item.type === 'correction' || item.type === 'preference') {
+                  await cartographer.patchWorkspaceRules(workspaceId, item.content);
+                }
+              }
+            }
+          } catch {
+            // non-fatal
+          }
+        }
       }
 
       if (learnings.length > 0) {

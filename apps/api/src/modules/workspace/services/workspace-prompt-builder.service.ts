@@ -9,6 +9,7 @@ import { PromptInjectionDetector } from '../../ai/prompt-injection-detector.serv
 import { ToolResultFormatter } from '../../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { extractMentionedFilenames } from '../utils/tool-call-extractor.util.js';
+import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import * as path from 'path';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class WorkspacePromptBuilderService {
     @Inject(forwardRef(() => PromptInjectionDetector)) private readonly promptInjectionDetector: PromptInjectionDetector,
     @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
     @Inject(forwardRef(() => ContextRegistry)) private readonly contextRegistry: ContextRegistry,
+    @Inject(forwardRef(() => WorkspaceCartographerService)) private readonly cartographerService: WorkspaceCartographerService,
   ) {}
 
   async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
@@ -267,9 +269,26 @@ export class WorkspacePromptBuilderService {
       contextWindow: modelCtx.contextWindow,
     });
 
-    const systemContent = context.systemPrompt
+    let workspaceRules = '';
+    if (workspaceRootPath) {
+      try {
+        workspaceRules = await this.cartographerService.getWorkspaceRules(workspaceRootPath);
+        if (!workspaceRules) {
+          // Trigger asynchronous background analysis without blocking current request
+          this.cartographerService.analyzeAndBootstrap(workspaceId).catch(() => {});
+        }
+      } catch (err: any) {
+        this.logger.debug(`Fetching ARUNAKI.md rules failed: ${err.message}`);
+      }
+    }
+
+    let systemContent = context.systemPrompt
       ? `${systemPrompt}\n\n${context.systemPrompt}`
       : systemPrompt;
+
+    if (workspaceRules && workspaceRules.trim()) {
+      systemContent += `\n\n# 📜 LOCAL WORKSPACE OPERATING RULES (AUTONOMOUSLY COMPILED ARUNAKI.MD)\n${workspaceRules.trim()}`;
+    }
 
     const messages: ChatMessage[] = [
       { role: 'system', content: systemContent },

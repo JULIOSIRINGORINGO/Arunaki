@@ -20,6 +20,7 @@ import { ProviderModule } from '../provider/provider.module.js';
 import { ChatModule } from '../chat/chat.module.js';
 
 import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
+import { WorkspaceCartographerService } from './services/workspace-cartographer.service.js';
 
 @Module({
   imports: [
@@ -45,12 +46,14 @@ import { WorkspacePromptBuilderService } from './services/workspace-prompt-build
     WorkspaceInitService,
     WorkspaceRunnerService,
     WorkspacePromptBuilderService,
+    WorkspaceCartographerService,
   ],
   exports: [
     WorkspaceService,
     WorkspaceInitService,
     WorkspaceRunnerService,
     WorkspacePromptBuilderService,
+    WorkspaceCartographerService,
   ],
 })
 export class WorkspaceModule {}
