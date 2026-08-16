@@ -1,0 +1,9 @@
+# GitHub Linguist Overrides
+# Treat skills runtime tooling, documentation, and auxiliary scripts as vendored/documentation
+# so language statistics accurately reflect Arunaki's primary TypeScript codebase.
+
+.opencode/** linguist-vendored
+.agents/** linguist-vendored
+scripts/** linguist-vendored
+docs/** linguist-documentation
+*.cjs linguist-vendored
