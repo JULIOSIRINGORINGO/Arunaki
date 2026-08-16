@@ -70,9 +70,9 @@ describe('modelSupportsToolCallHistory', () => {
     expect(modelSupportsToolCallHistory('gpt-oss-120b')).toBe(false);
   });
 
-  it('defaults to true for normal models', () => {
-    expect(modelSupportsToolCallHistory('gpt-4o')).toBe(true);
-    expect(modelSupportsToolCallHistory('deepseek-v4-flash')).toBe(true);
+  it('defaults to false (serialized text history) so every model is safe by default', () => {
+    expect(modelSupportsToolCallHistory('gpt-4o')).toBe(false);
+    expect(modelSupportsToolCallHistory('deepseek-v4-flash')).toBe(false);
   });
 });
 

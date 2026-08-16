@@ -96,7 +96,7 @@ export function modelSupportsTools(modelName: string): boolean {
  * serialize past tool activity into text when building history.
  */
 export function modelSupportsToolCallHistory(modelName: string): boolean {
-  return lookupCapability(modelName)?.supportsToolCallHistory ?? true;
+  return lookupCapability(modelName)?.supportsToolCallHistory ?? false;
 }
 
 /**

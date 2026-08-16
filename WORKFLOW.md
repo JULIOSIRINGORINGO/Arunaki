@@ -1324,13 +1324,14 @@ Numerical Accuracy: Traceable to tool, verify once more, "Approximately X" for u
 - [x] Probe `confirm-test.mjs`: 1 pasang tool call saja (1.2KB) tetap 524; serialisasi teks `[Assistant tool call]/[Tool result]` → 200/1.0s
 
 ### 33.2 Implementasi ✅
-- [x] `model-capability.ts` — field `supportsToolCallHistory?: boolean` (default true) + helper `modelSupportsToolCallHistory()`; `gpt-oss-20b`/`gpt-oss-120b` di-flag `false`
+- [x] `model-capability.ts` — field `supportsToolCallHistory?: boolean` + helper `modelSupportsToolCallHistory()`; **default `false` — SEMUA model pakai tool history text (serialized), hanya yang eksplisit di-flag `true` yang native**; `gpt-oss-20b`/`gpt-oss-120b` tetap `false`
 - [x] `sdk-transformer.util.ts` — `serializeToolCallHistory()` meratakan pasangan assistant tool_calls + tool result jadi satu pesan teks (role ordering tetap valid); dipakai di `makeSdkRequest` & `makeSdkRequestStream` bila model tidak support tool-call history
 
 ### 33.3 Verifikasi ✅
 - [x] `npx nest build` + `npx tsc --noEmit` — clean
-- [x] `npx vitest run src/modules/ai/sdk-transformer.util.spec.ts` — **10/10 passed** (tambah 4 test baru: flag gpt-oss, default true, flatten, untouched)
+- [x] `npx vitest run src/modules/ai/sdk-transformer.util.spec.ts` — **10/10 passed** (tambah 4 test baru: flag gpt-oss, default false, flatten, untouched)
 - [x] Harness live `test-rekap-extended.ts gpt-oss-120b` — **16/17 checks passed, run 31.8s** (dari ~253s round-3 saja); model pakai `patchText` diff `*** Begin Patch`; 1 gagal hanya "Tanggal diperbarui" (model tidak update header tanggal)
+- [x] **Follow-up: invert default text-history untuk SEMUA model** — deepseek-v4-flash naik dari native 76.5s/125.7s → text **21.5s/24.9s** (3-5x lebih cepat), checks tetap **17/17** × 2 run
 
 ---
 
