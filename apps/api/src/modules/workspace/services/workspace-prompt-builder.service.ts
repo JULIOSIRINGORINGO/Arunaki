@@ -144,8 +144,11 @@ export class WorkspacePromptBuilderService {
     if (/(?:skill|workflow|prosedur|template kerja)/.test(g)) {
       add(['list_skills', 'view_skill', 'search_skills']);
     }
-    if (/(?:tabel|table|describe|schema|struktur)/.test(g)) add(['data_query']);
+    if (/(?:tabel|table|describe|schema|struktur)/.test(gClean)) add(['data_query']);
     if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
+    if (/(?:subagent|sub-agent|sub agent|spawn|paralel|parallel|bagi tugas|banyak file|batch|multi-task|semua file)/.test(gClean)) {
+      add(['agent_spawn']);
+    }
 
     return allTools.filter((t) => wanted.has(t.function.name));
   }
