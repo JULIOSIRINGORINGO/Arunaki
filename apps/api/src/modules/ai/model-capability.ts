@@ -5,6 +5,12 @@ export interface ModelCapability {
   maxTokens?: number;
   contextWindow?: number;
   reasoningEffort?: 'low' | 'medium' | 'high';
+  // Some OpenAI-compatible backends (Kenari/vLLM serving gpt-oss) reject or
+  // hang when the request history contains `tool_calls`/`tool` role messages
+  // (20b → HTTP 400 upstream_rejected, 120b → HTTP 524 origin timeout).
+  // They can still *generate* tool calls, just not *receive* them in history;
+  // for these models the harness serializes past tool activity into plain text.
+  supportsToolCallHistory?: boolean;
 }
 
 // Pre-configured baseline capabilities for well-known models across all providers
@@ -12,10 +18,12 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // OpenAI & GPT-OSS
   'gpt-4o': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'gpt-4o-mini': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  // gpt-oss (open-weights, served via OpenAI-compatible endpoints like Kenari/vLLM)
-  // has a native `reasoning_effort` param — 'low' prunes the thinking budget massively.
-  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
-  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
+  // gpt-oss (open-weights, served via OpenAI-compatible endpoints like Kenari/vLLM).
+  // NOTE: no `reasoning_effort` here — Kenari serves gpt-oss as a standard tool-calling
+  // model; sending reasoning_effort made tool definitions get dropped (see dev-log
+  // 2026-08-14). Speed is handled by the [REASONING EFFORT: LOW] prompt directive instead.
+  'gpt-oss-20b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, supportsToolCallHistory: false },
+  'gpt-oss-120b': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, supportsToolCallHistory: false },
 
   // Google Gemini & Gemma
   'gemini-2-5-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 1000000, maxTokens: 8192 },
@@ -82,6 +90,16 @@ export function modelSupportsTools(modelName: string): boolean {
 }
 
 /**
+ * Check if a model accepts `tool_calls`/`tool` role messages in its input
+ * history. Default true; false for backends that reject/hang on them (gpt-oss
+ * on Kenari/vLLM). Such models still generate tool calls — callers must just
+ * serialize past tool activity into text when building history.
+ */
+export function modelSupportsToolCallHistory(modelName: string): boolean {
+  return lookupCapability(modelName)?.supportsToolCallHistory ?? true;
+}
+
+/**
  * Dynamic, mature capability resolver for any model from any provider.
  * Uses pattern heuristics for unknown models so new models work immediately without code changes.
  */
@@ -91,11 +109,12 @@ export function getModelCapability(modelName: string): ModelCapability {
 
   const lower = (modelName || '').toLowerCase();
   
-  // Dynamic reasoning detection (o1, o3, gpt-oss, deepseek-r1, qwq, reasoner, thinking)
+  // Dynamic reasoning detection (o1, o3, deepseek-r1, qwq, reasoner, thinking).
+  // gpt-oss is intentionally NOT listed: Kenari serves it as a standard tool-calling
+  // model and sending reasoning_effort drops tool definitions (dev-log 2026-08-14).
   const isReasoning =
     lower.includes('reasoner') ||
     lower.includes('reasoning') ||
-    lower.includes('gpt-oss') ||
     lower.includes('-r1') ||
     lower.includes('deepseek-r') ||
     lower.includes('qwq') ||

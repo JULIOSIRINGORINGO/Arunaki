@@ -1314,6 +1314,26 @@ Numerical Accuracy: Traceable to tool, verify once more, "Approximately X" for u
 
 ---
 
+## Phase 33: Tool-Call History Serialization untuk gpt-oss (Kenari 524/400) ✅ DONE
+
+**Goal:** Perbaiki run rekap <60s dengan gpt-oss-120b. Root cause yang dibuktikan via probe langsung: Kenari/vLLM serving gpt-oss **menolak/menghang saat history request mengandung `tool_calls`/`tool` role** — gpt-oss-20b → HTTP 400 `upstream_rejected` (1.5s), gpt-oss-120b → HTTP 524 origin timeout (125s). Model tetap bisa *menghasilkan* tool call, hanya tidak bisa *menerima* history tool call native. Solusi: serialisasi tool activity jadi teks polos (pola kompaksi opencode).
+
+### 33.1 Root Cause & Bukti ✅
+- [x] Probe `threshold-test.mjs`: semua varian ukuran (4.4KB→3.6KB, 2 tool→1 tool, 8192→2048→512 token) tetap 524 — **ukuran bukan pemicu**
+- [x] Probe `isolate-test.mjs`: 2-msg+tool 200/1.2s; 6-msg plain text 200/1.3s; 6-msg berisi tool_calls 524/125s — **pemicu = `tool_calls`/`tool` di history**
+- [x] Probe `confirm-test.mjs`: 1 pasang tool call saja (1.2KB) tetap 524; serialisasi teks `[Assistant tool call]/[Tool result]` → 200/1.0s
+
+### 33.2 Implementasi ✅
+- [x] `model-capability.ts` — field `supportsToolCallHistory?: boolean` (default true) + helper `modelSupportsToolCallHistory()`; `gpt-oss-20b`/`gpt-oss-120b` di-flag `false`
+- [x] `sdk-transformer.util.ts` — `serializeToolCallHistory()` meratakan pasangan assistant tool_calls + tool result jadi satu pesan teks (role ordering tetap valid); dipakai di `makeSdkRequest` & `makeSdkRequestStream` bila model tidak support tool-call history
+
+### 33.3 Verifikasi ✅
+- [x] `npx nest build` + `npx tsc --noEmit` — clean
+- [x] `npx vitest run src/modules/ai/sdk-transformer.util.spec.ts` — **10/10 passed** (tambah 4 test baru: flag gpt-oss, default true, flatten, untouched)
+- [x] Harness live `test-rekap-extended.ts gpt-oss-120b` — **16/17 checks passed, run 31.8s** (dari ~253s round-3 saja); model pakai `patchText` diff `*** Begin Patch`; 1 gagal hanya "Tanggal diperbarui" (model tidak update header tanggal)
+
+---
+
 ## File Structure
 
 ```

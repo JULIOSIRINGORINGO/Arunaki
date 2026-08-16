@@ -5,7 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import type { ChatMessage, ToolDefinition } from './ai.service.js';
 import type { ProviderConfig } from '../provider/provider.service.js';
 import type { StreamChunk } from './stream-chat.js';
-import { getModelCapability, scaleMaxTokens } from './model-capability.js';
+import { getModelCapability, scaleMaxTokens, modelSupportsToolCallHistory } from './model-capability.js';
 
 const sdkProviders = new Map<string, any>();
 
@@ -85,6 +85,52 @@ export function extractSystemAndMessages(messages: ChatMessage[]): {
   };
 }
 
+/**
+ * Some OpenAI-compatible backends (Kenari/vLLM serving gpt-oss) reject or hang
+ * when the request history contains `tool_calls`/`tool` role messages, even a
+ * single pair. They can still *emit* tool calls — just not *receive* past ones
+ * as native messages. For those models, flatten every assistant tool_calls /
+ * tool result pair into plain text (same idea as opencode's compaction
+ * serialization) while keeping the message role ordering valid:
+ * `assistant (tool call) → tool (result)` becomes one `assistant` text message.
+ */
+export function serializeToolCallHistory(
+  messages: ChatMessage[],
+): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i];
+    if (m.role !== 'assistant' || !m.tool_calls?.length) {
+      out.push(m);
+      continue;
+    }
+
+    const lines: string[] = [];
+    if (m.content) lines.push(m.content);
+    for (const tc of m.tool_calls) {
+      let args = tc.function.arguments;
+      try {
+        args = JSON.stringify(JSON.parse(args));
+      } catch {
+        /* keep raw */
+      }
+      lines.push(`[Assistant tool call]: ${tc.function.name}(${args})`);
+    }
+
+    // Collect the tool results that belong to this assistant message (the
+    // immediately following `role: 'tool'` messages) and append them inline.
+    let j = i + 1;
+    while (j < messages.length && messages[j].role === 'tool') {
+      lines.push(`[Tool result]: ${messages[j].content ?? ''}`);
+      j++;
+    }
+
+    out.push({ role: 'assistant', content: lines.join('\n') } as ChatMessage);
+    i = j - 1;
+  }
+  return out;
+}
+
 export function toSdkMessages(messages: ChatMessage[]): ModelMessage[] {
   return extractSystemAndMessages(messages).messages;
 }
@@ -154,7 +200,10 @@ export async function makeSdkRequest(
   timeoutMs = 180000,
 ): Promise<{ data: any; statusCode: number }> {
   const canUseTools = (body.tools?.length ?? 0) > 0;
-  const { system, messages } = extractSystemAndMessages(body.messages);
+  const requestMessages = modelSupportsToolCallHistory(provider.model)
+    ? body.messages
+    : serializeToolCallHistory(body.messages);
+  const { system, messages } = extractSystemAndMessages(requestMessages);
   try {
     const data = await generateText({
       model: getSdkModel(provider),
@@ -203,8 +252,12 @@ export async function *makeSdkRequestStream(
   // Time to first token (TTFB) timeout catches a hung provider fast; the
   // total timeout guards against a slow/stalled generation so a sluggish
   // model gets rotated to a faster sibling model automatically.
-  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 65000;
-  const totalTimeoutMs = options.totalTimeoutMs ?? 120000;
+  // TTFB is generous (120s): 120B open-weights models (gpt-oss-120b) go
+  // silent while reasoning and stream only their final answer — a tight
+  // 65s TTFB aborted a working request, rotated to the same slow model, and
+  // restarted it from scratch (65s + 120s total = ~196s for one round).
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 120000;
+  const totalTimeoutMs = options.totalTimeoutMs ?? 300000;
 
   console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);
 
@@ -219,7 +272,10 @@ export async function *makeSdkRequestStream(
     controller.abort();
   }, totalTimeoutMs);
 
-  const { system, messages } = extractSystemAndMessages(body.messages);
+  const requestMessages = modelSupportsToolCallHistory(provider.model)
+    ? body.messages
+    : serializeToolCallHistory(body.messages);
+  const { system, messages } = extractSystemAndMessages(requestMessages);
 
   const result = streamText({
     model: getSdkModel(provider),
