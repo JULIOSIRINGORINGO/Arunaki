@@ -43,6 +43,8 @@ import { AiModule } from '../ai/ai.module.js';
 import { WorkspaceFileToolsRegistrar } from './services/registrars/workspace-file-tools.registrar.js';
 import { BusinessDomainToolsRegistrar } from './services/registrars/business-domain-tools.registrar.js';
 import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-tools.registrar.js';
+import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.registrar.js';
+import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 
 @Module({
   imports: [
@@ -87,6 +89,7 @@ import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-to
     WorkspaceFileToolsRegistrar,
     BusinessDomainToolsRegistrar,
     HarnessMetaToolsRegistrar,
+    DesktopToolsRegistrar,
   ],
   exports: [
     ToolRegistryService,
@@ -126,6 +129,7 @@ export class ToolsProviderModule implements OnModuleInit {
     private readonly workspaceFileToolsRegistrar: WorkspaceFileToolsRegistrar,
     private readonly businessDomainToolsRegistrar: BusinessDomainToolsRegistrar,
     private readonly harnessMetaToolsRegistrar: HarnessMetaToolsRegistrar,
+    private readonly desktopToolsRegistrar: DesktopToolsRegistrar,
     @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
   ) {}
 
@@ -170,6 +174,12 @@ export class ToolsProviderModule implements OnModuleInit {
       memoryTool: this.moduleRef.get(MemoryTool, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
       subAgentRunner: this.moduleRef.get(SubAgentRunnerService, { strict: false }),
+    });
+
+    // 4. Register Desktop COM Automation Tools
+    this.desktopToolsRegistrar.register(this.registry, {
+      desktopBridge: this.moduleRef.get(DesktopBridgeService, { strict: false }),
+      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
     });
   }
 }
