@@ -229,29 +229,33 @@ export class WorkspaceCartographerService {
         .join('\n\n');
 
       const prompt = `You are the Cartographer Engine for Arunaki, an autonomous document assistant.
-Analyze these files in workspace "${workspaceName}" and construct a living system prompt file named "ARUNAKI.md".
+Analyze these files in workspace "${workspaceName}" and construct a living system prompt rulebook named "ARUNAKI.md".
 
-FILES SAMPLED:
+FILES SAMPLED FROM WORKSPACE:
 ${sampleSummary}
 
 ${existingRules ? `EXISTING RULES TO PRESERVE:\n${existingRules.slice(0, 1000)}\n` : ''}
 
-Generate a concise, crisp, and high-precision markdown rulebook formatted strictly with these sections:
+Instructions:
+Carefully deduce the nature of the workspace based strictly on the provided file samples (e.g. accounting, legal, retail, logistics, manufacturing, education, medical, personal records, software, etc.).
+
+Generate a concise, crisp, and high-precision markdown rulebook formatted strictly with these 4 sections:
 # ARUNAKI WORKSPACE OPERATING SYSTEM
 
-## 1. Domain & Business Profile
-(Identify business type, currency shorthand e.g. 1.876RB = 1.876.000, bank names, customer prefixes e.g. CK, BG)
+## 1. Domain & Workspace Profile
+- Identify the domain/business type, primary workflow, currency or numerical conventions, and recurring terminology or status codes observed in the files.
 
 ## 2. File Directory & Data Relationships
-(Explain what each file is for, which file is the primary ledger, and how data moves between them)
+- Table or list of files explaining each file's specific role, primary/master documents vs secondary/input documents, and how data moves or references between them.
 
 ## 3. Strict Syntax & Layout Invariants
-(List exact line formats, checklist markers e.g. ✅, and sections that must NEVER be deleted like deposit balances)
+- Document formatting rules observed in the files (headers, tables, delimiters, status indicators, formulas, or summary blocks that must be preserved without corruption).
+- Operating rule: Always prefer surgical \`edit\` tool for existing documents; do not wipe out historical records or template structures.
 
 ## 4. User Preferences & Learned Corrections
-(Include any existing learned preferences or leave template for dynamic learnings)
+- Include any existing user preferences or provide placeholders for dynamic self-corrections learned from future conversations.
 
-Output ONLY the markdown content, with no introductory banter or outer code fences.`;
+Output ONLY the raw markdown content, with no conversational preamble or outer code fences.`;
 
       const response = await this.aiService.chat([
         {
@@ -275,27 +279,33 @@ Output ONLY the markdown content, with no introductory banter or outer code fenc
 
   /**
    * Deterministic fallback generator when LLM is offline or in cold start.
+   * Dynamically constructs a generic, domain-agnostic operational rulebook.
    */
   private buildDeterministicRules(workspaceName: string, samples: WorkspaceFileMetadata[]): string {
-    const fileList = samples.map((s) => `- \`${s.name}\`: Document data file (${s.extension})`).join('\n');
+    const fileEntries = samples.map((s) => {
+      const sizeKb = (s.size / 1024).toFixed(1);
+      return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)`;
+    }).join('\n');
+
+    const fileTypes = Array.from(new Set(samples.map((s) => s.extension.toLowerCase().replace('.', ''))));
 
     return `# ARUNAKI WORKSPACE OPERATING SYSTEM
 
-## 1. Domain & Business Profile
-- **Workspace**: ${workspaceName}
-- **Currency Convention**: Shorthand notation (e.g., "1.876RB" = Rp 1.876.000, "75RB" = Rp 75.000, "1.182RB" = Rp 1.182.000).
-- **Payment Methods**: BCA, BNI, BRI, CASH.
+## 1. Domain & Workspace Profile
+- **Workspace Name**: ${workspaceName}
+- **Detected File Formats**: ${fileTypes.join(', ') || 'text documents'}
+- **Primary Mode**: Autonomous Document & Data Management
 
-## 2. File Directory & Data Relationships
-${fileList}
+## 2. File Directory & Data Map
+${fileEntries || '- (No files indexed yet)'}
 
-## 3. Strict Syntax & Layout Invariants
-- Always use surgical tool \`edit\` to modify files. Never overwrite whole files with \`write\`.
-- Keep established record formats with customer tags (e.g. \`CK NAME = AMOUNT(BANK) [ ITEM ]✅\`).
-- Never delete deposit balances, expense summary lines, or historical records unless explicitly instructed.
+## 3. Strict Operating Invariants
+- **Surgical Edits**: Always prefer surgical tool \`edit\` to modify existing files. Never overwrite whole files with \`write\` unless explicitly creating a new document.
+- **Structure Preservation**: Respect and preserve existing document formatting, headers, tables, formulas, and balance summaries.
+- **Data Integrity**: Never remove historical records or existing sections unless explicitly instructed by the user.
 
 ## 4. User Preferences & Learned Corrections
-- [Initial System Baseline]: Maintain exact line format and append new transactions under their respective categories.
+- [Initial System Baseline]: Maintain exact file schema and adapt to user conventions dynamically.
 `;
   }
 
