@@ -1,8 +1,9 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import * as path from 'path';
 import { promises as fsp } from 'fs';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { AiService } from '../../ai/ai.service.js';
+import { SubAgentRunnerService } from '../../chat/sub-agent-runner.service.js';
 
 const ARUNAKI_RULES_FILENAME = 'ARUNAKI.md';
 const ARUNAKI_DIR = '.arunaki';
@@ -25,6 +26,7 @@ export class WorkspaceCartographerService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
+    @Optional() @Inject(forwardRef(() => SubAgentRunnerService)) private readonly subAgentRunner?: SubAgentRunnerService,
   ) {}
 
   /**
@@ -257,6 +259,25 @@ Generate a concise, crisp, and high-precision markdown rulebook formatted strict
 
 Output ONLY the raw markdown content, with no conversational preamble or outer code fences.`;
 
+      // 1. If SubAgentRunner is available, execute via isolated Sub-Agent sandbox
+      if (this.subAgentRunner) {
+        try {
+          const subResult = await this.subAgentRunner.spawnSubAgent({
+            taskId: `cartographer_${Date.now()}`,
+            taskName: `Workspace Cartographer (${workspaceName})`,
+            taskDescription: prompt,
+            allowedTools: ['read', 'list', 'search_workspace'],
+            maxRounds: 3,
+          });
+          if (subResult.status === 'success' && subResult.content?.trim()) {
+            return subResult.content.trim();
+          }
+        } catch (subErr: any) {
+          this.logger.debug(`Sub-agent cartography fallback to direct LLM: ${subErr.message}`);
+        }
+      }
+
+      // 2. Direct LLM fallback if subAgentRunner is unavailable
       const response = await this.aiService.chat([
         {
           role: 'system',
