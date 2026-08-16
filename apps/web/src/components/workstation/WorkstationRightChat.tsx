@@ -419,8 +419,8 @@ function WorkstationRightChatComponent({
             onKeyDown={handleKeyDown}
             placeholder={
               activeWorkspace
-                ? "ask anyting @ to mantion and. / for actions"
-                : "ask anyting @ to mantion and. / for actions"
+                ? "Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
+                : "Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
             }
             rows={1}
             className="w-full bg-transparent text-xs text-[#FFFFFF] placeholder-[#777777] resize-none overflow-y-auto no-scrollbar focus:outline-none"

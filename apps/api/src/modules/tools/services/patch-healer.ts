@@ -172,6 +172,10 @@ export function extractAndApplyFallback(
       continue;
     }
     if (line.startsWith('-')) {
+      if (currentNew.length > 0) {
+        // Finished a previous -/+ block; auto-apply before starting next chunk
+        applyHunk();
+      }
       const text = line.slice(1);
       currentOld.push(text);
       currentMinus.push(text);

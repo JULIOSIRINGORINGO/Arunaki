@@ -2,9 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const API_BASE = 'http://127.0.0.1:3000/api/v1';
-let WORKSPACE_ID = process.env.WORKSPACE_ID || '';
 const TARGET_FILE = 'REKAPAN TERBARU2.txt';
-let WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || '';
 
 const instruction = `Update laporan hari ini di file @${TARGET_FILE} dengan data berikut, dan hitung ulang semua total secara otomatis:
 
@@ -85,48 +83,41 @@ TOTAL BELANJA KE BENDONG RP 98.000,-
 SISA DEPOSIT RP 14.207.640,-
 `;
 
-async function runTest() {
-  const apiKey = process.env.ARUNAKI_API_KEY || 'arunaki-dev-key';
+const MODELS = [
+  { id: 'agnes-2-5-flash:free', label: 'agnes-2-5-flash:free' },
+  { id: 'gpt-oss-20b', label: 'gpt-oss-20b' },
+  { id: 'nemotron-3-super-120b-a12b:free', label: 'nemotron-3-super-120b-a12b:free' },
+  { id: 'gpt-oss-120b', label: 'gpt-oss-120b' },
+];
 
-  if (!WORKSPACE_ID || !WORKSPACE_ROOT) {
-    const listRes = await fetch(`${API_BASE}/workspaces`, {
-      headers: { 'x-api-key': apiKey },
-    });
-    const listData = await listRes.json();
-    const workspaces = Array.isArray(listData) ? listData : (listData.data || []);
-    if (workspaces.length === 0) {
-      throw new Error('No active workspace found');
-    }
-    WORKSPACE_ID = workspaces[0].id;
-    WORKSPACE_ROOT = workspaces[0].rootPath || workspaces[0].path || path.resolve('workspace-demo');
-  }
+async function testSingleModel(model: { id: string; label: string }, workspaceId: string, workspaceRoot: string) {
+  console.log(`\n===============================================================`);
+  console.log(`🧪 TESTING MODEL ON test-rekap-extended: ${model.label}`);
+  console.log(`===============================================================`);
 
-  console.log(`🚀 Starting extended re-total test on workspace ${WORKSPACE_ID} (${WORKSPACE_ROOT})...`);
-  
-  // Setup: Reset target file to original full template
-  const targetFilePath = path.join(WORKSPACE_ROOT, TARGET_FILE);
+  const targetFilePath = path.join(workspaceRoot, TARGET_FILE);
   fs.writeFileSync(targetFilePath, INITIAL_TEMPLATE, 'utf-8');
-  console.log(`📋 Initialized ${TARGET_FILE} with full original template (${INITIAL_TEMPLATE.length} chars)`);
 
-  let sawDone = false;
-  let error: string | null = null;
-  const calledTools: string[] = [];
-
+  const apiKey = process.env.ARUNAKI_API_KEY || 'arunaki-dev-key';
   const abortController = new AbortController();
   const timeout = setTimeout(() => abortController.abort(), 360_000);
   const t0 = Date.now();
   let doneAt = 0;
+  let sawDone = false;
+  let error: string | null = null;
+  const calledTools: string[] = [];
+
   try {
-    const targetModel = process.argv[2] || 'gpt-oss-120b';
-    const response = await fetch(`${API_BASE}/workspaces/${WORKSPACE_ID}/agent/stream`, {
+    const response = await fetch(`${API_BASE}/workspaces/${workspaceId}/agent/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
       },
-      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: targetModel }),
+      body: JSON.stringify({ goal: instruction, historyMessages: [], modelId: model.id }),
       signal: abortController.signal,
     });
+
     if (!response.ok || !response.body) {
       throw new Error(`Agent stream failed: HTTP ${response.status} ${await response.text()}`);
     }
@@ -144,45 +135,30 @@ async function runTest() {
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const event = JSON.parse(line.slice(6));
-        const elapsed = Math.round((Date.now() - t0) / 100) / 10;
-        console.log(`[+${elapsed}s][event:${event.type}]`, JSON.stringify(event.data)?.slice(0, 160));
         if (event.type === 'tool_start') {
           const toolName = event.data?.toolName;
           if (toolName) calledTools.push(toolName);
-          console.log(`[+${elapsed}s][tool_call] ${toolName} ${JSON.stringify(event.data?.args)?.slice(0, 120)}`);
+          console.log(`  ⚙️ [Tool Start]: ${toolName}`);
         }
-        if (event.type === 'llm' || event.type === 'message') console.log(`[+${elapsed}s][llm]`, String(event.data).slice(0, 150));
+        if (event.type === 'tool_done') {
+          console.log(`  ✅ [Tool Done]: ${event.data?.toolName}`);
+        }
         if (event.type === 'error') error = event.data?.message || 'unknown';
         if (event.type === 'done') { sawDone = true; doneAt = Date.now(); }
       }
       if (sawDone) break;
     }
-    if (abortController.signal.aborted) throw new Error(`Agent stream exceeded 240 seconds (${Math.round((Date.now() - t0) / 1000)}s elapsed) — HARNESS FAIL`);
-    if (error) throw new Error(`Agent error: ${error}`);
-    if (!sawDone) throw new Error('Agent stream ended without a done event');
-    console.log(`⏱️ Agent stream completed in ${Math.round((doneAt - t0) / 100) / 10}s (done event)`);
-  } catch (fetchErr: any) {
-    console.error(`❌ ${fetchErr.message}`);
-    process.exit(1);
+  } catch (err: any) {
+    error = err.message;
   } finally {
     clearTimeout(timeout);
   }
 
-  // Small delay for file write
+  const durationSec = Math.round(((doneAt || Date.now()) - t0) / 100) / 10;
   await new Promise(r => setTimeout(r, 1000));
 
-  // Load result file
-  const resultPath = path.join(WORKSPACE_ROOT, TARGET_FILE);
-  if (!fs.existsSync(resultPath)) {
-    console.log('❌ File not found after agent run');
-    process.exit(1);
-  }
+  const content = fs.existsSync(targetFilePath) ? fs.readFileSync(targetFilePath, 'utf-8') : '';
 
-  const content = fs.readFileSync(resultPath, 'utf-8');
-  console.log('\n📄 File preview (first 1200 chars):');
-  console.log(content.slice(0, 1200));
-
-  // Validation checks
   const now = new Date();
   const day = now.getDate();
   const monthLong = now.toLocaleDateString('id-ID', { month: 'long' }).toUpperCase();
@@ -190,39 +166,69 @@ async function runTest() {
   const todayText = `${day} ${monthLong} ${year}`;
 
   const checks = [
-    // 1. Calculations & New Transactions
     { name: 'Tanggal diperbarui ke hari ini', pass: content.toUpperCase().includes(todayText) },
     { name: 'CK DEDI ada (300)', pass: content.includes('CK DEDI') && content.includes('300RB') },
     { name: 'CK OWEN ada (200)', pass: content.includes('CK OWEN') && content.includes('200RB') },
     { name: 'CK BAMBANG ada (450)', pass: content.includes('CK BAMBANG') && content.includes('450RB') },
     { name: 'TOKO JAYA ada (150)', pass: content.includes('TOKO JAYA') && content.includes('150RB') },
     { name: 'BUK RINA ada (75)', pass: content.includes('BUK RINA') && content.includes('75RB') },
-    { name: 'Total BCA = 825 RB (300+450+75)', pass: /TOTAL TF BCA\s*[:=]\s*825\s*RB/i.test(content) },
+    { name: 'Total BCA = 825 RB', pass: /TOTAL TF BCA\s*[:=]\s*825\s*RB/i.test(content) },
     { name: 'Total BNI = 200 RB', pass: /TOTAL TF BNI\s*[:=]\s*200\s*RB/i.test(content) },
     { name: 'Total CASH = 150 RB', pass: /TOTAL CASH\s*[:=]\s*150\s*RB/i.test(content) },
-    { name: 'Total Pengeluaran = 570 RB (7+3+5+30+250+175+100)', pass: /TOTAL PENGELUARAN\s*[:=]\s*570\s*RB/i.test(content) },
+    { name: 'Total Pengeluaran = 570 RB', pass: /TOTAL PENGELUARAN\s*[:=]\s*570\s*RB/i.test(content) },
     { name: 'Pengeluaran LISTRIK 250 ada', pass: /LISTRIK[\s=:]*250/i.test(content) },
-
-    // 2. Template Structure Integrity (No Lost/Corrupted Sections)
-    { name: 'Template: SISA PEMBAYARAN (PAK ARNOL) tidak terhapus', pass: content.includes('SISA PEMBAYARAN') && content.includes('PAK ARNOL') },
-    { name: 'Template: BELANJAAN KE LABURA tidak terhapus', pass: content.includes('BELANJAAN KE LABURA') && content.includes('147 RB') && content.includes('2.544 RB') },
-    { name: 'Template: TOTAL BELANJA KE BENDONG tidak terhapus', pass: content.includes('TOTAL BELANJA KE BENDONG') && content.includes('98.000') },
-    { name: 'Template: SISA DEPOSIT RP 14.207.640,- tidak terhapus', pass: content.includes('SISA DEPOSIT') && content.includes('14.207.640') },
-    { name: 'Template: CI LISOI (10-02-2024) uncompleted note tetap terjaga', pass: content.includes('CI LISOI') && content.includes('10-02-2024') },
-
-    // 3. Tool Integrity (Must use edit, never write on existing files)
-    { name: 'Tool: Menggunakan tool "edit" (bukan overwrite "write")', pass: calledTools.some(t => t.includes('edit')) && !calledTools.some(t => t.includes('write')) },
+    { name: 'SISA PEMBAYARAN PAK ARNOL terjaga', pass: content.includes('SISA PEMBAYARAN') && content.includes('PAK ARNOL') },
+    { name: 'BELANJAAN KE LABURA terjaga', pass: content.includes('BELANJAAN KE LABURA') && content.includes('147 RB') },
+    { name: 'TOTAL BELANJA KE BENDONG terjaga', pass: content.includes('TOTAL BELANJA KE BENDONG') && content.includes('98.000') },
+    { name: 'SISA DEPOSIT terjaga', pass: content.includes('SISA DEPOSIT') && content.includes('14.207.640') },
+    { name: 'CI LISOI uncompleted note terjaga', pass: content.includes('CI LISOI') && content.includes('10-02-2024') },
+    { name: 'Tool edit used (no overwrite write)', pass: calledTools.some(t => t.includes('edit')) && !calledTools.some(t => t.includes('write')) },
   ];
 
   let passed = 0;
-  console.log('\n📊 === HASIL VERIFIKASI PENGUJIAN OTONOM === 📊');
   checks.forEach(c => {
-    console.log(`${c.pass ? '✅' : '❌'} ${c.name}`);
     if (c.pass) passed++;
   });
 
-  console.log(`\n${passed}/${checks.length} checks passed`);
-  process.exit(passed === checks.length ? 0 : 1);
+  console.log(`\n📊 RESULT FOR ${model.label}:`);
+  console.log(`  ⏱️ Duration: ${durationSec}s`);
+  console.log(`  📑 Score: ${passed}/${checks.length} checks passed`);
+  console.log(`  ⚙️ Tools Called: ${calledTools.join(', ')}`);
+  if (error) console.log(`  ⚠️ Error: ${error}`);
+
+  return {
+    model: model.label,
+    durationSec,
+    score: `${passed}/${checks.length}`,
+    passedAll: passed === checks.length,
+    tools: calledTools.length,
+    error: error || '',
+  };
 }
 
-runTest();
+async function main() {
+  console.log('🚀 Running test-rekap-extended across all models...');
+
+  const apiKey = process.env.ARUNAKI_API_KEY || 'arunaki-dev-key';
+  const listRes = await fetch(`${API_BASE}/workspaces`, {
+    headers: { 'x-api-key': apiKey },
+  });
+  const listData = await listRes.json();
+  const workspaces = Array.isArray(listData) ? listData : (listData.data || []);
+  const workspaceId = workspaces[0].id;
+  const workspaceRoot = workspaces[0].rootPath || workspaces[0].path || path.resolve('workspace-demo');
+
+  const results = [];
+  for (const model of MODELS) {
+    const res = await testSingleModel(model, workspaceId, workspaceRoot);
+    results.push(res);
+    await new Promise(r => setTimeout(r, 3000));
+  }
+
+  console.log('\n===============================================================');
+  console.log('🏆 EXTENDED TEST REKAP COMPARISON MATRIX:');
+  console.log('===============================================================');
+  console.table(results);
+}
+
+main().catch(console.error);

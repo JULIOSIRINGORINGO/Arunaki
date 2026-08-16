@@ -769,30 +769,31 @@ export class AgentRunnerService {
         },
       });
 
-      // Background review — extract learnings from conversation
-      try {
-        await this.backgroundReviewService.reviewAndLearn(
-          messages.map((m) => ({ role: m.role, content: m.content || '' })),
-        );
-      } catch (err: any) {
-        this.logger.debug(
-          `Background review failed (non-critical): ${err.message}`,
-        );
-      }
-
-      // Auto memory distillation — compress memories if threshold exceeded
-      try {
-        const distillResult = await this.autoMemoryService.checkAndDistill();
-        if (distillResult.distilled) {
-          this.logger.log(
-            `Memory distilled: ${distillResult.count} entries compressed`,
+      // Fire-and-forget: Background review & distillation asynchronously without blocking response
+      setImmediate(async () => {
+        try {
+          await this.backgroundReviewService.reviewAndLearn(
+            messages.map((m) => ({ role: m.role, content: m.content || '' })),
+          );
+        } catch (err: any) {
+          this.logger.debug(
+            `Background review failed (non-critical): ${err.message}`,
           );
         }
-      } catch (err: any) {
-        this.logger.debug(
-          `Memory distillation failed (non-critical): ${err.message}`,
-        );
-      }
+
+        try {
+          const distillResult = await this.autoMemoryService.checkAndDistill();
+          if (distillResult.distilled) {
+            this.logger.log(
+              `Memory distilled: ${distillResult.count} entries compressed`,
+            );
+          }
+        } catch (err: any) {
+          this.logger.debug(
+            `Memory distillation failed (non-critical): ${err.message}`,
+          );
+        }
+      });
 
       return finalContent;
     } catch (error) {

@@ -390,7 +390,7 @@ export function UnifiedWorkstationPage() {
     setIsStreaming(true);
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
-    const apiKey = import.meta.env.VITE_ARUNAKI_API_KEY;
+    const apiKey = import.meta.env.VITE_ARUNAKI_API_KEY || "arunaki-dev-key";
     const streamHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (apiKey) {
       streamHeaders["x-api-key"] = apiKey;

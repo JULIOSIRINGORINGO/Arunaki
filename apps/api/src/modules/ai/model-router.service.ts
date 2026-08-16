@@ -335,21 +335,16 @@ export class ModelRouterService {
       additions.push('\nGEMINI-SPECIFIC INSTRUCTIONS:');
       additions.push('- Gemini should be concise and direct. Avoid repeating tool descriptions.');
     } else {
-      // Open-weights, OpenAI-compatible, GPT-OSS, Qwen, DeepSeek, Llama & generic models
       additions.push('\nSTRICT TOOL CALLING & EDITING RULES:');
       additions.push('- When a tool is needed, invoke provider-native tool calls or output a valid JSON object matching:');
       additions.push('  {"name": "<tool_name>", "arguments": { "<param>": "<value>" }}');
-      additions.push('- Example edit invocation:');
-      additions.push('  {"name": "edit", "arguments": {"filePath": "laporan.txt", "oldString": "TOTAL TF BCA : 1.182 RB", "newString": "TOTAL TF BCA : 2.007 RB"}}');
-      additions.push('- CRITICAL: Never include line numbers (e.g. "1: ", "2: ") in `oldString` or `newString`. Always use the actual file text.');
-      additions.push('- For `edit` tool: specify `oldString` and `newString` (or `patchText`). When updating daily reports/recaps:');
-      additions.push('  * Update the date header to today\'s date.');
-      additions.push('  * Replace previous day\'s transactions with the new day\'s transactions under PEMASUKAN.');
-      additions.push('  * Insert all individual expense lines under the PENGELUARAN section.');
-      additions.push('  * Recalculate and update all subtotal, total, and selisih lines accurately.');
-      additions.push('  * Keep all untouched template sections (deposit notes, uncompleted payments, vendor sections) intact.');
-      additions.push('- Output valid JSON with proper double quotes and no trailing commas.');
-      additions.push('- Do NOT output conversational filler or preamble before or after tool calls.');
+      additions.push('- For `edit` tool, provide `filePath` and `replacements` array with exact target chunks:');
+      additions.push('  {"name": "edit", "arguments": {"filePath": "document.txt", "replacements": [{"oldString": "exact existing text", "newString": "replacement text"}]}}');
+      additions.push('- Never include line numbers (e.g. "1: ") in `oldString` or `newString`. Use the exact document text.');
+      additions.push('- When adding or modifying sections, include the section header/boundary in `oldString` to anchor the replacement.');
+      additions.push('- For multiple changes across a file, group changes into coherent section blocks in the `replacements` array from top to bottom.');
+      additions.push('- After tool execution, provide a concise 1-sentence confirmation without repeating the file contents.');
+      additions.push('- Output valid JSON directly without conversational preamble.');
     }
 
     return additions.join('\n');
@@ -435,21 +430,22 @@ export class ModelRouterService {
   }
 
   /**
-   * Get recommended temperature for a model family.
+   * Get recommended temperature for a model or model family.
    */
-  private getRecommendedTemp(family: string): number {
+  public getRecommendedTemp(modelOrFamily: string): number {
+    const familyKey = this.detectFamily(modelOrFamily).family;
     const temps: Record<string, number> = {
-      claude: 0.7,
-      openai: 0.7,
-      gemini: 0.7,
-      llama: 0.6,
-      mistral: 0.7,
-      nemotron: 0.7,
-      qwen: 0.7,
-      deepseek: 0.6,
-      unknown: 0.7,
+      claude: 0.3,
+      openai: 0.2,
+      gemini: 0.3,
+      llama: 0.2,
+      mistral: 0.2,
+      nemotron: 0.2,
+      qwen: 0.2,
+      deepseek: 0.2,
+      unknown: 0.2,
     };
-    return temps[family] || 0.7;
+    return temps[familyKey] || temps[modelOrFamily] || 0.2;
   }
 }
 

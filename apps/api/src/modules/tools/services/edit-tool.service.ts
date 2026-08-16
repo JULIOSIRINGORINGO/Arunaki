@@ -33,12 +33,16 @@ export class EditToolService {
     let patchText: string | undefined = rawParams.patchText ?? rawParams.patch ?? rawParams.diff ?? rawParams.patch_text;
     const startTime = Date.now();
 
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { rootPath: true },
-    });
+    let rootPath: string = rawParams.rootPath || '';
+    if (!rootPath) {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true },
+      });
+      rootPath = workspace?.rootPath || '';
+    }
 
-    if (!workspace?.rootPath) {
+    if (!rootPath) {
       return {
         status: 'error',
         data: {},
@@ -47,8 +51,6 @@ export class EditToolService {
         error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
       };
     }
-
-    const rootPath = workspace.rootPath;
 
     if (!filePath) {
       const match = (patchText || '').match(/\*\*\* Update File:\s*(.+)/i);
@@ -104,6 +106,7 @@ export class EditToolService {
       if (fileExists) {
         let currentContent = await fsPromises.readFile(targetPath, 'utf-8');
         let successCount = 0;
+        let searchCursor = 0;
         const stripLineNums = (s: string) => s.split('\n').map((l: string) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
 
         for (const item of replacementsList) {
@@ -111,9 +114,14 @@ export class EditToolService {
           const itemNew = item.newString ?? item.new_str ?? item.replace ?? item.replacement ?? '';
           if (itemOld === undefined) continue;
 
-          // 1. Exact match
-          if (currentContent.includes(itemOld)) {
-            currentContent = currentContent.replace(itemOld, itemNew);
+          // 1. Exact match (prefer from searchCursor)
+          let idx = currentContent.indexOf(itemOld, searchCursor);
+          if (idx === -1) {
+            idx = currentContent.indexOf(itemOld, 0);
+          }
+          if (idx !== -1) {
+            currentContent = currentContent.slice(0, idx) + itemNew + currentContent.slice(idx + itemOld.length);
+            searchCursor = idx + itemNew.length;
             successCount++;
             continue;
           }
@@ -122,8 +130,13 @@ export class EditToolService {
           const normRaw = currentContent.replace(/\r\n/g, '\n');
           const normOld = itemOld.replace(/\r\n/g, '\n');
           const normNew = itemNew.replace(/\r\n/g, '\n');
-          if (normRaw.includes(normOld)) {
-            currentContent = normRaw.replace(normOld, normNew);
+          let normIdx = normRaw.indexOf(normOld, searchCursor);
+          if (normIdx === -1) {
+            normIdx = normRaw.indexOf(normOld, 0);
+          }
+          if (normIdx !== -1) {
+            currentContent = normRaw.slice(0, normIdx) + normNew + normRaw.slice(normIdx + normOld.length);
+            searchCursor = normIdx + normNew.length;
             successCount++;
             continue;
           }
@@ -131,10 +144,17 @@ export class EditToolService {
           // 3. Line-number stripped match
           const strippedOld = stripLineNums(normOld);
           const strippedNew = stripLineNums(normNew);
-          if (strippedOld && normRaw.includes(strippedOld)) {
-            currentContent = normRaw.replace(strippedOld, strippedNew);
-            successCount++;
-            continue;
+          if (strippedOld) {
+            let sIdx = normRaw.indexOf(strippedOld, searchCursor);
+            if (sIdx === -1) {
+              sIdx = normRaw.indexOf(strippedOld, 0);
+            }
+            if (sIdx !== -1) {
+              currentContent = normRaw.slice(0, sIdx) + strippedNew + normRaw.slice(sIdx + strippedOld.length);
+              searchCursor = sIdx + strippedNew.length;
+              successCount++;
+              continue;
+            }
           }
         }
 

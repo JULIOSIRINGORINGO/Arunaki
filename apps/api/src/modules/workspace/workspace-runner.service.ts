@@ -757,12 +757,14 @@ export class WorkspaceRunnerService {
       const workspaceContext = await this.buildWorkspaceContext(workspaceId);
 
       // Smart recall: prefetch relevant memory and past conversations
+      let workspaceRootPath = '';
       let recallContext = '';
       try {
         const ws = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
-          select: { businessType: true },
+          select: { businessType: true, rootPath: true },
         });
+        workspaceRootPath = ws?.rootPath || '';
         recallContext = await this.smartRecallService.recall(
           userGoal,
           workspaceId,
@@ -1368,8 +1370,8 @@ export class WorkspaceRunnerService {
                 current.push({ filename: args.filename || args.path || 'unknown', timestamp: new Date() });
                 this.readFiles.set(workspaceId, current.slice(-30));
                 if (result.status === 'success') {
-                const rf = String(args.filename || args.path || args.filePath || '');
-                if (rf) touchedFiles.add(path.basename(rf).toLowerCase());
+                  const rf = String(args.filename || args.path || args.filePath || '');
+                  if (rf) touchedFiles.add(path.basename(rf).toLowerCase());
                 }
               }
 
@@ -1381,13 +1383,8 @@ export class WorkspaceRunnerService {
             }
           }
 
-         // Execute mutating tools — full autonomous with built-in safety:
-         // - delete: auto-backup to .arunaki-trash/ before delete
-         // - desktop_send_keys: keyboard whitelist validation
-         // - all tools: workspace path isolation via SelfHealingService
-         // - natural 1-turn feedback: a failed mutation is returned to the LLM
-         //   as an ordinary tool result; the agent self-corrects next turn.
-         for (const { toolCall, args } of mutatingCalls) {
+          // Execute mutating tools — full autonomous with built-in safety:
+          for (const { toolCall, args } of mutatingCalls) {
             const funcName = toolCall.function.name;
 
             this.logger.log(`Auto-executing workspace tool: ${funcName} (${args.filename || args.keys || ''})`);
@@ -1421,7 +1418,7 @@ export class WorkspaceRunnerService {
               if (typeof args.content === 'string' && /@[^\s@]+\.[A-Za-z0-9]{1,10}/.test(args.content)) {
                 throw new Error('Content still contains raw @file references and cannot be saved.');
               }
-              const enrichedArgs: Record<string, any> = { ...args, workspaceId };
+              const enrichedArgs: Record<string, any> = { ...args, workspaceId, rootPath: workspaceRootPath };
               if (!enrichedArgs.filePath && !enrichedArgs.path && !enrichedArgs.filename && mentionedFiles.size === 1) {
                 enrichedArgs.filePath = [...mentionedFiles][0];
                 enrichedArgs.path = [...mentionedFiles][0];
@@ -1471,166 +1468,136 @@ export class WorkspaceRunnerService {
               createdArtifactIds.push(artifact.id);
             }
 
-             onEvent({
-               type: 'tool_done',
-               data: {
-                 toolName: funcName,
-                 result,
-                 timestamp: new Date().toISOString(),
-               },
-             });
+            onEvent({
+              type: 'tool_done',
+              data: {
+                toolName: funcName,
+                result,
+                timestamp: new Date().toISOString(),
+              },
+            });
 
-              // Track modified files
-              if (result.status === 'success') {
-                mutationsApplied++;
-                const filename = args.filename || args.path || args.filePath || 'unknown';
-                const fname = String(filename);
-                if (fname && fname !== 'unknown') {
-                  touchedFiles.add(path.basename(fname).toLowerCase());
-                }
-                const current = this.modifiedFiles.get(workspaceId) || [];
-                current.push({ filename, timestamp: new Date() });
-                this.modifiedFiles.set(workspaceId, current.slice(-30));
+            // Track modified files
+            if (result.status === 'success') {
+              mutationsApplied++;
+              const filename = args.filename || args.path || args.filePath || 'unknown';
+              const fname = String(filename);
+              if (fname && fname !== 'unknown') {
+                touchedFiles.add(path.basename(fname).toLowerCase());
               }
-
-             messages.push({
-               role: 'tool',
-               tool_call_id: toolCall.id,
-               content: ToolResultFormatter.formatForLlm(funcName, result),
-             });
-           }
-
-           // Track no-progress rounds (consecutive rounds with zero successful
-           // mutation). A done-but-verifying model keeps emitting reads/empty
-           // calls; 2+ no-progress rounds is the signal that work has stopped.
-           if (mutationsApplied > roundMutationsStart) {
-             noProgressRounds = 0;
-           } else {
-             noProgressRounds++;
-           }
-
-           // Compact history if the accumulated token budget is exceeded
-           // (OpenClaw compaction.ts — threshold scales to the active model
-           // window, so a 32K model compacts long before a 128K one would).
-           const compactResult = await this.compactionService.compactHistory(
-             messages,
-             modelCtx.contextWindow,
-           );
-           if (compactResult.wasCompacted) {
-              messages.length = 0;
-              messages.push(...compactResult.compactedMessages);
+              const current = this.modifiedFiles.get(workspaceId) || [];
+              current.push({ filename, timestamp: new Date() });
+              this.modifiedFiles.set(workspaceId, current.slice(-30));
             }
 
-            // opencode-style: keep looping while the model keeps returning
-            // tool_calls. If a steering/follow-up input arrived mid-run, inject
-            // it and continue the loop; otherwise just continue with tool
-            // results already fed back to the model.
-            const steeringInputs = this.steeringQueue.get(workspaceId) || [];
-            if (steeringInputs.length > 0) {
-              const steering = steeringInputs.shift()!;
-              if (steeringInputs.length === 0) {
-                this.steeringQueue.delete(workspaceId);
-              }
-              messages.push({
-                role: 'user',
-                content: steering.message,
-              });
-              this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
-              onEvent({
-                type: 'steering',
-                data: { message: 'Follow-up received, continuing analysis...' },
-              });
-            }
-         }
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: ToolResultFormatter.formatForLlm(funcName, result),
+            });
+          }
 
-      if (reachedMaxRounds) {
-        this.logger.warn(
-          'Workspace agent reached max round limit without completion.',
-        );
-      }
-      if (!finalContent) {
-        if (reachedMaxRounds) {
-          finalContent =
-            'Agent reached maximum step limit. Results so far may be incomplete -- please continue your request if needed.';
-        } else {
-          finalContent = 'Autonomous workspace task completed.';
+          // Track no-progress rounds (consecutive rounds with zero successful mutation).
+          if (mutationsApplied > roundMutationsStart) {
+            noProgressRounds = 0;
+          } else {
+            noProgressRounds++;
+          }
+
+          // Smart Circuit Breaker: If mutations were successfully applied to the workspace,
+          // and no further mutations happened for 2 rounds, conclude the run immediately!
+          if (mutationsApplied > 0 && noProgressRounds >= 2) {
+            this.logger.log(
+              `[WorkspaceRunner] Concluding run: ${mutationsApplied} mutation(s) applied and verified across rounds.`,
+            );
+            finalContent = finalContent || 'File modifications have been applied and verified.';
+            reachedMaxRounds = false;
+            break;
+          }
+
+          // Compact history if the accumulated token budget is exceeded
+          const compactResult = await this.compactionService.compactHistory(
+            messages,
+            modelCtx.contextWindow,
+          );
+          if (compactResult.wasCompacted) {
+            messages.length = 0;
+            messages.push(...compactResult.compactedMessages);
+          }
+
+          // opencode-style: keep looping while the model keeps returning tool_calls.
+          const steeringInputs = this.steeringQueue.get(workspaceId) || [];
+          if (steeringInputs.length > 0) {
+            const steering = steeringInputs.shift()!;
+            if (steeringInputs.length === 0) {
+              this.steeringQueue.delete(workspaceId);
+            }
+            messages.push({
+              role: 'user',
+              content: steering.message,
+            });
+            this.logger.log(`Steering input injected for workspace ${workspaceId}: "${steering.message.substring(0, 100)}"`);
+            onEvent({
+              type: 'steering',
+              data: { message: 'Follow-up received, continuing analysis...' },
+            });
+          }
         }
-      }
 
-      const artifactRecords = await Promise.all(
-        createdArtifactIds.map((aid) =>
-          this.artifactService.findById(aid).catch(() => null),
-        ),
-      );
+        if (reachedMaxRounds) {
+          this.logger.warn(
+            'Workspace agent reached max round limit without completion.',
+          );
+        }
+        if (!finalContent) {
+          if (reachedMaxRounds) {
+            finalContent =
+              'Agent reached maximum step limit. Results so far may be incomplete -- please continue your request if needed.';
+          } else {
+            finalContent = 'Autonomous workspace task completed.';
+          }
+        }
 
-      const artifacts = artifactRecords.filter(Boolean).map((a) => {
-        const meta = this.artifactService.parseMetadata(a!);
-        return {
-          id: a!.id,
-          type: a!.type,
-          filename: a!.name,
-          mimeType: meta.mimeType || 'application/octet-stream',
-          preview: a!.preview,
-          status: 'draft',
-          createdAt: a!.createdAt,
-        };
-      });
+        const artifactRecords = await Promise.all(
+          createdArtifactIds.map((aid) =>
+            this.artifactService.findById(aid).catch(() => null),
+          ),
+        );
 
-      onEvent({
-        type: 'done',
-        data: {
-          content: finalContent,
-          artifacts,
-        },
-      });
+        const artifacts = artifactRecords.filter(Boolean).map((a) => {
+          const meta = this.artifactService.parseMetadata(a!);
+          return {
+            id: a!.id,
+            type: a!.type,
+            filename: a!.name,
+            mimeType: meta.mimeType || 'application/octet-stream',
+            preview: a!.preview,
+            status: 'draft',
+            createdAt: a!.createdAt,
+          };
+        });
 
-      this.setPhase(runState, 'completed', onEvent);
-      this.setState(runState, 'completed', onEvent);
-
-      // Emit agent completed event
-      this.eventEmitter.emit('workspace.agent.completed', {
-        workspaceId,
-        goal: userGoal,
-        finalContent: finalContent.substring(0, 200),
-        artifactsCount: artifacts.length,
-        timestamp: new Date(),
-      });
-
-      // Persist analysis result to workspace (cached across sessions)
-      try {
-        await this.prisma.workspace.update({
-          where: { id: workspaceId },
+        onEvent({
+          type: 'done',
           data: {
-            analysisResult: finalContent,
-            analyzedAt: new Date(),
+            content: finalContent,
+            artifacts,
           },
         });
-        this.logger.log(
-          `Cached analysis result for workspace ${workspaceId} (${finalContent.length} chars)`,
-        );
-      } catch (e: any) {
-        this.logger.warn(`Failed to cache analysis result: ${e.message}`);
-      }
 
-      // Auto-save memory after successful task completion
-      try {
-        // Fetch business type for domain-aware memory
-        let saveDomain = 'generic';
-        try {
-          const ws = await this.prisma.workspace.findUnique({
-            where: { id: workspaceId },
-            select: { businessType: true },
-          });
-          if (ws?.businessType) saveDomain = ws.businessType;
-        } catch {}
+        this.setPhase(runState, 'completed', onEvent);
+        this.setState(runState, 'completed', onEvent);
 
-        await this.memoryService.recordWorkspaceHistory(
+        // Emit agent completed event
+        this.eventEmitter.emit('workspace.agent.completed', {
           workspaceId,
-          `Goal: ${userGoal}\nResult: ${finalContent.substring(0, 500)}`,
-          saveDomain,
-        );
+          goal: userGoal,
+          finalContent: finalContent.substring(0, 200),
+          artifactsCount: artifacts.length,
+          timestamp: new Date(),
+        });
 
-        // Save structured interaction memory (OpenClaw memory/YYYY-MM-DD.md pattern)
+        // Fire-and-forget: Persist workspace cache, history memory & background review asynchronously
         const modified = this.modifiedFiles.get(workspaceId) || [];
         const memoryDetails = {
           goal: userGoal,
@@ -1639,39 +1606,61 @@ export class WorkspaceRunnerService {
           totalRounds: runState.round,
           timestamp: new Date().toISOString(),
         };
-        await this.memoryService.remember({
-          type: 'run_summary',
-          key: `run_${workspaceId}_${Date.now()}`,
-          content: JSON.stringify(memoryDetails),
-          source: 'auto',
-          importance: 6,
-          domain: saveDomain,
-          workspaceId,
+
+        setImmediate(async () => {
+          try {
+            await this.prisma.workspace.update({
+              where: { id: workspaceId },
+              data: {
+                analysisResult: finalContent,
+                analyzedAt: new Date(),
+              },
+            }).catch((e) => this.logger.warn(`Failed to cache analysis result: ${e.message}`));
+
+            let saveDomain = 'generic';
+            try {
+              const ws = await this.prisma.workspace.findUnique({
+                where: { id: workspaceId },
+                select: { businessType: true },
+              });
+              if (ws?.businessType) saveDomain = ws.businessType;
+            } catch {}
+
+            await this.memoryService.recordWorkspaceHistory(
+              workspaceId,
+              `Goal: ${userGoal}\nResult: ${finalContent.substring(0, 500)}`,
+              saveDomain,
+            ).catch(() => {});
+
+            await this.memoryService.remember({
+              type: 'run_summary',
+              key: `run_${workspaceId}_${Date.now()}`,
+              content: JSON.stringify(memoryDetails),
+              source: 'auto',
+              importance: 6,
+              domain: saveDomain,
+              workspaceId,
+            }).catch(() => {});
+
+            await this.backgroundReviewService.reviewAndLearn(
+              messages.map((m) => ({ role: m.role, content: m.content || '' })),
+              workspaceId,
+              saveDomain,
+            ).catch(() => {});
+          } catch (e: any) {
+            this.logger.warn(`Background post-processing warning: ${e.message}`);
+          }
         });
 
-        this.logger.log(
-          `Auto-saved workspace history memory for workspace ${workspaceId}`,
-        );
-
-        // Background review — extract learnings from conversation
-        await this.backgroundReviewService.reviewAndLearn(
-          messages.map((m) => ({ role: m.role, content: m.content || '' })),
-          workspaceId,
-          saveDomain,
-        );
-      } catch (e) {
-        this.logger.warn(`Failed to auto-save workspace history: ${e.message}`);
-      }
-
-      return finalContent;
-    } catch (error) {
+        return finalContent;
+    } catch (error: any) {
       this.setState(runState, 'failed', onEvent);
 
       // Emit agent failed event
       this.eventEmitter.emit('workspace.agent.failed', {
         workspaceId,
         goal: userGoal,
-        error: error.message,
+        error: error?.message || 'Unknown error',
         timestamp: new Date(),
       });
 

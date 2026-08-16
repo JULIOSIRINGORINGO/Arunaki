@@ -348,7 +348,9 @@ export class AiService {
       maxOutputTokens: scaleMaxTokens(provider.model),
       providerOptions,
     };
-    if (!thinkingEnabled) body.temperature = 0.7;
+    if (!thinkingEnabled) {
+      body.temperature = this.modelRouter.getRecommendedTemp(provider.model);
+    }
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
@@ -499,7 +501,9 @@ export class AiService {
       maxOutputTokens: scaleMaxTokens(provider.model),
       providerOptions,
     };
-    if (!thinkingEnabled) body.temperature = 0.7;
+    if (!thinkingEnabled) {
+      body.temperature = this.modelRouter.getRecommendedTemp(provider.model);
+    }
 
     const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {

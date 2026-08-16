@@ -249,15 +249,13 @@ export async function *makeSdkRequestStream(
   const canUseTools = (body.tools?.length ?? 0) > 0;
   let done = false;
 
-  // Time to first token (TTFB) timeout catches a hung provider fast; the
-  // total timeout guards against a slow/stalled generation so a sluggish
-  // model gets rotated to a faster sibling model automatically.
-  // TTFB is generous (120s): 120B open-weights models (gpt-oss-120b) go
-  // silent while reasoning and stream only their final answer — a tight
-  // 65s TTFB aborted a working request, rotated to the same slow model, and
-  // restarted it from scratch (65s + 120s total = ~196s for one round).
-  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? 120000;
-  const totalTimeoutMs = options.totalTimeoutMs ?? 300000;
+  // Adaptive Time to first token (TTFB) timeout:
+  // - Fast / standard models (flash, 20b, sonnet, etc.): 18s failover
+  // - Large reasoning models (120b, o1, deepseek-r1): 35s failover
+  const isHeavyReasoning = /120b|deepseek-r1|o1|o3/i.test(provider.model);
+  const defaultTtfb = isHeavyReasoning ? 35000 : 18000;
+  const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? defaultTtfb;
+  const totalTimeoutMs = options.totalTimeoutMs ?? 180000;
 
   console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);
 
