@@ -103,8 +103,8 @@ async function runMultiTurnAdaptiveLearningTest() {
   // Wait 3s
   await delay(3000);
 
-  console.log(`\n💬 [Turn 2] User Teaches & Corrects Format Style...`);
-  const gPrompt2 = `Mulai sekarang kalau rekap kaos formatnya selalu buat seperti ini ya di Canvas:
+  console.log(`\n💬 [Turn 2] User Teaches & Corrects Format Style (Natural Human Input - Zero Tech Terms)...`);
+  const gPrompt2 = `Mulai sekarang kalau rekap kaos formatnya selalu buat seperti ini ya:
 UKURAN
 S [jumlah]
 M [jumlah]
@@ -132,16 +132,16 @@ dan ukuran XXL selalu tulis sebagai 2XL`;
   const hasCanvasG = /\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i.test(t3Res);
   const canvasContentG = t3Res.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i)?.[1]?.trim() || t3Res;
 
-  const hasS2 = /S\s*[:\-]?\s*2/i.test(canvasContentG);
-  const hasM2 = /M\s*[:\-]?\s*2/i.test(canvasContentG);
-  const hasL1 = /L\s*[:\-]?\s*1/i.test(canvasContentG);
-  const hasXL1 = /XL\s*[:\-]?\s*1/i.test(canvasContentG);
-  const has2XL2 = /2XL\s*[:\-]?\s*2/i.test(canvasContentG);
-  const hasTotal8 = /TOTAL\s*[:\-]?\s*8\s*PCS/i.test(canvasContentG) || /8\s*PCS/i.test(canvasContentG);
+  const hasS2 = /S\s*[:\-\[]?\s*2/i.test(canvasContentG);
+  const hasM2 = /M\s*[:\-\[]?\s*2/i.test(canvasContentG);
+  const hasL1 = /L\s*[:\-\[]?\s*1/i.test(canvasContentG);
+  const hasXL1 = /XL\s*[:\-\[]?\s*1/i.test(canvasContentG);
+  const has2XL2 = /2XL\s*[:\-\[]?\s*2/i.test(canvasContentG);
+  const hasTotal8 = /TOTAL\s*[:\-\[]?\s*8/i.test(canvasContentG) || /8\s*PCS/i.test(canvasContentG);
 
   const domain1Passed = hasCanvasG && hasS2 && hasM2 && hasL1 && hasXL1 && has2XL2 && hasTotal8;
   console.log(`\n📊 Hasil Domain 1 (Garment): ${domain1Passed ? '✅ 100% KONSISTEN & PATUH FORMAT' : '❌ PERLU PENYESUAIAN'}`);
-  console.log(`- Canvas Block: ${hasCanvasG ? '✅' : '❌'}`);
+  console.log(`- Canvas Auto-Trigger: ${hasCanvasG ? '✅' : '❌'}`);
   console.log(`- Ukuran S=2, M=2, L=1, XL=1: ${hasS2 && hasM2 && hasL1 && hasXL1 ? '✅' : '❌'}`);
   console.log(`- Penyetaraan XXL -> 2XL (2 pcs): ${has2XL2 ? '✅' : '❌'}`);
   console.log(`- Total 8 PCS: ${hasTotal8 ? '✅' : '❌'}`);
@@ -155,8 +155,8 @@ dan ukuran XXL selalu tulis sebagai 2XL`;
 
   const bakeryHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
-  console.log(`\n💬 [Turn 1] User Teaches Bakery Format Rule...`);
-  const bPrompt1 = `Mulai sekarang di toko kue ini kalau ada pesanan format rekapnya selalu buat seperti ini di Canvas:
+  console.log(`\n💬 [Turn 1] User Teaches Bakery Format Rule (Natural Human Input)...`);
+  const bPrompt1 = `Mulai sekarang di toko kue ini kalau ada pesanan format rekapnya selalu buat seperti ini:
 REKAP PESANAN KUE
 - [Nama Kue] : [Jumlah] [Satuan]
 TOTAL ITEM: [Total] BOX/TOPLES/LOYANG`;
