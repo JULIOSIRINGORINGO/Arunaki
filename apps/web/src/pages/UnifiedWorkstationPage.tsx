@@ -8,8 +8,7 @@ import { WorkstationCenterPanel, CenterTab } from "../components/workstation/Wor
 import { WorkstationRightChat } from "../components/workstation/WorkstationRightChat";
 import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal";
 import { SearchSectionModal } from "../components/workstation/SearchSectionModal";
-import { CanvasData } from "../components/chat/CanvasPanel";
-import { LiveStatusData } from "../components/chat/LiveExecutionBadge";
+import { LiveStatusData } from "../components/workstation/LiveExecutionBadge";
 import { API_BASE, apiFetch } from "../lib/api";
 
 interface Message {
@@ -34,20 +33,6 @@ interface Workspace {
   status: string;
 }
 
-function extractCanvasContent(llmText: string): string {
-  if (!llmText) return "";
-  const canvasMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
-  if (canvasMatch?.[1]?.trim()) return canvasMatch[1].trim();
-
-  const codeBlockMatch = llmText.match(/```[\w]*\n([\s\S]*?)\n```/);
-  if (codeBlockMatch?.[1]?.trim()) return codeBlockMatch[1].trim();
-
-  const tableMatch = llmText.match(/(\|[^\n]+\|\n\|[-:\s|]+\|\n(?:\|[^\n]+\|\n?)+)/);
-  if (tableMatch?.[1]?.trim()) return tableMatch[1].trim();
-
-  return "";
-}
-
 export function UnifiedWorkstationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -65,8 +50,6 @@ export function UnifiedWorkstationPage() {
 
   const [tabs, setTabs] = useState<CenterTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-
-  const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
 
   const [inputPrompt, setInputPrompt] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
@@ -223,42 +206,6 @@ export function UnifiedWorkstationPage() {
       }
     },
     [tabs, workspaceFiles]
-  );
-
-  const handleTriggerCanvas = useCallback(
-    (data?: CanvasData) => {
-      const canvasTabId = "canvas-active";
-      const title = data?.title || "Canvas Output";
-
-      setCanvasData(
-        data || {
-          id: "canvas-1",
-          title: "Workspace Canvas",
-          brandColorHeader: "#1A191B",
-          plainTextContent: "# Draft Report Document\n\nCanvas content can be edited directly...",
-          createdAt: new Date().toISOString(),
-        }
-      );
-
-      const existingIndex = tabs.findIndex((t) => t.id === canvasTabId);
-      const canvasTab: CenterTab = {
-        id: canvasTabId,
-        type: "canvas",
-        title: `🎨 ${title}`,
-      };
-
-      if (existingIndex >= 0) {
-        setTabs((prev) => {
-          const copy = [...prev];
-          copy[existingIndex] = canvasTab;
-          return copy;
-        });
-      } else {
-        setTabs((prev) => [...prev, canvasTab]);
-      }
-      setActiveTabId(canvasTabId);
-    },
-    [tabs]
   );
 
   const handleCloseTab = useCallback(
@@ -469,29 +416,9 @@ export function UnifiedWorkstationPage() {
                     : m
                 );
               });
-              const canvasText = extractCanvasContent(accumulatedResponseText);
-              if (canvasText) {
-                handleTriggerCanvas({
-                  id: `canvas-${Date.now()}`,
-                  title: "Canvas — Rekap Siap Salin",
-                  brandColorHeader: "#1A191B",
-                  plainTextContent: canvasText,
-                  createdAt: new Date().toISOString(),
-                });
-              }
             } else if (event.type === "done") {
               setIsStreaming(false);
               setLiveStatus(null);
-              const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
-              if (canvasText) {
-                handleTriggerCanvas({
-                  id: `canvas-${Date.now()}`,
-                  title: "Canvas — Rekap Siap Salin",
-                  brandColorHeader: "#1A191B",
-                  plainTextContent: canvasText,
-                  createdAt: new Date().toISOString(),
-                });
-              }
               queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
               setTimeout(() => {
                 setOptimisticMessages([]);
@@ -563,7 +490,6 @@ export function UnifiedWorkstationPage() {
           activeTabId={activeTabId}
           onSelectTab={setActiveTabId}
           onCloseTab={handleCloseTab}
-          canvasData={canvasData}
         />
 
         <div

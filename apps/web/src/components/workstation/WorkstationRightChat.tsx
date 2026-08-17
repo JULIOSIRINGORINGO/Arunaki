@@ -1,8 +1,8 @@
 import { RefObject, useRef, useLayoutEffect, useState, useMemo, memo } from "react";
 import Markdown from "react-markdown";
 import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, BookOpen, Search, Calculator, FileText, FilePlus, FileSearch, Eraser, Clock, X } from "lucide-react";
-import { LiveExecutionBadge, LiveStatusData } from "../chat/LiveExecutionBadge";
-import { LiveMirrorCard } from "../chat/LiveMirrorCard";
+import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
+import { LiveMirrorCard } from "./LiveMirrorCard";
 import { cn } from "../../lib/utils";
 
 const COMMANDS = [

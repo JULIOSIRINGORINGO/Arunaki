@@ -1,11 +1,10 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import { FileText, X, Sparkles } from "lucide-react";
-import { CanvasPanel, CanvasData } from "../chat/CanvasPanel";
+import { FileText, X } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface CenterTab {
   id: string;
-  type: "file" | "canvas" | "stage";
+  type: "file" | "stage";
   title: string;
   path?: string;
   fileType?: string;
@@ -17,7 +16,6 @@ interface WorkstationCenterPanelProps {
   activeTabId: string | null;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  canvasData: CanvasData | null;
   onUpdateTabContent?: (tabId: string, newContent: string) => void;
 }
 
@@ -38,7 +36,6 @@ function computeLineDiff(oldText: string, newText: string): DiffLine[] {
   const N = oldLines.length;
   const M = newLines.length;
 
-  // LCS Matrix
   const L: number[][] = Array.from({ length: N + 1 }, () => new Array(M + 1).fill(0));
 
   for (let i = 0; i < N; i++) {
@@ -90,7 +87,6 @@ function WorkstationCenterPanelComponent({
   activeTabId,
   onSelectTab,
   onCloseTab,
-  canvasData,
   onUpdateTabContent,
 }: WorkstationCenterPanelProps) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -99,184 +95,88 @@ function WorkstationCenterPanelComponent({
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
   // Track previous content per tab to compute live diffs when AI updates files
   const [previousContents, setPreviousContents] = useState<Record<string, string>>({});
-  // Live diff view state per tab
-  const [diffStates, setDiffStates] = useState<
-    Record<
-      string,
-      {
-        diffLines: DiffLine[];
-        addedCount: number;
-        deletedCount: number;
-        active: boolean;
-      }
-    >
-  >({});
+  // State to hold active diff highlighting per tab
+  const [activeDiffs, setActiveDiffs] = useState<Record<string, {
+    diffLines: DiffLine[];
+    addedCount: number;
+    deletedCount: number;
+  } | null>>({});
 
-  // Sync activeTab content into state & detect AI file edits for live diff view
+  // Sync tab content when parent updates tab.content
   useEffect(() => {
-    if (activeTab && activeTab.type === "file" && activeTab.content !== undefined) {
-      const tabId = activeTab.id;
-      const newContent = activeTab.content || "";
-      const oldContent = previousContents[tabId];
+    if (!activeTab?.id) return;
+    const incomingContent = activeTab.content ?? "";
+    const existingContent = editedContents[activeTab.id];
 
-      setEditedContents((prev) => ({
-        ...prev,
-        [tabId]: newContent,
-      }));
+    if (existingContent === undefined) {
+      setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+      setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+    } else if (incomingContent !== existingContent && incomingContent !== previousContents[activeTab.id]) {
+      // Content was updated by AI stream or reload — compute live diff highlight!
+      const prevText = previousContents[activeTab.id] ?? existingContent;
+      const diffLines = computeLineDiff(prevText, incomingContent);
+      const added = diffLines.filter((l) => l.type === "added").length;
+      const deleted = diffLines.filter((l) => l.type === "deleted").length;
 
-      // Trigger Live Diff view if content was updated externally (by AI tool call)
-      if (oldContent !== undefined && oldContent !== newContent && oldContent.trim().length > 0) {
-        const lines = computeLineDiff(oldContent, newContent);
-        const added = lines.filter((l) => l.type === "added").length;
-        const deleted = lines.filter((l) => l.type === "deleted").length;
+      if (added > 0 || deleted > 0) {
+        setActiveDiffs((prev) => ({
+          ...prev,
+          [activeTab.id]: {
+            diffLines,
+            addedCount: added,
+            deletedCount: deleted,
+          },
+        }));
 
-        if (added > 0 || deleted > 0) {
-          setDiffStates((prev) => ({
-            ...prev,
-            [tabId]: {
-              diffLines: lines,
-              addedCount: added,
-              deletedCount: deleted,
-              active: true,
-            },
-          }));
+        // Automatically settle and clear diff highlight after 3.5 seconds
+        const timer = setTimeout(() => {
+          setActiveDiffs((prev) => ({ ...prev, [activeTab.id]: null }));
+        }, 3500);
 
-          // FULLY AUTONOMOUS AUTO-DISMISS TIMER (3.5s): Settle diff highlights automatically without any user click
-          const timer = setTimeout(() => {
-            setDiffStates((prev) => {
-              if (prev[tabId]?.active) {
-                return {
-                  ...prev,
-                  [tabId]: { ...prev[tabId], active: false },
-                };
-              }
-              return prev;
-            });
-          }, 3500);
+        // Update current and previous contents
+        setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+        setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
 
-          return () => clearTimeout(timer);
-        }
+        return () => clearTimeout(timer);
+      } else {
+        setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+        setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
       }
-
-      setPreviousContents((prev) => ({
-        ...prev,
-        [tabId]: newContent,
-      }));
     }
   }, [activeTab?.id, activeTab?.content]);
 
-  const currentContent = activeTab && activeTab.type === "file"
-    ? (editedContents[activeTab.id] !== undefined ? editedContents[activeTab.id] : (activeTab.content || ""))
-    : "";
+  const currentContent = activeTab ? (editedContents[activeTab.id] ?? activeTab.content ?? "") : "";
+  const activeDiff = activeTab ? activeDiffs[activeTab.id] : null;
+  const isDiffActive = !!activeDiff;
 
-  const activeDiff = activeTab ? diffStates[activeTab.id] : null;
-  const isDiffActive = !!(activeDiff && activeDiff.active);
-
-  const handleDismissDiff = (tabId: string) => {
-    setDiffStates((prev) => ({
-      ...prev,
-      [tabId]: { ...prev[tabId], active: false },
-    }));
-  };
-
-  const handleTextChange = (val: string) => {
-    if (!activeTab) return;
-    setEditedContents((prev) => ({ ...prev, [activeTab.id]: val }));
-    if (diffStates[activeTab.id]?.active) {
-      handleDismissDiff(activeTab.id);
+  const handleTextChange = useCallback((newText: string) => {
+    if (!activeTab?.id) return;
+    setEditedContents((prev) => ({ ...prev, [activeTab.id]: newText }));
+    if (onUpdateTabContent) {
+      onUpdateTabContent(activeTab.id, newText);
     }
-  };
-
-  const handleSaveFile = useCallback(async () => {
-    if (!activeTab || activeTab.type !== "file" || !activeTab.path) return;
-    const tabId = activeTab.id;
-    const filePath = activeTab.path;
-    const contentToSave = editedContents[tabId] !== undefined ? editedContents[tabId] : (activeTab.content || "");
-
-    try {
-      if ((window as any).arunakiDesktop?.writeFile) {
-        const res = await (window as any).arunakiDesktop.writeFile(filePath, contentToSave);
-        if (res?.error) {
-          throw new Error(res.error);
-        }
-      } else {
-        await fetch("/api/v1/workspace/files", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: filePath, content: contentToSave }),
-        }).catch(() => {});
-      }
-
-      if (onUpdateTabContent) {
-        onUpdateTabContent(tabId, contentToSave);
-      } else {
-        activeTab.content = contentToSave;
-      }
-      handleDismissDiff(tabId);
-    } catch (err) {
-      console.error("[WorkstationCenterPanel] Save failed:", err);
-    }
-  }, [activeTab, editedContents, onUpdateTabContent]);
-
-  // Keyboard shortcut Ctrl+S / Cmd+S for saving
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        handleSaveFile();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSaveFile]);
+  }, [activeTab?.id, onUpdateTabContent]);
 
   return (
-    <main className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden relative select-text">
-      {/* Top Multi-Tab Bar */}
+    <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A] overflow-hidden select-none border-r border-[#1F1F1F]">
+      {/* Top Document Tabs Bar */}
       {tabs.length > 0 && (
-        <div className="h-9 bg-[#121212] border-b border-[#262626] flex items-center px-2 gap-1 overflow-x-auto shrink-0 select-none">
+        <div className="h-10 bg-[#121212] border-b border-[#262626] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
-            const tabIsModified = editedContents[tab.id] !== undefined && editedContents[tab.id] !== (tab.content || "");
-            const tabHasDiff = diffStates[tab.id]?.active;
-
             return (
               <div
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
-                onMouseDown={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
-                  }
-                }}
-                onAuxClick={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
-                  }
-                }}
-                title="Klik tengah (scroll wheel) untuk menutup tab"
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1 text-xs font-medium cursor-pointer transition-colors max-w-[200px] group border-r border-[#1E1E1E]",
+                  "group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono cursor-pointer transition-all duration-150 border select-none shrink-0",
                   isActive
-                    ? "bg-[#252526] text-[#FFFFFF] font-semibold border-t-2 border-t-white"
-                    : "text-[#A3A3A3] hover:bg-[#1E1E1E] hover:text-[#FFFFFF]"
+                    ? "bg-[#1E1E1E] text-white border-[#333333] shadow-sm"
+                    : "bg-transparent text-[#71717A] border-transparent hover:bg-[#1A1A1A] hover:text-[#D4D4D8]"
                 )}
               >
-                {tab.type === "canvas" ? (
-                  <Sparkles className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0" />
-                )}
-                <span className="truncate">{tab.title}</span>
-                {tabHasDiff ? (
-                  <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse shrink-0" title="Live Diff Update" />
-                ) : tabIsModified ? (
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="Belum disimpan" />
-                ) : null}
+                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[#E4E4E7]" : "text-[#71717A]")} />
+                <span className="truncate max-w-[140px]">{tab.title}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -295,19 +195,9 @@ function WorkstationCenterPanelComponent({
       {/* Dynamic Content Body */}
       <div className="flex-1 relative overflow-hidden bg-[#0A0A0A] flex flex-col">
         {activeTab ? (
-          activeTab.type === "canvas" ? (
-            /* ON-DEMAND CANVAS PANEL */
-            <div className="h-full w-full flex flex-col text-white select-none">
-              <CanvasPanel
-                isOpen={true}
-                onClose={() => onCloseTab("canvas-active")}
-                canvasData={canvasData}
-              />
-            </div>
-          ) : isDiffActive && activeDiff ? (
-            /* CURSOR / ANTIGRAVITY SUBTLE MONOCHROME LIVE DIFF VIEW (AUTO-SETTLING) */
+          isDiffActive && activeDiff ? (
+            /* CURSOR / ANTIGRAVITY LIVE DIFF VIEW */
             <div className="h-full w-full flex flex-col bg-[#0A0A0A] font-mono text-xs overflow-hidden select-text">
-              {/* Minimalist Dark Header Bar */}
               <div className="h-7 bg-[#121212] border-b border-[#262626] px-3 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse" />
@@ -319,7 +209,6 @@ function WorkstationCenterPanelComponent({
                 <span className="text-[#52525B] text-[10px] italic">Auto-settling...</span>
               </div>
 
-              {/* Line Diff Viewer Body (Subtle Dark Monochrome Tint) */}
               <div className="flex-1 overflow-auto p-2 bg-[#0A0A0A] font-mono text-xs leading-relaxed">
                 {activeDiff.diffLines.map((line, idx) => {
                   if (line.type === "added") {
@@ -351,7 +240,7 @@ function WorkstationCenterPanelComponent({
               </div>
             </div>
           ) : (
-            /* STANDARD EDITABLE FILE EDITOR */
+            /* STANDARD EDITABLE FILE / DOCUMENT VIEWER */
             <div className="h-full w-full flex flex-col bg-[#0A0A0A]">
               <textarea
                 value={currentContent}
