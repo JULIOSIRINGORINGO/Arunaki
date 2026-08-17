@@ -11,6 +11,7 @@ import { KnowledgeBuilderTool } from '../knowledge-builder.tool.js';
 import { SkillsTool } from '../skills.tool.js';
 import { MemoryTool } from '../memory.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
+import { PtcExecutorService } from '../ptc-executor.service.js';
 
 @Injectable()
 export class HarnessMetaToolsRegistrar {
@@ -28,6 +29,7 @@ export class HarnessMetaToolsRegistrar {
       memoryTool: MemoryTool;
       workspaceToolsService: WorkspaceToolsService;
       subAgentRunner?: any;
+      ptcExecutor?: PtcExecutorService;
     },
   ) {
     registry.register(
@@ -122,6 +124,74 @@ export class HarnessMetaToolsRegistrar {
             parentRunId: { type: 'string' },
           },
           required: ['tasks'],
+        },
+        timeoutMs: 60000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'batch_execute',
+        displayName: 'Programmatic Batch Execute',
+        description:
+          'Executes an atomic sequence of tools in one round-trip (e.g. read template + read data -> edit target file). If any step fails, all file modifications are automatically rolled back.',
+        tags: ['batch', 'ptc', 'atomic', 'programmatic'],
+        handler: async (args) => {
+          if (!services.ptcExecutor) {
+            return {
+              status: 'error',
+              error: {
+                code: 'PTC_UNAVAILABLE',
+                message: 'PTC executor is not available in current runtime.',
+              },
+              data: {},
+              preview: 'PTC executor unavailable',
+              metadata: {
+                toolName: 'batch_execute',
+                displayName: 'Programmatic Batch Execute',
+                executionTime: 0,
+              },
+            };
+          }
+          const res = await services.ptcExecutor.executeBatch(
+            args.workspaceId,
+            args.workspaceRoot || '',
+            args.operations || [],
+            { atomic: args.atomic !== false },
+          );
+          return {
+            status: res.status === 'success' ? 'success' : 'error',
+            data: res,
+            preview: res.message || `Executed ${res.completedSteps}/${res.totalSteps} batch operations.`,
+            error: res.status !== 'success' ? { code: 'BATCH_ERROR', message: res.message || 'Batch failed' } : undefined,
+            metadata: {
+              toolName: 'batch_execute',
+              displayName: 'Programmatic Batch Execute',
+              executionTime: 0,
+            },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            operations: {
+              type: 'array',
+              description: 'Array of tool operations: [{ tool: "read", args: { filePath: "..." } }, { tool: "edit", args: { ... } }]',
+              items: {
+                type: 'object',
+                properties: {
+                  tool: { type: 'string' },
+                  args: { type: 'object' },
+                },
+                required: ['tool', 'args'],
+              },
+            },
+            atomic: {
+              type: 'boolean',
+              description: 'If true, rolls back all file modifications if any operation fails. Defaults to true.',
+            },
+          },
+          required: ['operations'],
         },
         timeoutMs: 60000,
       }),

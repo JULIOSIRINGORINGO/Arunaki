@@ -36,6 +36,7 @@ import { CronService } from '../cron/cron.service.js';
 import { CronModule } from '../cron/cron.module.js';
 import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
 import { TodoStoreService } from './services/todo-store.service.js';
+import { PtcExecutorService } from './services/ptc-executor.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -86,6 +87,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     DocumentReconciliationService,
     ProgrammaticVerifierService,
     TodoStoreService,
+    PtcExecutorService,
     WorkspaceFileToolsRegistrar,
     BusinessDomainToolsRegistrar,
     HarnessMetaToolsRegistrar,
@@ -119,6 +121,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     DocumentReconciliationService,
     ProgrammaticVerifierService,
     TodoStoreService,
+    PtcExecutorService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -161,7 +164,7 @@ export class ToolsProviderModule implements OnModuleInit {
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
     });
 
-    // 3. Register Harness Meta Tools
+    // 3. Register Harness Meta Tools (including PTC Batch Execute)
     this.harnessMetaToolsRegistrar.register(this.registry, {
       askUser: this.moduleRef.get(AskUserTool, { strict: false }),
       todoStore: this.moduleRef.get(TodoStoreService, { strict: false }),
@@ -174,6 +177,7 @@ export class ToolsProviderModule implements OnModuleInit {
       memoryTool: this.moduleRef.get(MemoryTool, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
       subAgentRunner: this.moduleRef.get(SubAgentRunnerService, { strict: false }),
+      ptcExecutor: this.moduleRef.get(PtcExecutorService, { strict: false }),
     });
 
     // 4. Register Desktop COM Automation Tools

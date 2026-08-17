@@ -1511,3 +1511,40 @@ apps/web/src/
 - [x] Build check: `npx nest build` passed with 0 errors.
 - [x] Verified resident daemon initialization: `[WorkspaceRulesSentinelService] 🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).`
 - [x] End-to-end autonomous rekap benchmark passed with surgical `edit` and background completion handling.
+
+---
+
+## Phase 51: Programmatic & Multi-Tool Batch Execution (PTC Engine) ✅ DONE
+
+**Goal:** Implement DeepSeek Harness-inspired Programmatic Tool Calling (PTC) & atomic batch execution to reduce agent turnaround latency by ~70% (<10s) and prevent multi-round back-and-forth overhead.
+
+### 51.1 Programmatic Tool Calling (PTC) Engine Service
+- [x] Created `PtcExecutorService` in `apps/api/src/modules/tools/services/ptc-executor.service.ts` to parse, validate, and execute batched/scripted tool calls atomically.
+- [x] Implemented rollback transaction semantics: if one tool in a multi-step operation fails, roll back file mutations to preserve document integrity.
+
+### 51.2 Parallel & Chained Tool Invocations in WorkspaceRunner
+- [x] Registered `batch_execute` tool in `HarnessMetaToolsRegistrar` and wired `PtcExecutorService` into `ToolsProviderModule`.
+- [x] Added `batch_execute` tool routing in `WorkspacePromptBuilderService`.
+
+### 51.3 Verification & Benchmark
+- [x] Vitest unit test `src/modules/tools/services/ptc-executor.service.spec.ts` passed (2/2 tests passed, verifying multi-step execution & auto-rollback).
+- [x] Ran autonomous benchmark `scripts/test-ptc-benchmark.ts`: 5/5 assertions passed with 100% template preservation.
+
+---
+
+## Phase 52: Append-Only Event-Stream Transcript & Time-Travel Engine (Upcoming)
+
+**Goal:** Implement an append-only event stream transcript as the single source of truth for full replayability, auditability, and 1-click Undo/Rollback.
+
+---
+
+## Phase 53: Model Normalization & Multi-Provider Resilient Adapter (Upcoming)
+
+**Goal:** Standardize LLM reasoning streams (`<think>`), tool call schemas, and resilient SSE reconnection buffers.
+
+---
+
+## Phase 54: Parallel Multi-Document Sub-Agent Orchestrator (Upcoming)
+
+**Goal:** Scale office document operations across multiple parallel sandboxed sub-agent workers without main-chat context pollution.
+

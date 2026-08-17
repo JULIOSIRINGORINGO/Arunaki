@@ -150,6 +150,9 @@ export class WorkspacePromptBuilderService {
     if (/(?:subagent|sub-agent|sub agent|spawn|paralel|parallel|bagi tugas|banyak file|batch|multi-task|semua file)/.test(gClean)) {
       add(['agent_spawn']);
     }
+    if (/(?:batch|ptc|atomic|sekaligus|rantai|chain|multi-step|programmatic)/.test(gClean)) {
+      add(['batch_execute']);
+    }
 
     return allTools.filter((t) => wanted.has(t.function.name));
   }
