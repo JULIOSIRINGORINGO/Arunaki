@@ -9,6 +9,7 @@ import { PromptInjectionDetector } from '../../ai/prompt-injection-detector.serv
 import { ToolResultFormatter } from '../../tools/utils/tool-result-formatter.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { extractMentionedFilenames } from '../utils/tool-call-extractor.util.js';
+import { getSystemDateTimeContext } from '../../ai/context/date-time-context.js';
 import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import * as path from 'path';
 
@@ -291,6 +292,11 @@ export class WorkspacePromptBuilderService {
 
     if (workspaceRules && workspaceRules.trim()) {
       systemContent += `\n\n# 📜 LOCAL WORKSPACE OPERATING RULES (AUTONOMOUSLY COMPILED ARUNAKI.MD)\n${workspaceRules.trim()}`;
+    }
+
+    const dtContext = getSystemDateTimeContext();
+    if (dtContext) {
+      systemContent += `\n\n${dtContext}`;
     }
 
     const messages: ChatMessage[] = [
