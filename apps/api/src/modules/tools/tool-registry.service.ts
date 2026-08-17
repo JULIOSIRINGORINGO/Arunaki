@@ -1,28 +1,25 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   Tool,
   ToolDefinition,
   ToolCapability,
 } from './interfaces/tool.interface.js';
-import { ToolResult, ToolResultChunk, StreamingToolResult } from './interfaces/tool-result.interface.js';
-import { createHash } from 'crypto';
+import {
+  ToolResult,
+  ToolResultChunk,
+  StreamingToolResult,
+} from './interfaces/tool-result.interface.js';
+import { ToolResultCacheService } from './services/tool-result-cache.service.js';
+import {
+  validateToolArgs,
+  normalizeToolArgs,
+  buildCompactParameterSchema,
+} from './utils/tool-validator.util.js';
 
 interface RegisteredTool {
   tool: Tool;
   timeoutMs: number;
 }
-
-interface ValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-
-// Cache read-only tool results per-run (scope = workspaceId || runId).
-// TTL 60s + invalidation when a mutating tool runs in the same scope.
-const CACHE_TTL_MS = 60_000;
-const CACHE_MAX_ENTRIES = 1000;
-
-
 
 /**
  * ToolRegistryService — self-registering tool registry.
@@ -36,14 +33,12 @@ const CACHE_MAX_ENTRIES = 1000;
 export class ToolRegistryService {
   private readonly logger = new Logger(ToolRegistryService.name);
   private readonly tools = new Map<string, RegisteredTool>();
-  private readonly resultCache = new Map<string, { result: ToolResult; expiresAt: number }>();
+  private readonly cacheService: ToolResultCacheService;
 
-  private cacheKey(scope: string, name: string, args: Record<string, any>): string {
-    const argHash = createHash('sha256')
-      .update(JSON.stringify(args ?? {}))
-      .digest('hex')
-      .substring(0, 16);
-    return `${scope}:${name}:${argHash}`;
+  constructor(
+    @Optional() cacheService?: ToolResultCacheService,
+  ) {
+    this.cacheService = cacheService || new ToolResultCacheService();
   }
 
   private scopeOf(args: Record<string, any>): string {
@@ -54,20 +49,7 @@ export class ToolRegistryService {
    * Drop cached results for a scope (called when a mutating tool runs there).
    */
   invalidateCache(scope: string): void {
-    const prefix = `${scope}:`;
-    for (const key of this.resultCache.keys()) {
-      if (key.startsWith(prefix)) this.resultCache.delete(key);
-    }
-  }
-
-  private clearExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, entry] of this.resultCache) {
-      if (entry.expiresAt <= now) this.resultCache.delete(key);
-    }
-    if (this.resultCache.size > CACHE_MAX_ENTRIES) {
-      this.resultCache.clear();
-    }
+    this.cacheService?.invalidateScope(scope);
   }
 
   /**
@@ -81,25 +63,28 @@ export class ToolRegistryService {
   }
 
   getToolDefinitions(): ToolDefinition[] {
-    return Array.from(this.tools.values())
-      .map((r) => ({
-        type: 'function' as const,
-        function: {
-          name: r.tool.name,
-          description: r.tool.description.split('\n')[0],
-          parameters: this.buildCompactSchema(r.tool.definition.function.parameters),
-        },
-      }));
+    return Array.from(this.tools.values()).map((r) => ({
+      type: 'function' as const,
+      function: {
+        name: r.tool.name,
+        description: r.tool.description.split('\n')[0],
+        parameters: buildCompactParameterSchema(
+          r.tool.definition.function.parameters,
+        ),
+      },
+    }));
   }
 
   /**
    * Get dynamically filtered tool definitions based on context (Tool RAG).
    * Core tools are always included, plus the highest scoring tools matching the context.
    */
-  getRelevantToolDefinitions(contextText: string, limit: number = 15): ToolDefinition[] {
+  getRelevantToolDefinitions(
+    contextText: string,
+    limit: number = 15,
+  ): ToolDefinition[] {
     const allTools = Array.from(this.tools.values());
-    
-    // Core tools that the AI must always have access to
+
     const coreToolNames = new Set([
       'read',
       'search_workspace',
@@ -107,17 +92,16 @@ export class ToolRegistryService {
       'invoke_subagent',
       'desktop_open_excel',
       'vision_ai',
-      'search_knowledge_graph'
+      'search_knowledge_graph',
     ]);
 
     const ctx = contextText.toLowerCase();
-    
+
     const scoredTools = allTools.map((r) => {
       let score = 0;
       if (coreToolNames.has(r.tool.name)) {
-        score = 1000; // Guarantee core tools
+        score = 1000;
       } else {
-        // Simple scoring based on tags, name, and description
         const cap = r.tool.capability as ToolCapability;
         if (cap) {
           for (const tag of cap.tags || []) {
@@ -125,129 +109,53 @@ export class ToolRegistryService {
           }
         }
         if (ctx.includes(r.tool.name.replace(/_/g, ' '))) score += 5;
-        
-        // Bonus for mentions of the exact tool name
         if (ctx.includes(r.tool.name)) score += 10;
       }
       return { record: r, score };
     });
 
-    // Sort by score descending
     scoredTools.sort((a, b) => b.score - a.score);
 
-    // Take top `limit` or all core tools if they exceed limit
-    const selected = scoredTools.filter((t, i) => i < limit || t.score >= 1000).map(t => t.record);
+    const selected = scoredTools
+      .filter((t, i) => i < limit || t.score >= 1000)
+      .map((t) => t.record);
 
     return selected.map((r) => ({
       type: 'function' as const,
       function: {
         name: r.tool.name,
         description: r.tool.description.split('\n')[0],
-        parameters: this.buildCompactSchema(r.tool.definition.function.parameters),
+        parameters: buildCompactParameterSchema(
+          r.tool.definition.function.parameters,
+        ),
       },
     }));
   }
 
-  /**
-   * Build compact schema from full parameters — keeps only required fields
-   * with minimal descriptions. Reduces ~300 chars → ~80 chars per tool.
-   */
-  private buildCompactSchema(params: Record<string, any>): Record<string, any> {
-    const compact: Record<string, any> = { type: 'object' };
-    const props: Record<string, any> = {};
-    for (const [key, val] of Object.entries(params.properties || {})) {
-      props[key] = { type: (val as any).type, description: ((val as any).description || '').slice(0, 60) };
-      if ((val as any).enum) props[key].enum = (val as any).enum;
-    }
-    if (Object.keys(props).length > 0) compact.properties = props;
-    if (params.required) compact.required = params.required;
-    return compact;
-  }
-
-  /**
-   * Get all tool capabilities for discovery (only direct-only tools).
-   */
   getToolCapabilities(): ToolCapability[] {
-    return Array.from(this.tools.values())
-      .map((r) => r.tool.capability as ToolCapability);
+    return Array.from(this.tools.values()).map(
+      (r) => r.tool.capability as ToolCapability,
+    );
   }
 
-  /**
-   * Get tools filtered by tags.
-   */
   getToolsByTags(tags: string[]): ToolCapability[] {
     return this.getToolCapabilities().filter((cap) =>
       tags.some((tag) => cap.tags.includes(tag)),
     );
   }
 
-  /**
-   * Check if a tool is mutating (modifies workspace state).
-   */
   isMutating(name: string): boolean {
     const toolRecord = this.tools.get(name);
     return toolRecord ? !!toolRecord.tool.mutating : false;
   }
 
-  /**
-   * Validate tool arguments against parameter schema.
-   */
   validateArgs(
     args: Record<string, any>,
     parameters: Record<string, any>,
-  ): ValidationResult {
-    const errors: string[] = [];
-    const required: string[] = parameters.required || [];
-    const properties: Record<string, any> = parameters.properties || {};
-
-    for (const field of required) {
-      if (args[field] === undefined || args[field] === null) {
-        errors.push(`Field "${field}" is required`);
-      }
-    }
-
-    for (const [key, schema] of Object.entries(properties)) {
-      const value = args[key];
-      if (value === undefined || value === null) continue;
-
-      const expectedType = schema.type;
-      if (expectedType === 'string' && typeof value !== 'string') {
-        errors.push(`Field "${key}" must be a string`);
-      }
-      if (expectedType === 'number' && typeof value !== 'number') {
-        errors.push(`Field "${key}" must be a number`);
-      }
-      if (expectedType === 'array' && !Array.isArray(value)) {
-        errors.push(`Field "${key}" must be an array`);
-      }
-      if (expectedType === 'boolean' && typeof value !== 'boolean') {
-        errors.push(`Field "${key}" must be a boolean`);
-      }
-      if (
-        expectedType === 'object' &&
-        (Array.isArray(value) || typeof value !== 'object')
-      ) {
-        errors.push(`Field "${key}" must be an object`);
-      }
-
-      const enumValues = schema.enum;
-      if (
-        enumValues &&
-        Array.isArray(enumValues) &&
-        !enumValues.includes(value)
-      ) {
-        errors.push(
-          `Field "${key}" must be one of: ${enumValues.join(', ')}`,
-        );
-      }
-    }
-
-    return { valid: errors.length === 0, errors };
+  ) {
+    return validateToolArgs(args, parameters);
   }
 
-  /**
-   * Execute a single tool.
-   */
   async executeTool(
     name: string,
     args: Record<string, any>,
@@ -271,16 +179,9 @@ export class ToolRegistryService {
     }
 
     const { tool, timeoutMs } = registered;
+    const normalizedArgs = normalizeToolArgs(args);
 
-    // Alias normalization for common tool argument variations (path vs filePath vs filename)
-    const normalizedArgs = { ...args };
-    if (!normalizedArgs.filePath && normalizedArgs.path) normalizedArgs.filePath = normalizedArgs.path;
-    if (!normalizedArgs.path && normalizedArgs.filePath) normalizedArgs.path = normalizedArgs.filePath;
-    if (!normalizedArgs.filePath && normalizedArgs.filename) normalizedArgs.filePath = normalizedArgs.filename;
-    if (!normalizedArgs.filename && normalizedArgs.filePath) normalizedArgs.filename = normalizedArgs.filePath;
-    if (!normalizedArgs.query && normalizedArgs.q) normalizedArgs.query = normalizedArgs.q;
-
-    const validation = this.validateArgs(
+    const validation = validateToolArgs(
       normalizedArgs,
       tool.definition.function.parameters,
     );
@@ -304,15 +205,13 @@ export class ToolRegistryService {
     this.logger.log(`Executing tool "${name}" (timeout: ${timeoutMs}ms)`);
 
     const scope = this.scopeOf(args);
-    if (tool.cacheable) {
+    if (tool.cacheable && this.cacheService) {
       if (this.isMutating(name)) this.invalidateCache(scope);
-      const key = this.cacheKey(scope, name, args);
-      const cached = this.resultCache.get(key);
-      if (cached && cached.expiresAt > Date.now()) {
+      const cached = this.cacheService.get(scope, name, args);
+      if (cached) {
         this.logger.log(`[CACHE HIT] tool "${name}" reused from per-run cache`);
-        return cached.result;
+        return cached;
       }
-      this.clearExpiredCache();
       const startTime = Date.now();
       try {
         const result = await this.executeWithTimeout(
@@ -322,10 +221,10 @@ export class ToolRegistryService {
         result.metadata.executionTime = Date.now() - startTime;
         const finalResult = this.truncateResult(result);
         if (finalResult.status === 'success') {
-          this.resultCache.set(key, { result: finalResult, expiresAt: Date.now() + CACHE_TTL_MS });
+          this.cacheService.set(scope, name, args, finalResult);
         }
         return finalResult;
-      } catch (e) {
+      } catch (e: any) {
         const isTimeout = e.message?.includes('timeout');
         return {
           status: 'error',
@@ -356,7 +255,7 @@ export class ToolRegistryService {
       );
       result.metadata.executionTime = Date.now() - startTime;
       return this.truncateResult(result);
-    } catch (e) {
+    } catch (e: any) {
       const isTimeout = e.message?.includes('timeout');
       return {
         status: 'error',
@@ -377,15 +276,6 @@ export class ToolRegistryService {
     }
   }
 
-  /**
-   * Execute multiple tools in parallel.
-   *
-   * Tools are executed concurrently with independent timeouts.
-   * Failed tools don't block other tools.
-   *
-   * @param toolCalls - Array of { name, args } to execute
-   * @returns Array of results in same order as input
-   */
   async executeParallel(
     toolCalls: Array<{ name: string; args: Record<string, any> }>,
   ): Promise<Array<{ name: string; result: ToolResult }>> {
@@ -397,7 +287,6 @@ export class ToolRegistryService {
     }
 
     this.logger.log(`Executing ${toolCalls.length} tools in parallel`);
-
     const promises = toolCalls.map(async ({ name, args }) => {
       const result = await this.executeTool(name, args);
       return { name, result };
@@ -406,16 +295,6 @@ export class ToolRegistryService {
     return Promise.all(promises);
   }
 
-  /**
-   * Execute multiple tools with controlled concurrency.
-   *
-   * Limits concurrent executions to prevent resource exhaustion.
-   * Useful when executing many tools simultaneously.
-   *
-   * @param toolCalls - Array of { name, args } to execute
-   * @param maxConcurrency - Max parallel executions (default: 5)
-   * @returns Array of results in same order as input
-   */
   async executeParallelLimited(
     toolCalls: Array<{ name: string; args: Record<string, any> }>,
     maxConcurrency = 5,
@@ -441,21 +320,12 @@ export class ToolRegistryService {
     return results;
   }
 
-  /**
-   * Execute a tool with streaming results.
-   * Yields progress chunks as the tool executes.
-   *
-   * @param name - Tool name
-   * @param args - Tool arguments
-   * @returns StreamingToolResult with async generator for chunks and promise for final result
-   */
   executeToolStreaming(
     name: string,
     args: Record<string, any>,
   ): StreamingToolResult {
     const registered = this.tools.get(name);
     if (!registered) {
-      // Return immediately with error
       const errorChunk: ToolResultChunk = {
         type: 'error',
         toolName: name,
@@ -477,8 +347,7 @@ export class ToolRegistryService {
     }
 
     const { tool, timeoutMs } = registered;
-
-    const validation = this.validateArgs(
+    const validation = validateToolArgs(
       args,
       tool.definition.function.parameters,
     );
@@ -510,17 +379,15 @@ export class ToolRegistryService {
       };
     }
 
-    // Create the async generator for streaming
     const stream = this.createToolStream(tool, name, args, timeoutMs);
-
-    const finalResult = this.collectStreamResult(stream, name, tool.capability.displayName);
-
+    const finalResult = this.collectStreamResult(
+      stream,
+      name,
+      tool.capability.displayName,
+    );
     return { stream, finalResult };
   }
 
-  /**
-   * Creates an async generator that yields progress chunks during tool execution.
-   */
   private async *createToolStream(
     tool: any,
     name: string,
@@ -530,7 +397,6 @@ export class ToolRegistryService {
     const startTime = Date.now();
     let hasYieldedProgress = false;
 
-    // Initial progress chunk
     yield {
       type: 'progress',
       toolName: name,
@@ -539,7 +405,6 @@ export class ToolRegistryService {
     };
 
     try {
-      // If tool has a streaming method, use it
       if (tool.executeStreaming) {
         for await (const chunk of tool.executeStreaming(args)) {
           yield {
@@ -554,11 +419,9 @@ export class ToolRegistryService {
           hasYieldedProgress = true;
         }
       } else {
-        // For non-streaming tools, execute with timeout and yield progress
         let completed = false;
         const progressInterval = setInterval(() => {
           if (!completed && !hasYieldedProgress) {
-            // Yield indeterminate progress
             hasYieldedProgress = true;
           }
         }, 2000);
@@ -570,10 +433,8 @@ export class ToolRegistryService {
           );
           completed = true;
           clearInterval(progressInterval);
-
           result.metadata.executionTime = Date.now() - startTime;
 
-          // Yield completion
           yield {
             type: 'complete',
             toolName: name,
@@ -589,7 +450,7 @@ export class ToolRegistryService {
           throw e;
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       const isTimeout = e.message?.includes('timeout');
       yield {
         type: 'error',
@@ -606,9 +467,6 @@ export class ToolRegistryService {
     }
   }
 
-  /**
-   * Consumes the stream and returns the final ToolResult.
-   */
   private async collectStreamResult(
     stream: AsyncGenerator<ToolResultChunk>,
     name: string,
@@ -646,11 +504,12 @@ export class ToolRegistryService {
     }
 
     if (!finalResult && lastProgressChunk) {
-      // No completion chunk received - construct from last progress
       finalResult = {
         status: 'partial',
         data: lastProgressChunk.data || {},
-        preview: lastProgressChunk.preview || `Tool "${name}" completed without final result`,
+        preview:
+          lastProgressChunk.preview ||
+          `Tool "${name}" completed without final result`,
         metadata: {
           toolName: name,
           displayName,
@@ -683,10 +542,6 @@ export class ToolRegistryService {
     });
   }
 
-  /**
-   * Truncate large tool results to prevent context overflow.
-   * Per-result cap: 16K chars. Head+tail preservation for large results.
-   */
   private truncateResult(result: ToolResult): ToolResult {
     const MAX_RESULT_CHARS = 16000;
     const preview = result.preview || '';

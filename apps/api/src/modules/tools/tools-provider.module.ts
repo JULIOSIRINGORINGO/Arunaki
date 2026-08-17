@@ -48,6 +48,7 @@ import { BusinessDomainToolsRegistrar } from './services/registrars/business-dom
 import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-tools.registrar.js';
 import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.registrar.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
+import { ToolResultCacheService } from './services/tool-result-cache.service.js';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     TodoStoreService,
     PtcExecutorService,
     MultiDocOrchestratorService,
+    ToolResultCacheService,
     WorkspaceFileToolsRegistrar,
     BusinessDomainToolsRegistrar,
     HarnessMetaToolsRegistrar,
@@ -99,6 +101,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
   ],
   exports: [
     ToolRegistryService,
+    ToolResultCacheService,
     AskUserTool,
     TextExtractorTool,
     DocumentGeneratorTool,

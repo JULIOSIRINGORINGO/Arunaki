@@ -24,6 +24,8 @@ import { WorkspaceCartographerService } from './services/workspace-cartographer.
 import { WorkspaceRulesSentinelService } from './services/workspace-rules-sentinel.service.js';
 import { TranscriptEngineService } from './services/transcript-engine.service.js';
 import { TimeTravelService } from './services/time-travel.service.js';
+import { WorkspaceRunStateService } from './services/workspace-run-state.service.js';
+import { WorkspaceToolExecutorService } from './services/workspace-tool-executor.service.js';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { TimeTravelService } from './services/time-travel.service.js';
     WorkspaceRepository,
     WorkspaceInitService,
     WorkspaceRunnerService,
+    WorkspaceRunStateService,
+    WorkspaceToolExecutorService,
     WorkspacePromptBuilderService,
     WorkspaceCartographerService,
     WorkspaceRulesSentinelService,
@@ -58,6 +62,8 @@ import { TimeTravelService } from './services/time-travel.service.js';
     WorkspaceService,
     WorkspaceInitService,
     WorkspaceRunnerService,
+    WorkspaceRunStateService,
+    WorkspaceToolExecutorService,
     WorkspacePromptBuilderService,
     WorkspaceCartographerService,
     WorkspaceRulesSentinelService,

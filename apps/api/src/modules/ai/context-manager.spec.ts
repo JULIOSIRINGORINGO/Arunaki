@@ -95,7 +95,7 @@ describe('ContextManager — preemptive compaction guards', () => {
         { role: 'user', content: 'goal' },
         ...Array.from({ length: 20 }, (_, i) => [
           toolMessage(`result ${i} `.repeat(300)), // ~4.5K chars each
-          { role: 'user', content: `follow-up ${i}` },
+          { role: 'user' as const, content: `follow-up ${i}` },
         ]).flat(),
       ];
       // Default threshold (128K * 0.25 = 32K tokens): ~20 * (4.5K/2) = 45K tokens → compressed
@@ -115,8 +115,8 @@ describe('ContextManager — preemptive compaction guards', () => {
         toolMessage('short'),
         toolMessage('short'),
       ];
-      // last 3 = [3, 4, 5] → indices 0-2 prunable: 3 * (5000 - (250 + 80)) = 14010
-      expect(cm.estimateToolResultReduction(msgs)).toBe(14010);
+      // last 3 = [3, 4, 5] → indices 0-2 prunable: 3 * (5000 - (200 + 80)) = 14160
+      expect(cm.estimateToolResultReduction(msgs)).toBe(14160);
     });
 
     it('returns 0 when 3 or fewer tool results exist', () => {

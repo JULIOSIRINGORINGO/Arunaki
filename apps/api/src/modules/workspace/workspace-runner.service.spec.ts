@@ -27,6 +27,12 @@ import { ContextRegistry } from '../ai/context/context-registry.service.js';
 import { DomainRegistryService } from '../domain/domain.registry.service.js';
 import { ProviderService } from '../provider/provider.service.js';
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
+import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
+import { WorkspaceCartographerService } from './services/workspace-cartographer.service.js';
+import { TranscriptEngineService } from './services/transcript-engine.service.js';
+import { ModelStreamNormalizerService } from '../ai/services/model-stream-normalizer.service.js';
+import { WorkspaceRunStateService } from './services/workspace-run-state.service.js';
+import { WorkspaceToolExecutorService } from './services/workspace-tool-executor.service.js';
 
 const mockToolDefinitions = () =>
   [
@@ -70,6 +76,12 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
+        WorkspaceRunStateService,
+        WorkspaceToolExecutorService,
+        WorkspacePromptBuilderService,
+        TranscriptEngineService,
+        ModelStreamNormalizerService,
+        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
         {
           provide: AiService,
           useValue: {
@@ -139,6 +151,12 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
+        WorkspaceRunStateService,
+        WorkspaceToolExecutorService,
+        WorkspacePromptBuilderService,
+        TranscriptEngineService,
+        ModelStreamNormalizerService,
+        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
         {
           provide: AiService,
           useValue: {
@@ -275,6 +293,12 @@ describe('WorkspaceRunnerService todo list injection', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
+        WorkspaceRunStateService,
+        WorkspaceToolExecutorService,
+        WorkspacePromptBuilderService,
+        TranscriptEngineService,
+        ModelStreamNormalizerService,
+        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
         {
           provide: AiService,
           useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }), chat: chatMock },
@@ -349,6 +373,12 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
+        WorkspaceRunStateService,
+        WorkspaceToolExecutorService,
+        WorkspacePromptBuilderService,
+        TranscriptEngineService,
+        ModelStreamNormalizerService,
+        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
         {
           provide: AiService,
           useValue: {

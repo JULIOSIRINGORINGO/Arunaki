@@ -191,7 +191,8 @@ export class CompactionService {
         userPrompts.push(msg.content);
       }
       if (typeof msg.content === 'string') {
-        const matches = msg.content.match(/[\w\-.]+\.(?:txt|xlsx|pdf|docx|csv|json|md)/gi);
+        const scanText = msg.content.length > 5000 ? msg.content.slice(0, 5000) : msg.content;
+        const matches = scanText.match(/[a-zA-Z0-9_\-.]+\.(?:txt|xlsx|pdf|docx|csv|json|md)\b/gi);
         if (matches) {
           matches.forEach((f: string) => touchedFiles.add(f));
         }
