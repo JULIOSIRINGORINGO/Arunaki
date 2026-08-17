@@ -1,166 +1,86 @@
 # 🦅 Arunaki
 
 <p align="center">
-  <strong>Desktop Computer Use Agent for Office & Business Documents</strong><br>
-  <em>An autonomous Digital Employee that executes document workflows with minimal typing and visible desktop interaction.</em>
+  <strong>The Desktop AI Employee for Office & Business Documents</strong><br>
+  <em>Automate spreadsheets, daily reports, invoices, and documents with minimal typing and visible desktop computer use.</em>
 </p>
 
 <p align="center">
-  <img src="docs/assets/UI-NEW.jpeg" alt="Arunaki Workspace IDE" width="850" />
-</p>
-
-<p align="center">
-  <a href="#-about-arunaki">About</a> •
-  <a href="#-core-philosophy-minimal-typing-maximum-automation">Philosophy</a> •
-  <a href="#-workspace-sandbox-isolation">Security</a> •
-  <a href="#-key-features">Features</a> •
-  <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-autonomous-benchmarks">Benchmarks</a>
+  <a href="#-what-is-arunaki">What is Arunaki?</a> •
+  <a href="#-the-philosophy-minimal-typing-maximum-automation">How It Works</a> •
+  <a href="#-why-teams-choose-arunaki">Key Benefits</a> •
+  <a href="#-supported-documents">Supported Formats</a> •
+  <a href="#-privacy--security">Security</a> •
+  <a href="#-download">Download</a>
 </p>
 
 ---
 
-## 🌟 About Arunaki
+## 🌟 What is Arunaki?
 
-**Arunaki** is an autonomous Desktop AI Agent (Digital Employee) specifically engineered to automate real-world business and office document workflows. Unlike traditional coding assistants or technical script runners, Arunaki focuses on business productivity: **Spreadsheets (Excel), Word Documents, Invoices, PDFs, Financial Ledgers, and Transaction Rekapitulasi**.
+**Arunaki** is your dedicated **AI Digital Employee** for desktop productivity. Instead of acting like a generic chatbot or a complicated developer tool, Arunaki operates directly on your computer to handle everyday document work: **updating Excel spreadsheets, compiling sales ledgers, writing Word documents, extracting invoice data, and calculating financial balances**.
 
-Arunaki can interact visibly on your screen (launching applications, typing into Excel cells, formatting text) while strictly enforcing **Local Workspace Sandbox Isolation** to keep your host operating system safe.
-
----
-
-## ⚡ Core Philosophy: Minimal Typing, Maximum Automation
-
-Users should type as little as possible. Arunaki executes autonomously with maximum operational efficiency:
-
-- 📋 **Raw Copy-Paste**: Paste messy WhatsApp order chats or unstructured meeting notes directly into the conversation — Arunaki parses, structures, and maps the data automatically.
-- 🎯 **3-Word Instructions**: Type concise directives (e.g., `"Update daily ledger"` or `"Rekap to excel"`), and Arunaki intelligently detects the right target file, maps the correct columns, and updates all dependent calculations.
-- 🧮 **Autonomous Arithmetic**: No manual formula configuration needed — Arunaki accurately computes subtotals, bank breakdowns, cash drawer balances, and updates all related cells in a single unified pass.
+Arunaki works visibly on your screen—opening spreadsheets, typing into cells, formatting text, and recalculating totals—just like having an expert assistant working right beside you.
 
 ---
 
-## 🛡️ Workspace Sandbox Isolation (Total Security)
+## ⚡ The Philosophy: Minimal Typing, Maximum Automation
 
-Arunaki isolates all file and tool operations strictly within the user-selected **Workspace Folder**:
+You shouldn't have to spend hours formatting documents or typing long instructions. With Arunaki, you type the absolute minimum while the AI handles the heavy lifting:
 
-```
-┌── HOST COMPUTER ───────────────────────────────────────────┐
-│                                                            │
-│  ┌── ARUNAKI (DIGITAL EMPLOYEE) ────────────────────────┐  │
-│  │  Visible Desktop GUI & Headless Engines:             │  │
-│  │                                                      │  │
-│  │  📊 Excel — Type cells, manage formulas, format      │  │
-│  │  📝 Word  — Author documents, contracts, styling     │  │
-│  │  🌐 Web   — Form navigation & structured extraction  │  │
-│  │  📎 File  — Read, edit, compute, automatic backup    │  │
-│  │                                                      │  │
-│  │  ❌ FORBIDDEN: Accessing files outside Workspace     │  │
-│  │  ❌ FORBIDDEN: Arbitrary CLI / system code execution │  │
-│  │  🛡️ Auto-Backup & 1-Click Rollback to .arunaki-trash/│  │
-│  └──────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────┘
-```
+- 📋 **Paste Raw Messages Directly**: Simply copy and paste messy WhatsApp order chats, raw supplier notes, or unstructured emails into Arunaki. It understands the context, cleans up the data, and maps everything automatically.
+- 🎯 **3-Word Plain Instructions**: Just type brief natural instructions like `"Rekap to excel"`, `"Update today's expenses"`, or `"Summarize this invoice"`. Arunaki automatically determines which file to open and which columns to update.
+- 🧮 **Autonomous Math & Formulas**: No need to build complex spreadsheet formulas or recalculate sums. Arunaki automatically computes category breakdowns, bank transfer subtotals, cash in hand, and updates all dependent cells in a single pass.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Why Teams & Businesses Choose Arunaki
 
-- **📊 Dual-Mode Excel Engine**:
-  - **Visual COM Automation**: Interactively opens Microsoft Excel and visibly types into worksheets.
-  - **Direct In-Memory XLSX Engine**: Lightning-fast headless spreadsheet manipulation (0.2s disk write) for automated background batching.
-- **📝 Native Word & Document Tools**: Paragraph generation, font formatting (bold/italic), and structured document compilation.
-- **⚡ Single-Pass Batching & Fast Cut-Off**: Updates dozens of spreadsheet cells and dependent ledger sums in a single round without redundant round-trips.
-- **🔍 Full-Text Search (SQLite FTS5)**: Instant semantic and keyword retrieval across all session transcripts, chat turns, and audit trails.
-- **🛡️ Workspace Rules Sentinel**: Real-time background sentinel that learns local business rules and updates `ARUNAKI.md` automatically.
-- **🤖 Multi-Model Provider Support**: Seamlessly switch between DeepSeek V3/V4, GPT-OSS, Claude, Gemini, and local LLMs.
+### 📊 True Desktop Spreadsheet Automation
+Arunaki doesn't just read data—it interacts with your spreadsheets. It types into specific cells (`B1`, `S4`, `S14`), preserves your existing formulas, matches your custom color formatting, and keeps previous transaction history intact.
+
+### 📝 Intelligent Document Authoring
+Generate professional business letters, official proposals, internal memos, and customer contracts in Microsoft Word format with clean typography, styled headers, and structured tables.
+
+### 🛡️ 1-Click Rollback & Safety
+Mistakes happen—which is why Arunaki automatically creates safety backups before modifying any file. If an automated update isn't what you wanted, you can restore your original file with a single click.
+
+### 🔍 Instant Document Search & Memory
+Search through all your past document operations, transaction notes, and customer interactions instantly using built-in high-speed local search. Arunaki also remembers your business rules and preferences for future tasks.
+
+### 🤖 Powered by Leading AI Models
+Connect to world-class language models including DeepSeek, GPT, Claude, Gemini, or local private models to match your accuracy and privacy requirements.
 
 ---
 
-## 🏗️ Tech Stack
+## 📄 Supported Documents & Workflows
 
-| Layer | Technology |
+| Document Type | What Arunaki Automates |
 | :--- | :--- |
-| **Desktop Shell & Web UI** | Electron, React 19, Vite 6, Tailwind CSS, Lucide Icons |
-| **Backend Core & Engine** | NestJS 11, TypeScript, SQLite + Prisma ORM |
-| **Document Processors** | XLSX, SheetJS, Windows COM Office Automation |
-| **Intelligence Layer** | OpenRouter / OpenAI-Compatible Abstraction Layer |
-| **Test & Benchmarks** | Vitest, Playwright, Autonomous Benchmark Runners |
+| **Excel & Spreadsheets** (`.xlsx`, `.xls`, `.csv`) | Daily sales ledgers, inventory updates, financial reconciliations, multi-bank transfer tracking, customer order matrices. |
+| **Word & Rich Text** (`.docx`, `.txt`, `.md`) | Business proposals, formal letters, agreements, meeting minutes, daily briefing summaries. |
+| **Invoices & Receipts** (`.pdf`, `.txt`, images) | Extracting line items, vendor details, tax amounts, payment status, and cross-referencing against ledger records. |
 
 ---
 
-## 📂 Project Structure
+## 🔒 Privacy & Local Workspace Isolation
 
-```
-Arunaki/
-├── apps/
-│   ├── api/                # NestJS Backend (Runner, Tools, Providers, Sentinel)
-│   │   ├── prisma/         # Database schema & SQLite migrations
-│   │   ├── src/            # Core engine source code
-│   │   └── scripts/        # Autonomous benchmark suites (Excel, Rekap, Stress-test)
-│   └── web/                # React + Vite Desktop IDE Interface
-│       └── src/            # Canvas Workstation, Live Chat, Telemetry UI
-├── docs/                   # 📁 Architecture Specifications, PRD, & Dev Logs
-│   ├── VISION.md           # Product Vision & Philosophy
-│   ├── PRD.md              # Product Requirements Document
-│   ├── ARCHITECTURE.md     # System Architecture & Module Boundaries
-│   ├── UX_UI.md            # Interaction & UI Guidelines
-│   ├── INTELLIGENCE.md     # Intelligence Rules & Behavioral Specs
-│   └── dev-logs/           # Daily Development Logs
-├── AGENTS.md               # AI Software Engineer Rules & Operating Protocol
-├── WORKFLOW.md             # Development Roadmap & Phase Checklist
-├── package.json
-└── README.md
-```
+Your business files stay strictly on your computer. 
+
+- **Restricted Folder Access**: Arunaki is locked inside the dedicated **Workspace Folder** you select. It cannot access your personal files, operating system settings, or external folders.
+- **No Unsafe Scripts**: Arunaki operates exclusively through verified document tools and desktop office integrations—never executing arbitrary system commands or scripts.
+- **Your Data Remains Yours**: Files are read and modified locally on your machine.
 
 ---
 
-## 🚀 Quick Start
+## 📥 Download
 
-### 1. Clone Repository & Install Dependencies
-```bash
-git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
-cd Arunaki
-npm install
-```
+*Native Desktop App installers for Windows and macOS are currently in active preparation.*
 
-### 2. Configure Environment Variables
-Copy the example environment configuration:
-```bash
-cp apps/api/.env.example apps/api/.env
-```
-Edit `apps/api/.env` and supply your AI API key:
-```env
-AI_API_KEY=your-api-key-here
-AI_MODEL=deepseek/deepseek-chat
-PORT=3000
-```
-
-### 3. Initialize Local Database
-```bash
-npx prisma db push --schema=apps/api/prisma/schema.prisma
-```
-
-### 4. Start Development Server
-```bash
-# Concurrently start the Backend API and Desktop Web UI
-npm run dev
-```
-- **Desktop UI**: `http://localhost:5173`
-- **Backend API**: `http://localhost:3000`
-
----
-
-## 🧪 Autonomous Benchmarks
-
-Verify the agent's autonomous document mutation and multi-cell spreadsheet capabilities:
-
-```bash
-# 1. Text Document Multi-Section Benchmark (.txt)
-npx tsx apps/api/scripts/test-rekap-extended.ts
-
-# 2. Excel Spreadsheet Autonomous Cell Benchmark (.xlsx)
-npx tsx apps/api/scripts/test-excel-rekap.ts
-```
+| Platform | Package | Status |
+| :--- | :--- | :--- |
+| **Windows** (10 / 11 64-bit) | `.exe` / `.msi` Installer | ⏳ *Coming Soon* |
+| **macOS** (Apple Silicon / Intel) | `.dmg` Package | ⏳ *Coming Soon* |
 
 ---
 
