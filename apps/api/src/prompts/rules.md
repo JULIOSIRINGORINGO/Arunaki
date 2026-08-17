@@ -20,3 +20,7 @@
    - Use the current date from context when instructions involve relative temporal references (such as today, current date, or this month).
 7. **Concise Communication**:
    - After executing file modifications, reply with a concise 1-2 sentence confirmation. Never re-list or dump the modified document contents back to the user.
+8. **Efficient Single-Pass Execution & Multi-Step Flexibility**:
+   - For document update tasks on a known file, apply all necessary changes (all relevant sections, items, and dependent calculations) in a single unified `edit` call rather than splitting edits across multiple rounds.
+   - For workflows requiring prerequisite data (e.g., reading reference files first or checking schema), execute prerequisites logically and then apply modifications comprehensively.
+   - Avoid redundant re-reading of files you have already modified unless specifically instructed to verify. Once changes are complete, reply with a concise summary.

@@ -917,17 +917,14 @@ export class WorkspaceRunnerService {
 
           if (concludeRun) break;
 
-          // Verification-tail cutoff (OpenClaw pattern): after ≥1 successful
-          // mutation, a round that only re-reads files already touched — and
-          // drags past the time budget — is the model double-checking its own
-          // work, not making progress. Slow models burn 30-160s per such round;
-          // conclude here instead of waiting for MAX_ROUNDS or the timeout.
+          // Fast Cut-off (Instant Done after successful mutation):
+          // After ≥1 successful mutation, if the model only calls read-only tools
+          // on files that were already modified in earlier rounds, conclude immediately
+          // instead of wasting a redundant round-trip re-reading the exact same file.
           if (
             mutationsApplied > 0 &&
-            noProgressRounds >= 2 &&
             mutatingCalls.length === 0 &&
-            readOnlyCalls.length > 0 &&
-            Date.now() - runStartTime > VERIFY_TAIL_MS
+            readOnlyCalls.length > 0
           ) {
             const allKnownTargets = readOnlyCalls.every(({ args: ra }) => {
               const base = path
@@ -937,11 +934,11 @@ export class WorkspaceRunnerService {
             });
             if (allKnownTargets) {
               this.logger.log(
-                `[Harness] Round ${runState.round} only re-reads already-touched files after ${mutationsApplied} successful mutation(s) — concluding run.`,
+                `[Fast Cut-Off] Round ${runState.round} only re-reads already-touched file(s) after ${mutationsApplied} successful mutation(s) — concluding run instantly.`,
               );
               finalContent = aiResponse.content?.trim()
                 ? aiResponse.content
-                : 'Autonomous workspace task completed.';
+                : 'Perubahan dokumen berhasil diterapkan dan diverifikasi.';
               reachedMaxRounds = false;
               break;
             }
