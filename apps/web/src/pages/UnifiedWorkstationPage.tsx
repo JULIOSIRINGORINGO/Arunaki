@@ -431,7 +431,7 @@ export function UnifiedWorkstationPage() {
                   const newTab: CenterTab = {
                     id: canvasTabId,
                     type: "canvas",
-                    title: "📋 Hasil Rekap",
+                    title: "Canvas",
                     content: canvasText,
                   };
                   if (existingIdx >= 0) {
@@ -454,7 +454,7 @@ export function UnifiedWorkstationPage() {
                   const newTab: CenterTab = {
                     id: canvasTabId,
                     type: "canvas",
-                    title: "📋 Hasil Rekap",
+                    title: "Canvas",
                     content: canvasText,
                   };
                   if (existingIdx >= 0) {

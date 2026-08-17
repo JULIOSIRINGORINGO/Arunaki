@@ -5,10 +5,7 @@ import {
   X,
   Copy,
   CopyCheck,
-  Sparkles,
   Download,
-  FileSpreadsheet,
-  Edit2,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -112,8 +109,6 @@ function WorkstationCenterPanelComponent({
     deletedCount: number;
   } | null>>({});
 
-  // Canvas-specific UI states
-  const [isEditingCanvas, setIsEditingCanvas] = useState(false);
   const [copiedCanvas, setCopiedCanvas] = useState(false);
 
   // Sync tab content when parent updates tab.content
@@ -182,21 +177,7 @@ function WorkstationCenterPanelComponent({
     const element = document.createElement("a");
     const file = new Blob([currentContent], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
-    element.download = `rekap-${Date.now()}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-    setTimeout(() => URL.revokeObjectURL(element.href), 1000);
-  };
-
-  const handleDownloadCsv = () => {
-    if (!currentContent) return;
-    const lines = currentContent.split("\n");
-    const csvContent = lines.map((l) => `"${l.replace(/"/g, '""')}"`).join("\n");
-    const element = document.createElement("a");
-    const file = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    element.href = URL.createObjectURL(file);
-    element.download = `rekap-${Date.now()}.csv`;
+    element.download = `canvas-${Date.now()}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
@@ -204,30 +185,25 @@ function WorkstationCenterPanelComponent({
   };
 
   return (
-    <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A] overflow-hidden select-none border-r border-[#1F1F1F]">
-      {/* Top Document Tabs Bar */}
+    <main className="flex-1 flex flex-col min-w-0 bg-[#0E0E10] overflow-hidden select-none border-r border-[#1F1F23]">
+      {/* Top Tabs Bar (Antigravity Style) */}
       {tabs.length > 0 && (
-        <div className="h-10 bg-[#121212] border-b border-[#262626] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0">
+        <div className="h-9 bg-[#141416] border-b border-[#222226] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
-            const isCanvasTab = tab.type === "canvas";
             return (
               <div
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
                 className={cn(
-                  "group flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono cursor-pointer transition-all duration-150 border select-none shrink-0",
+                  "group flex items-center gap-2 px-3 py-1 rounded text-xs font-sans cursor-pointer transition-all duration-150 border select-none shrink-0",
                   isActive
-                    ? "bg-[#1E1E1E] text-white border-[#333333] shadow-sm"
-                    : "bg-transparent text-[#71717A] border-transparent hover:bg-[#1A1A1A] hover:text-[#D4D4D8]"
+                    ? "bg-[#1E1E22] text-white border-[#2E2E35] shadow-xs"
+                    : "bg-transparent text-[#8A8A93] border-transparent hover:bg-[#18181B] hover:text-[#D4D4D8]"
                 )}
               >
-                {isCanvasTab ? (
-                  <Sparkles className={cn("w-3.5 h-3.5", isActive ? "text-[#38BDF8]" : "text-[#71717A]")} />
-                ) : (
-                  <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[#E4E4E7]" : "text-[#71717A]")} />
-                )}
-                <span className="truncate max-w-[150px]">{tab.title}</span>
+                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-white" : "text-[#8A8A93]")} />
+                <span className="truncate max-w-[150px] font-medium">{tab.title}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -244,92 +220,51 @@ function WorkstationCenterPanelComponent({
       )}
 
       {/* Dynamic Content Body */}
-      <div className="flex-1 relative overflow-hidden bg-[#0A0A0A] flex flex-col">
+      <div className="flex-1 relative overflow-hidden bg-[#0E0E10] flex flex-col">
         {activeTab ? (
           activeTab.type === "canvas" ? (
-            /* CANVAS / ARTIFACT / DELIVERABLE TAB VIEW (IN-MEMORY REKAP) */
-            <div className="h-full w-full flex flex-col bg-[#0A0A0A] overflow-hidden select-text">
-              {/* Canvas Action Bar */}
-              <div className="h-8 bg-[#121212] border-b border-[#262626] px-4 flex items-center justify-between text-xs select-none shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#38BDF8]" />
-                  <span className="font-mono text-[#E4E4E7] text-[11px] font-medium truncate">
+            /* ANTIGRAVITY-STYLE CANVAS ARTIFACT VIEW (IN-MEMORY DELIVERABLE) */
+            <div className="h-full w-full flex flex-col bg-[#0E0E10] overflow-hidden select-text">
+              {/* Clean Sub-Header Bar */}
+              <div className="h-9 bg-[#121215] border-b border-[#222226] px-5 flex items-center justify-between text-xs select-none shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-white tracking-wide">
                     {activeTab.title}
                   </span>
-                  <span className="text-[#71717A] text-[10px] bg-[#1E1E1E] border border-[#2D2D2D] px-1.5 py-0.5 rounded">
-                    Siap Salin
+                  <span className="text-[11px] text-[#71717A]">
+                    less than a minute ago
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setIsEditingCanvas(!isEditingCanvas)}
-                    className={cn(
-                      "px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer",
-                      isEditingCanvas
-                        ? "bg-[#27272A] text-white border border-[#3F3F46]"
-                        : "text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E]"
+                    onClick={handleCopyCanvas}
+                    className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E22] transition-colors cursor-pointer flex items-center gap-1.5"
+                    title={copiedCanvas ? "Tersalin!" : "Salin ke Clipboard"}
+                  >
+                    {copiedCanvas ? (
+                      <CopyCheck className="w-3.5 h-3.5 text-[#4ADE80]" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
                     )}
-                  >
-                    <Edit2 className="w-3 h-3" />
-                    <span>{isEditingCanvas ? "Preview" : "Edit"}</span>
-                  </button>
-
-                  <button
-                    onClick={handleDownloadCsv}
-                    className="p-1 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-                    title="Download CSV"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
                   </button>
 
                   <button
                     onClick={handleDownloadTxt}
-                    className="p-1 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E] transition-colors cursor-pointer"
-                    title="Download TXT"
+                    className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E22] transition-colors cursor-pointer"
+                    title="Download File"
                   >
                     <Download className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={handleCopyCanvas}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
-                      copiedCanvas
-                        ? "bg-[#14532D] text-[#86EFAC] border border-[#22C55E]/40"
-                        : "bg-white text-black hover:bg-[#E4E4E7]"
-                    )}
-                  >
-                    {copiedCanvas ? (
-                      <>
-                        <CopyCheck className="w-3.5 h-3.5" />
-                        <span>Tersalin!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Salin Rekap</span>
-                      </>
-                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Canvas Content Body */}
-              <div className="flex-1 overflow-auto p-6 bg-[#0A0A0A]">
-                <div className="max-w-3xl mx-auto">
-                  {isEditingCanvas ? (
-                    <textarea
-                      value={currentContent}
-                      onChange={(e) => handleTextChange(e.target.value)}
-                      className="w-full min-h-[350px] p-4 bg-[#121212] border border-[#27272A] rounded-lg font-mono text-xs text-[#E5E5E5] leading-relaxed resize-none focus:outline-none focus:border-[#52525B]"
-                      placeholder="Isi rekap..."
-                    />
-                  ) : (
-                    <div className="p-6 bg-[#111111] border border-[#262626] rounded-xl font-mono text-xs text-[#E5E5E5] leading-relaxed shadow-sm whitespace-pre-wrap selection:bg-[#333333] selection:text-white">
-                      <Markdown>{currentContent}</Markdown>
-                    </div>
-                  )}
+              {/* Rendered Document Body */}
+              <div className="flex-1 overflow-auto px-8 py-6 bg-[#0E0E10]">
+                <div className="max-w-3xl mx-auto space-y-4">
+                  <div className="prose prose-invert max-w-none text-xs text-[#E4E4E7] leading-relaxed font-sans [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-white [&_h1]:mb-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-4 [&_h2]:mb-2 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-[#A1A1AA] [&_th]:border-b [&_th]:border-[#27272A] [&_td]:py-2 [&_td]:px-3 [&_td]:text-[#E4E4E7] [&_tr]:border-b [&_tr]:border-[#1F1F23] [&_strong]:font-semibold [&_strong]:text-white [&_pre]:bg-[#141416] [&_pre]:border [&_pre]:border-[#222226] [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:font-mono">
+                    <Markdown>{currentContent}</Markdown>
+                  </div>
                 </div>
               </div>
             </div>
