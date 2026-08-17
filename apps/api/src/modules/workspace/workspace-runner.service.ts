@@ -697,9 +697,9 @@ export class WorkspaceRunnerService {
           }
 
           if (aiResponse.toolCalls.length === 0) {
-            const isPureExtractionOrQuery = /\b(?:ekstrak|extract|baca|cek|analisis|analisa|ringkasan|summary|tampilkan|lihat|jelaskan)\b/i.test(userGoal);
-            const hasExplicitMutationVerb = /\b(?:update|edit|ubah|tulis|buat file|write|modify|replace|delete|hapus|patch|tambahkan ke|simpan ke)\b/i.test(userGoal);
-            const hasFileMutationIntent = hasExplicitMutationVerb && !isPureExtractionOrQuery;
+            const isConversationalOrRuleOrRecap = /\b(?:ekstrak|extract|baca|cek|analisis|analisa|ringkasan|summary|tampilkan|lihat|jelaskan|rekap|format|aturan|rule|canvas|contoh|mulai sekarang|ingat|bukan gitu|koreksi)\b/i.test(userGoal);
+            const hasExplicitMutationVerb = /\b(?:update file|edit file|ubah file|tulis file|buat file|write file|modify file|replace file|delete file|hapus file|patch file|simpan ke file)\b/i.test(userGoal);
+            const hasFileMutationIntent = hasExplicitMutationVerb && !isConversationalOrRuleOrRecap;
 
             const isEarlyRoundWithoutAction = runState.round <= 2 && hasFileMutationIntent && executedToolCount === 0;
 
