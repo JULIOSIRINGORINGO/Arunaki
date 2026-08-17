@@ -37,6 +37,7 @@ import * as path from 'path';
 // to blow the total timeout. Once the run drags past this threshold with no
 import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
 import { TranscriptEngineService } from './services/transcript-engine.service.js';
+import { ModelStreamNormalizerService } from '../ai/services/model-stream-normalizer.service.js';
 import {
   extractMentionedFilenames,
   hasExplicitDeleteIntent,
@@ -144,6 +145,7 @@ export class WorkspaceRunnerService {
     @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
     @Inject(forwardRef(() => WorkspacePromptBuilderService)) private readonly promptBuilder: WorkspacePromptBuilderService,
     @Inject(forwardRef(() => TranscriptEngineService)) private readonly transcriptEngine: TranscriptEngineService,
+    @Inject(forwardRef(() => ModelStreamNormalizerService)) private readonly streamNormalizer: ModelStreamNormalizerService,
   ) {}
 
   /** Delegate physical sync to WorkspacePromptBuilderService */
@@ -707,7 +709,7 @@ export class WorkspaceRunnerService {
               if (aiResponse.content) {
                 messages.push({
                   role: 'assistant',
-                  content: aiResponse.content,
+                  content: this.streamNormalizer.cleanseAssistantMessageForHistory(aiResponse.content),
                 });
               }
               messages.push({
@@ -731,30 +733,23 @@ export class WorkspaceRunnerService {
 
           // plan_created only for multi-step tasks (round > 1 or >1 tool in a
           // single round). A single tool on round 1 = direct execution, no
-          // plan event needed — the UI shows tool_start immediately.
-          const isSingleStep =
-            runState.round === 1 &&
-            aiResponse.toolCalls.length === 1;
-          if (!isSingleStep && runState.round === 1) {
-            const planSteps = aiResponse.toolCalls.map((tc) => {
-              let argSummary = '';
-              try {
-                const args = JSON.parse(tc.function.arguments || '{}');
-                argSummary = args.filename || args.path || args.query || '';
-              } catch {
-                argSummary = '';
-              }
-              return `${tc.function.name}${argSummary ? ` → ${argSummary}` : ''}`;
-            });
+          // need to emit plan noise.
+          if (runState.round > 1 || aiResponse.toolCalls.length > 1) {
             onEvent({
               type: 'plan_created',
               data: {
-                goal: safeGoal,
-                steps: planSteps.length > 0 ? planSteps : ['Processing request...'],
+                goal: userGoal,
+                steps: aiResponse.toolCalls.map((tc, idx) => ({
+                  id: `step-${idx + 1}`,
+                  title: `${tc.function.name}: ${JSON.stringify(tc.function.arguments).slice(0, 50)}...`,
+                  tool: tc.function.name,
+                  status: 'pending',
+                })),
               },
             });
           }
 
+          // Extract inline tool calls from content if toolCalls is empty
           if (aiResponse.toolCalls.length === 0 && aiResponse.content) {
             const inlineCalls = extractInlineFunctionCalls(aiResponse.content);
             if (inlineCalls.length > 0) {
@@ -767,7 +762,7 @@ export class WorkspaceRunnerService {
 
           messages.push({
             role: 'assistant',
-            content: aiResponse.content || null,
+            content: this.streamNormalizer.cleanseAssistantMessageForHistory(aiResponse.content) || null,
             tool_calls: aiResponse.toolCalls,
           });
 

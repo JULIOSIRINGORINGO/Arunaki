@@ -15,6 +15,7 @@ import { ContextModule } from './context/context.module.js';
 import { ConfigModule } from '@nestjs/config';
 
 import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+import { ModelStreamNormalizerService } from './services/model-stream-normalizer.service.js';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
     WorkspaceHeartbeatService,
     CompactionService,
     SystemPromptBuilderService,
+    ModelStreamNormalizerService,
   ],
   exports: [
     AiService,
@@ -45,6 +47,7 @@ import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
     WorkspaceHeartbeatService,
     CompactionService,
     SystemPromptBuilderService,
+    ModelStreamNormalizerService,
     ContextModule,
   ],
 })

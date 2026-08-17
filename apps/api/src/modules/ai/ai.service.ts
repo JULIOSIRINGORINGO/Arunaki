@@ -15,6 +15,7 @@ import { runWithModelFallback } from './model-fallback.js';
 import { modelSupportsTools, scaleMaxTokens, getModelCapability } from './model-capability.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
+import { ModelStreamNormalizerService } from './services/model-stream-normalizer.service.js';
 import {
   toSdkMessages,
   toSdkTools,
@@ -81,6 +82,7 @@ export class AiService {
   private readonly contextManager: ContextManager;
   private readonly modelRouter: ModelRouterService;
   private readonly postureDetector: AutoPostureDetector;
+  private readonly streamNormalizer: ModelStreamNormalizerService;
 
   // Fallback values from .env (used if no provider configured in DB)
   private readonly fallbackApiKey: string;
@@ -92,7 +94,9 @@ export class AiService {
     @Inject(ProviderService) private readonly providerService: ProviderService,
     @Optional() @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService?: ToolRegistryService,
     @Optional() @Inject(SystemPromptBuilderService) private readonly systemPromptBuilder?: SystemPromptBuilderService,
+    @Optional() @Inject(ModelStreamNormalizerService) streamNormalizer?: ModelStreamNormalizerService,
   ) {
+    this.streamNormalizer = streamNormalizer || new ModelStreamNormalizerService();
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
       this.config.get<string>('AI_BASE_URL') || 'https://kenari.id/v1';
@@ -510,7 +514,7 @@ export class AiService {
       body.tools = tools;
     }
 
-    for await (const chunk of streamWithFallback({
+    const rawStream = streamWithFallback({
       provider,
       body,
       makeRequest: (p, b) => makeSdkRequestStream(p, b),
@@ -520,15 +524,10 @@ export class AiService {
       recordUsage: (id) => this.providerService.recordUsage(id),
       recordError: (id, err) => this.providerService.recordError(id, err),
       setCooldown: (id, seconds) => this.providerService.setCooldown(id, seconds),
-    })) {
-      if (chunk.type === 'content' && chunk.content) {
-        const cleaned = chunk.content.replace(/<think>[\s\S]*?<\/think>/gi, '');
-        if (cleaned) {
-          yield { type: 'content', content: cleaned };
-        }
-      } else {
-        yield chunk;
-      }
+    });
+
+    for await (const normalizedChunk of this.streamNormalizer.normalizeStream(rawStream)) {
+      yield normalizedChunk;
     }
   }
 
