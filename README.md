@@ -1,138 +1,148 @@
 # 🦅 Arunaki
 
 <p align="center">
-  <strong>Desktop Computer Use Agent untuk Dokumen Kantor & Bisnis</strong><br>
-  <em>Digital Employee yang bekerja secara transparan di layar untuk menyelesaikan pekerjaan dokumen Anda.</em>
+  <strong>Desktop Computer Use Agent for Office & Business Documents</strong><br>
+  <em>An autonomous Digital Employee that executes document workflows with minimal typing and visible desktop interaction.</em>
 </p>
 
 <p align="center">
   <img src="docs/assets/UI-NEW.jpeg" alt="Arunaki Workspace IDE" width="850" />
 </p>
 
----
-
-## 🌟 Tentang Arunaki
-
-**Arunaki** adalah AI Desktop Agent (Digital Employee) yang dirancang khusus untuk mengotomatisasi pekerjaan dokumen bisnis dan perkantoran. Berbeda dari coding agent atau script runner teknis, Arunaki berfokus pada eksekusi dokumen nyata: **Excel, Word, Faktur, PDF, Laporan Keuangan, dan Rekapitulasi Data**.
-
-Arunaki bekerja secara transparan di depan layar Anda (bisa membuka aplikasi, mengetik di sel Excel, memformat dokumen) dengan batasan keamanan ketat di dalam **Folder Workspace** yang Anda tentukan.
-
----
-
-## ⚡ Prinsip Utama: Minimal Typing, Maximum Automation
-
-Pengguna cukup mengetik seminimal mungkin. Arunaki mengeksekusi dengan automasi otonom maksimal:
-
-- 📋 **Copy-Paste Mentah**: Cukup *copy-paste* catatan pesanan atau pesan chat WhatsApp yang berantakan langsung ke obrolan — Arunaki otomatis merapikan dan memetakan datanya.
-- 🎯 **Instruksi 3 Kata**: Cukup ketik instruksi singkat (contoh: `"Rekap ke excel"` atau `"Update nota ini"`), Arunaki secara cerdas mengetahui file mana yang harus dibuka, kolom mana yang harus diisi, dan total mana yang harus dihitung ulang.
-- 🧮 **Perhitungan Otonom**: Tidak perlu memikirkan rumus matematika atau layout tabel manual — Arunaki menghitung subtotal, grand total, selisih omset, dan memperbarui seluruh sel terkait secara otomatis.
+<p align="center">
+  <a href="#-about-arunaki">About</a> •
+  <a href="#-core-philosophy-minimal-typing-maximum-automation">Philosophy</a> •
+  <a href="#-workspace-sandbox-isolation">Security</a> •
+  <a href="#-key-features">Features</a> •
+  <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-autonomous-benchmarks">Benchmarks</a>
+</p>
 
 ---
 
-## 🛡️ Workspace Sandbox Isolation (Keamanan Total)
+## 🌟 About Arunaki
 
-Arunaki mengisolasi seluruh akses hanya ke **Workspace Folder** yang dipilih pengguna:
+**Arunaki** is an autonomous Desktop AI Agent (Digital Employee) specifically engineered to automate real-world business and office document workflows. Unlike traditional coding assistants or technical script runners, Arunaki focuses on business productivity: **Spreadsheets (Excel), Word Documents, Invoices, PDFs, Financial Ledgers, and Transaction Rekapitulasi**.
+
+Arunaki can interact visibly on your screen (launching applications, typing into Excel cells, formatting text) while strictly enforcing **Local Workspace Sandbox Isolation** to keep your host operating system safe.
+
+---
+
+## ⚡ Core Philosophy: Minimal Typing, Maximum Automation
+
+Users should type as little as possible. Arunaki executes autonomously with maximum operational efficiency:
+
+- 📋 **Raw Copy-Paste**: Paste messy WhatsApp order chats or unstructured meeting notes directly into the conversation — Arunaki parses, structures, and maps the data automatically.
+- 🎯 **3-Word Instructions**: Type concise directives (e.g., `"Update daily ledger"` or `"Rekap to excel"`), and Arunaki intelligently detects the right target file, maps the correct columns, and updates all dependent calculations.
+- 🧮 **Autonomous Arithmetic**: No manual formula configuration needed — Arunaki accurately computes subtotals, bank breakdowns, cash drawer balances, and updates all related cells in a single unified pass.
+
+---
+
+## 🛡️ Workspace Sandbox Isolation (Total Security)
+
+Arunaki isolates all file and tool operations strictly within the user-selected **Workspace Folder**:
 
 ```
-┌── KOMPUTER USER ───────────────────────────────────────────┐
+┌── HOST COMPUTER ───────────────────────────────────────────┐
 │                                                            │
 │  ┌── ARUNAKI (DIGITAL EMPLOYEE) ────────────────────────┐  │
-│  │  Visible di Layar & Headless Engine:                  │  │
+│  │  Visible Desktop GUI & Headless Engines:             │  │
 │  │                                                      │  │
-│  │  📊 Excel — Ketik sel, atur rumus, format tabel      │  │
-│  │  📝 Word  — Tulis surat, kontrak, pemformatan dokumen│  │
-│  │  🌐 Web   — Navigasi form & ekstraksi konten         │  │
-│  │  📎 File  — Baca, edit, kalkulasi, backup otomatis   │  │
+│  │  📊 Excel — Type cells, manage formulas, format      │  │
+│  │  📝 Word  — Author documents, contracts, styling     │  │
+│  │  🌐 Web   — Form navigation & structured extraction  │  │
+│  │  📎 File  — Read, edit, compute, automatic backup    │  │
 │  │                                                      │  │
-│  │  ❌ DILARANG akses file sistem di luar Workspace     │  │
-│  │  ❌ BUKAN coding agent / DILARANG eksekusi script liar│ │
-│  │  🛡️ Auto-Backup & 1-Click Rollback ke .arunaki-trash/ │  │
+│  │  ❌ FORBIDDEN: Accessing files outside Workspace     │  │
+│  │  ❌ FORBIDDEN: Arbitrary CLI / system code execution │  │
+│  │  🛡️ Auto-Backup & 1-Click Rollback to .arunaki-trash/│  │
 │  └──────────────────────────────────────────────────────┘  │
 └────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🚀 Fitur Unggulan
+## 🚀 Key Features
 
 - **📊 Dual-Mode Excel Engine**:
-  - **Mode COM Visual**: Membuka Microsoft Excel asli dan mengetik langsung di sel secara visual.
-  - **Mode Direct XLSX Engine**: Pemrosesan in-memory secepat kilat (0.2 detik per update file) untuk automasi latar belakang.
-- **📝 Native Word & Document Tools**: Penulisan paragraf, pemformatan teks tebal/miring, dan pembuatan dokumen formal.
-- **🔄 Single-Pass Batching**: Mampu mengeksekusi puluhan perubahan sel dan kalkulasi dependen dalam 1 kali round eksekusi.
-- **🔍 Full-Text Search (FTS5 SQLite)**: Pencarian cepat seluruh riwayat sesi dan transkrip audit trail.
-- **🛡️ Workspace Rules Sentinel**: Mendeteksi dan memperbarui aturan bisnis lokal (`ARUNAKI.md`) secara adaptif.
-- **🤖 Multi-Model Provider**: Terhubung ke DeepSeek V3/V4, GPT-OSS, Claude, Gemini, dan model open-source lokal.
+  - **Visual COM Automation**: Interactively opens Microsoft Excel and visibly types into worksheets.
+  - **Direct In-Memory XLSX Engine**: Lightning-fast headless spreadsheet manipulation (0.2s disk write) for automated background batching.
+- **📝 Native Word & Document Tools**: Paragraph generation, font formatting (bold/italic), and structured document compilation.
+- **⚡ Single-Pass Batching & Fast Cut-Off**: Updates dozens of spreadsheet cells and dependent ledger sums in a single round without redundant round-trips.
+- **🔍 Full-Text Search (SQLite FTS5)**: Instant semantic and keyword retrieval across all session transcripts, chat turns, and audit trails.
+- **🛡️ Workspace Rules Sentinel**: Real-time background sentinel that learns local business rules and updates `ARUNAKI.md` automatically.
+- **🤖 Multi-Model Provider Support**: Seamlessly switch between DeepSeek V3/V4, GPT-OSS, Claude, Gemini, and local LLMs.
 
 ---
 
 ## 🏗️ Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 | :--- | :--- |
 | **Desktop Shell & Web UI** | Electron, React 19, Vite 6, Tailwind CSS, Lucide Icons |
 | **Backend Core & Engine** | NestJS 11, TypeScript, SQLite + Prisma ORM |
-| **Document Processors** | XLSX, SheetJS, Office COM Automation |
-| **Intelligence Layer** | OpenRouter / OpenAI SDK Abstraction, Custom Prompt Architecture |
-| **Test & Benchmarks** | Vitest, Custom Autonomous Benchmark Suites |
+| **Document Processors** | XLSX, SheetJS, Windows COM Office Automation |
+| **Intelligence Layer** | OpenRouter / OpenAI-Compatible Abstraction Layer |
+| **Test & Benchmarks** | Vitest, Playwright, Autonomous Benchmark Runners |
 
 ---
 
-## 📂 Struktur Repositori
+## 📂 Project Structure
 
 ```
 Arunaki/
 ├── apps/
-│   ├── api/                # NestJS Backend Core (Runner, Tools, Providers, Sentinel)
-│   │   ├── prisma/         # Database schema & SQLite migration
-│   │   ├── src/            # Core source code
+│   ├── api/                # NestJS Backend (Runner, Tools, Providers, Sentinel)
+│   │   ├── prisma/         # Database schema & SQLite migrations
+│   │   ├── src/            # Core engine source code
 │   │   └── scripts/        # Autonomous benchmark suites (Excel, Rekap, Stress-test)
 │   └── web/                # React + Vite Desktop IDE Interface
-│       └── src/            # Canvas Workstation, Chat, Telemetry UI
-├── docs/                   # 📁 Spesifikasi Arsitektur, PRD, & Dev Logs
-│   ├── VISION.md           # Visi Digital Employee Arunaki
+│       └── src/            # Canvas Workstation, Live Chat, Telemetry UI
+├── docs/                   # 📁 Architecture Specifications, PRD, & Dev Logs
+│   ├── VISION.md           # Product Vision & Philosophy
 │   ├── PRD.md              # Product Requirements Document
-│   ├── ARCHITECTURE.md     # Arsitektur sistem & isolasi modul
-│   ├── UX_UI.md            # Desain antarmuka & alur kerja pengguna
-│   ├── INTELLIGENCE.md     # Perilaku kecerdasan & batasan LLM
-│   └── dev-logs/           # Log pengembangan harian
-├── AGENTS.md               # Aturan kerja & protokol AI Software Engineer
-├── WORKFLOW.md             # Checklist tahapan pengembangan
+│   ├── ARCHITECTURE.md     # System Architecture & Module Boundaries
+│   ├── UX_UI.md            # Interaction & UI Guidelines
+│   ├── INTELLIGENCE.md     # Intelligence Rules & Behavioral Specs
+│   └── dev-logs/           # Daily Development Logs
+├── AGENTS.md               # AI Software Engineer Rules & Operating Protocol
+├── WORKFLOW.md             # Development Roadmap & Phase Checklist
 ├── package.json
 └── README.md
 ```
 
 ---
 
-## 🚀 Cara Menjalankan (Quick Start)
+## 🚀 Quick Start
 
-### 1. Clone Repositori & Install Dependencies
+### 1. Clone Repository & Install Dependencies
 ```bash
 git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
 cd Arunaki
 npm install
 ```
 
-### 2. Konfigurasi Environment API
-Salin file konfigurasi environment:
+### 2. Configure Environment Variables
+Copy the example environment configuration:
 ```bash
 cp apps/api/.env.example apps/api/.env
 ```
-Buka file `apps/api/.env` dan masukkan API key Anda:
+Edit `apps/api/.env` and supply your AI API key:
 ```env
 AI_API_KEY=your-api-key-here
 AI_MODEL=deepseek/deepseek-chat
 PORT=3000
 ```
 
-### 3. Setup Database Lokal
+### 3. Initialize Local Database
 ```bash
 npx prisma db push --schema=apps/api/prisma/schema.prisma
 ```
 
-### 4. Jalankan Aplikasi
+### 4. Start Development Server
 ```bash
-# Menjalankan Backend API dan Frontend Web UI secara bersamaan
+# Concurrently start the Backend API and Desktop Web UI
 npm run dev
 ```
 - **Desktop UI**: `http://localhost:5173`
@@ -140,19 +150,20 @@ npm run dev
 
 ---
 
-## 🧪 Menjalankan Benchmark Otonom
+## 🧪 Autonomous Benchmarks
 
-Untuk memverifikasi kemampuan agent dalam mengedit dokumen secara otonom:
+Verify the agent's autonomous document mutation and multi-cell spreadsheet capabilities:
 
 ```bash
-# 1. Benchmark Rekap File Teks (.txt)
+# 1. Text Document Multi-Section Benchmark (.txt)
 npx tsx apps/api/scripts/test-rekap-extended.ts
 
-# 2. Benchmark Rekap Spreadsheet Excel (.xlsx)
+# 2. Excel Spreadsheet Autonomous Cell Benchmark (.xlsx)
 npx tsx apps/api/scripts/test-excel-rekap.ts
 ```
 
 ---
 
-## 📄 Lisensi
-Hak Cipta © 2026 Arunaki Team. Dilindungi undang-undang.
+## 📄 License
+
+Copyright © 2026 Arunaki. All rights reserved.
