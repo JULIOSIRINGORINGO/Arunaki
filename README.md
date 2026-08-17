@@ -1,4 +1,8 @@
-# 🦅 Arunaki
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Arunaki Logo" width="96" height="96" />
+</p>
+
+<h1 align="center">Arunaki</h1>
 
 <p align="center">
   <strong>The Desktop AI Employee for Office & Business Documents</strong><br>
