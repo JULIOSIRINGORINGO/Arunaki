@@ -2,15 +2,10 @@ import { useState, useEffect } from "react";
 import Markdown from "react-markdown";
 import {
   Sparkles,
-  X,
   Copy,
   CopyCheck,
-  Maximize2,
-  Minimize2,
   Download,
   FileSpreadsheet,
-  FileText,
-  File,
   History,
   Edit2,
   Send,
@@ -20,15 +15,8 @@ import { cn } from "../../lib/utils";
 export interface CanvasData {
   id: string;
   title: string;
-  brandColorHeader: string;
   plainTextContent: string;
   createdAt: string;
-}
-
-interface PendingDownload {
-  filename: string;
-  mimeType: string;
-  base64: string;
 }
 
 interface Artifact {
@@ -42,40 +30,18 @@ interface Artifact {
 }
 
 interface CanvasPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
   canvasData?: CanvasData | null;
-  pendingDownload?: PendingDownload | null;
   artifacts?: Artifact[];
-  liveScreenshotUrl?: string | null;
   onSaveAndSendToAi?: (updatedContent: string) => void;
 }
 
-function getFileLabel(mimeType: string): string {
-  if (mimeType.includes("pdf")) return "PDF";
-  if (mimeType.includes("wordprocessingml")) return "DOCX";
-  if (mimeType.includes("presentationml")) return "PPTX";
-  if (mimeType.includes("spreadsheetml")) return "XLSX";
-  if (mimeType.includes("csv")) return "CSV";
-  return "FILE";
-}
-
-function getFileIcon(mimeType: string) {
-  if (mimeType.includes("spreadsheetml") || mimeType.includes("csv"))
-    return FileSpreadsheet;
-  if (mimeType.includes("presentationml")) return File;
-  return FileText;
-}
-
 export function CanvasPanel({
-  isOpen,
-  onClose,
   canvasData,
-  pendingDownload,
   artifacts = [],
   onSaveAndSendToAi,
 }: CanvasPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showArtifacts, setShowArtifacts] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -86,8 +52,6 @@ export function CanvasPanel({
       setEditedText(canvasData.plainTextContent);
     }
   }, [canvasData?.plainTextContent]);
-
-  if (!isOpen) return null;
 
   const handleCopy = () => {
     if (!canvasData) return;
@@ -101,16 +65,6 @@ export function CanvasPanel({
       onSaveAndSendToAi(editedText);
       setIsEditing(false);
     }
-  };
-
-  const handleDownloadFile = () => {
-    if (!pendingDownload) return;
-    const element = document.createElement("a");
-    element.href = `data:${pendingDownload.mimeType};base64,${pendingDownload.base64}`;
-    element.download = pendingDownload.filename;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
   };
 
   const handleDownloadArtifact = (art: Artifact) => {
@@ -152,32 +106,27 @@ export function CanvasPanel({
   };
 
   return (
-    <aside
-      className={cn(
-        "bg-[#171717] rounded-xl overflow-hidden flex flex-col h-full shrink-0 transition-all duration-200 shadow-none border border-[#2D2D2D] text-white",
-        isExpanded ? "w-[480px] lg:w-[520px]" : "w-[340px] xl:w-[380px]"
-      )}
-    >
-      {/* Top Header Bar */}
-      <div className="bg-[#121212] h-10 px-4 flex items-center justify-between shrink-0 select-none border-b border-[#2D2D2D]">
+    <div className="w-full h-full flex flex-col bg-[#0A0A0A] text-white overflow-hidden select-text">
+      {/* Top Action Toolbar */}
+      <div className="h-9 bg-[#121212] px-4 flex items-center justify-between shrink-0 select-none border-b border-[#262626]">
         <div className="flex items-center gap-2 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-[#E5E5E5] shrink-0" />
-          <h2 className="text-xs font-bold text-white tracking-wide truncate">
-            {showArtifacts ? "File History" : canvasData?.title || "Canvas"}
-          </h2>
+          <Sparkles className="w-3.5 h-3.5 text-[#A1A1AA] shrink-0" />
+          <span className="text-xs font-medium text-[#E4E4E7] truncate">
+            {showArtifacts ? "File History" : canvasData?.title || "Canvas Document"}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {artifacts.length > 0 && (
             <button
               onClick={() => setShowArtifacts(!showArtifacts)}
               className={cn(
-                "p-1 rounded transition-colors cursor-pointer text-xs",
+                "p-1.5 rounded text-xs transition-colors cursor-pointer flex items-center gap-1",
                 showArtifacts
                   ? "text-white bg-[#262626]"
-                  : "text-[#A3A3A3] hover:text-white hover:bg-[#262626]"
+                  : "text-[#A1A1AA] hover:text-white hover:bg-[#262626]"
               )}
-              title="File History"
+              title="History"
             >
               <History className="w-3.5 h-3.5" />
             </button>
@@ -188,140 +137,91 @@ export function CanvasPanel({
               <button
                 onClick={() => setIsEditing(!isEditing)}
                 className={cn(
-                  "p-1 rounded transition-colors cursor-pointer text-xs",
+                  "px-2 py-1 rounded text-xs transition-colors cursor-pointer flex items-center gap-1 font-medium",
                   isEditing
-                    ? "text-white bg-[#262626]"
-                    : "text-[#A3A3A3] hover:text-white hover:bg-[#262626]"
+                    ? "text-white bg-[#27272A] border border-[#3F3F46]"
+                    : "text-[#A1A1AA] hover:text-white hover:bg-[#262626]"
                 )}
-                title={isEditing ? "Mode Preview" : "Edit Canvas"}
+                title={isEditing ? "Preview Mode" : "Edit Canvas"}
               >
-                <Edit2 className="w-3.5 h-3.5" />
+                <Edit2 className="w-3 h-3" />
+                <span className="text-[11px]">{isEditing ? "Preview" : "Edit"}</span>
               </button>
 
-              {pendingDownload && (
-                <button
-                  onClick={handleDownloadFile}
-                  className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-                  title={`Download ${getFileLabel(pendingDownload.mimeType)}`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                </button>
-              )}
               <button
                 onClick={handleDownloadCsv}
-                className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-                title="Download File CSV"
+                className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
+                title="Download CSV"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
               </button>
+
               <button
                 onClick={handleDownloadTxt}
-                className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-                title="Download Text File (.txt)"
+                className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
+                title="Download TXT"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
+
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
+                title={copied ? "Copied!" : "Copy Text"}
+              >
+                {copied ? (
+                  <CopyCheck className="w-3.5 h-3.5 text-[#4ADE80]" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+              </button>
             </>
           )}
-
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-            title={isExpanded ? "Minimize Canvas" : "Maximize Canvas"}
-          >
-            {isExpanded ? (
-              <Minimize2 className="w-3.5 h-3.5" />
-            ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
-            )}
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-colors cursor-pointer"
-            title="Close Canvas"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
 
-      {/* Canvas Body View */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center min-h-0 bg-[#171717]">
+      {/* Canvas Body */}
+      <div className="flex-1 overflow-y-auto p-6 bg-[#0A0A0A]">
         {showArtifacts ? (
-          <div className="w-full space-y-2 self-start">
+          <div className="max-w-3xl mx-auto space-y-2">
             {artifacts.length === 0 ? (
-              <div className="text-center space-y-2 text-[#737373] py-8">
-                <History className="w-5 h-5 text-[#A3A3A3] mx-auto" />
-                <p className="text-xs">No generated files yet</p>
+              <div className="text-center py-12 text-[#71717A] text-xs">
+                No artifacts recorded
               </div>
             ) : (
-              artifacts.map((artifact) => {
-                const Icon = getFileIcon(artifact.mimeType);
-                const time = new Date(artifact.createdAt).toLocaleTimeString(
-                  "id-ID",
-                  { hour: "2-digit", minute: "2-digit" }
-                );
-                return (
-                  <div
-                    key={artifact.id}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[#1E1E1E] border border-[#2D2D2D] transition-colors group"
-                  >
-                    <div className="p-2 rounded bg-[#262626] text-white shrink-0">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white truncate">
-                        {artifact.filename}
-                      </p>
-                      <p className="text-[11px] text-[#A3A3A3] truncate">
-                        {artifact.preview}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] text-[#737373]">{time}</span>
-                      <button
-                        onClick={() => handleDownloadArtifact(artifact)}
-                        className="p-1 rounded text-[#A3A3A3] hover:text-white hover:bg-[#333333] transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                        title={`Download ${artifact.filename}`}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              artifacts.map((artifact) => (
+                <div
+                  key={artifact.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-[#141414] border border-[#262626] hover:border-[#3F3F46] transition-colors"
+                >
+                  <div>
+                    <p className="text-xs font-medium text-white">{artifact.filename}</p>
+                    <p className="text-[11px] text-[#A1A1AA]">{artifact.preview}</p>
                   </div>
-                );
-              })
+                  <button
+                    onClick={() => handleDownloadArtifact(artifact)}
+                    className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#262626] transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
             )}
           </div>
         ) : canvasData ? (
-          <div className="relative w-full h-full flex flex-col justify-between p-4 rounded-xl bg-[#1E1E1E] border border-[#2D2D2D] space-y-4 overflow-y-auto">
-            <button
-              onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 rounded-lg text-[#A3A3A3] hover:text-white hover:bg-[#262626] transition-all cursor-pointer border border-[#2D2D2D] z-10"
-              title={copied ? "Tersalin!" : "Salin Teks (Copy)"}
-            >
-              {copied ? (
-                <CopyCheck className="w-3.5 h-3.5 text-white" />
-              ) : (
-                <Copy className="w-3.5 h-3.5" />
-              )}
-            </button>
-
+          <div className="max-w-4xl mx-auto h-full flex flex-col">
             {isEditing ? (
-              <div className="flex-1 flex flex-col space-y-3 min-h-0">
-                <div className="flex items-center justify-between text-xs text-[#A3A3A3] font-medium">
-                  <span>Edit Canvas Text/Table</span>
-                  <span className="text-white font-semibold">Edit Mode Active</span>
-                </div>
+              <div className="flex-1 flex flex-col space-y-3 min-h-[400px]">
                 <textarea
                   value={editedText}
                   onChange={(e) => setEditedText(e.target.value)}
-                  className="w-full flex-1 min-h-[240px] p-3 text-xs text-white font-mono bg-[#121212] border border-[#2D2D2D] rounded-lg focus:outline-none focus:border-[#525252] resize-none leading-relaxed"
-                  placeholder="Type or edit the Canvas content here..."
+                  className="w-full flex-1 p-4 text-xs text-[#E4E4E7] font-mono bg-[#121212] border border-[#27272A] rounded-lg focus:outline-none focus:border-[#52525B] resize-none leading-relaxed"
+                  placeholder="Edit deliverable content..."
                 />
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={handleSaveAndSend}
-                    className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black hover:bg-[#E4E4E7] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>Apply & Update AI</span>
@@ -331,42 +231,25 @@ export function CanvasPanel({
                       setEditedText(canvasData.plainTextContent);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-2 rounded-lg bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                    className="px-3 py-2 rounded-lg bg-[#27272A] hover:bg-[#3F3F46] text-[#A1A1AA] hover:text-white text-xs font-medium transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-[#E5E5E5] leading-relaxed pr-6 [&_table]:w-full [&_table]:border-collapse [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-[#A3A3A3] [&_td]:py-2 [&_td]:px-3 [&_td]:text-[#E5E5E5] [&_tr]:border-b [&_tr]:border-[#2D2D2D] [&_strong]:font-semibold [&_strong]:text-white">
+              <div className="prose prose-invert max-w-none text-xs text-[#E4E4E7] leading-relaxed font-sans [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-[#A1A1AA] [&_th]:border-b [&_th]:border-[#27272A] [&_td]:py-2 [&_td]:px-3 [&_td]:text-[#E4E4E7] [&_tr]:border-b [&_tr]:border-[#1F1F23] [&_strong]:font-semibold [&_strong]:text-white [&_pre]:bg-[#121212] [&_pre]:border [&_pre]:border-[#27272A] [&_pre]:rounded-lg [&_pre]:p-4">
                 <Markdown>{canvasData.plainTextContent}</Markdown>
-              </div>
-            )}
-
-            {pendingDownload && (
-              <div className="pt-3 border-t border-[#2D2D2D]">
-                <button
-                  onClick={handleDownloadFile}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white text-black text-xs font-medium hover:bg-[#E5E5E5] transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download {getFileLabel(pendingDownload.mimeType)}</span>
-                  <span className="text-[#525252] text-xs">
-                    ({pendingDownload.filename})
-                  </span>
-                </button>
               </div>
             )}
           </div>
         ) : (
-          <div className="text-center space-y-2 text-[#737373]">
-            <div className="w-10 h-10 rounded-xl bg-[#1E1E1E] border border-[#2D2D2D] flex items-center justify-center mx-auto mb-2">
-              <Sparkles className="w-4 h-4 text-[#737373]" />
-            </div>
-            <p className="text-xs font-semibold text-[#737373]">Empty Canvas</p>
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-2 text-[#71717A]">
+            <Sparkles className="w-6 h-6 text-[#52525B]" />
+            <p className="text-xs">No active canvas deliverable</p>
           </div>
         )}
       </div>
-    </aside>
+    </div>
   );
 }
