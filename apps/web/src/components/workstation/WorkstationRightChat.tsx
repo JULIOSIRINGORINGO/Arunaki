@@ -68,9 +68,9 @@ interface WorkstationRightChatProps {
 
 const EFFORT_OPTIONS = [
   { label: "Default", value: "" },
-  { label: "Rendah", value: "low" },
-  { label: "Sedang", value: "medium" },
-  { label: "Tinggi", value: "high" },
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
 ];
 
 function WorkstationRightChatComponent({
@@ -270,7 +270,7 @@ function WorkstationRightChatComponent({
             </div>
             <p className="text-xs font-medium text-[var(--text-primary)] mb-1">Workspace Agent</p>
             <p className="text-[11px] text-[var(--text-muted)] max-w-[200px]">
-              Tanyakan sesuatu atau berikan instruksi dokumen.
+              Ask anything or provide document instructions.
             </p>
           </div>
         ) : (
@@ -342,17 +342,17 @@ function WorkstationRightChatComponent({
             <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
-                <span className="font-semibold text-[var(--text-primary)]">Antrian Pesan ({queuedPrompts.length})</span>
+                <span className="font-semibold text-[var(--text-primary)]">Message Queue ({queuedPrompts.length})</span>
               </div>
-              <span className="text-[10px] text-[var(--text-dim)]">Diproses otomatis</span>
+              <span className="text-[10px] text-[var(--text-dim)]">Auto-processing</span>
             </div>
             {queuedPrompts.map((promptText, idx) => (
               <div key={idx} className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-2.5 py-1 text-xs text-[var(--text-primary)]">
                 <span className="truncate max-w-[210px] font-mono text-[11px]">{promptText}</span>
                 <button
                   onClick={() => onRemoveQueuedPrompt?.(idx)}
-                  className="text-[var(--text-dim)] hover:text-red-500 p-0.5 rounded transition-colors"
-                  title="Batalkan antrian"
+                  className="text-[var(--text-dim)] hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
+                  title="Cancel queued message"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -421,14 +421,14 @@ function WorkstationRightChatComponent({
             value={inputPrompt}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
+            placeholder="Ask anything, type @ to mention files, / for commands..."
             rows={1}
             className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
           />
 
           <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
             <div className="flex items-center gap-2">
-              <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer">
+              <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer" title="Attach file">
                 <Paperclip className="w-3.5 h-3.5" />
               </button>
               {activeWorkspace && (
@@ -451,7 +451,7 @@ function WorkstationRightChatComponent({
               onClick={() => onSendMessage()}
               disabled={!inputPrompt.trim()}
               className="w-7 h-7 bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)] rounded-full flex items-center justify-center transition-colors cursor-pointer"
-              title={isStreaming ? "Tambah ke antrian" : "Kirim pesan"}
+              title={isStreaming ? "Add to queue" : "Send message"}
             >
               {isStreaming ? (
                 <Clock className="w-3.5 h-3.5" />

@@ -148,7 +148,7 @@ function WorkstationLeftExplorerComponent({
       <div className="h-9 px-3 box-border border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-2">
           <Folder className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-          Eksplore
+          Explorer
         </span>
         <div className="flex items-center gap-0.5">
           {activeWorkspace?.rootPath && (
@@ -164,7 +164,7 @@ function WorkstationLeftExplorerComponent({
           <button
             onClick={onClose}
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            title="Close Explorer Panel"
+            title="Close Explorer"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>

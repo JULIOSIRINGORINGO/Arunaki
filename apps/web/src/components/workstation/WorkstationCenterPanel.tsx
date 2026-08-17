@@ -209,7 +209,7 @@ function WorkstationCenterPanelComponent({
                     onCloseTab(tab.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
-                  title="Tutup Tab"
+                  title="Close Tab"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -240,7 +240,7 @@ function WorkstationCenterPanelComponent({
                   <button
                     onClick={handleCopyCanvas}
                     className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer flex items-center gap-1.5"
-                    title={copiedCanvas ? "Tersalin!" : "Salin ke Clipboard"}
+                    title={copiedCanvas ? "Copied!" : "Copy to Clipboard"}
                   >
                     {copiedCanvas ? (
                       <CopyCheck className="w-3.5 h-3.5 text-emerald-500" />
@@ -318,7 +318,7 @@ function WorkstationCenterPanelComponent({
               <textarea
                 value={currentContent}
                 onChange={(e) => handleTextChange(e.target.value)}
-                placeholder="File kosong..."
+                placeholder="Empty document..."
                 spellCheck={false}
                 className="w-full h-full p-4 bg-transparent font-mono text-xs text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none select-text cursor-text selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)]"
               />

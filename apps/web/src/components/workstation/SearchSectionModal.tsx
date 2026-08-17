@@ -55,7 +55,7 @@ export function SearchSectionModal({
     if (!searchQuery.trim()) return sessions;
     const query = searchQuery.toLowerCase().trim();
     return sessions.filter((s) => {
-      const title = s.title || "Percakapan Baru";
+      const title = s.title || "New Conversation";
       return title.toLowerCase().includes(query);
     });
   }, [sessions, searchQuery]);
@@ -69,22 +69,22 @@ export function SearchSectionModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-[#141414] border border-[#27272A] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh] transform-gpu will-change-transform"
+        className="w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh] transform-gpu will-change-transform"
       >
         {/* Header Search Bar */}
-        <div className="p-3.5 border-b border-[#27272A] flex items-center gap-3 bg-[#18181B] shrink-0">
-          <Search className="w-4 h-4 text-[#A1A1AA] shrink-0" />
+        <div className="p-3.5 border-b border-[var(--border-color)] flex items-center gap-3 bg-[var(--bg-panel)] shrink-0">
+          <Search className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari sesi chat atau topik..."
+            placeholder="Search chat sessions or topics..."
             autoFocus
-            className="w-full bg-transparent text-sm text-white placeholder-[#71717A] focus:outline-none font-sans"
+            className="w-full bg-transparent text-sm text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none font-sans"
           />
           <button
             onClick={onClose}
-            className="text-[#71717A] hover:text-white p-1 rounded-lg transition-colors cursor-pointer shrink-0"
+            className="text-[var(--text-dim)] hover:text-[var(--text-primary)] p-1 rounded-lg transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -93,21 +93,21 @@ export function SearchSectionModal({
         {/* Sessions List Area */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain custom-scrollbar transform-gpu">
           {isLoading ? (
-            <div className="p-8 text-center text-xs text-[#71717A]">
-              Memuat sesi chat...
+            <div className="p-8 text-center text-xs text-[var(--text-dim)]">
+              Loading chat sessions...
             </div>
           ) : filteredSessions.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#71717A]">
-              Tidak ada sesi chat yang ditemukan
+            <div className="p-8 text-center text-xs text-[var(--text-dim)]">
+              No chat sessions found
             </div>
           ) : (
             filteredSessions.map((session) => {
-              const displayTitle = session.title || "Percakapan Baru";
+              const displayTitle = session.title || "New Conversation";
               const isWorkspace = session.mode === "workspace";
               const dateStr = session.updatedAt
-                ? new Date(session.updatedAt).toLocaleDateString("id-ID", {
-                    day: "numeric",
+                ? new Date(session.updatedAt).toLocaleDateString("en-US", {
                     month: "short",
+                    day: "numeric",
                     hour: "2-digit",
                     minute: "2-digit",
                   })
@@ -120,23 +120,23 @@ export function SearchSectionModal({
                     onSelectSession(session.id);
                     onClose();
                   }}
-                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-[#27272A]/70 transition-colors flex items-center justify-between group cursor-pointer border border-transparent hover:border-[#3F3F46]"
+                  className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-[var(--bg-hover)] transition-colors flex items-center justify-between group cursor-pointer border border-transparent hover:border-[var(--border-strong)]"
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#27272A] flex items-center justify-center shrink-0 group-hover:bg-[#38BDF8]/20 transition-colors">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center shrink-0 group-hover:bg-sky-500/20 transition-colors">
                       {isWorkspace ? (
-                        <Bot className="w-3.5 h-3.5 text-[#38BDF8]" />
+                        <Bot className="w-3.5 h-3.5 text-sky-400" />
                       ) : (
-                        <MessageSquare className="w-3.5 h-3.5 text-[#A1A1AA] group-hover:text-white" />
+                        <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-white truncate group-hover:text-[#38BDF8] transition-colors">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-sky-400 transition-colors">
                         {displayTitle}
                       </p>
-                      <p className="text-[10px] text-[#71717A] flex items-center gap-1 mt-0.5 font-mono">
-                        <Clock className="w-3 h-3 text-[#52525B]" />
-                        <span>{dateStr}</span>
+                      <p className="text-[10px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5 font-mono">
+                        <Clock className="w-3 h-3" />
+                        <span>{dateStr || "Just now"}</span>
                       </p>
                     </div>
                   </div>
@@ -145,8 +145,8 @@ export function SearchSectionModal({
                     className={cn(
                       "text-[10px] px-2.5 py-0.5 rounded-full font-mono shrink-0 border transition-colors",
                       isWorkspace
-                        ? "bg-[#0284C7]/10 text-[#38BDF8] border-[#0284C7]/30 group-hover:bg-[#0284C7]/20"
-                        : "bg-[#27272A] text-[#A1A1AA] border-[#3F3F46] group-hover:text-white"
+                        ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                        : "bg-[var(--bg-hover)] text-[var(--text-muted)] border-[var(--border-color)]"
                     )}
                   >
                     {isWorkspace ? "Workspace" : "Chat"}
@@ -158,10 +158,10 @@ export function SearchSectionModal({
         </div>
 
         {/* Footer info */}
-        <div className="px-4 py-2 border-t border-[#27272A] bg-[#18181B] flex items-center justify-between text-[11px] text-[#71717A] shrink-0">
-          <span>Pilih sesi chat untuk membuka ulang</span>
-          <span className="font-mono text-[10px] bg-[#27272A] text-[#A1A1AA] px-1.5 py-0.5 rounded">
-            ESC untuk tutup
+        <div className="px-4 py-2 border-t border-[var(--border-color)] bg-[var(--bg-panel)] flex items-center justify-between text-[11px] text-[var(--text-dim)] shrink-0">
+          <span>Select session to open</span>
+          <span className="font-mono text-[10px] bg-[var(--bg-hover)] text-[var(--text-muted)] px-1.5 py-0.5 rounded">
+            ESC to close
           </span>
         </div>
       </div>

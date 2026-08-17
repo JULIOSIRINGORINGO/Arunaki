@@ -115,7 +115,7 @@ export function AppLayout() {
               {isViewMenuOpen && (
                 <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   <div className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-                    Tema Tampilan (Theme)
+                    Theme
                   </div>
 
                   <button
@@ -132,7 +132,7 @@ export function AppLayout() {
                   >
                     <div className="flex items-center gap-2">
                       <Sun className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Mode Terang (Light)</span>
+                      <span>Light Mode</span>
                     </div>
                     {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
@@ -151,7 +151,7 @@ export function AppLayout() {
                   >
                     <div className="flex items-center gap-2">
                       <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Mode Gelap (Dark)</span>
+                      <span>Dark Mode</span>
                     </div>
                     {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
@@ -170,7 +170,7 @@ export function AppLayout() {
                   >
                     <div className="flex items-center gap-2">
                       <Laptop className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>Ikuti Sistem (System)</span>
+                      <span>System Default</span>
                     </div>
                     {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
@@ -196,7 +196,7 @@ export function AppLayout() {
           <button
             onClick={toggleQuickTheme}
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title={isLight ? "Beralih ke Mode Gelap (Dark)" : "Beralih ke Mode Terang (Light)"}
+            title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLight ? (
               <Moon className="w-3.5 h-3.5 text-indigo-500" />
