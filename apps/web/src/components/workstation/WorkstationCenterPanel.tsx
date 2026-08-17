@@ -1,5 +1,4 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import Markdown from "react-markdown";
 import {
   FileText,
   X,
@@ -209,7 +208,8 @@ function WorkstationCenterPanelComponent({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-opacity cursor-pointer"
+                  title="Tutup Tab"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -223,7 +223,7 @@ function WorkstationCenterPanelComponent({
       <div className="flex-1 relative overflow-hidden bg-[#0E0E10] flex flex-col">
         {activeTab ? (
           activeTab.type === "canvas" ? (
-            /* ANTIGRAVITY-STYLE CANVAS ARTIFACT VIEW (IN-MEMORY DELIVERABLE) */
+            /* ANTIGRAVITY-STYLE CANVAS ARTIFACT VIEW (PURE MONOSPACE PLAINTEXT) */
             <div className="h-full w-full flex flex-col bg-[#0E0E10] overflow-hidden select-text">
               {/* Clean Sub-Header Bar */}
               <div className="h-9 bg-[#121215] border-b border-[#222226] px-5 flex items-center justify-between text-xs select-none shrink-0">
@@ -259,12 +259,12 @@ function WorkstationCenterPanelComponent({
                 </div>
               </div>
 
-              {/* Rendered Document Body */}
+              {/* Pure Plaintext Body (Preserves exact raw spacing & ready to copy directly) */}
               <div className="flex-1 overflow-auto px-8 py-6 bg-[#0E0E10]">
-                <div className="max-w-3xl mx-auto space-y-4">
-                  <div className="prose prose-invert max-w-none text-xs text-[#E4E4E7] leading-relaxed font-sans [&_h1]:text-base [&_h1]:font-semibold [&_h1]:text-white [&_h1]:mb-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-4 [&_h2]:mb-2 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_th]:text-left [&_th]:py-2 [&_th]:px-3 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-[#A1A1AA] [&_th]:border-b [&_th]:border-[#27272A] [&_td]:py-2 [&_td]:px-3 [&_td]:text-[#E4E4E7] [&_tr]:border-b [&_tr]:border-[#1F1F23] [&_strong]:font-semibold [&_strong]:text-white [&_pre]:bg-[#141416] [&_pre]:border [&_pre]:border-[#222226] [&_pre]:rounded-lg [&_pre]:p-4 [&_pre]:font-mono">
-                    <Markdown>{currentContent}</Markdown>
-                  </div>
+                <div className="max-w-3xl mx-auto">
+                  <pre className="font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap select-text selection:bg-[#333333] selection:text-white">
+                    {currentContent}
+                  </pre>
                 </div>
               </div>
             </div>
