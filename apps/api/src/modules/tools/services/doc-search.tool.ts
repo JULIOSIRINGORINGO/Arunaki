@@ -14,10 +14,10 @@ export class DocSearchTool {
       return {
         status: 'error',
         data: {},
-        preview: 'Query pencarian tidak boleh kosong',
+        preview: 'Search query cannot be empty',
         metadata: {
           toolName: 'doc_search',
-          displayName: 'Pencarian Dokumen',
+          displayName: 'Document Search',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'EMPTY_QUERY', message: 'Search query required' },
@@ -42,7 +42,7 @@ export class DocSearchTool {
           ? allResults
               .map((r, i) => `${i + 1}. [${r.type}] ${r.title}: ${r.preview}`)
               .join('\n')
-          : `Tidak ditemukan hasil untuk "${query}"`;
+          : `No results found for "${query}"`;
 
       return {
         status: 'success',
@@ -54,7 +54,7 @@ export class DocSearchTool {
         preview,
         metadata: {
           toolName: 'doc_search',
-          displayName: 'Pencarian Dokumen',
+          displayName: 'Document Search',
           executionTime: Date.now() - startTime,
         },
       };
@@ -63,10 +63,10 @@ export class DocSearchTool {
       return {
         status: 'error',
         data: {},
-        preview: `Pencarian gagal: ${e.message}`,
+        preview: `Search failed: ${e.message}`,
         metadata: {
           toolName: 'doc_search',
-          displayName: 'Pencarian Dokumen',
+          displayName: 'Document Search',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'SEARCH_FAILED', message: e.message },
@@ -74,11 +74,15 @@ export class DocSearchTool {
     }
   }
 
-  private async searchKnowledge(query: string, limit: number) {
+  private async searchKnowledge(
+    query: string,
+    limit: number,
+  ): Promise<
+    Array<{ id: string; type: string; title: string; preview: string }>
+  > {
     try {
-      const results = await this.prisma.knowledge.findMany({
+      const results = await (this.prisma as any).knowledge.findMany({
         where: {
-          active: true,
           OR: [
             { title: { contains: query } },
             { content: { contains: query } },
@@ -87,65 +91,70 @@ export class DocSearchTool {
         take: limit,
       });
 
-      return results.map((r) => ({
+      return results.map((d: any) => ({
+        id: d.id,
         type: 'knowledge',
-        id: r.id,
-        title: r.title,
-        preview: r.content.substring(0, 200),
-        relevance: this.calculateRelevance(query, r.title + ' ' + r.content),
+        title: d.title,
+        preview:
+          d.content && d.content.length > 100
+            ? d.content.substring(0, 100) + '...'
+            : (d.content || ''),
       }));
     } catch {
       return [];
     }
   }
 
-  private async searchFiles(query: string, limit: number) {
+  private async searchFiles(
+    query: string,
+    limit: number,
+  ): Promise<
+    Array<{ id: string; type: string; title: string; preview: string }>
+  > {
     try {
       const results = await this.prisma.file.findMany({
         where: {
-          OR: [{ name: { contains: query } }, { type: { contains: query } }],
+          OR: [{ name: { contains: query } }, { path: { contains: query } }],
         },
         take: limit,
       });
 
-      return results.map((r) => ({
+      return results.map((f) => ({
+        id: f.id,
         type: 'file',
-        id: r.id,
-        title: r.name,
-        preview: `Type: ${r.type} | Size: ${r.size} bytes`,
-        relevance: this.calculateRelevance(query, r.name),
+        title: f.name,
+        preview: f.path,
       }));
     } catch {
       return [];
     }
   }
 
-  private async searchMessages(query: string, limit: number) {
+  private async searchMessages(
+    query: string,
+    limit: number,
+  ): Promise<
+    Array<{ id: string; type: string; title: string; preview: string }>
+  > {
     try {
       const results = await this.prisma.message.findMany({
         where: {
           content: { contains: query },
         },
         take: limit,
-        orderBy: { createdAt: 'desc' },
       });
 
-      return results.map((r) => ({
+      return results.map((m) => ({
+        id: m.id,
         type: 'message',
-        id: r.id,
-        title: `Chat message (${r.role})`,
-        preview: r.content.substring(0, 200),
-        relevance: this.calculateRelevance(query, r.content),
+        title: `Pesan (${m.role})`,
+        preview:
+          m.content.length > 100
+            ? m.content.substring(0, 100) + '...'
+            : m.content,
       }));
     } catch {
       return [];
     }
-  }
-
-  private calculateRelevance(query: string, text: string): number {
-    const queryLower = query.toLowerCase();
-    const textLower = text.toLowerCase();
-    const matches = (textLower.match(new RegExp(queryLower, 'g')) || []).length;
-    return matches;
   }
 }

@@ -14,10 +14,10 @@ export class DocumentReaderTool {
       return {
         status: 'error',
         data: {},
-        preview: 'Path file tidak boleh kosong',
+        preview: 'File path cannot be empty',
         metadata: {
           toolName: 'document_reader',
-          displayName: 'Pembaca Dokumen',
+          displayName: 'Document Reader',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'EMPTY_PATH', message: 'File path required' },
@@ -30,10 +30,10 @@ export class DocumentReaderTool {
       return {
         status: 'error',
         data: {},
-        preview: `File tidak ditemukan: ${resolvedPath}`,
+        preview: `File not found: ${resolvedPath}`,
         metadata: {
           toolName: 'document_reader',
-          displayName: 'Pembaca Dokumen',
+          displayName: 'Document Reader',
           executionTime: Date.now() - startTime,
         },
         error: {
@@ -64,16 +64,20 @@ export class DocumentReaderTool {
           text = await this.readCsv(resolvedPath);
           break;
         case '.txt':
+        case '.md':
+        case '.json':
+        case '.xml':
+        case '.html':
           text = fs.readFileSync(resolvedPath, 'utf-8');
           break;
         default:
           return {
             status: 'error',
             data: {},
-            preview: `Format ${ext} tidak didukung. Gunakan: .pdf, .docx, .xlsx, .xlsm, .csv, .txt`,
+            preview: `Unsupported format: ${ext}`,
             metadata: {
               toolName: 'document_reader',
-              displayName: 'Pembaca Dokumen',
+              displayName: 'Document Reader',
               executionTime: Date.now() - startTime,
             },
             error: {
@@ -97,7 +101,7 @@ export class DocumentReaderTool {
         preview,
         metadata: {
           toolName: 'document_reader',
-          displayName: 'Pembaca Dokumen',
+          displayName: 'Document Reader',
           executionTime: Date.now() - startTime,
           format: ext,
           filename: path.basename(resolvedPath),
@@ -107,10 +111,10 @@ export class DocumentReaderTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal membaca file: ${e.message}`,
+        preview: `Failed to read file: ${e.message}`,
         metadata: {
           toolName: 'document_reader',
-          displayName: 'Pembaca Dokumen',
+          displayName: 'Document Reader',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'READ_FAILED', message: e.message },

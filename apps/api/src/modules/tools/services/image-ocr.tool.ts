@@ -17,10 +17,10 @@ export class ImageOcrTool {
       return {
         status: 'error',
         data: {},
-        preview: 'Path gambar tidak boleh kosong',
+        preview: 'Image path cannot be empty',
         metadata: {
           toolName: 'image_ocr',
-          displayName: 'OCR Gambar',
+          displayName: 'Image OCR',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'EMPTY_PATH', message: 'File path required' },
@@ -33,10 +33,10 @@ export class ImageOcrTool {
       return {
         status: 'error',
         data: {},
-        preview: `File tidak ditemukan: ${resolvedPath}`,
+        preview: `File not found: ${resolvedPath}`,
         metadata: {
           toolName: 'image_ocr',
-          displayName: 'OCR Gambar',
+          displayName: 'Image OCR',
           executionTime: Date.now() - startTime,
         },
         error: {
@@ -58,33 +58,32 @@ export class ImageOcrTool {
       const text = data.text.trim();
       const confidence = data.confidence;
 
-      const preview = text.length > 500 ? text.substring(0, 500) + '...' : text;
-
       return {
         status: 'success',
         data: {
           text,
           confidence,
+          filePath: resolvedPath,
+          filename: path.basename(resolvedPath),
           language: lang,
         },
-        preview: preview || 'Tidak ada teks terdeteksi',
+        preview: text.length > 300 ? text.substring(0, 300) + '...' : text,
         metadata: {
           toolName: 'image_ocr',
-          displayName: 'OCR Gambar',
+          displayName: 'Image OCR',
           executionTime: Date.now() - startTime,
-          format: 'text',
-          filename: path.basename(resolvedPath),
+          confidence,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       this.logger.error(`OCR failed: ${e.message}`);
       return {
         status: 'error',
         data: {},
-        preview: `OCR gagal: ${e.message}`,
+        preview: `OCR failed: ${e.message}`,
         metadata: {
           toolName: 'image_ocr',
-          displayName: 'OCR Gambar',
+          displayName: 'Image OCR',
           executionTime: Date.now() - startTime,
         },
         error: { code: 'OCR_FAILED', message: e.message },

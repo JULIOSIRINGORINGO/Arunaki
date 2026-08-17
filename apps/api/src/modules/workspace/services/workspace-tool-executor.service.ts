@@ -210,7 +210,7 @@ export class WorkspaceToolExecutorService {
           mutationsApplied,
           noProgressRounds,
           concludeRun: true,
-          concludeContent: 'Perubahan dokumen berhasil diterapkan dan diverifikasi.',
+          concludeContent: 'Document changes successfully applied and verified.',
         };
       }
     }

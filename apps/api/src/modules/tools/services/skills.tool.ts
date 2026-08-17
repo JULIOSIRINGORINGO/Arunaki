@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Skill } from '@prisma/client';
-import { SkillService } from '../../skills/skill.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { SkillService } from '../../skills/skill.service.js';
+import { Skill } from '@prisma/client';
 
 @Injectable()
 export class SkillsTool {
@@ -9,40 +9,34 @@ export class SkillsTool {
 
   constructor(private readonly skillService: SkillService) {}
 
-  async listSkills(): Promise<ToolResult> {
+  async listSkills(params?: {
+    category?: string;
+    workspaceId?: string;
+    includeGlobal?: boolean;
+  }): Promise<ToolResult> {
     try {
-      const skills = await this.skillService.findActive();
-
-      if (skills.length === 0) {
-        return {
-          status: 'success',
-          data: { count: 0, skills: [] },
-          preview:
-            'Belum ada skill tersimpan. Agent bisa membuat skill baru dari pengalaman.',
-          metadata: {
-            toolName: 'skills',
-            displayName: 'Skills',
-            executionTime: 0,
-          },
-        };
+      let skills: Skill[] = [];
+      if (params?.category) {
+        skills = await this.skillService.findByCategory(params.category);
+      } else if (params?.workspaceId) {
+        skills = await this.skillService.findByWorkspace(params.workspaceId);
+      } else {
+        skills = await this.skillService.findActive();
       }
 
-      const skillList = skills.map((s: Skill) => ({
-        name: s.name,
-        displayName: s.displayName,
-        description: s.description,
-        category: s.category,
-        usageCount: s.usageCount,
-        version: s.version,
-      }));
-
-      const preview = skills
-        .map((s: Skill) => `[${s.name}] ${s.displayName}: ${s.description}`)
-        .join('\n');
+      const preview =
+        skills.length > 0
+          ? skills
+              .map(
+                (s: Skill) =>
+                  `[${s.category}] ${s.name} (${s.displayName}): ${s.description}`,
+              )
+              .join('\n')
+          : 'No active skills available.';
 
       return {
         status: 'success',
-        data: { count: skills.length, skills: skillList },
+        data: { count: skills.length, skills },
         preview,
         metadata: {
           toolName: 'skills',
@@ -50,11 +44,11 @@ export class SkillsTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal list skills: ${e.message}`,
+        preview: `Failed to list skills: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
@@ -72,7 +66,7 @@ export class SkillsTool {
         return {
           status: 'error',
           data: {},
-          preview: `Skill "${name}" tidak ditemukan.`,
+          preview: `Skill "${name}" not found.`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -103,11 +97,11 @@ export class SkillsTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal view skill: ${e.message}`,
+        preview: `Failed to view skill: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
@@ -123,17 +117,25 @@ export class SkillsTool {
     displayName: string;
     description: string;
     category?: string;
+    domain?: string;
     content: string;
     tags?: string[];
     workspaceId: string;
   }): Promise<ToolResult> {
     try {
-      const skill = await this.skillService.createSkill({
-        ...data,
+      const skill = await this.skillService.create({
+        name: data.name,
+        displayName: data.displayName,
+        description: data.description,
+        category: data.category || 'general',
+        domain: data.domain || 'general',
+        content: data.content,
+        tags: (data.tags || []).join(','),
+        workspaceId: data.workspaceId,
         sourceType: 'auto',
       });
 
-      const preview = `Skill "${skill.displayName}" berhasil dibuat! (${skill.name})`;
+      const preview = `Skill "${skill.displayName}" created successfully! (${skill.name})`;
 
       return {
         status: 'success',
@@ -149,11 +151,11 @@ export class SkillsTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal buat skill: ${e.message}`,
+        preview: `Failed to create skill: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
@@ -172,7 +174,7 @@ export class SkillsTool {
         return {
           status: 'success',
           data: { count: 0, skills: [] },
-          preview: `Tidak ditemukan skill untuk "${query}".`,
+          preview: `No skills found for "${query}".`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -195,11 +197,11 @@ export class SkillsTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal search skills: ${e.message}`,
+        preview: `Failed to search skills: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
@@ -226,7 +228,7 @@ export class SkillsTool {
         return {
           status: 'error',
           data: {},
-          preview: `Skill "${name}" tidak ditemukan.`,
+          preview: `Skill "${name}" not found.`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -240,7 +242,7 @@ export class SkillsTool {
         return {
           status: 'error',
           data: {},
-          preview: `Update ditolak: Skill ini bukan milik workspace Anda.`,
+          preview: `Update rejected: Skill does not belong to your workspace.`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -250,9 +252,14 @@ export class SkillsTool {
         };
       }
 
-      const updated = await this.skillService.updateSkill(skill.id, data);
+      const updated = await this.skillService.update(skill.id, {
+        displayName: data.displayName,
+        description: data.description,
+        content: data.content,
+        tags: data.tags ? data.tags.join(',') : undefined,
+      });
 
-      const preview = `Skill "${updated.displayName}" berhasil diupdate! (v${updated.version})`;
+      const preview = `Skill "${updated.displayName}" updated successfully! (v${updated.version})`;
 
       return {
         status: 'success',
@@ -269,11 +276,11 @@ export class SkillsTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal update skill: ${e.message}`,
+        preview: `Failed to update skill: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
@@ -291,7 +298,7 @@ export class SkillsTool {
         return {
           status: 'error',
           data: {},
-          preview: `Skill "${name}" tidak ditemukan.`,
+          preview: `Skill "${name}" not found.`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -305,7 +312,7 @@ export class SkillsTool {
         return {
           status: 'error',
           data: {},
-          preview: `Penghapusan ditolak: Skill ini bukan milik workspace Anda.`,
+          preview: `Deletion rejected: Skill does not belong to your workspace.`,
           metadata: {
             toolName: 'skills',
             displayName: 'Skills',
@@ -315,23 +322,23 @@ export class SkillsTool {
         };
       }
 
-      await this.skillService.updateSkill(skill.id, { active: false });
+      await this.skillService.update(skill.id, { active: false });
 
       return {
         status: 'success',
         data: { name },
-        preview: `Skill "${name}" berhasil dinonaktifkan.`,
+        preview: `Skill "${name}" deactivated successfully.`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal hapus skill: ${e.message}`,
+        preview: `Failed to delete skill: ${e.message}`,
         metadata: {
           toolName: 'skills',
           displayName: 'Skills',

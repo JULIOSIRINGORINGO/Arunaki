@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Memory } from '@prisma/client';
+import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { MemoryService } from '../../memory/memory.service.js';
 import { SessionSearchService } from '../../memory/session-search.service.js';
-import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { Memory } from '@prisma/client';
 
 @Injectable()
 export class MemoryTool {
@@ -13,48 +13,33 @@ export class MemoryTool {
     private readonly sessionSearchService: SessionSearchService,
   ) {}
 
-  async listMemories(workspaceId?: string): Promise<ToolResult> {
+  async remember(data: {
+    type: string;
+    key: string;
+    content: string;
+    confidence?: number;
+    category?: string;
+    tags?: string[];
+    workspaceId: string;
+  }): Promise<ToolResult> {
     try {
-      if (!workspaceId) {
-        this.logger.warn('listMemories called without workspaceId — falling back to global list');
-      }
-      const memories = workspaceId
-        ? await this.memoryService.findForWorkspace(workspaceId)
-        : await this.memoryService.findActive();
+      const memory = await this.memoryService.remember({
+        type: data.type,
+        key: data.key,
+        content: data.content,
+        workspaceId: data.workspaceId,
+      });
 
-      if (memories.length === 0) {
-        return {
-          status: 'success',
-          data: { count: 0, memories: [] },
-          preview: 'Belum ada memory tersimpan.',
-          metadata: {
-            toolName: 'memory',
-            displayName: 'Memory',
-            executionTime: 0,
-          },
-        };
-      }
-
-      const memoryList = memories.map((m: Memory) => ({
-        type: m.type,
-        key: m.key,
-        content: m.content.substring(0, 100),
-        importance: m.importance,
-        accessCount: m.accessCount,
-        source: m.source,
-        scope: m.workspaceId ? 'workspace' : 'global',
-      }));
-
-      const preview = memories
-        .slice(0, 10)
-        .map(
-          (m: Memory) => `[${m.type}] ${m.key}: ${m.content.substring(0, 80)}`,
-        )
-        .join('\n');
+      const preview = `Saved memory: [${memory.type}] ${memory.key} = ${memory.content.substring(0, 80)}${memory.content.length > 80 ? '...' : ''}`;
 
       return {
         status: 'success',
-        data: { count: memories.length, memories: memoryList },
+        data: {
+          id: memory.id,
+          type: memory.type,
+          key: memory.key,
+          importance: memory.importance,
+        },
         preview,
         metadata: {
           toolName: 'memory',
@@ -62,11 +47,11 @@ export class MemoryTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal list memories: ${e.message}`,
+        preview: `Failed to save memory: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
@@ -77,31 +62,35 @@ export class MemoryTool {
     }
   }
 
-  async saveMemory(data: {
-    type: string;
-    key: string;
-    content: string;
-    importance?: number;
-    domain?: string;
-    workspaceId?: string;
-  }): Promise<ToolResult> {
+  async recall(type: string, key: string): Promise<ToolResult> {
     try {
-      const memory = await this.memoryService.remember({
-        ...data,
-        source: 'auto',
-      });
+      const memory = await this.memoryService.findByKey(type, key);
+      if (!memory) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Memory "[${type}] ${key}" not found.`,
+          metadata: {
+            toolName: 'memory',
+            displayName: 'Memory',
+            executionTime: 0,
+          },
+          error: { code: 'NOT_FOUND', message: `Memory not found` },
+        };
+      }
 
-      // Check if it was rejected as duplicate
-      const preview = `Memory tersimpan: [${memory.type}] ${memory.key} (domain: ${memory.domain || 'generic'})`;
+      await this.memoryService.incrementAccess(memory.id);
+
+      const preview = `[${memory.type}] ${memory.key}: ${memory.content}`;
 
       return {
         status: 'success',
         data: {
-          id: memory.id,
           type: memory.type,
           key: memory.key,
           content: memory.content,
           domain: memory.domain,
+          importance: memory.importance,
         },
         preview,
         metadata: {
@@ -110,11 +99,62 @@ export class MemoryTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal simpan memory: ${e.message}`,
+        preview: `Failed to recall memory: ${e.message}`,
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
+        error: { code: 'MEMORY_ERROR', message: e.message },
+      };
+    }
+  }
+
+  async listMemories(params?: {
+    type?: string;
+    category?: string;
+    workspaceId?: string;
+    includeGlobal?: boolean;
+  }): Promise<ToolResult> {
+    try {
+      let memories: Memory[] = [];
+      if (params?.type) {
+        memories = await this.memoryService.findByType(params.type);
+      } else if (params?.workspaceId) {
+        memories = await this.memoryService.findForWorkspace(params.workspaceId);
+      } else {
+        memories = await this.memoryService.findActive();
+      }
+
+      const preview =
+        memories.length > 0
+          ? memories
+              .map(
+                (m: Memory) =>
+                  `[${m.type}] ${m.key}: ${m.content.substring(0, 60)}${m.content.length > 60 ? '...' : ''}`,
+              )
+              .join('\n')
+          : 'No memories saved.';
+
+      return {
+        status: 'success',
+        data: { count: memories.length, memories },
+        preview,
+        metadata: {
+          toolName: 'memory',
+          displayName: 'Memory',
+          executionTime: 0,
+        },
+      };
+    } catch (e: any) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Failed to list memories: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
@@ -133,7 +173,7 @@ export class MemoryTool {
         return {
           status: 'success',
           data: { count: 0, memories: [] },
-          preview: `Tidak ditemukan memory untuk "${query}".`,
+          preview: `No memories found for "${query}".`,
           metadata: {
             toolName: 'memory',
             displayName: 'Memory',
@@ -159,11 +199,11 @@ export class MemoryTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal mencari memory: ${e.message}`,
+        preview: `Failed to search memories: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
@@ -181,7 +221,7 @@ export class MemoryTool {
         return {
           status: 'error',
           data: {},
-          preview: `Memory "[${type}] ${key}" tidak ditemukan.`,
+          preview: `Memory "[${type}] ${key}" not found.`,
           metadata: {
             toolName: 'memory',
             displayName: 'Memory',
@@ -195,7 +235,7 @@ export class MemoryTool {
         return {
           status: 'error',
           data: {},
-          preview: `Penghapusan ditolak: Memory ini bukan milik workspace Anda.`,
+          preview: `Deletion rejected: Memory does not belong to your workspace.`,
           metadata: {
             toolName: 'memory',
             displayName: 'Memory',
@@ -210,18 +250,18 @@ export class MemoryTool {
       return {
         status: 'success',
         data: { type, key },
-        preview: `Memory "[${type}] ${key}" berhasil dihapus.`,
+        preview: `Memory "[${type}] ${key}" deleted successfully.`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal hapus memory: ${e.message}`,
+        preview: `Failed to delete memory: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
@@ -250,7 +290,7 @@ export class MemoryTool {
         return {
           status: 'success',
           data: { count: 0, results: [] },
-          preview: `Tidak ditemukan percakapan relevan untuk "${query}".`,
+          preview: `No relevant conversations found for "${query}".`,
           metadata: {
             toolName: 'memory',
             displayName: 'Memory',
@@ -260,7 +300,10 @@ export class MemoryTool {
       }
 
       const preview = results
-        .map((r) => `[${r.role}] ${r.snippet.substring(0, 100)}`)
+        .map(
+          (r: any) =>
+            `[${r.role}] (${r.sessionTitle || 'Session'}): ${r.content.substring(0, 100)}${r.content.length > 100 ? '...' : ''}`,
+        )
         .join('\n');
 
       return {
@@ -273,17 +316,17 @@ export class MemoryTool {
           executionTime: 0,
         },
       };
-    } catch (e) {
+    } catch (e: any) {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal search sessions: ${e.message}`,
+        preview: `Failed to search sessions: ${e.message}`,
         metadata: {
           toolName: 'memory',
           displayName: 'Memory',
           executionTime: 0,
         },
-        error: { code: 'SEARCH_ERROR', message: e.message },
+        error: { code: 'SESSION_SEARCH_ERROR', message: e.message },
       };
     }
   }

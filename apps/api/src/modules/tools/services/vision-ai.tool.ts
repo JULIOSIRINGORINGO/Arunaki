@@ -31,7 +31,7 @@ export class VisionAiTool {
 
   async analyzeImage(
     imageSource: string,
-    prompt: string = 'Ekstrak semua teks, data tabel, angka, dan informasi penting dari gambar ini.',
+    prompt: string = 'Extract all text, table data, numbers, and key information from this image.',
   ): Promise<ToolResult> {
     const startTime = Date.now();
     try {
@@ -39,15 +39,15 @@ export class VisionAiTool {
         return {
           status: 'error',
           data: {},
-          preview: 'Path atau URL gambar wajib diisi.',
+          preview: 'Image path or URL is required.',
           metadata: {
             toolName: 'vision_ai',
             displayName: 'Vision AI',
             executionTime: Date.now() - startTime,
           },
           error: {
-            code: 'INVALID_IMAGE',
-            message: 'Path atau URL gambar wajib diisi',
+            code: 'INVALID_INPUT',
+            message: 'Image path or URL is required',
           },
         };
       }
@@ -68,7 +68,7 @@ export class VisionAiTool {
           return {
             status: 'error',
             data: {},
-            preview: `File gambar tidak ditemukan: ${imageSource}`,
+            preview: `Image file not found: ${imageSource}`,
             metadata: {
               toolName: 'vision_ai',
               displayName: 'Vision AI',
@@ -76,7 +76,7 @@ export class VisionAiTool {
             },
             error: {
               code: 'FILE_NOT_FOUND',
-              message: `File gambar tidak ditemukan: ${imageSource}`,
+              message: `Image file not found: ${imageSource}`,
             },
           };
         }
@@ -93,7 +93,7 @@ export class VisionAiTool {
         imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
 
-      const { text, usage } = await generateText({
+      const { text } = await generateText({
         model: this.sdk.chat(this.visionModel),
         messages: [
           {
@@ -126,7 +126,7 @@ export class VisionAiTool {
       return {
         status: 'error',
         data: {},
-        preview: `Vision AI gagal: ${error.message}`,
+        preview: `Vision AI failed: ${error.message}`,
         metadata: {
           toolName: 'vision_ai',
           displayName: 'Vision AI',
