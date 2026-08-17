@@ -120,8 +120,8 @@ export class WorkspacePromptBuilderService {
     if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
       add(['doc_reconcile', 'doc_cross_reference']);
     }
-    if (/(?:export|generate_export|pdf|docx|word|invoice|dokumen|surat|cetak|konversi)/.test(g) || /@[^\s@]+\.(?:docx|pdf|xlsx)/i.test(goal)) {
-      add(['generate_export', 'document_reader']);
+    if (/(?:export|generate_export|pdf|docx|word|invoice|dokumen|surat|cetak|konversi|convert|ubah)/.test(g) || /@[^\s@]+\.(?:docx|pdf|xlsx)/i.test(goal)) {
+      add(['generate_export', 'convert_document', 'document_reader']);
     }
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
     if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);

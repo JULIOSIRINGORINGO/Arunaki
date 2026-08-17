@@ -12,6 +12,7 @@ import { AskUserTool } from './services/ask-user.tool.js';
 import { TextExtractorTool } from './services/text-extractor.tool.js';
 import { DocumentGeneratorTool } from './services/document-generator.tool.js';
 import { DocumentReaderTool } from './services/document-reader.tool.js';
+import { DocumentConverterTool } from './services/document-converter.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
@@ -66,6 +67,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     TextExtractorTool,
     DocumentGeneratorTool,
     DocumentReaderTool,
+    DocumentConverterTool,
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
@@ -101,6 +103,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     TextExtractorTool,
     DocumentGeneratorTool,
     DocumentReaderTool,
+    DocumentConverterTool,
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
@@ -161,6 +164,7 @@ export class ToolsProviderModule implements OnModuleInit {
       textExtractorTool: this.moduleRef.get(TextExtractorTool, { strict: false }),
       documentGeneratorTool: this.moduleRef.get(DocumentGeneratorTool, { strict: false }),
       documentReaderTool: this.moduleRef.get(DocumentReaderTool, { strict: false }),
+      documentConverterTool: this.moduleRef.get(DocumentConverterTool, { strict: false }),
       dataQueryTool: this.moduleRef.get(DataQueryTool, { strict: false }),
       draftCommunicationTool: this.moduleRef.get(DraftCommunicationTool, { strict: false }),
       unitConverterTool: this.moduleRef.get(UnitConverterTool, { strict: false }),

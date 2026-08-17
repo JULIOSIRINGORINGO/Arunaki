@@ -4,6 +4,7 @@ import { ToolAdapter } from '../tool-adapter.js';
 import { TextExtractorTool } from '../text-extractor.tool.js';
 import { DocumentGeneratorTool } from '../document-generator.tool.js';
 import { DocumentReaderTool } from '../document-reader.tool.js';
+import { DocumentConverterTool } from '../document-converter.tool.js';
 import { DataQueryTool } from '../data-query.tool.js';
 import { DraftCommunicationTool } from '../draft-communication.tool.js';
 import { UnitConverterTool } from '../unit-converter.tool.js';
@@ -17,6 +18,7 @@ export class BusinessDomainToolsRegistrar {
       textExtractorTool: TextExtractorTool;
       documentGeneratorTool: DocumentGeneratorTool;
       documentReaderTool: DocumentReaderTool;
+      documentConverterTool: DocumentConverterTool;
       dataQueryTool: DataQueryTool;
       draftCommunicationTool: DraftCommunicationTool;
       unitConverterTool: UnitConverterTool;
@@ -161,6 +163,54 @@ export class BusinessDomainToolsRegistrar {
             outputPath: { type: 'string' },
           },
           required: ['format'],
+        },
+        timeoutMs: 30000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'convert_document',
+        displayName: 'Convert Document',
+        description: 'Converts existing documents in the workspace between formats (e.g. Word to PDF, Excel to PDF/CSV, Text to PDF/Word).',
+        tags: ['convert', 'document', 'pdf', 'docx', 'excel', 'csv', 'export'],
+        mutating: true,
+        handler: async (args) => {
+          try {
+            const safeSourcePath = await services.workspaceToolsService.resolveWithinWorkspace(
+              args.workspaceId,
+              args.sourcePath || args.filePath || args.filename,
+            );
+            let safeOutputPath: string | undefined;
+            if (args.outputPath || args.targetFilename) {
+              safeOutputPath = await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                args.outputPath || args.targetFilename,
+              );
+            }
+            return await services.documentConverterTool.convertDocument({
+              sourcePath: safeSourcePath,
+              targetFormat: args.targetFormat || 'pdf',
+              outputPath: safeOutputPath,
+            });
+          } catch (err: any) {
+            return {
+              status: 'error',
+              data: {},
+              preview: `Document conversion failed: ${err.message}`,
+              metadata: { toolName: 'convert_document', displayName: 'Convert Document', executionTime: 0 },
+              error: { code: 'CONVERSION_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            sourcePath: { type: 'string', description: 'Source file name or path in workspace (e.g. invoice.docx)' },
+            targetFormat: { type: 'string', enum: ['pdf', 'docx', 'xlsx', 'csv', 'txt'], description: 'Desired target format (e.g. pdf)' },
+            outputPath: { type: 'string', description: 'Optional custom output file name or path (e.g. invoice.pdf)' },
+          },
+          required: ['sourcePath', 'targetFormat'],
         },
         timeoutMs: 30000,
       }),
