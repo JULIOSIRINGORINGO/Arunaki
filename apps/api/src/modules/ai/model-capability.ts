@@ -35,7 +35,8 @@ const MODEL_CAPABILITIES: Record<string, ModelCapability> = {
   // DeepSeek
   'deepseek-chat': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
   'deepseek-coder': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 4096 },
-  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
+  'deepseek-v4-flash': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192 },
+  'deepseek-v4-pro': { supportsTools: true, supportsTemperature: true, contextWindow: 128000, maxTokens: 8192 },
   'deepseek-reasoner': { supportsTools: true, supportsTemperature: false, contextWindow: 128000, maxTokens: 8192, reasoningEffort: 'low' },
 
   // Qwen
@@ -96,7 +97,11 @@ export function modelSupportsTools(modelName: string): boolean {
  * serialize past tool activity into text when building history.
  */
 export function modelSupportsToolCallHistory(modelName: string): boolean {
-  return lookupCapability(modelName)?.supportsToolCallHistory ?? false;
+  const cap = lookupCapability(modelName);
+  if (cap && typeof cap.supportsToolCallHistory === 'boolean') {
+    return cap.supportsToolCallHistory;
+  }
+  return true;
 }
 
 /**

@@ -21,10 +21,10 @@ Implemented flexible single-pass execution guidelines in universal system prompt
 ## Files Changed
 - `apps/api/src/prompts/rules.md` — Added Rule 8 (Universal Single-Pass Execution & Multi-Step Flexibility).
 - `apps/api/src/modules/workspace/workspace-runner.service.ts` — Implemented instant fast cut-off on redundant post-mutation re-reads.
+- `apps/api/src/modules/ai/model-capability.ts` — Fixed default `modelSupportsToolCallHistory` to true for standard models and tuned deepseek-v4-flash capability.
 - `apps/api/scripts/stress-test-5x.ts` [NEW] — Automated 5-iteration stress test suite.
 
 ## Tests & Benchmarks
-- `npx tsx scripts/test-rekap-extended.ts gpt-oss-120b` — ✅ **17/17 checks passed (100% PERFECT)**:
-  - All 6 document replacements applied in 1 single pass.
-  - All calculations ($\sum = 570$ RB expenses, BCA 825 RB, BNI 200 RB, Cash 150 RB) 100% accurate.
-  - Template invariants (Sisa Deposit, Belanjaan, Pak Arnol) 100% intact.
+- `npx tsx scripts/test-rekap-extended.ts gpt-oss-120b` — ✅ **17/17 checks passed (100% PERFECT)**
+- `npx tsx scripts/test-rekap-extended.ts deepseek-v4-flash` — ✅ **17/17 checks passed (100% PERFECT)**
+- `npx tsx scripts/test-rekap-extended.ts agnes-2-5-flash:free` — ✅ **16/17 checks passed** (27s execution)
