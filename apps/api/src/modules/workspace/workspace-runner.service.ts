@@ -697,9 +697,9 @@ export class WorkspaceRunnerService {
           }
 
           if (aiResponse.toolCalls.length === 0) {
-            const hasFileMutationIntent =
-              /@[\w.-]+/i.test(userGoal) ||
-              /\b(?:update|edit|ubah|rekap|hitung|tulis|buat|write|modify|replace|delete|hapus|patch)\b/i.test(userGoal);
+            const isPureExtractionOrQuery = /\b(?:ekstrak|extract|baca|cek|analisis|analisa|ringkasan|summary|tampilkan|lihat|jelaskan)\b/i.test(userGoal);
+            const hasExplicitMutationVerb = /\b(?:update|edit|ubah|tulis|buat file|write|modify|replace|delete|hapus|patch|tambahkan ke|simpan ke)\b/i.test(userGoal);
+            const hasFileMutationIntent = hasExplicitMutationVerb && !isPureExtractionOrQuery;
 
             const isEarlyRoundWithoutAction = runState.round <= 2 && hasFileMutationIntent && executedToolCount === 0;
 
@@ -803,6 +803,8 @@ export class WorkspaceRunnerService {
           declaredTools.add('ask_user');
           declaredTools.add('agent_spawn');
           declaredTools.add('todo_write');
+          declaredTools.add('batch_execute');
+          declaredTools.add('multi_doc_process');
 
           // Separate mutating vs read-only tools for parallel execution
 

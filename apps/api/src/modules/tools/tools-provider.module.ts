@@ -37,6 +37,7 @@ import { CronModule } from '../cron/cron.module.js';
 import { ProgrammaticVerifierService } from './services/programmatic-verifier.service.js';
 import { TodoStoreService } from './services/todo-store.service.js';
 import { PtcExecutorService } from './services/ptc-executor.service.js';
+import { MultiDocOrchestratorService } from './services/multi-doc-orchestrator.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -88,6 +89,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     ProgrammaticVerifierService,
     TodoStoreService,
     PtcExecutorService,
+    MultiDocOrchestratorService,
     WorkspaceFileToolsRegistrar,
     BusinessDomainToolsRegistrar,
     HarnessMetaToolsRegistrar,
@@ -122,6 +124,7 @@ import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
     ProgrammaticVerifierService,
     TodoStoreService,
     PtcExecutorService,
+    MultiDocOrchestratorService,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -178,6 +181,7 @@ export class ToolsProviderModule implements OnModuleInit {
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
       subAgentRunner: this.moduleRef.get(SubAgentRunnerService, { strict: false }),
       ptcExecutor: this.moduleRef.get(PtcExecutorService, { strict: false }),
+      multiDocOrchestrator: this.moduleRef.get(MultiDocOrchestratorService, { strict: false }),
     });
 
     // 4. Register Desktop COM Automation Tools

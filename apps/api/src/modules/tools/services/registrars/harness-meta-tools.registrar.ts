@@ -13,6 +13,8 @@ import { MemoryTool } from '../memory.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 import { PtcExecutorService } from '../ptc-executor.service.js';
 
+import { MultiDocOrchestratorService } from '../multi-doc-orchestrator.service.js';
+
 @Injectable()
 export class HarnessMetaToolsRegistrar {
   register(
@@ -30,6 +32,7 @@ export class HarnessMetaToolsRegistrar {
       workspaceToolsService: WorkspaceToolsService;
       subAgentRunner?: any;
       ptcExecutor?: PtcExecutorService;
+      multiDocOrchestrator?: MultiDocOrchestratorService;
     },
   ) {
     registry.register(
@@ -194,6 +197,59 @@ export class HarnessMetaToolsRegistrar {
           required: ['operations'],
         },
         timeoutMs: 60000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'multi_doc_process',
+        displayName: 'Parallel Multi-Document Process',
+        description:
+          'Processes multiple documents in parallel using sandboxed sub-agents without overflowing chat context.',
+        tags: ['parallel', 'subagent', 'documents', 'batch'],
+        handler: async (args) => {
+          if (!services.multiDocOrchestrator) {
+            return {
+              status: 'error',
+              error: { code: 'ORCHESTRATOR_UNAVAILABLE', message: 'Multi-document orchestrator is not available.' },
+              data: {},
+              preview: 'Multi-doc orchestrator unavailable',
+              metadata: { toolName: 'multi_doc_process', displayName: 'Parallel Multi-Document Process', executionTime: 0 },
+            };
+          }
+          const res = await services.multiDocOrchestrator.processDocumentsParallel({
+            workspaceId: args.workspaceId,
+            files: args.files || [],
+            instruction: args.instruction || '',
+            maxConcurrency: args.maxConcurrency || 3,
+          });
+          return {
+            status: res.failedCount === 0 ? 'success' : 'error',
+            data: res,
+            preview: `Processed ${res.successCount}/${res.totalFiles} documents in parallel (${res.totalDurationMs}ms).`,
+            metadata: { toolName: 'multi_doc_process', displayName: 'Parallel Multi-Document Process', executionTime: res.totalDurationMs },
+          };
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            files: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of relative file paths to process concurrently.',
+            },
+            instruction: {
+              type: 'string',
+              description: 'The task instruction / extraction goal for each document.',
+            },
+            maxConcurrency: {
+              type: 'number',
+              description: 'Maximum number of parallel workers (default: 3).',
+            },
+          },
+          required: ['files', 'instruction'],
+        },
+        timeoutMs: 120000,
       }),
     );
   }

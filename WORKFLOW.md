@@ -1568,7 +1568,19 @@ apps/web/src/
 
 ---
 
-## Phase 54: Parallel Multi-Document Sub-Agent Orchestrator (Upcoming)
+## Phase 54: Parallel Multi-Document Sub-Agent Orchestrator ✅ DONE
 
 **Goal:** Scale office document operations across multiple parallel sandboxed sub-agent workers without main-chat context pollution.
+
+### 54.1 Multi-Document Orchestrator Service
+- [x] Create `MultiDocOrchestratorService` in `apps/api/src/modules/tools/services/multi-doc-orchestrator.service.ts` to manage parallel sub-agent task partitioning and aggregation.
+- [x] Implement concurrency pool limiter to prevent 429 rate-limiting on bulk file operations.
+
+### 54.2 Tool Registration & Runtime Integration
+- [x] Register `multi_doc_process` in `HarnessMetaToolsRegistrar` and expose to prompt builder.
+- [x] Wire progress tracking and transcript event logging into sub-agent worker lifecycles.
+
+### 54.3 Verification & Benchmark
+- [x] Vitest unit tests for parallel task partitioning, concurrency throttling, and result aggregation (`multi-doc-orchestrator.service.spec.ts` — 3/3 passed).
+- [x] End-to-end benchmark verifying parallel multi-file processing with zero parent context pollution (`test-multi-doc-subagents.ts` — 5/5 passed).
 
