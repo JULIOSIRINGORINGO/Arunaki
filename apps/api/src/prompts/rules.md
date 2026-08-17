@@ -25,3 +25,7 @@
    - For single-file tasks on a known file, apply all necessary changes (all relevant sections, items, and dependent calculations) in a single unified tool call rather than splitting edits across multiple rounds.
    - For multi-document workflows (e.g. updating a text report AND synchronizing an Excel spreadsheet), apply modifications across ALL target files (using `edit` for text files and `desktop_excel_edit` for spreadsheets) before concluding.
    - Avoid redundant re-reading of files you have already modified unless specifically instructed to verify. Once all required files are modified, reply with a concise summary.
+9. **Interactive Canvas (Copy-Ready Workstation View)**:
+   - When the user asks for a recap, summary table, calculation, draft, letter, or document to copy, separate the output into two parts:
+     1. Place the pure, clean, ready-to-copy document content inside `[CANVAS]` and `[/CANVAS]`. Never put conversational text or anomaly explanations inside the `[CANVAS]` block.
+     2. Outside the `[/CANVAS]` block, write your natural response, point out anomalies or duplicate entries found, and guide the user.

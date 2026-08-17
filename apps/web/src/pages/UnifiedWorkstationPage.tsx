@@ -418,6 +418,8 @@ export function UnifiedWorkstationPage() {
       }
     }
 
+    let accumulatedResponseText = "";
+
     try {
       await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
         method: "POST",
@@ -451,6 +453,7 @@ export function UnifiedWorkstationPage() {
                 }
               }
             } else if (event.type === "text_delta" && event.data) {
+              accumulatedResponseText += event.data;
               setLiveStatus({ type: "text_delta", preview: "Generating response" });
               setOptimisticMessages((prev) => {
                 const exists = prev.some((m) => m.id === assistantMessageId);
@@ -466,11 +469,11 @@ export function UnifiedWorkstationPage() {
                     : m
                 );
               });
-              const canvasText = extractCanvasContent(event.data);
+              const canvasText = extractCanvasContent(accumulatedResponseText);
               if (canvasText) {
                 handleTriggerCanvas({
                   id: `canvas-${Date.now()}`,
-                  title: selectedWorkspaceId ? "Calculation / Structured Document" : "AI Canvas Response",
+                  title: "Canvas — Rekap Siap Salin",
                   brandColorHeader: "#1A191B",
                   plainTextContent: canvasText,
                   createdAt: new Date().toISOString(),
@@ -479,6 +482,16 @@ export function UnifiedWorkstationPage() {
             } else if (event.type === "done") {
               setIsStreaming(false);
               setLiveStatus(null);
+              const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
+              if (canvasText) {
+                handleTriggerCanvas({
+                  id: `canvas-${Date.now()}`,
+                  title: "Canvas — Rekap Siap Salin",
+                  brandColorHeader: "#1A191B",
+                  plainTextContent: canvasText,
+                  createdAt: new Date().toISOString(),
+                });
+              }
               queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
               setTimeout(() => {
                 setOptimisticMessages([]);
