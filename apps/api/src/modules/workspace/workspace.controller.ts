@@ -19,6 +19,8 @@ import {
   CreateWorkspaceDto,
   UpdateWorkspaceDto,
 } from './dtos/workspace.dto.js';
+import { TimeTravelService } from './services/time-travel.service.js';
+import { TranscriptEngineService } from './services/transcript-engine.service.js';
 import {
   successResponse,
   errorResponse,
@@ -31,6 +33,8 @@ export class WorkspaceController {
     private readonly workspaceInitService: WorkspaceInitService,
     private readonly workspaceRunnerService: WorkspaceRunnerService,
     private readonly fileService: FileService,
+    private readonly timeTravelService: TimeTravelService,
+    private readonly transcriptEngineService: TranscriptEngineService,
   ) {}
 
   @Post()
@@ -134,7 +138,13 @@ export class WorkspaceController {
   async streamAgent(
     @Param('id') id: string,
     @Body()
-    body: { goal?: string; userGoal?: string; historyMessages?: any[]; modelId?: string },
+    body: {
+      goal?: string;
+      userGoal?: string;
+      historyMessages?: any[];
+      modelId?: string;
+      sessionId?: string;
+    },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -174,6 +184,7 @@ export class WorkspaceController {
             { role: 'user', content: goal },
           ],
           modelId: body.modelId,
+          sessionId: body.sessionId,
         },
         (event: any) => {
           res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -193,7 +204,7 @@ export class WorkspaceController {
   async streamAgentGenerator(
     @Param('id') id: string,
     @Body()
-    body: { goal: string; historyMessages?: any[] },
+    body: { goal: string; historyMessages?: any[]; modelId?: string; sessionId?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -216,6 +227,8 @@ export class WorkspaceController {
         historyMessages: body.historyMessages || [
           { role: 'user', content: body.goal },
         ],
+        modelId: body.modelId,
+        sessionId: body.sessionId,
       });
 
       for await (const event of generator) {
@@ -310,6 +323,45 @@ export class WorkspaceController {
       });
     } catch (error) {
       return errorResponse('STATE_FAILED', error.message);
+    }
+  }
+
+  @Get(':id/sessions/:sessionId/transcript')
+  async getSessionTranscript(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    try {
+      const ws = await this.workspaceService.findById(id);
+      if (!ws || !ws.rootPath) {
+        return errorResponse('NOT_FOUND', 'Workspace not found');
+      }
+      const events = await this.transcriptEngineService.getTranscript(ws.rootPath, sessionId);
+      const checkpoints = await this.transcriptEngineService.getCheckpoints(ws.rootPath, sessionId);
+      return successResponse({
+        sessionId,
+        workspaceId: id,
+        eventCount: events.length,
+        checkpointCount: checkpoints.length,
+        events,
+        checkpoints,
+      });
+    } catch (error) {
+      return errorResponse('TRANSCRIPT_FAILED', error.message);
+    }
+  }
+
+  @Post(':id/sessions/:sessionId/rollback')
+  async rollbackSession(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Body() body: { targetCheckpointId?: string; targetSequence?: number } = {},
+  ) {
+    try {
+      const result = await this.timeTravelService.rollbackSession(id, sessionId, body);
+      return successResponse(result);
+    } catch (error) {
+      return errorResponse('ROLLBACK_FAILED', error.message);
     }
   }
 }

@@ -1532,9 +1532,21 @@ apps/web/src/
 
 ---
 
-## Phase 52: Append-Only Event-Stream Transcript & Time-Travel Engine (Upcoming)
+## Phase 52: Append-Only Event-Stream Transcript & Time-Travel Engine ✅ DONE
 
 **Goal:** Implement an append-only event stream transcript as the single source of truth for full replayability, auditability, and 1-click Undo/Rollback.
+
+### 52.1 Append-Only Transcript Engine Service
+- [x] Create `TranscriptEngineService` in `apps/api/src/modules/workspace/services/transcript-engine.service.ts` to log session events into `.arunaki/sessions/{sessionId}/transcript.jsonl`.
+- [x] Automatically capture pre-mutation snapshots for all file mutating tools (`edit`, `write`, `delete`, `rename`).
+
+### 52.2 Time-Travel Rollback Service & REST Controller
+- [x] Create `TimeTravelService` in `apps/api/src/modules/workspace/services/time-travel.service.ts` to restore workspace files to previous checkpoints.
+- [x] Expose rollback and transcript timeline endpoints in `WorkspaceController`.
+
+### 52.3 Verification & Benchmark
+- [x] Vitest unit tests for transcript append & rollback logic (`transcript-engine.service.spec.ts` — 2/2 passed).
+- [x] End-to-end benchmark verifying 1-click rollback restores original document content with zero data corruption (`test-time-travel-benchmark.ts` — 5/5 passed).
 
 ---
 

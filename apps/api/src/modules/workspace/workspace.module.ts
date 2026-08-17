@@ -22,6 +22,8 @@ import { ChatModule } from '../chat/chat.module.js';
 import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
 import { WorkspaceCartographerService } from './services/workspace-cartographer.service.js';
 import { WorkspaceRulesSentinelService } from './services/workspace-rules-sentinel.service.js';
+import { TranscriptEngineService } from './services/transcript-engine.service.js';
+import { TimeTravelService } from './services/time-travel.service.js';
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { WorkspaceRulesSentinelService } from './services/workspace-rules-sentin
     WorkspacePromptBuilderService,
     WorkspaceCartographerService,
     WorkspaceRulesSentinelService,
+    TranscriptEngineService,
+    TimeTravelService,
   ],
   exports: [
     WorkspaceService,
@@ -57,6 +61,8 @@ import { WorkspaceRulesSentinelService } from './services/workspace-rules-sentin
     WorkspacePromptBuilderService,
     WorkspaceCartographerService,
     WorkspaceRulesSentinelService,
+    TranscriptEngineService,
+    TimeTravelService,
   ],
 })
 export class WorkspaceModule {}

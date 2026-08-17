@@ -28,6 +28,7 @@ const FUNCT_TAG_RE = /<\s*function\s*(?:\([^)]+\))?=\s*([\s\S]*?)\s*>\s*<\/\s*fu
 const SLASH_FUNCTION_TAG_RE = /<\s*function\/([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
 const COLON_FUNCTION_TAG_RE = /<\s*function:([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
 const ACTION_INPUT_RE = /(?:Action|Tool|Function)\s*:\s*([a-zA-Z0-9_-]+)\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*(\{[\s\S]*?\})/gi;
+const ASSISTANT_TOOL_CALL_RE = /\[Assistant tool call\]:\s*([a-zA-Z0-9_-]+)\s*\(([\s\S]*?)\)/gi;
 
 /** Repair malformed JSON: strip code fences, fix trailing commas, auto-close unclosed strings and braces. */
 export function repairJson(raw: string): string {
@@ -361,6 +362,39 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
       }
     } catch {
       // ignore
+    }
+  }
+
+  // 1e. [Assistant tool call]: <name>(<args>) (OpenRouter / Agnes format)
+  ASSISTANT_TOOL_CALL_RE.lastIndex = 0;
+  while ((m = ASSISTANT_TOOL_CALL_RE.exec(content)) !== null) {
+    const fnName = m[1].trim();
+    const rawArgs = m[2].trim();
+    try {
+      const parsed = JSON.parse(repairJson(rawArgs));
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: {
+          name: fnName,
+          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+        },
+      };
+      if (!seen.has(fnName + ':' + call.function.arguments)) {
+        seen.add(fnName + ':' + call.function.arguments);
+        calls.push(call);
+      }
+    } catch {
+      // fallback raw
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: { name: fnName, arguments: repairJson(rawArgs) },
+      };
+      if (!seen.has(fnName + ':' + call.function.arguments)) {
+        seen.add(fnName + ':' + call.function.arguments);
+        calls.push(call);
+      }
     }
   }
 

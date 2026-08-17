@@ -36,6 +36,7 @@ import * as path from 'path';
 // models (gpt-oss, qwen, ...) each verification round costs 30-160s — enough
 // to blow the total timeout. Once the run drags past this threshold with no
 import { WorkspacePromptBuilderService } from './services/workspace-prompt-builder.service.js';
+import { TranscriptEngineService } from './services/transcript-engine.service.js';
 import {
   extractMentionedFilenames,
   hasExplicitDeleteIntent,
@@ -142,6 +143,7 @@ export class WorkspaceRunnerService {
     @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore: TodoStoreService,
     @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
     @Inject(forwardRef(() => WorkspacePromptBuilderService)) private readonly promptBuilder: WorkspacePromptBuilderService,
+    @Inject(forwardRef(() => TranscriptEngineService)) private readonly transcriptEngine: TranscriptEngineService,
   ) {}
 
   /** Delegate physical sync to WorkspacePromptBuilderService */
@@ -487,6 +489,8 @@ export class WorkspaceRunnerService {
         return;
       }
 
+      const sessionId = params.sessionId || `session-${Date.now()}`;
+
       const {
         messages,
         tools,
@@ -496,6 +500,14 @@ export class WorkspaceRunnerService {
         workspaceRootPath,
       } = initial;
       this.mentionedFiles.set(workspaceId, new Set(mentionedFileContents.keys()));
+
+      if (workspaceRootPath) {
+        this.transcriptEngine.appendEvent(workspaceRootPath, sessionId, 'session_start', {
+          userGoal,
+          modelId,
+          timestamp: new Date().toISOString(),
+        }).catch(() => {});
+      }
 
       // Generate autonomous reasoning plan
       if (abortController.signal.aborted) {
@@ -1057,11 +1069,45 @@ export class WorkspaceRunnerService {
                 enrichedArgs.filePath = [...mentionedFiles][0];
                 enrichedArgs.path = [...mentionedFiles][0];
               }
+
+              // Capture pre-mutation snapshot for 1-Click Rollback / Transcript
+              let preSnapshot: string | null = null;
+              if (workspaceRootPath && rawTargetName) {
+                preSnapshot = this.transcriptEngine.captureFileSnapshot(workspaceRootPath, rawTargetName);
+                this.transcriptEngine.appendEvent(workspaceRootPath, sessionId, 'file_snapshot_pre', {
+                  tool: funcName,
+                  filePath: rawTargetName,
+                  snapshotContent: preSnapshot,
+                  fileExisted: preSnapshot !== null,
+                  timestamp: new Date().toISOString(),
+                }).catch(() => {});
+              }
+
               result = await this.selfHealingService.executeWithIsolation(
                 funcName,
                 enrichedArgs,
                 workspaceId,
               );
+
+              // Capture post-mutation snapshot and tool result
+              if (workspaceRootPath && rawTargetName) {
+                const postSnapshot = this.transcriptEngine.captureFileSnapshot(workspaceRootPath, rawTargetName);
+                this.transcriptEngine.appendEvent(workspaceRootPath, sessionId, 'tool_call_post', {
+                  tool: funcName,
+                  args,
+                  status: result.status,
+                  preview: result.preview,
+                  timestamp: new Date().toISOString(),
+                }).catch(() => {});
+                if (result.status === 'success') {
+                  this.transcriptEngine.appendEvent(workspaceRootPath, sessionId, 'file_snapshot_post', {
+                    tool: funcName,
+                    filePath: rawTargetName,
+                    snapshotContent: postSnapshot,
+                    timestamp: new Date().toISOString(),
+                  }).catch(() => {});
+                }
+              }
             } catch (e) {
               result = {
                 status: 'error',
@@ -1349,4 +1395,5 @@ export interface WorkspaceRunParams {
     content: string;
   }>;
   modelId?: string;
+  sessionId?: string;
 }
