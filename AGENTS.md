@@ -38,11 +38,11 @@ When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.)
 
 Always follow these documents, in this priority order:
 
-1. VISION.md
-2. PRD.md
-3. UX_UI.md
-4. INTELLIGENCE.md
-5. ARCHITECTURE.md
+1. docs/VISION.md
+2. docs/PRD.md
+3. docs/UX_UI.md
+4. docs/INTELLIGENCE.md
+5. docs/ARCHITECTURE.md
 6. **WORKFLOW.md** — Development roadmap & checklist
 7. **docs/OpenClaw-Blueprint.md** — OpenClaw architecture reference (32+ layers from source)
 8. **docs/ROADMAP-Implementation.md** — Phase 1-3 implementation plan (162h critical path)
@@ -57,7 +57,7 @@ WORKFLOW.md is the **execution guide** — it defines what to build and in what 
 **Recommended reading order** untuk developer baru:
 ```
 1. AGENTS.md (file ini)         → Mission, rules, workflow
-2. VISION.md                    → What & why
+2. docs/VISION.md               → What & why
 3. docs/BOUNDARIES.md           → What's allowed / forbidden
 4. docs/OpenClaw-Blueprint.md   → Architecture reference (32 layer)
 5. WORKFLOW.md                  → Current phase + completed items

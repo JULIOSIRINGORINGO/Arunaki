@@ -74,17 +74,17 @@ Arunaki/
 ├── apps/
 │   ├── api/                # NestJS Backend
 │   │   ├── prisma/         # Database schema
-│   │   ├── src/            # Source code
-│   │   └── .env            # Environment variables (not committed)
-│   └── web/                # React + Vite Frontend
-│       ├── src/
-│       └── vite.config.ts
-├── .env.example            # Template environment
-├── ARCHITECTURE.md         # System architecture
-├── PRD.md                  # Product requirements
-├── VISION.md               # Product vision
-├── UX_UI.md                # UX/UI specification
-└── INTELLIGENCE.md         # AI behavior spec
+│   │   └── src/            # Source code
+│   └── web/                # React + Vite Desktop Web UI
+├── docs/                   # Architecture, PRD, Vision & Dev Logs
+│   ├── ARCHITECTURE.md     # System architecture
+│   ├── PRD.md              # Product requirements
+│   ├── VISION.md           # Product vision
+│   ├── UX_UI.md            # UX/UI specification
+│   ├── INTELLIGENCE.md     # AI behavior spec
+│   └── dev-logs/           # Task dev logs
+├── AGENTS.md               # Agent mission & rules
+└── WORKFLOW.md             # Development roadmap & checklist
 ```
 
 ## Available Scripts
