@@ -34,8 +34,10 @@ export class WorkspaceToolsService {
    * Defends against Path Traversal / LFI attacks.
    */
   private requirePathInWorkspace(targetPath: string, rootPath: string): string {
-    const resolvedTarget = path.resolve(targetPath);
     const resolvedRoot = path.resolve(rootPath);
+    const resolvedTarget = path.isAbsolute(targetPath)
+      ? path.resolve(targetPath)
+      : path.resolve(resolvedRoot, targetPath);
     const rel = path.relative(resolvedRoot, resolvedTarget);
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error('Path Traversal detected. Target path is outside workspace root.');

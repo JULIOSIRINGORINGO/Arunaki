@@ -123,7 +123,7 @@ export class WorkspacePromptBuilderService {
     if (/(?:export|generate_export)/.test(g)) add(['generate_export']);
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
     if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
-    if (/(?:buka|desktop|word|excel|powerpoint|ppt|office|aplikasi|mengetik)/.test(g)) {
+    if (/(?:buka|desktop|word|excel|xlsx|spreadsheet|powerpoint|ppt|office|aplikasi|mengetik)/.test(g) || /@[^\s@]+\.xlsx/i.test(goal)) {
       add([
         'desktop_open_file',
         'desktop_open_excel',
@@ -134,6 +134,7 @@ export class WorkspacePromptBuilderService {
         'desktop_word_format',
         'desktop_send_keys',
         'desktop_screenshot',
+        'document_reader',
       ]);
     }
     if (/(?:browser|website|web|google|internet|halaman)/.test(g)) {

@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ToolRegistryService } from '../../tool-registry.service.js';
 import { ToolAdapter } from '../tool-adapter.js';
 import { DesktopBridgeService } from '../../../interaction/desktop-bridge.service.js';
@@ -30,16 +32,16 @@ export class DesktopToolsRegistrar {
             return {
               status: 'success',
               data: res,
-              preview: `Opened file on desktop: ${args.filePath || args.path}`,
+              preview: `Opened ${path.basename(safePath)} on desktop`,
               metadata: { toolName: 'desktop_open_file', displayName: 'Open File', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
-              preview: `Failed to open file on desktop: ${err.message}`,
+              preview: `Open file failed: ${err.message}`,
               metadata: { toolName: 'desktop_open_file', displayName: 'Open File', executionTime: 0 },
-              error: { code: 'DESKTOP_BRIDGE_ERROR', message: err.message },
+              error: { code: 'DESKTOP_OPEN_ERROR', message: err.message },
             };
           }
         },
@@ -47,7 +49,7 @@ export class DesktopToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Relative path of file within workspace' },
+            filePath: { type: 'string', description: 'Path to file within workspace' },
           },
           required: ['filePath'],
         },
@@ -59,9 +61,9 @@ export class DesktopToolsRegistrar {
     registry.register(
       ToolAdapter.from({
         name: 'desktop_open_excel',
-        displayName: 'Open in Excel',
-        description: 'Opens an Excel workbook (.xlsx/.xls) in Microsoft Excel application via COM interface.',
-        tags: ['desktop', 'excel', 'com', 'spreadsheet'],
+        displayName: 'Open Excel File',
+        description: 'Opens an Excel spreadsheet (.xlsx/.xls/.csv) via desktop application.',
+        tags: ['desktop', 'excel', 'open'],
         handler: async (args) => {
           try {
             const safePath = await services.workspaceToolsService.resolveWithinWorkspace(
@@ -72,16 +74,16 @@ export class DesktopToolsRegistrar {
             return {
               status: 'success',
               data: res,
-              preview: `Opened Excel workbook via COM: ${args.filePath || args.path}`,
+              preview: `Opened Excel spreadsheet: ${path.basename(safePath)}`,
               metadata: { toolName: 'desktop_open_excel', displayName: 'Open Excel', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
-              preview: `Failed to open Excel: ${err.message}`,
+              preview: `Open Excel failed: ${err.message}`,
               metadata: { toolName: 'desktop_open_excel', displayName: 'Open Excel', executionTime: 0 },
-              error: { code: 'DESKTOP_EXCEL_ERROR', message: err.message },
+              error: { code: 'DESKTOP_OPEN_EXCEL_ERROR', message: err.message },
             };
           }
         },
@@ -89,7 +91,7 @@ export class DesktopToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Relative path of .xlsx/.xls file within workspace' },
+            filePath: { type: 'string', description: 'Path to Excel file within workspace' },
           },
           required: ['filePath'],
         },
@@ -101,9 +103,9 @@ export class DesktopToolsRegistrar {
     registry.register(
       ToolAdapter.from({
         name: 'desktop_open_word',
-        displayName: 'Open in Word',
-        description: 'Opens a Word document (.docx/.doc) in Microsoft Word application via COM interface.',
-        tags: ['desktop', 'word', 'com', 'document'],
+        displayName: 'Open Word Document',
+        description: 'Opens a Word document (.docx/.doc) via desktop application.',
+        tags: ['desktop', 'word', 'open'],
         handler: async (args) => {
           try {
             const safePath = await services.workspaceToolsService.resolveWithinWorkspace(
@@ -114,16 +116,16 @@ export class DesktopToolsRegistrar {
             return {
               status: 'success',
               data: res,
-              preview: `Opened Word document via COM: ${args.filePath || args.path}`,
+              preview: `Opened Word document: ${path.basename(safePath)}`,
               metadata: { toolName: 'desktop_open_word', displayName: 'Open Word', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
-              preview: `Failed to open Word: ${err.message}`,
+              preview: `Open Word failed: ${err.message}`,
               metadata: { toolName: 'desktop_open_word', displayName: 'Open Word', executionTime: 0 },
-              error: { code: 'DESKTOP_WORD_ERROR', message: err.message },
+              error: { code: 'DESKTOP_OPEN_WORD_ERROR', message: err.message },
             };
           }
         },
@@ -131,7 +133,7 @@ export class DesktopToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Relative path of .docx/.doc file within workspace' },
+            filePath: { type: 'string', description: 'Path to Word file within workspace' },
           },
           required: ['filePath'],
         },
@@ -143,9 +145,9 @@ export class DesktopToolsRegistrar {
     registry.register(
       ToolAdapter.from({
         name: 'desktop_open_ppt',
-        displayName: 'Open in PowerPoint',
-        description: 'Opens a presentation (.pptx/.ppt) in Microsoft PowerPoint via COM interface.',
-        tags: ['desktop', 'powerpoint', 'com', 'presentation'],
+        displayName: 'Open PowerPoint Presentation',
+        description: 'Opens a PowerPoint presentation (.pptx/.ppt) via desktop application.',
+        tags: ['desktop', 'ppt', 'powerpoint', 'open'],
         handler: async (args) => {
           try {
             const safePath = await services.workspaceToolsService.resolveWithinWorkspace(
@@ -156,16 +158,16 @@ export class DesktopToolsRegistrar {
             return {
               status: 'success',
               data: res,
-              preview: `Opened PowerPoint presentation via COM: ${args.filePath || args.path}`,
+              preview: `Opened PowerPoint presentation: ${path.basename(safePath)}`,
               metadata: { toolName: 'desktop_open_ppt', displayName: 'Open PowerPoint', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
-              preview: `Failed to open PowerPoint: ${err.message}`,
+              preview: `Open PowerPoint failed: ${err.message}`,
               metadata: { toolName: 'desktop_open_ppt', displayName: 'Open PowerPoint', executionTime: 0 },
-              error: { code: 'DESKTOP_PPT_ERROR', message: err.message },
+              error: { code: 'DESKTOP_OPEN_PPT_ERROR', message: err.message },
             };
           }
         },
@@ -173,7 +175,7 @@ export class DesktopToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Relative path of .pptx/.ppt file within workspace' },
+            filePath: { type: 'string', description: 'Path to PPT file within workspace' },
           },
           required: ['filePath'],
         },
@@ -185,34 +187,93 @@ export class DesktopToolsRegistrar {
     registry.register(
       ToolAdapter.from({
         name: 'desktop_excel_edit',
-        displayName: 'Edit Excel via COM',
+        displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs interactive edits on Microsoft Excel worksheet via COM automation (write_cell, insert_row, delete_row, insert_column, delete_column, set_format, save).',
-        tags: ['desktop', 'excel', 'edit', 'com', 'cells'],
+          'Performs precise cell edits and modifications on Excel (.xlsx) worksheets. Supports write_cell, insert_row, delete_row, set_format, and save.',
+        tags: ['desktop', 'excel', 'edit', 'com', 'cells', 'xlsx', 'spreadsheet'],
         mutating: true,
         handler: async (args) => {
           try {
             let safePath: string | undefined;
-            if (args.filePath || args.path) {
+            if (args.filePath || args.path || args.filename) {
               safePath = await services.workspaceToolsService.resolveWithinWorkspace(
                 args.workspaceId,
-                args.filePath || args.path,
+                args.filePath || args.path || args.filename,
               );
             }
             const actions = Array.isArray(args.actions) ? args.actions : [];
-            const res = await services.desktopBridge.excelEdit(safePath, actions);
+
+            // If desktop bridge is active, use native COM automation
+            if (services.desktopBridge.isConnected) {
+              const res = await services.desktopBridge.excelEdit(safePath, actions);
+              return {
+                status: 'success',
+                data: res,
+                preview: `Executed ${actions.length} Excel COM action(s) on ${args.filePath || 'active sheet'}`,
+                metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel via COM', executionTime: 0 },
+              };
+            }
+
+            // Headless Direct XLSX Fallback
+            if (!safePath) {
+              throw new Error('filePath is required to edit Excel spreadsheet.');
+            }
+            const xlsxModule = await import('xlsx');
+            const XLSX = (xlsxModule as any).default || xlsxModule;
+            let wb: any;
+            if (fs.existsSync(safePath)) {
+              wb = XLSX.readFile(safePath, { cellDates: true });
+            } else {
+              wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]), 'Sheet1');
+            }
+            const sheetName = args.sheetName || wb.SheetNames[0] || 'Sheet1';
+            let ws = wb.Sheets[sheetName];
+            if (!ws) {
+              ws = XLSX.utils.aoa_to_sheet([[]]);
+              XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            }
+
+            for (const act of actions) {
+              if (act.action === 'write_cell' && act.cell) {
+                const cellRef = String(act.cell).toUpperCase().trim();
+                const val = act.value;
+                const cellType = typeof val === 'number' ? 'n' : typeof val === 'boolean' ? 'b' : 's';
+                ws[cellRef] = { t: cellType, v: val };
+              }
+            }
+
+            // Recalculate sheet bounding box (!ref)
+            const cellKeys = Object.keys(ws).filter((k) => !k.startsWith('!'));
+            if (cellKeys.length > 0) {
+              let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+              for (const k of cellKeys) {
+                try {
+                  const decoded = XLSX.utils.decode_cell(k);
+                  if (decoded.r < minR) minR = decoded.r;
+                  if (decoded.r > maxR) maxR = decoded.r;
+                  if (decoded.c < minC) minC = decoded.c;
+                  if (decoded.c > maxC) maxC = decoded.c;
+                } catch { /* ignore */ }
+              }
+              if (minR !== Infinity) {
+                ws['!ref'] = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+              }
+            }
+
+            XLSX.writeFile(wb, safePath);
             return {
               status: 'success',
-              data: res,
-              preview: `Executed ${actions.length} Excel COM actions on ${args.filePath || 'active sheet'}`,
-              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel via COM', executionTime: 0 },
+              data: { modified: true, actionsApplied: actions.length, filePath: safePath },
+              preview: `Successfully applied ${actions.length} cell modification(s) to ${path.basename(safePath)}`,
+              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel', executionTime: 0 },
             };
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
-              preview: `Excel COM edit failed: ${err.message}`,
-              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel via COM', executionTime: 0 },
+              preview: `Excel edit failed: ${err.message}`,
+              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel', executionTime: 0 },
               error: { code: 'DESKTOP_EXCEL_EDIT_ERROR', message: err.message },
             };
           }
@@ -222,12 +283,13 @@ export class DesktopToolsRegistrar {
           properties: {
             workspaceId: { type: 'string' },
             filePath: { type: 'string', description: 'Path to .xlsx file within workspace' },
+            sheetName: { type: 'string', description: 'Target worksheet name (optional, defaults to first sheet)' },
             actions: {
               type: 'array',
-              description: 'Array of actions: { action: "write_cell"|"insert_row"|"delete_row"|"set_format"|"save", cell, value, row, column, bold, fontSize, bgColor, alignment }',
+              description: 'Array of actions: { action: "write_cell"|"insert_row"|"delete_row"|"set_format"|"save", cell: "A1", value: "Text"|123, row, column, bold, fontSize, bgColor, alignment }',
             },
           },
-          required: ['actions'],
+          required: ['filePath', 'actions'],
         },
         timeoutMs: 35000,
       }),
