@@ -1,131 +1,158 @@
-# Arunaki
+# 🦅 Arunaki
 
-**Autonomous Workspace AI** - AI Assistant & Workspace Agent untuk pekerjaan berbasis dokumen.
+<p align="center">
+  <strong>Desktop Computer Use Agent untuk Dokumen Kantor & Bisnis</strong><br>
+  <em>Digital Employee yang bekerja secara transparan di layar untuk menyelesaikan pekerjaan dokumen Anda.</em>
+</p>
 
-## Features
+<p align="center">
+  <img src="docs/assets/UI-NEW.jpeg" alt="Arunaki Workspace IDE" width="850" />
+</p>
 
-- **AI Assistant** - Percakapan umum, brainstorming, writing, translation
-- **Workspace Agent** - Memahami seluruh workspace, membuat laporan & artifact secara otomatis
-- **Document Parsing** - PDF, DOCX, XLSX, CSV, TXT, Markdown
-- **Smart Planning** - AI memecah Goal menjadi Task yang manageable
+---
 
-## Tech Stack
+## 🌟 Tentang Arunaki
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19, Vite 6, Tailwind CSS, shadcn/ui |
-| Backend | NestJS 11, TypeScript |
-| Database | SQLite + Prisma ORM |
-| AI | OpenRouter (OpenAI Compatible) |
-| Testing | Vitest, Playwright |
+**Arunaki** adalah AI Desktop Agent (Digital Employee) yang dirancang khusus untuk mengotomatisasi pekerjaan dokumen bisnis dan perkantoran. Berbeda dari coding agent atau script runner teknis, Arunaki berfokus pada eksekusi dokumen nyata: **Excel, Word, Faktur, PDF, Laporan Keuangan, dan Rekapitulasi Data**.
 
-## Prerequisites
+Arunaki bekerja secara transparan di depan layar Anda (bisa membuka aplikasi, mengetik di sel Excel, memformat dokumen) dengan batasan keamanan ketat di dalam **Folder Workspace** yang Anda tentukan.
 
-- [Node.js](https://nodejs.org/) v20+ 
-- npm
+---
 
-## Quick Start
+## ⚡ Prinsip Utama: Minimal Typing, Maximum Automation
 
-### 1. Clone Repository
+Pengguna cukup mengetik seminimal mungkin. Arunaki mengeksekusi dengan automasi otonom maksimal:
 
-```bash
-git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
-cd Arunaki
+- 📋 **Copy-Paste Mentah**: Cukup *copy-paste* catatan pesanan atau pesan chat WhatsApp yang berantakan langsung ke obrolan — Arunaki otomatis merapikan dan memetakan datanya.
+- 🎯 **Instruksi 3 Kata**: Cukup ketik instruksi singkat (contoh: `"Rekap ke excel"` atau `"Update nota ini"`), Arunaki secara cerdas mengetahui file mana yang harus dibuka, kolom mana yang harus diisi, dan total mana yang harus dihitung ulang.
+- 🧮 **Perhitungan Otonom**: Tidak perlu memikirkan rumus matematika atau layout tabel manual — Arunaki menghitung subtotal, grand total, selisih omset, dan memperbarui seluruh sel terkait secara otomatis.
+
+---
+
+## 🛡️ Workspace Sandbox Isolation (Keamanan Total)
+
+Arunaki mengisolasi seluruh akses hanya ke **Workspace Folder** yang dipilih pengguna:
+
+```
+┌── KOMPUTER USER ───────────────────────────────────────────┐
+│                                                            │
+│  ┌── ARUNAKI (DIGITAL EMPLOYEE) ────────────────────────┐  │
+│  │  Visible di Layar & Headless Engine:                  │  │
+│  │                                                      │  │
+│  │  📊 Excel — Ketik sel, atur rumus, format tabel      │  │
+│  │  📝 Word  — Tulis surat, kontrak, pemformatan dokumen│  │
+│  │  🌐 Web   — Navigasi form & ekstraksi konten         │  │
+│  │  📎 File  — Baca, edit, kalkulasi, backup otomatis   │  │
+│  │                                                      │  │
+│  │  ❌ DILARANG akses file sistem di luar Workspace     │  │
+│  │  ❌ BUKAN coding agent / DILARANG eksekusi script liar│ │
+│  │  🛡️ Auto-Backup & 1-Click Rollback ke .arunaki-trash/ │  │
+│  └──────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Install Dependencies
+---
 
-```bash
-npm install
-```
+## 🚀 Fitur Unggulan
 
-### 3. Setup Environment
+- **📊 Dual-Mode Excel Engine**:
+  - **Mode COM Visual**: Membuka Microsoft Excel asli dan mengetik langsung di sel secara visual.
+  - **Mode Direct XLSX Engine**: Pemrosesan in-memory secepat kilat (0.2 detik per update file) untuk automasi latar belakang.
+- **📝 Native Word & Document Tools**: Penulisan paragraf, pemformatan teks tebal/miring, dan pembuatan dokumen formal.
+- **🔄 Single-Pass Batching**: Mampu mengeksekusi puluhan perubahan sel dan kalkulasi dependen dalam 1 kali round eksekusi.
+- **🔍 Full-Text Search (FTS5 SQLite)**: Pencarian cepat seluruh riwayat sesi dan transkrip audit trail.
+- **🛡️ Workspace Rules Sentinel**: Mendeteksi dan memperbarui aturan bisnis lokal (`ARUNAKI.md`) secara adaptif.
+- **🤖 Multi-Model Provider**: Terhubung ke DeepSeek V3/V4, GPT-OSS, Claude, Gemini, dan model open-source lokal.
 
-```bash
-cp apps/api/.env.example apps/api/.env
-```
+---
 
-Edit `apps/api/.env` and add your API key:
+## 🏗️ Tech Stack
 
-```env
-AI_API_KEY=your-api-key-here
-AI_MODEL=nvidia/nemotron-3-ultramot-550b-a55b:free
-```
+| Layer | Teknologi |
+| :--- | :--- |
+| **Desktop Shell & Web UI** | Electron, React 19, Vite 6, Tailwind CSS, Lucide Icons |
+| **Backend Core & Engine** | NestJS 11, TypeScript, SQLite + Prisma ORM |
+| **Document Processors** | XLSX, SheetJS, Office COM Automation |
+| **Intelligence Layer** | OpenRouter / OpenAI SDK Abstraction, Custom Prompt Architecture |
+| **Test & Benchmarks** | Vitest, Custom Autonomous Benchmark Suites |
 
-### 4. Setup Database
+---
 
-```bash
-npx prisma db push
-```
-
-### 5. Run Development Server
-
-```bash
-npm run dev
-```
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3000
-
-## Project Structure
+## 📂 Struktur Repositori
 
 ```
 Arunaki/
 ├── apps/
-│   ├── api/                # NestJS Backend
-│   │   ├── prisma/         # Database schema
-│   │   └── src/            # Source code
-│   └── web/                # React + Vite Desktop Web UI
-├── docs/                   # Architecture, PRD, Vision & Dev Logs
-│   ├── ARCHITECTURE.md     # System architecture
-│   ├── PRD.md              # Product requirements
-│   ├── VISION.md           # Product vision
-│   ├── UX_UI.md            # UX/UI specification
-│   ├── INTELLIGENCE.md     # AI behavior spec
-│   └── dev-logs/           # Task dev logs
-├── AGENTS.md               # Agent mission & rules
-└── WORKFLOW.md             # Development roadmap & checklist
+│   ├── api/                # NestJS Backend Core (Runner, Tools, Providers, Sentinel)
+│   │   ├── prisma/         # Database schema & SQLite migration
+│   │   ├── src/            # Core source code
+│   │   └── scripts/        # Autonomous benchmark suites (Excel, Rekap, Stress-test)
+│   └── web/                # React + Vite Desktop IDE Interface
+│       └── src/            # Canvas Workstation, Chat, Telemetry UI
+├── docs/                   # 📁 Spesifikasi Arsitektur, PRD, & Dev Logs
+│   ├── VISION.md           # Visi Digital Employee Arunaki
+│   ├── PRD.md              # Product Requirements Document
+│   ├── ARCHITECTURE.md     # Arsitektur sistem & isolasi modul
+│   ├── UX_UI.md            # Desain antarmuka & alur kerja pengguna
+│   ├── INTELLIGENCE.md     # Perilaku kecerdasan & batasan LLM
+│   └── dev-logs/           # Log pengembangan harian
+├── AGENTS.md               # Aturan kerja & protokol AI Software Engineer
+├── WORKFLOW.md             # Checklist tahapan pengembangan
+├── package.json
+└── README.md
 ```
 
-## Available Scripts
+---
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Run both API & Web in dev mode |
-| `npm run dev:api` | Run API only |
-| `npm run dev:web` | Run Web only |
-| `npm run build` | Build both apps |
-| `npm run test` | Run API tests |
-| `npm run lint` | Lint API code |
+## 🚀 Cara Menjalankan (Quick Start)
 
-## Environment Variables
+### 1. Clone Repositori & Install Dependencies
+```bash
+git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
+cd Arunaki
+npm install
+```
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Backend API port | `3000` |
-| `DATABASE_URL` | SQLite database path | `file:./dev.db` |
-| `AI_PROVIDER` | AI provider (openrouter/openai) | `openrouter` |
-| `AI_API_KEY` | API key for AI provider | - |
-| `AI_BASE_URL` | AI API base URL | `https://openrouter.ai/api/v1` |
-| `AI_MODEL` | AI model to use | `nvidia/nemotron-3-ultra-550b-a55b:free` |
-| `STORAGE_PATH` | Local storage path | `./storage` |
-| `LOG_LEVEL` | Logging level | `info` |
+### 2. Konfigurasi Environment API
+Salin file konfigurasi environment:
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+Buka file `apps/api/.env` dan masukkan API key Anda:
+```env
+AI_API_KEY=your-api-key-here
+AI_MODEL=deepseek/deepseek-chat
+PORT=3000
+```
 
-## Documentation
+### 3. Setup Database Lokal
+```bash
+npx prisma db push --schema=apps/api/prisma/schema.prisma
+```
 
-- [VISION.md](VISION.md) - Product vision & philosophy
-- [PRD.md](PRD.md) - Product Requirements Document
-- [UX_UI.md](UX_UI.md) - UX/UI specification
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture
-- [INTELLIGENCE.md](INTELLIGENCE.md) - AI behavior specification
+### 4. Jalankan Aplikasi
+```bash
+# Menjalankan Backend API dan Frontend Web UI secara bersamaan
+npm run dev
+```
+- **Desktop UI**: `http://localhost:5173`
+- **Backend API**: `http://localhost:3000`
 
-## Security Architecture Notice
+---
 
-> [!IMPORTANT]
-> **Local-First & Single-User Design**:
-> Arunaki is currently designed as a **Local-First / Single-User Workspace System**. By default, endpoints run locally with CORS origin restricted to `http://localhost:5173`.
-> If deploying to a multi-user, multi-tenant, or public cloud environment, a reverse-proxy authentication layer (e.g. JWT/OAuth2) and tenant authorization guards must be configured to enforce identity verification across endpoints.
+## 🧪 Menjalankan Benchmark Otonom
 
-## License
+Untuk memverifikasi kemampuan agent dalam mengedit dokumen secara otonom:
 
-MIT
+```bash
+# 1. Benchmark Rekap File Teks (.txt)
+npx tsx apps/api/scripts/test-rekap-extended.ts
+
+# 2. Benchmark Rekap Spreadsheet Excel (.xlsx)
+npx tsx apps/api/scripts/test-excel-rekap.ts
+```
+
+---
+
+## 📄 Lisensi
+Hak Cipta © 2026 Arunaki Team. Dilindungi undang-undang.
