@@ -63,13 +63,11 @@ function WorkstationLeftExplorerComponent({
     const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
 
     if (!desktop?.getFolderTree) {
-      // Running in browser (non-Electron) — skip native read, fall through to API files
       console.log("[Explorer] Not running in Electron — no getFolderTree available");
       setLoadState("done");
       return;
     }
 
-    // Avoid re-loading same path unless forced
     if (!force && lastLoadedPath.current === rootPath) return;
 
     console.log(`[Explorer] Loading native tree for: ${rootPath}`);
@@ -77,15 +75,11 @@ function WorkstationLeftExplorerComponent({
 
     try {
       const result = await desktop.getFolderTree(rootPath);
-      console.log("[Explorer] getFolderTree result:", result);
-
       if (result?.tree && Array.isArray(result.tree)) {
-        console.log(`[Explorer] Got ${result.tree.length} root entries from disk`);
         setNativeTree(result.tree as NativeNode[]);
         lastLoadedPath.current = rootPath;
         setLoadState("done");
       } else {
-        console.warn("[Explorer] getFolderTree returned unexpected shape:", result);
         setNativeTree([]);
         setLoadState("error");
       }
@@ -96,7 +90,6 @@ function WorkstationLeftExplorerComponent({
     }
   }, []);
 
-  // Load whenever active workspace (or its rootPath) changes
   useEffect(() => {
     if (!activeWorkspace?.rootPath) {
       setNativeTree([]);
@@ -107,7 +100,6 @@ function WorkstationLeftExplorerComponent({
     loadNativeTree(activeWorkspace.rootPath);
   }, [activeWorkspace?.rootPath, loadNativeTree]);
 
-  // Report flattened native file names so the chat @ mention can reference real files
   useEffect(() => {
     onNativeFilesChange?.(flattenFileNames(nativeTree));
   }, [nativeTree, onNativeFilesChange]);
@@ -124,26 +116,21 @@ function WorkstationLeftExplorerComponent({
   // ─────────────────────────────────────────────────────────────────────────
   if (collapsed) {
     return (
-      <aside className="w-10 bg-[#121212] border-r border-border-strong flex flex-col items-center py-2 shrink-0 select-none">
+      <aside className="w-10 bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col items-center py-2 shrink-0 select-none transition-colors duration-150">
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1.5 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           title="Open Explorer Panel"
         >
-          <PanelLeftOpen className="w-4 h-4 text-[#FFFFFF]" />
+          <PanelLeftOpen className="w-4 h-4 text-[var(--text-primary)]" />
         </button>
-        <div className="mt-4 flex flex-col items-center gap-4 text-[#A3A3A3]">
+        <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
           <Folder className="w-4 h-4 opacity-40" />
         </div>
       </aside>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Decide what the FileTree receives
-  // When a native tree is available (Electron), use it.
-  // Fall back to API-indexed files (workspaceFiles) in browser-only mode.
-  // ─────────────────────────────────────────────────────────────────────────
   const hasNative = nativeTree.length > 0;
   const apiFiles = workspaceFiles.map((f) => ({
     id: f.id,
@@ -156,20 +143,19 @@ function WorkstationLeftExplorerComponent({
   // Full expanded panel
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <aside className="bg-[#121212] text-[#FFFFFF] border-r border-border-strong flex flex-col shrink-0" style={{ width }}>
+    <aside className="bg-[var(--bg-panel)] text-[var(--text-primary)] border-r border-[var(--border-color)] flex flex-col shrink-0 transition-colors duration-150" style={{ width }}>
       {/* Panel Header */}
-      <div className="h-9 px-3 box-border border-b border-border-strong flex items-center justify-between shrink-0">
-        <span className="text-xs font-semibold text-[#E5E5E5] flex items-center gap-2">
-          <Folder className="w-3.5 h-3.5 text-[#A3A3A3]" />
+      <div className="h-9 px-3 box-border border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
+        <span className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <Folder className="w-3.5 h-3.5 text-[var(--text-muted)]" />
           Eksplore
         </span>
         <div className="flex items-center gap-0.5">
-          {/* Refresh button — only shown when workspace is connected */}
           {activeWorkspace?.rootPath && (
             <button
               onClick={handleRefresh}
-              className={`text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer ${isRefreshing ? "animate-spin" : ""}`}
-              title="Refresh Explorer (Re-read from Disk)"
+              className={`text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer ${isRefreshing ? "animate-spin" : ""}`}
+              title="Refresh Explorer"
               disabled={isRefreshing}
             >
               <RotateCw className="w-3.5 h-3.5" />
@@ -177,7 +163,7 @@ function WorkstationLeftExplorerComponent({
           )}
           <button
             onClick={onClose}
-            className="text-[#A3A3A3] hover:text-white p-1 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             title="Close Explorer Panel"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -189,25 +175,24 @@ function WorkstationLeftExplorerComponent({
       {activeWorkspace ? (
         <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
           {loadState === "loading" ? (
-            /* Loading skeleton */
             <div className="flex flex-col gap-1 px-3 py-3 animate-pulse">
               {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-4 rounded bg-[#262626]"
+                  className="h-4 rounded bg-[var(--bg-hover)]"
                   style={{ width: `${60 + Math.random() * 30}%`, opacity: 1 - i * 0.1 }}
                 />
               ))}
             </div>
           ) : loadState === "error" ? (
             <div className="flex flex-col items-center justify-center p-6 text-center">
-              <Folder className="w-7 h-7 text-[#737373] opacity-40 mb-2 stroke-[1.5]" />
-              <p className="text-xs text-[#737373] text-center py-6 font-mono">
+              <Folder className="w-7 h-7 text-[var(--text-dim)] opacity-40 mb-2 stroke-[1.5]" />
+              <p className="text-xs text-[var(--text-dim)] text-center py-6 font-mono">
                 Failed to read folder
               </p>
               <button
                 onClick={handleRefresh}
-                className="mt-2 text-[10px] text-[#A3A3A3] hover:text-white underline cursor-pointer"
+                className="mt-2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline cursor-pointer"
               >
                 Try again
               </button>
@@ -224,10 +209,9 @@ function WorkstationLeftExplorerComponent({
           )}
         </div>
       ) : (
-        /* No workspace connected */
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <Folder className="w-8 h-8 text-[#A3A3A3] opacity-35 mb-2 stroke-[1.5]" />
-          <p className="text-xs text-[#737373] font-normal">No folder opened</p>
+          <Folder className="w-8 h-8 text-[var(--text-muted)] opacity-35 mb-2 stroke-[1.5]" />
+          <p className="text-xs text-[var(--text-dim)] font-normal">No folder opened</p>
         </div>
       )}
     </aside>

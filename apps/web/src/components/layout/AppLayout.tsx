@@ -1,11 +1,42 @@
+import { useState, useRef, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { MessageSquare, BookOpen, History, Settings, User } from "lucide-react";
+import {
+  MessageSquare,
+  BookOpen,
+  History,
+  Settings,
+  User,
+  Sun,
+  Moon,
+  Laptop,
+  Check,
+} from "lucide-react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
+import { useTheme, ThemeMode } from "../../lib/theme";
 
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, setTheme, isLight } = useTheme();
+
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(event.target as Node)) {
+        setIsViewMenuOpen(false);
+      }
+    }
+    if (isViewMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isViewMenuOpen]);
 
   const handleOpenFolder = async () => {
     const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
@@ -24,6 +55,10 @@ export function AppLayout() {
     }
   };
 
+  const toggleQuickTheme = () => {
+    setTheme(isLight ? "dark" : "light");
+  };
+
   const navItems = [
     { path: "/", label: "Workstation", icon: MessageSquare },
     { path: "/knowledge", label: "Knowledge", icon: BookOpen },
@@ -32,10 +67,10 @@ export function AppLayout() {
   ];
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#0A0A0A] text-[#FFFFFF] overflow-hidden font-sans select-none">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Pure Text Menu ("File", "Edit", "View", "Help") */}
+    <div className="flex flex-col h-screen w-screen bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden font-sans select-none transition-colors duration-150">
+      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Menu Bar ("File", "Edit", "View", "Help") + Quick Theme Toggle */}
       <header
-        className="h-11 bg-[#121212] px-4 flex items-center justify-between shrink-0 border-b border-border-strong"
+        className="h-11 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-b border-[var(--border-color)] transition-colors duration-150"
         style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
       >
         <div
@@ -43,47 +78,136 @@ export function AppLayout() {
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           {/* Logo 'A' di paling kiri */}
-          <div className="w-6 h-6 rounded-full bg-[#1E1E1E] flex items-center justify-center border border-border-strong shrink-0">
-            <ArunakiLogo className="w-3.5 h-3.5" fill="#FFFFFF" />
+          <div className="w-6 h-6 rounded-full bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] shrink-0">
+            <ArunakiLogo className="w-3.5 h-3.5" fill={isLight ? "#18181B" : "#FFFFFF"} />
           </div>
 
-          {/* Menu Header Teks Murni (Tanpa ikon folder) */}
-          <nav className="flex items-center gap-1">
+          {/* Menu Header Teks Murni */}
+          <nav className="flex items-center gap-1 relative">
             <button
               onClick={handleOpenFolder}
-              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
               File
             </button>
             <button
               onClick={() => navigate("/")}
-              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
               Edit
             </button>
-            <button
-              onClick={() => navigate("/")}
-              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
-            >
-              View
-            </button>
+
+            {/* View / Tampilan Dropdown */}
+            <div className="relative" ref={viewMenuRef}>
+              <button
+                onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
+                className={cn(
+                  "text-xs font-semibold px-3 py-1 rounded-md transition-colors cursor-pointer",
+                  isViewMenuOpen
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                )}
+              >
+                View
+              </button>
+
+              {/* View Dropdown Menu Popup */}
+              {isViewMenuOpen && (
+                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                  <div className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
+                    Tema Tampilan (Theme)
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setTheme("light");
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
+                      theme === "light"
+                        ? "text-[var(--text-primary)] font-medium"
+                        : "text-[var(--text-muted)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Mode Terang (Light)</span>
+                    </div>
+                    {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTheme("dark");
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
+                      theme === "dark"
+                        ? "text-[var(--text-primary)] font-medium"
+                        : "text-[var(--text-muted)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Mode Gelap (Dark)</span>
+                    </div>
+                    {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTheme("system");
+                      setIsViewMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
+                      theme === "system"
+                        ? "text-[var(--text-primary)] font-medium"
+                        : "text-[var(--text-muted)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Laptop className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                      <span>Ikuti Sistem (System)</span>
+                    </div>
+                    {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => navigate("/knowledge")}
-              className="text-[#A3A3A3] hover:text-[#FFFFFF] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[#262626] transition-colors cursor-pointer"
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
               Help
             </button>
           </nav>
         </div>
 
-        {/* Right side: User Profile Avatar */}
+        {/* Right side: Quick Theme Switch & User Avatar */}
         <div
-          className="flex items-center gap-3"
+          className="flex items-center gap-2"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
+          {/* Quick 1-Click Theme Switcher Button */}
+          <button
+            onClick={toggleQuickTheme}
+            className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
+            title={isLight ? "Beralih ke Mode Gelap (Dark)" : "Beralih ke Mode Terang (Light)"}
+          >
+            {isLight ? (
+              <Moon className="w-3.5 h-3.5 text-indigo-500" />
+            ) : (
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
+            )}
+          </button>
+
           <button
             onClick={() => navigate("/settings")}
-            className="w-7 h-7 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white border border-border-strong transition-colors cursor-pointer"
+            className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
             <User className="w-3.5 h-3.5" />
@@ -92,13 +216,13 @@ export function AppLayout() {
       </header>
 
       {/* 2. MAIN CONTENT CONTAINER (3-PANEL LAYOUT) */}
-      <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col relative bg-[#0A0A0A]">
+      <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
         <Outlet />
       </main>
 
-      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container (Icons Only, Balanced Breathing Room) */}
-      <footer className="h-14 bg-[#121212] px-4 py-2 flex items-center justify-center shrink-0 border-t border-border-strong">
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E1E1E] border border-border-strong shadow-md">
+      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container */}
+      <footer className="h-14 bg-[var(--bg-header)] px-4 py-2 flex items-center justify-center shrink-0 border-t border-[var(--border-color)] transition-colors duration-150">
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-md">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -113,8 +237,8 @@ export function AppLayout() {
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
                   isActive
-                    ? "bg-[#262626] text-[#FFFFFF] border border-border-strong shadow-xs"
-                    : "text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#262626]"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)] shadow-xs"
+                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
               >
                 <Icon className="w-4 h-4" />

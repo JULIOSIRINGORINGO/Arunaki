@@ -510,7 +510,7 @@ export function UnifiedWorkstationPage() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#0A0A0A] text-white overflow-hidden select-none">
+    <div className="flex flex-col h-full w-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden select-none transition-colors duration-150">
       <div
         ref={containerRef}
         className="flex-1 flex overflow-hidden relative"

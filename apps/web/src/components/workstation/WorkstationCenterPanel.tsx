@@ -184,10 +184,10 @@ function WorkstationCenterPanelComponent({
   };
 
   return (
-    <main className="flex-1 flex flex-col min-w-0 bg-[#0E0E10] overflow-hidden select-none border-r border-[#1F1F23]">
+    <main className="flex-1 flex flex-col min-w-0 bg-[var(--bg-app)] overflow-hidden select-none border-r border-[var(--border-color)] transition-colors duration-150">
       {/* Top Tabs Bar (Antigravity Style) */}
       {tabs.length > 0 && (
-        <div className="h-9 bg-[#141416] border-b border-[#222226] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0">
+        <div className="h-9 bg-[var(--bg-panel)] border-b border-[var(--border-color)] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0 transition-colors duration-150">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -197,18 +197,18 @@ function WorkstationCenterPanelComponent({
                 className={cn(
                   "group flex items-center gap-2 px-3 py-1 rounded text-xs font-sans cursor-pointer transition-all duration-150 border select-none shrink-0",
                   isActive
-                    ? "bg-[#1E1E22] text-white border-[#2E2E35] shadow-xs"
-                    : "bg-transparent text-[#8A8A93] border-transparent hover:bg-[#18181B] hover:text-[#D4D4D8]"
+                    ? "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-xs"
+                    : "bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 )}
               >
-                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-white" : "text-[#8A8A93]")} />
+                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]")} />
                 <span className="truncate max-w-[150px] font-medium">{tab.title}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-opacity cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
                   title="Tutup Tab"
                 >
                   <X className="w-3 h-3" />
@@ -220,18 +220,18 @@ function WorkstationCenterPanelComponent({
       )}
 
       {/* Dynamic Content Body */}
-      <div className="flex-1 relative overflow-hidden bg-[#0E0E10] flex flex-col">
+      <div className="flex-1 relative overflow-hidden bg-[var(--bg-app)] flex flex-col transition-colors duration-150">
         {activeTab ? (
           activeTab.type === "canvas" ? (
             /* ANTIGRAVITY-STYLE CANVAS ARTIFACT VIEW (PURE MONOSPACE PLAINTEXT) */
-            <div className="h-full w-full flex flex-col bg-[#0E0E10] overflow-hidden select-text">
+            <div className="h-full w-full flex flex-col bg-[var(--bg-app)] overflow-hidden select-text">
               {/* Clean Sub-Header Bar */}
-              <div className="h-9 bg-[#121215] border-b border-[#222226] px-5 flex items-center justify-between text-xs select-none shrink-0">
+              <div className="h-9 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-5 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold text-white tracking-wide">
+                  <span className="text-xs font-semibold text-[var(--text-primary)] tracking-wide">
                     {activeTab.title}
                   </span>
-                  <span className="text-[11px] text-[#71717A]">
+                  <span className="text-[11px] text-[var(--text-muted)]">
                     less than a minute ago
                   </span>
                 </div>
@@ -239,11 +239,11 @@ function WorkstationCenterPanelComponent({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleCopyCanvas}
-                    className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E22] transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer flex items-center gap-1.5"
                     title={copiedCanvas ? "Tersalin!" : "Salin ke Clipboard"}
                   >
                     {copiedCanvas ? (
-                      <CopyCheck className="w-3.5 h-3.5 text-[#4ADE80]" />
+                      <CopyCheck className="w-3.5 h-3.5 text-emerald-500" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
@@ -251,7 +251,7 @@ function WorkstationCenterPanelComponent({
 
                   <button
                     onClick={handleDownloadTxt}
-                    className="p-1.5 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E22] transition-colors cursor-pointer"
+                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
                     title="Download File"
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -260,9 +260,9 @@ function WorkstationCenterPanelComponent({
               </div>
 
               {/* Pure Plaintext Body (Preserves exact raw spacing & ready to copy directly) */}
-              <div className="flex-1 overflow-auto px-8 py-6 bg-[#0E0E10]">
+              <div className="flex-1 overflow-auto px-8 py-6 bg-[var(--bg-app)]">
                 <div className="max-w-3xl mx-auto">
-                  <pre className="font-mono text-xs text-[#E5E5E5] leading-relaxed whitespace-pre-wrap select-text selection:bg-[#333333] selection:text-white">
+                  <pre className="font-mono text-xs text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap select-text selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)]">
                     {currentContent}
                   </pre>
                 </div>
@@ -270,41 +270,41 @@ function WorkstationCenterPanelComponent({
             </div>
           ) : isDiffActive && activeDiff ? (
             /* CURSOR / ANTIGRAVITY LIVE DIFF VIEW */
-            <div className="h-full w-full flex flex-col bg-[#0A0A0A] font-mono text-xs overflow-hidden select-text">
-              <div className="h-7 bg-[#121212] border-b border-[#262626] px-3 flex items-center justify-between text-xs select-none shrink-0">
+            <div className="h-full w-full flex flex-col bg-[var(--bg-app)] font-mono text-xs overflow-hidden select-text">
+              <div className="h-7 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-3 flex items-center justify-between text-xs select-none shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse" />
-                  <span className="font-mono text-[#A1A1AA] text-[11px]">AI Live Diff</span>
-                  <span className="text-[#71717A] text-[11px] font-mono">
+                  <span className="font-mono text-[var(--text-muted)] text-[11px]">AI Live Diff</span>
+                  <span className="text-[var(--text-dim)] text-[11px] font-mono">
                     +{activeDiff.addedCount} / -{activeDiff.deletedCount}
                   </span>
                 </div>
-                <span className="text-[#52525B] text-[10px] italic">Auto-settling...</span>
+                <span className="text-[var(--text-dim)] text-[10px] italic">Auto-settling...</span>
               </div>
 
-              <div className="flex-1 overflow-auto p-2 bg-[#0A0A0A] font-mono text-xs leading-relaxed">
+              <div className="flex-1 overflow-auto p-2 bg-[var(--bg-app)] font-mono text-xs leading-relaxed">
                 {activeDiff.diffLines.map((line, idx) => {
                   if (line.type === "added") {
                     return (
-                      <div key={idx} className="flex items-start bg-[#141C16] border-l-2 border-[#22C55E]/60 text-[#E4E4E7] px-2 py-0.5 whitespace-pre font-mono">
-                        <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber}</span>
-                        <span className="text-[#4ADE80] font-bold mr-2 select-none shrink-0">+</span>
+                      <div key={idx} className="flex items-start bg-emerald-500/10 border-l-2 border-emerald-500 text-[var(--text-primary)] px-2 py-0.5 whitespace-pre font-mono">
+                        <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber}</span>
+                        <span className="text-emerald-500 font-bold mr-2 select-none shrink-0">+</span>
                         <span className="break-all">{line.content}</span>
                       </div>
                     );
                   }
                   if (line.type === "deleted") {
                     return (
-                      <div key={idx} className="flex items-start bg-[#1C1617] border-l-2 border-[#EF4444]/60 text-[#71717A] px-2 py-0.5 whitespace-pre font-mono">
-                        <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.oldLineNumber}</span>
-                        <span className="text-[#F87171] font-bold mr-2 select-none shrink-0">-</span>
+                      <div key={idx} className="flex items-start bg-red-500/10 border-l-2 border-red-500 text-[var(--text-muted)] px-2 py-0.5 whitespace-pre font-mono">
+                        <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.oldLineNumber}</span>
+                        <span className="text-red-500 font-bold mr-2 select-none shrink-0">-</span>
                         <span className="line-through break-all">{line.content}</span>
                       </div>
                     );
                   }
                   return (
-                    <div key={idx} className="flex items-start text-[#D4D4D8] px-2 py-0.5 whitespace-pre font-mono hover:bg-[#121212]">
-                      <span className="w-10 text-[#52525B] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber || line.oldLineNumber}</span>
+                    <div key={idx} className="flex items-start text-[var(--text-secondary)] px-2 py-0.5 whitespace-pre font-mono hover:bg-[var(--bg-hover)]">
+                      <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber || line.oldLineNumber}</span>
                       <span className="w-4 select-none shrink-0" />
                       <span className="break-all">{line.content}</span>
                     </div>
@@ -314,13 +314,13 @@ function WorkstationCenterPanelComponent({
             </div>
           ) : (
             /* STANDARD EDITABLE FILE / DOCUMENT VIEWER */
-            <div className="h-full w-full flex flex-col bg-[#0A0A0A]">
+            <div className="h-full w-full flex flex-col bg-[var(--bg-app)]">
               <textarea
                 value={currentContent}
                 onChange={(e) => handleTextChange(e.target.value)}
                 placeholder="File kosong..."
                 spellCheck={false}
-                className="w-full h-full p-4 bg-transparent font-mono text-xs text-[#E5E5E5] leading-relaxed resize-none focus:outline-none select-text cursor-text selection:bg-[#333333] selection:text-white"
+                className="w-full h-full p-4 bg-transparent font-mono text-xs text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none select-text cursor-text selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)]"
               />
             </div>
           )
@@ -330,7 +330,7 @@ function WorkstationCenterPanelComponent({
             <img
               src="/text-center.svg"
               alt=""
-              className="max-w-[70%] max-h-[40%] object-contain opacity-90"
+              className="max-w-[70%] max-h-[40%] object-contain opacity-70"
               draggable={false}
             />
           </div>

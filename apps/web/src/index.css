@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-border-strong: #A3A3A3;
+  --color-border-strong: var(--border-strong);
 }
 
 @layer base {
@@ -13,26 +13,56 @@
     text-transform: none;
   }
 
+  :root, [data-theme="dark"], .dark {
+    --bg-app: #0A0A0A;
+    --bg-header: #121214;
+    --bg-panel: #141416;
+    --bg-panel-sub: #18181B;
+    --bg-card: #1E1E22;
+    --bg-hover: #26262B;
+    --bg-input: #121215;
+    --border-color: #222226;
+    --border-strong: #2E2E35;
+    --text-primary: #FFFFFF;
+    --text-secondary: #E4E4E7;
+    --text-muted: #8A8A93;
+    --text-dim: #52525B;
+    --accent: #38BDF8;
+    --scrollbar-thumb: #2D2D33;
+    --scrollbar-thumb-hover: #3F3F46;
+  }
+
+  [data-theme="light"], .light {
+    --bg-app: #F8F9FA;
+    --bg-header: #FFFFFF;
+    --bg-panel: #F3F4F6;
+    --bg-panel-sub: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-hover: #E5E7EB;
+    --bg-input: #FFFFFF;
+    --border-color: #E5E7EB;
+    --border-strong: #D1D5DB;
+    --text-primary: #111827;
+    --text-secondary: #1F2937;
+    --text-muted: #6B7280;
+    --text-dim: #9CA3AF;
+    --accent: #0284C7;
+    --scrollbar-thumb: #D1D5DB;
+    --scrollbar-thumb-hover: #9CA3AF;
+  }
+
   html, body, #root {
     height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #0A0A0A;
-    color: #FFFFFF;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Geist Sans", "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  :root {
-    --bg-dark: #0A0A0A;
-    --bg-panel: #171717;
-    --bg-card: #1E1E1E;
-    --border-color: #2D2D2D;
-    --accent-mono: #FFFFFF;
-    --text-muted: #A3A3A3;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
 
   /* Modern Thin Custom Scrollbar */
@@ -46,18 +76,18 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #2D2D2D;
+    background: var(--scrollbar-thumb);
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #404040;
+    background: var(--scrollbar-thumb-hover);
   }
 
   /* Firefox support */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #2D2D2D transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
 
   /* Serif italic placeholder styling for chat inputs */
@@ -65,7 +95,7 @@
     font-family: 'Instrument Serif', 'Playfair Display', serif;
     font-style: italic;
     font-size: 14px;
-    color: #777777;
+    color: var(--text-muted);
     opacity: 1;
   }
 

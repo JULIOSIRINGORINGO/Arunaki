@@ -1,6 +1,22 @@
 import { RefObject, useRef, useLayoutEffect, useState, useMemo, memo } from "react";
 import Markdown from "react-markdown";
-import { Bot, PanelRightClose, PanelRightOpen, Sparkles, Paperclip, Send, BookOpen, Search, Calculator, FileText, FilePlus, FileSearch, Eraser, Clock, X } from "lucide-react";
+import {
+  Bot,
+  PanelRightClose,
+  PanelRightOpen,
+  Sparkles,
+  Paperclip,
+  Send,
+  BookOpen,
+  Search,
+  Calculator,
+  FileText,
+  FilePlus,
+  FileSearch,
+  Eraser,
+  Clock,
+  X,
+} from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
 import { cn } from "../../lib/utils";
@@ -26,11 +42,7 @@ interface Workspace {
   id: string;
   name: string;
   rootPath: string | null;
-}
-
-interface WorkspaceFile {
-  name: string;
-  path?: string;
+  status: string;
 }
 
 interface WorkstationRightChatProps {
@@ -46,19 +58,19 @@ interface WorkstationRightChatProps {
   isStreaming: boolean;
   onSendMessage: () => void;
   width?: number | string;
-  files?: WorkspaceFile[];
+  files?: { name: string }[];
   queuedPrompts?: string[];
   onRemoveQueuedPrompt?: (index: number) => void;
   onSearchSection?: () => void;
-  reasoningEffort: string;
-  setReasoningEffort: (val: string) => void;
+  reasoningEffort?: string;
+  setReasoningEffort?: (val: string) => void;
 }
 
 const EFFORT_OPTIONS = [
-  { value: "", label: "Natural" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
+  { label: "Default", value: "" },
+  { label: "Rendah", value: "low" },
+  { label: "Sedang", value: "medium" },
+  { label: "Tinggi", value: "high" },
 ];
 
 function WorkstationRightChatComponent({
@@ -73,76 +85,66 @@ function WorkstationRightChatComponent({
   setInputPrompt,
   isStreaming,
   onSendMessage,
-  width,
+  width = 320,
   files = [],
   queuedPrompts = [],
   onRemoveQueuedPrompt,
   onSearchSection,
-  reasoningEffort,
-  setReasoningEffort,
+  reasoningEffort = "",
+  setReasoningEffort = () => {},
 }: WorkstationRightChatProps) {
-  /* Thin Icon Strip when Collapsed (Clicking re-opens the panel) */
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const [showCommands, setShowCommands] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  const allMessages = useMemo(() => {
+    return [...chatMessages, ...optimisticMessages];
+  }, [chatMessages, optimisticMessages]);
+
   if (collapsed) {
     return (
-      <aside className="w-10 bg-[#121212] border-l border-border-strong flex flex-col items-center py-2 shrink-0 select-none">
+      <aside className="w-10 bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col items-center py-2 shrink-0 select-none transition-colors duration-150">
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1.5 rounded-md hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           title="Open Chat Panel"
         >
-          <PanelRightOpen className="w-4 h-4 text-[#FFFFFF]" />
+          <PanelRightOpen className="w-4 h-4 text-[var(--text-primary)]" />
         </button>
-        <div className="mt-4 flex flex-col items-center gap-4 text-[#A3A3A3]">
+        <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
           <Bot className="w-4 h-4 opacity-40" />
         </div>
       </aside>
     );
   }
 
-  const allMessages = useMemo(() => {
-    if (optimisticMessages.length === 0) return chatMessages;
-    if (chatMessages.length === 0) return optimisticMessages;
-
-    const dbIds = new Set(chatMessages.map((m) => m.id));
-    const dbKeys = new Set(chatMessages.map((m) => `${m.role}:${m.content.trim()}`));
-
-    const uniqueOptimistic = optimisticMessages.filter((m) => {
-      if (m.id && dbIds.has(m.id)) return false;
-      if (m.content.trim() && dbKeys.has(`${m.role}:${m.content.trim()}`)) return false;
-      return true;
-    });
-
-    return [...chatMessages, ...uniqueOptimistic];
-  }, [chatMessages, optimisticMessages]);
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showCommands, setShowCommands] = useState(false);
-  const [commandFilter, setCommandFilter] = useState("");
-  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionFilter, setMentionFilter] = useState("");
-  const [mentionIndex, setMentionIndex] = useState(0);
-
-  const filteredCommands = useMemo(() => {
-    if (!commandFilter) return COMMANDS;
-    return COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(commandFilter.toLowerCase()));
-  }, [commandFilter]);
-
-  const mentionResults = useMemo(() => {
-    const names = files.map((f) => f.name).filter(Boolean);
-    if (!mentionFilter) return names.slice(0, 8);
-    return names
-      .filter((n) => n.toLowerCase().includes(mentionFilter.toLowerCase()))
-      .slice(0, 8);
-  }, [files, mentionFilter]);
-
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 24), 160);
+      textareaRef.current.style.height = `${nextHeight}px`;
     }
   }, [inputPrompt]);
+
+  const mentionResults = useMemo(() => {
+    if (!showMentions) return [];
+    const q = mentionQuery.toLowerCase();
+    return files
+      .map((f) => f.name)
+      .filter((name) => name.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [showMentions, mentionQuery, files]);
+
+  const filteredCommands = useMemo(() => {
+    if (!showCommands) return [];
+    const q = commandQuery.toLowerCase();
+    return COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(q));
+  }, [showCommands, commandQuery]);
 
   const handleInputChange = (val: string) => {
     setInputPrompt(val);
@@ -150,16 +152,20 @@ function WorkstationRightChatComponent({
     const mentionMatch = val.match(/@(\w*)$/);
     if (mentionMatch) {
       setShowMentions(true);
-      setMentionFilter(mentionMatch[1]);
+      setMentionQuery(mentionMatch[1] || "");
       setMentionIndex(0);
+      setShowCommands(false);
+      return;
     } else {
       setShowMentions(false);
     }
 
-    if (val.startsWith("/")) {
+    const commandMatch = val.match(/^\/([\w-]*)$/);
+    if (commandMatch) {
       setShowCommands(true);
-      setCommandFilter(val);
+      setCommandQuery(commandMatch[1] || "");
       setSelectedCommandIndex(0);
+      return;
     } else {
       setShowCommands(false);
     }
@@ -237,18 +243,18 @@ function WorkstationRightChatComponent({
 
   return (
     <aside
-      className="bg-[#121212] border-l border-border-strong flex flex-col h-full shrink-0 select-text overflow-hidden"
+      className="bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col h-full shrink-0 select-text overflow-hidden transition-colors duration-150"
       style={{ width: width || 320 }}
     >
       {/* Panel Header */}
-      <div className="h-9 px-3 border-b border-border-strong flex items-center justify-between bg-[#121212] shrink-0 select-none">
+      <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-panel)] shrink-0 select-none">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-[#A3A3A3]" />
-          <span className="text-xs font-semibold text-[#FFFFFF]">Chat</span>
+          <Bot className="w-4 h-4 text-[var(--text-muted)]" />
+          <span className="text-xs font-semibold text-[var(--text-primary)]">Chat</span>
         </div>
         <button
           onClick={onClose}
-          className="text-[#A3A3A3] hover:text-white p-1 rounded hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           title="Close Panel"
         >
           <PanelRightClose className="w-3.5 h-3.5" />
@@ -259,11 +265,11 @@ function WorkstationRightChatComponent({
       <div className="flex-1 overflow-y-auto p-3 space-y-4 font-sans text-xs">
         {allMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 select-none">
-            <div className="w-10 h-10 rounded-full bg-[#1E1E1E] flex items-center justify-center mb-3">
-              <Sparkles className="w-5 h-5 text-[#A3A3A3]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center mb-3 border border-[var(--border-color)]">
+              <Sparkles className="w-5 h-5 text-[var(--text-muted)]" />
             </div>
-            <p className="text-xs font-medium text-white mb-1">Workspace Agent</p>
-            <p className="text-[11px] text-[#A3A3A3] max-w-[200px]">
+            <p className="text-xs font-medium text-[var(--text-primary)] mb-1">Workspace Agent</p>
+            <p className="text-[11px] text-[var(--text-muted)] max-w-[200px]">
               Tanyakan sesuatu atau berikan instruksi dokumen.
             </p>
           </div>
@@ -271,7 +277,6 @@ function WorkstationRightChatComponent({
           allMessages.map((msg, idx) => {
             const isUser = msg.role === "user";
             
-            // Hide empty assistant bubbles while working/processing
             if (!isUser && (!msg.content || msg.content.trim() === "")) {
               return null;
             }
@@ -288,24 +293,24 @@ function WorkstationRightChatComponent({
                   className={cn(
                     "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",
                     isUser
-                      ? "bg-[#262626] text-white rounded-br-xs border border-[#333333]"
-                      : "bg-[#18181B] text-[#E4E4E7] rounded-bl-xs border border-[#27272A] shadow-sm"
+                      ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
+                      : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)] shadow-xs"
                   )}
                 >
                   <Markdown
                     components={{
                       p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                      strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+                      strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
                       ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
                       ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
                       li: ({ children }) => <li className="leading-snug">{children}</li>,
                       code: ({ children }) => (
-                        <code className="bg-[#121212] text-white px-1.5 py-0.5 rounded font-mono text-[11px] border border-[#262626]">
+                        <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)]">
                           {children}
                         </code>
                       ),
                       pre: ({ children }) => (
-                        <pre className="bg-[#121212] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[#262626] text-white">
+                        <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
                           {children}
                         </pre>
                       ),
@@ -331,23 +336,22 @@ function WorkstationRightChatComponent({
       </div>
 
       {/* Input Prompt Box & Queued Messages Card Area */}
-      <div className="p-3 bg-[#121212] border-t border-border-strong shrink-0 select-none">
-        {/* Antigravity Queued Messages Card */}
+      <div className="p-3 bg-[var(--bg-panel)] border-t border-[var(--border-color)] shrink-0 select-none transition-colors duration-150">
         {queuedPrompts.length > 0 && (
-          <div className="mb-2 px-3 py-2 bg-[#18181B] border border-[#27272A] rounded-xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="flex items-center justify-between text-[11px] text-[#A1A1AA] font-mono">
+          <div className="mb-2 px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-[#38BDF8] animate-pulse" />
-                <span className="font-semibold text-white">Antrian Pesan ({queuedPrompts.length})</span>
+                <Clock className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
+                <span className="font-semibold text-[var(--text-primary)]">Antrian Pesan ({queuedPrompts.length})</span>
               </div>
-              <span className="text-[10px] text-[#71717A]">Diproses otomatis</span>
+              <span className="text-[10px] text-[var(--text-dim)]">Diproses otomatis</span>
             </div>
             {queuedPrompts.map((promptText, idx) => (
-              <div key={idx} className="flex items-center justify-between bg-[#121212] border border-[#262626] rounded-lg px-2.5 py-1 text-xs text-[#E4E4E7]">
-                <span className="truncate max-w-[210px] font-mono text-[11px] text-[#D4D4D8]">{promptText}</span>
+              <div key={idx} className="flex items-center justify-between bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-2.5 py-1 text-xs text-[var(--text-primary)]">
+                <span className="truncate max-w-[210px] font-mono text-[11px]">{promptText}</span>
                 <button
                   onClick={() => onRemoveQueuedPrompt?.(idx)}
-                  className="text-[#71717A] hover:text-red-400 p-0.5 rounded transition-colors"
+                  className="text-[var(--text-dim)] hover:text-red-500 p-0.5 rounded transition-colors"
                   title="Batalkan antrian"
                 >
                   <X className="w-3 h-3" />
@@ -357,10 +361,10 @@ function WorkstationRightChatComponent({
           </div>
         )}
 
-        <div className="relative bg-[#1E1E1E] border border-border-strong focus-within:border-[#777777] rounded-2xl p-2.5 transition-colors">
+        <div className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-colors">
           {showMentions && mentionResults.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[#1E1E1E] border border-border-strong rounded-xl shadow-2xl overflow-hidden">
-              <div className="px-3 py-1.5 text-[10px] font-bold text-[#A3A3A3] bg-[#262626] border-b border-border-strong">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl shadow-2xl overflow-hidden">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
                 Select file to attach
               </div>
               <div className="max-h-44 overflow-y-auto">
@@ -372,10 +376,10 @@ function WorkstationRightChatComponent({
                     onClick={() => insertMention(name)}
                     className={cn(
                       "w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors flex items-center gap-1.5",
-                      i === mentionIndex ? "bg-[#262626] text-white" : "text-[#E5E5E5] hover:bg-[#1E1E1E]"
+                      i === mentionIndex ? "bg-[var(--bg-hover)] text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     )}
                   >
-                    <FileText className="w-3.5 h-3.5 shrink-0 text-[#A3A3A3]" />
+                    <FileText className="w-3.5 h-3.5 shrink-0 text-[var(--text-muted)]" />
                     {name}
                   </button>
                 ))}
@@ -384,8 +388,8 @@ function WorkstationRightChatComponent({
           )}
 
           {showCommands && filteredCommands.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[#1E1E1E] border border-border-strong rounded-xl shadow-2xl overflow-hidden">
-              <div className="px-3 py-1.5 text-[10px] font-bold text-[#A3A3A3] bg-[#262626] border-b border-border-strong">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl shadow-2xl overflow-hidden">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
                 Slash Commands
               </div>
               <div className="max-h-64 overflow-y-auto">
@@ -399,12 +403,12 @@ function WorkstationRightChatComponent({
                       onMouseEnter={() => setSelectedCommandIndex(index)}
                       className={cn(
                         "w-full px-3 py-2 flex items-center gap-2 transition-colors cursor-pointer",
-                        index === selectedCommandIndex ? "bg-[#262626]" : "hover:bg-[#262626]"
+                        index === selectedCommandIndex ? "bg-[var(--bg-hover)]" : "hover:bg-[var(--bg-hover)]"
                       )}
                     >
-                      <Icon size={14} className="text-[#A3A3A3] shrink-0" />
-                      <span className="text-xs font-medium text-white">{command.name}</span>
-                      <span className="text-[10px] text-[#777777] truncate">{command.description}</span>
+                      <Icon size={14} className="text-[var(--text-muted)] shrink-0" />
+                      <span className="text-xs font-medium text-[var(--text-primary)]">{command.name}</span>
+                      <span className="text-[10px] text-[var(--text-dim)] truncate">{command.description}</span>
                     </button>
                   );
                 })}
@@ -417,25 +421,21 @@ function WorkstationRightChatComponent({
             value={inputPrompt}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={
-              activeWorkspace
-                ? "Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
-                : "Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
-            }
+            placeholder="Tanyakan apa saja, ketik @ untuk mention file, / untuk perintah..."
             rows={1}
-            className="w-full bg-transparent text-xs text-[#FFFFFF] placeholder-[#777777] resize-none overflow-y-auto no-scrollbar focus:outline-none"
+            className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
           />
 
-          <div className="flex items-center justify-between pt-1 border-t border-border-strong mt-1">
+          <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
             <div className="flex items-center gap-2">
-              <button className="text-[#A3A3A3] hover:text-white p-1 rounded transition-colors cursor-pointer">
+              <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer">
                 <Paperclip className="w-3.5 h-3.5" />
               </button>
               {activeWorkspace && (
                 <select
                   value={reasoningEffort}
                   onChange={(e) => setReasoningEffort(e.target.value)}
-                  className="text-[10px] bg-[#262626] text-[#E5E5E5] px-1.5 py-0.5 rounded-full font-medium border border-border-strong outline-none cursor-pointer"
+                  className="text-[10px] bg-[var(--bg-hover)] text-[var(--text-secondary)] px-1.5 py-0.5 rounded-full font-medium border border-[var(--border-color)] outline-none cursor-pointer"
                   title="Reasoning Effort"
                 >
                   {EFFORT_OPTIONS.map((opt) => (
@@ -450,11 +450,11 @@ function WorkstationRightChatComponent({
             <button
               onClick={() => onSendMessage()}
               disabled={!inputPrompt.trim()}
-              className="w-7 h-7 bg-white hover:bg-[#E5E5E5] disabled:opacity-30 text-black rounded-full flex items-center justify-center transition-colors cursor-pointer"
+              className="w-7 h-7 bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)] rounded-full flex items-center justify-center transition-colors cursor-pointer"
               title={isStreaming ? "Tambah ke antrian" : "Kirim pesan"}
             >
               {isStreaming ? (
-                <Clock className="w-3.5 h-3.5 text-black" />
+                <Clock className="w-3.5 h-3.5" />
               ) : (
                 <Send className="w-3.5 h-3.5" />
               )}
