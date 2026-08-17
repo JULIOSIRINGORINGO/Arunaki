@@ -117,20 +117,35 @@ export class BusinessDomainToolsRegistrar {
         name: 'generate_export',
         displayName: 'Export Document',
         description: 'Converts structured data into Excel, CSV, PDF, Word, or PPTX.',
-        tags: ['export', 'document', 'excel', 'pdf', 'word', 'powerpoint'],
+        tags: ['export', 'document', 'excel', 'pdf', 'word', 'powerpoint', 'docx'],
         mutating: true,
         handler: async (args) => {
           const { format, filename, title, sheetName, data, content, slides, outputPath } = args;
-          if (format === 'xlsx') return services.documentGeneratorTool.generateExcel(sheetName || 'Sheet1', data || [], filename, outputPath);
-          if (format === 'csv') return services.documentGeneratorTool.generateCsv(data || [], filename, outputPath);
-          if (format === 'pdf') return services.documentGeneratorTool.generatePdf(title || 'Dokumen', content || '', filename, outputPath);
-          if (format === 'docx') return services.documentGeneratorTool.generateDocx(title || 'Dokumen', content || '', filename, outputPath);
-          if (format === 'pptx') return services.documentGeneratorTool.generatePptx(title || 'Presentasi', slides || [], filename);
+          let safePath: string | undefined;
+          const targetName = filename || outputPath || `document.${format}`;
+          if (args.workspaceId) {
+            try {
+              safePath = await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                targetName,
+              );
+            } catch {
+              safePath = targetName;
+            }
+          } else {
+            safePath = targetName;
+          }
+
+          if (format === 'xlsx') return services.documentGeneratorTool.generateExcel(sheetName || 'Sheet1', data || [], targetName, safePath);
+          if (format === 'csv') return services.documentGeneratorTool.generateCsv(data || [], targetName, safePath);
+          if (format === 'pdf') return services.documentGeneratorTool.generatePdf(title || 'Document', content || '', targetName, safePath);
+          if (format === 'docx') return services.documentGeneratorTool.generateDocx(title || 'Document', content || '', targetName, safePath);
+          if (format === 'pptx') return services.documentGeneratorTool.generatePptx(title || 'Presentation', slides || [], targetName);
           return {
             status: 'error',
             data: {},
-            preview: `Format ${format} tidak didukung.`,
-            metadata: { toolName: 'generate_export', displayName: 'Dokumen Export', executionTime: 0 },
+            preview: `Format "${format}" is not supported.`,
+            metadata: { toolName: 'generate_export', displayName: 'Export Document', executionTime: 0 },
           };
         },
         parameters: {

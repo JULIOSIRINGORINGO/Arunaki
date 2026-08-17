@@ -156,10 +156,10 @@ export class DocxReportBuilder {
           writtenToDisk: !!targetWritePath,
           filePath: targetWritePath ? path.resolve(targetWritePath) : undefined,
         },
-        preview: `${title} — ${children.length} blok konten, ${this.formatBytes(buffer.length)}`,
+        preview: `${title} — ${children.length} content blocks, ${this.formatBytes(buffer.length)}`,
         metadata: {
           toolName: 'generate_export',
-          displayName: 'Dokumen Export',
+          displayName: 'Export Document',
           executionTime: Date.now() - startTime,
           format: 'docx',
           filename: safeFilename,
@@ -172,10 +172,10 @@ export class DocxReportBuilder {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal generate DOCX: ${e.message}`,
+        preview: `Failed to generate DOCX: ${e.message}`,
         metadata: {
           toolName: 'generate_export',
-          displayName: 'Dokumen Export',
+          displayName: 'Export Document',
           executionTime: Date.now() - startTime,
           format: 'docx',
           filename: safeFilename,
