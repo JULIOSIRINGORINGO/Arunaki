@@ -1487,5 +1487,27 @@ apps/web/src/
 - [x] Verified generated `ARUNAKI.md` in database: accurately synthesized all customer prefixes (`CK`, `BG`, `CI`, `PAK`), bank codes (`BCA`, `BNI`, `BRI`), section headers, and immutable balances.
 - [x] End-to-end autonomous rekap benchmark passed successfully with surgical patch editing and template preservation.
 
+---
 
+## Phase 50: Workspace Rules Sentinel Agent & Isolated Sub-Agent Sandboxing ✅ DONE
 
+**Goal:** Create a resident, event-driven guardian agent (`WorkspaceRulesSentinelService`) that silently monitors user conversation turns in the background (0% CPU when idle), compares user directives against `ARUNAKI.md`, autonomously evolves the living rulebook when new preferences or corrections arise, and sandboxes heavy cartography tasks into dedicated Sub-Agents.
+
+### 50.1 Domain-Agnostic & Zero-Bias Prompt Synthesis
+- [x] Refactored `WorkspaceCartographerService` prompt to eliminate any hardcoded domain bias, making rule synthesis 100% agnostic to any industry (accounting, legal, clinic, retail, logistics, manufacturing, education, software).
+- [x] Refactored `buildDeterministicRules` fallback to dynamically discover file extensions and metadata without hardcoded strings.
+
+### 50.2 Sub-Agent Delegation & Parallel Sandboxing
+- [x] Integrated `SubAgentRunnerService` into `WorkspaceCartographerService` so heavy workspace cartography executes in an isolated sub-agent sandbox.
+- [x] Added `agent_spawn` tool routing in `WorkspacePromptBuilderService` for multi-task, batch, and parallel operations.
+
+### 50.3 Resident Workspace Rules Sentinel Daemon
+- [x] Created `WorkspaceRulesSentinelService` listening to `@OnEvent('workspace.agent.completed')`.
+- [x] Implemented fast-heuristic intent filtering (`INTENT_TRIGGER_REGEX`) to wake up only when corrections/rules are present (0ms overhead on normal turns).
+- [x] Implemented intelligent diff analysis against current `ARUNAKI.md` and autonomous patching.
+- [x] Registered `WorkspaceRulesSentinelService` in `WorkspaceModule`.
+
+### 50.4 Verification & Benchmark
+- [x] Build check: `npx nest build` passed with 0 errors.
+- [x] Verified resident daemon initialization: `[WorkspaceRulesSentinelService] 🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).`
+- [x] End-to-end autonomous rekap benchmark passed with surgical `edit` and background completion handling.

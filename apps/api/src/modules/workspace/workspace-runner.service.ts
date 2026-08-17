@@ -1227,6 +1227,7 @@ export class WorkspaceRunnerService {
           workspaceId,
           goal: userGoal,
           finalContent: finalContent.substring(0, 200),
+          messages: messages.map((m) => ({ role: m.role, content: m.content || '' })),
           artifactsCount: artifacts.length,
           timestamp: new Date(),
         });
