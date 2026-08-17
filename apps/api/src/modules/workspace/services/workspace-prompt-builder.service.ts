@@ -125,7 +125,7 @@ export class WorkspacePromptBuilderService {
     }
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
     if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
-    if (/(?:buka|desktop|word|excel|xlsx|spreadsheet|rekap|transaksi|pemasukan|pengeluaran|powerpoint|ppt|office|aplikasi|mengetik|bca|bni|bri|cash|laporan)/.test(g) || /@[^\s@]+\.xlsx/i.test(goal)) {
+    if (/(?:buka|desktop|word|excel|xlsx|spreadsheet|rekap|transaksi|keuangan|pemasukan|pengeluaran|powerpoint|ppt|office|aplikasi|mengetik|bank|transfer|tunai|laporan|ledger|reconcile|dokumen)/.test(g) || /@[^\s@]+\.xlsx/i.test(goal)) {
       add([
         'desktop_open_file',
         'desktop_open_excel',

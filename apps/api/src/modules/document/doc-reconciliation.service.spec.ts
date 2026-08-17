@@ -77,31 +77,4 @@ describe('DocumentReconciliationService', () => {
     expect(matches[1].documentName).toBe('surat_jalan.pdf');
     expect(matches[0].occurrenceCount).toBe(1);
   });
-
-  it('should parse daily text report and produce exact Excel reconciliation actions', () => {
-    const txtReport = `*REKAPAN PENJUALAN 10 AGUSTUS 2026*
-PEMASUKAN :
-TOKO HARAPAN = 600RB(BCA) [ DTF ]✅
-KAK MELLY = 350RB(BNI) [ 15 PCS ]✅
-PAK HENDRA = 150RB(MANDIRI) [ 2 PCS ]✅
-PENGELUARAN :
-GALON = 10RB
-TOTAL PEMASUKAN: 1.100 RB
-TOTAL TF BCA : 600 RB
-TOTAL TF BNI : 350 RB
-TOTAL MANDIRI : 150 RB
-TOTAL PENGELUARAN: 10 RB`;
-
-    const res = service.reconcileDailyReportToExcel(txtReport, 10, 'AGUSTUS');
-
-    expect(res.day).toBe(10);
-    expect(res.sheet).toBe('AGUSTUS');
-    expect(res.colIndex).toBe(12);
-    expect(res.pemasukanItems).toHaveLength(3);
-    expect(res.totalPemasukan).toBe(1100);
-    expect(res.totalBca).toBe(600);
-    expect(res.totalBni).toBe(350);
-    expect(res.actions).toContainEqual({ action: 'write_cell', cell: 'L4', value: 1100 });
-    expect(res.actions).toContainEqual({ action: 'write_cell', cell: 'L5', value: 'TOKO HARAPAN = 600RB(BCA) [ DTF ]' });
-  });
 });

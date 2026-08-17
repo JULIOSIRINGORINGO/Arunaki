@@ -101,69 +101,58 @@ export class DocumentReconciliationService {
         missingCount++;
         discrepancies.push({
           key,
-          sourceValues: { [sourceName]: srcVal, [targetName]: null },
+          sourceValues: srcVal,
           hasMismatch: true,
           status: 'MISSING_IN_TARGET',
-          details: [`Entry "${key}" found in ${sourceName} but missing in ${targetName}`],
+          details: [`Record "${key}" exists in ${sourceName} but is missing in ${targetName}`],
         });
       } else if (!srcVal && tgtVal) {
         missingCount++;
         discrepancies.push({
           key,
-          sourceValues: { [sourceName]: null, [targetName]: tgtVal },
+          sourceValues: tgtVal,
           hasMismatch: true,
           status: 'MISSING_IN_SOURCE',
-          details: [`Entry "${key}" found in ${targetName} but missing in ${sourceName}`],
+          details: [`Record "${key}" exists in ${targetName} but is missing in ${sourceName}`],
         });
       } else if (srcVal && tgtVal) {
-        const details: string[] = [];
-        let hasMismatch = false;
+        const diffs: string[] = [];
+        // Compare common properties
+        const allProps = new Set([...Object.keys(srcVal), ...Object.keys(tgtVal)]);
+        for (const prop of allProps) {
+          if (prop.toLowerCase() === matchKey.toLowerCase()) continue;
+          const v1 = srcVal[prop];
+          const v2 = tgtVal[prop];
 
-        // Compare all matching fields
-        const allFields = new Set([
-          ...Object.keys(srcVal),
-          ...Object.keys(tgtVal),
-        ]);
-
-        for (const field of allFields) {
-          const v1 = srcVal[field];
-          const v2 = tgtVal[field];
-
-          if (v1 !== undefined && v2 !== undefined) {
-            // String/Number comparison
-            const s1 = String(v1).trim();
-            const s2 = String(v2).trim();
-            if (s1.toLowerCase() !== s2.toLowerCase()) {
-              // Try numeric parse comparison
-              const n1 = parseFloat(s1.replace(/[^0-9.-]+/g, ''));
-              const n2 = parseFloat(s2.replace(/[^0-9.-]+/g, ''));
-              if (isNaN(n1) || isNaN(n2) || Math.abs(n1 - n2) > 0.01) {
-                hasMismatch = true;
-                details.push(
-                  `Field "${field}" differs: ${sourceName} = "${s1}" vs ${targetName} = "${s2}"`,
-                );
-              }
+          // If numeric, compare float values
+          if (!isNaN(Number(v1)) && !isNaN(Number(v2)) && v1 !== '' && v2 !== '') {
+            if (Math.abs(Number(v1) - Number(v2)) > 0.001) {
+              diffs.push(`Property "${prop}": ${sourceName}=${v1} vs ${targetName}=${v2}`);
+            }
+          } else if (v1 !== undefined && v2 !== undefined) {
+            if (String(v1).trim() !== String(v2).trim()) {
+              diffs.push(`Property "${prop}": "${v1}" vs "${v2}"`);
             }
           }
         }
 
-        if (hasMismatch) {
+        if (diffs.length > 0) {
           mismatchCount++;
           discrepancies.push({
             key,
-            sourceValues: { [sourceName]: srcVal, [targetName]: tgtVal },
+            sourceValues: srcVal,
             hasMismatch: true,
             status: 'MISMATCH',
-            details,
+            details: diffs,
           });
         } else {
           matchCount++;
           discrepancies.push({
             key,
-            sourceValues: { [sourceName]: srcVal, [targetName]: tgtVal },
+            sourceValues: srcVal,
             hasMismatch: false,
             status: 'MATCH',
-            details: ['Data matches perfectly'],
+            details: ['Records match perfectly'],
           });
         }
       }
@@ -172,21 +161,24 @@ export class DocumentReconciliationService {
     const total = allKeys.size;
     const matchPercentage = total > 0 ? Math.round((matchCount / total) * 100) : 100;
 
-    // Construct Markdown Audit Table
-    const tableHeader = `| ID / Key | Reconciliation Status | Discrepancy Notes |\n| --- | --- | --- |\n`;
-    const tableRows = discrepancies
-      .map((d) => {
-        const badge =
-          d.status === 'MATCH'
-            ? '✅ MATCH'
-            : d.status === 'MISMATCH'
-              ? '⚠️ MISMATCH'
-              : '❌ MISSING';
-        return `| **${d.key}** | ${badge} | ${d.details.join('; ')} |`;
-      })
-      .join('\n');
+    // Generate clean formatted Markdown Table
+    let tableMd = `### Document Reconciliation Report\n\n`;
+    tableMd += `**Source Document:** ${sourceName} (${safeSourceRows.length} records)\n`;
+    tableMd += `**Target Document:** ${targetName} (${safeTargetRows.length} records)\n`;
+    tableMd += `**Match Key:** \`${matchKey}\` | **Reconciliation Accuracy:** ${matchPercentage}%\n\n`;
+    tableMd += `| Key | Status | Details |\n`;
+    tableMd += `| --- | --- | --- |\n`;
 
-    const formattedTableMarkdown = `[CANVAS]\n### 📊 Document Audit & Reconciliation Report\n\n**Source:** \`${sourceName}\` vs \`${targetName}\`  \n**Total Entries:** ${total} | **Match:** ${matchCount} | **Mismatch:** ${mismatchCount} | **Missing:** ${missingCount} | **Accuracy:** ${matchPercentage}%\n\n${tableHeader}${tableRows}\n[/CANVAS]`;
+    discrepancies.forEach((d) => {
+      const badge =
+        d.status === 'MATCH'
+          ? '✅ MATCH'
+          : d.status === 'MISMATCH'
+          ? '⚠️ MISMATCH'
+          : '❌ MISSING';
+      const detailStr = d.details.join('; ').replace(/\|/g, '\\|');
+      tableMd += `| **${d.key}** | ${badge} | ${detailStr} |\n`;
+    });
 
     return {
       summary: {
@@ -197,40 +189,43 @@ export class DocumentReconciliationService {
         matchPercentage,
       },
       discrepancies,
-      formattedTableMarkdown,
+      formattedTableMarkdown: tableMd,
     };
   }
 
   /**
-   * Search for exact or fuzzy occurrences of a query string across multiple text documents.
+   * Cross-reference occurrences of a string / entity across multiple documents.
    */
   crossReference(
     query: string,
     documents: Array<{ name: string; content: string }>,
   ): CrossReferenceMatch[] {
-    if (!query || !documents) return [];
-
-    const lowerQuery = query.toLowerCase().trim();
     const results: CrossReferenceMatch[] = [];
+    const qLower = query.toLowerCase().trim();
 
     for (const doc of documents) {
       if (!doc.content) continue;
-      const lowerContent = doc.content.toLowerCase();
-      let pos = 0;
-      let count = 0;
-      let snippet = '';
+      const text = doc.content;
+      const tLower = text.toLowerCase();
 
-      while ((pos = lowerContent.indexOf(lowerQuery, pos)) !== -1) {
+      let count = 0;
+      let pos = 0;
+      let firstMatchIdx = -1;
+
+      while ((pos = tLower.indexOf(qLower, pos)) !== -1) {
+        if (firstMatchIdx === -1) firstMatchIdx = pos;
         count++;
-        if (!snippet) {
-          const start = Math.max(0, pos - 40);
-          const end = Math.min(doc.content.length, pos + lowerQuery.length + 40);
-          snippet = `...${doc.content.substring(start, end).replace(/\n/g, ' ')}...`;
-        }
-        pos += lowerQuery.length;
+        pos += qLower.length;
       }
 
       if (count > 0) {
+        // Extract 150 char snippet around first occurrence
+        const start = Math.max(0, firstMatchIdx - 60);
+        const end = Math.min(text.length, firstMatchIdx + qLower.length + 60);
+        let snippet = text.slice(start, end).replace(/\r?\n/g, ' ').trim();
+        if (start > 0) snippet = '...' + snippet;
+        if (end < text.length) snippet = snippet + '...';
+
         results.push({
           documentName: doc.name,
           matchedText: query,
@@ -241,98 +236,5 @@ export class DocumentReconciliationService {
     }
 
     return results;
-  }
-
-  /**
-   * Parse daily text report and map entries directly to monthly Excel reconciliation sheet.
-   */
-  reconcileDailyReportToExcel(txtContent: string, dateDay: number = 10, sheetName: string = 'AGUSTUS'): {
-    day: number;
-    sheet: string;
-    colIndex: number;
-    pemasukanItems: string[];
-    totalPemasukan: number;
-    totalBca: number;
-    totalBni: number;
-    totalMandiri: number;
-    totalCash: number;
-    totalPengeluaran: number;
-    actions: Array<{ action: string; cell: string; value: any }>;
-  } {
-    const lines = txtContent.split('\n').map((l) => l.trim()).filter(Boolean);
-    const pemasukanItems: string[] = [];
-    let totalPemasukan = 0;
-    let totalBca = 0;
-    let totalBni = 0;
-    let totalMandiri = 0;
-    let totalCash = 0;
-    let totalPengeluaran = 0;
-
-    let currentSection = '';
-    for (const line of lines) {
-      if (line.includes('PEMASUKAN :')) {
-        currentSection = 'pemasukan';
-      } else if (line.includes('PENGELUARAN :')) {
-        currentSection = 'pengeluaran';
-      } else if (line.includes('NOTE BELUM BAYAR :') || line.includes('BELANJAAN KE LABURA:')) {
-        currentSection = 'other';
-      }
-
-      if (currentSection === 'pemasukan' && line.includes('=') && line.includes('RB')) {
-        pemasukanItems.push(line.replace(/✅/g, '').trim());
-      }
-
-      if (line.includes('TOTAL PEMASUKAN:')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalPemasukan = parseFloat(m[1].replace(/\./g, ''));
-      } else if (line.includes('TOTAL TF BCA :')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalBca = parseFloat(m[1].replace(/\./g, ''));
-      } else if (line.includes('TOTAL TF BNI :')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalBni = parseFloat(m[1].replace(/\./g, ''));
-      } else if (line.includes('TOTAL MANDIRI :')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalMandiri = parseFloat(m[1].replace(/\./g, ''));
-      } else if (line.includes('TOTAL CASH :')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalCash = parseFloat(m[1].replace(/\./g, ''));
-      } else if (line.includes('TOTAL PENGELUARAN:')) {
-        const m = line.match(/([\d\.]+)\s*RB/);
-        if (m) totalPengeluaran = parseFloat(m[1].replace(/\./g, ''));
-      }
-    }
-
-    const colIndex = dateDay + 2; // Col L for day 10
-    const colLetter = String.fromCharCode(64 + colIndex);
-
-    const actions: Array<{ action: string; cell: string; value: any }> = [
-      { action: 'write_cell', cell: `${colLetter}4`, value: totalPemasukan },
-    ];
-
-    pemasukanItems.forEach((item, idx) => {
-      actions.push({ action: 'write_cell', cell: `${colLetter}${5 + idx}`, value: item });
-    });
-
-    actions.push({ action: 'write_cell', cell: `${colLetter}14`, value: ` Rp${totalPemasukan.toLocaleString('en-US')}.000 ` });
-    if (totalBni) actions.push({ action: 'write_cell', cell: `${colLetter}16`, value: ` Rp${totalBni.toLocaleString('en-US')}.000 ` });
-    if (totalBca) actions.push({ action: 'write_cell', cell: `${colLetter}17`, value: ` Rp${totalBca.toLocaleString('en-US')}.000 ` });
-    if (totalMandiri) actions.push({ action: 'write_cell', cell: `${colLetter}18`, value: ` Rp${totalMandiri.toLocaleString('en-US')}.000 ` });
-    if (totalCash) actions.push({ action: 'write_cell', cell: `${colLetter}19`, value: ` Rp${totalCash.toLocaleString('en-US')}.000 ` });
-    actions.push({ action: 'write_cell', cell: `${colLetter}22`, value: ` Rp${totalPengeluaran.toLocaleString('en-US')}.000 ` });
-
-    return {
-      day: dateDay,
-      sheet: sheetName,
-      colIndex,
-      pemasukanItems,
-      totalPemasukan,
-      totalBca,
-      totalBni,
-      totalMandiri,
-      totalCash,
-      totalPengeluaran,
-      actions,
-    };
   }
 }
