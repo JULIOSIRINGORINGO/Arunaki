@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
-import { useTheme, ThemeMode } from "../../lib/theme";
+import { useTheme } from "../../lib/theme";
 
 export function AppLayout() {
   const navigate = useNavigate();
