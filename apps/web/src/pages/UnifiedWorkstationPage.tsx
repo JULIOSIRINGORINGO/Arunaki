@@ -33,6 +33,13 @@ interface Workspace {
   status: string;
 }
 
+function extractCanvasContent(llmText: string): string {
+  if (!llmText) return "";
+  const canvasMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
+  if (canvasMatch?.[1]?.trim()) return canvasMatch[1].trim();
+  return "";
+}
+
 export function UnifiedWorkstationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -416,9 +423,49 @@ export function UnifiedWorkstationPage() {
                     : m
                 );
               });
+              const canvasText = extractCanvasContent(accumulatedResponseText);
+              if (canvasText) {
+                const canvasTabId = "tab-canvas-active";
+                setTabs((prev) => {
+                  const existingIdx = prev.findIndex((t) => t.id === canvasTabId);
+                  const newTab: CenterTab = {
+                    id: canvasTabId,
+                    type: "canvas",
+                    title: "📋 Hasil Rekap",
+                    content: canvasText,
+                  };
+                  if (existingIdx >= 0) {
+                    const copy = [...prev];
+                    copy[existingIdx] = newTab;
+                    return copy;
+                  }
+                  return [...prev, newTab];
+                });
+                setActiveTabId(canvasTabId);
+              }
             } else if (event.type === "done") {
               setIsStreaming(false);
               setLiveStatus(null);
+              const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
+              if (canvasText) {
+                const canvasTabId = "tab-canvas-active";
+                setTabs((prev) => {
+                  const existingIdx = prev.findIndex((t) => t.id === canvasTabId);
+                  const newTab: CenterTab = {
+                    id: canvasTabId,
+                    type: "canvas",
+                    title: "📋 Hasil Rekap",
+                    content: canvasText,
+                  };
+                  if (existingIdx >= 0) {
+                    const copy = [...prev];
+                    copy[existingIdx] = newTab;
+                    return copy;
+                  }
+                  return [...prev, newTab];
+                });
+                setActiveTabId(canvasTabId);
+              }
               queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
               setTimeout(() => {
                 setOptimisticMessages([]);

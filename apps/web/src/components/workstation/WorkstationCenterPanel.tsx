@@ -1,10 +1,20 @@
 import { memo, useState, useEffect, useCallback } from "react";
-import { FileText, X } from "lucide-react";
+import Markdown from "react-markdown";
+import {
+  FileText,
+  X,
+  Copy,
+  CopyCheck,
+  Sparkles,
+  Download,
+  FileSpreadsheet,
+  Edit2,
+} from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface CenterTab {
   id: string;
-  type: "file" | "stage";
+  type: "file" | "canvas" | "stage";
   title: string;
   path?: string;
   fileType?: string;
@@ -102,6 +112,10 @@ function WorkstationCenterPanelComponent({
     deletedCount: number;
   } | null>>({});
 
+  // Canvas-specific UI states
+  const [isEditingCanvas, setIsEditingCanvas] = useState(false);
+  const [copiedCanvas, setCopiedCanvas] = useState(false);
+
   // Sync tab content when parent updates tab.content
   useEffect(() => {
     if (!activeTab?.id) return;
@@ -112,38 +126,37 @@ function WorkstationCenterPanelComponent({
       setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
       setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
     } else if (incomingContent !== existingContent && incomingContent !== previousContents[activeTab.id]) {
-      // Content was updated by AI stream or reload — compute live diff highlight!
-      const prevText = previousContents[activeTab.id] ?? existingContent;
-      const diffLines = computeLineDiff(prevText, incomingContent);
-      const added = diffLines.filter((l) => l.type === "added").length;
-      const deleted = diffLines.filter((l) => l.type === "deleted").length;
+      if (activeTab.type === "file") {
+        const prevText = previousContents[activeTab.id] ?? existingContent;
+        const diffLines = computeLineDiff(prevText, incomingContent);
+        const added = diffLines.filter((l) => l.type === "added").length;
+        const deleted = diffLines.filter((l) => l.type === "deleted").length;
 
-      if (added > 0 || deleted > 0) {
-        setActiveDiffs((prev) => ({
-          ...prev,
-          [activeTab.id]: {
-            diffLines,
-            addedCount: added,
-            deletedCount: deleted,
-          },
-        }));
+        if (added > 0 || deleted > 0) {
+          setActiveDiffs((prev) => ({
+            ...prev,
+            [activeTab.id]: {
+              diffLines,
+              addedCount: added,
+              deletedCount: deleted,
+            },
+          }));
 
-        // Automatically settle and clear diff highlight after 3.5 seconds
-        const timer = setTimeout(() => {
-          setActiveDiffs((prev) => ({ ...prev, [activeTab.id]: null }));
-        }, 3500);
+          const timer = setTimeout(() => {
+            setActiveDiffs((prev) => ({ ...prev, [activeTab.id]: null }));
+          }, 3500);
 
-        // Update current and previous contents
-        setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
-        setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+          setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+          setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
 
-        return () => clearTimeout(timer);
-      } else {
-        setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
-        setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+          return () => clearTimeout(timer);
+        }
       }
+
+      setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+      setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
     }
-  }, [activeTab?.id, activeTab?.content]);
+  }, [activeTab?.id, activeTab?.content, activeTab?.type]);
 
   const currentContent = activeTab ? (editedContents[activeTab.id] ?? activeTab.content ?? "") : "";
   const activeDiff = activeTab ? activeDiffs[activeTab.id] : null;
@@ -157,6 +170,39 @@ function WorkstationCenterPanelComponent({
     }
   }, [activeTab?.id, onUpdateTabContent]);
 
+  const handleCopyCanvas = () => {
+    if (!currentContent) return;
+    navigator.clipboard.writeText(currentContent);
+    setCopiedCanvas(true);
+    setTimeout(() => setCopiedCanvas(false), 2000);
+  };
+
+  const handleDownloadTxt = () => {
+    if (!currentContent) return;
+    const element = document.createElement("a");
+    const file = new Blob([currentContent], { type: "text/plain" });
+    element.href = URL.createObjectURL(file);
+    element.download = `rekap-${Date.now()}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    setTimeout(() => URL.revokeObjectURL(element.href), 1000);
+  };
+
+  const handleDownloadCsv = () => {
+    if (!currentContent) return;
+    const lines = currentContent.split("\n");
+    const csvContent = lines.map((l) => `"${l.replace(/"/g, '""')}"`).join("\n");
+    const element = document.createElement("a");
+    const file = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    element.href = URL.createObjectURL(file);
+    element.download = `rekap-${Date.now()}.csv`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    setTimeout(() => URL.revokeObjectURL(element.href), 1000);
+  };
+
   return (
     <main className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A] overflow-hidden select-none border-r border-[#1F1F1F]">
       {/* Top Document Tabs Bar */}
@@ -164,6 +210,7 @@ function WorkstationCenterPanelComponent({
         <div className="h-10 bg-[#121212] border-b border-[#262626] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTabId;
+            const isCanvasTab = tab.type === "canvas";
             return (
               <div
                 key={tab.id}
@@ -175,8 +222,12 @@ function WorkstationCenterPanelComponent({
                     : "bg-transparent text-[#71717A] border-transparent hover:bg-[#1A1A1A] hover:text-[#D4D4D8]"
                 )}
               >
-                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[#E4E4E7]" : "text-[#71717A]")} />
-                <span className="truncate max-w-[140px]">{tab.title}</span>
+                {isCanvasTab ? (
+                  <Sparkles className={cn("w-3.5 h-3.5", isActive ? "text-[#38BDF8]" : "text-[#71717A]")} />
+                ) : (
+                  <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[#E4E4E7]" : "text-[#71717A]")} />
+                )}
+                <span className="truncate max-w-[150px]">{tab.title}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -195,7 +246,94 @@ function WorkstationCenterPanelComponent({
       {/* Dynamic Content Body */}
       <div className="flex-1 relative overflow-hidden bg-[#0A0A0A] flex flex-col">
         {activeTab ? (
-          isDiffActive && activeDiff ? (
+          activeTab.type === "canvas" ? (
+            /* CANVAS / ARTIFACT / DELIVERABLE TAB VIEW (IN-MEMORY REKAP) */
+            <div className="h-full w-full flex flex-col bg-[#0A0A0A] overflow-hidden select-text">
+              {/* Canvas Action Bar */}
+              <div className="h-8 bg-[#121212] border-b border-[#262626] px-4 flex items-center justify-between text-xs select-none shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#38BDF8]" />
+                  <span className="font-mono text-[#E4E4E7] text-[11px] font-medium truncate">
+                    {activeTab.title}
+                  </span>
+                  <span className="text-[#71717A] text-[10px] bg-[#1E1E1E] border border-[#2D2D2D] px-1.5 py-0.5 rounded">
+                    Siap Salin
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsEditingCanvas(!isEditingCanvas)}
+                    className={cn(
+                      "px-2 py-0.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors cursor-pointer",
+                      isEditingCanvas
+                        ? "bg-[#27272A] text-white border border-[#3F3F46]"
+                        : "text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E]"
+                    )}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                    <span>{isEditingCanvas ? "Preview" : "Edit"}</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadCsv}
+                    className="p-1 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+                    title="Download CSV"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={handleDownloadTxt}
+                    className="p-1 rounded text-[#A1A1AA] hover:text-white hover:bg-[#1E1E1E] transition-colors cursor-pointer"
+                    title="Download TXT"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={handleCopyCanvas}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer",
+                      copiedCanvas
+                        ? "bg-[#14532D] text-[#86EFAC] border border-[#22C55E]/40"
+                        : "bg-white text-black hover:bg-[#E4E4E7]"
+                    )}
+                  >
+                    {copiedCanvas ? (
+                      <>
+                        <CopyCheck className="w-3.5 h-3.5" />
+                        <span>Tersalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Salin Rekap</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Canvas Content Body */}
+              <div className="flex-1 overflow-auto p-6 bg-[#0A0A0A]">
+                <div className="max-w-3xl mx-auto">
+                  {isEditingCanvas ? (
+                    <textarea
+                      value={currentContent}
+                      onChange={(e) => handleTextChange(e.target.value)}
+                      className="w-full min-h-[350px] p-4 bg-[#121212] border border-[#27272A] rounded-lg font-mono text-xs text-[#E5E5E5] leading-relaxed resize-none focus:outline-none focus:border-[#52525B]"
+                      placeholder="Isi rekap..."
+                    />
+                  ) : (
+                    <div className="p-6 bg-[#111111] border border-[#262626] rounded-xl font-mono text-xs text-[#E5E5E5] leading-relaxed shadow-sm whitespace-pre-wrap selection:bg-[#333333] selection:text-white">
+                      <Markdown>{currentContent}</Markdown>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isDiffActive && activeDiff ? (
             /* CURSOR / ANTIGRAVITY LIVE DIFF VIEW */
             <div className="h-full w-full flex flex-col bg-[#0A0A0A] font-mono text-xs overflow-hidden select-text">
               <div className="h-7 bg-[#121212] border-b border-[#262626] px-3 flex items-center justify-between text-xs select-none shrink-0">
