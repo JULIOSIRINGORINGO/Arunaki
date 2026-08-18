@@ -39,6 +39,8 @@ export class KnowledgeLiveFetchTool implements Tool {
         timeout: 'Optional timeout in seconds (max 120)',
         query: 'Optional search context for knowledge resolution',
         workspaceId: 'Optional workspace identifier',
+        browser: 'Set true to render with a real browser (needed for JS-only data like stock tables)',
+        stockLocation: 'City name to query stock for (used with browser=true on cititex product pages)',
       },
       outputType: 'markdown' as const,
       estimatedLatency: 'fast' as const,
@@ -46,7 +48,7 @@ export class KnowledgeLiveFetchTool implements Tool {
   }
 
   get description(): string {
-    return 'Fetches content from any URL. Returns markdown by default. Use for web pages, documentation, APIs, live catalogs. Fast HTTP fetch — no browser overhead.';
+    return 'Fetches content from any URL. Returns markdown by default. Use for web pages, documentation, APIs, live catalogs. Fast HTTP fetch by default; set browser=true to render JS-only content (e.g. stock per location) with Playwright.';
   }
 
   get definition(): ToolDefinition {
@@ -78,6 +80,14 @@ export class KnowledgeLiveFetchTool implements Tool {
             workspaceId: {
               type: 'string',
               description: 'Optional workspace ID to resolve registered Knowledge links.',
+            },
+            browser: {
+              type: 'boolean',
+              description: 'Set true to render with a real browser (Playwright). Needed for JS-only data such as stock tables.',
+            },
+            stockLocation: {
+              type: 'string',
+              description: 'City name to query stock for (used with browser=true on cititex product pages).',
             },
           },
           required: ['url'],
@@ -134,6 +144,8 @@ export class KnowledgeLiveFetchTool implements Tool {
         query,
         format,
         timeout,
+        browser: args.browser === true || args.browser === 'true',
+        stockLocation: typeof args.stockLocation === 'string' ? args.stockLocation : undefined,
       });
 
       return {
