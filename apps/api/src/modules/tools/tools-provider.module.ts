@@ -16,8 +16,7 @@ import { DocumentConverterTool } from './services/document-converter.tool.js';
 import { DataQueryTool } from './services/data-query.tool.js';
 import { ImageOcrTool } from './services/image-ocr.tool.js';
 import { DocSearchTool } from './services/doc-search.tool.js';
-import { KnowledgeBuilderTool } from './services/knowledge-builder.tool.js';
-import { KnowledgeSearchTool } from './services/knowledge-search.tool.js';
+
 import { WebSearchTool } from './services/web-search.tool.js';
 import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
@@ -76,8 +75,6 @@ import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js'
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
-    KnowledgeBuilderTool,
-    KnowledgeSearchTool,
     KnowledgeLiveFetchTool,
     WebSearchTool,
     VisionAiTool,
@@ -115,8 +112,6 @@ import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js'
     DataQueryTool,
     ImageOcrTool,
     DocSearchTool,
-    KnowledgeBuilderTool,
-    KnowledgeSearchTool,
     KnowledgeLiveFetchTool,
     WebSearchTool,
     VisionAiTool,
@@ -188,7 +183,6 @@ export class ToolsProviderModule implements OnModuleInit {
       visionAiTool: this.moduleRef.get(VisionAiTool, { strict: false }),
       imageOcrTool: this.moduleRef.get(ImageOcrTool, { strict: false }),
       docSearchTool: this.moduleRef.get(DocSearchTool, { strict: false }),
-      knowledgeBuilderTool: this.moduleRef.get(KnowledgeBuilderTool, { strict: false }),
       skillsTool: this.moduleRef.get(SkillsTool, { strict: false }),
       memoryTool: this.moduleRef.get(MemoryTool, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),

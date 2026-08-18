@@ -5,11 +5,8 @@ import { KnowledgeCrawlerService } from '../../knowledge/services/knowledge-craw
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 
 /**
- * KnowledgeLiveFetchTool
- *
- * Universal, domain-agnostic live crawler tool.
- * Extracts real-time content from any external web source, live document,
- * portal, news feed, catalog, or spreadsheet registered in the Knowledge Hub.
+ * KnowledgeLiveFetchTool — 1:1 match with opencode webfetch.
+ * HTTP fetch + Turndown (HTML→Markdown). No browser.
  */
 @Injectable()
 export class KnowledgeLiveFetchTool implements Tool {
@@ -35,20 +32,21 @@ export class KnowledgeLiveFetchTool implements Tool {
       name: this.name,
       displayName: this.displayName,
       description: this.description,
-      tags: ['knowledge', 'live', 'crawler', 'web', 'data', 'docs', 'news', 'portal', 'spreadsheet'],
+      tags: ['knowledge', 'live', 'fetch', 'web', 'data', 'docs', 'url'],
       inputSchema: {
-        query: 'The topic, question, keyword, item, or specific data field to extract from the live source',
-        url: 'Optional explicit web URL to crawl. If omitted, automatically resolves from workspace Knowledge nodes.',
-        options: 'Optional extraction options or dynamic query filters (e.g. { category: "...", location: "..." })',
+        url: 'The URL to fetch content from',
+        format: 'Format to return: "markdown" (default), "text", or "html"',
+        timeout: 'Optional timeout in seconds (max 120)',
+        query: 'Optional search context for knowledge resolution',
         workspaceId: 'Optional workspace identifier',
       },
-      outputType: 'json',
-      estimatedLatency: 'medium' as const,
+      outputType: 'markdown' as const,
+      estimatedLatency: 'fast' as const,
     };
   }
 
   get description(): string {
-    return 'Fetches, crawls, and extracts real-time live content from any registered external URL, web portal, news source, live catalog, documentation page, or cloud spreadsheet linked in the workspace Knowledge Hub.';
+    return 'Fetches content from any URL. Returns markdown by default. Use for web pages, documentation, APIs, live catalogs. Fast HTTP fetch — no browser overhead.';
   }
 
   get definition(): ToolDefinition {
@@ -60,24 +58,29 @@ export class KnowledgeLiveFetchTool implements Tool {
         parameters: {
           type: 'object',
           properties: {
-            query: {
-              type: 'string',
-              description: 'The search objective, question, topic, keyword, or data field to find and extract from the target page (e.g. "latest price update", "stock availability", "breaking news", "regulation rules")',
-            },
             url: {
               type: 'string',
-              description: 'Optional explicit URL to inspect. If omitted, the tool automatically matches and selects the relevant active URL from workspace Knowledge nodes.',
+              description: 'The URL to fetch content from (must start with http:// or https://)',
             },
-            options: {
-              type: 'object',
-              description: 'Optional extraction directives or query filters (e.g. { selector: "article", filters: { key: "value" } })',
+            format: {
+              type: 'string',
+              enum: ['markdown', 'text', 'html'],
+              description: 'Format to return the content in. Defaults to markdown.',
+            },
+            timeout: {
+              type: 'number',
+              description: 'Optional timeout in seconds (max 120). Default: 30.',
+            },
+            query: {
+              type: 'string',
+              description: 'Optional search context for knowledge resolution.',
             },
             workspaceId: {
               type: 'string',
-              description: 'Workspace ID to resolve registered Knowledge links.',
+              description: 'Optional workspace ID to resolve registered Knowledge links.',
             },
           },
-          required: ['query'],
+          required: ['url'],
         },
       },
     };
@@ -93,83 +96,50 @@ export class KnowledgeLiveFetchTool implements Tool {
 
   async execute(args: Record<string, any>): Promise<ToolResult> {
     const startTime = Date.now();
-    const { query, url: explicitUrl, options = {}, workspaceId } = args;
+    const { url: explicitUrl, format = 'markdown', timeout, query = '', workspaceId } = args;
 
-    if (!query || typeof query !== 'string') {
+    if (!explicitUrl || typeof explicitUrl !== 'string') {
       return {
         status: 'error',
         data: {},
-        preview: 'Parameter `query` is required.',
+        preview: 'Parameter `url` is required.',
         metadata: {
           toolName: this.name,
           displayName: this.displayName,
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'INVALID_ARGS', message: 'Parameter query is required' },
+        error: { code: 'INVALID_ARGS', message: 'Parameter url is required' },
+      };
+    }
+
+    if (!explicitUrl.startsWith('http://') && !explicitUrl.startsWith('https://')) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'URL must start with http:// or https://',
+        metadata: {
+          toolName: this.name,
+          displayName: this.displayName,
+          executionTime: Date.now() - startTime,
+        },
+        error: { code: 'INVALID_URL', message: 'URL must start with http:// or https://' },
       };
     }
 
     try {
-      let targetUrl = explicitUrl;
-
-      // Dynamically resolve target URL from workspace Knowledge links if not explicitly given
-      if (!targetUrl) {
-        const knowledgeNodes = await this.prisma.knowledge.findMany({
-          where: {
-            active: true,
-          },
-        });
-
-        // 1. Prioritize node whose title or content matches query keywords
-        const normalizedQuery = query.toLowerCase();
-        const scoredNodes = knowledgeNodes
-          .filter((n) => n.content?.startsWith('http'))
-          .map((n) => {
-            const title = n.title.toLowerCase();
-            let score = 0;
-            if (normalizedQuery.includes(title) || title.includes(normalizedQuery)) score += 10;
-            const words = normalizedQuery.split(/\s+/);
-            for (const w of words) {
-              if (w.length > 2 && title.includes(w)) score += 2;
-            }
-            return { node: n, score };
-          })
-          .sort((a, b) => b.score - a.score);
-
-        if (scoredNodes.length > 0 && scoredNodes[0].node.content) {
-          targetUrl = scoredNodes[0].node.content;
-        }
-      }
-
-      if (!targetUrl) {
-        return {
-          status: 'error',
-          data: {},
-          preview: `No active Knowledge link or URL found matching query: "${query}". Please provide an explicit URL or add a link to the Knowledge Hub.`,
-          metadata: {
-            toolName: this.name,
-            displayName: this.displayName,
-            executionTime: Date.now() - startTime,
-          },
-          error: { code: 'NO_KNOWLEDGE_URL', message: 'No active Knowledge URL configured' },
-        };
-      }
-
-      this.logger.log(
-        `[KnowledgeLiveFetch] Crawling live content: query="${query}", URL="${targetUrl}"`,
-      );
+      this.logger.log(`[KnowledgeLiveFetch] Fetching: ${explicitUrl} (format: ${format})`);
 
       const result = await this.crawlerService.fetchLiveKnowledge({
-        url: targetUrl,
+        url: explicitUrl,
         query,
-        filters: options?.filters || options,
-        selector: options?.selector,
+        format,
+        timeout,
       });
 
       return {
         status: 'success',
         data: result,
-        preview: `Live content fetched for "${query}" from "${result.title}" (${result.url}). Extracted ${result.extractedContent.length} chars.`,
+        preview: `Fetched ${result.extractedContent.length} chars from "${result.title}" (${result.url}).`,
         metadata: {
           toolName: this.name,
           displayName: this.displayName,
@@ -177,17 +147,17 @@ export class KnowledgeLiveFetchTool implements Tool {
         },
       };
     } catch (error: any) {
-      this.logger.error(`[KnowledgeLiveFetch] Crawl error: ${error.message}`);
+      this.logger.error(`[KnowledgeLiveFetch] Fetch error: ${error.message}`);
       return {
         status: 'error',
         data: {},
-        preview: `Failed to fetch live knowledge: ${error.message}`,
+        preview: `Failed to fetch: ${error.message}`,
         metadata: {
           toolName: this.name,
           displayName: this.displayName,
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'CRAWL_FAILED', message: error.message },
+        error: { code: 'FETCH_FAILED', message: error.message },
       };
     }
   }

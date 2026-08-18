@@ -7,7 +7,6 @@ import { WebSearchTool } from '../web-search.tool.js';
 import { VisionAiTool } from '../vision-ai.tool.js';
 import { ImageOcrTool } from '../image-ocr.tool.js';
 import { DocSearchTool } from '../doc-search.tool.js';
-import { KnowledgeBuilderTool } from '../knowledge-builder.tool.js';
 import { SkillsTool } from '../skills.tool.js';
 import { MemoryTool } from '../memory.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
@@ -26,7 +25,6 @@ export class HarnessMetaToolsRegistrar {
       visionAiTool: VisionAiTool;
       imageOcrTool: ImageOcrTool;
       docSearchTool: DocSearchTool;
-      knowledgeBuilderTool: KnowledgeBuilderTool;
       skillsTool: SkillsTool;
       memoryTool: MemoryTool;
       workspaceToolsService: WorkspaceToolsService;

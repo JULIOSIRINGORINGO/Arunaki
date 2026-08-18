@@ -92,7 +92,6 @@ export class ToolRegistryService {
       'invoke_subagent',
       'desktop_open_excel',
       'vision_ai',
-      'search_knowledge_graph',
       'knowledge_live_fetch',
     ]);
 
