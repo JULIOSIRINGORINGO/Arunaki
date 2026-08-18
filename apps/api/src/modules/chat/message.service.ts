@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Message, Prisma } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { MessageRepository } from './message.repository.js';
@@ -22,7 +22,7 @@ function toJsonValue(obj: InputProvenance): Prisma.JsonValue {
 
 @Injectable()
 export class MessageService extends BaseService<Message> {
-  constructor(protected readonly repository: MessageRepository) {
+  constructor(@Inject(MessageRepository) protected readonly repository: MessageRepository) {
     super(repository);
   }
 

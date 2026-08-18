@@ -22,7 +22,7 @@ export class ProviderCatalogService {
       urlKeyword: 'groq.com',
       fallbackModels: [
         'llama-3.3-70b-versatile',
-        'llama-3.1-8b-instant',
+        'llama3-70b-8192',
       ],
     },
     {
@@ -54,10 +54,10 @@ export class ProviderCatalogService {
     {
       id: 'kenari',
       name: 'Kenari',
-      baseUrl: 'https://kenari.id/v1',
+      baseUrl: 'https://openrouter.ai/api/v1',
       keyPrefix: 'kn-',
       urlKeyword: 'kenari.id',
-      fallbackModels: ['gpt-oss-120b', 'deepseek-v4-flash'],
+      fallbackModels: ['agnes-2-5-flash:free', 'deepseek-v4-flash'],
     },
   ];
 

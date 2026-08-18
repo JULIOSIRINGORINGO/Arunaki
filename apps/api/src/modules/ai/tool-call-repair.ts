@@ -85,7 +85,8 @@ const KNOWN_ARUNAKI_TOOLS = new Set([
   'edit', 'read', 'write', 'delete', 'rename', 'list', 'search_workspace',
   'extract_structured_data', 'document_reader', 'data_query', 'generate_export',
   'draft_communication', 'unit_converter', 'ask_user', 'todo_write', 'web_search',
-  'agent_spawn', 'memory_search', 'memory_store'
+  'agent_spawn', 'memory_search', 'memory_store', 'knowledge_live_fetch',
+  'knowledge_search', 'knowledge_map_lookup', 'fetch_live_page', 'live_web_extract'
 ]);
 
 /** Parse a JSON object that may use name/function/action/arguments aliases or flat top-level parameters. */
@@ -311,7 +312,43 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
     }
   }
 
-  // 1c. XML-ish tags with name attributes or inner tool call
+  // 1c. DeepSeek DSML / XML invoke format:
+  // <｜DSML｜invoke name="tool_name"><｜DSML｜parameter name="url" string="true">value</｜DSML｜parameter></｜DSML｜invoke>
+  // or <｜｜DSML｜｜invoke name="tool_name">...</｜｜DSML｜｜invoke>
+  const DSML_INVOKE_RE = /<[｜|]+(?:DSML[｜|]+)?invoke\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi;
+  const DSML_PARAM_RE = /<[｜|]+(?:DSML[｜|]+)?parameter\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?parameter>/gi;
+  
+  DSML_INVOKE_RE.lastIndex = 0;
+  while ((m = DSML_INVOKE_RE.exec(content)) !== null) {
+    const fnName = m[1];
+    const paramsBody = m[2];
+    const args: Record<string, any> = {};
+    let paramMatch: RegExpExecArray | null;
+    DSML_PARAM_RE.lastIndex = 0;
+    while ((paramMatch = DSML_PARAM_RE.exec(paramsBody)) !== null) {
+      const pName = paramMatch[1];
+      const pVal = paramMatch[2].trim();
+      try {
+        args[pName] = JSON.parse(pVal);
+      } catch {
+        args[pName] = pVal;
+      }
+    }
+    const call: RepairedToolCall = {
+      id: `repaired-tool-${Date.now()}-${calls.length}`,
+      type: 'function',
+      function: {
+        name: fnName,
+        arguments: JSON.stringify(args),
+      },
+    };
+    if (!seen.has(fnName + ':' + call.function.arguments)) {
+      seen.add(fnName + ':' + call.function.arguments);
+      calls.push(call);
+    }
+  }
+
+  // 1d. XML-ish tags with name attributes or inner tool call
   XML_ISH_TAG_RE.lastIndex = 0;
   while ((m = XML_ISH_TAG_RE.exec(content)) !== null) {
     const tag = m[0];

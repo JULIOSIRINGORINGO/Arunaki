@@ -20,8 +20,11 @@ export class SystemPromptBuilderService {
   constructor(
     @Inject(forwardRef(() => AutoPostureDetector))
     private readonly postureDetector: AutoPostureDetector,
+    @Inject(forwardRef(() => ModelRouterService))
     private readonly modelRouter: ModelRouterService,
+    @Inject(forwardRef(() => ToolRegistryService))
     private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => ContextManager))
     private readonly contextManager: ContextManager,
   ) {}
 
@@ -53,7 +56,7 @@ export class SystemPromptBuilderService {
   ): string {
     // Detect posture from conversation history (chat mode only)
     let posturePrompt = '';
-    if (mode === 'chat' && historyMessages && historyMessages.length > 0) {
+    if (mode === 'chat' && historyMessages && historyMessages.length > 0 && this.postureDetector) {
       const postureResult =
         this.postureDetector.detectPostureFromHistory(historyMessages);
       posturePrompt = this.postureDetector.getPosturePrompt(
@@ -62,9 +65,9 @@ export class SystemPromptBuilderService {
     }
 
     // Apply model-specific formatting
-    const modelAdditions = this.modelRouter.getSystemPromptAdditions(
-      currentModel || fallbackModel,
-    );
+    const modelAdditions = this.modelRouter
+      ? this.modelRouter.getSystemPromptAdditions(currentModel || fallbackModel)
+      : '';
 
     // Concise-reasoning steering: tells the model to stop deliberating and act.
     // Enabled by default; disable with ARUNAKI_CONCISE_REASONING=false.

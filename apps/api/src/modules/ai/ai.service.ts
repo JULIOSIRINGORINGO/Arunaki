@@ -323,7 +323,10 @@ export class AiService {
       }
     }
     if (!provider) {
-      provider = await this.getProviderConfig();
+      provider =
+        (await this.providerService.getActiveConfigRespectingCooldown()) ||
+        (await this.providerService.getActiveConfig()) ||
+        (await this.getProviderConfig());
     }
 
     if (!provider.apiKey) {
@@ -420,6 +423,8 @@ export class AiService {
     if (content) {
       // Always strip hallucinated XML-ish tags (Gemini/DeepSeek often leak these)
       content = content
+        .replace(/<[｜|]+(?:DSML[｜|]+)?tool_calls>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?tool_calls>/gi, '')
+        .replace(/<[｜|]+(?:DSML[｜|]+)?invoke[^>]*>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi, '')
         .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
         .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
         .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
@@ -19,6 +19,7 @@ import {
   createRunBudget,
   enterRunBudget,
 } from '../ai/token-budget.service.js';
+import { serializeToolCallHistory } from '../ai/sdk-transformer.util.js';
 
 export interface AgentRunParams {
   chatId: string;
@@ -62,20 +63,20 @@ export class AgentRunnerService {
   private readonly logger = new Logger(AgentRunnerService.name);
 
   constructor(
-    private readonly aiService: AiService,
-    private readonly toolRegistryService: ToolRegistryService,
-    private readonly knowledgeService: KnowledgeService,
-    private readonly artifactService: ArtifactService,
-    private readonly backgroundReviewService: BackgroundReviewService,
-    private readonly selfHealingService: SelfHealingService,
-    private readonly autoMemoryService: AutoMemoryService,
-    private readonly sessionAdmissionService: SessionAdmissionService,
-    private readonly messageService: MessageService,
-    private readonly transcriptService: UserTurnTranscriptService,
-    private readonly sessionEvents: SessionStateEventsService,
-    private readonly harnessRegistry: HarnessRegistryService,
-    private readonly todoStore: TodoStoreService,
-    private readonly quarantine: ContextQuarantine,
+    @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
+    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => KnowledgeService)) private readonly knowledgeService: KnowledgeService,
+    @Inject(forwardRef(() => ArtifactService)) private readonly artifactService: ArtifactService,
+    @Inject(forwardRef(() => BackgroundReviewService)) private readonly backgroundReviewService: BackgroundReviewService,
+    @Inject(forwardRef(() => SelfHealingService)) private readonly selfHealingService: SelfHealingService,
+    @Inject(forwardRef(() => AutoMemoryService)) private readonly autoMemoryService: AutoMemoryService,
+    @Optional() @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService?: SessionAdmissionService,
+    @Optional() @Inject(forwardRef(() => MessageService)) private readonly messageService?: MessageService,
+    @Optional() @Inject(forwardRef(() => UserTurnTranscriptService)) private readonly transcriptService?: UserTurnTranscriptService,
+    @Optional() @Inject(forwardRef(() => SessionStateEventsService)) private readonly sessionEvents?: SessionStateEventsService,
+    @Optional() @Inject(forwardRef(() => HarnessRegistryService)) private readonly harnessRegistry?: HarnessRegistryService,
+    @Optional() @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore?: TodoStoreService,
+    @Optional() @Inject(forwardRef(() => ContextQuarantine)) private readonly quarantine?: ContextQuarantine,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
@@ -107,10 +108,12 @@ export class AgentRunnerService {
   }
 
   async runAgentSync(params: AgentRunParams) {
-    const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
+    const lease = this.sessionAdmissionService
+      ? await this.sessionAdmissionService.acquireAdmission(params.chatId)
+      : { release: async () => {} };
     const runId = params.idempotencyKey || `sync:${params.chatId}:${Date.now()}`;
     try {
-      if (params.idempotencyKey) {
+      if (params.idempotencyKey && this.messageService) {
         const assistant = await this.messageService.findByIdempotencyKey(
           `run:${params.idempotencyKey}:assistant`,
         );
@@ -124,35 +127,35 @@ export class AgentRunnerService {
         }
       }
 
-      this.sessionEvents.record(
+      this.sessionEvents?.record(
         SessionEventType.AGENT_STARTED,
         params.chatId,
         params.chatMode || 'chat',
         { runId, sync: true },
       );
-      this.harnessRegistry.onAgentStart({
+      this.harnessRegistry?.onAgentStart({
         chatId: params.chatId,
         runId,
         userContent: params.userContent,
       });
 
-      const messages = await this.messageService.findByChatHistoryId(params.chatId);
-      this.transcriptService.createTurn(runId, params.chatId, messages.length);
-      this.transcriptService.markSentToProvider(runId);
+      const messages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      this.transcriptService?.createTurn(runId, params.chatId, messages.length);
+      this.transcriptService?.markSentToProvider(runId);
 
       const result = await this.runAgentSyncInternal(params);
 
-      const afterMessages = await this.messageService.findByChatHistoryId(params.chatId);
-      this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
-      this.transcriptService.markApproved(runId);
+      const afterMessages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      this.transcriptService?.markRuntimePersisted(runId, afterMessages.length);
+      this.transcriptService?.markApproved(runId);
 
-      this.sessionEvents.record(
+      this.sessionEvents?.record(
         SessionEventType.AGENT_COMPLETED,
         params.chatId,
         params.chatMode || 'chat',
         { runId, sync: true, toolCount: result.toolOutputs.length },
       );
-      this.harnessRegistry.onAgentComplete({
+      this.harnessRegistry?.onAgentComplete({
         chatId: params.chatId,
         runId,
         result,
@@ -160,12 +163,12 @@ export class AgentRunnerService {
 
       return result;
     } catch (error) {
-      this.harnessRegistry.onAgentError({
+      this.harnessRegistry?.onAgentError({
         chatId: params.chatId,
         runId,
         error,
       });
-      this.transcriptService.markFailed(runId);
+      this.transcriptService?.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -175,10 +178,10 @@ export class AgentRunnerService {
   private async runAgentSyncInternal(params: AgentRunParams) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
 
-    const knowledgeContext = this.quarantine.sanitizeText(
-      await this.getKnowledgeContext(params.userContent),
-      'knowledge-map',
-    );
+    const rawKnowledge = await this.getKnowledgeContext(params.userContent);
+    const knowledgeContext = this.quarantine
+      ? this.quarantine.sanitizeText(rawKnowledge, 'knowledge-map')
+      : rawKnowledge;
     const contextForTools = historyMessages
       .slice(-3)
       .map(m => m.content)
@@ -219,7 +222,7 @@ export class AgentRunnerService {
     enterRunBudget(budget);
     for (let round = 0; round < MAX_ROUNDS; round++) {
       // Inject current todo list (working memory) so LLM stays anchored
-      const todoText = this.todoStore.serialize(todoRunId);
+      const todoText = this.todoStore?.serialize(todoRunId);
       const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
       if (todoText) {
         const todoMsg = { role: 'system' as const, content: todoText };
@@ -275,7 +278,7 @@ export class AgentRunnerService {
       for (const tc of aiResponse.toolCalls) {
         let args: Record<string, any> = {};
         try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
-        this.harnessRegistry.onToolStart({
+        this.harnessRegistry?.onToolStart({
           chatId,
           runId: params.idempotencyKey || '',
           toolName: tc.function.name,
@@ -335,7 +338,7 @@ export class AgentRunnerService {
 
       // Emit in original tool_calls order so tool_call_id stays consistent
       for (const { toolCall, funcName, args, result } of executedResults) {
-        this.harnessRegistry.onToolResult({
+        this.harnessRegistry?.onToolResult({
           chatId,
           runId: params.idempotencyKey || '',
           toolName: funcName,
@@ -375,7 +378,19 @@ export class AgentRunnerService {
     }
 
     if (!finalContent && reachedMaxRounds) {
-      finalContent = 'Max step limit reached.';
+      this.logger.warn(`[AgentRunner] Reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`);
+      try {
+        const flattenedMessages = serializeToolCallHistory(messages);
+        const finalSynthesis = await this.aiService.chat(flattenedMessages, undefined, { reasoningEffort: params.reasoningEffort });
+        if (finalSynthesis.content) {
+          finalContent = finalSynthesis.content;
+        }
+      } catch (err: any) {
+        this.logger.warn(`[AgentRunner] Final synthesis fallback error: ${err.message}`);
+      }
+      if (!finalContent) {
+        finalContent = 'Eksekusi selesai.';
+      }
     }
 
     const artifactRecords = await Promise.all(
@@ -409,10 +424,12 @@ export class AgentRunnerService {
     params: AgentRunParams,
     onEvent: (event: AgentStreamEvent) => void,
   ) {
-    const lease = await this.sessionAdmissionService.acquireAdmission(params.chatId);
+    const lease = this.sessionAdmissionService
+      ? await this.sessionAdmissionService.acquireAdmission(params.chatId)
+      : { release: async () => {} };
     const runId = params.idempotencyKey || `stream:${params.chatId}:${Date.now()}`;
     try {
-      if (params.idempotencyKey) {
+      if (params.idempotencyKey && this.messageService) {
         const assistant = await this.messageService.findByIdempotencyKey(
           `run:${params.idempotencyKey}:assistant`,
         );
@@ -432,35 +449,35 @@ export class AgentRunnerService {
         }
       }
 
-      this.sessionEvents.record(
+      this.sessionEvents?.record(
         SessionEventType.AGENT_STARTED,
         params.chatId,
         params.chatMode || 'chat',
         { runId, sync: false },
       );
-      this.harnessRegistry.onAgentStart({
+      this.harnessRegistry?.onAgentStart({
         chatId: params.chatId,
         runId,
         userContent: params.userContent,
       });
 
-      const messages = await this.messageService.findByChatHistoryId(params.chatId);
-      this.transcriptService.createTurn(runId, params.chatId, messages.length);
-      this.transcriptService.markSentToProvider(runId);
+      const messages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      this.transcriptService?.createTurn(runId, params.chatId, messages.length);
+      this.transcriptService?.markSentToProvider(runId);
 
       const result = await this.runAgentStreamInternal(params, onEvent);
 
-      const afterMessages = await this.messageService.findByChatHistoryId(params.chatId);
-      this.transcriptService.markRuntimePersisted(runId, afterMessages.length);
-      this.transcriptService.markApproved(runId);
+      const afterMessages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      this.transcriptService?.markRuntimePersisted(runId, afterMessages.length);
+      this.transcriptService?.markApproved(runId);
 
-      this.sessionEvents.record(
+      this.sessionEvents?.record(
         SessionEventType.AGENT_COMPLETED,
         params.chatId,
         params.chatMode || 'chat',
         { runId, sync: false },
       );
-      this.harnessRegistry.onAgentComplete({
+      this.harnessRegistry?.onAgentComplete({
         chatId: params.chatId,
         runId,
         result,
@@ -468,12 +485,12 @@ export class AgentRunnerService {
 
       return result;
     } catch (error) {
-      this.harnessRegistry.onAgentError({
+      this.harnessRegistry?.onAgentError({
         chatId: params.chatId,
         runId,
         error,
       });
-      this.transcriptService.markFailed(runId);
+      this.transcriptService?.markFailed(runId);
       throw error;
     } finally {
       await lease.release();
@@ -492,10 +509,10 @@ export class AgentRunnerService {
         data: 'Processing message and gathering context...',
       });
 
-      const knowledgeContext = this.quarantine.sanitizeText(
-        await this.getKnowledgeContext(params.userContent),
-        'knowledge-context',
-      );
+      const rawKnowledge = await this.getKnowledgeContext(params.userContent);
+      const knowledgeContext = this.quarantine
+        ? this.quarantine.sanitizeText(rawKnowledge, 'knowledge-context')
+        : rawKnowledge;
       const contextForTools = historyMessages
         .slice(-3)
         .map(m => m.content)
@@ -533,7 +550,7 @@ export class AgentRunnerService {
       enterRunBudget(budget);
       for (let round = 0; round < MAX_ROUNDS; round++) {
         // Inject current todo list (working memory) so LLM stays anchored
-        const todoText = this.todoStore.serialize(todoRunId);
+        const todoText = this.todoStore?.serialize(todoRunId);
         const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
         if (todoText) {
           const todoMsg = { role: 'system' as const, content: todoText };
@@ -628,7 +645,7 @@ export class AgentRunnerService {
           for (const tc of aiResponse.toolCalls) {
             let args: Record<string, any> = {};
             try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
-            this.harnessRegistry.onToolStart({
+            this.harnessRegistry?.onToolStart({
               chatId,
               runId: params.idempotencyKey || '',
               toolName: tc.function.name,
@@ -664,7 +681,7 @@ export class AgentRunnerService {
           for (const { toolCall, result } of healedResults) {
             const parsedArgs = (() => { try { return JSON.parse(toolCall.function.arguments || '{}'); } catch { return {}; } })();
             toolOutputs.push({ toolName: toolCall.function.name, args: parsedArgs, result });
-            this.harnessRegistry.onToolResult({
+            this.harnessRegistry?.onToolResult({
               chatId,
               runId: params.idempotencyKey || '',
               toolName: toolCall.function.name,
@@ -723,9 +740,24 @@ export class AgentRunnerService {
       }
 
       if (!finalContent && reachedMaxRounds) {
-        finalContent = 'Max step limit reached.';
-        if (onEvent) {
-          onEvent({ type: 'text_delta', data: finalContent });
+        this.logger.warn(`[AgentRunner] Stream reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`);
+        try {
+          const flattenedMessages = serializeToolCallHistory(messages);
+          const finalSynthesis = await this.aiService.chat(flattenedMessages, undefined, { reasoningEffort: params.reasoningEffort });
+          if (finalSynthesis.content) {
+            finalContent = finalSynthesis.content;
+            if (onEvent) {
+              onEvent({ type: 'text_delta', data: finalContent });
+            }
+          }
+        } catch (err: any) {
+          this.logger.warn(`[AgentRunner] Final synthesis fallback error: ${err.message}`);
+        }
+        if (!finalContent) {
+          finalContent = 'Eksekusi selesai.';
+          if (onEvent) {
+            onEvent({ type: 'text_delta', data: finalContent });
+          }
         }
       }
 
@@ -750,13 +782,15 @@ export class AgentRunnerService {
 
       // Persist assistant message to DB BEFORE emitting done event to frontend
       try {
-        await this.messageService.createMessage({
-          chatHistoryId: params.chatId,
-          role: 'assistant',
-          content: finalContent,
-          idempotencyKey: `run:${todoRunId}:assistant`,
-          provenance: InputProvenanceFactory.internalSystem(),
-        });
+        if (this.messageService) {
+          await this.messageService.createMessage({
+            chatHistoryId: params.chatId,
+            role: 'assistant',
+            content: finalContent,
+            idempotencyKey: `run:${todoRunId}:assistant`,
+            provenance: InputProvenanceFactory.internalSystem(),
+          });
+        }
       } catch (err: any) {
         this.logger.warn(`Failed to persist assistant message: ${err.message}`);
       }

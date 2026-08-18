@@ -13,6 +13,7 @@ import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { AiModule } from '../ai/ai.module.js';
 import { ToolsModule } from '../tools/tools.module.js';
+import { ToolsProviderModule } from '../tools/tools-provider.module.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
 import { ArtifactModule } from '../artifact/artifact.module.js';
 import { MemoryModule } from '../memory/memory.module.js';
@@ -23,6 +24,7 @@ import { ProviderModule } from '../provider/provider.module.js';
     PrismaModule,
     AiModule,
     ToolsModule,
+    ToolsProviderModule,
     KnowledgeModule,
     ArtifactModule,
     MemoryModule,

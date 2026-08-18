@@ -93,9 +93,10 @@ export class DataQueryTool {
     }
 
     try {
-      this.logger.log(`Executing query: ${sql.substring(0, 100)}`);
+      const normalizedSql = sql.replace(/\bILIKE\b/gi, 'LIKE');
+      this.logger.log(`Executing query: ${normalizedSql.substring(0, 100)}`);
 
-      const rawResult = await this.prisma.$queryRawUnsafe(sql);
+      const rawResult = await this.prisma.$queryRawUnsafe(normalizedSql);
       const result = this.serializeBigInt(rawResult);
 
       const preview = Array.isArray(result)

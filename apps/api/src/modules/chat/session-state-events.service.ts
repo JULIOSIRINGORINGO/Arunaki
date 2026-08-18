@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { randomUUID } from 'node:crypto';
 
@@ -30,7 +30,7 @@ export class SessionStateEventsService implements OnModuleInit {
   private readonly logger = new Logger(SessionStateEventsService.name);
   private cleanupCounter = 0;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async onModuleInit(): Promise<void> {
     await this.ensureTable();

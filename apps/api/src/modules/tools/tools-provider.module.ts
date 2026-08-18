@@ -50,8 +50,12 @@ import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.regis
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
 
+import { PrismaModule } from '../../common/providers/prisma.module.js';
+import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js';
+
 @Module({
   imports: [
+    PrismaModule,
     ParserModule,
     KnowledgeModule,
     StorageModule,
@@ -74,6 +78,7 @@ import { ToolResultCacheService } from './services/tool-result-cache.service.js'
     DocSearchTool,
     KnowledgeBuilderTool,
     KnowledgeSearchTool,
+    KnowledgeLiveFetchTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
@@ -112,6 +117,7 @@ import { ToolResultCacheService } from './services/tool-result-cache.service.js'
     DocSearchTool,
     KnowledgeBuilderTool,
     KnowledgeSearchTool,
+    KnowledgeLiveFetchTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
@@ -196,5 +202,11 @@ export class ToolsProviderModule implements OnModuleInit {
       desktopBridge: this.moduleRef.get(DesktopBridgeService, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
     });
+
+    // 5. Register Knowledge Tools
+    const knowledgeLiveFetch = this.moduleRef.get(KnowledgeLiveFetchTool, { strict: false });
+    if (knowledgeLiveFetch) {
+      this.registry.register(knowledgeLiveFetch);
+    }
   }
 }
