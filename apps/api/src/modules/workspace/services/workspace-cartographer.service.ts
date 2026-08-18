@@ -7,7 +7,7 @@ import { SubAgentRunnerService } from '../../chat/sub-agent-runner.service.js';
 
 const ARUNAKI_RULES_FILENAME = 'ARUNAKI.md';
 const ARUNAKI_DIR = '.arunaki';
-const MAX_SAMPLE_LINES = 40;
+const MAX_SAMPLE_LINES = 200;
 const MAX_FILES_TO_SAMPLE = 12;
 
 export interface WorkspaceFileMetadata {
@@ -226,30 +226,32 @@ export class WorkspaceCartographerService {
       const sampleSummary = samples
         .map(
           (s) =>
-            `### File: \`${s.name}\` (${(s.size / 1024).toFixed(1)} KB)\n\`\`\`\n${s.sampleContent.slice(0, 1000)}\n\`\`\``,
+            `### File: \`${s.name}\` (${(s.size / 1024).toFixed(1)} KB)\n\`\`\`\n${s.sampleContent.slice(0, 4000)}\n\`\`\``,
         )
         .join('\n\n');
 
-      const prompt = `Analyze these sampled files in workspace "${workspaceName}":
+      const prompt = `Analyze the sampled files from workspace "${workspaceName}":
 
 ${sampleSummary}
 
-${existingRules ? `PREVIOUS EXISTING RULES:\n${existingRules.slice(0, 1000)}\n` : ''}
+${existingRules ? `PREVIOUS RULES (IF ANY):\n${existingRules.slice(0, 1000)}\n` : ''}
 
 TASK:
-Create an operational rulebook named "ARUNAKI.md" for the Arunaki AI document agent.
+Create an operational rulebook named "ARUNAKI.md" for the Arunaki autonomous document agent.
 
-Core Guidelines:
-1. Scan & Map Files: Deduce the workspace purpose, file relationships, and data schemas directly from the samples.
-2. Tool Usage Directives:
-   - Use \`read\` to inspect document contents and look up reference data.
-   - Use \`write\` ONLY to create brand-new files.
-   - Use \`edit\` to update, insert, or modify existing files (always surgical line edits; never overwrite history).
+Core Directives:
+1. File & Schema Mapping:
+   - Thoroughly inspect all sampled files to deduce the workspace's exact domain, document roles, schemas, lifecycle, and cross-file relationships directly from the content.
+2. Tool Usage Rules:
+   - \`read\`: Inspect file content, look up references, or check current state before modifying data.
+   - \`write\`: ONLY create brand-new files. Never use write to overwrite existing files.
+   - \`edit\`: Perform surgical line edits on existing files (preserve structure, template syntax, and historical records).
 3. Minimal Typing, Maximum Automation:
-   - Implicit Ingestion on Raw Text: If the user simply pastes raw text lines, chat notes, or transaction snippets (even without any introductory command or verb), IMMEDIATELY treat it as a direct command to record and reconcile the data into the appropriate active file. NEVER ask "What would you like me to do with this?".
-   - Pattern Matching: Match the pasted syntax to the document's existing line formats, insert entries into the correct section, route payment methods to corresponding ledger/bank totals, and recalculate balances in a single pass.
+   - Ingest raw user notes, chat messages, or unformatted data snippets directly without demanding clean formatting.
+   - Execute all cascading multi-file updates, calculations, and status tracking autonomously in a single turn.
+   - Pattern match user input to existing document formats and apply updates to the appropriate files without asking redundant questions.
 
-Output ONLY the raw Markdown content for ARUNAKI.md without conversational preamble.`;
+Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer code fences.`;
 
       // 1. If SubAgentRunner is available, execute via isolated Sub-Agent sandbox
       if (this.subAgentRunner) {
@@ -328,8 +330,8 @@ ${fileEntries || '- (No files indexed yet)'}
 - **Edit**: Always use surgical \`edit\` to insert or update existing records without wiping historical data.
 
 ## 3. Minimal Typing, Maximum Automation
-- **Implicit Action on Raw Text**: When raw notes or transaction snippets are pasted (even with no command verb), immediately record them into the appropriate active ledger file. NEVER ask "What should I do with this?".
-- **Single-Turn Ripple Updates**: Parse payment methods, insert rows in correct sections, and recalculate all totals, bank breakdowns, and cash drawer balances in a single pass.
+- **Implicit Ingestion**: When raw text or unformatted data snippets are provided without an introductory command, immediately match them to the relevant document structure and apply the updates. NEVER ask "What should I do with this?".
+- **Single-Turn Ripple Updates**: Autonomously execute all cascading mutations, calculations, and status tracking across affected documents in a single pass.
 
 ## 4. User Preferences & Learned Corrections
 - [Initial System Baseline]: Active operating rules synchronized for ${workspaceName}.
