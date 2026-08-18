@@ -97,16 +97,21 @@ USER DIRECTIVES:
 ${combinedUserText.slice(0, 1500)}
 
 CURRENT ARUNAKI.MD RULES:
-${currentRules.slice(0, 2000)}
+${currentRules.slice(0, 3000)}
 
 TASK:
-Determine if the user's message contains a NEW business rule, workflow requirement, calculation constraint, or explicit correction that is NOT yet clearly captured in ARUNAKI.MD.
+Determine if the user's message introduces a NEW rule, UPDATES/REPLACES an existing learned rule, or requires NO changes.
 
-RULES:
-- If NO new rule, correction, or constraint was introduced (just normal work request): output strictly "NO_CHANGE".
-- If a NEW rule/correction was introduced: summarize it as a single crisp, actionable rule line (max 1-2 sentences). Do not include date prefixes.
+OPTIONS:
+1. If NO new rule or operational constraint was changed: output strictly "NO_CHANGE".
+2. If the user's message MODIFIES, OVERRIDES, or REPLACES a previous learned rule under "User Preferences & Learned Corrections":
+   Output format:
+   REPLACE: [snippet from the old learned rule to replace] -> [new concise actionable rule]
+3. If it is a completely NEW rule that does not conflict with existing rules:
+   Output format:
+   ADD: [new concise actionable rule]
 
-Output ONLY "NO_CHANGE" or the concise rule string.`;
+Output ONLY "NO_CHANGE", "REPLACE: <old> -> <new>", or "ADD: <new>".`;
 
       const response = await this.aiService.chat([
         {

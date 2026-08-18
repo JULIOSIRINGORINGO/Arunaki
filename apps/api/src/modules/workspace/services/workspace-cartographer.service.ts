@@ -143,17 +143,86 @@ export class WorkspaceCartographerService {
       }
 
       const timestamp = new Date().toISOString().split('T')[0];
-      const entry = `- [Auto-Learned ${timestamp}]: ${learnedCorrection.trim()}`;
 
-      if (content.includes(learnedCorrection.trim())) {
-        return; // Avoid duplicate entries
+      let oldSnippet = '';
+      let newRule = learnedCorrection.trim();
+
+      if (newRule.startsWith('REPLACE:')) {
+        const parts = newRule.replace('REPLACE:', '').split('->');
+        if (parts.length === 2) {
+          oldSnippet = parts[0].trim().replace(/^\[|\]$/g, '');
+          newRule = parts[1].trim();
+        }
+      } else if (newRule.startsWith('ADD:')) {
+        newRule = newRule.replace('ADD:', '').trim();
       }
 
-      if (content.includes('## 7. User Preferences & Learned Corrections')) {
-        content = content.replace(
-          '## 7. User Preferences & Learned Corrections',
-          `## 7. User Preferences & Learned Corrections\n${entry}`,
-        );
+      const entry = `- [Auto-Learned ${timestamp}]: ${newRule}`;
+
+      // Avoid exact duplicate
+      if (content.includes(newRule)) {
+        return;
+      }
+
+      const prefHeaderRegex = /## (\d+\. )?User Preferences & Learned Corrections/i;
+      const prefMatch = content.match(prefHeaderRegex);
+
+      if (prefMatch && prefMatch.index !== undefined) {
+        const prefIndex = prefMatch.index;
+        const beforePref = content.slice(0, prefIndex);
+        let prefSection = content.slice(prefIndex);
+
+        if (oldSnippet && prefSection.toLowerCase().includes(oldSnippet.toLowerCase())) {
+          const prefLines = prefSection.split('\n');
+          let replaced = false;
+          prefSection = prefLines
+            .map((line) => {
+              if (!replaced && line.toLowerCase().includes(oldSnippet.toLowerCase())) {
+                replaced = true;
+                return entry;
+              }
+              return line;
+            })
+            .join('\n');
+        } else {
+          const lines = prefSection.split('\n');
+          const headerLine = lines[0];
+          const restLines = lines.slice(1);
+
+          // Check if existing learned bullets discuss the same subject and supersede them
+          const keywords = newRule
+            .toLowerCase()
+            .split(/[\s,()"'`\-_.:;]+/)
+            .filter((w) => w.length >= 3)
+            .map((w) => w.slice(0, 4));
+
+          let replacedOld = false;
+          const filteredRest: string[] = [];
+
+          for (const l of restLines) {
+            if (l.trim().startsWith('- [')) {
+              const matchCount = keywords.filter((k) => l.toLowerCase().includes(k)).length;
+              if (matchCount >= 2) {
+                if (!replacedOld) {
+                  filteredRest.push(entry);
+                  replacedOld = true;
+                }
+                continue; // Drop conflicting older line
+              }
+            }
+            if (l.trim().length > 0) {
+              filteredRest.push(l);
+            }
+          }
+
+          if (!replacedOld) {
+            filteredRest.unshift(entry);
+          }
+
+          prefSection = [headerLine, ...filteredRest].join('\n');
+        }
+
+        content = beforePref + prefSection;
       } else {
         content += `\n\n## 7. User Preferences & Learned Corrections\n${entry}\n`;
       }
@@ -166,7 +235,7 @@ export class WorkspaceCartographerService {
 
       // Sync to Knowledge Graph database
       await this.syncToKnowledgeDb(workspaceId, workspace.name, content);
-      this.logger.log(`[Cartographer] Dynamic rule learned & patched: "${learnedCorrection.slice(0, 60)}..."`);
+      this.logger.log(`[Cartographer] Dynamic rule learned & patched: "${newRule.slice(0, 60)}..."`);
     } catch (err: any) {
       this.logger.warn(`[Cartographer] Failed to patch rules: ${err.message}`);
     }
