@@ -237,19 +237,12 @@ ${sampleSummary}
 ${existingRules ? `PREVIOUS RULES (IF ANY):\n${existingRules.slice(0, 1000)}\n` : ''}
 
 TASK:
-Create an operational rulebook named "ARUNAKI.md" for the Arunaki autonomous document agent.
+You are the Cartographer for Arunaki. Inspect all documents in this workspace, understand their schemas, workflows, and operational rules, and synthesize a comprehensive operational rulebook named "ARUNAKI.md".
 
-Core Directives:
-1. File & Schema Mapping:
-   - Thoroughly inspect all sampled files to deduce the workspace's exact domain, document roles, schemas, lifecycle, and cross-file relationships directly from the content.
-2. Tool Usage Rules:
-   - \`read\`: Inspect file content, look up references, or check current state before modifying data.
-   - \`write\`: ONLY create brand-new files. Never use write to overwrite existing files.
-   - \`edit\`: Perform surgical line edits on existing files (preserve structure, template syntax, and historical records).
-3. Minimal Typing, Maximum Automation:
-   - Ingest raw user notes, chat messages, or unformatted data snippets directly without demanding clean formatting.
-   - Execute all cascading multi-file updates, calculations, and status tracking autonomously in a single turn.
-   - Pattern match user input to existing document formats and apply updates to the appropriate files without asking redundant questions.
+Guidelines:
+1. Deduce the exact domain, purpose, structure, and cross-file relationships directly from the file samples.
+2. Define clear operational rules for document automation (when to read, when to create new files, when to edit surgically).
+3. Ensure the rules enable the AI agent to handle raw user inputs autonomously with Minimal Typing and Maximum Automation.
 
 Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer code fences.`;
 
