@@ -1,16 +1,15 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { MemoryService } from './memory.service.js';
 import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js';
+import { AiService } from '../ai/ai.service.js';
 
 /**
  * BackgroundReviewService — auto-learn after every turn.
  *
- * Inspired OpenClaw's background_review that runs after every agent turn.
- * Extracts new facts, preferences, and corrections from conversations
- * and automatically saves them to memory.
- *
- * This ensures memory stays fresh and relevant without manual intervention.
+ * Inspired by OpenClaw's background_review that runs after every agent turn.
+ * Extracts new facts, preferences, and corrections from conversations via LLM
+ * and automatically saves them to memory without false-positive regex pollution.
  */
 @Injectable()
 export class BackgroundReviewService {
@@ -20,15 +19,12 @@ export class BackgroundReviewService {
     @Inject(forwardRef(() => MemoryService)) private readonly memoryService: MemoryService,
     @Inject(forwardRef(() => SkillSelfImproveService)) private readonly skillSelfImproveService: SkillSelfImproveService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
+    @Optional() @Inject(forwardRef(() => AiService)) private readonly aiService?: AiService,
   ) {}
 
   /**
    * Review a conversation turn and extract learnable information.
    * Called after each chat/workspace completion.
-   *
-   * @param messages - Recent conversation messages
-   * @param workspaceId - Optional workspace ID
-   * @param domain - Business domain (garment, restaurant, retail, generic)
    */
   async reviewAndLearn(
     messages: Array<{ role: string; content: string }>,
@@ -36,7 +32,6 @@ export class BackgroundReviewService {
     domain = 'generic',
   ): Promise<void> {
     try {
-      // Only review if there's meaningful content
       const userMessages = messages.filter((m) => m.role === 'user');
       const assistantMessages = messages.filter((m) => m.role === 'assistant');
 
@@ -44,10 +39,10 @@ export class BackgroundReviewService {
         return;
       }
 
-      // Extract learnable information from the conversation
-      const learnings = this.extractLearnings(messages);
+      // Extract learnable information via LLM to prevent false positives
+      const learnings = await this.extractLearningsViaLlm(messages);
+      if (learnings.length === 0) return;
 
-      // Save each learning to memory
       const savedLearnings: Array<{
         type: string;
         content: string;
@@ -67,7 +62,6 @@ export class BackgroundReviewService {
         });
       }
 
-      // Skill self-improve: update relevant skills based on learnings
       if (savedLearnings.length > 0) {
         await this.skillSelfImproveService.improveSkillsFromLessons(
           savedLearnings as Array<{
@@ -78,122 +72,79 @@ export class BackgroundReviewService {
             importance: number;
           }>,
         );
-
-        // Dynamically patch living ARUNAKI.md rules file if workspaceId is present
-        if (workspaceId) {
-          try {
-            const { WorkspaceCartographerService } = await import(
-              '../workspace/services/workspace-cartographer.service.js'
-            );
-            const cartographer = this.moduleRef.get(WorkspaceCartographerService, { strict: false });
-            if (cartographer) {
-              for (const item of savedLearnings) {
-                if (item.type === 'correction' || item.type === 'preference') {
-                  await cartographer.patchWorkspaceRules(workspaceId, item.content);
-                }
-              }
-            }
-          } catch {
-            // non-fatal
-          }
-        }
       }
 
-      if (learnings.length > 0) {
-        this.logger.log(
-          `Background review: extracted ${learnings.length} learnings`,
-        );
-      }
+      this.logger.log(`[BackgroundReview] Extracted & saved ${savedLearnings.length} verified learnings.`);
     } catch (err: any) {
-      this.logger.warn(`Background review failed: ${err.message}`);
+      this.logger.warn(`[BackgroundReview] Review non-fatal error: ${err.message}`);
     }
   }
 
   /**
-   * Extract learnable information from messages.
-   * Returns array of learnings with type, key, content, and importance.
+   * Extract learnable facts and preferences using LLM reasoning (0% dumb regex).
    */
-  private extractLearnings(
+  private async extractLearningsViaLlm(
     messages: Array<{ role: string; content: string }>,
-  ): Array<{
+  ): Promise<Array<{
     type: string;
     key: string;
     content: string;
     importance: number;
-  }> {
-    const learnings: Array<{
-      type: string;
-      key: string;
-      content: string;
-      importance: number;
-    }> = [];
-
-    const conversationText = messages
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
-
-    // Detect corrections (user corrected the agent)
-    const correctionPatterns = [
-      /(?:salah|wrong|bukan|not|ga|gak|tidak)\s+(?:begini|gitu|seperti|like)\s+(.+)/i,
-      /(?:seharusnya|should be|actually|actually)\s+(.+)/i,
-      /(?:jangan|don't|don't)\s+(.+)/i,
-      /(?:ganti|change|replace|update)\s+(?:ke|to)\s+(.+)/i,
-    ];
-
-    for (const pattern of correctionPatterns) {
-      const match = conversationText.match(pattern);
-      if (match) {
-        learnings.push({
-          type: 'correction',
-          key: `correction-${Date.now()}`,
-          content: match[0].substring(0, 200),
-          importance: 9,
-        });
-        break;
+  }>> {
+    let ai = this.aiService;
+    if (!ai) {
+      try {
+        ai = this.moduleRef.get(AiService, { strict: false });
+      } catch {
+        // AI service unavailable
       }
     }
 
-    // Detect preferences (user expressed a preference)
-    const preferencePatterns = [
-      /(?:suka|like|prefer|pilih|gunakan|use)\s+(.+)/i,
-      /(?:jangan pakai|avoid|don't use)\s+(.+)/i,
-      /(?:selalu|always)\s+(.+)/i,
-      /(?:tidak pernah|never)\s+(.+)/i,
-    ];
+    if (!ai) return [];
 
-    for (const pattern of preferencePatterns) {
-      const match = conversationText.match(pattern);
-      if (match) {
-        learnings.push({
-          type: 'preference',
-          key: `preference-${Date.now()}`,
-          content: match[0].substring(0, 200),
-          importance: 7,
-        });
-        break;
+    try {
+      const conversationText = messages
+        .map((m) => `${m.role}: ${m.content}`)
+        .join('\n');
+
+      const prompt = `Review this conversation turn:
+${conversationText.slice(0, 1500)}
+
+TASK:
+Determine if the user stated any genuine, permanent business facts or working preferences.
+- If the conversation is casual banter, ordinary work execution, or general talk, output strictly "[]".
+- If genuine facts or preferences were stated, return a JSON array:
+[{"type": "preference" | "business_fact" | "correction", "content": "concise description", "importance": 8}]
+
+Output ONLY the raw JSON array without markdown fences.`;
+
+      const response = await ai.chat([
+        {
+          role: 'system',
+          content: 'You are an AI memory extraction agent. Never generate false positives for normal conversation.',
+        },
+        { role: 'user', content: prompt },
+      ]);
+
+      const raw = (response?.content || '').trim().replace(/```json|```/g, '').trim();
+      if (!raw || raw === '[]' || !raw.startsWith('[')) {
+        return [];
       }
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed
+        .filter((item) => item && typeof item.content === 'string' && item.content.trim().length > 3)
+        .map((item, idx) => ({
+          type: item.type || 'preference',
+          key: `learning-${Date.now()}-${idx}`,
+          content: item.content.trim().slice(0, 200),
+          importance: typeof item.importance === 'number' ? item.importance : 7,
+        }));
+    } catch {
+      return [];
     }
-
-    // Detect declarative facts or notes (e.g., "info:", "catatan:", "note:", "aturan:", or "key: value")
-    const factPatterns = [
-      /(?:catatan|note|info|fakta|perhatian|notice|ketentuan)\s*[:=]\s*(.+)/i,
-      /(?:penting|important)\s*[:=]?\s*(.+)/i,
-    ];
-
-    for (const pattern of factPatterns) {
-      const match = conversationText.match(pattern);
-      if (match) {
-        learnings.push({
-          type: 'business_fact',
-          key: `fact-${Date.now()}`,
-          content: match[0].substring(0, 200),
-          importance: 8,
-        });
-        break;
-      }
-    }
-
-    return learnings;
   }
 
   /**
@@ -220,7 +171,6 @@ export class BackgroundReviewService {
         workspaceId,
       });
     } catch (err: any) {
-      // Duplicate prevention — expected behavior
       if (err.message?.includes('duplicate') || err.code === 'P2002') {
         this.logger.debug(`Duplicate learning skipped: ${learning.key}`);
       } else {
