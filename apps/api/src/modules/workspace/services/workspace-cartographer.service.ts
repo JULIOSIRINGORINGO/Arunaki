@@ -246,8 +246,8 @@ Core Guidelines:
    - Use \`write\` ONLY to create brand-new files.
    - Use \`edit\` to update, insert, or modify existing files (always surgical line edits; never overwrite history).
 3. Minimal Typing, Maximum Automation:
-   - Ingest raw user notes / chat messages without demanding clean formatting.
-   - Automatically cross-reference and update related files (e.g. log transactions, sync stock/master data, recalculate balance totals) in a single turn.
+   - Implicit Ingestion on Raw Text: If the user simply pastes raw text lines, chat notes, or transaction snippets (even without any introductory command or verb), IMMEDIATELY treat it as a direct command to record and reconcile the data into the appropriate active file. NEVER ask "What would you like me to do with this?".
+   - Pattern Matching: Match the pasted syntax to the document's existing line formats, insert entries into the correct section, route payment methods to corresponding ledger/bank totals, and recalculate balances in a single pass.
 
 Output ONLY the raw Markdown content for ARUNAKI.md without conversational preamble.`;
 
@@ -328,9 +328,8 @@ ${fileEntries || '- (No files indexed yet)'}
 - **Edit**: Always use surgical \`edit\` to insert or update existing records without wiping historical data.
 
 ## 3. Minimal Typing, Maximum Automation
-- Ingest raw text and user notes directly without requiring clean formatting.
-- Automatically cross-reference and update related files in a single pass.
-- Recalculate totals and balance summaries automatically on every mutation.
+- **Implicit Action on Raw Text**: When raw notes or transaction snippets are pasted (even with no command verb), immediately record them into the appropriate active ledger file. NEVER ask "What should I do with this?".
+- **Single-Turn Ripple Updates**: Parse payment methods, insert rows in correct sections, and recalculate all totals, bank breakdowns, and cash drawer balances in a single pass.
 
 ## 4. User Preferences & Learned Corrections
 - [Initial System Baseline]: Active operating rules synchronized for ${workspaceName}.
