@@ -174,21 +174,18 @@ export class BackgroundReviewService {
       }
     }
 
-    // Detect business facts (user mentioned specific business info)
-    const businessPatterns = [
-      /(?:harga|price|rp|idr)\s*[:=]?\s*(.+)/i,
-      /(?:stok|stock|inventory)\s*[:=]?\s*(.+)/i,
-      /(?:pelanggan|customer|client)\s*[:=]?\s*(.+)/i,
-      /(?:supplier|vendor)\s*[:=]?\s*(.+)/i,
-      /(?:produk|product|barang)\s*[:=]?\s*(.+)/i,
+    // Detect declarative facts or notes (e.g., "info:", "catatan:", "note:", "aturan:", or "key: value")
+    const factPatterns = [
+      /(?:catatan|note|info|fakta|perhatian|notice|ketentuan)\s*[:=]\s*(.+)/i,
+      /(?:penting|important)\s*[:=]?\s*(.+)/i,
     ];
 
-    for (const pattern of businessPatterns) {
+    for (const pattern of factPatterns) {
       const match = conversationText.match(pattern);
       if (match) {
         learnings.push({
           type: 'business_fact',
-          key: `business-${Date.now()}`,
+          key: `fact-${Date.now()}`,
           content: match[0].substring(0, 200),
           importance: 8,
         });
