@@ -12,6 +12,14 @@ coverage/
 !.env.example
 .DS_Store
 Thumbs.db
+desktop.ini
+Desktop.ini
+ehthumbs.db
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
 apps/api/prisma/dev.db
 apps/api/prisma/dev.db-wal
 apps/api/prisma/dev.db-shm
@@ -19,6 +27,9 @@ apps/api/dev.db
 apps/api/dev.db-wal
 apps/api/dev.db-shm
 apps/api/workspace-data/
+.vscode/
+!.vscode/extensions.json
+.idea/
 
 # Ignored experimental / local files
 REKAPAN TERBARU2.txt

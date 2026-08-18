@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
-import { AgentRunnerService } from './modules/chat/agent-runner.service.js';
-import { PrismaService } from './common/providers/prisma.service.js';
-import { ProviderService } from './modules/provider/provider.service.js';
+import { AppModule } from '../src/app.module.js';
+import { AgentRunnerService } from '../src/modules/chat/agent-runner.service.js';
+import { PrismaService } from '../src/common/providers/prisma.service.js';
+import { ProviderService } from '../src/modules/provider/provider.service.js';
 import { Logger } from '@nestjs/common';
 
 const logger = new Logger('ModelTest');
