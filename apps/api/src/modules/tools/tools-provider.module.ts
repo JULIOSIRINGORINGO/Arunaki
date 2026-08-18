@@ -138,10 +138,10 @@ export class ToolsProviderModule implements OnModuleInit {
     @Inject(forwardRef(() => ToolRegistryService)) private readonly registry: ToolRegistryService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
     @Inject(forwardRef(() => ContextQuarantine)) private readonly contextQuarantine: ContextQuarantine,
-    private readonly workspaceFileToolsRegistrar: WorkspaceFileToolsRegistrar,
-    private readonly businessDomainToolsRegistrar: BusinessDomainToolsRegistrar,
-    private readonly harnessMetaToolsRegistrar: HarnessMetaToolsRegistrar,
-    private readonly desktopToolsRegistrar: DesktopToolsRegistrar,
+    @Inject(forwardRef(() => WorkspaceFileToolsRegistrar)) private readonly workspaceFileToolsRegistrar: WorkspaceFileToolsRegistrar,
+    @Inject(forwardRef(() => BusinessDomainToolsRegistrar)) private readonly businessDomainToolsRegistrar: BusinessDomainToolsRegistrar,
+    @Inject(forwardRef(() => HarnessMetaToolsRegistrar)) private readonly harnessMetaToolsRegistrar: HarnessMetaToolsRegistrar,
+    @Inject(forwardRef(() => DesktopToolsRegistrar)) private readonly desktopToolsRegistrar: DesktopToolsRegistrar,
     @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { MemoryService } from './memory.service.js';
 import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js';
@@ -17,8 +17,8 @@ export class BackgroundReviewService {
   private readonly logger = new Logger(BackgroundReviewService.name);
 
   constructor(
-    private readonly memoryService: MemoryService,
-    private readonly skillSelfImproveService: SkillSelfImproveService,
+    @Inject(forwardRef(() => MemoryService)) private readonly memoryService: MemoryService,
+    @Inject(forwardRef(() => SkillSelfImproveService)) private readonly skillSelfImproveService: SkillSelfImproveService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 

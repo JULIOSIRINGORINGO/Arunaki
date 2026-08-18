@@ -26,6 +26,7 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     private readonly cartographerService: WorkspaceCartographerService,
     @Inject(forwardRef(() => AiService))
     private readonly aiService: AiService,
+    @Inject(forwardRef(() => PrismaService))
     private readonly prisma: PrismaService,
   ) {}
 

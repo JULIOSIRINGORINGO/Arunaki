@@ -24,7 +24,7 @@ export class WorkspaceCartographerService {
   private rulesCache = new Map<string, { content: string; mtime: number }>();
 
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
     @Optional() @Inject(forwardRef(() => SubAgentRunnerService)) private readonly subAgentRunner?: SubAgentRunnerService,
   ) {}
@@ -53,7 +53,7 @@ export class WorkspaceCartographerService {
       this.rulesCache.set(workspaceRoot, { content, mtime: stats.mtimeMs });
       return content;
     } catch {
-      // If .arunaki/ARUNAKI.md does not exist yet, check root ARUNAKI.md fallback
+      // Fallback to root ARUNAKI.md if .arunaki/ARUNAKI.md does not exist yet
       const rootPath = path.join(workspaceRoot, ARUNAKI_RULES_FILENAME);
       try {
         const content = await fsp.readFile(rootPath, 'utf8');
@@ -88,30 +88,30 @@ export class WorkspaceCartographerService {
       try {
         existingRules = await fsp.readFile(targetRulesPath, 'utf8');
       } catch {
-        // Doesn't exist yet
+        // Does not exist yet
       }
 
       this.logger.log(`[Cartographer] Starting background analysis for workspace "${workspace.name}"...`);
 
-      // 1. Scan directory non-recursively (top-level files)
+      // 1. Scan top-level workspace files
       const fileSamples = await this.gatherWorkspaceSamples(rootPath);
       if (fileSamples.length === 0) {
         this.logger.log(`[Cartographer] Workspace "${workspace.name}" has no text/data files to analyze.`);
         return;
       }
 
-      // 2. Synthesize ARUNAKI.md via lightweight LLM call or smart heuristic generator
+      // 2. Synthesize ARUNAKI.md via LLM or generic fallback
       const generatedRules = await this.synthesizeOperatingRules(workspace.name, fileSamples, existingRules);
 
       // 3. Save to .arunaki/ARUNAKI.md
       await fsp.mkdir(path.join(rootPath, ARUNAKI_DIR), { recursive: true });
       await fsp.writeFile(targetRulesPath, generatedRules, 'utf8');
 
-      // Update cache
+      // Update in-memory cache
       const stat = await fsp.stat(targetRulesPath);
       this.rulesCache.set(rootPath, { content: generatedRules, mtime: stat.mtimeMs });
 
-      // 4. Sync into Knowledge Graph DB so it appears cleanly in the UI Knowledge Page
+      // 4. Sync into Knowledge Graph database
       await this.syncToKnowledgeDb(workspaceId, workspace.name, generatedRules);
 
       this.logger.log(`[Cartographer] Autonomous ARUNAKI.md created & synced successfully for "${workspace.name}".`);
@@ -139,23 +139,23 @@ export class WorkspaceCartographerService {
       try {
         content = await fsp.readFile(rulesPath, 'utf8');
       } catch {
-        content = `# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain & Business Profile\n- Workspace: ${workspace.name}\n\n## 4. User Preferences & Learned Corrections\n`;
+        content = `# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain & Business Profile\n- Workspace: ${workspace.name}\n\n## 7. User Preferences & Learned Corrections\n`;
       }
 
       const timestamp = new Date().toISOString().split('T')[0];
       const entry = `- [Auto-Learned ${timestamp}]: ${learnedCorrection.trim()}`;
 
       if (content.includes(learnedCorrection.trim())) {
-        return; // Avoid duplicates
+        return; // Avoid duplicate entries
       }
 
-      if (content.includes('## 4. User Preferences & Learned Corrections')) {
+      if (content.includes('## 7. User Preferences & Learned Corrections')) {
         content = content.replace(
-          '## 4. User Preferences & Learned Corrections',
-          `## 4. User Preferences & Learned Corrections\n${entry}`,
+          '## 7. User Preferences & Learned Corrections',
+          `## 7. User Preferences & Learned Corrections\n${entry}`,
         );
       } else {
-        content += `\n\n## 4. User Preferences & Learned Corrections\n${entry}\n`;
+        content += `\n\n## 7. User Preferences & Learned Corrections\n${entry}\n`;
       }
 
       await fsp.mkdir(path.join(workspace.rootPath, ARUNAKI_DIR), { recursive: true });
@@ -164,7 +164,7 @@ export class WorkspaceCartographerService {
       const stat = await fsp.stat(rulesPath);
       this.rulesCache.set(workspace.rootPath, { content, mtime: stat.mtimeMs });
 
-      // Sync to Knowledge Graph DB
+      // Sync to Knowledge Graph database
       await this.syncToKnowledgeDb(workspaceId, workspace.name, content);
       this.logger.log(`[Cartographer] Dynamic rule learned & patched: "${learnedCorrection.slice(0, 60)}..."`);
     } catch (err: any) {
@@ -226,38 +226,30 @@ export class WorkspaceCartographerService {
       const sampleSummary = samples
         .map(
           (s) =>
-            `### File: \`${s.name}\` (${(s.size / 1024).toFixed(1)} KB)\n\`\`\`\n${s.sampleContent.slice(0, 800)}\n\`\`\``,
+            `### File: \`${s.name}\` (${(s.size / 1024).toFixed(1)} KB)\n\`\`\`\n${s.sampleContent.slice(0, 1000)}\n\`\`\``,
         )
         .join('\n\n');
 
-      const prompt = `You are the Cartographer Engine for Arunaki, an autonomous document assistant.
-Analyze these files in workspace "${workspaceName}" and construct a living system prompt rulebook named "ARUNAKI.md".
+      const prompt = `Analyze these sampled files in workspace "${workspaceName}":
 
-FILES SAMPLED FROM WORKSPACE:
 ${sampleSummary}
 
-${existingRules ? `EXISTING RULES TO PRESERVE:\n${existingRules.slice(0, 1000)}\n` : ''}
+${existingRules ? `PREVIOUS EXISTING RULES:\n${existingRules.slice(0, 1000)}\n` : ''}
 
-Instructions:
-Carefully deduce the nature of the workspace based strictly on the provided file samples (e.g. accounting, legal, retail, logistics, manufacturing, education, medical, personal records, software, etc.).
+TASK:
+Create an operational rulebook named "ARUNAKI.md" for the Arunaki AI document agent.
 
-Generate a concise, crisp, and high-precision markdown rulebook formatted strictly with these 4 sections:
-# ARUNAKI WORKSPACE OPERATING SYSTEM
+Core Guidelines:
+1. Scan & Map Files: Deduce the workspace purpose, file relationships, and data schemas directly from the samples.
+2. Tool Usage Directives:
+   - Use \`read\` to inspect document contents and look up reference data.
+   - Use \`write\` ONLY to create brand-new files.
+   - Use \`edit\` to update, insert, or modify existing files (always surgical line edits; never overwrite history).
+3. Minimal Typing, Maximum Automation:
+   - Ingest raw user notes / chat messages without demanding clean formatting.
+   - Automatically cross-reference and update related files (e.g. log transactions, sync stock/master data, recalculate balance totals) in a single turn.
 
-## 1. Domain & Workspace Profile
-- Identify the domain/business type, primary workflow, currency or numerical conventions, and recurring terminology or status codes observed in the files.
-
-## 2. File Directory & Data Relationships
-- Table or list of files explaining each file's specific role, primary/master documents vs secondary/input documents, and how data moves or references between them.
-
-## 3. Strict Syntax & Layout Invariants
-- Document formatting rules observed in the files (headers, tables, delimiters, status indicators, formulas, or summary blocks that must be preserved without corruption).
-- Operating rule: Always prefer surgical \`edit\` tool for existing documents; do not wipe out historical records or template structures.
-
-## 4. User Preferences & Learned Corrections
-- Include any existing user preferences or provide placeholders for dynamic self-corrections learned from future conversations.
-
-Output ONLY the raw markdown content, with no conversational preamble or outer code fences.`;
+Output ONLY the raw Markdown content for ARUNAKI.md without conversational preamble.`;
 
       // 1. If SubAgentRunner is available, execute via isolated Sub-Agent sandbox
       if (this.subAgentRunner) {
@@ -277,7 +269,7 @@ Output ONLY the raw markdown content, with no conversational preamble or outer c
         }
       }
 
-      // 2. Direct LLM fallback if subAgentRunner is unavailable
+      // 2. Direct LLM fallback
       const response = await this.aiService.chat([
         {
           role: 'system',
@@ -291,42 +283,57 @@ Output ONLY the raw markdown content, with no conversational preamble or outer c
         return response.content.trim();
       }
     } catch (err: any) {
-      this.logger.warn(`[Cartographer] LLM synthesis skipped (${err.message}). Using deterministic heuristic fallback.`);
+      this.logger.warn(`[Cartographer] LLM synthesis skipped (${err.message}). Using deterministic fallback.`);
     }
 
-    // Deterministic Heuristic Fallback
+    // Deterministic Generic Fallback (Completely domain-agnostic metadata index)
     return this.buildDeterministicRules(workspaceName, samples);
   }
 
   /**
-   * Deterministic fallback generator when LLM is offline or in cold start.
-   * Dynamically constructs a generic, domain-agnostic operational rulebook.
+   * Deterministic fallback generator when LLM is offline.
+   * Completely domain-agnostic: generates a clean metadata & schema index without hardcoded assumptions.
    */
   private buildDeterministicRules(workspaceName: string, samples: WorkspaceFileMetadata[]): string {
     const fileEntries = samples.map((s) => {
       const sizeKb = (s.size / 1024).toFixed(1);
-      return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)`;
+      const lines = (s.sampleContent || '')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0 && !l.startsWith('[Binary'));
+
+      let header = '';
+      let sampleLine = '';
+
+      if (lines.length > 0) {
+        header = lines[0].replace(/[";]/g, '').slice(0, 120);
+        if (lines.length > 1) {
+          sampleLine = lines[1].replace(/[";]/g, '').slice(0, 120);
+        }
+      }
+
+      return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
+  ${header ? `- **Header/Structure**: \`${header}\`` : ''}
+  ${sampleLine ? `- **Sample Line**: \`${sampleLine}\`` : ''}`;
     }).join('\n');
 
-    const fileTypes = Array.from(new Set(samples.map((s) => s.extension.toLowerCase().replace('.', ''))));
+    return `# ARUNAKI WORKSPACE OPERATING SYSTEM — ${workspaceName.toUpperCase()}
 
-    return `# ARUNAKI WORKSPACE OPERATING SYSTEM
-
-## 1. Domain & Workspace Profile
-- **Workspace Name**: ${workspaceName}
-- **Detected File Formats**: ${fileTypes.join(', ') || 'text documents'}
-- **Primary Mode**: Autonomous Document & Data Management
-
-## 2. File Directory & Data Map
+## 1. Workspace Profile & Indexed Files
 ${fileEntries || '- (No files indexed yet)'}
 
-## 3. Strict Operating Invariants
-- **Surgical Edits**: Always prefer surgical tool \`edit\` to modify existing files. Never overwrite whole files with \`write\` unless explicitly creating a new document.
-- **Structure Preservation**: Respect and preserve existing document formatting, headers, tables, formulas, and balance summaries.
-- **Data Integrity**: Never remove historical records or existing sections unless explicitly instructed by the user.
+## 2. Tool Usage Directives
+- **Read**: Use \`read\` to search and inspect document data.
+- **Write**: Use \`write\` ONLY when creating brand-new documents.
+- **Edit**: Always use surgical \`edit\` to insert or update existing records without wiping historical data.
+
+## 3. Minimal Typing, Maximum Automation
+- Ingest raw text and user notes directly without requiring clean formatting.
+- Automatically cross-reference and update related files in a single pass.
+- Recalculate totals and balance summaries automatically on every mutation.
 
 ## 4. User Preferences & Learned Corrections
-- [Initial System Baseline]: Maintain exact file schema and adapt to user conventions dynamically.
+- [Initial System Baseline]: Active operating rules synchronized for ${workspaceName}.
 `;
   }
 

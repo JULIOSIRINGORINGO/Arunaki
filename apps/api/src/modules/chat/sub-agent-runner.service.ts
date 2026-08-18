@@ -73,7 +73,7 @@ export class SubAgentRunnerService {
 
   constructor(
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
     private readonly selfHealingService: SelfHealingService,
   ) {}
 
