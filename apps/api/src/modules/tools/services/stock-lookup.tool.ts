@@ -42,7 +42,7 @@ export class StockLookupTool implements Tool {
       name: this.name,
       displayName: this.displayName,
       description: this.description,
-      tags: ['stock', 'inventory', 'availability', 'ready', 'habis', 'sisa'],
+      tags: ['stock', 'inventory', 'availability', 'ready', 'out-of-stock', 'remaining'],
       inputSchema: {
         url: 'Product page URL (works for any vendor, e.g. from knowledge nodes)',
         city: 'City name, e.g. Medan, Jakarta. Use ip_geolocation first if unknown.',
@@ -55,7 +55,7 @@ export class StockLookupTool implements Tool {
   }
 
   get description(): string {
-    return 'SCOPE: stock availability numbers ONLY (ready/habis/sisa/stock count per branch & variant). Fetches real-time stock from any product URL: calls the site\'s own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first.';
+    return 'SCOPE: stock availability numbers ONLY (ready/out-of-stock/remaining count per branch & variant). Fetches real-time stock from any product URL: calls the site\'s own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first.';
   }
 
   get definition(): ToolDefinition {

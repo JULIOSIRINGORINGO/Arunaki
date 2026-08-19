@@ -32,7 +32,7 @@ export class KnowledgeLiveFetchTool implements Tool {
       name: this.name,
       displayName: this.displayName,
       description: this.description,
-      tags: ['knowledge', 'live', 'fetch', 'web', 'catalog', 'price', 'harga', 'docs', 'url'],
+      tags: ['knowledge', 'live', 'fetch', 'web', 'catalog', 'price', 'docs', 'url'],
       inputSchema: {
         url: 'The URL to fetch content from',
         format: 'Format to return: "markdown" (default), "text", or "html"',
@@ -47,7 +47,7 @@ export class KnowledgeLiveFetchTool implements Tool {
   }
 
   get description(): string {
-    return 'Fetches public web content from any URL: catalog info, prices (e.g. "harga tepung berapa"), colors, sizes, descriptions, docs, live data - any general web content. Returns markdown by default. Fast HTTP fetch; set browser=true only when the page is JS-only. NOT for stock availability numbers (use stock_lookup) and NOT for interactive flows (use browser_interaction).';
+    return 'Fetches public web content from any URL: catalog info, prices, colors, sizes, descriptions, docs, live data - any general web content. Returns markdown by default. Fast HTTP fetch; set browser=true only when the page is JS-only. NOT for stock availability numbers (use stock_lookup) and NOT for interactive flows (use browser_interaction).';
   }
 
   get definition(): ToolDefinition {

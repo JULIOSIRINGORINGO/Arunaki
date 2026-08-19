@@ -76,6 +76,31 @@ Files changed:
 - `stock-lookup.tool.ts` — description/tags.
 - `knowledge-live-fetch.tool.ts` — description/tags.
 
+## Update 4 — No Indonesian Hardcoded in Code (2026-08-19)
+
+Prinsip: semua kode & prompt berbahasa Inggris; jawaban ke user mengikuti
+bahasa pesan user.
+
+- `src/prompts/rules.md` — rule #8 "Language Mirroring": always reply in the
+  same language the user is using. (Sebelumnya TIDAK ada instruksi bahasa di
+  system prompt — grep membuktikan.)
+- `stock-lookup.tool.ts` — tags/description BI dihapus (habis/sisa →
+  out-of-stock/remaining).
+- `knowledge-live-fetch.tool.ts` — tags/description BI dihapus (harga →
+  price).
+- Knowledge node `cmsynigsr0006vgewmz53ebwx` — instruksi "PEMBAGIAN TUGAS
+  TOOL" diterjemahkan ke Inggris (data produk tetap BI = data, bukan prompt).
+- Regex parser internal (extractCsvRows/extractTextRows) tetap memuat kata
+  Indonesia (stok/sisa/tersisa) — itu membaca DATA halaman web publik
+  (cititex menampilkan "tersisa 65 pcs"), bukan bahasa output.
+
+Verifikasi E2E: "nsa premium 7200 warna red ukuran s ready ga di medan?" →
+jawaban Bahasa Indonesia (mengikuti user) + data stok benar (Ready). ✅
+
+Files changed:
+- `src/prompts/rules.md` — rule Language Mirroring.
+- `stock-lookup.tool.ts`, `knowledge-live-fetch.tool.ts` — tags/description.
+
 ## Notes
 
 - Emoji di jawaban LLM tampil rusak (encoding) — kosmetik, belum ditangani.
