@@ -52,6 +52,30 @@ via `stock_lookup` (API situs + decrypt client-side), bukan tebakan LLM.
 - `npx nest build` — ✅ passed.
 - Health check `GET /api/v1/health` — ✅ ok.
 
+## Update 3 — Tool Scope Tegas (2026-08-19)
+
+LLM sebelumnya ikut memanggil `stock_lookup` untuk pertanyaan katalog
+(warna/harga) — boros browser. Pertegas fungsi tiap tool:
+
+- `stock_lookup`: description + tags sekarang "SCOPE: stock availability
+  numbers ONLY (ready/habis/sisa)" — eksplisit "NOT for catalog questions
+  (colors/sizes/prices) → use knowledge nodes or knowledge_live_fetch".
+- `knowledge_live_fetch`: description + tags "catalog info, prices (harga
+  tepung berapa), colors, sizes, docs" — eksplisit "NOT for stock
+  availability numbers (use stock_lookup)".
+- Knowledge node `cmsynigsr0006vgewmz53ebwx` di-PATCH dengan
+  "PEMBAGIAN TUGAS TOOL (WAJIB)" yang sama.
+
+Verifikasi E2E setelah restart:
+- "nsa premium 7200 harganya berapa?" → hanya `knowledge_live_fetch`,
+  jawab Rp 42.000 + tabel qty — tanpa stock_lookup. ✅
+- "nsa premium 7200 warna red ukuran s ready ga di medan?" →
+  `ip_geolocation` + `stock_lookup`, jawab 65 pcs Red S Medan. ✅
+
+Files changed:
+- `stock-lookup.tool.ts` — description/tags.
+- `knowledge-live-fetch.tool.ts` — description/tags.
+
 ## Notes
 
 - Emoji di jawaban LLM tampil rusak (encoding) — kosmetik, belum ditangani.
