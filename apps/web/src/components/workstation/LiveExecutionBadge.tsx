@@ -69,15 +69,15 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
       let iconType: 'thinking' | 'tool' | 'text' = 'thinking';
 
       if (type === 'thinking') {
-        label = preview ? `Menganalisis: ${preview}` : "Menganalisis instruksi...";
+        label = preview ? preview : "Analyzing request...";
         iconType = 'thinking';
       } else if (type === 'tool_start' || type === 'tool_live_status') {
         iconType = 'tool';
         const displayTool = toolName ? toolName : 'desktop_action';
         const detail = preview ? ` → ${preview}` : '';
-        label = `Mengeksekusi: ${displayTool}${detail}`;
+        label = `Executing: ${displayTool}${detail}`;
       } else if (type === 'text_delta') {
-        label = preview ? `Menyusun respons: ${preview}` : "Menyusun jawaban...";
+        label = preview ? preview : "Generating response...";
         iconType = 'text';
       }
 
@@ -107,8 +107,8 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const hasToolExecution = steps.some((s) => s.iconType === 'tool');
   const summaryHeader = hasToolExecution
-    ? `Menjalankan ${steps.length} tugas dokumen`
-    : `Memproses instruksi...`;
+    ? `Executing ${steps.length} document task${steps.length > 1 ? 's' : ''}`
+    : `Processing instruction...`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
