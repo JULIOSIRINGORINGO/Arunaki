@@ -25,7 +25,7 @@ const DEFAULT_CONFIG: ContextConfig = {
   targetRatio: 0.35, // Keep 35% for the tail messages
   toolPruneChars: 1000, // Keep tool outputs under 1000 chars
   toolPreviewChars: 200, // Lightweight tool preview
-  injectionMaxChars: 1200, // Compact memory/knowledge injection budget
+  injectionMaxChars: 2000, // Knowledge injection budget; URL filtering keeps this lean
   useLlmSummary: false,
 };
 

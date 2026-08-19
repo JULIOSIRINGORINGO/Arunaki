@@ -72,12 +72,10 @@ export class KnowledgeService extends BaseService<Knowledge> {
 
   async searchNodes(query: string): Promise<string> {
     const { nodes, edges } = await this.repository.findActiveWithEdges();
-    // Only search through actual documents connected to Arunaki
     const docNodes = nodes.filter((n) => n.id !== 'main-ai-node');
     if (docNodes.length === 0) return 'No data found.';
 
     const q = query.toLowerCase();
-    // token-based matching: whole-query substring never matches long queries
     const tokens = q.split(/[^a-z0-9]+/).filter(t => t.length >= 3);
     const matchScore = (s: string) => {
       const lower = s.toLowerCase();
@@ -89,7 +87,6 @@ export class KnowledgeService extends BaseService<Knowledge> {
     const targetNode = best[0]?.node;
     if (!targetNode) return 'Node not found in the Knowledge Graph.';
 
-    // Return top matches + their directly connected nodes
     const connectedIds = new Set<string>();
     for (const { node } of best.slice(0, 3)) {
       connectedIds.add(node.id);
@@ -100,6 +97,7 @@ export class KnowledgeService extends BaseService<Knowledge> {
     }
 
     const connectedNodes = docNodes.filter(n => connectedIds.has(n.id));
+    const MAX_RELEVANT_URLS = 15;
 
     return connectedNodes
       .map(k => {
@@ -107,14 +105,66 @@ export class KnowledgeService extends BaseService<Knowledge> {
         try {
           const urls = JSON.parse(k.urls || '[]');
           if (Array.isArray(urls) && urls.length > 0) {
-            urlsStr = `\n\nURLs:\n${urls.map((u: string) => `- ${u}`).join('\n')}`;
+            const ranked = this.rankUrls(urls, q, tokens);
+            const top = ranked.slice(0, MAX_RELEVANT_URLS);
+            const hidden = urls.length - top.length;
+            urlsStr = `\n\nURLs:\n${top.map(u => `- ${u}`).join('\n')}`;
+            if (hidden > 0) urlsStr += `\n(+${hidden} more product URLs available)`;
           }
-        } catch {
-          // ignore malformed urls
-        }
+        } catch { /* ignore */ }
         const cityStr = k.city ? `\n\nDefault location: ${k.city}` : '';
         return `--- ${k.title} [${k.type}] ---\n${k.content}${cityStr}${urlsStr}`;
       })
       .join('\n\n');
+  }
+
+  /**
+   * Generic URL ranker: extracts tokens from URL path/params, scores against query.
+   * Works for any e-commerce site structure (cititex, tokopedia, shopee, etc.)
+   */
+  private rankUrls(urls: string[], query: string, queryTokens: string[]): string[] {
+    const tokenCache = new Map<string, string[]>();
+
+    const urlTokens = (url: string): string[] => {
+      const cached = tokenCache.get(url);
+      if (cached) return cached;
+
+      let tokens: string[];
+      try {
+        const parsed = new URL(url);
+        const pathTokens = parsed.pathname
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter(t => t.length >= 2);
+        const paramTokens = [...parsed.searchParams.values()]
+          .join(' ')
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter(t => t.length >= 2);
+        tokens = [...pathTokens, ...paramTokens];
+      } catch {
+        tokens = url.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2);
+      }
+      tokenCache.set(url, tokens);
+      return tokens;
+    };
+
+    const scored = urls.map(url => {
+      const tokens = urlTokens(url);
+      const tokenSet = new Set(tokens);
+      let score = 0;
+      // exact query substring in full URL = strong signal
+      if (url.toLowerCase().includes(query)) score += 10;
+      // each query token that appears in URL tokens
+      for (const qt of queryTokens) {
+        if (tokenSet.has(qt)) score += 3;
+        else if (tokens.some(t => t.includes(qt))) score += 1;
+      }
+      return { url, score };
+    });
+
+    return scored
+      .sort((a, b) => b.score - a.score)
+      .map(s => s.url);
   }
 }
