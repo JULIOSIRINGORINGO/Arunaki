@@ -107,23 +107,6 @@ function WorkstationRightChatComponent({
     return [...chatMessages, ...optimisticMessages];
   }, [chatMessages, optimisticMessages]);
 
-  if (collapsed) {
-    return (
-      <aside className="w-10 bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col items-center py-2 shrink-0 select-none transition-colors duration-150">
-        <button
-          onClick={onClose}
-          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-          title="Open Chat Panel"
-        >
-          <PanelRightOpen className="w-4 h-4 text-[var(--text-primary)]" />
-        </button>
-        <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
-          <Bot className="w-4 h-4 opacity-40" />
-        </div>
-      </aside>
-    );
-  }
-
   useLayoutEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -146,6 +129,23 @@ function WorkstationRightChatComponent({
     const q = commandQuery.toLowerCase();
     return COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(q));
   }, [showCommands, commandQuery]);
+
+  if (collapsed) {
+    return (
+      <aside className="w-10 bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col items-center py-2 shrink-0 select-none transition-colors duration-150">
+        <button
+          onClick={onClose}
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+          title="Open Chat Panel"
+        >
+          <PanelRightOpen className="w-4 h-4 text-[var(--text-primary)]" />
+        </button>
+        <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
+          <Bot className="w-4 h-4 opacity-40" />
+        </div>
+      </aside>
+    );
+  }
 
   const handleInputChange = (val: string) => {
     setInputPrompt(val);
