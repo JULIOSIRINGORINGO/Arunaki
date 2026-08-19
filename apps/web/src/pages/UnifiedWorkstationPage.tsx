@@ -117,6 +117,47 @@ export function UnifiedWorkstationPage() {
 
   const activeWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId) || workspaces[0] || null;
 
+  const openFolderParam = searchParams.get("openFolder");
+  const wsIdParam = searchParams.get("wsId");
+
+  useEffect(() => {
+    if (wsIdParam && wsIdParam !== selectedWorkspaceId) {
+      setSelectedWorkspaceId(wsIdParam);
+      localStorage.setItem("arunaki_workspace_id", wsIdParam);
+      window.dispatchEvent(new Event("arunaki-workspace-change"));
+    }
+  }, [wsIdParam, selectedWorkspaceId]);
+
+  useEffect(() => {
+    async function syncOpenFolder() {
+      if (openFolderParam) {
+        const folderName = openFolderParam.split(/[\\/]/).filter(Boolean).pop() || "workspace";
+        try {
+          const res = await apiFetch(`${API_BASE}/workspaces`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: folderName,
+              rootPath: openFolderParam,
+              businessType: "generic",
+            }),
+          });
+          const json = await res.json();
+          if (json.data?.id) {
+            setSelectedWorkspaceId(json.data.id);
+            localStorage.setItem("arunaki_workspace_id", json.data.id);
+            localStorage.setItem("arunaki_workspace_path", openFolderParam);
+            window.dispatchEvent(new Event("arunaki-workspace-change"));
+            refetchWorkspaces();
+          }
+        } catch (err) {
+          console.error("Failed to connect folder from param:", err);
+        }
+      }
+    }
+    syncOpenFolder();
+  }, [openFolderParam, refetchWorkspaces]);
+
   useEffect(() => {
     if (workspaces.length > 0) {
       const match = workspaces.find((w) => w.id === selectedWorkspaceId);

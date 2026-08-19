@@ -90,7 +90,34 @@ export function AppLayout() {
       try {
         const result = await desktop.pickFolder();
         if (result?.path) {
-          navigate(`/?openFolder=${encodeURIComponent(result.path)}`);
+          const folderPath = result.path;
+          const folderName = folderPath.split(/[\\/]/).filter(Boolean).pop() || "workspace";
+          try {
+            const res = await apiFetch(`${API_BASE}/workspaces`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: folderName,
+                rootPath: folderPath,
+                businessType: "generic",
+              }),
+            });
+            const json = await res.json();
+            const ws = json.data;
+            if (ws?.id) {
+              localStorage.setItem("arunaki_workspace_id", ws.id);
+              localStorage.setItem("arunaki_workspace_path", ws.rootPath || folderPath);
+              setWorkspaceInfo(ws);
+              window.dispatchEvent(new Event("arunaki-workspace-change"));
+              navigate(`/?wsId=${ws.id}`);
+              return;
+            }
+          } catch (apiErr) {
+            console.error("Failed to register workspace:", apiErr);
+          }
+          localStorage.setItem("arunaki_workspace_path", folderPath);
+          window.dispatchEvent(new Event("arunaki-workspace-change"));
+          navigate(`/?openFolder=${encodeURIComponent(folderPath)}`);
           return;
         }
       } catch (err) {
