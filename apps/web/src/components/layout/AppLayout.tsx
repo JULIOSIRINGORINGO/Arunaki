@@ -252,18 +252,17 @@ export function AppLayout() {
 
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
       <footer className="h-12 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-t border-[var(--border-color)] transition-colors duration-150 text-xs">
-        {/* Left: Active Workspace Path & Folder Badge */}
-        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[340px]">
-          <button
-            onClick={handleOpenFolder}
-            title={workspaceInfo?.rootPath ? `Folder Kerja: ${workspaceInfo.rootPath}` : "Pilih Folder Workspace"}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer truncate max-w-full"
+        {/* Left: Active Workspace Path Display (Read-Only Info) */}
+        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[360px]">
+          <div
+            title={workspaceInfo?.rootPath ? `Folder Kerja Aktif: ${workspaceInfo.rootPath}` : "Tidak ada folder aktif"}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
             <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="text-[11px] font-medium truncate">
-              {workspaceInfo?.name || (workspaceInfo?.rootPath ? workspaceInfo.rootPath.split(/[\\/]/).pop() : "Pilih Folder Kerja...")}
+            <span className="text-[11px] font-mono truncate text-[var(--text-primary)]">
+              {workspaceInfo?.rootPath || workspaceInfo?.name || "Belum ada folder aktif"}
             </span>
-          </button>
+          </div>
         </div>
 
         {/* Center: Main Navigation Floating Capsule */}
