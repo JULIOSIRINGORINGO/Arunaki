@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer, nativeTheme } = require('electron');
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -89,17 +89,18 @@ async function waitForWebApp(url) {
 let mainWindow = null;
 
 function createWindow() {
+  const isDark = nativeTheme ? nativeTheme.shouldUseDarkColors : true;
   const win = new BrowserWindow({
     width: 1440,
     height: 960,
     minWidth: 1100,
     minHeight: 720,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: isDark ? '#0A0A0A' : '#FFFFFF',
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#121212',
-      symbolColor: '#ffffff',
+      color: isDark ? '#121214' : '#FFFFFF',
+      symbolColor: isDark ? '#FFFFFF' : '#111827',
       height: 35,
     },
     webPreferences: {
@@ -159,7 +160,10 @@ app.whenReady().then(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const isLight = theme === 'light';
     try {
-      mainWindow.setBackgroundColor(isLight ? '#F8F9FA' : '#0A0A0A');
+      if (nativeTheme) {
+        nativeTheme.themeSource = isLight ? 'light' : 'dark';
+      }
+      mainWindow.setBackgroundColor(isLight ? '#FFFFFF' : '#0A0A0A');
       if (process.platform === 'win32' || process.platform === 'darwin') {
         mainWindow.setTitleBarOverlay({
           color: isLight ? '#FFFFFF' : '#121214',
