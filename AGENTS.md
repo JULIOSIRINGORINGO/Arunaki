@@ -127,6 +127,35 @@ If a requested task appears to require violating any of the above, treat it as a
 
 ---
 
+## Frontend & Workstation Reliability Rules (STRICT — NO REGRESSIONS)
+
+Setiap AI agent yang menyentuh kode Frontend (`apps/web`) WAJIB mematuhi aturan ketat berikut untuk mencegah bug lama kambuh kembali:
+
+1. **React Rules of Hooks (CRITICAL - ZERO TOLERANCE)**:
+   - **DILARANG KERAS meletakkan React Hooks (`useLayoutEffect`, `useMemo`, `useCallback`, `useEffect`, `useState`, `useRef`) di bawah *early return* kondisional (seperti `if (collapsed) return ...`).**
+   - Semua hooks WAJIB dideklarasikan secara absolut di baris paling atas komponen sebelum kondisi apa pun.
+   - Melanggar ini menyebabkan *Rendered fewer hooks than expected* dan memicu **layar hitam total / blank screen crash**.
+
+2. **Chat Stream & Message Deduplication Lifecycle (CRITICAL)**:
+   - Saat streaming selesai (*event `done`*), pesan sementara (*optimistic messages*) dan pesan tersimpan (*persisted chat messages*) WAJIB dideduplikasi secara instan berdasarkan `id` dan `content`.
+   - **DILARANG menggunakan `setTimeout` sembarangan untuk menahan optimistic state** yang menyebabkan pesan muncul 2 kali lalu berkedip (*flicker*).
+
+3. **UI Telemetry & Execution Badge Standards (Antigravity Parity)**:
+   - Semua label status teknis, telemetry, badge eksekusi, dan developer metric di UI **WAJIB menggunakan bahasa Inggris standar dan bersih** (gaya Antigravity / Cursor IDE).
+   - **Percakapan Biasa / Tanya Jawab (`"halo"`, pertanyaan teks)**:
+     - **TIDAK BOLEH memunculkan box collapsible task (`Executing X tasks - Analyzing`)**.
+     - Cukup tampilkan indikator minimalis yang berdenyut halus: `✨ Thinking...` saat menunggu first token, lalu langsung tampilkan teks di bubble chat.
+   - **Operasi Dokumen / Tool Nyata (`"rekap ke excel"`, modifikasi file)**:
+     - Collapsible execution card (`Executing X document tasks`) DENGAN langkah checklist (`✓ read_file`, `✓ edit_document`) **HANYA boleh muncul jika ada tool nyata yang sedang dieksekusi**.
+
+4. **Workspace Folder Sync Integrity**:
+   - Setiap kali folder dibuka via Electron dialog atau URL param, folder tersebut harus segera didaftarkan/disinkronkan ke database SQLite backend (`POST /workspaces`) dan disinkronkan ke state `localStorage` & `AppLayout` footer agar tidak terjadi mismatch path.
+
+5. **Mandatory Build Verification**:
+   - Setiap sebelum commit pekerjaan yang mengubah frontend/backend, WAJIB jalankan `npm run build -w apps/web` untuk memastikan 0 error kompilasi TypeScript dan tidak ada regresi.
+
+---
+
 ---
 
 ## Multi-Agent Coordination
