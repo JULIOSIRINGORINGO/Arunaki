@@ -51,6 +51,9 @@ import { ToolResultCacheService } from './services/tool-result-cache.service.js'
 
 import { PrismaModule } from '../../common/providers/prisma.module.js';
 import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js';
+import { BrowserInteractionTool } from './services/browser-interaction.tool.js';
+import { IpGeolocationTool } from './services/ip-geolocation.tool.js';
+import { StockLookupTool } from './services/stock-lookup.tool.js';
 
 @Module({
   imports: [
@@ -76,6 +79,9 @@ import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js'
     ImageOcrTool,
     DocSearchTool,
     KnowledgeLiveFetchTool,
+    BrowserInteractionTool,
+    IpGeolocationTool,
+    StockLookupTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
@@ -113,6 +119,9 @@ import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js'
     ImageOcrTool,
     DocSearchTool,
     KnowledgeLiveFetchTool,
+    BrowserInteractionTool,
+    IpGeolocationTool,
+    StockLookupTool,
     WebSearchTool,
     VisionAiTool,
     UnitConverterTool,
@@ -201,6 +210,24 @@ export class ToolsProviderModule implements OnModuleInit {
     const knowledgeLiveFetch = this.moduleRef.get(KnowledgeLiveFetchTool, { strict: false });
     if (knowledgeLiveFetch) {
       this.registry.register(knowledgeLiveFetch);
+    }
+
+    // 6. Register General Browser Tool
+    const browserInteraction = this.moduleRef.get(BrowserInteractionTool, { strict: false });
+    if (browserInteraction) {
+      this.registry.register(browserInteraction);
+    }
+
+    // 7. Register IP Geolocation Tool
+    const ipGeolocation = this.moduleRef.get(IpGeolocationTool, { strict: false });
+    if (ipGeolocation) {
+      this.registry.register(ipGeolocation);
+    }
+
+    // 8. Register Stock Lookup Tool
+    const stockLookup = this.moduleRef.get(StockLookupTool, { strict: false });
+    if (stockLookup) {
+      this.registry.register(stockLookup);
     }
   }
 }

@@ -73,17 +73,26 @@ export class KnowledgeService extends BaseService<Knowledge> {
     if (nodes.length === 0) return 'No data found.';
 
     const q = query.toLowerCase();
-    const targetNode = nodes.find(n => n.title.toLowerCase().includes(q) || n.type.toLowerCase().includes(q));
-    
+    // token-based matching: whole-query substring never matches long queries
+    const tokens = q.split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+    const matchScore = (s: string) => {
+      const lower = s.toLowerCase();
+      if (lower.includes(q)) return 3;
+      return tokens.reduce((score, t) => (lower.includes(t) ? score + 1 : score), 0);
+    };
+    const scored = nodes.map(n => ({ node: n, score: matchScore(n.title) + matchScore(n.type) }));
+    const best = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+    const targetNode = best[0]?.node;
     if (!targetNode) return 'Node not found in the Knowledge Graph.';
 
-    // Find directly connected nodes
+    // Return top matches + their directly connected nodes
     const connectedIds = new Set<string>();
-    connectedIds.add(targetNode.id);
-    
-    for (const edge of edges) {
-      if (edge.sourceId === targetNode.id) connectedIds.add(edge.targetId);
-      if (edge.targetId === targetNode.id) connectedIds.add(edge.sourceId);
+    for (const { node } of best.slice(0, 3)) {
+      connectedIds.add(node.id);
+      for (const edge of edges) {
+        if (edge.sourceId === node.id) connectedIds.add(edge.targetId);
+        if (edge.targetId === node.id) connectedIds.add(edge.sourceId);
+      }
     }
 
     const connectedNodes = nodes.filter(n => connectedIds.has(n.id));

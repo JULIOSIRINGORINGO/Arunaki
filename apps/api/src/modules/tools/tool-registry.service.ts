@@ -93,6 +93,8 @@ export class ToolRegistryService {
       'desktop_open_excel',
       'vision_ai',
       'knowledge_live_fetch',
+      'stock_lookup',
+      'ip_geolocation',
     ]);
 
     const ctx = contextText.toLowerCase();

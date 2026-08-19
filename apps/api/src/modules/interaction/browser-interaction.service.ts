@@ -91,10 +91,56 @@ export class BrowserInteractionService implements OnModuleDestroy {
       viewport: { width: 1280, height: 800 },
       locale: 'id-ID',
     });
+    await this.grantIpGeolocation(context);
     const page = await context.newPage();
     this.sessions.set(sessionId, { context, page, createdAt: new Date() });
     this.logger.log(`New page created for session: ${sessionId}`);
     return page;
+  }
+
+  private geoCache: { lat: number; lon: number } | null = null;
+  private geoCachedAt = 0;
+  private readonly GEO_CACHE_TTL_MS = 60 * 60 * 1000;
+
+  // ponytail: config-driven default location injected into location-aware URLs.
+  // ARUNAKI_DEFAULT_LOCATION=Medan & ARUNAKI_LOCATION_PARAM=location; UI will set these later.
+  private readonly defaultLocation: string | null = process.env.ARUNAKI_DEFAULT_LOCATION || null;
+  private readonly locationParam: string = process.env.ARUNAKI_LOCATION_PARAM || 'location';
+
+  private injectLocationParam(url: string): string {
+    if (!this.defaultLocation) return url;
+    const parsed = new URL(url);
+    const key = this.locationParam.toLowerCase();
+    if ([...parsed.searchParams.keys()].some((k) => k.toLowerCase() === key)) return url;
+    parsed.searchParams.append(this.locationParam, this.defaultLocation);
+    return parsed.toString();
+  }
+
+  /**
+   * Grants geolocation and sets coordinates from the network IP, so sites that
+   * ask for location (cititex etc.) resolve to the user's actual region.
+   */
+  private async grantIpGeolocation(context: BrowserContext): Promise<void> {
+    try {
+      if (!this.geoCache || Date.now() - this.geoCachedAt > this.GEO_CACHE_TTL_MS) {
+        const res = await fetch('http://ip-api.com/json/?fields=lat,lon', {
+          headers: { 'User-Agent': 'Arunaki/1.0' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === 'success' && typeof data.lat === 'number' && typeof data.lon === 'number') {
+          this.geoCache = { lat: data.lat, lon: data.lon };
+          this.geoCachedAt = Date.now();
+          this.logger.log(`IP geolocation: ${data.lat},${data.lon}`);
+        }
+      }
+      if (!this.geoCache) return;
+      await context.grantPermissions(['geolocation']);
+      await context.setGeolocation({ latitude: this.geoCache.lat, longitude: this.geoCache.lon });
+    } catch (err) {
+      this.logger.warn(`Geolocation setup failed: ${err.message}`);
+    }
   }
 
   async navigate(
@@ -104,7 +150,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
     this.validateUrl(url);
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(this.injectLocationParam(url), { waitUntil: 'networkidle', timeout: 30000 });
     } catch (err) {
       throw new Error(`Navigation failed: ${err.message}`);
     }
@@ -114,7 +160,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
   async click(selector: string, sessionId = 'default'): Promise<void> {
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.click(selector, { timeout: 10000 });
+      await page.locator(this.normalizeSelector(selector)).first().click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
         `Cannot click "${selector}": ${err.message}. ` +
@@ -126,8 +172,9 @@ export class BrowserInteractionService implements OnModuleDestroy {
   async type(selector: string, text: string, sessionId = 'default'): Promise<void> {
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.fill(selector, '');
-      await page.fill(selector, text);
+      const locator = page.locator(this.normalizeSelector(selector)).first();
+      await locator.fill('');
+      await locator.fill(text);
     } catch (err) {
       throw new Error(
         `Cannot type into "${selector}": ${err.message}. ` +
@@ -144,14 +191,33 @@ export class BrowserInteractionService implements OnModuleDestroy {
   ): Promise<void> {
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.click(selector);
-      await page.type(selector, text, { delay: delayMs });
+      const locator = page.locator(this.normalizeSelector(selector)).first();
+      await locator.click();
+      await locator.type(text, { delay: delayMs });
     } catch (err) {
       throw new Error(
         `Cannot type into "${selector}": ${err.message}. ` +
         'Try browser_screenshot to see the current page state.',
       );
     }
+  }
+
+  /**
+   * Normalizes LLM-friendly selectors to Playwright syntax:
+   * "text=Submit" -> text="Submit" (exact text) ; "button:text(OK)" -> button:has-text("OK")
+   * Appends "visible=true" so the first visible match wins (e.g. modal options over footer text).
+   */
+  private normalizeSelector(raw: string): string {
+    let sel = raw.trim();
+    if (/^text=/i.test(sel)) {
+      sel = sel.replace(/^text="?(.+?)"?$/i, 'text="$1"');
+    } else if (/^([a-z0-9-]+):text\((.+)\)$/i.test(sel)) {
+      sel = sel.replace(/^([a-z0-9-]+):text\((.+)\)$/i, '$1:has-text("$2")');
+    }
+    if (sel.includes('text=') || sel.includes(':has-text(')) {
+      sel = `${sel} >> visible=true`;
+    }
+    return sel;
   }
 
   async pressKey(key: string, sessionId = 'default'): Promise<void> {

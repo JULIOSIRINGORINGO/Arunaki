@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import TurndownService from 'turndown';
+import { CryptoHarvesterService } from './crypto-harvester.service.js';
 
 export interface KnowledgeLiveFetchOptions {
   url: string;
@@ -9,7 +10,6 @@ export interface KnowledgeLiveFetchOptions {
   filters?: Record<string, any>;
   selector?: string;
   browser?: boolean;
-  stockLocation?: string;
 }
 
 export interface KnowledgeLiveFetchResult {
@@ -46,11 +46,13 @@ export class KnowledgeCrawlerService {
   private cache = new Map<string, { data: KnowledgeLiveFetchResult; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
 
+  constructor(private readonly cryptoHarvester: CryptoHarvesterService) {}
+
   async fetchLiveKnowledge(options: KnowledgeLiveFetchOptions): Promise<KnowledgeLiveFetchResult> {
     const startTime = Date.now();
-    const { url, query = '', format = 'markdown', timeout: userTimeout, browser, stockLocation } = options;
+    const { url, query = '', format = 'markdown', timeout: userTimeout, browser } = options;
 
-    const cacheKey = `${url}|${query}|${format}|browser=${!!browser}|loc=${stockLocation ?? ''}`.toLowerCase();
+    const cacheKey = `${url}|${query}|${format}|browser=${!!browser}`.toLowerCase();
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
       this.logger.log(`[KnowledgeCrawler] Cache hit for ${url} (0ms)`);
@@ -59,7 +61,7 @@ export class KnowledgeCrawlerService {
 
     // Browser path: JS-rendered data (e.g. stock per location) — HTTP cannot see it.
     if (browser) {
-      const result = await this.fetchWithBrowser({ url, query, format, timeout: userTimeout, stockLocation }, startTime);
+      const result = await this.fetchWithBrowser({ url, query, format, timeout: userTimeout }, startTime);
       this.cache.set(cacheKey, { data: result, timestamp: Date.now() });
       return result;
     }
@@ -193,74 +195,46 @@ export class KnowledgeCrawlerService {
   }
 
   /**
-   * Browser path: Playwright renders the page and runs the interaction needed
-   * for JS-only data. Generic fallback for SPA content; stock-table flow for
-   * cititex.com product pages (Pesanan Grosir drawer → pick city → stock per store).
+   * Browser path: generic Playwright render — works on any site.
+   * Renders JS content and returns page text/HTML. No per-site hardcoding;
+   * for interactive flows (clicks, drawers) the LLM uses browser_interaction.
    */
   private async fetchWithBrowser(
     options: KnowledgeLiveFetchOptions,
     startTime: number,
   ): Promise<KnowledgeLiveFetchResult> {
-    const { url, query = '', format = 'markdown', stockLocation } = options;
+    const { url, query = '', format = 'markdown' } = options;
     this.logger.log(`[KnowledgeCrawler] Browser fetch: ${url}`);
 
     let extractedTitle = '';
     let extractedContent = '';
+    let apiEncrypted: string[] = [];
+    let apiDecrypted: string[] = [];
 
     try {
       const { chromium } = await import('playwright');
       const browser = await chromium.launch({ headless: true });
       try {
         const page = await browser.newPage();
+        // generic hook: capture encrypted API responses + decrypted data
+        await this.cryptoHarvester.install(page);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
 
         extractedTitle = (await page.title()) || url;
 
-        // cititex product pages: open wholesale drawer to reveal stock per location
-        if (/cititex\.com/.test(url) && /\/product\//.test(url)) {
-          await page.evaluate(() => {
-            const els = [...document.querySelectorAll<HTMLElement>('div,button,span,a')];
-            const btn = els.find(e => (e.textContent || '').trim() === 'Pesanan Grosir' && e.offsetParent);
-            if (btn) btn.click();
-          });
-          await page.waitForTimeout(2000);
-
-          const city = stockLocation || this.extractLocationFromUrl(url) || 'Medan';
-
-          await page.evaluate(() => {
-            const drawer = document.querySelector<HTMLElement>('[class*=MuiDrawer-paper]');
-            if (!drawer) return;
-            const btn = [...drawer.querySelectorAll<HTMLElement>('button')].find(b => (b.textContent || '').includes('Locations'));
-            if (btn) btn.click();
-          });
-          await page.waitForTimeout(2000);
-
-          await page.evaluate((cityName: string) => {
-            const pops = [...document.querySelectorAll<HTMLElement>('[class*=MuiPopover-root]')];
-            const pop = pops.find(p => p.innerText.includes('Pilih Semua Lokasi'));
-            if (!pop) return;
-            const els = [...pop.querySelectorAll<HTMLElement>('div,li,a,button,span')].filter(e => (e.textContent || '').trim() === cityName);
-            if (els.length) {
-              const t = els[els.length - 1];
-              t.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-              t.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-              t.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
-          }, city);
-          await page.waitForTimeout(3500);
-        }
-
-        const drawerText = await page.evaluate(() => {
-          const drawer = document.querySelector<HTMLElement>('[class*=MuiDrawer-paper]');
-          return drawer ? drawer.innerText : '';
-        });
-        const bodyText = await page.evaluate(() => document.body.innerText);
-
         if (format === 'html') {
           extractedContent = await page.content();
         } else {
-          extractedContent = [drawerText, bodyText].filter(t => t && t.trim()).join('\n\n---\n\n');
+          extractedContent = await page.evaluate(() => document.body.innerText);
+        }
+
+        const host = new URL(url).hostname;
+        const captured = await this.cryptoHarvester.collect(page, host);
+        apiEncrypted = captured.encrypted;
+        apiDecrypted = captured.decrypted;
+        if (apiEncrypted.length > 0) {
+          this.logger.log(`[KnowledgeCrawler] Captured ${apiEncrypted.length} encrypted API response(s) on ${host}`);
         }
       } finally {
         await browser.close();
@@ -269,32 +243,40 @@ export class KnowledgeCrawlerService {
       this.logger.warn(`[KnowledgeCrawler] Browser error: ${err.message}`);
     }
 
+    const structuredData: Record<string, any> = {
+      url,
+      format,
+      method: 'browser',
+      browser: 'playwright-chromium',
+    };
+
+    // Attach decrypted API data when the site encrypts its responses —
+    // the decrypted payloads are much more useful than the rendered text.
+    if (apiEncrypted.length > 0 || apiDecrypted.length > 0) {
+      const interesting = apiDecrypted
+        .filter((d) => /stock|left|product|price|color|size/i.test(d))
+        .slice(0, 6);
+      structuredData.decryptedApiData = interesting;
+      structuredData.encryptedApiCount = apiEncrypted.length;
+      if (apiDecrypted.length > 0) {
+        const extra = interesting.join('\n\n');
+        if (extra && !extractedContent.includes(extra.slice(0, 80))) {
+          extractedContent = `${extractedContent}\n\n=== DECRYPTED API DATA ===\n${extra}`;
+        }
+      }
+    }
+
     const result: KnowledgeLiveFetchResult = {
       title: extractedTitle || 'External Live Knowledge Page',
       url,
       query,
       extractedContent: extractedContent || 'No readable text extracted from target page (browser).',
-      structuredData: {
-        url,
-        format,
-        method: 'browser',
-        browser: 'playwright-chromium',
-      },
+      structuredData,
       durationMs: Date.now() - startTime,
       extractedAt: new Date().toISOString(),
     };
 
     return result;
-  }
-
-  private extractLocationFromUrl(url: string): string | null {
-    try {
-      const parsed = new URL(url);
-      const loc = parsed.searchParams.get('location');
-      return loc ? decodeURIComponent(loc) : null;
-    } catch {
-      return null;
-    }
   }
 
   private extractTextFromHTML(html: string): string {
