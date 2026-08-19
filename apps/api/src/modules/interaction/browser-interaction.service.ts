@@ -33,8 +33,8 @@ export class BrowserInteractionService implements OnModuleDestroy {
     }
     try {
       this.browser = await chromium.launch({
-        headless: false,
-        args: ['--start-maximized', '--no-sandbox'],
+        headless: true,
+        args: ['--no-sandbox'],
       });
       this.logger.log('Browser launched successfully');
     } catch (err) {

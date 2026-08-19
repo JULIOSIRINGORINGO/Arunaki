@@ -122,7 +122,8 @@ export class StockLookupTool implements Tool {
       } else {
         // Fast path: plain HTTP first (static HTML/SSR, JSON, CSV, spreadsheets).
         // Browser only when the page needs JS rendering.
-        rows = (await this.lookupViaHttp(located)) ?? (await this.lookupViaBrowser(located));
+        const httpRows = await this.lookupViaHttp(located);
+        rows = httpRows?.length ? httpRows : await this.lookupViaBrowser(located);
       }
 
       if (rows.length === 0) {

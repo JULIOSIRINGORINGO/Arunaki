@@ -1,33 +1,52 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { PrismaService } from '../../../common/providers/prisma.service.js';
 import type { Page } from 'playwright';
 
 /**
  * CryptoHarvesterService — generic client-side decryption capture.
  *
- * Many e-commerce sites encrypt their API responses and decrypt them in the
- * browser (CryptoJS / WebCrypto). Instead of hardcoding per-site keys, this
- * service hooks the page's own runtime (fetch/XHR responses + JSON.parse) to
- * capture both the encrypted payloads and the decrypted data as they pass
- * through. Works for any site, no per-site knowledge required.
- *
- * Secondary path: if a site exposes CryptoJS on window (rare), the PBKDF2 /
- * AES hooks capture the secret + parameters, enabling offline decryption of
- * subsequent direct HTTP calls for the same host.
+ * Persists learned site entries to `memories` table (type='site') so they
+ * survive server restarts. One browser interaction per host is enough;
+ * subsequent stock_lookup calls use the cached API template + secret.
  */
 @Injectable()
-export class CryptoHarvesterService {
+export class CryptoHarvesterService implements OnModuleInit {
   private readonly logger = new Logger(CryptoHarvesterService.name);
 
-  // host -> captured secrets from CryptoJS hooks (if exposed globally)
   private hostSecrets = new Map<string, { secret: string; iterations: number; keySize: number }>();
 
-  // host -> learned stock API (auto-registered from captures, no per-site code)
   private learnedSites = new Map<
     string,
     { host: string; apiUrlTemplate: string; secret: string; iterations: number; keySizeBytes: number }
   >();
 
-  getLearnedSite(host: string): { host: string; apiUrlTemplate: string; secret: string; iterations: number; keySizeBytes: number } | undefined {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleInit(): Promise<void> {
+    const rows = await this.prisma.memory.findMany({
+      where: { type: 'site', active: true },
+    });
+    for (const row of rows) {
+      try {
+        const data = JSON.parse(row.content);
+        this.learnedSites.set(row.key, {
+          host: row.key,
+          apiUrlTemplate: data.apiUrlTemplate,
+          secret: data.secret,
+          iterations: data.iterations,
+          keySizeBytes: data.keySizeBytes,
+        });
+        this.hostSecrets.set(row.key, {
+          secret: data.secret,
+          iterations: data.iterations,
+          keySize: data.keySizeBytes / 4,
+        });
+      } catch {}
+    }
+    if (rows.length) this.logger.log(`[CryptoHarvester] Loaded ${rows.length} learned site(s) from DB`);
+  }
+
+  getLearnedSite(host: string) {
     return this.learnedSites.get(host);
   }
 
@@ -38,7 +57,6 @@ export class CryptoHarvesterService {
         try { captures.push(o); if (captures.length > 60) captures.shift(); } catch {}
       };
 
-      // 1. Capture encrypted API responses (fetch + XHR)
       const origFetch = window.fetch;
       window.fetch = function (...args) {
         return origFetch.apply(this, args).then(async (res) => {
@@ -69,7 +87,6 @@ export class CryptoHarvesterService {
         return origSend.apply(this, args);
       };
 
-      // 2. Capture decrypted data as it passes through JSON.parse
       const origParse = JSON.parse;
       JSON.parse = function (text, reviver) {
         let result;
@@ -82,7 +99,6 @@ export class CryptoHarvesterService {
         return result;
       };
 
-      // 3. If CryptoJS is exposed globally, capture secret + decrypt params
       const hookCjs = (root) => {
         const cjs = root.CryptoJS || root.cryptojs;
         if (!cjs) return;
@@ -103,10 +119,6 @@ export class CryptoHarvesterService {
     })();
   `;
 
-  /**
-   * Installs hooks on a page. Call before goto. Returns a function to collect
-   * everything captured during the session.
-   */
   async install(page: Page): Promise<void> {
     try {
       await page.addInitScript(this.HOOK_SCRIPT);
@@ -115,11 +127,6 @@ export class CryptoHarvesterService {
     }
   }
 
-  /**
-   * Collects captures, extracts secrets, and tries to auto-learn the site's
-   * stock API (endpoint template + secret) so stock_lookup can call it
-   * directly without any per-site code.
-   */
   async collect(
     page: Page,
     host: string,
@@ -135,24 +142,17 @@ export class CryptoHarvesterService {
           this.logger.log(`[CryptoHarvester] Captured decrypt secret for ${host} (${c.secret.slice(0, 8)}...)`);
         }
       }
-      this.learnFromCaptures(host, page.url(), result);
-    } catch {
-      // page already closed — nothing to collect
-    }
+      await this.learnFromCaptures(host, page.url(), result);
+    } catch {}
     return result;
   }
 
-  /**
-   * Auto-learns the stock API of a host from captured traffic:
-   * needs (1) a captured secret, (2) an encrypted request matching
-   * /stock/{id}/{city}, and (3) a decrypted payload shaped like stock data.
-   */
-  learnFromCaptures(
+  async learnFromCaptures(
     host: string,
     pageUrl: string,
     captures: { encrypted: { url: string; body: string }[]; decrypted: string[] },
     secret?: { secret: string; iterations: number; keySize: number },
-  ): boolean {
+  ): Promise<boolean> {
     if (this.learnedSites.has(host)) return false;
     const sec = secret || this.hostSecrets.get(host);
     if (!sec) return false;
@@ -165,21 +165,34 @@ export class CryptoHarvesterService {
 
     const abs = stockCall.url.startsWith('http') ? stockCall.url : `https://${host}${stockCall.url}`;
     const template = abs.replace(/\/stock\/\d+\/[^/?]+/, '/stock/{productId}/{city}');
-    this.learnedSites.set(host, {
+    const entry = {
       host,
       apiUrlTemplate: template,
       secret: sec.secret,
       iterations: sec.iterations,
       keySizeBytes: sec.keySize * 4,
-    });
+    };
+    this.learnedSites.set(host, entry);
+    this.hostSecrets.set(host, { secret: sec.secret, iterations: sec.iterations, keySize: sec.keySize });
+
+    // Persist to DB
+    try {
+      const json = JSON.stringify(entry);
+      const existing = await this.prisma.memory.findFirst({ where: { type: 'site', key: host } });
+      if (existing) {
+        await this.prisma.memory.update({ where: { id: existing.id }, data: { content: json, active: true } });
+      } else {
+        await this.prisma.memory.create({ data: { type: 'site', key: host, content: json, source: 'auto', importance: 8 } });
+      }
+      this.logger.log(`[CryptoHarvester] Persisted site ${host} to DB`);
+    } catch (e: any) {
+      this.logger.warn(`[CryptoHarvester] Failed to persist site ${host}: ${e.message}`);
+    }
+
     this.logger.log(`[CryptoHarvester] Learned stock API for ${host}: ${template}`);
     return true;
   }
 
-  /**
-   * Parses decrypted samples and returns flattened stock rows
-   * (any array of {color, size, stock} objects, nested or flat).
-   */
   stockPayloadsFrom(samples: string[]): any[] {
     const rows: any[] = [];
     for (const s of samples) {
@@ -192,9 +205,7 @@ export class CryptoHarvesterService {
             rows.push(p);
           }
         }
-      } catch {
-        // not JSON — skip
-      }
+      } catch {}
     }
     return rows;
   }
@@ -203,7 +214,7 @@ export class CryptoHarvesterService {
     return this.hostSecrets.has(host);
   }
 
-  getSecret(host: string): { secret: string; iterations: number; keySize: number } | undefined {
+  getSecret(host: string) {
     return this.hostSecrets.get(host);
   }
 }
