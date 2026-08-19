@@ -39,8 +39,7 @@ export class KnowledgeLiveFetchTool implements Tool {
         timeout: 'Optional timeout in seconds (max 120)',
         query: 'Optional search context for knowledge resolution',
         workspaceId: 'Optional workspace identifier',
-        browser: 'Set true to render with a real browser (needed for JS-only data like stock tables)',
-        stockLocation: 'City name to query stock for (used with browser=true on cititex product pages)',
+        browser: 'Set true to render with a real browser (needed for JS-only content)',
       },
       outputType: 'markdown' as const,
       estimatedLatency: 'fast' as const,
@@ -48,7 +47,7 @@ export class KnowledgeLiveFetchTool implements Tool {
   }
 
   get description(): string {
-    return 'Fetches content from any URL. Returns markdown by default. Use for web pages, documentation, APIs, live catalogs. Fast HTTP fetch by default; set browser=true to render JS-only content (e.g. stock per location) with Playwright.';
+    return 'Fetches content from any URL. Returns markdown by default. Use for web pages, documentation, APIs, live catalogs. Fast HTTP fetch by default; set browser=true to render JS-only content with Playwright. For interactive flows (clicking buttons/drawers on any site), use browser_interaction.';
   }
 
   get definition(): ToolDefinition {
@@ -83,11 +82,7 @@ export class KnowledgeLiveFetchTool implements Tool {
             },
             browser: {
               type: 'boolean',
-              description: 'Set true to render with a real browser (Playwright). Needed for JS-only data such as stock tables.',
-            },
-            stockLocation: {
-              type: 'string',
-              description: 'City name to query stock for (used with browser=true on cititex product pages).',
+              description: 'Set true to render with a real browser (Playwright). Needed for JS-only content.',
             },
           },
           required: ['url'],
@@ -145,7 +140,6 @@ export class KnowledgeLiveFetchTool implements Tool {
         format,
         timeout,
         browser: args.browser === true || args.browser === 'true',
-        stockLocation: typeof args.stockLocation === 'string' ? args.stockLocation : undefined,
       });
 
       return {
