@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer, nativeTheme, Notification } = require('electron');
 const http = require('node:http');
 const path = require('node:path');
 const fs = require('node:fs/promises');
@@ -174,6 +174,24 @@ app.whenReady().then(() => {
     } catch (e) {
       console.warn('[main] setTitleBarOverlay error:', e);
     }
+  });
+
+  ipcMain.handle('app:notify', async (_event, payload) => {
+    try {
+      const { title, body, silent } = payload || {};
+      if (Notification && Notification.isSupported()) {
+        const notif = new Notification({
+          title: title || 'Arunaki',
+          body: body || 'Tugas dokumen selesai.',
+          silent: !!silent,
+        });
+        notif.show();
+        return { success: true };
+      }
+    } catch (e) {
+      console.warn('[main] app:notify error:', e);
+    }
+    return { success: false };
   });
 
   ipcMain.handle('dialog:pickFolder', async () => {

@@ -159,6 +159,7 @@ export class EditToolService {
         }
 
         if (successCount > 0) {
+          await this.createAutoBackup(targetPath, rootPath);
           await fsPromises.writeFile(targetPath, currentContent, 'utf-8');
           return {
             status: 'success',
@@ -215,6 +216,7 @@ export class EditToolService {
       }
 
       if (fileExists) {
+        await this.createAutoBackup(targetPath, rootPath);
         const rawContent = await fsPromises.readFile(targetPath, 'utf-8');
         // 1. Try exact match
         if (rawContent.includes(oldStr)) {
@@ -513,6 +515,7 @@ export class EditToolService {
         if (content === null) {
           await fsPromises.unlink(targetPath);
         } else {
+          await this.createAutoBackup(targetPath, rootPath);
           await fsPromises.writeFile(targetPath, content, 'utf-8');
         }
       }
@@ -535,6 +538,21 @@ export class EditToolService {
         metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
         error: { code: 'WRITE_FAILED', message: e.message },
       };
+    }
+  }
+
+  private async createAutoBackup(targetPath: string, rootPath: string): Promise<void> {
+    try {
+      if (!rootPath || !targetPath) return;
+      const backupDir = path.join(rootPath, '.arunaki', 'backups');
+      await fsPromises.mkdir(backupDir, { recursive: true });
+      const filename = path.basename(targetPath);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(backupDir, `${filename}.${timestamp}.bak`);
+      await fsPromises.copyFile(targetPath, backupPath);
+      this.logger.log(`[edit-tool] Auto-backup created: ${backupPath}`);
+    } catch (err: any) {
+      this.logger.warn(`[edit-tool] Auto-backup failed: ${err.message}`);
     }
   }
 }

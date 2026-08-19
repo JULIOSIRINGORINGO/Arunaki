@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('arunakiDesktop', {
   writeExcel: (filePath, rows) => ipcRenderer.invoke('fs:writeExcel', filePath, rows),
   readBinaryFile: (filePath) => ipcRenderer.invoke('fs:readBinaryFile', filePath),
   setTheme: (theme) => ipcRenderer.invoke('theme:set', theme),
+  notify: (payload) => ipcRenderer.invoke('app:notify', payload),
 });
