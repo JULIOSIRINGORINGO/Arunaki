@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Brain, User, Puzzle, Database, RefreshCw, Monitor, FileSpreadsheet, Lock, LogIn, LogOut, ShieldCheck, Mail, Sparkles, Camera, Bell } from "lucide-react";
+import { Brain, User, Puzzle, Folder, RefreshCw, Monitor, FileSpreadsheet, Lock, LogIn, LogOut, ShieldCheck, Mail, Sparkles, Camera, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch } from "../lib/api";
@@ -8,8 +8,8 @@ import { ModelProviderSettings, Provider } from "../components/settings/ModelPro
 const tabs = [
   { id: "ai", label: "AI Models", icon: Brain },
   { id: "account", label: "Account & License", icon: User },
-  { id: "integrations", label: "Desktop Integrations", icon: Puzzle },
-  { id: "workspace", label: "Workspace & Storage", icon: Database },
+  { id: "integrations", label: "Desktop Automation", icon: Puzzle },
+  { id: "workspace", label: "Workspace Folder", icon: Folder },
 ];
 
 export function SettingsPage() {

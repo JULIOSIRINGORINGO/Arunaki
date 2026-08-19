@@ -10,18 +10,48 @@ import {
   Moon,
   Laptop,
   Check,
+  Folder,
 } from "lucide-react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 import { useTheme } from "../../lib/theme";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme, isLight } = useTheme();
 
+  const [workspaceInfo, setWorkspaceInfo] = useState<{ id: string; name: string; rootPath: string | null } | null>(null);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadActiveWs() {
+      const activeWsId = localStorage.getItem("arunaki_workspace_id");
+      try {
+        const res = await apiFetch(`${API_BASE}/workspaces`);
+        if (res.ok) {
+          const json = await res.json();
+          const list = json.data || [];
+          const current = list.find((w: any) => w.id === activeWsId) || list[0];
+          if (current) {
+            setWorkspaceInfo(current);
+            if (!activeWsId) {
+              localStorage.setItem("arunaki_workspace_id", current.id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load workspace in footer:", err);
+      }
+    }
+    loadActiveWs();
+
+    const handleWsChange = () => loadActiveWs();
+    window.addEventListener("arunaki-workspace-change", handleWsChange);
+    return () => window.removeEventListener("arunaki-workspace-change", handleWsChange);
+  }, []);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -220,9 +250,24 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container */}
-      <footer className="h-14 bg-[var(--bg-header)] px-4 py-2 flex items-center justify-center shrink-0 border-t border-[var(--border-color)] transition-colors duration-150">
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)]">
+      {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
+      <footer className="h-12 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-t border-[var(--border-color)] transition-colors duration-150 text-xs">
+        {/* Left: Active Workspace Path & Folder Badge */}
+        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[340px]">
+          <button
+            onClick={handleOpenFolder}
+            title={workspaceInfo?.rootPath ? `Folder Kerja: ${workspaceInfo.rootPath}` : "Pilih Folder Workspace"}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer truncate max-w-full"
+          >
+            <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="text-[11px] font-medium truncate">
+              {workspaceInfo?.name || (workspaceInfo?.rootPath ? workspaceInfo.rootPath.split(/[\\/]/).pop() : "Pilih Folder Kerja...")}
+            </span>
+          </button>
+        </div>
+
+        {/* Center: Main Navigation Floating Capsule */}
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -235,16 +280,24 @@ export function AppLayout() {
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                  "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer",
                   isActive
                     ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
               >
-                <Icon className="w-4 h-4" strokeWidth={1.5} />
+                <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
               </button>
             );
           })}
+        </div>
+
+        {/* Right: Status Indicator */}
+        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[340px] justify-end">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono text-[10px] uppercase text-[var(--text-dim)]">Arunaki Engine</span>
+          </div>
         </div>
       </footer>
     </div>
