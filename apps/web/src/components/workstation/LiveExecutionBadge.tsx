@@ -105,10 +105,24 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   if (!status || !active || steps.length === 0) return null;
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
-  const hasToolExecution = steps.some((s) => s.iconType === 'tool');
-  const summaryHeader = hasToolExecution
-    ? `Executing ${steps.length} document task${steps.length > 1 ? 's' : ''}`
-    : `Processing instruction...`;
+  const toolSteps = steps.filter((s) => s.iconType === 'tool');
+  const hasToolExecution = toolSteps.length > 0;
+
+  // Antigravity style: If no tools are being executed (simple text response / thinking),
+  // show only a subtle minimal indicator while waiting for tokens, not a big task card!
+  if (!hasToolExecution) {
+    if (status.type === 'text_delta') {
+      return null;
+    }
+    return (
+      <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] animate-pulse font-sans max-w-fit select-none my-1">
+        <Sparkles size={12} className="text-amber-500/80 shrink-0" />
+        <span className="text-[11px] text-[var(--text-muted)]">Thinking...</span>
+      </div>
+    );
+  }
+
+  const summaryHeader = `Executing ${toolSteps.length} document task${toolSteps.length > 1 ? 's' : ''}`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
