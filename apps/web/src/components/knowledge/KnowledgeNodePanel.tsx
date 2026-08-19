@@ -19,7 +19,6 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   // Form state
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [type, setType] = useState('custom');
 
   useEffect(() => {
     if (!nodeId || nodeId === 'main-ai-node') {
@@ -36,7 +35,6 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
           setNodeData(data);
           setTitle(data.title);
           setContent(data.content);
-          setType(data.type);
         }
       } catch (e) {
         console.error(e);
@@ -50,13 +48,15 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
 
   if (!nodeId || nodeId === 'main-ai-node') return null;
 
+  const isUrlContent = /^https?:\/\/\S+$/i.test(content.trim());
+
   const handleSave = async () => {
     if (!nodeData) return;
     setSaving(true);
     try {
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ title, content, type }),
+        body: JSON.stringify({ title, content }),
       });
       if (res.ok) {
         const { data } = await res.json();
@@ -156,26 +156,23 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Node Type</label>
-              <select
-                value={type}
-                onChange={e => setType(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900"
-              >
-                <option value="catalog">Data Catalog</option>
-                <option value="rules">Rules & SOP</option>
-                <option value="template">Report Template</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Knowledge Content (Markdown)</label>
-              <textarea
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                className="w-full h-64 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gray-900 focus:bg-white resize-none"
-              />
+              <label className="text-xs font-semibold text-gray-700">
+                {isUrlContent ? 'Knowledge URL' : 'Knowledge Content (Markdown)'}
+              </label>
+              {isUrlContent ? (
+                <input
+                  type="url"
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-900"
+                />
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  className="w-full h-64 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gray-900 focus:bg-white resize-none"
+                />
+              )}
             </div>
           </div>
 
