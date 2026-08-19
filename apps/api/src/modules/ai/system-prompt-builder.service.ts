@@ -30,13 +30,19 @@ export class SystemPromptBuilderService {
 
   loadPrompt(filename: string): string {
     try {
-      // __dirname points to .../apps/api/dist/modules/ai/ or .../apps/api/src/modules/ai/
-      // We need to navigate up to apps/api/ then into src/prompts/
-      const baseDir = path.resolve(__dirname, '..', '..', '..', 'src', 'prompts');
-      const fromCwd = path.resolve(process.cwd(), 'src', 'prompts', filename);
-      const fromDirname = path.resolve(baseDir, filename);
-      const promptPath = fs.existsSync(fromDirname) ? fromDirname : (fs.existsSync(fromCwd) ? fromCwd : path.resolve(process.cwd(), 'apps', 'api', 'src', 'prompts', filename));
-      return fs.readFileSync(promptPath, 'utf-8');
+      const candidates = [
+        path.resolve(process.cwd(), 'src', 'prompts', filename),
+        path.resolve(process.cwd(), 'apps', 'api', 'src', 'prompts', filename),
+        path.resolve(__dirname, '..', '..', '..', 'src', 'prompts', filename),
+        path.resolve(__dirname, '..', '..', 'prompts', filename),
+        path.resolve(__dirname, '..', 'prompts', filename),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          return fs.readFileSync(p, 'utf-8');
+        }
+      }
+      return `<!-- Prompt ${filename} not found -->`;
     } catch (err: any) {
       this.logger.warn(
         `Failed to load prompt file "${filename}": ${err.message}`,
