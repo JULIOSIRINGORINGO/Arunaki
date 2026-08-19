@@ -104,7 +104,22 @@ function WorkstationRightChatComponent({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
 
   const allMessages = useMemo(() => {
-    return [...chatMessages, ...optimisticMessages];
+    if (!optimisticMessages || optimisticMessages.length === 0) {
+      return chatMessages;
+    }
+    const result: Message[] = [...chatMessages];
+    const seenIds = new Set(chatMessages.map((m) => m.id));
+
+    for (const opt of optimisticMessages) {
+      if (seenIds.has(opt.id)) continue;
+      const alreadyPersisted = chatMessages.some(
+        (m) => m.role === opt.role && m.content.trim() === opt.content.trim() && opt.content.trim().length > 0
+      );
+      if (!alreadyPersisted) {
+        result.push(opt);
+      }
+    }
+    return result;
   }, [chatMessages, optimisticMessages]);
 
   useLayoutEffect(() => {

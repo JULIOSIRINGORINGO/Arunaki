@@ -527,10 +527,9 @@ export function UnifiedWorkstationPage() {
                 });
                 setActiveTabId(canvasTabId);
               }
-              queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
-              setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] }).then(() => {
                 setOptimisticMessages([]);
-              }, 400);
+              });
               refetchFiles();
               reloadOpenTabsContent();
               processNextQueuedPrompt();
