@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
-import { User, Brain, Puzzle, Shield, Database, CheckCircle2, RefreshCw, Monitor, FileSpreadsheet, FileText, Lock, Globe } from "lucide-react";
+import { User, Brain, Puzzle, Database, CheckCircle2, RefreshCw, Monitor, FileSpreadsheet, FileText, Lock, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch } from "../lib/api";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
-import { SecretsVaultSettings } from "../components/settings/SecretsVaultSettings";
 
 const tabs = [
   { id: "ai", label: "AI Models", icon: Brain },
-  { id: "security", label: "Security & Vault", icon: Shield },
   { id: "profile", label: "Profile & Persona", icon: User },
   { id: "integrations", label: "Desktop Integrations", icon: Puzzle },
   { id: "workspace", label: "Workspace & Storage", icon: Database },
@@ -113,8 +111,6 @@ export function SettingsPage() {
               onRefresh={fetchProviders}
             />
           )}
-
-          {activeTab === "security" && <SecretsVaultSettings />}
 
           {activeTab === "profile" && (
             <form onSubmit={handleSaveProfile} className="space-y-6 max-w-lg">
