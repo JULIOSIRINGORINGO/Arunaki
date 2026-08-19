@@ -29,6 +29,15 @@ export function AppLayout() {
   useEffect(() => {
     async function loadActiveWs() {
       const activeWsId = localStorage.getItem("arunaki_workspace_id");
+      const cachedPath = localStorage.getItem("arunaki_workspace_path");
+      if (cachedPath) {
+        setWorkspaceInfo((prev) => ({
+          id: activeWsId || prev?.id || "ws",
+          name: prev?.name || cachedPath.split(/[\\/]/).pop() || "Workspace",
+          rootPath: cachedPath,
+        }));
+      }
+
       try {
         const res = await apiFetch(`${API_BASE}/workspaces`);
         if (res.ok) {
@@ -40,6 +49,9 @@ export function AppLayout() {
             if (!activeWsId) {
               localStorage.setItem("arunaki_workspace_id", current.id);
             }
+            if (current.rootPath) {
+              localStorage.setItem("arunaki_workspace_path", current.rootPath);
+            }
           }
         }
       } catch (err) {
@@ -50,8 +62,12 @@ export function AppLayout() {
 
     const handleWsChange = () => loadActiveWs();
     window.addEventListener("arunaki-workspace-change", handleWsChange);
-    return () => window.removeEventListener("arunaki-workspace-change", handleWsChange);
-  }, []);
+    window.addEventListener("storage", handleWsChange);
+    return () => {
+      window.removeEventListener("arunaki-workspace-change", handleWsChange);
+      window.removeEventListener("storage", handleWsChange);
+    };
+  }, [location.pathname]);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -253,14 +269,14 @@ export function AppLayout() {
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
       <footer className="h-12 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-t border-[var(--border-color)] transition-colors duration-150 text-xs">
         {/* Left: Active Workspace Path Display (Read-Only Info) */}
-        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[360px]">
+        <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[380px]">
           <div
             title={workspaceInfo?.rootPath ? `Folder Kerja Aktif: ${workspaceInfo.rootPath}` : "Tidak ada folder aktif"}
             className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
             <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="text-[11px] font-mono truncate text-[var(--text-primary)]">
-              {workspaceInfo?.rootPath || workspaceInfo?.name || "Belum ada folder aktif"}
+            <span className="text-[11px] truncate text-[var(--text-primary)]">
+              {workspaceInfo?.name || (workspaceInfo?.rootPath ? workspaceInfo.rootPath.split(/[\\/]/).pop() : "Belum ada folder aktif")}
             </span>
           </div>
         </div>
@@ -295,7 +311,7 @@ export function AppLayout() {
         <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[340px] justify-end">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-mono text-[10px] uppercase text-[var(--text-dim)]">Arunaki Engine</span>
+            <span className="text-[11px] font-medium text-[var(--text-muted)]">Arunaki Engine</span>
           </div>
         </div>
       </footer>

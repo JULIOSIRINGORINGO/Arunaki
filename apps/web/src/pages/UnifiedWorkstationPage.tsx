@@ -115,7 +115,25 @@ export function UnifiedWorkstationPage() {
     },
   });
 
-  const activeWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId) || null;
+  const activeWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId) || workspaces[0] || null;
+
+  useEffect(() => {
+    if (workspaces.length > 0) {
+      const match = workspaces.find((w) => w.id === selectedWorkspaceId);
+      if (!match) {
+        const first = workspaces[0];
+        setSelectedWorkspaceId(first.id);
+        localStorage.setItem("arunaki_workspace_id", first.id);
+        if (first.rootPath) {
+          localStorage.setItem("arunaki_workspace_path", first.rootPath);
+        }
+        window.dispatchEvent(new Event("arunaki-workspace-change"));
+      } else if (match.rootPath) {
+        localStorage.setItem("arunaki_workspace_path", match.rootPath);
+        window.dispatchEvent(new Event("arunaki-workspace-change"));
+      }
+    }
+  }, [workspaces, selectedWorkspaceId]);
 
   // 2. Fetch Workspace Files
   const { data: workspaceFiles = [], refetch: refetchFiles } = useQuery<WorkspaceFile[]>({
@@ -164,7 +182,9 @@ export function UnifiedWorkstationPage() {
       localStorage.setItem("arunaki_workspace_id", wsId);
     } else {
       localStorage.removeItem("arunaki_workspace_id");
+      localStorage.removeItem("arunaki_workspace_path");
     }
+    window.dispatchEvent(new Event("arunaki-workspace-change"));
   }, []);
 
   useEffect(() => {
