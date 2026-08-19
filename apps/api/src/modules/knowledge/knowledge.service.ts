@@ -103,7 +103,16 @@ export class KnowledgeService extends BaseService<Knowledge> {
 
     return connectedNodes
       .map(k => {
-        return `--- ${k.title} [${k.type}] ---\n${k.content}`;
+        let urlsStr = '';
+        try {
+          const urls = JSON.parse(k.urls || '[]');
+          if (Array.isArray(urls) && urls.length > 0) {
+            urlsStr = `\n\nURLs:\n${urls.map((u: string) => `- ${u}`).join('\n')}`;
+          }
+        } catch {
+          // ignore malformed urls
+        }
+        return `--- ${k.title} [${k.type}] ---\n${k.content}${urlsStr}`;
       })
       .join('\n\n');
   }

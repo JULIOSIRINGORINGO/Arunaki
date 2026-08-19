@@ -205,6 +205,7 @@ model Knowledge {
   id        String   @id @default(cuid())
   title     String
   content   String   // isi knowledge (markdown/text)
+  urls      String   @default("[]") // JSON array of linked URLs (catalog/site/product links)
   type      String   @default("custom") // custom, pricing, rules, sop, data, catalog, template
   active    Boolean  @default(true)
 

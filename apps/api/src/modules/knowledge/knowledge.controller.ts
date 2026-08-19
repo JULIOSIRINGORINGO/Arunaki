@@ -96,6 +96,7 @@ export class KnowledgeController {
     body: {
       title: string;
       content: string;
+      urls?: string[];
       type?: string;
       positionX?: number;
       positionY?: number;
@@ -107,6 +108,7 @@ export class KnowledgeController {
       const item = await this.knowledgeService.create({
         title: body.title,
         content: body.content,
+        urls: body.urls ? JSON.stringify(body.urls) : '[]',
         type: body.type || 'custom',
         positionX: body.positionX ?? 0,
         positionY: body.positionY ?? 0,
@@ -126,13 +128,16 @@ export class KnowledgeController {
     body: {
       title?: string;
       content?: string;
+      urls?: string[];
       type?: string;
       nodeColor?: string;
       icon?: string;
     },
   ) {
     try {
-      const item = await this.knowledgeService.update(id, body);
+      const data: Record<string, any> = { ...body };
+      if (body.urls !== undefined) data.urls = JSON.stringify(body.urls);
+      const item = await this.knowledgeService.update(id, data);
       return successResponse(item);
     } catch (error) {
       return errorResponse('UPDATE_FAILED', error.message);

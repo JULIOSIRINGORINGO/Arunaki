@@ -19,9 +19,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   // Form state
   const [title, setTitle] = useState('');
   const [urls, setUrls] = useState<string[]>([]);
-  const [note, setNote] = useState('');
   const [content, setContent] = useState('');
-  const [isSimple, setIsSimple] = useState(false);
   const [composing, setComposing] = useState(false);
   const [composeError, setComposeError] = useState('');
 
@@ -39,26 +37,12 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
           const { data } = await res.json();
           setNodeData(data);
           setTitle(data.title);
-          const lines = String(data.content || '')
-            .trim()
-            .split('\n')
-            .map((l: string) => l.trim())
-            .filter(Boolean);
-          const urlLines: string[] = [];
-          for (const l of lines) {
-            if (/^https?:\/\/\S+$/i.test(l)) urlLines.push(l);
-            else break;
-          }
-          const rest = lines.slice(urlLines.length);
-          const isSimpleContent = urlLines.length > 0 && rest.length <= 3;
-          setIsSimple(isSimpleContent);
-          if (isSimpleContent) {
-            setUrls(urlLines);
-            setNote(rest.join('\n'));
-          } else {
+          setContent(data.content || '');
+          try {
+            const parsed = JSON.parse(data.urls || '[]');
+            setUrls(Array.isArray(parsed) ? parsed : []);
+          } catch {
             setUrls([]);
-            setNote('');
-            setContent(String(data.content || ''));
           }
         }
       } catch (e) {
@@ -88,9 +72,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
         setComposeError(error.message);
       } else {
         setTitle(data.title);
-        setNote(data.content);
-        setUrls([]);
-        setIsSimple(false);
+        setContent(data.content);
       }
     } catch (e: any) {
       setComposeError(e.message || 'Fetch failed');
@@ -103,17 +85,13 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     if (!nodeData) return;
     setSaving(true);
     try {
-      const body = isSimple
-        ? {
-            title,
-            content: [...urls.map((u) => u.trim()).filter(Boolean), note.trim()]
-              .filter(Boolean)
-              .join('\n\n'),
-          }
-        : { title, content };
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'PATCH',
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          title,
+          content,
+          urls: urls.map((u) => u.trim()).filter(Boolean),
+        }),
       });
       if (res.ok) {
         const { data } = await res.json();
@@ -257,26 +235,14 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Note</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Knowledge Content (Markdown)</label>
               <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="Contoh: tempat cek warna dan stok"
-                className="w-full h-20 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)] resize-none"
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                placeholder="Paste raw data or write notes in Markdown."
+                className="w-full h-48 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs font-mono focus:outline-none focus:border-[var(--border-strong)] resize-none"
               />
             </div>
-
-            {!isSimple && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Knowledge Content (Markdown)</label>
-                <textarea
-                  value={content}
-                  onChange={e => setContent(e.target.value)}
-                  placeholder="Paste raw data or write notes in Markdown."
-                  className="w-full h-48 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs font-mono focus:outline-none focus:border-[var(--border-strong)] resize-none"
-                />
-              </div>
-            )}
           </div>
 
           {/* Footer Actions */}
