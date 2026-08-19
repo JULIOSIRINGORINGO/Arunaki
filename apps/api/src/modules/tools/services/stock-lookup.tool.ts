@@ -55,7 +55,7 @@ export class StockLookupTool implements Tool {
   }
 
   get description(): string {
-    return 'Fetches real-time stock from any product URL (any vendor): calls the site\'s own API when it was auto-learned, otherwise renders the product page and reads the stock from the page data. Input: product URL (e.g. from knowledge nodes) + city. Returns per-branch/variant stock with prices. Use ip_geolocation to determine the user city first.';
+    return 'Fetches real-time stock from any product URL (any vendor): calls the site\'s own API when it was auto-learned, otherwise fetches the URL over plain HTTP (works for static pages, JSON, CSV/spreadsheets), and only renders a browser when the page needs JS. Input: product URL (e.g. from knowledge nodes) + city. Returns per-branch/variant stock with prices. Use ip_geolocation to determine the user city first.';
   }
 
   get definition(): ToolDefinition {
@@ -116,7 +116,9 @@ export class StockLookupTool implements Tool {
       if (site) {
         rows = await this.lookupViaApi(args, site);
       } else {
-        rows = await this.lookupViaBrowser(args);
+        // Fast path: plain HTTP first (static HTML/SSR, JSON, CSV, spreadsheets).
+        // Browser only when the page needs JS rendering.
+        rows = (await this.lookupViaHttp(args)) ?? (await this.lookupViaBrowser(args));
       }
 
       if (rows.length === 0) {
@@ -187,6 +189,71 @@ export class StockLookupTool implements Tool {
       if (filtered.length === 0) continue;
       const parts = filtered.map((p: any) => `${p.color} ${p.size}: ${p.stock} Left (${p.price1.toLocaleString('id-ID')})`);
       rows.push(`${branchName}: ${parts.join(', ')}`);
+    }
+    return rows;
+  }
+
+  /**
+   * Fast HTTP path: works for static pages (SSR JSON), JSON APIs, CSV and
+   * spreadsheet/text files — no browser needed. Returns null when the content
+   * needs JS rendering (then the caller falls back to the browser).
+   */
+  private async lookupViaHttp(args: { url: string; city: string; color?: string; size?: string }): Promise<string[] | null> {
+    let response: Response;
+    try {
+      response = await fetch(args.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+          'Accept-Language': 'id-ID,id;q=0.9',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      return null;
+    }
+    if (!response.ok) return null;
+    const text = await response.text();
+    const rows: string[] = [];
+    const seen = new Set<string>();
+    const add = (row: string) => {
+      if (!seen.has(row)) {
+        seen.add(row);
+        rows.push(row);
+      }
+    };
+
+    const isHtml = text.trimStart().startsWith('<');
+    if (isHtml) {
+      // static/SSR HTML with stock embedded
+      for (const r of this.extractSsrRows(text)) add(r);
+      if (rows.length === 0) return null; // JS-only page -> browser
+    } else {
+      // JSON / CSV / plain text
+      try {
+        const j = JSON.parse(text);
+        if (Array.isArray(j)) {
+          for (const p of this.stockRowsFrom(j)) add(p);
+        }
+      } catch {
+        // not JSON
+      }
+      for (const r of this.extractCsvRows(text)) add(r);
+      for (const r of this.extractTextRows(text)) add(r);
+    }
+
+    if (rows.length === 0) return null;
+    return this.filterRows(rows, args.color, args.size).slice(0, 40);
+  }
+
+  private stockRowsFrom(items: any[]): string[] {
+    const rows: string[] = [];
+    for (const item of items) {
+      const stock = typeof item.stock === 'number' || typeof item.stok === 'number' ? (item.stock ?? item.stok) : undefined;
+      if (stock === undefined) continue;
+      const color = typeof item.color === 'string' ? item.color : '';
+      const size = typeof item.size === 'string' ? item.size : '';
+      const price = typeof item.price1 === 'number' ? ` (${item.price1.toLocaleString('id-ID')})` : '';
+      rows.push(`${color} ${size}: ${stock} Left${price}`.trim());
     }
     return rows;
   }
@@ -263,6 +330,31 @@ export class StockLookupTool implements Tool {
       const color = obj.match(/"color"\s*:\s*"([^"]+)"/)?.[1];
       const size = obj.match(/"size"\s*:\s*"([^"]+)"/)?.[1];
       if (color && size) rows.push(`${color} ${size}: ${m[1]} Left`);
+    }
+    return rows;
+  }
+
+  /**
+   * Parses CSV/tab text with a header row containing a stock column
+   * (stok/stock/sisa) plus optional color (warna) and size (ukuran) columns.
+   */
+  private extractCsvRows(text: string): string[] {
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const header = lines[0].toLowerCase().split(/[,;\t]/);
+    const iStock = header.findIndex((h) => /stok|stock|sisa/.test(h));
+    const iColor = header.findIndex((h) => /warna|color/.test(h));
+    const iSize = header.findIndex((h) => /ukuran|size/.test(h));
+    if (iStock < 0) return [];
+
+    const rows: string[] = [];
+    for (let i = 1; i < lines.length && i < 200; i++) {
+      const cols = lines[i].split(/[,;\t]/);
+      const stock = parseInt(cols[iStock], 10);
+      if (Number.isNaN(stock)) continue;
+      const color = iColor >= 0 ? cols[iColor] || '' : '';
+      const size = iSize >= 0 ? cols[iSize] || '' : '';
+      rows.push(`${color} ${size}: ${stock} Left`.trim());
     }
     return rows;
   }
