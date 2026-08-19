@@ -112,7 +112,8 @@ export class KnowledgeService extends BaseService<Knowledge> {
         } catch {
           // ignore malformed urls
         }
-        return `--- ${k.title} [${k.type}] ---\n${k.content}${urlsStr}`;
+        const cityStr = k.city ? `\n\nDefault location: ${k.city}` : '';
+        return `--- ${k.title} [${k.type}] ---\n${k.content}${cityStr}${urlsStr}`;
       })
       .join('\n\n');
   }

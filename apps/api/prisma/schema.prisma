@@ -206,6 +206,7 @@ model Knowledge {
   title     String
   content   String   // isi knowledge (markdown/text)
   urls      String   @default("[]") // JSON array of linked URLs (catalog/site/product links)
+  city      String   @default("") // default location for stock lookups from this node
   type      String   @default("custom") // custom, pricing, rules, sop, data, catalog, template
   active    Boolean  @default(true)
 

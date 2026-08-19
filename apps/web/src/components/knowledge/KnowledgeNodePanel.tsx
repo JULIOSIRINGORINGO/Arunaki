@@ -19,6 +19,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   // Form state
   const [title, setTitle] = useState('');
   const [urls, setUrls] = useState<string[]>([]);
+  const [city, setCity] = useState('');
   const [content, setContent] = useState('');
   const [composing, setComposing] = useState(false);
   const [composeError, setComposeError] = useState('');
@@ -38,6 +39,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
           setNodeData(data);
           setTitle(data.title);
           setContent(data.content || '');
+          setCity(data.city || '');
           try {
             const parsed = JSON.parse(data.urls || '[]');
             setUrls(Array.isArray(parsed) ? parsed : []);
@@ -73,6 +75,9 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
       } else {
         setTitle(data.title);
         setContent(data.content);
+        if (Array.isArray(data.urls) && data.urls.length > 0) {
+          setUrls(data.urls);
+        }
       }
     } catch (e: any) {
       setComposeError(e.message || 'Fetch failed');
@@ -84,13 +89,31 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   const handleSave = async () => {
     if (!nodeData) return;
     setSaving(true);
+    setComposeError('');
     try {
+      let finalContent = content;
+      if (!finalContent.trim()) {
+        const target = urls.find((u) => /^https?:\/\/\S+$/i.test(u.trim()))?.trim();
+        if (target) {
+          const res = await apiFetch(`${API_BASE}/knowledge/compose`, {
+            method: 'POST',
+            body: JSON.stringify({ url: target }),
+          });
+          const { data, error } = await res.json();
+          if (error) {
+            setComposeError(error.message);
+          } else {
+            finalContent = data.content;
+          }
+        }
+      }
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title,
-          content,
+          content: finalContent,
           urls: urls.map((u) => u.trim()).filter(Boolean),
+          city,
         }),
       });
       if (res.ok) {
@@ -191,37 +214,45 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             </div>
 
 <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Knowledge URLs</label>
-                <button
-                  onClick={() => setUrls([...urls, ''])}
-                  className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-[var(--bg-hover)] text-[var(--text-muted)] hover:bg-[var(--bg-panel-sub)] cursor-pointer"
-                >
-                  + Add URL
-                </button>
-              </div>
-              {urls.map((u, i) => (
-                <div key={i} className="flex items-center gap-1.5">
-                  <input
-                    type="url"
-                    value={u}
-                    onChange={e => {
-                      const next = [...urls];
-                      next[i] = e.target.value;
-                      setUrls(next);
-                    }}
-                    placeholder="https://example.com/kategori/..."
-                    className="flex-1 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
-                  />
-                  <button
-                    onClick={() => setUrls(urls.filter((_, j) => j !== i))}
-                    className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 cursor-pointer"
-                    title="Remove URL"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">Base Website URL</label>
+              <input
+                type="url"
+                value={urls[0] || ''}
+                onChange={e => setUrls([e.target.value, ...urls.slice(1)])}
+                placeholder="https://cititex.com"
+                className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
+              />
+              {urls.length > 1 && (
+                <div className="text-[10px] text-[var(--text-muted)]">
+                  {urls.length - 1} pages discovered from this site (categories, products...)
                 </div>
-              ))}
+              )}
+              <div>
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Default City (stock checks)</label>
+                <select
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                  className="w-full mt-1 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
+                >
+                  <option value="">Not set (ask user / detect)</option>
+                  <option value="Medan">Medan</option>
+                  <option value="Jakarta">Jakarta</option>
+                  <option value="Kedoya">Kedoya</option>
+                  <option value="Tebet">Tebet</option>
+                  <option value="Buaran">Buaran</option>
+                  <option value="Kemang">Kemang</option>
+                  <option value="Transyogi">Transyogi</option>
+                  <option value="Cempaka Putih">Cempaka Putih</option>
+                  <option value="Surabaya">Surabaya</option>
+                  <option value="Bandung">Bandung</option>
+                  <option value="Semarang">Semarang</option>
+                  <option value="Yogyakarta">Yogyakarta</option>
+                  <option value="Makassar">Makassar</option>
+                  <option value="Palembang">Palembang</option>
+                  <option value="Denpasar">Denpasar</option>
+                  <option value="Balikpapan">Balikpapan</option>
+                </select>
+              </div>
               {urls[0] && /^https?:\/\/\S+$/i.test(urls[0].trim()) && (
                 <button
                   onClick={handleCompose}

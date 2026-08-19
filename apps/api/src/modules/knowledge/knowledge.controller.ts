@@ -19,6 +19,62 @@ import {
 } from '../../common/dtos/api-response.dto.js';
 import * as path from 'path';
 
+/**
+ * Discovers product URLs from the site's sitemap.xml so the user only needs
+ * to provide a single base URL. Prefers the /id/ locale and drops
+ * color/size query variants (they all point to the same product page).
+ */
+async function fetchSitemapProductUrls(baseUrl: string): Promise<string[]> {
+  try {
+    const base = new URL(baseUrl);
+    const res = await fetch(`${base.origin}/sitemap.xml`, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const locs = [...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map((m) => m[1]);
+    const out = new Set<string>();
+    for (const loc of locs) {
+      try {
+        const u = new URL(loc);
+        if (u.hostname !== base.hostname) continue;
+        if (!/\/product\//i.test(u.pathname)) continue;
+        if (!u.pathname.startsWith('/id/')) continue;
+        u.search = '';
+        u.hash = '';
+        out.add(u.toString());
+      } catch {
+        // ignore malformed loc entries
+      }
+    }
+    return [...out].slice(0, 40);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Collects internal links (same host) from raw HTML so a node can hold
+ * homepage + discovered category/product URLs without the user typing them.
+ */
+function extractInternalLinks(html: string, baseUrl: string): string[] {
+  const base = new URL(baseUrl);
+  const hrefs = [...html.matchAll(/href="([^"]+)"/gi)].map((m) => m[1]);
+  const out = new Set<string>();
+  for (const h of hrefs) {
+    try {
+      const u = new URL(h, base);
+      if (u.hostname !== base.hostname) continue;
+      if (/\.(jpg|jpeg|png|gif|webp|css|js|svg|ico|woff2?|pdf|zip)$/i.test(u.pathname)) continue;
+      u.hash = '';
+      out.add(u.toString());
+    } catch {
+      // ignore malformed hrefs
+    }
+  }
+  return [...out].slice(0, 30);
+}
+
 @Controller('knowledge')
 export class KnowledgeController {
   constructor(
@@ -31,20 +87,23 @@ export class KnowledgeController {
     try {
       let result = await this.crawler.fetchLiveKnowledge({
         url: body.url,
-        format: 'markdown',
+        format: 'html',
         browser: false,
       });
       if (!result.extractedContent || result.extractedContent.length < 100) {
         result = await this.crawler.fetchLiveKnowledge({
           url: body.url,
-          format: 'markdown',
+          format: 'html',
           browser: true,
         });
       }
       const content = result.extractedContent
         ? `# ${result.title}\n\n${result.extractedContent}`
         : `# ${result.title}\n\n${body.url}`;
-      return successResponse({ title: result.title, content });
+      const links = extractInternalLinks(result.extractedContent || '', body.url);
+      const productUrls = await fetchSitemapProductUrls(body.url);
+      const urls = [...new Set([...links, ...productUrls])].slice(0, 60);
+      return successResponse({ title: result.title, content, urls });
     } catch (error) {
       return errorResponse('COMPOSE_FAILED', (error as Error).message);
     }
@@ -97,6 +156,7 @@ export class KnowledgeController {
       title: string;
       content: string;
       urls?: string[];
+      city?: string;
       type?: string;
       positionX?: number;
       positionY?: number;
@@ -109,6 +169,7 @@ export class KnowledgeController {
         title: body.title,
         content: body.content,
         urls: body.urls ? JSON.stringify(body.urls) : '[]',
+        city: body.city ?? '',
         type: body.type || 'custom',
         positionX: body.positionX ?? 0,
         positionY: body.positionY ?? 0,
@@ -129,6 +190,7 @@ export class KnowledgeController {
       title?: string;
       content?: string;
       urls?: string[];
+      city?: string;
       type?: string;
       nodeColor?: string;
       icon?: string;

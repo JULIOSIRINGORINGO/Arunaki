@@ -55,7 +55,7 @@ export class StockLookupTool implements Tool {
   }
 
   get description(): string {
-    return 'SCOPE: stock availability numbers ONLY (ready/out-of-stock/remaining count per branch & variant). Fetches real-time stock from any product URL: calls the site\'s own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first.';
+    return 'SCOPE: stock availability numbers ONLY (ready/out-of-stock/remaining count per branch & variant). Fetches real-time stock from any product URL: calls the site\'s own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first. IMPORTANT: when you report stock numbers to the user, always end your answer with the exact URL you checked, formatted as `Source: <url>` using the `url` value from the tool result.';
   }
 
   get definition(): ToolDefinition {
@@ -112,13 +112,17 @@ export class StockLookupTool implements Tool {
       const host = new URL(args.url).hostname;
       const site = this.learnedSiteFor(host);
 
+      // Override any location/city query param with the user's city —
+      // product URLs in knowledge nodes may pin a fixed location (e.g. ?location=Medan).
+      const located: typeof args = { ...args, url: this.withLocation(args.url, args.city) };
+
       let rows: string[] = [];
       if (site) {
-        rows = await this.lookupViaApi(args, site);
+        rows = await this.lookupViaApi(located, site);
       } else {
         // Fast path: plain HTTP first (static HTML/SSR, JSON, CSV, spreadsheets).
         // Browser only when the page needs JS rendering.
-        rows = (await this.lookupViaHttp(args)) ?? (await this.lookupViaBrowser(args));
+        rows = (await this.lookupViaHttp(located)) ?? (await this.lookupViaBrowser(located));
       }
 
       if (rows.length === 0) {
@@ -133,7 +137,7 @@ export class StockLookupTool implements Tool {
 
       return {
         status: 'success',
-        data: { city: args.city, host, rows },
+        data: { city: args.city, host, url: located.url, rows },
         preview: `Stock in ${args.city} (${args.color || 'all colors'} / ${args.size || 'all sizes'}):\n` + rows.join('\n'),
         metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
       };
@@ -191,6 +195,20 @@ export class StockLookupTool implements Tool {
       rows.push(`${branchName}: ${parts.join(', ')}`);
     }
     return rows;
+  }
+
+  /**
+   * Sets/replaces the location query param (cititex-style URLs) with the
+   * user's city so the page renders stock for the right branch.
+   */
+  private withLocation(url: string, city: string): string {
+    try {
+      const u = new URL(url);
+      if (city) u.searchParams.set('location', city);
+      return u.toString();
+    } catch {
+      return url;
+    }
   }
 
   /**
