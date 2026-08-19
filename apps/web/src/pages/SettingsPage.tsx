@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Brain, User, Puzzle, Folder, RefreshCw, Monitor, FileSpreadsheet, Lock, LogIn, LogOut, ShieldCheck, Mail, Sparkles, Camera, Bell } from "lucide-react";
+import { Brain, User, Puzzle, Monitor, FileSpreadsheet, LogIn, LogOut, ShieldCheck, Mail, Sparkles, Camera, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch } from "../lib/api";
@@ -9,7 +9,6 @@ const tabs = [
   { id: "ai", label: "AI Models", icon: Brain },
   { id: "account", label: "Account & License", icon: User },
   { id: "integrations", label: "Desktop Automation", icon: Puzzle },
-  { id: "workspace", label: "Workspace Folder", icon: Folder },
 ];
 
 export function SettingsPage() {
@@ -30,10 +29,6 @@ export function SettingsPage() {
   const [autoOpenExcel, setAutoOpenExcel] = useState(() => localStorage.getItem("arunaki_pref_auto_open_excel") === "true");
   const [autoBackup, setAutoBackup] = useState(() => localStorage.getItem("arunaki_pref_auto_backup") !== "false");
   const [desktopNotification, setDesktopNotification] = useState(() => localStorage.getItem("arunaki_pref_desktop_notification") !== "false");
-
-  // Workspace Sync State
-  const [isSyncing, setIsSyncing] = useState(false);
-  const activeWsId = localStorage.getItem("arunaki_workspace_id");
 
   const fetchProviders = async () => {
     try {
@@ -71,22 +66,6 @@ export function SettingsPage() {
     setUserEmail("");
     setIsLoggedIn(false);
     toast.info("Telah keluar dari akun. Mode lokal aktif.");
-  };
-
-  const handleSyncWorkspaceDisk = async () => {
-    if (!activeWsId) {
-      toast.error("No active workspace connected.");
-      return;
-    }
-    setIsSyncing(true);
-    try {
-      await apiFetch(`${API_BASE}/workspaces/${activeWsId}/sync`, { method: "POST" });
-      toast.success("Workspace files successfully resynced from disk!");
-    } catch {
-      toast.error("Failed to sync workspace files.");
-    } finally {
-      setIsSyncing(false);
-    }
   };
 
   return (
@@ -538,42 +517,6 @@ export function SettingsPage() {
                 <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20">
                   Connected
                 </span>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "workspace" && (
-            <div className="space-y-6 max-w-xl">
-              <div>
-                <h3 className="font-bold text-[var(--text-primary)] text-base mb-1">Workspace Storage & Security Isolation</h3>
-                <p className="text-xs text-[var(--text-muted)]">Manage connected workspace disk folder and FTS5 search index.</p>
-              </div>
-
-              <div className="p-4 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[var(--text-muted)]">Active Workspace ID:</span>
-                  <span className="text-xs font-mono text-[var(--text-primary)] bg-[var(--bg-panel)] px-2 py-1 rounded border border-[var(--border-color)]">
-                    {activeWsId || "No workspace selected"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]">
-                  <span className="text-xs text-[var(--text-muted)]">Security Isolation:</span>
-                  <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Strict Directory Sandbox
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleSyncWorkspaceDisk}
-                  disabled={isSyncing}
-                  className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-2 disabled:opacity-50"
-                >
-                  <RefreshCw className={cn("w-3.5 h-3.5", isSyncing && "animate-spin")} />
-                  <span>{isSyncing ? "Resyncing Files..." : "Resync Workspace Files from Disk"}</span>
-                </button>
               </div>
             </div>
           )}
