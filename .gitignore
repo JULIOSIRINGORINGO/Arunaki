@@ -56,5 +56,6 @@ Perbandingan_Arunaki_vs_OpenClaw_LLM.md
 *.docx
 *.pdf
 *.xlsm
-Yang diharapkan.txt
-
+# Runtime sessions & workspace caches
+.arunaki/sessions/
+**/.arunaki/sessions/
