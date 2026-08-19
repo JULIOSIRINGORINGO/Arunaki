@@ -208,7 +208,7 @@ export class KnowledgeCrawlerService {
 
     let extractedTitle = '';
     let extractedContent = '';
-    let apiEncrypted: string[] = [];
+    let apiEncrypted: { url: string; body: string }[] = [];
     let apiDecrypted: string[] = [];
 
     try {

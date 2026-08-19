@@ -58,3 +58,42 @@ via `stock_lookup` (API situs + decrypt client-side), bukan tebakan LLM.
 - `stock_lookup` direct-API adalah jalur cepat; fallback `browser_interaction`
   tetap ada untuk situs tak terdaftar di STOCK_SITES.
 - Default lokasi = env `ARUNAKI_DEFAULT_LOCATION=Medan`; UI per-kota menyusul.
+
+## Update 2 — No-Hardcode Refactor (2026-08-19)
+
+`stock_lookup` TIDAK lagi mengandung URL/secret vendor apa pun di kode
+(komit sebelumnya masih punya entry cititex.com). Sekarang murni dua jalur:
+
+1. **Auto-learn (direct API)** — `CryptoHarvesterService.learnFromCaptures`:
+   saat browser membuka situs yang (a) expose secret decrypt-nya (CryptoJS
+   global), (b) memanggil `/stock/{id}/{city}`, (c) payload produk ter-dekripsi
+   lewat `JSON.parse` — endpoint template + secret + keySize tercatat
+   otomatis, dan `stock_lookup` bisa call API langsung + decrypt offline.
+   Situs apa pun, tanpa per-site code.
+2. **Browser read (generic)** — untuk semua host lain: render halaman produk,
+   baca stok dari (1) payload terdekripsi harvester, (2) SSR JSON di HTML
+   (normalisasi `\"` escaped JSON), (3) baris teks yang menyebut stok.
+   Tool menambah query param `color`/`size`/`location` bila belum ada
+   (halaman produk umumnya baru memuat stok setelah varian dipilih).
+
+Verifikasi tanpa hardcode:
+- E2E `cmszi1eqn0001vglcz5c151tm`: "nsa premium red s10 ready ga?" →
+  `ip_geolocation` → `stock_lookup` → "Red S Medan: 65 pcs — Ready" (ground
+  truth 65) — via browser read, tanpa secret cititex di kode.
+- `crypto-harvester.service.spec.ts` (5 test: learn sukses, tanpa secret,
+  payload bukan stok, tanpa request stock, learn sekali) — ✅
+- `stock-lookup.tool.spec.ts` (2 test: fixture page `file://` dibaca,
+  halaman tanpa stok → NO_STOCK_FOUND) — ✅
+- `npx nest build` — ✅
+
+Files changed tambahan:
+- `stock-lookup.tool.ts` — hapus `STOCK_SITES`/secret cititex; `learnedSiteFor`
+  hanya dari harvester; `lookupViaBrowser` + `extractSsrRows` +
+  `extractTextRows` + query-param inject.
+- `crypto-harvester.service.ts` — `collect` return `{url, body}[]` untuk
+  request terenkripsi; `learnFromCaptures` (auto-register); `stockPayloadsFrom`.
+- `knowledge-crawler.service.ts` — tipe `apiEncrypted` disesuaikan.
+- `stock-lookup.tool.spec.ts`, `crypto-harvester.service.spec.ts` — baru.
+
+Open question: verifikasi auto-learn di situs nyata belum ada (cititex tidak
+expose secret-nya) — simulasi via spec sudah menutup logikanya.

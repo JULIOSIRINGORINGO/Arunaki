@@ -21,6 +21,16 @@ export class CryptoHarvesterService {
   // host -> captured secrets from CryptoJS hooks (if exposed globally)
   private hostSecrets = new Map<string, { secret: string; iterations: number; keySize: number }>();
 
+  // host -> learned stock API (auto-registered from captures, no per-site code)
+  private learnedSites = new Map<
+    string,
+    { host: string; apiUrlTemplate: string; secret: string; iterations: number; keySizeBytes: number }
+  >();
+
+  getLearnedSite(host: string): { host: string; apiUrlTemplate: string; secret: string; iterations: number; keySizeBytes: number } | undefined {
+    return this.learnedSites.get(host);
+  }
+
   private readonly HOOK_SCRIPT = `
     (() => {
       const captures = (window.__arunakiCrypto = window.__arunakiCrypto || []);
@@ -106,24 +116,87 @@ export class CryptoHarvesterService {
   }
 
   /**
-   * Collects captures and extracts secrets for the host.
+   * Collects captures, extracts secrets, and tries to auto-learn the site's
+   * stock API (endpoint template + secret) so stock_lookup can call it
+   * directly without any per-site code.
    */
-  async collect(page: Page, host: string): Promise<{ encrypted: string[]; decrypted: string[] }> {
-    const result = { encrypted: [] as string[], decrypted: [] as string[] };
+  async collect(
+    page: Page,
+    host: string,
+  ): Promise<{ encrypted: { url: string; body: string }[]; decrypted: string[] }> {
+    const result = { encrypted: [] as { url: string; body: string }[], decrypted: [] as string[] };
     try {
       const captures = await page.evaluate(() => (window as any).__arunakiCrypto || []);
       for (const c of captures) {
-        if (c.type === 'encrypted') result.encrypted.push(c.body);
+        if (c.type === 'encrypted') result.encrypted.push({ url: c.url || '', body: c.body });
         if (c.type === 'decrypted') result.decrypted.push(c.sample);
         if (c.type === 'secret') {
           this.hostSecrets.set(host, { secret: c.secret, iterations: c.iterations || 1000, keySize: c.keySize || 12 });
           this.logger.log(`[CryptoHarvester] Captured decrypt secret for ${host} (${c.secret.slice(0, 8)}...)`);
         }
       }
+      this.learnFromCaptures(host, page.url(), result);
     } catch {
       // page already closed — nothing to collect
     }
     return result;
+  }
+
+  /**
+   * Auto-learns the stock API of a host from captured traffic:
+   * needs (1) a captured secret, (2) an encrypted request matching
+   * /stock/{id}/{city}, and (3) a decrypted payload shaped like stock data.
+   */
+  learnFromCaptures(
+    host: string,
+    pageUrl: string,
+    captures: { encrypted: { url: string; body: string }[]; decrypted: string[] },
+    secret?: { secret: string; iterations: number; keySize: number },
+  ): boolean {
+    if (this.learnedSites.has(host)) return false;
+    const sec = secret || this.hostSecrets.get(host);
+    if (!sec) return false;
+
+    const stockCall = captures.encrypted.find((c) => /\/stock\/\d+\/[^/?]+/.test(c.url));
+    if (!stockCall) return false;
+
+    const hasStockPayload = captures.decrypted.some((s) => this.stockPayloadsFrom([s]).length > 0);
+    if (!hasStockPayload) return false;
+
+    const abs = stockCall.url.startsWith('http') ? stockCall.url : `https://${host}${stockCall.url}`;
+    const template = abs.replace(/\/stock\/\d+\/[^/?]+/, '/stock/{productId}/{city}');
+    this.learnedSites.set(host, {
+      host,
+      apiUrlTemplate: template,
+      secret: sec.secret,
+      iterations: sec.iterations,
+      keySizeBytes: sec.keySize * 4,
+    });
+    this.logger.log(`[CryptoHarvester] Learned stock API for ${host}: ${template}`);
+    return true;
+  }
+
+  /**
+   * Parses decrypted samples and returns flattened stock rows
+   * (any array of {color, size, stock} objects, nested or flat).
+   */
+  stockPayloadsFrom(samples: string[]): any[] {
+    const rows: any[] = [];
+    for (const s of samples) {
+      try {
+        const j = JSON.parse(s);
+        if (!Array.isArray(j)) continue;
+        const items = j.flatMap((b: any) => (Array.isArray(b?.products) ? b.products : [b]));
+        for (const p of items) {
+          if (typeof p?.stock === 'number' && typeof p?.color === 'string' && typeof p?.size === 'string') {
+            rows.push(p);
+          }
+        }
+      } catch {
+        // not JSON — skip
+      }
+    }
+    return rows;
   }
 
   hasSecret(host: string): boolean {
