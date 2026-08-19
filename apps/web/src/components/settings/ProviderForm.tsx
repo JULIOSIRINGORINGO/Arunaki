@@ -62,7 +62,7 @@ export function ProviderForm({
     <form
       onSubmit={onSubmit}
       className={cn(
-        "p-5 bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl space-y-4 shadow-xl border",
+        "p-5 bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl space-y-4 border",
         isEditing ? "border-[var(--text-primary)]" : "border-[var(--border-color)]"
       )}
     >
@@ -177,7 +177,7 @@ export function ProviderForm({
                   className={cn(
                     "p-2.5 rounded-lg border text-left flex items-center justify-between transition-all cursor-pointer",
                     isSelected
-                      ? "bg-[var(--bg-hover)] border-[var(--text-primary)] text-[var(--text-primary)] shadow-xs"
+                      ? "bg-[var(--bg-hover)] border-[var(--text-primary)] text-[var(--text-primary)]"
                       : "bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
                   )}
                 >

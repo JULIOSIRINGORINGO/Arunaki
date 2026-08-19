@@ -50,7 +50,7 @@ export function ConnectFolderModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl max-w-md w-full p-5 border border-[var(--border-strong)] shadow-2xl">
+      <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl max-w-md w-full p-5 border border-[var(--border-strong)]">
         <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] mb-4">
           <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-[var(--text-muted)]" />

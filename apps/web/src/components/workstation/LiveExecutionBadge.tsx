@@ -126,7 +126,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   };
 
   return (
-    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] shadow-lg overflow-hidden animate-fade-in max-w-sm">
+    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] overflow-hidden animate-fade-in max-w-sm">
       {/* Collapsible Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

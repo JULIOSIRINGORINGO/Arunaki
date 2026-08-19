@@ -198,7 +198,7 @@ export default function FileTree({
       {/* Modals for Create & Rename */}
       {promptModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[var(--border-strong)]">
+          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full border border-[var(--border-strong)]">
             <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">
               {promptModal === "file" ? "New File" : "New Folder"}
             </h4>
@@ -233,7 +233,7 @@ export default function FileTree({
 
       {renameModalState && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[var(--border-strong)]">
+          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full border border-[var(--border-strong)]">
             <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">Rename File / Folder</h4>
             <form
               onSubmit={(e) => {

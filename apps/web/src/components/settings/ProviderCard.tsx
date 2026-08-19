@@ -31,7 +31,7 @@ export function ProviderCard({
       className={cn(
         "p-3.5 rounded-xl border transition-all space-y-2",
         p.active
-          ? "bg-[var(--bg-panel)] border-[var(--border-strong)] shadow-md"
+          ? "bg-[var(--bg-panel)] border-[var(--border-strong)]"
           : "bg-[var(--bg-card)] border-[var(--border-color)] opacity-90 hover:opacity-100"
       )}
     >

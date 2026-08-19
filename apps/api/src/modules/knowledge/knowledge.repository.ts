@@ -102,9 +102,9 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
     });
   }
 
-  // ─── Graph-aware active context for AI ────────────────
+  // ─── Graph-aware active context for AI (Strictly reachable from main-ai-node) ──
   async findActiveWithEdges(): Promise<{ nodes: Knowledge[]; edges: KnowledgeEdge[] }> {
-    const [nodes, edges] = await Promise.all([
+    const [allNodes, allEdges] = await Promise.all([
       this.prisma.knowledge.findMany({
         where: { active: true },
         orderBy: { updatedAt: 'desc' },
@@ -112,12 +112,48 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
       this.prisma.knowledgeEdge.findMany(),
     ]);
 
-    // Filter edges to only include active node connections
-    const activeIds = new Set(nodes.map((n) => n.id));
-    const activeEdges = edges.filter(
+    const activeIds = new Set(allNodes.map((n) => n.id));
+
+    // Valid active edges where both source and target are active nodes
+    const activeEdges = allEdges.filter(
       (e) => activeIds.has(e.sourceId) && activeIds.has(e.targetId),
     );
 
-    return { nodes, edges: activeEdges };
+    // Build undirected adjacency graph
+    const adj = new Map<string, string[]>();
+    for (const edge of activeEdges) {
+      if (!adj.has(edge.sourceId)) adj.set(edge.sourceId, []);
+      if (!adj.has(edge.targetId)) adj.set(edge.targetId, []);
+      adj.get(edge.sourceId)!.push(edge.targetId);
+      adj.get(edge.targetId)!.push(edge.sourceId);
+    }
+
+    // BFS Traversal starting strictly from main-ai-node
+    const reachableIds = new Set<string>();
+    const startNodeId = 'main-ai-node';
+
+    if (activeIds.has(startNodeId)) {
+      reachableIds.add(startNodeId);
+      const queue: string[] = [startNodeId];
+
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        const neighbors = adj.get(current) || [];
+        for (const neighbor of neighbors) {
+          if (!reachableIds.has(neighbor)) {
+            reachableIds.add(neighbor);
+            queue.push(neighbor);
+          }
+        }
+      }
+    }
+
+    // Filter nodes and edges strictly to those connected to Arunaki AI
+    const reachableNodes = allNodes.filter((n) => reachableIds.has(n.id));
+    const reachableEdges = activeEdges.filter(
+      (e) => reachableIds.has(e.sourceId) && reachableIds.has(e.targetId),
+    );
+
+    return { nodes: reachableNodes, edges: reachableEdges };
   }
 }

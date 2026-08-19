@@ -94,7 +94,7 @@ export function SettingsPage() {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer shrink-0 border",
                   isActive
-                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-xs"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)]"
                     : "bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border-transparent"
                 )}
               >

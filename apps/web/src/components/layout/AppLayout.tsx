@@ -113,7 +113,7 @@ export function AppLayout() {
 
               {/* View Dropdown Menu Popup */}
               {isViewMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
                   <div className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
                     Theme
                   </div>
@@ -222,7 +222,7 @@ export function AppLayout() {
 
       {/* 3. FOOTER BAWAH (MAIN MENU NAVIGATION): Single Center Capsule Container */}
       <footer className="h-14 bg-[var(--bg-header)] px-4 py-2 flex items-center justify-center shrink-0 border-t border-[var(--border-color)] transition-colors duration-150">
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-md">
+        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -237,7 +237,7 @@ export function AppLayout() {
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
                   isActive
-                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)] shadow-xs"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
               >

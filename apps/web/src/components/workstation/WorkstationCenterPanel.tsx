@@ -197,7 +197,7 @@ function WorkstationCenterPanelComponent({
                 className={cn(
                   "group flex items-center gap-2 px-3 py-1 rounded text-xs font-sans cursor-pointer transition-all duration-150 border select-none shrink-0",
                   isActive
-                    ? "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-xs"
+                    ? "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)]"
                     : "bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 )}
               >

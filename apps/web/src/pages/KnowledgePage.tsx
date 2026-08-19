@@ -12,6 +12,7 @@ import {
   Node,
   ReactFlowProvider,
   MarkerType,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -27,6 +28,7 @@ import { API_BASE, apiFetch } from "../lib/api";
 import { KnowledgeNode } from "../components/knowledge/KnowledgeNode";
 import { KnowledgeNodePanel } from "../components/knowledge/KnowledgeNodePanel";
 import { KnowledgeToolbar } from "../components/knowledge/KnowledgeToolbar";
+import { useTheme, getSystemTheme } from "../lib/theme";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
 
@@ -57,6 +59,9 @@ const nodeTypes = {
 };
 
 function FlowEditor() {
+  const { theme } = useTheme();
+  const isLight = theme === 'light' || (theme === 'system' && getSystemTheme() === 'light');
+  const { fitView } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   
@@ -105,26 +110,32 @@ function FlowEditor() {
         draggable: true,
       }));
 
-      // Build edges
+      // Build edges with sleek solid bezier curves (n8n-style)
       const initialEdges: Edge[] = dbEdges.map((e: KnowledgeEdgeData) => ({
         id: e.id,
         source: e.sourceId,
         target: e.targetId,
         label: e.label,
-        type: 'smoothstep',
-        animated: true,
-        style: { stroke: '#9ca3af', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' },
+        type: 'bezier',
+        style: {
+          stroke: isLight ? '#94A3B8' : '#475569',
+          strokeWidth: 2,
+        },
       }));
 
       setNodes(initialNodes);
       setEdges(initialEdges);
+
+      // Smooth auto-fit & zoom out generously when opened
+      setTimeout(() => {
+        fitView({ padding: 0.9, maxZoom: 0.85, duration: 600 });
+      }, 100);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, isLight, fitView]);
 
   useEffect(() => {
     fetchData();
@@ -150,10 +161,11 @@ function FlowEditor() {
             id: data.id,
             source: data.sourceId,
             target: data.targetId,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#9ca3af', strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' },
+            type: 'bezier',
+            style: {
+              stroke: isLight ? '#94A3B8' : '#475569',
+              strokeWidth: 2,
+            },
           };
           setEdges((eds) => addEdge(newEdge, eds));
         }
@@ -161,7 +173,7 @@ function FlowEditor() {
         console.error(e);
       }
     },
-    [setEdges],
+    [setEdges, isLight],
   );
 
   const onEdgesDelete = useCallback(
@@ -438,11 +450,13 @@ function FlowEditor() {
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
+          fitViewOptions={{ padding: 0.9, maxZoom: 0.85, minZoom: 0.1 }}
+          minZoom={0.1}
+          maxZoom={2}
           className="bg-[var(--bg-app)]"
           defaultEdgeOptions={{
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#9ca3af', strokeWidth: 2 },
+            type: 'bezier',
+            style: { stroke: isLight ? '#94A3B8' : '#475569', strokeWidth: 2 },
           }}
           // Update selected style via custom prop to our node
           onSelectionChange={(params) => {
@@ -453,15 +467,15 @@ function FlowEditor() {
             }
           }}
         >
-          <Background color="#ccc" gap={20} size={1} />
-          <Controls className="!bg-black border-2 !border-gray-800 shadow-xl rounded-xl overflow-hidden !bottom-8 !left-4 [&_button]:!bg-black [&_button]:!text-[#c4b5fd] [&_button]:!border-b-gray-800 [&_button:hover]:!bg-gray-900" />
+          <Background color={isLight ? "#D1D5DB" : "#333338"} gap={20} size={1.2} />
+          <Controls className="!bg-[var(--bg-panel)] border !border-[var(--border-strong)] rounded-xl overflow-hidden !bottom-8 !left-4 [&_button]:!bg-[var(--bg-panel)] [&_button]:!text-[var(--text-primary)] [&_button]:!border-b-[var(--border-color)] [&_button:hover]:!bg-[var(--bg-hover)]" />
           <MiniMap 
-            className="rounded-xl !bg-black border-2 border-gray-800 shadow-xl overflow-hidden !bottom-8 !right-4"
-            maskColor="rgba(17, 24, 39, 0.8)"
+            className="rounded-xl !bg-[var(--bg-panel)] border !border-[var(--border-strong)] overflow-hidden !bottom-8 !right-4"
+            maskColor={isLight ? "rgba(243, 244, 246, 0.75)" : "rgba(17, 24, 39, 0.8)"}
             nodeBorderRadius={16}
             nodeColor={(node) => {
-              if (node.id === 'main-ai-node') return '#c4b5fd'; // Lilac for Arunaki
-              return '#f97316'; // Orange for documents
+              if (node.id === 'main-ai-node') return isLight ? '#8B5CF6' : '#c4b5fd';
+              return '#f97316';
             }}
           />
           
@@ -485,7 +499,7 @@ function FlowEditor() {
       {/* Upload Modal (Same as original but absolute overlay) */}
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl space-y-5 border border-gray-100">
+          <div className="w-full max-w-lg bg-[var(--bg-card)] text-[var(--text-primary)] rounded-3xl p-6 space-y-5 border border-[var(--border-color)]">
             {creating ? (
               /* Loading State */
               <div className="py-10 space-y-6">
@@ -613,7 +627,7 @@ function FlowEditor() {
                     onClick={createDoc}
                     disabled={!selectedFile}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 shadow-2xs transition-all",
+                      "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-900 text-white hover:bg-gray-800 transition-all",
                       !selectedFile && "opacity-50 cursor-not-allowed"
                     )}
                   >

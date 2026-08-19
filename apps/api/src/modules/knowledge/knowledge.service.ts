@@ -42,7 +42,9 @@ export class KnowledgeService extends BaseService<Knowledge> {
   // ─── AI Context (RAG & Map) ─────────────────────────
   async getKnowledgeMap(): Promise<string> {
     const { nodes, edges } = await this.repository.findActiveWithEdges();
-    if (nodes.length === 0) return 'Knowledge Graph is empty.';
+    // Exclude main-ai-node from knowledge document entries
+    const docNodes = nodes.filter((n) => n.id !== 'main-ai-node');
+    if (docNodes.length === 0) return 'No connected knowledge documents.';
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const connections = new Map<string, string[]>();
@@ -59,7 +61,7 @@ export class KnowledgeService extends BaseService<Knowledge> {
       }
     }
 
-    return nodes
+    return docNodes
       .map((k) => {
         const conn = connections.get(k.id);
         const connStr = conn && conn.length > 0 ? ` (Connected to: ${conn.join(', ')})` : '';
@@ -70,7 +72,9 @@ export class KnowledgeService extends BaseService<Knowledge> {
 
   async searchNodes(query: string): Promise<string> {
     const { nodes, edges } = await this.repository.findActiveWithEdges();
-    if (nodes.length === 0) return 'No data found.';
+    // Only search through actual documents connected to Arunaki
+    const docNodes = nodes.filter((n) => n.id !== 'main-ai-node');
+    if (docNodes.length === 0) return 'No data found.';
 
     const q = query.toLowerCase();
     // token-based matching: whole-query substring never matches long queries
@@ -80,7 +84,7 @@ export class KnowledgeService extends BaseService<Knowledge> {
       if (lower.includes(q)) return 3;
       return tokens.reduce((score, t) => (lower.includes(t) ? score + 1 : score), 0);
     };
-    const scored = nodes.map(n => ({ node: n, score: matchScore(n.title) + matchScore(n.type) }));
+    const scored = docNodes.map(n => ({ node: n, score: matchScore(n.title) + matchScore(n.type) }));
     const best = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
     const targetNode = best[0]?.node;
     if (!targetNode) return 'Node not found in the Knowledge Graph.';
@@ -95,7 +99,7 @@ export class KnowledgeService extends BaseService<Knowledge> {
       }
     }
 
-    const connectedNodes = nodes.filter(n => connectedIds.has(n.id));
+    const connectedNodes = docNodes.filter(n => connectedIds.has(n.id));
 
     return connectedNodes
       .map(k => {

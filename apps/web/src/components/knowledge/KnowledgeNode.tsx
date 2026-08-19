@@ -1,6 +1,21 @@
+import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { BookOpen, FileText, Activity, ShieldCheck, Database, Type } from 'lucide-react';
-import { ArunakiLogo } from '../common/ArunakiLogo';
+import {
+  Bot,
+  FileText,
+  ShieldCheck,
+  Database,
+  Globe,
+  Calculator,
+  Send,
+  Brain,
+  Mail,
+  Calendar,
+  SlidersHorizontal,
+  Table2,
+  Link2,
+  FileCode,
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface KnowledgeNodeProps {
@@ -13,94 +28,248 @@ interface KnowledgeNodeProps {
     nodeColor?: string;
     icon?: string;
     isMain?: boolean;
+    isCircular?: boolean;
+    portLabel?: string;
     onSelect?: (id: string) => void;
   };
   selected?: boolean;
 }
 
-const getIcon = (iconName?: string) => {
-  switch (iconName) {
-    case 'book-open': return <BookOpen className="w-4 h-4" />;
-    case 'activity': return <Activity className="w-4 h-4" />;
-    case 'shield-check': return <ShieldCheck className="w-4 h-4" />;
-    case 'database': return <Database className="w-4 h-4" />;
-    case 'type': return <Type className="w-4 h-4" />;
-    case 'file-text':
-    default: return <FileText className="w-4 h-4" />;
+const getIconElement = (type: string, iconName?: string) => {
+  const t = (type || "").toLowerCase();
+  const icon = (iconName || "").toLowerCase();
+
+  if (icon === "bot" || t.includes("agent") || t.includes("assistant")) {
+    return <Bot className="w-5 h-5" strokeWidth={1.5} />;
   }
+  if (icon === "brain" || t.includes("model") || t.includes("openai") || t.includes("ai")) {
+    return <Brain className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "database" || t.includes("memory") || t.includes("buffer") || t.includes("db")) {
+    return <Database className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "mail" || t.includes("email") || t.includes("gmail")) {
+    return <Mail className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "calendar" || t.includes("event") || t.includes("schedule")) {
+    return <Calendar className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "globe" || t.includes("web") || t.includes("tavily") || t.includes("search")) {
+    return <Globe className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "calc" || icon === "calculator" || t.includes("calc") || t.includes("math")) {
+    return <Calculator className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "send" || icon === "telegram" || t.includes("telegram") || t.includes("message")) {
+    return <Send className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (icon === "shield-check" || t.includes("rules") || t.includes("sop")) {
+    return <ShieldCheck className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (t.includes("sheet") || t.includes("excel") || t.includes("csv") || t.includes("table")) {
+    return <Table2 className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (t.includes("url") || t.includes("link")) {
+    return <Link2 className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (t.includes("code") || t.includes("script")) {
+    return <FileCode className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  if (t.includes("switch") || t.includes("router")) {
+    return <SlidersHorizontal className="w-5 h-5" strokeWidth={1.5} />;
+  }
+  return <FileText className="w-5 h-5" strokeWidth={1.5} />;
 };
 
-export function KnowledgeNode({ data, selected }: KnowledgeNodeProps) {
-  const isMain = data.isMain;
-  const isActive = data.active;
-  
+const getNodeColorTheme = (type: string, iconName?: string) => {
+  const t = (type || "").toLowerCase();
+  const icon = (iconName || "").toLowerCase();
+
+  if (icon === "send" || icon === "telegram" || t.includes("telegram")) {
+    return "bg-sky-500/15 text-sky-500 border-sky-500/30";
+  }
+  if (icon === "brain" || t.includes("openai") || t.includes("model")) {
+    return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30";
+  }
+  if (icon === "database" || t.includes("memory") || t.includes("buffer")) {
+    return "bg-indigo-500/15 text-indigo-500 border-indigo-500/30";
+  }
+  if (icon === "mail" || t.includes("email")) {
+    return "bg-purple-500/15 text-purple-500 border-purple-500/30";
+  }
+  if (icon === "calendar" || t.includes("calendar")) {
+    return "bg-teal-500/15 text-teal-500 border-teal-500/30";
+  }
+  if (icon === "globe" || t.includes("web") || t.includes("tavily")) {
+    return "bg-blue-500/15 text-blue-500 border-blue-500/30";
+  }
+  if (icon === "calc" || t.includes("calc")) {
+    return "bg-amber-500/15 text-amber-500 border-amber-500/30";
+  }
+  if (icon === "shield-check" || t.includes("rules") || t.includes("sop")) {
+    return "bg-orange-500/15 text-orange-500 border-orange-500/30";
+  }
+  if (t.includes("switch") || t.includes("router")) {
+    return "bg-cyan-500/15 text-cyan-500 border-cyan-500/30";
+  }
+  if (t.includes("sheet") || t.includes("excel") || t.includes("csv")) {
+    return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30";
+  }
+  return "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-color)]";
+};
+
+export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: KnowledgeNodeProps) {
+  const isMain = data.isMain || data.id === 'main-ai-node';
+  const isActive = data.active !== false;
+  const isCircular = data.isCircular || ['tool', 'memory', 'model'].includes((data.type || '').toLowerCase());
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 1. MAIN ASSISTANT / AGENT CORE NODE (Large Horizontal Card)
+  // ─────────────────────────────────────────────────────────────────────────
   if (isMain) {
     return (
-      <div className="relative group">
-        <svg width="0" height="0" className="absolute">
-          <defs>
-            <linearGradient id="arunaki-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f97316" />
-              <stop offset="100%" stopColor="#c4b5fd" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div 
-          className={cn(
-            "flex items-center justify-center w-16 h-16 rounded-full bg-black shadow-xl border border-gray-800 cursor-pointer transition-all",
-            selected ? "ring-4 ring-gray-900/40 scale-105" : "ring-4 ring-gray-900/10 hover:scale-105"
-          )}
-          onClick={() => data.onSelect?.(data.id)}
-        >
-          <ArunakiLogo className="w-8 h-8 -translate-y-[2px]" fill="url(#arunaki-grad)" />
-        </div>
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-           <span className="text-xs font-bold text-gray-700 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100">Arunaki AI</span>
-        </div>
-        
+      <div
+        onClick={() => data.onSelect?.(data.id)}
+        className={cn(
+          "relative group px-4 py-3 rounded-2xl bg-[var(--bg-card)] border transition-all select-none cursor-pointer min-w-[210px]",
+          selected
+            ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20"
+            : "border-[var(--border-strong)] hover:border-[var(--text-primary)]",
+          !isActive && "opacity-60 grayscale"
+        )}
+      >
+        {/* Left Input Handle */}
         <Handle
           type="target"
-          position={Position.Top}
-          className="w-3 h-3 border-2 border-white bg-gray-900"
+          position={Position.Left}
+          id="in-left"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
+        />
+
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
+            <Bot className="w-5 h-5" strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xs font-bold text-[var(--text-primary)] truncate">
+              {data.title || "Arunaki Assistant"}
+            </h3>
+            <p className="text-[10px] text-[var(--text-muted)] font-mono truncate mt-0.5">
+              Autonomous Agent Core
+            </p>
+          </div>
+        </div>
+
+        {/* Right Output Handle */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          id="out-right"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
         />
       </div>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // 2. CIRCULAR SUB-NODE (Tool / Memory / Model Nodes hanging at bottom)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (isCircular) {
+    const colorTheme = getNodeColorTheme(data.type, data.icon);
+    return (
+      <div
+        onClick={() => data.onSelect?.(data.id)}
+        className="flex flex-col items-center group select-none cursor-pointer"
+      >
+        {data.portLabel && (
+          <span className="text-[9px] text-[var(--text-dim)] font-mono mb-1 tracking-wider uppercase">
+            {data.portLabel}
+          </span>
+        )}
+
+        <div className="relative">
+          {/* Top Target Handle */}
+          <Handle
+            type="target"
+            position={Position.Top}
+            id="top"
+            className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)]"
+          />
+
+          <div
+            className={cn(
+              "w-13 h-13 rounded-full flex items-center justify-center transition-all border",
+              colorTheme,
+              selected
+                ? "ring-2 ring-[var(--text-primary)] border-[var(--text-primary)] scale-105"
+                : "hover:scale-105 hover:border-[var(--text-primary)]",
+              !isActive && "opacity-60 grayscale"
+            )}
+          >
+            {getIconElement(data.type, data.icon)}
+          </div>
+        </div>
+
+        <p className="text-[10px] font-medium text-[var(--text-primary)] text-center mt-1.5 max-w-[100px] leading-tight truncate">
+          {data.title}
+        </p>
+        <p className="text-[9px] text-[var(--text-dim)] font-mono truncate max-w-[100px]">
+          {data.type}
+        </p>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 3. STANDARD N8N ACTION / DOCUMENT / WORKFLOW CARD NODE
+  // ─────────────────────────────────────────────────────────────────────────
+  const colorTheme = getNodeColorTheme(data.type, data.icon);
+
   return (
     <div
       onClick={() => data.onSelect?.(data.id)}
       className={cn(
-        "relative rounded-xl shadow-sm transition-all min-w-[160px] max-w-[200px] cursor-pointer bg-orange-500 border border-orange-600",
-        selected ? "shadow-md ring-2 ring-orange-500/50 scale-[1.02]" : "hover:shadow-md hover:bg-orange-600",
+        "relative group p-3 rounded-2xl bg-[var(--bg-card)] border transition-all select-none cursor-pointer flex flex-col items-center justify-center text-center min-w-[125px] max-w-[150px]",
+        selected
+          ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20"
+          : "border-[var(--border-strong)] hover:border-[var(--text-primary)]",
         !isActive && "opacity-60 grayscale"
       )}
     >
+      {/* Left Input Port */}
       <Handle
         type="target"
-        position={Position.Top}
-        className="w-3 h-3 border-2 border-white bg-gray-300"
+        position={Position.Left}
+        id="in-left"
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
       />
 
-      <div className="flex items-center gap-2.5 p-2.5">
-        <div className="p-1.5 rounded-lg text-white flex-shrink-0 bg-white/20">
-          {getIcon(data.icon)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xs font-bold text-white truncate">
-            {data.title}
-          </h3>
-          <p className="text-[9px] text-orange-100 font-mono tracking-wide truncate mt-0.5">
-            {data.type}
-          </p>
-        </div>
+      {/* Center Icon Box */}
+      <div
+        className={cn(
+          "w-11 h-11 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-105 border",
+          colorTheme
+        )}
+      >
+        {getIconElement(data.type, data.icon)}
       </div>
 
+      {/* Node Title & Subtitle underneath */}
+      <h3 className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[110px]">
+        {data.title}
+      </h3>
+      <p className="text-[9px] text-[var(--text-muted)] font-mono truncate max-w-[110px] mt-0.5">
+        {data.type || "Document"}
+      </p>
+
+      {/* Right Output Port */}
       <Handle
         type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 border-2 border-white bg-gray-400"
+        position={Position.Right}
+        id="out-right"
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
       />
     </div>
   );
-}
+});
+

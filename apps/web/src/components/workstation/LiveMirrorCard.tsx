@@ -20,16 +20,16 @@ export function LiveMirrorCard({
   if (!screenshotUrl) return null;
 
   return (
-    <div className="my-3 rounded-2xl border border-gray-200/90 bg-white shadow-xs overflow-hidden transition-all duration-200">
+    <div className="my-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] overflow-hidden transition-all duration-200">
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)]">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <Monitor size={16} className="text-gray-700" />
+          <Monitor size={16} className="text-[var(--text-muted)]" />
           <div>
-            <span className="text-xs font-semibold text-gray-800">{title}</span>
+            <span className="text-xs font-semibold text-[var(--text-primary)]">{title}</span>
             {timestamp && (
-              <span className="text-[10px] text-gray-400 ml-2">
+              <span className="text-[10px] text-[var(--text-dim)] ml-2">
                 {new Date(timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
             )}
@@ -40,7 +40,7 @@ export function LiveMirrorCard({
           <button
             type="button"
             onClick={() => setFullScreen(!fullScreen)}
-            className="p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 transition-colors"
+            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
             title={fullScreen ? "Minimize" : "Maximize Fullscreen"}
           >
             {fullScreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
@@ -49,7 +49,7 @@ export function LiveMirrorCard({
           <button
             type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className="p-1 rounded text-gray-500 hover:text-gray-800 hover:bg-gray-200/60 transition-colors"
+            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors"
             title={collapsed ? "Open Mirror" : "Hide Mirror"}
           >
             {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -59,11 +59,11 @@ export function LiveMirrorCard({
 
       {/* Content Area */}
       {!collapsed && (
-        <div className={`p-2 bg-gray-900 flex flex-col items-center justify-center transition-all ${fullScreen ? "max-h-[80vh]" : "max-h-96"}`}>
+        <div className={`p-2 bg-[var(--bg-app)] flex flex-col items-center justify-center transition-all ${fullScreen ? "max-h-[80vh]" : "max-h-96"}`}>
           <img
             src={screenshotUrl}
             alt="Desktop Live Mirror"
-            className="max-h-full max-w-full object-contain rounded border border-gray-800 shadow-lg"
+            className="max-h-full max-w-full object-contain rounded border border-[var(--border-color)]"
           />
           <div className="w-full mt-1.5 px-2 flex justify-between text-[11px] text-gray-400">
             <span className="truncate">{subtitle}</span>

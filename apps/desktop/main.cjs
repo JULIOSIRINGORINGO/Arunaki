@@ -159,6 +159,7 @@ app.whenReady().then(() => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     const isLight = theme === 'light';
     try {
+      mainWindow.setBackgroundColor(isLight ? '#F8F9FA' : '#0A0A0A');
       if (process.platform === 'win32' || process.platform === 'darwin') {
         mainWindow.setTitleBarOverlay({
           color: isLight ? '#FFFFFF' : '#121214',
