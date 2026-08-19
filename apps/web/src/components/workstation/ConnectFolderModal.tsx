@@ -49,15 +49,16 @@ export function ConnectFolderModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-      <div className="bg-[#171717] text-white rounded-xl max-w-md w-full p-5 border border-[#2D2D2D] shadow-2xl">
-        <div className="flex items-center justify-between pb-3 border-b border-[#2D2D2D] mb-4">
-          <h3 className="font-bold text-sm text-white flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-[#E5E5E5]" />
-            Connect Workspace Folder          </h3>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+      <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl max-w-md w-full p-5 border border-[var(--border-strong)] shadow-2xl">
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)] mb-4">
+          <h3 className="font-bold text-sm text-[var(--text-primary)] flex items-center gap-2">
+            <FolderOpen className="w-4 h-4 text-[var(--text-muted)]" />
+            Connect Workspace Folder
+          </h3>
           <button
             onClick={onClose}
-            className="text-[#A3A3A3] hover:text-white p-1 rounded cursor-pointer"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -65,7 +66,7 @@ export function ConnectFolderModal({
 
         <form onSubmit={handleConnectFolderSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
+            <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
               Local Folder Path
             </label>
             <input
@@ -73,13 +74,13 @@ export function ConnectFolderModal({
               value={folderInputPath}
               onChange={(e) => setFolderInputPath(e.target.value)}
               placeholder="Example: E:\DocumentWorkspaces\Garment"
-              className="w-full bg-[#1E1E1E] border border-[#2D2D2D] rounded-md px-3 py-2 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-md px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
             />
           </div>
 
           {workspaces.length > 0 && (
             <div>
-              <label className="block text-xs text-[#A3A3A3] mb-1.5 font-medium">
+              <label className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
                 Or Select Recent Workspace:
               </label>
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -91,10 +92,10 @@ export function ConnectFolderModal({
                       onClose();
                       toast.success(`Connected to ${ws.name}`);
                     }}
-                    className="p-2 rounded-md bg-[#1E1E1E] hover:bg-[#262626] border border-[#2D2D2D] transition-colors cursor-pointer flex items-center justify-between text-xs"
+                    className="p-2 rounded-md bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] transition-colors cursor-pointer flex items-center justify-between text-xs"
                   >
-                    <span className="font-medium text-white truncate">{ws.name}</span>
-                    <span className="text-[10px] text-[#737373] truncate max-w-[150px]">
+                    <span className="font-medium text-[var(--text-primary)] truncate">{ws.name}</span>
+                    <span className="text-[10px] text-[var(--text-dim)] truncate max-w-[150px]">
                       {ws.rootPath}
                     </span>
                   </div>
@@ -103,17 +104,17 @@ export function ConnectFolderModal({
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2D2D2D]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-color)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-[#262626] hover:bg-[#333333] text-[#A3A3A3] hover:text-white rounded-md text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md text-xs font-semibold cursor-pointer transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-white text-black hover:bg-[#E5E5E5] rounded-md text-xs font-semibold cursor-pointer"
+              className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-md text-xs font-semibold cursor-pointer transition-opacity"
             >
               Connect
             </button>

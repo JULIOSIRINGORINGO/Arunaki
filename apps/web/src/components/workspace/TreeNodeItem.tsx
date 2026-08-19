@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Edit3, Trash2, Sparkles } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderOpen, Pencil, Trash2, Sparkles } from "lucide-react";
 import { TreeNode, getFileIcon, formatSize } from "./tree-utils";
 
 interface TreeNodeItemProps {
@@ -42,24 +42,24 @@ export function TreeNodeItem({
     return (
       <div>
         <div
-          className="group flex items-center justify-between py-[3px] px-1.5 hover:bg-[#1E1E1E] transition-colors text-xs text-[#E5E5E5] select-none cursor-pointer border-l-2 border-transparent hover:border-border-strong"
+          className="group flex items-center justify-between py-[3px] px-1.5 hover:bg-[var(--bg-hover)] transition-colors text-xs text-[var(--text-primary)] select-none cursor-pointer border-l-2 border-transparent hover:border-[var(--border-strong)]"
           style={{ paddingLeft: `${depth * 12 + 12}px` }}
           onClick={() => setOpen(!open)}
         >
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="shrink-0 text-[#A3A3A3]">
+            <span className="shrink-0 text-[var(--text-muted)]">
               {open ? (
-                <ChevronDown className="w-3.5 h-3.5" />
+                <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.75} />
               ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.75} />
               )}
             </span>
             {open ? (
-              <FolderOpen className="w-3.5 h-3.5 text-[#FFFFFF] shrink-0 stroke-[1.8]" />
+              <FolderOpen className="w-3.5 h-3.5 text-amber-500/90 dark:text-amber-400/90 shrink-0" strokeWidth={1.5} />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-[#A3A3A3] shrink-0 stroke-[1.8]" />
+              <Folder className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80 shrink-0" strokeWidth={1.5} />
             )}
-            <span className="truncate font-medium text-[#E5E5E5] text-xs group-hover:text-white">
+            <span className="truncate font-medium text-[var(--text-primary)] text-xs">
               {node.name}
             </span>
           </div>
@@ -73,9 +73,9 @@ export function TreeNodeItem({
                   e.stopPropagation();
                   onRenameClick(node.nativePath!, node.name);
                 }}
-                className="p-1 hover:bg-[#262626] hover:text-white rounded text-[#A3A3A3] cursor-pointer"
+                className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors"
               >
-                <Edit3 className="w-3 h-3" />
+                <Pencil className="w-3 h-3" strokeWidth={1.5} />
               </button>
             )}
             {node.nativePath && onDeletePath && (
@@ -86,9 +86,9 @@ export function TreeNodeItem({
                   e.stopPropagation();
                   onDeletePath(node.nativePath!, node.name);
                 }}
-                className="p-1 hover:bg-red-900/50 hover:text-red-300 rounded text-[#A3A3A3] cursor-pointer"
+                className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--text-muted)] cursor-pointer transition-colors"
               >
-                <Trash2 className="w-3 h-3" />
+                <Trash2 className="w-3 h-3" strokeWidth={1.5} />
               </button>
             )}
           </div>
@@ -113,7 +113,7 @@ export function TreeNodeItem({
         )}
         {open && node.children.length === 0 && (
           <div
-            className="text-[11px] text-[#737373] italic py-0.5"
+            className="text-[11px] text-[var(--text-dim)] italic py-0.5"
             style={{ paddingLeft: `${(depth + 1) * 12 + 16}px` }}
           >
             (kosong)
@@ -130,25 +130,25 @@ export function TreeNodeItem({
           ? onFileClick?.(node.nativePath, node.name)
           : onFileClick?.(node.name, node.name)
       }
-      className={`group flex items-center justify-between py-[3px] px-1.5 transition-all text-xs text-[#A3A3A3] select-none cursor-pointer border-l-2 border-transparent ${
+      className={`group flex items-center justify-between py-[3px] px-1.5 transition-all text-xs select-none cursor-pointer border-l-2 border-transparent ${
         isAgentTarget
-          ? "bg-[#262626] text-white font-semibold border-white animate-pulse"
-          : "hover:bg-[#1E1E1E] hover:text-white"
+          ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold border-[var(--text-primary)] animate-pulse"
+          : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
       }`}
       style={{ paddingLeft: `${depth * 12 + 24}px` }}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {getFileIcon(node.name)}
-        <span className="truncate group-hover:text-white font-normal text-[#D4D4D4]">{node.name}</span>
+        <span className="truncate text-[var(--text-primary)] font-normal">{node.name}</span>
         {isAgentTarget && (
-          <span className="ml-1 px-1.5 py-0.5 rounded bg-white text-black text-[9px] font-bold shrink-0 animate-pulse">
+          <span className="ml-1 px-1.5 py-0.5 rounded bg-[var(--text-primary)] text-[var(--bg-app)] text-[9px] font-bold shrink-0 animate-pulse">
             AI Working...
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[10px] text-[#737373] font-mono group-hover:hidden pr-1">
+        <span className="text-[10px] text-[var(--text-dim)] font-mono group-hover:hidden pr-1">
           {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
         </span>
 
@@ -161,9 +161,9 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onAnalyzeFile(node.name, node.nativePath);
               }}
-              className="p-1 hover:bg-[#262626] hover:text-white rounded text-[#A3A3A3] transition-colors cursor-pointer"
+              className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-3 h-3" strokeWidth={1.5} />
             </button>
           )}
           {node.nativePath && onRenameClick && (
@@ -174,9 +174,9 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onRenameClick(node.nativePath!, node.name);
               }}
-              className="p-1 hover:bg-[#262626] hover:text-white rounded text-[#A3A3A3] cursor-pointer"
+              className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors"
             >
-              <Edit3 className="w-3 h-3" />
+              <Pencil className="w-3 h-3" strokeWidth={1.5} />
             </button>
           )}
           {node.nativePath && onDeletePath && (
@@ -187,9 +187,9 @@ export function TreeNodeItem({
                 e.stopPropagation();
                 onDeletePath(node.nativePath!, node.name);
               }}
-              className="p-1 hover:bg-red-900/50 hover:text-red-300 rounded text-[#A3A3A3] cursor-pointer"
+              className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--text-muted)] cursor-pointer transition-colors"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3 h-3" strokeWidth={1.5} />
             </button>
           )}
         </div>

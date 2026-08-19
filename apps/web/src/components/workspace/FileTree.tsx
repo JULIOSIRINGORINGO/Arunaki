@@ -97,22 +97,22 @@ export default function FileTree({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#121212] overflow-hidden text-xs select-none">
+    <div className="flex flex-col h-full bg-[var(--bg-panel)] overflow-hidden text-xs select-none transition-colors duration-150">
       {/* 1. PROJECT ROOT BAR: Root Name + Chevron Toggle (Left) + 4 Quick Actions (Right) */}
-      <div className="flex items-center justify-between px-3 h-8 bg-[#161616] shrink-0 border-b border-border-strong">
+      <div className="flex items-center justify-between px-3 h-8 bg-[var(--bg-panel-sub)] shrink-0 border-b border-[var(--border-color)] transition-colors duration-150">
         <button
           onClick={() => setIsRootExpanded(!isRootExpanded)}
-          className="flex items-center gap-1.5 min-w-0 text-left hover:text-white transition-colors cursor-pointer group"
+          className="flex items-center gap-1.5 min-w-0 text-left hover:text-[var(--text-primary)] transition-colors cursor-pointer group"
           title="Toggle Project Root"
         >
-          <span className="text-[#A3A3A3] group-hover:text-white shrink-0">
+          <span className="text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0">
             {isRootExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5" />
+              <ChevronDown className="w-3.5 h-3.5" strokeWidth={1.75} />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3.5 h-3.5" strokeWidth={1.75} />
             )}
           </span>
-          <span className="text-[#FFFFFF] font-semibold text-xs tracking-wide truncate">
+          <span className="text-[var(--text-primary)] font-semibold text-xs tracking-wide truncate">
             {workspaceName || "Workspace"}
           </span>
         </button>
@@ -126,9 +126,9 @@ export default function FileTree({
               setNewItemName("");
               setPromptModal("file");
             }}
-            className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
+            className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
           >
-            <FilePlus className="w-3.5 h-3.5" />
+            <FilePlus className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
 
           <button
@@ -138,9 +138,9 @@ export default function FileTree({
               setNewItemName("");
               setPromptModal("folder");
             }}
-            className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
+            className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
           >
-            <FolderPlus className="w-3.5 h-3.5" />
+            <FolderPlus className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
 
           {onRefresh && (
@@ -148,9 +148,9 @@ export default function FileTree({
               type="button"
               title="Refresh Explorer"
               onClick={onRefresh}
-              className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
+              className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              <RotateCw className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           )}
 
@@ -158,9 +158,9 @@ export default function FileTree({
             type="button"
             title="Collapse All Folders"
             onClick={handleCollapseAll}
-            className="p-1 hover:bg-[#262626] text-[#A3A3A3] hover:text-white rounded transition-colors cursor-pointer"
+            className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
           >
-            <ChevronsUp className="w-3.5 h-3.5" />
+            <ChevronsUp className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function FileTree({
       {isRootExpanded && (
         <div className="flex-1 overflow-y-auto py-1 min-h-0">
           {tree.length === 0 ? (
-            <p className="text-xs text-[#737373] text-center py-6 font-mono">
+            <p className="text-xs text-[var(--text-dim)] text-center py-6 font-mono">
               No files found in this workspace
             </p>
           ) : (
@@ -197,9 +197,9 @@ export default function FileTree({
 
       {/* Modals for Create & Rename */}
       {promptModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-border-strong">
-            <h4 className="text-xs font-bold text-white mb-3">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[var(--border-strong)]">
+            <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">
               {promptModal === "file" ? "New File" : "New Folder"}
             </h4>
             <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
@@ -208,20 +208,20 @@ export default function FileTree({
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 placeholder={promptModal === "file" ? "example: Report.xlsx" : "example: BusinessDocs"}
-                className="w-full bg-[#1E1E1E] border border-border-strong rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-border-strong"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-md px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setPromptModal(null)}
-                  className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
+                  className="px-3 py-1 bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs rounded-md font-medium cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
+                  className="px-3 py-1 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs rounded-md font-semibold cursor-pointer transition-opacity"
                 >
                   Create
                 </button>
@@ -232,9 +232,9 @@ export default function FileTree({
       )}
 
       {renameModalState && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[#171717] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-border-strong">
-            <h4 className="text-xs font-bold text-white mb-3">Rename File / Folder</h4>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full shadow-2xl border border-[var(--border-strong)]">
+            <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">Rename File / Folder</h4>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -249,20 +249,20 @@ export default function FileTree({
                 type="text"
                 value={renameNewName}
                 onChange={(e) => setRenameNewName(e.target.value)}
-                className="w-full bg-[#1E1E1E] border border-border-strong rounded-md px-3 py-1.5 text-xs text-white focus:outline-none focus:border-border-strong"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-md px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setRenameModalState(null)}
-                  className="px-3 py-1 bg-[#262626] text-[#A3A3A3] hover:text-white text-xs rounded-md font-medium cursor-pointer"
+                  className="px-3 py-1 bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs rounded-md font-medium cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-white text-black hover:bg-[#E5E5E5] text-xs rounded-md font-semibold cursor-pointer"
+                  className="px-3 py-1 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs rounded-md font-semibold cursor-pointer transition-opacity"
                 >
                   Save
                 </button>

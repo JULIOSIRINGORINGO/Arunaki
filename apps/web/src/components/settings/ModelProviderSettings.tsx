@@ -341,8 +341,8 @@ export function ModelProviderSettings({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-bold text-white">Custom LLM Provider Catalogs</h3>
-          <p className="text-xs text-[#A3A3A3]">
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">Custom LLM Provider Catalogs</h3>
+          <p className="text-xs text-[var(--text-muted)]">
             Manage provider credentials, API endpoints, and model catalog settings.
           </p>
         </div>
@@ -351,7 +351,7 @@ export function ModelProviderSettings({
             resetForm();
             setShowAddForm(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs font-semibold rounded-lg transition-opacity cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Provider Catalog</span>

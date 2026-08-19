@@ -86,6 +86,8 @@ async function waitForWebApp(url) {
   return false;
 }
 
+let mainWindow = null;
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1440,
@@ -107,6 +109,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  mainWindow = win;
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -150,6 +154,22 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ipcMain.handle('app:ping', () => 'desktop');
+
+  ipcMain.handle('theme:set', async (_event, theme) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const isLight = theme === 'light';
+    try {
+      if (process.platform === 'win32' || process.platform === 'darwin') {
+        mainWindow.setTitleBarOverlay({
+          color: isLight ? '#FFFFFF' : '#121214',
+          symbolColor: isLight ? '#111827' : '#FFFFFF',
+          height: 35,
+        });
+      }
+    } catch (e) {
+      console.warn('[main] setTitleBarOverlay error:', e);
+    }
+  });
 
   ipcMain.handle('dialog:pickFolder', async () => {
     const result = await dialog.showOpenDialog({

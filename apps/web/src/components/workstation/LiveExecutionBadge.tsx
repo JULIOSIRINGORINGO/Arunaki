@@ -117,48 +117,48 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     const t = (step.toolName || '').toLowerCase();
     if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
     if (t.includes("word")) return <FileText size={12} className="text-blue-400 shrink-0 mt-0.5" />;
-    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-amber-400 shrink-0 mt-0.5" />;
-    if (t.includes("read") || t.includes("file")) return <FileSearch size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
-    if (t.includes("browser")) return <Globe size={12} className="text-indigo-400 shrink-0 mt-0.5" />;
-    if (t.includes("screenshot")) return <Camera size={12} className="text-purple-400 shrink-0 mt-0.5" />;
-    if (t.includes("key")) return <Keyboard size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
-    return <Monitor size={12} className="text-zinc-300 shrink-0 mt-0.5" />;
+    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-amber-500 shrink-0 mt-0.5" />;
+    if (t.includes("read") || t.includes("file")) return <FileSearch size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    if (t.includes("browser")) return <Globe size={12} className="text-indigo-500 shrink-0 mt-0.5" />;
+    if (t.includes("screenshot")) return <Camera size={12} className="text-purple-500 shrink-0 mt-0.5" />;
+    if (t.includes("key")) return <Keyboard size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    return <Monitor size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
   };
 
   return (
-    <div className="my-2 rounded-lg bg-[#141416] border border-[#27272a] text-zinc-200 font-mono text-[11px] shadow-xl overflow-hidden animate-fade-in max-w-sm">
+    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] shadow-lg overflow-hidden animate-fade-in max-w-sm">
       {/* Collapsible Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-[#1a1a1c] hover:bg-[#222225] transition-colors border-b border-[#27272a] cursor-pointer text-left"
+        className="w-full flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
       >
         <div className="flex items-center gap-2">
-          <Loader2 size={12} className="animate-spin text-zinc-400" />
-          <span className="font-semibold text-zinc-200">{summaryHeader}</span>
+          <Loader2 size={12} className="animate-spin text-[var(--text-muted)]" />
+          <span className="font-semibold text-[var(--text-primary)]">{summaryHeader}</span>
           {completedCount > 0 && (
-            <span className="text-[10px] text-zinc-500">({completedCount} done)</span>
+            <span className="text-[10px] text-[var(--text-dim)]">({completedCount} done)</span>
           )}
         </div>
-        <div className="flex items-center gap-1 text-zinc-400 hover:text-zinc-200">
+        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
           {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </div>
       </button>
 
       {/* Expanded Trace List */}
       {isExpanded && (
-        <div className="px-3 py-2 space-y-1.5 bg-[#121214]">
+        <div className="px-3 py-2 space-y-1.5 bg-[var(--bg-panel)]">
           {steps.map((step) => {
             const isCompleted = step.status === 'completed';
             return (
-              <div key={step.id} className="flex items-start gap-2 text-zinc-300">
+              <div key={step.id} className="flex items-start gap-2 text-[var(--text-secondary)]">
                 {isCompleted ? (
-                  <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />
+                  <Check size={12} className="text-emerald-500 mt-0.5 shrink-0" />
                 ) : (
                   renderStepIcon(step)
                 )}
                 <span
                   className={`truncate max-w-[260px] ${
-                    isCompleted ? "text-zinc-500" : "text-zinc-200 font-medium"
+                    isCompleted ? "text-[var(--text-dim)]" : "text-[var(--text-primary)] font-medium"
                   }`}
                 >
                   {step.label}
@@ -166,7 +166,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
               </div>
             );
           })}
-          <div className="pt-1 flex items-center gap-1.5 text-zinc-500 text-[10px]">
+          <div className="pt-1 flex items-center gap-1.5 text-[var(--text-dim)] text-[10px]">
             <span className="animate-pulse">
               {status.type === 'thinking' ? `Working... ${waitingSec}s` : 'Working...'}
             </span>

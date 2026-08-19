@@ -20,6 +20,7 @@ import {
 import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
 import { cn } from "../../lib/utils";
+import { getFileIcon } from "../workspace/tree-utils";
 
 const COMMANDS = [
   { name: "/new-section", description: "Create a new document section", icon: FilePlus },
@@ -375,12 +376,12 @@ function WorkstationRightChatComponent({
                     onMouseEnter={() => setMentionIndex(i)}
                     onClick={() => insertMention(name)}
                     className={cn(
-                      "w-full text-left px-3 py-2 text-[11px] font-medium truncate cursor-pointer transition-colors flex items-center gap-1.5",
+                      "w-full px-3 py-1.5 text-xs flex items-center gap-2 transition-colors cursor-pointer text-left",
                       i === mentionIndex ? "bg-[var(--bg-hover)] text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
                     )}
                   >
-                    <FileText className="w-3.5 h-3.5 shrink-0 text-[var(--text-muted)]" />
-                    {name}
+                    {getFileIcon(name)}
+                    <span className="truncate">{name}</span>
                   </button>
                 ))}
               </div>
@@ -406,7 +407,7 @@ function WorkstationRightChatComponent({
                         index === selectedCommandIndex ? "bg-[var(--bg-hover)]" : "hover:bg-[var(--bg-hover)]"
                       )}
                     >
-                      <Icon size={14} className="text-[var(--text-muted)] shrink-0" />
+                      <Icon size={14} className="text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />
                       <span className="text-xs font-medium text-[var(--text-primary)]">{command.name}</span>
                       <span className="text-[10px] text-[var(--text-dim)] truncate">{command.description}</span>
                     </button>
@@ -429,7 +430,7 @@ function WorkstationRightChatComponent({
           <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
             <div className="flex items-center gap-2">
               <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer" title="Attach file">
-                <Paperclip className="w-3.5 h-3.5" />
+                <Paperclip className="w-3.5 h-3.5" strokeWidth={1.5} />
               </button>
               {activeWorkspace && (
                 <select
@@ -456,7 +457,7 @@ function WorkstationRightChatComponent({
               {isStreaming ? (
                 <Clock className="w-3.5 h-3.5" />
               ) : (
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-3.5 h-3.5" strokeWidth={1.5} />
               )}
             </button>
           </div>

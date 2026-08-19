@@ -36,6 +36,10 @@ export function applyTheme(theme: ThemeMode): void {
 
   localStorage.setItem(THEME_STORAGE_KEY, theme);
   window.dispatchEvent(new CustomEvent("arunaki-theme-change", { detail: theme }));
+
+  if (typeof (window as any).arunakiDesktop?.setTheme === "function") {
+    (window as any).arunakiDesktop.setTheme(effectiveTheme).catch(() => {});
+  }
 }
 
 export function useTheme() {

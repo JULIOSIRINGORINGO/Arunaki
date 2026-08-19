@@ -122,10 +122,10 @@ function WorkstationLeftExplorerComponent({
           className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
           title="Open Explorer Panel"
         >
-          <PanelLeftOpen className="w-4 h-4 text-[var(--text-primary)]" />
+          <PanelLeftOpen className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={1.5} />
         </button>
         <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
-          <Folder className="w-4 h-4 opacity-40" />
+          <Folder className="w-4 h-4 opacity-40" strokeWidth={1.5} />
         </div>
       </aside>
     );
@@ -147,7 +147,7 @@ function WorkstationLeftExplorerComponent({
       {/* Panel Header */}
       <div className="h-9 px-3 box-border border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <Folder className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+          <Folder className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80" strokeWidth={1.5} />
           Explorer
         </span>
         <div className="flex items-center gap-0.5">
@@ -158,7 +158,7 @@ function WorkstationLeftExplorerComponent({
               title="Refresh Explorer"
               disabled={isRefreshing}
             >
-              <RotateCw className="w-3.5 h-3.5" />
+              <RotateCw className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           )}
           <button
@@ -166,7 +166,7 @@ function WorkstationLeftExplorerComponent({
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             title="Close Explorer"
           >
-            <PanelLeftClose className="w-4 h-4" />
+            <PanelLeftClose className="w-4 h-4" strokeWidth={1.5} />
           </button>
         </div>
       </div>

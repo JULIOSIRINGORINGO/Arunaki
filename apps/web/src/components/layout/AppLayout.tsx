@@ -199,9 +199,9 @@ export function AppLayout() {
             title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLight ? (
-              <Moon className="w-3.5 h-3.5 text-indigo-500" />
+              <Moon className="w-3.5 h-3.5 text-indigo-500" strokeWidth={1.5} />
             ) : (
-              <Sun className="w-3.5 h-3.5 text-amber-400" />
+              <Sun className="w-3.5 h-3.5 text-amber-400" strokeWidth={1.5} />
             )}
           </button>
 
@@ -210,7 +210,7 @@ export function AppLayout() {
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
-            <User className="w-3.5 h-3.5" />
+            <User className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
         </div>
       </header>
@@ -241,7 +241,7 @@ export function AppLayout() {
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" strokeWidth={1.5} />
               </button>
             );
           })}

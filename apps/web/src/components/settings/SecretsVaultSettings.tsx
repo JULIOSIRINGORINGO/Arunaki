@@ -35,37 +35,37 @@ export function SecretsVaultSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-          <Shield className="w-4 h-4 text-emerald-400" />
+        <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+          <Shield className="w-4 h-4 text-emerald-500" />
           Encrypted Secrets Vault (AES-256-GCM)
         </h3>
-        <p className="text-xs text-[#A3A3A3]">
+        <p className="text-xs text-[var(--text-muted)]">
           Securely store API keys and credentials encrypted on your local device.
         </p>
       </div>
 
-      <form onSubmit={handleAddSecret} className="p-4 bg-[#181818] rounded-xl border border-[#262626] space-y-3">
-        <h4 className="text-xs font-bold text-white">Save New Secret Key</h4>
+      <form onSubmit={handleAddSecret} className="p-4 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] space-y-3">
+        <h4 className="text-xs font-bold text-[var(--text-primary)]">Save New Secret Key</h4>
         <div className="grid grid-cols-2 gap-3">
           <input
             type="text"
             placeholder="Key Name (e.g. OPENAI_API_KEY)"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
-            className="bg-[#121212] border border-[#262626] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+            className="bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
           />
           <input
             type="password"
             placeholder="Secret Key Value"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
-            className="bg-[#121212] border border-[#262626] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#737373] focus:outline-none focus:border-[#525252]"
+            className="bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-black hover:bg-[#E5E5E5] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Encrypt & Save</span>
@@ -77,15 +77,15 @@ export function SecretsVaultSettings() {
         {secrets.map((s) => (
           <div
             key={s.key}
-            className="p-3 bg-[#181818] rounded-xl border border-[#262626] flex items-center justify-between text-xs"
+            className="p-3 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-color)] flex items-center justify-between text-xs"
           >
             <div>
-              <span className="font-bold text-white block">{s.key}</span>
-              <span className="text-[10px] text-[#A3A3A3] font-mono">{s.masked} • {s.domain}</span>
+              <span className="font-bold text-[var(--text-primary)] block">{s.key}</span>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">{s.masked} • {s.domain}</span>
             </div>
             <button
               onClick={() => handleDeleteSecret(s.key)}
-              className="p-1 text-[#A3A3A3] hover:text-red-400 rounded cursor-pointer transition-colors"
+              className="p-1 text-[var(--text-muted)] hover:text-red-400 rounded cursor-pointer transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>

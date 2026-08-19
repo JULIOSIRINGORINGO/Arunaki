@@ -1,12 +1,12 @@
 import { memo, useState, useEffect, useCallback } from "react";
 import {
-  FileText,
   X,
   Copy,
   CopyCheck,
   Download,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { getFileIcon } from "../workspace/tree-utils";
 
 export interface CenterTab {
   id: string;
@@ -201,7 +201,7 @@ function WorkstationCenterPanelComponent({
                     : "bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                 )}
               >
-                <FileText className={cn("w-3.5 h-3.5", isActive ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]")} />
+                {getFileIcon(tab.title)}
                 <span className="truncate max-w-[150px] font-medium">{tab.title}</span>
                 <button
                   onClick={(e) => {
@@ -211,7 +211,7 @@ function WorkstationCenterPanelComponent({
                   className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
                   title="Close Tab"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3 h-3" strokeWidth={1.5} />
                 </button>
               </div>
             );
