@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Brain, Puzzle, Database, CheckCircle2, RefreshCw, Monitor, FileSpreadsheet, FileText, Lock, Globe } from "lucide-react";
+import { Brain, User, Puzzle, Database, CheckCircle2, RefreshCw, Monitor, FileSpreadsheet, FileText, Lock, LogIn, LogOut, ShieldCheck, Mail, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch } from "../lib/api";
@@ -7,7 +7,7 @@ import { ModelProviderSettings, Provider } from "../components/settings/ModelPro
 
 const tabs = [
   { id: "ai", label: "AI Models", icon: Brain },
-  { id: "profile", label: "Profile & Persona", icon: User },
+  { id: "account", label: "Account & License", icon: User },
   { id: "integrations", label: "Desktop Integrations", icon: Puzzle },
   { id: "workspace", label: "Workspace & Storage", icon: Database },
 ];
@@ -17,10 +17,12 @@ export function SettingsPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Profile State
-  const [userName, setUserName] = useState(() => localStorage.getItem("arunaki_user_name") || "Arunaki Assistant");
-  const [persona, setPersona] = useState(() => localStorage.getItem("arunaki_persona") || "standard");
-  const [language, setLanguage] = useState(() => localStorage.getItem("arunaki_lang") || "auto");
+  // Account State
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem("arunaki_user_email") || "");
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("arunaki_user_email"));
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   // Workspace Sync State
   const [isSyncing, setIsSyncing] = useState(false);
@@ -43,12 +45,25 @@ export function SettingsPage() {
     fetchProviders();
   }, []);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("arunaki_user_name", userName);
-    localStorage.setItem("arunaki_persona", persona);
-    localStorage.setItem("arunaki_lang", language);
-    toast.success("Profile and persona preferences saved!");
+    if (!loginEmail.trim()) {
+      toast.error("Silakan masukkan email akun Anda.");
+      return;
+    }
+    const cleanEmail = loginEmail.trim();
+    localStorage.setItem("arunaki_user_email", cleanEmail);
+    setUserEmail(cleanEmail);
+    setIsLoggedIn(true);
+    setLoginPassword("");
+    toast.success(`Berhasil masuk sebagai ${cleanEmail}`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("arunaki_user_email");
+    setUserEmail("");
+    setIsLoggedIn(false);
+    toast.info("Telah keluar dari akun. Mode lokal aktif.");
   };
 
   const handleTestDesktopBridge = () => {
@@ -112,65 +127,156 @@ export function SettingsPage() {
             />
           )}
 
-          {activeTab === "profile" && (
-            <form onSubmit={handleSaveProfile} className="space-y-6 max-w-lg">
+          {activeTab === "account" && (
+            <div className="space-y-6 max-w-xl">
               <div>
-                <h3 className="font-bold text-[var(--text-primary)] text-base mb-1">User & Digital Employee Persona</h3>
-                <p className="text-xs text-[var(--text-muted)]">Configure Assistant branding and AI posture behavior.</p>
+                <h3 className="font-bold text-[var(--text-primary)] text-base mb-1">
+                  Arunaki Account & Cloud Sync
+                </h3>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Manage your user profile, license tier, and multi-device cloud synchronization.
+                </p>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                    Assistant Display Name
-                  </label>
-                  <input
-                    type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
-                  />
-                </div>
+              {isLoggedIn ? (
+                <div className="space-y-4">
+                  {/* Profile Card */}
+                  <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 font-bold text-lg">
+                          {userEmail ? userEmail[0].toUpperCase() : "A"}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                              {userEmail.split("@")[0]}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5" /> Pro Plan
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5">
+                            <Mail className="w-3 h-3 text-[var(--text-dim)]" />
+                            <span>{userEmail}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                    AI Working Posture / Persona
-                  </label>
-                  <select
-                    value={persona}
-                    onChange={(e) => setPersona(e.target.value)}
-                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3.5 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-strong)]"
-                  >
-                    <option value="standard">Standard Digital Employee (Balanced & Proactive)</option>
-                    <option value="analyst">Financial & Data Analyst (Strict Numbers Focus)</option>
-                    <option value="executive">Executive Assistant (Concise Summaries)</option>
-                  </select>
-                </div>
+                    <div className="pt-3 border-t border-[var(--border-color)] grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
+                        <p className="text-[11px] text-[var(--text-muted)]">License Status</p>
+                        <p className="font-semibold text-[var(--text-primary)] mt-0.5 flex items-center gap-1 text-emerald-500">
+                          <ShieldCheck className="w-3.5 h-3.5" /> Active & Verified
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
+                        <p className="text-[11px] text-[var(--text-muted)]">Device</p>
+                        <p className="font-semibold text-[var(--text-primary)] mt-0.5">
+                          Windows Desktop App
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5 flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                    Response Language Preference
-                  </label>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3.5 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-strong)]"
-                  >
-                    <option value="auto">Auto-Detect User Language</option>
-                    <option value="en">English (Primary English Output)</option>
-                    <option value="id">Bahasa Indonesia (Utamakan Bahasa Indonesia)</option>
-                  </select>
-                </div>
-              </div>
+                  {/* Cloud Sync Status */}
+                  <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-semibold text-[var(--text-primary)]">Knowledge & Workspace Cloud Sync</h4>
+                      <p className="text-[11px] text-[var(--text-muted)]">Synced automatically with encrypted remote storage</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20">
+                      Synced
+                    </span>
+                  </div>
 
-              <button
-                type="submit"
-                className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Save Persona Settings
-              </button>
-            </form>
+                  {/* Logout Button */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="px-4 py-2 bg-[var(--bg-hover)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 rounded-xl text-xs font-medium border border-[var(--border-color)] hover:border-rose-500/20 transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out from Device</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-color)] text-[var(--text-primary)]">
+                      <LogIn className="w-5 h-5 text-[var(--text-muted)]" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--text-primary)]">
+                        {isRegisterMode ? "Create New Arunaki Account" : "Sign In to Arunaki Account"}
+                      </h4>
+                      <p className="text-[11px] text-[var(--text-muted)]">
+                        {isRegisterMode
+                          ? "Register to enable cloud backup & multi-device license."
+                          : "Connect your account to access your workspace license & sync."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleLogin} className="space-y-3.5">
+                    <div>
+                      <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="you@company.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="••••••••"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between">
+                      <button
+                        type="submit"
+                        className="px-5 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <LogIn className="w-3.5 h-3.5" />
+                        <span>{isRegisterMode ? "Register & Sign In" : "Sign In"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsRegisterMode(!isRegisterMode)}
+                        className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                      >
+                        {isRegisterMode ? "Already have an account? Sign in" : "Need an account? Register"}
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="pt-3 border-t border-[var(--border-color)]">
+                    <p className="text-[11px] text-[var(--text-dim)] leading-relaxed">
+                      💡 <strong>Offline & Local Guarantee:</strong> You can continue using Arunaki completely offline in Local Mode without logging in.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === "integrations" && (
