@@ -111,7 +111,8 @@ describe('WorkspaceCartographerService', () => {
 
     const generatedRules = await service.getWorkspaceRules(tempDir);
     expect(generatedRules).toContain('DYNAMICALLY COMPILED ARUNAKI.MD BY LLM SUB-AGENT');
-    expect(mockPrisma.knowledge.create).toHaveBeenCalled();
+    // ARUNAKI.md stays an internal workspace file - never synced to the Knowledge Graph
+    expect(mockPrisma.knowledge.create).not.toHaveBeenCalled();
   });
 
   it('should fall back to domain-agnostic structured metadata index when LLM is unavailable', async () => {

@@ -111,8 +111,7 @@ export class WorkspaceCartographerService {
       const stat = await fsp.stat(targetRulesPath);
       this.rulesCache.set(rootPath, { content: generatedRules, mtime: stat.mtimeMs });
 
-      // 4. Sync into Knowledge Graph database
-      await this.syncToKnowledgeDb(workspaceId, workspace.name, generatedRules);
+      // 4. (ARUNAKI.md is an internal workspace file - intentionally NOT shown in the Knowledge Graph)
 
       this.logger.log(`[Cartographer] Autonomous ARUNAKI.md created & synced successfully for "${workspace.name}".`);
     } catch (err: any) {
@@ -233,8 +232,6 @@ export class WorkspaceCartographerService {
       const stat = await fsp.stat(rulesPath);
       this.rulesCache.set(workspace.rootPath, { content, mtime: stat.mtimeMs });
 
-      // Sync to Knowledge Graph database
-      await this.syncToKnowledgeDb(workspaceId, workspace.name, content);
       this.logger.log(`[Cartographer] Dynamic rule learned & patched: "${newRule.slice(0, 60)}..."`);
     } catch (err: any) {
       this.logger.warn(`[Cartographer] Failed to patch rules: ${err.message}`);
@@ -398,43 +395,5 @@ ${fileEntries || '- (No files indexed yet)'}
 ## 4. User Preferences & Learned Corrections
 - [Initial System Baseline]: Active operating rules synchronized for ${workspaceName}.
 `;
-  }
-
-  /**
-   * Syncs the generated rules into Prisma knowledge table so it appears in the Knowledge Graph UI.
-   */
-  private async syncToKnowledgeDb(workspaceId: string, workspaceName: string, markdownContent: string): Promise<void> {
-    try {
-      const title = `Rules & Workspace Map (${workspaceName})`;
-      const existing = await this.prisma.knowledge.findFirst({
-        where: {
-          title,
-        },
-      });
-
-      if (existing) {
-        await this.prisma.knowledge.update({
-          where: { id: existing.id },
-          data: {
-            content: markdownContent,
-            type: 'rules',
-            nodeColor: '#10B981',
-            icon: 'book-open',
-          },
-        });
-      } else {
-        await this.prisma.knowledge.create({
-          data: {
-            title,
-            content: markdownContent,
-            type: 'rules',
-            nodeColor: '#10B981',
-            icon: 'book-open',
-          },
-        });
-      }
-    } catch (err: any) {
-      this.logger.warn(`[Cartographer] Sync to knowledge DB non-fatal error: ${err.message}`);
-    }
   }
 }
