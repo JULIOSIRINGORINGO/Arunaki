@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { KnowledgeService } from './knowledge.service.js';
+import { KnowledgeCrawlerService } from './services/knowledge-crawler.service.js';
 import {
   successResponse,
   errorResponse,
@@ -20,7 +21,34 @@ import * as path from 'path';
 
 @Controller('knowledge')
 export class KnowledgeController {
-  constructor(private readonly knowledgeService: KnowledgeService) {}
+  constructor(
+    private readonly knowledgeService: KnowledgeService,
+    private readonly crawler: KnowledgeCrawlerService,
+  ) {}
+
+  @Post('compose')
+  async compose(@Body() body: { url: string }) {
+    try {
+      let result = await this.crawler.fetchLiveKnowledge({
+        url: body.url,
+        format: 'markdown',
+        browser: false,
+      });
+      if (!result.extractedContent || result.extractedContent.length < 100) {
+        result = await this.crawler.fetchLiveKnowledge({
+          url: body.url,
+          format: 'markdown',
+          browser: true,
+        });
+      }
+      const content = result.extractedContent
+        ? `# ${result.title}\n\n${result.extractedContent}`
+        : `# ${result.title}\n\n${body.url}`;
+      return successResponse({ title: result.title, content });
+    } catch (error) {
+      return errorResponse('COMPOSE_FAILED', (error as Error).message);
+    }
+  }
 
   @Get()
   async findAll() {
