@@ -37,6 +37,11 @@ REKAPAN TERBARU2 buatan Arunaki.txt
 apps/api/scripts/add-kenari.ts
 apps/api/scripts/test-kenari.ts
 
+# Scratch test scripts & workspace caches
+apps/api/scripts/*
+!apps/api/scripts/.gitkeep
+apps/api/workspace-sentinel-test/
+
 testing.xlsx
 testing.csv
 

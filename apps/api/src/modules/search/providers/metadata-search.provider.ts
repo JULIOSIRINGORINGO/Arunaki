@@ -13,9 +13,10 @@ export class MetadataSearchProvider implements SearchProvider {
   async search(options: SearchOptions): Promise<SearchResult[]> {
     const { workspaceId, fileType, limit = 10, offset = 0 } = options;
 
-    const where: any = {
-      source: { workspaceId },
-    };
+    const where: any = {};
+    if (workspaceId) {
+      where.source = { workspaceId };
+    }
 
     if (fileType) {
       where.type = fileType;

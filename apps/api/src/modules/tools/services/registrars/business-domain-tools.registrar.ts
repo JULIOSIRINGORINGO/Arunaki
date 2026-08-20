@@ -58,15 +58,17 @@ export class BusinessDomainToolsRegistrar {
       ToolAdapter.from({
         name: 'document_reader',
         displayName: 'Read Document',
-        description: 'Reads document files and extracts raw text.',
-        tags: ['read', 'document', 'file', 'pdf', 'docx', 'excel', 'csv'],
+        description:
+          'Reads document files (.xlsx, .xlsm, .docx, .pdf, .csv) and extracts structured text. For Excel spreadsheets, reads the target or current month sheet and lists available sheet names.',
+        tags: ['read', 'document', 'file', 'pdf', 'docx', 'excel', 'xlsx', 'xlsm', 'csv'],
         handler: async (args) => {
           try {
+            const rawPath = args.filePath || args.path || args.filename || args.file;
             const safePath = await services.workspaceToolsService.resolveWithinWorkspace(
               args.workspaceId,
-              args.filePath,
+              rawPath,
             );
-            return await services.documentReaderTool.readDocument(safePath);
+            return await services.documentReaderTool.readDocument(safePath, args.sheetName);
           } catch (err: any) {
             return {
               status: 'error',
@@ -81,11 +83,15 @@ export class BusinessDomainToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string' },
+            filePath: { type: 'string', description: 'Path to document file within workspace' },
+            sheetName: {
+              type: 'string',
+              description: 'Target worksheet name (optional, e.g. "AGUSTUS"). If omitted, auto-selects current month or active sheet.',
+            },
           },
           required: ['filePath'],
         },
-        timeoutMs: 10000,
+        timeoutMs: 15000,
       }),
     );
 

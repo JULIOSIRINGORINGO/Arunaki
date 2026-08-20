@@ -149,8 +149,8 @@ export class DesktopBridgeService implements OnModuleInit, OnModuleDestroy {
     return this.sendCommand('excelSetFormat', { path, range, ...formatOptions });
   }
 
-  excelEdit(path: string | undefined, actions: Array<Record<string, any>>): Promise<any> {
-    return this.sendCommand('excelEdit', { path, actions }, 30000);
+  excelEdit(path: string | undefined, actions: Array<Record<string, any>>, sheetName?: string): Promise<any> {
+    return this.sendCommand('excelEdit', { path, actions, sheetName }, 30000);
   }
 
   wordType(

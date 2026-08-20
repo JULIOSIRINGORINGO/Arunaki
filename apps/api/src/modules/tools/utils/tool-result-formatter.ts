@@ -30,14 +30,18 @@ export class ToolResultFormatter {
       return `[TOOL_ERROR] ${toolName}: ${truncated}`;
     }
 
-    const content = toolName === 'read' && typeof result.data?.content === 'string'
-      ? result.data.content
-      : undefined;
+    const content =
+      (toolName === 'read' && typeof result.data?.content === 'string')
+        ? result.data.content
+        : (toolName === 'document_reader' && typeof result.data?.text === 'string')
+          ? result.data.text
+          : undefined;
+
     if (content !== undefined) {
       const text = content.length > READ_CONTENT_MAX_CHARS
         ? `${content.substring(0, READ_CONTENT_MAX_CHARS)}... [truncated]`
         : content;
-      return `[TOOL_SUCCESS] read:\n${text}`;
+      return `[TOOL_SUCCESS] ${toolName}:\n${text}`;
     }
 
     if (result.preview) {

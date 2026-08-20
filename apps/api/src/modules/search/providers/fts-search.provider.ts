@@ -21,11 +21,14 @@ export class FtsSearchProvider implements SearchProvider {
 
     try {
       // Use LIKE for now since FTS5 requires virtual table setup
+      const where: any = {
+        content: { contains: query },
+      };
+      if (workspaceId) {
+        where.source = { workspaceId };
+      }
       const files = await this.prisma.file.findMany({
-        where: {
-          source: { workspaceId },
-          content: { contains: query },
-        },
+        where,
         take: limit,
         skip: offset,
       });

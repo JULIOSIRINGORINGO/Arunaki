@@ -7,7 +7,7 @@ import * as path from 'path';
 export class DocumentReaderTool {
   private readonly logger = new Logger(DocumentReaderTool.name);
 
-  async readDocument(filePath: string): Promise<ToolResult> {
+  async readDocument(filePath: string, targetSheetName?: string): Promise<ToolResult> {
     const startTime = Date.now();
 
     if (!filePath || filePath.trim().length === 0) {
@@ -58,7 +58,7 @@ export class DocumentReaderTool {
         case '.xls':
         case '.xlsm':
         case '.xlsb':
-          text = await this.readExcel(resolvedPath);
+          text = await this.readExcel(resolvedPath, targetSheetName);
           break;
         case '.csv':
           text = await this.readCsv(resolvedPath);
@@ -87,7 +87,7 @@ export class DocumentReaderTool {
           };
       }
 
-      const preview = text.length > 500 ? text.substring(0, 500) + '...' : text;
+      const preview = text.length > 2500 ? text.substring(0, 2500) + '... [truncated]' : text;
 
       return {
         status: 'success',
@@ -165,19 +165,63 @@ export class DocumentReaderTool {
     return result.value;
   }
 
-  private async readExcel(filePath: string): Promise<string> {
+  private async readExcel(filePath: string, targetSheetName?: string): Promise<string> {
     const XLSXModule = await import('xlsx');
     const XLSX = XLSXModule.default || XLSXModule;
     const workbook = XLSX.readFile(filePath);
-    const allText: string[] = [];
+    const sheetNames = workbook.SheetNames || [];
 
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const csv = XLSX.utils.sheet_to_csv(sheet);
-      allText.push(`=== Sheet: ${sheetName} ===\n${csv}`);
+    if (sheetNames.length === 0) {
+      return 'Empty Excel Workbook (No Sheets)';
     }
 
-    return allText.join('\n\n');
+    // Determine target sheet:
+    let selectedSheet: string | undefined;
+    if (targetSheetName) {
+      selectedSheet = sheetNames.find(
+        (s) => s.toLowerCase() === targetSheetName.trim().toLowerCase(),
+      );
+    }
+
+    // If no specific sheet requested, try to pick current month (e.g. AGUSTUS / AUGUST) or first sheet
+    if (!selectedSheet) {
+      const now = new Date();
+      const monthNamesId = ['JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'];
+      const monthNamesEn = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+      const currentMonthId = monthNamesId[now.getMonth()];
+      const currentMonthEn = monthNamesEn[now.getMonth()];
+
+      selectedSheet =
+        sheetNames.find((s) => s.toUpperCase() === currentMonthId) ||
+        sheetNames.find((s) => s.toUpperCase() === currentMonthEn) ||
+        sheetNames[0];
+    }
+
+    const sheet = workbook.Sheets[selectedSheet];
+    if (!sheet) {
+      return `Available Sheets: [${sheetNames.join(', ')}]\n=== Sheet Not Found: ${selectedSheet} ===`;
+    }
+
+    const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const formattedRows: string[] = [];
+
+    for (let r = 0; r < Math.min(rows.length, 50); r++) {
+      const row = rows[r] || [];
+      const cells: string[] = [];
+      for (let c = 0; c < Math.min(row.length, 35); c++) {
+        const val = row[c];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          const colLetter = XLSX.utils.encode_col(c);
+          cells.push(`${colLetter}${r + 1}: ${String(val).trim()}`);
+        }
+      }
+      if (cells.length > 0) {
+        formattedRows.push(`Row ${r + 1} -> ${cells.join(' | ')}`);
+      }
+    }
+
+    const gridText = formattedRows.join('\n');
+    return `Available Sheets: [${sheetNames.join(', ')}]\n=== Active Sheet: ${selectedSheet} (Grid Matrix: Col C=Day 1 .. Col V=Day 20 .. Col AG=Day 31) ===\n${gridText}`;
   }
 
   private async readCsv(filePath: string): Promise<string> {

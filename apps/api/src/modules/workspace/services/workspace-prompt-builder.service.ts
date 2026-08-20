@@ -108,12 +108,25 @@ export class WorkspacePromptBuilderService {
     const g = goal.toLowerCase();
     const wanted = new Set<string>();
     const add = (names: string[]) => names.forEach((n) => wanted.add(n));
+    const isExcelGoal = /(?:excel|xlsx|xlsm|xls|sheet|spreadsheet)/i.test(g) || /@[^\s@]+\.(?:xlsx|xlsm|xls)/i.test(goal);
+    const isTextDocGoal = /(?:txt|md|docx|doc|notulen|catatan|file teks)/i.test(g) || /@[^\s@]+\.(?:txt|md|docx|doc)/i.test(goal);
 
-    // Core workspace file tools — always available
-    add(['read', 'write', 'edit', 'search_workspace', 'list']);
+    if (isExcelGoal && !isTextDocGoal) {
+      const wantsToOpenApp = /(?:buka|open|tampilkan|launch|lihat di excel)/i.test(g);
+      if (wantsToOpenApp) {
+        add(['desktop_open_excel', 'desktop_excel_edit', 'document_reader', 'list']);
+      } else {
+        add(['desktop_excel_edit', 'document_reader', 'list']);
+      }
+    } else {
+      // Core workspace file tools — always available
+      add(['read', 'write', 'edit', 'search_workspace', 'list']);
+    }
 
     if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(gClean) || /@[^\s@]+\.[A-Za-z0-9]+/.test(goal)) {
-      add(['write', 'edit', 'read']);
+      if (!isExcelGoal || isTextDocGoal) {
+        add(['write', 'edit', 'read']);
+      }
     }
 
     if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
@@ -124,19 +137,32 @@ export class WorkspacePromptBuilderService {
       add(['generate_export', 'convert_document', 'document_reader']);
     }
     if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
-    if (/(?:gambar|image|foto|ocr|scan)/.test(g)) add(['image_ocr', 'vision_ai']);
-    if (/(?:buka|desktop|word|excel|xlsx|spreadsheet|rekap|transaksi|keuangan|pemasukan|pengeluaran|powerpoint|ppt|office|aplikasi|mengetik|bank|transfer|tunai|laporan|ledger|reconcile|dokumen)/.test(g) || /@[^\s@]+\.xlsx/i.test(goal)) {
+    if (/(?:excel|xlsx|xlsm|xls|sheet|spreadsheet|tabel|rekap|keuangan|pemasukan|pengeluaran|ledger)/.test(g) || /@[^\s@]+\.(?:xlsx|xlsm|xls|csv)/i.test(goal)) {
       add([
-        'desktop_open_file',
         'desktop_open_excel',
-        'desktop_open_word',
-        'desktop_open_ppt',
         'desktop_excel_edit',
+        'document_reader',
+      ]);
+    }
+    if (/(?:word|docx|doc|surat|proposal|notulen)/.test(g) || /@[^\s@]+\.(?:docx|doc)/i.test(goal)) {
+      add([
+        'desktop_open_word',
         'desktop_word_type',
         'desktop_word_format',
+        'document_reader',
+      ]);
+    }
+    if (/(?:powerpoint|ppt|pptx|slide|presentasi)/.test(g) || /@[^\s@]+\.(?:pptx|ppt)/i.test(goal)) {
+      add([
+        'desktop_open_ppt',
+        'document_reader',
+      ]);
+    }
+    if (/(?:desktop|buka|layar|screenshot|aplikasi|mengetik|keyboard|keys)/.test(g)) {
+      add([
+        'desktop_open_file',
         'desktop_send_keys',
         'desktop_screenshot',
-        'document_reader',
       ]);
     }
     if (/(?:browser|website|web|google|internet|halaman)/.test(g)) {

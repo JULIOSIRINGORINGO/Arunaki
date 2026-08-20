@@ -250,10 +250,10 @@ export async function *makeSdkRequestStream(
   let done = false;
 
   // Adaptive Time to first token (TTFB) timeout:
-  // - Fast / standard models (flash, 20b, sonnet, etc.): 18s failover
-  // - Large reasoning models (120b, o1, deepseek-r1): 35s failover
+  // - Fast / standard models: 45s failover
+  // - Large reasoning models (120b, o1, deepseek-r1): 75s failover
   const isHeavyReasoning = /120b|deepseek-r1|o1|o3/i.test(provider.model);
-  const defaultTtfb = isHeavyReasoning ? 35000 : 18000;
+  const defaultTtfb = isHeavyReasoning ? 75000 : 45000;
   const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? defaultTtfb;
   const totalTimeoutMs = options.totalTimeoutMs ?? 180000;
 

@@ -621,6 +621,18 @@ app.whenReady().then(() => {
                 excel.Workbooks.Add();
               }
 
+              if (msg.args.sheetName) {
+                try {
+                  for (let s = 1; s <= excel.ActiveWorkbook.Worksheets.Count; s++) {
+                    const ws = excel.ActiveWorkbook.Worksheets.Item(s);
+                    if (ws.Name.toLowerCase() === String(msg.args.sheetName).toLowerCase()) {
+                      ws.Activate();
+                      break;
+                    }
+                  }
+                } catch { /* ignore */ }
+              }
+
               const actions = msg.args.actions || [];
               const results = [];
               for (const act of actions) {
