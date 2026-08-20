@@ -21,6 +21,8 @@ import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
 import { cn } from "../../lib/utils";
 import { getFileIcon } from "../workspace/tree-utils";
+import { apiFetch, API_BASE } from "../../lib/api";
+import { toast } from "sonner";
 
 const COMMANDS = [
   { name: "/new-section", description: "Create a new document section", icon: FilePlus },
@@ -257,6 +259,56 @@ function WorkstationRightChatComponent({
     if (textareaRef.current) textareaRef.current.focus();
   };
 
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!activeWorkspace) return;
+    
+    const items = e.clipboardData.items;
+    const imageItems = Array.from(items).filter(item => item.type.indexOf('image/') === 0);
+    
+    if (imageItems.length === 0) return;
+
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      const toastId = toast.loading("Uploading pasted image...");
+      
+      const formData = new FormData();
+      const timestamp = new Date().getTime();
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/jpeg' ? 'jpg' : 'webp';
+      const fileName = `pasted_image_${timestamp}.${ext}`;
+      
+      const renamedFile = new File([file], fileName, { type: file.type });
+      
+      formData.append('files', renamedFile);
+      formData.append('workspaceId', activeWorkspace.id);
+      formData.append('sourceName', 'Uploads');
+
+      try {
+        const res = await apiFetch(`${API_BASE}/files/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (res.ok) {
+           const json = await res.json();
+           if (json.data && json.data.length > 0) {
+             const uploadedName = json.data[0].name;
+             setInputPrompt(inputPrompt + (inputPrompt && !inputPrompt.endsWith(' ') ? ' ' : '') + `@${uploadedName} `);
+             toast.success(`Image uploaded as ${uploadedName}`, { id: toastId });
+           } else {
+             toast.error("Failed to parse upload response", { id: toastId });
+           }
+        } else {
+           toast.error("Failed to upload image", { id: toastId });
+        }
+      } catch (err) {
+        console.error('Paste upload failed', err);
+        toast.error("Failed to upload image", { id: toastId });
+      }
+    }
+  };
+
   return (
     <aside
       className="bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col h-full shrink-0 select-text overflow-hidden transition-colors duration-150"
@@ -437,6 +489,7 @@ function WorkstationRightChatComponent({
             value={inputPrompt}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Ask anything, type @ to mention files, / for commands..."
             rows={1}
             className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
