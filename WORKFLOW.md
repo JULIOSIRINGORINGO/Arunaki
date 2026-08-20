@@ -1802,16 +1802,17 @@ apps/web/src/
 **Goal:** Menambal celah keamanan kritis pada path traversal, mengoptimalkan konsumsi memori agen jangka panjang, dan memisahkan abstraksi event system.
 
 ### 56.1 Workspace Isolation Enforcement (Keamanan Kritis)
-- [ ] Refactor ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di luar workspace.rootPath.
-- [ ] Gunakan fungsi resolusi path absolut yang memvalidasi bahwa 	argetPath.startsWith(workspace.rootPath) untuk memblokir prompt injection path traversal (seperti ../../Windows).
+- [x] Refactor 
+ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di luar workspace.rootPath.
+- [x] Gunakan fungsi resolusi path absolut yang memvalidasi bahwa 	argetPath.startsWith(workspace.rootPath) untuk memblokir prompt injection path traversal (seperti ../../Windows).
 
 ### 56.2 Memory Consolidation (Long-running Agent Context)
-- [ ] Implementasikan consolidateMemories() di memory.tool.ts atau memory.service.ts.
-- [ ] Ringkas riwayat pesan yang melebihi batas batas token/kepadatan agar tidak memicu context length exceeded.
+- [x] Implementasikan consolidateMemories() di memory.tool.ts atau memory.service.ts.
+- [x] Ringkas riwayat pesan yang melebihi batas batas token/kepadatan agar tidak memicu context length exceeded.
 
 ### 56.3 Dedicated Agent Event System
-- [ ] Ekstrak abstraksi gent-event.service.ts untuk membungkus EventEmitter2.
-- [ ] Standarkan payload tipe event untuk *lifecycle* Agent (Started, Completed, Failed, dsb).
+- [x] Ekstrak abstraksi gent-event.service.ts untuk membungkus EventEmitter2.
+- [x] Standarkan payload tipe event untuk *lifecycle* Agent (Started, Completed, Failed, dsb).c
 
 ---
 

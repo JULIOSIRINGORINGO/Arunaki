@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AgentEventService } from './agent-event.service.js';
 
 export type AgentState =
   'idle' | 'running' | 'steering' | 'aborting' | 'completed' | 'failed';
@@ -105,7 +105,7 @@ export class WorkspaceRunStateService {
     completed: 'Completed',
   };
 
-  constructor(private readonly eventEmitter: EventEmitter2) {}
+  constructor(private readonly agentEvents: AgentEventService) {}
 
   createRunState(workspaceId: string, goal: string): WorkspaceRunState {
     const abortController = new AbortController();
@@ -173,7 +173,7 @@ export class WorkspaceRunStateService {
       },
     });
 
-    this.eventEmitter.emit('workspace.agent.phase_changed', {
+    this.agentEvents.emitPhaseChanged({
       workspaceId: runState.workspaceId,
       from: oldPhase,
       to: phase,
@@ -203,7 +203,7 @@ export class WorkspaceRunStateService {
       },
     });
 
-    this.eventEmitter.emit('workspace.agent.state_changed', {
+    this.agentEvents.emitStateChanged({
       workspaceId: runState.workspaceId,
       from: oldState,
       to: newState,

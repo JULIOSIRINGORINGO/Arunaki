@@ -6,6 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { AgentEvents } from './agent-event.service.js';
 import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import { AiService } from '../../ai/ai.service.js';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
@@ -46,7 +47,7 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
    * Event listener for completed workspace agent turns.
    * Wakes up asynchronously in the background — 0ms blocking to the main chat.
    */
-  @OnEvent('workspace.agent.completed', { async: true })
+  @OnEvent(AgentEvents.AGENT_COMPLETED, { async: true })
   async handleWorkspaceTurnCompleted(event: AgentTurnEvent): Promise<void> {
     if (!event.workspaceId) return;
 

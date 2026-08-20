@@ -26,7 +26,7 @@ describe('TranscriptEngineService & TimeTravelService', () => {
       },
     };
     mockEventEmitter = {
-      emit: vi.fn(),
+      emitRollback: vi.fn(),
     };
 
     timeTravelService = new TimeTravelService(

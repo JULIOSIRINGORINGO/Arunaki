@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AgentEventService } from './services/agent-event.service.js';
 import {
   extractMentionedFilenames,
   hasExplicitDeleteIntent,
@@ -190,7 +190,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
+        { provide: AgentEventService, useValue: { emitStarted: vi.fn(), emitCompleted: vi.fn(), emitFailed: vi.fn(), emitAborted: vi.fn(), emitPhaseChanged: vi.fn(), emitStateChanged: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
@@ -387,7 +387,7 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
+        { provide: AgentEventService, useValue: { emitStarted: vi.fn(), emitCompleted: vi.fn(), emitFailed: vi.fn(), emitAborted: vi.fn(), emitPhaseChanged: vi.fn(), emitStateChanged: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
@@ -618,7 +618,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
+        { provide: AgentEventService, useValue: { emitStarted: vi.fn(), emitCompleted: vi.fn(), emitFailed: vi.fn(), emitAborted: vi.fn(), emitPhaseChanged: vi.fn(), emitStateChanged: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
@@ -808,7 +808,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
+        { provide: AgentEventService, useValue: { emitStarted: vi.fn(), emitCompleted: vi.fn(), emitFailed: vi.fn(), emitAborted: vi.fn(), emitPhaseChanged: vi.fn(), emitStateChanged: vi.fn() } },
         {
           provide: ProviderService,
           useValue: { getNextAvailable: vi.fn().mockResolvedValue(null) },

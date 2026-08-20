@@ -6,7 +6,7 @@ import {
   TranscriptEngineService,
   TranscriptEvent,
 } from './transcript-engine.service.js';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AgentEventService } from './agent-event.service.js';
 
 export interface RollbackResult {
   success: boolean;
@@ -25,7 +25,7 @@ export class TimeTravelService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly transcriptEngine: TranscriptEngineService,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly agentEvents: AgentEventService,
   ) {}
 
   /**
@@ -166,7 +166,7 @@ export class TimeTravelService {
       },
     );
 
-    this.eventEmitter.emit('workspace.rollback', {
+    this.agentEvents.emitRollback({
       workspaceId,
       sessionId,
       rollbackEvent,

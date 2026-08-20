@@ -26,6 +26,7 @@ import { TranscriptEngineService } from './services/transcript-engine.service.js
 import { TimeTravelService } from './services/time-travel.service.js';
 import { WorkspaceRunStateService } from './services/workspace-run-state.service.js';
 import { WorkspaceToolExecutorService } from './services/workspace-tool-executor.service.js';
+import { AgentEventService } from './services/agent-event.service.js';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { WorkspaceToolExecutorService } from './services/workspace-tool-executor
     WorkspaceRulesSentinelService,
     TranscriptEngineService,
     TimeTravelService,
+    AgentEventService,
   ],
   exports: [
     WorkspaceService,
@@ -69,6 +71,7 @@ import { WorkspaceToolExecutorService } from './services/workspace-tool-executor
     WorkspaceRulesSentinelService,
     TranscriptEngineService,
     TimeTravelService,
+    AgentEventService,
   ],
 })
 export class WorkspaceModule {}

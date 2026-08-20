@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AgentEventService } from './services/agent-event.service.js';
 import { AiService, ToolDefinition } from '../ai/ai.service.js';
 import { repairToolCalls } from '../ai/tool-call-repair.js';
 import { StreamingContextScrubber } from '../ai/context-manager.js';
@@ -71,8 +71,8 @@ export class WorkspaceRunnerService {
     private readonly compactionService: CompactionService,
     @Inject(forwardRef(() => PrismaService))
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => EventEmitter2))
-    private readonly eventEmitter: EventEmitter2,
+    @Inject(forwardRef(() => AgentEventService))
+    private readonly agentEvents: AgentEventService,
     @Inject(forwardRef(() => TodoStoreService))
     private readonly todoStore: TodoStoreService,
     @Inject(forwardRef(() => SessionAdmissionService))
@@ -199,7 +199,7 @@ export class WorkspaceRunnerService {
       this.stateService.resetSessionTracks(workspaceId);
       this.todoStore.clear(workspaceId);
 
-      this.eventEmitter.emit('workspace.agent.started', {
+      this.agentEvents.emitStarted({
         workspaceId,
         goal: userGoal,
         timestamp: new Date(),
@@ -219,7 +219,7 @@ export class WorkspaceRunnerService {
 
       if (initial.injectionBlocked) {
         this.stateService.setState(runState, 'failed', onEvent);
-        this.eventEmitter.emit('workspace.agent.failed', {
+        this.agentEvents.emitFailed({
           workspaceId,
           goal: userGoal,
           reason: 'prompt_injection_blocked',
@@ -262,7 +262,7 @@ export class WorkspaceRunnerService {
 
       if (runState.abortController.signal.aborted) {
         this.stateService.setState(runState, 'aborting', onEvent);
-        this.eventEmitter.emit('workspace.agent.aborted', {
+        this.agentEvents.emitAborted({
           workspaceId,
           goal: userGoal,
           timestamp: new Date(),
@@ -703,7 +703,7 @@ export class WorkspaceRunnerService {
       this.stateService.setPhase(runState, 'completed', onEvent);
       this.stateService.setState(runState, 'completed', onEvent);
 
-      this.eventEmitter.emit('workspace.agent.completed', {
+      this.agentEvents.emitCompleted({
         workspaceId,
         goal: userGoal,
         finalContent: finalContent.substring(0, 200),
@@ -783,7 +783,7 @@ export class WorkspaceRunnerService {
     } catch (error: any) {
       this.stateService.setState(runState, 'failed', onEvent);
 
-      this.eventEmitter.emit('workspace.agent.failed', {
+      this.agentEvents.emitFailed({
         workspaceId,
         goal: userGoal,
         error: error?.message || 'Unknown error',
