@@ -136,18 +136,42 @@ export class VisionAiTool {
         },
       };
     } catch (error: any) {
-      this.logger.error(`Vision AI analysis failed: ${error.message}`);
-      return {
-        status: 'error',
-        data: {},
-        preview: `Vision AI failed: ${error.message}`,
-        metadata: {
-          toolName: 'vision_ai',
-          displayName: 'Vision AI',
-          executionTime: Date.now() - startTime,
-        },
-        error: { code: 'VISION_ANALYSIS_FAILED', message: error.message },
-      };
+      this.logger.error(`Vision AI analysis failed: ${error.message}. Falling back to local OCR (Tesseract)...`);
+      
+      try {
+        const Tesseract = await import('tesseract.js');
+        const { data } = await Tesseract.recognize(imageUrl, 'eng');
+        const text = data.text.trim();
+        
+        return {
+          status: 'success',
+          data: {
+            imageSource: imageSource.length > 100 ? '[Base64 Data]' : imageSource,
+            analysis: text,
+            fallbackUsed: 'tesseract_ocr',
+          },
+          preview: `[Peringatan: Model Anda tidak mendukung Vision. Sistem otomatis menggunakan OCR Lokal]\n\n${text}`,
+          metadata: {
+            toolName: 'vision_ai',
+            displayName: 'Vision AI (Local OCR)',
+            executionTime: Date.now() - startTime,
+            fallback: true,
+          },
+        };
+      } catch (ocrError: any) {
+        this.logger.error(`Local OCR fallback also failed: ${ocrError.message}`);
+        return {
+          status: 'error',
+          data: {},
+          preview: `Vision AI failed: ${error.message}`,
+          metadata: {
+            toolName: 'vision_ai',
+            displayName: 'Vision AI',
+            executionTime: Date.now() - startTime,
+          },
+          error: { code: 'VISION_ANALYSIS_FAILED', message: error.message },
+        };
+      }
     }
   }
 }
