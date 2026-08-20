@@ -127,8 +127,8 @@ try {
   $excel.Visible = $false
   $excel.DisplayAlerts = $false
   $wb = $excel.Workbooks.Open('${escapedPath}')
-  $ws = $wb.ActiveSheet
   ${sheetActivate}
+  $ws = $wb.ActiveSheet
   $results = @()
 ${actionBlocks}
   $hasSave = $false
