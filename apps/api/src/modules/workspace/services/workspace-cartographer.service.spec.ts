@@ -88,6 +88,114 @@ describe('WorkspaceCartographerService', () => {
     expect(occurrences).toBe(1);
   });
 
+  it('should use correct section numbering when adding new rules to existing ARUNAKI.md', async () => {
+    // Create ARUNAKI.md with sections 1-7
+    const arunakiDir = path.join(tempDir, '.arunaki');
+    await fsp.mkdir(arunakiDir, { recursive: true });
+    const filePath = path.join(arunakiDir, 'ARUNAKI.md');
+    const existingContent = `# ARUNAKI.md
+
+## 1. Domain
+- Test workspace
+
+## 2. File Schemas
+- Schema info
+
+## 3. Rules
+- Rule info
+
+## 4. Cross-File
+- Cross info
+
+## 5. Naming
+- Naming info
+
+## 6. Output
+- Output info
+
+## 7. Autonomous Behavior
+1. Read before write
+`;
+    await fsp.writeFile(filePath, existingContent, 'utf8');
+
+    mockPrisma.workspace.findUnique.mockResolvedValue({
+      id: 'ws-1',
+      name: 'Test Workspace',
+      rootPath: tempDir,
+    });
+
+    // Add first rule
+    await service.patchWorkspaceRules('ws-1', 'Always update date to today');
+
+    let rules = await service.getWorkspaceRules(tempDir);
+    console.log('After first rule:', rules.slice(-200));
+
+    // Should use ## 8 (not ## 7 again)
+    expect(rules).toContain('## 8. User Preferences & Learned Corrections');
+    expect(rules).not.toMatch(/## 7\. User Preferences/);
+
+    // Add second different rule
+    await service.patchWorkspaceRules('ws-1', 'Recalculate BCA total from individual transactions');
+
+    rules = await service.getWorkspaceRules(tempDir);
+    console.log('After second rule:', rules.slice(-300));
+
+    // Should still be ## 8 (not ## 9)
+    expect(rules).toContain('## 8. User Preferences & Learned Corrections');
+    expect(rules).toContain('Always update date to today');
+    expect(rules).toContain('Recalculate BCA total');
+  });
+
+  it('should use section 8 as minimum when no existing sections found', async () => {
+    // Create minimal ARUNAKI.md without numbered sections
+    const arunakiDir = path.join(tempDir, '.arunaki');
+    await fsp.mkdir(arunakiDir, { recursive: true });
+    const filePath = path.join(arunakiDir, 'ARUNAKI.md');
+    await fsp.writeFile(filePath, '# Just a title\nSome content here', 'utf8');
+
+    mockPrisma.workspace.findUnique.mockResolvedValue({
+      id: 'ws-1',
+      name: 'Test Workspace',
+      rootPath: tempDir,
+    });
+
+    await service.patchWorkspaceRules('ws-1', 'Always format numbers with commas');
+
+    const rules = await service.getWorkspaceRules(tempDir);
+    // Should use ## 8 (minimum), not ## 1
+    expect(rules).toContain('## 8. User Preferences & Learned Corrections');
+  });
+
+  it('should handle REPLACE correctly for existing learned rules', async () => {
+    const arunakiDir = path.join(tempDir, '.arunaki');
+    await fsp.mkdir(arunakiDir, { recursive: true });
+    const filePath = path.join(arunakiDir, 'ARUNAKI.md');
+    const existingContent = `# Rules
+
+## 7. Autonomous Behavior
+1. Read before write
+
+## 8. User Preferences & Learned Corrections
+- [Auto-Learned 2026-08-20]: Always update date to today
+`;
+    await fsp.writeFile(filePath, existingContent, 'utf8');
+
+    mockPrisma.workspace.findUnique.mockResolvedValue({
+      id: 'ws-1',
+      name: 'Test Workspace',
+      rootPath: tempDir,
+    });
+
+    // Replace existing rule
+    await service.patchWorkspaceRules('ws-1', 'REPLACE: Always update date to today -> Always update date header to current date');
+
+    const rules = await service.getWorkspaceRules(tempDir);
+    expect(rules).toContain('Always update date header to current date');
+    expect(rules).not.toContain('Always update date to today');
+    // Should still be ## 8 (not ## 9)
+    expect(rules).toContain('## 8. User Preferences & Learned Corrections');
+  });
+
   it('should run analyzeAndBootstrap and produce dynamic LLM-generated rules without hardcoded bias', async () => {
     // Create sample files in temp workspace
     await fsp.writeFile(
