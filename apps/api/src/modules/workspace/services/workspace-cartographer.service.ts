@@ -138,7 +138,7 @@ export class WorkspaceCartographerService {
       try {
         content = await fsp.readFile(rulesPath, 'utf8');
       } catch {
-        content = `# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain & Business Profile\n- Workspace: ${workspace.name}\n\n## 7. User Preferences & Learned Corrections\n`;
+        content = `# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain & Business Profile\n- Workspace: ${workspace.name}\n`;
       }
 
       const timestamp = new Date().toISOString().split('T')[0];
@@ -223,7 +223,15 @@ export class WorkspaceCartographerService {
 
         content = beforePref + prefSection;
       } else {
-        content += `\n\n## 7. User Preferences & Learned Corrections\n${entry}\n`;
+        // Find highest section number to avoid duplicates
+        const sectionMatches = content.match(/^## (\d+)\./gm) || [];
+        let maxSection = 0;
+        for (const m of sectionMatches) {
+          const num = parseInt(m.match(/## (\d+)\./)?.[1] || '0', 10);
+          if (num > maxSection) maxSection = num;
+        }
+        const nextSection = Math.max(maxSection + 1, 8);
+        content += `\n\n## ${nextSection}. User Preferences & Learned Corrections\n${entry}\n`;
       }
 
       await fsp.mkdir(path.join(workspace.rootPath, ARUNAKI_DIR), { recursive: true });
