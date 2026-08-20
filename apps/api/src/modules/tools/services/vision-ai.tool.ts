@@ -1,34 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
+import { ProviderService } from '../../provider/provider.service.js';
 
 @Injectable()
 export class VisionAiTool {
   private readonly logger = new Logger(VisionAiTool.name);
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-  private readonly visionModel: string;
-  private readonly sdk: any;
 
-  constructor(private readonly config?: ConfigService) {
-    this.apiKey = this.config?.get<string>('VISION_API_KEY') || process.env.VISION_API_KEY || this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
-    this.baseUrl = this.config?.get<string>('VISION_BASE_URL') || process.env.VISION_BASE_URL || 'https://openrouter.ai/api/v1';
-    this.visionModel =
-      this.config?.get<string>('VISION_MODEL') || process.env.VISION_MODEL || 'google/gemini-2.0-flash-001';
-      
-    this.sdk = createOpenAI({
-      baseURL: this.baseUrl,
-      apiKey: this.apiKey,
-      headers: {
-        'HTTP-Referer': 'https://arunaki.app',
-        'X-Title': 'Arunaki Vision AI',
-      },
-    });
-  }
+  constructor(
+    @Optional() private readonly config?: ConfigService,
+    @Optional() @Inject(forwardRef(() => ProviderService)) private readonly providerService?: ProviderService,
+  ) {}
 
   async analyzeImage(
     imageSource: string,
@@ -36,6 +22,33 @@ export class VisionAiTool {
   ): Promise<ToolResult> {
     const startTime = Date.now();
     try {
+      let finalApiKey = this.config?.get<string>('VISION_API_KEY') || process.env.VISION_API_KEY;
+      let finalBaseUrl = this.config?.get<string>('VISION_BASE_URL') || process.env.VISION_BASE_URL;
+      let finalModel = this.config?.get<string>('VISION_MODEL') || process.env.VISION_MODEL;
+
+      if (!finalApiKey && this.providerService) {
+        const activeConfig = await this.providerService.getActiveConfig();
+        if (activeConfig) {
+          finalApiKey = activeConfig.apiKey;
+          if (!finalBaseUrl) finalBaseUrl = activeConfig.baseUrl;
+          if (!finalModel) {
+            finalModel = activeConfig.baseUrl.includes('openrouter') ? 'google/gemini-2.0-flash-001' : activeConfig.model;
+          }
+        }
+      }
+
+      if (!finalApiKey) finalApiKey = this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
+      if (!finalBaseUrl) finalBaseUrl = 'https://openrouter.ai/api/v1';
+      if (!finalModel) finalModel = 'google/gemini-2.0-flash-001';
+
+      const sdk = createOpenAI({
+        baseURL: finalBaseUrl,
+        apiKey: finalApiKey,
+        headers: {
+          'HTTP-Referer': 'https://arunaki.app',
+          'X-Title': 'Arunaki Vision AI',
+        },
+      });
       if (!imageSource) {
         return {
           status: 'error',
@@ -95,7 +108,7 @@ export class VisionAiTool {
       }
 
       const { text } = await generateText({
-        model: this.sdk.chat(this.visionModel),
+        model: sdk.chat(finalModel),
         messages: [
           {
             role: 'user',

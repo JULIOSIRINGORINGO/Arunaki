@@ -51,6 +51,7 @@ import { ExcelComService } from '../interaction/excel-com.service.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
 
 import { PrismaModule } from '../../common/providers/prisma.module.js';
+import { ProviderModule } from '../provider/provider.module.js';
 import { KnowledgeLiveFetchTool } from './services/knowledge-live-fetch.tool.js';
 import { BrowserInteractionTool } from './services/browser-interaction.tool.js';
 import { IpGeolocationTool } from './services/ip-geolocation.tool.js';
@@ -59,6 +60,7 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
 @Module({
   imports: [
     PrismaModule,
+    ProviderModule,
     ParserModule,
     KnowledgeModule,
     StorageModule,
