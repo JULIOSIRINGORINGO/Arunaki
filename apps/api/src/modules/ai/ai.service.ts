@@ -579,4 +579,56 @@ export class AiService {
       return null;
     }
   }
+
+  /**
+   * Classify user intent using a lightweight LLM call to dynamically map
+   * natural language (in any language/phrasing) to specific tool requirements.
+   * Replaces static string-array matching.
+   */
+  async classifyIntent(goal: string, allTools: ToolDefinition[]): Promise<{ tools: string[], isMutation: boolean, isGui: boolean }> {
+    const availableToolNames = allTools.map(t => t.function.name).join(', ');
+    const systemPrompt = `You are an Intent Router. Analyze the user's goal and select the exact tools needed from this list: [${availableToolNames}].
+Also determine if the goal requires modifying/writing files or data (isMutation) and if it requires opening a graphical user interface (isGui).
+Always call the 'set_intent' function with your classification.`;
+
+    const routerTools: ToolDefinition[] = [{
+      type: 'function',
+      function: {
+        name: 'set_intent',
+        description: 'Set the classified intent and required tools',
+        parameters: {
+          type: 'object',
+          properties: {
+            tools: { type: 'array', items: { type: 'string' } },
+            isMutation: { type: 'boolean' },
+            isGui: { type: 'boolean' }
+          },
+          required: ['tools', 'isMutation', 'isGui']
+        }
+      }
+    }];
+
+    try {
+      // Use a fast model if possible (fallback will use configured model)
+      const response = await this.chat([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: goal }
+      ], routerTools);
+
+      const toolCall = response.toolCalls.find(tc => tc.function.name === 'set_intent');
+      if (toolCall) {
+        const args = JSON.parse(toolCall.function.arguments);
+        return {
+          tools: args.tools || [],
+          isMutation: !!args.isMutation,
+          isGui: !!args.isGui
+        };
+      }
+    } catch (e: any) {
+      this.logger.error(`Intent classification failed: ${e.message}`);
+    }
+
+    // Fallback if LLM fails (safe read-only defaults)
+    return { tools: ['read', 'list', 'document_reader'], isMutation: false, isGui: false };
+  }
 }

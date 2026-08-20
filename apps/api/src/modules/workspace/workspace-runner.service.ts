@@ -226,6 +226,7 @@ export class WorkspaceRunnerService {
         safeGoal,
         mentionedFileContents,
         workspaceRootPath,
+        hasMutationIntent,
       } = initial;
       this.stateService.setMentionedFiles(
         workspaceId,
@@ -443,16 +444,8 @@ export class WorkspaceRunnerService {
         }
 
         if (aiResponse.toolCalls.length === 0) {
-          const isConversationalOrRuleOrRecap =
-            /\b(?:ekstrak|extract|baca|cek|analisis|analisa|ringkasan|summary|tampilkan|lihat|jelaskan|rekap|format|aturan|rule|canvas|contoh|mulai sekarang|ingat|bukan gitu|koreksi)\b/i.test(
-              userGoal,
-            );
-          const hasExplicitMutationVerb =
-            /\b(?:update file|edit file|ubah file|tulis file|buat file|write file|modify file|replace file|delete file|hapus file|patch file|simpan ke file)\b/i.test(
-              userGoal,
-            );
-          const hasFileMutationIntent =
-            hasExplicitMutationVerb && !isConversationalOrRuleOrRecap;
+          // The AI Intent Classifier already determined if this is a mutation task
+          const hasFileMutationIntent = hasMutationIntent;
 
           const isEarlyRoundWithoutAction =
             runState.round <= 2 && hasFileMutationIntent && executedToolCount === 0;
@@ -470,10 +463,13 @@ export class WorkspaceRunnerService {
                 ),
               });
             }
+            const availableTools = tools.map((t) => `\`${t.function.name}\``).join(', ');
             messages.push({
               role: 'user',
               content:
-                '[System Action Required] You did not execute any tool to apply the requested modifications. Please output a valid tool call (e.g. edit or write) using proper JSON format to apply the file changes directly now.',
+                `[System Action Required] You did not execute any tool to apply the requested modifications. ` +
+                `You have the following tools available: ${availableTools}. ` +
+                `Please call the appropriate tool NOW to apply the changes directly.`,
             });
             continue;
           }

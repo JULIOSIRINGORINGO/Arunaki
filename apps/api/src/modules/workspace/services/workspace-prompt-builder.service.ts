@@ -100,90 +100,24 @@ export class WorkspacePromptBuilderService {
     }
   }
 
-  selectToolsForGoal(
+  async selectToolsForGoal(
     goal: string,
     allTools: ToolDefinition[],
-  ): ToolDefinition[] {
-    const gClean = goal.replace(/@\[?[^\n@\]]+\.[A-Za-z0-9]{1,10}\]?/g, '').toLowerCase();
-    const g = goal.toLowerCase();
-    const wanted = new Set<string>();
-    const add = (names: string[]) => names.forEach((n) => wanted.add(n));
-    const isExcelGoal = /(?:excel|xlsx|xlsm|xls|sheet|spreadsheet)/i.test(g) || /@[^\s@]+\.(?:xlsx|xlsm|xls)/i.test(goal);
-    const isTextDocGoal = /(?:txt|md|docx|doc|notulen|catatan|file teks)/i.test(g) || /@[^\s@]+\.(?:txt|md|docx|doc)/i.test(goal);
+  ): Promise<{ tools: ToolDefinition[]; hasMutationIntent: boolean; wantsGui: boolean }> {
+    const classification = await this.aiService.classifyIntent(goal, allTools);
+    
+    // Always include mandatory base tools
+    const mandatoryTools = ['read', 'list', 'document_reader'];
+    const selectedNames = new Set([...mandatoryTools, ...classification.tools]);
 
-    if (isExcelGoal && !isTextDocGoal) {
-      const wantsToOpenApp = /(?:buka|open|tampilkan|launch|lihat di excel)/i.test(g);
-      if (wantsToOpenApp) {
-        add(['desktop_open_excel', 'desktop_excel_edit', 'document_reader', 'list']);
-      } else {
-        add(['desktop_excel_edit', 'document_reader', 'list']);
-      }
-    } else {
-      // Core workspace file tools — always available
-      add(['read', 'write', 'edit', 'search_workspace', 'list']);
-    }
+    // Map names back to actual ToolDefinitions
+    const tools = allTools.filter(t => selectedNames.has(t.function.name));
 
-    if (/(?:edit|update|tulis|simpan|ubah|perbarui|tambah|catat|buat)/.test(gClean) || /@[^\s@]+\.[A-Za-z0-9]+/.test(goal)) {
-      if (!isExcelGoal || isTextDocGoal) {
-        add(['write', 'edit', 'read']);
-      }
-    }
-
-    if (/(?:query|select|cari data|database|sql)/.test(gClean)) add(['data_query']);
-    if (/(?:ringkas|analisis|analisa|reconcile|banding|rekonsiliasi|pivot)/.test(gClean)) {
-      add(['doc_reconcile', 'doc_cross_reference']);
-    }
-    if (/(?:export|generate_export|pdf|docx|word|invoice|dokumen|surat|cetak|konversi|convert|ubah)/.test(g) || /@[^\s@]+\.(?:docx|pdf|xlsx)/i.test(goal)) {
-      add(['generate_export', 'convert_document', 'document_reader']);
-    }
-    if (/(?:email|pesan|komunikasi|draft|surat|kontrak)/.test(g)) add(['draft_communication']);
-    if (/(?:excel|xlsx|xlsm|xls|sheet|spreadsheet|tabel|rekap|keuangan|pemasukan|pengeluaran|ledger)/.test(g) || /@[^\s@]+\.(?:xlsx|xlsm|xls|csv)/i.test(goal)) {
-      add([
-        'desktop_open_excel',
-        'desktop_excel_edit',
-        'document_reader',
-      ]);
-    }
-    if (/(?:word|docx|doc|surat|proposal|notulen)/.test(g) || /@[^\s@]+\.(?:docx|doc)/i.test(goal)) {
-      add([
-        'desktop_open_word',
-        'desktop_word_type',
-        'desktop_word_format',
-        'document_reader',
-      ]);
-    }
-    if (/(?:powerpoint|ppt|pptx|slide|presentasi)/.test(g) || /@[^\s@]+\.(?:pptx|ppt)/i.test(goal)) {
-      add([
-        'desktop_open_ppt',
-        'document_reader',
-      ]);
-    }
-    if (/(?:desktop|buka|layar|screenshot|aplikasi|mengetik|keyboard|keys)/.test(g)) {
-      add([
-        'desktop_open_file',
-        'desktop_send_keys',
-        'desktop_screenshot',
-      ]);
-    }
-    if (/(?:browser|website|web|google|internet|halaman)/.test(g)) {
-      add(['browser_navigate', 'browser_get_content', 'browser_type', 'browser_click', 'browser_screenshot']);
-    }
-    if (/(?:ingat|memory|recall|memori|pengalaman)/.test(g)) {
-      add(['list_memories', 'search_memories', 'save_memory']);
-    }
-    if (/(?:skill|workflow|prosedur|template kerja)/.test(g)) {
-      add(['list_skills', 'view_skill', 'search_skills']);
-    }
-    if (/(?:tabel|table|describe|schema|struktur)/.test(gClean)) add(['data_query']);
-    if (/(?:cari.*internet|search.*web|tavily|riset|berita)/.test(g)) add(['web_search']);
-    if (/(?:subagent|sub-agent|sub agent|spawn|paralel|parallel|bagi tugas|banyak file|batch|multi-task|semua file|multi-doc|multi doc)/.test(gClean)) {
-      add(['agent_spawn', 'multi_doc_process']);
-    }
-    if (/(?:batch|ptc|atomic|sekaligus|rantai|chain|multi-step|programmatic)/.test(gClean)) {
-      add(['batch_execute']);
-    }
-
-    return allTools.filter((t) => wanted.has(t.function.name));
+    return {
+      tools,
+      hasMutationIntent: classification.isMutation,
+      wantsGui: classification.isGui
+    };
   }
 
   async buildWorkspaceContext(
@@ -256,6 +190,8 @@ export class WorkspacePromptBuilderService {
     safeGoal: string;
     mentionedFileContents: Map<string, string>;
     workspaceRootPath: string;
+    hasMutationIntent: boolean;
+    wantsGui: boolean;
     injectionBlocked?: boolean;
   }> {
     const { workspaceId, userGoal, historyMessages, modifiedFiles = [] } = params;
@@ -280,7 +216,7 @@ export class WorkspacePromptBuilderService {
     }
 
     const allTools = this.toolRegistryService.getToolDefinitions();
-    const tools = this.selectToolsForGoal(userGoal, allTools);
+    const { tools, hasMutationIntent, wantsGui } = await this.selectToolsForGoal(userGoal, allTools);
     const modelCtx = await this.aiService.getActiveModelContext();
 
     const systemPrompt = this.aiService.getSystemPrompt(
@@ -348,6 +284,8 @@ export class WorkspacePromptBuilderService {
         safeGoal: userGoal,
         mentionedFileContents: new Map(),
         workspaceRootPath,
+        hasMutationIntent,
+        wantsGui,
         injectionBlocked: true,
       };
     }
@@ -378,6 +316,8 @@ export class WorkspacePromptBuilderService {
       safeGoal,
       mentionedFileContents,
       workspaceRootPath,
+      hasMutationIntent,
+      wantsGui,
       injectionBlocked: false,
     };
   }

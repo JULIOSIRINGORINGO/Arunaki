@@ -1584,3 +1584,20 @@ apps/web/src/
 - [x] Vitest unit tests for parallel task partitioning, concurrency throttling, and result aggregation (`multi-doc-orchestrator.service.spec.ts` — 3/3 passed).
 - [x] End-to-end benchmark verifying parallel multi-file processing with zero parent context pollution (`test-multi-doc-subagents.ts` — 5/5 passed).
 
+
+---
+
+## Phase 55: Robust LLM-Based Intent Classification Engine ? DONE
+
+**Goal:** Refactor rigid regex-based prompt tool routing to a dynamic LLM-driven intent classification engine, resolving brittle matching logic and multi-language variability.
+
+### 55.1 Intent Classification Engine
+- [x] Implemented classifyIntent in AiService to output strongly-typed intent flags (isMutation, isGui) and 	ools array.
+- [x] Refactored WorkspacePromptBuilderService.buildInitialContext to await and integrate LLM classification asynchronously.
+
+### 55.2 Workspace Runner Modernization
+- [x] Cleaned up deprecated MUTATION_TOOLS and hardcoded regex nudges in WorkspaceRunnerService.
+- [x] Fixed TS typing errors across runner boundaries.
+
+### 55.3 E2E Verification
+- [x] End-to-end testing verifying structure and merged cell preservation during data update (	est-excel-structure-preservation.ts).
