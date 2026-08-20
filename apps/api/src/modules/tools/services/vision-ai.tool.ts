@@ -10,12 +10,13 @@ import { createOpenAI } from '@ai-sdk/openai';
 export class VisionAiTool {
   private readonly logger = new Logger(VisionAiTool.name);
   private readonly apiKey: string;
-  private readonly baseUrl = 'https://openrouter.ai/api/v1';
+  private readonly baseUrl: string;
   private readonly visionModel: string;
   private readonly sdk: any;
 
   constructor(private readonly config?: ConfigService) {
-    this.apiKey = this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
+    this.apiKey = this.config?.get<string>('VISION_API_KEY') || process.env.VISION_API_KEY || this.config?.get<string>('AI_API_KEY') || process.env.AI_API_KEY || '';
+    this.baseUrl = this.config?.get<string>('VISION_BASE_URL') || process.env.VISION_BASE_URL || 'https://openrouter.ai/api/v1';
     this.visionModel =
       this.config?.get<string>('VISION_MODEL') || process.env.VISION_MODEL || 'google/gemini-2.0-flash-001';
       
