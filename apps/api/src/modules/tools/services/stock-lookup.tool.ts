@@ -282,7 +282,8 @@ export class StockLookupTool implements Tool {
         },
         signal: AbortSignal.timeout(10000),
       });
-    } catch {
+    } catch (e: any) {
+      console.log("HTTP FETCH ERROR", e);
       return null;
     }
     if (!response.ok) return null;

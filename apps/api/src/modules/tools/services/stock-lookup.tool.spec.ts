@@ -25,10 +25,11 @@ beforeAll(async () => {
 
   // local HTTP server: serves a CSV and a JSON stock file (fast path tests)
   server = http.createServer((req, res) => {
-    if (req.url === '/stock.csv') {
+    const parsedUrl = new URL(req.url || '/', `http://${req.headers.host}`);
+    if (parsedUrl.pathname === '/stock.csv') {
       res.writeHead(200, { 'Content-Type': 'text/csv' });
       res.end('warna,ukuran,stok\nRed,S,65\nWhite,L,3\n');
-    } else if (req.url === '/stock.json') {
+    } else if (parsedUrl.pathname === '/stock.json') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         '[{"color":"Red","size":"S","stock":65,"price1":42000},{"color":"White","size":"L","stock":3,"price1":39000}]',
@@ -86,6 +87,7 @@ describe('StockLookupTool browser read path (no hardcoded sites)', () => {
       color: 'Red',
       size: 'S',
     });
+    console.log('TEST RESULT CSV', res);
 
     expect(res.status).toBe('success');
     const rows = (res.data as any).rows as string[];

@@ -1,5 +1,6 @@
+import { describe, it, expect } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AppController } from './app.controller';
+import { AppController } from './app.controller.js';
 
 describe('AppController', () => {
   it('returns a healthy API response', async () => {

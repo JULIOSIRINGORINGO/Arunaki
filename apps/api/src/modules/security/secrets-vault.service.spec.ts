@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { SecretsVaultService } from './secrets-vault.service.js';
 
 describe('SecretsVaultService — AES-256-GCM Encryption', () => {
