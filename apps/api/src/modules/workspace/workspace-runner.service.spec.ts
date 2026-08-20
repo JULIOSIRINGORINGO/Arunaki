@@ -90,7 +90,23 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
-        WorkspaceRunStateService,
+        {
+          provide: WorkspaceRunStateService,
+          useValue: {
+            isRunning: vi.fn().mockReturnValue(false),
+            setState: vi.fn(),
+            getModifiedFiles: vi.fn().mockReturnValue([]),
+            markFileModified: vi.fn(),
+            createRunState: vi.fn().mockReturnValue({ runId: 'test-run', workspaceId: 'test-ws', abortController: { signal: {} }, currentRound: 0 }),
+            cleanupRunState: vi.fn(),
+            setPhase: vi.fn(),
+            deleteRunState: vi.fn(),
+            resetSessionTracks: vi.fn(),
+            setMentionedFiles: vi.fn(),
+            consumeSteeringInput: vi.fn().mockReturnValue(null),
+            trackReadFile: vi.fn(),
+          },
+        },
         WorkspaceToolExecutorService,
         WorkspacePromptBuilderService,
         TranscriptEngineService,
@@ -106,6 +122,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
               content: 'Finished creating report.',
               toolCalls: [],
             }),
+            classifyIntent: vi.fn().mockResolvedValue({ isMutation: false, isGui: false, tools: ['search_workspace', 'edit', 'todo_write'] }),
           },
         },
         {
@@ -144,7 +161,7 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: SearchService,
           useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
         },
-        { provide: ArtifactService, useValue: { createArtifact: vi.fn() } },
+        { provide: ArtifactService, useValue: { createArtifact: vi.fn().mockResolvedValue(null), findById: vi.fn().mockResolvedValue(null) } },
         { provide: MemoryService, useValue: { getActiveContext: vi.fn() } },
         { provide: BackgroundReviewService, useValue: {} },
         { provide: SmartRecallService, useValue: {} },
@@ -173,12 +190,12 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
           useValue: {
-            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
           },
         },
       ],
@@ -211,7 +228,23 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
-        WorkspaceRunStateService,
+        {
+          provide: WorkspaceRunStateService,
+          useValue: {
+            isRunning: vi.fn().mockReturnValue(false),
+            setState: vi.fn(),
+            getModifiedFiles: vi.fn().mockReturnValue([]),
+            markFileModified: vi.fn(),
+            createRunState: vi.fn().mockReturnValue({ runId: 'test-run', workspaceId: 'test-ws', abortController: { signal: {} }, currentRound: 0 }),
+            cleanupRunState: vi.fn(),
+            setPhase: vi.fn(),
+            deleteRunState: vi.fn(),
+            resetSessionTracks: vi.fn(),
+            setMentionedFiles: vi.fn(),
+            consumeSteeringInput: vi.fn().mockReturnValue(null),
+            trackReadFile: vi.fn(),
+          },
+        },
         WorkspaceToolExecutorService,
         WorkspacePromptBuilderService,
         TranscriptEngineService,
@@ -223,6 +256,7 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         {
           provide: AiService,
           useValue: {
+            classifyIntent: vi.fn().mockResolvedValue({ isMutation: false, isGui: false, tools: ['search_workspace', 'edit', 'todo_write'] }),
             getSystemPrompt: vi.fn().mockReturnValue('system'),
             getActiveModelContext: vi.fn().mockResolvedValue({
               model: 'deepseek-v4-flash',
@@ -288,7 +322,7 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: SearchService,
           useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
         },
-        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn().mockResolvedValue(null), findById: vi.fn().mockResolvedValue(null) } },
         {
           provide: MemoryService,
           useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
@@ -353,12 +387,12 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
           useValue: {
-            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
           },
         },
       ],
@@ -439,7 +473,23 @@ describe('WorkspaceRunnerService todo list injection', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
-        WorkspaceRunStateService,
+        {
+          provide: WorkspaceRunStateService,
+          useValue: {
+            isRunning: vi.fn().mockReturnValue(false),
+            setState: vi.fn(),
+            getModifiedFiles: vi.fn().mockReturnValue([]),
+            markFileModified: vi.fn(),
+            createRunState: vi.fn().mockReturnValue({ runId: 'test-run', workspaceId: 'test-ws', abortController: { signal: {} }, currentRound: 0 }),
+            cleanupRunState: vi.fn(),
+            setPhase: vi.fn(),
+            deleteRunState: vi.fn(),
+            resetSessionTracks: vi.fn(),
+            setMentionedFiles: vi.fn(),
+            consumeSteeringInput: vi.fn().mockReturnValue(null),
+            trackReadFile: vi.fn(),
+          },
+        },
         WorkspaceToolExecutorService,
         WorkspacePromptBuilderService,
         TranscriptEngineService,
@@ -451,6 +501,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
         {
           provide: AiService,
           useValue: {
+            classifyIntent: vi.fn().mockResolvedValue({ isMutation: false, isGui: false, tools: ['search_workspace', 'edit', 'todo_write'] }),
             getSystemPrompt: vi.fn().mockReturnValue('system'),
             getActiveModelContext: vi
               .fn()
@@ -491,7 +542,7 @@ describe('WorkspaceRunnerService todo list injection', () => {
           provide: SearchService,
           useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
         },
-        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn().mockResolvedValue(null), findById: vi.fn().mockResolvedValue(null) } },
         {
           provide: MemoryService,
           useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
@@ -567,12 +618,12 @@ describe('WorkspaceRunnerService todo list injection', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
         { provide: TodoStoreService, useValue: todoStore },
         {
           provide: SessionAdmissionService,
           useValue: {
-            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
           },
         },
       ],
@@ -615,7 +666,23 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkspaceRunnerService,
-        WorkspaceRunStateService,
+        {
+          provide: WorkspaceRunStateService,
+          useValue: {
+            isRunning: vi.fn().mockReturnValue(false),
+            setState: vi.fn(),
+            getModifiedFiles: vi.fn().mockReturnValue([]),
+            markFileModified: vi.fn(),
+            createRunState: vi.fn().mockReturnValue({ runId: 'test-run', workspaceId: 'test-ws', abortController: { signal: {} }, currentRound: 0 }),
+            cleanupRunState: vi.fn(),
+            setPhase: vi.fn(),
+            deleteRunState: vi.fn(),
+            resetSessionTracks: vi.fn(),
+            setMentionedFiles: vi.fn(),
+            consumeSteeringInput: vi.fn().mockReturnValue(null),
+            trackReadFile: vi.fn(),
+          },
+        },
         WorkspaceToolExecutorService,
         WorkspacePromptBuilderService,
         TranscriptEngineService,
@@ -627,6 +694,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
         {
           provide: AiService,
           useValue: {
+            classifyIntent: vi.fn().mockResolvedValue({ isMutation: false, isGui: false, tools: ['search_workspace', 'edit', 'todo_write'] }),
             getSystemPrompt: vi.fn().mockReturnValue('system'),
             getActiveModelContext: vi
               .fn()
@@ -682,7 +750,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
           provide: SearchService,
           useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
         },
-        { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
+        { provide: ArtifactService, useValue: { createFromAgent: vi.fn().mockResolvedValue(null), findById: vi.fn().mockResolvedValue(null) } },
         {
           provide: MemoryService,
           useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
@@ -740,7 +808,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
           provide: DomainRegistryService,
           useValue: { getDomainSpec: vi.fn() },
         },
-        { provide: EventEmitter2, useValue: { emit: vi.fn() } },
+        { provide: EventEmitter2, useValue: { emit: vi.fn(), emitAsync: vi.fn().mockResolvedValue([]) } },
         {
           provide: ProviderService,
           useValue: { getNextAvailable: vi.fn().mockResolvedValue(null) },
@@ -749,7 +817,7 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
         {
           provide: SessionAdmissionService,
           useValue: {
-            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn().mockResolvedValue(undefined) }),
           },
         },
       ],

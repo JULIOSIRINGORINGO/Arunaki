@@ -54,6 +54,7 @@ export class WorkspaceToolExecutorService {
     private readonly artifactService: ArtifactService,
     @Inject(forwardRef(() => TranscriptEngineService))
     private readonly transcriptEngine: TranscriptEngineService,
+    @Inject(forwardRef(() => WorkspaceRunStateService))
     private readonly stateService: WorkspaceRunStateService,
   ) {}
 

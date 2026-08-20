@@ -83,7 +83,9 @@ export class WorkspaceRunnerService {
     private readonly transcriptEngine: TranscriptEngineService,
     @Inject(forwardRef(() => ModelStreamNormalizerService))
     private readonly streamNormalizer: ModelStreamNormalizerService,
+    @Inject(WorkspaceRunStateService)
     private readonly stateService: WorkspaceRunStateService,
+    @Inject(WorkspaceToolExecutorService)
     private readonly toolExecutor: WorkspaceToolExecutorService,
   ) {}
 
