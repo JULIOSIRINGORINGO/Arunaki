@@ -1601,3 +1601,36 @@ apps/web/src/
 
 ### 55.3 E2E Verification
 - [x] End-to-end testing verifying structure and merged cell preservation during data update (	est-excel-structure-preservation.ts).
+
+---
+
+## Phase 56: Critical Security & Production Optimization (PENDING)
+
+**Goal:** Menambal celah keamanan kritis pada path traversal, mengoptimalkan konsumsi memori agen jangka panjang, dan memisahkan abstraksi event system.
+
+### 56.1 Workspace Isolation Enforcement (Keamanan Kritis)
+- [ ] Refactor ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di luar workspace.rootPath.
+- [ ] Gunakan fungsi resolusi path absolut yang memvalidasi bahwa 	argetPath.startsWith(workspace.rootPath) untuk memblokir prompt injection path traversal (seperti ../../Windows).
+
+### 56.2 Memory Consolidation (Long-running Agent Context)
+- [ ] Implementasikan consolidateMemories() di memory.tool.ts atau memory.service.ts.
+- [ ] Ringkas riwayat pesan yang melebihi batas batas token/kepadatan agar tidak memicu context length exceeded.
+
+### 56.3 Dedicated Agent Event System
+- [ ] Ekstrak abstraksi gent-event.service.ts untuk membungkus EventEmitter2.
+- [ ] Standarkan payload tipe event untuk *lifecycle* Agent (Started, Completed, Failed, dsb).
+
+---
+
+## Phase 57: Voice Interaction & Desktop Packaging (DEFERRED)
+
+**Goal:** Menjadikan Arunaki aplikasi Desktop *Native* dengan fitur asisten suara. **Fitur ini ditunda (dikerjakan nanti).**
+
+### 57.1 Voice Interaction (Ditunda)
+- [ ] Integrasi Speech-To-Text (STT) untuk input.
+- [ ] Integrasi Text-To-Speech (TTS) untuk *streaming playback* suara AI.
+
+### 57.2 Desktop Packaging 
+- [ ] Matangkan integrasi Electron di pps/desktop/main.cjs.
+- [ ] Build installer Windows/Mac.
+
