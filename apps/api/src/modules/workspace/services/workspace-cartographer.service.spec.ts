@@ -196,6 +196,78 @@ describe('WorkspaceCartographerService', () => {
     expect(rules).toContain('## 8. User Preferences & Learned Corrections');
   });
 
+  it('should handle full ADD → ADD → REPLACE lifecycle correctly', async () => {
+    const arunakiDir = path.join(tempDir, '.arunaki');
+    await fsp.mkdir(arunakiDir, { recursive: true });
+    const filePath = path.join(arunakiDir, 'ARUNAKI.md');
+    const existingContent = `# Rules
+
+## 7. Autonomous Behavior
+1. Read before write
+`;
+    await fsp.writeFile(filePath, existingContent, 'utf8');
+
+    mockPrisma.workspace.findUnique.mockResolvedValue({
+      id: 'ws-1',
+      name: 'Test Workspace',
+      rootPath: tempDir,
+    });
+
+    // Step 1: ADD Rule 1 (date)
+    await service.patchWorkspaceRules('ws-1', 'ADD: Tanggal judul harus selalu hari ini');
+    let rules = await service.getWorkspaceRules(tempDir);
+    expect(rules).toContain('## 8. User Preferences');
+    expect(rules).toContain('Tanggal judul harus selalu hari ini');
+    expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(1);
+
+    // Step 2: ADD Rule 2 (format — different rule)
+    await service.patchWorkspaceRules('ws-1', 'ADD: Format angka harus pakai titik sebagai pemisah ribuan');
+    rules = await service.getWorkspaceRules(tempDir);
+    expect(rules).toContain('Format angka harus pakai titik');
+    expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
+    // Should still be ## 8 (not ## 9)
+    expect(rules).toContain('## 8. User Preferences');
+
+    // Step 3: REPLACE Rule 1 (edit date rule)
+    await service.patchWorkspaceRules('ws-1', 'REPLACE: Tanggal judul harus selalu hari ini -> Format tanggal harus DD/MM/YYYY');
+    rules = await service.getWorkspaceRules(tempDir);
+    expect(rules).toContain('Format tanggal harus DD/MM/YYYY');
+    expect(rules).not.toContain('Tanggal judul harus selalu hari ini');
+    expect(rules).toContain('Format angka harus pakai titik');
+    // Still 2 rules, still ## 8
+    expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
+    expect(rules).toContain('## 8. User Preferences');
+
+    // Step 4: Reject garbage
+    await service.patchWorkspaceRules('ws-1', 'Sorry, I am unable to provide an answer');
+    rules = await service.getWorkspaceRules(tempDir);
+    expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
+
+    // Step 5: Reject duplicate
+    await service.patchWorkspaceRules('ws-1', 'ADD: Format angka harus pakai titik sebagai pemisah ribuan');
+    rules = await service.getWorkspaceRules(tempDir);
+    expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
+  });
+
+  it('should handle pre-formatted rules from sentinel', async () => {
+    const arunakiDir = path.join(tempDir, '.arunaki');
+    await fsp.mkdir(arunakiDir, { recursive: true });
+    const filePath = path.join(arunakiDir, 'ARUNAKI.md');
+    await fsp.writeFile(filePath, '# Rules\n\n## 7. Behavior\n1. Read before write\n', 'utf8');
+
+    mockPrisma.workspace.findUnique.mockResolvedValue({
+      id: 'ws-1',
+      name: 'Test Workspace',
+      rootPath: tempDir,
+    });
+
+    // Pre-formatted rule (as sentinel sends it)
+    await service.patchWorkspaceRules('ws-1', '- [Auto-Learned 2026-08-20]: Selalu format angka dengan titik');
+    const rules = await service.getWorkspaceRules(tempDir);
+    expect(rules).toContain('Selalu format angka dengan titik');
+    expect(rules).toContain('## 8. User Preferences');
+  });
+
   it('should run analyzeAndBootstrap and produce dynamic LLM-generated rules without hardcoded bias', async () => {
     // Create sample files in temp workspace
     await fsp.writeFile(

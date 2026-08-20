@@ -146,6 +146,12 @@ export class WorkspaceCartographerService {
       let oldSnippet = '';
       let newRule = learnedCorrection.trim();
 
+      // Handle pre-formatted rules: extract the actual rule text
+      const autoLearnedMatch = newRule.match(/^- \[Auto-Learned \d{4}-\d{2}-\d{2}\]: (.+)$/);
+      if (autoLearnedMatch) {
+        newRule = autoLearnedMatch[1].trim();
+      }
+
       if (newRule.startsWith('REPLACE:')) {
         const parts = newRule.replace('REPLACE:', '').split('->');
         if (parts.length === 2) {
@@ -154,6 +160,11 @@ export class WorkspaceCartographerService {
         }
       } else if (newRule.startsWith('ADD:')) {
         newRule = newRule.replace('ADD:', '').trim();
+      }
+
+      // Validate AFTER prefix stripping
+      if (newRule.length < 5 || /^(sorry|unable|error|try again)/i.test(newRule)) {
+        return;
       }
 
       const entry = `- [Auto-Learned ${timestamp}]: ${newRule}`;

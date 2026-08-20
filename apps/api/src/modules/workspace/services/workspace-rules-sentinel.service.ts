@@ -127,10 +127,28 @@ Output ONLY "NO_CHANGE", "REPLACE: <old> -> <new>", or "ADD: <new>".`;
         return false;
       }
 
-      // Autonomously patch ARUNAKI.md
-      await this.cartographerService.patchWorkspaceRules(workspaceId, result);
-      this.logger.log(`[RulesSentinel] 🛡️ Sentinel autonomously evolved ARUNAKI.md: "${result}"`);
-      return true;
+      // Parse multi-line LLM output — each line may contain ADD: or REPLACE:
+      const lines = result.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      let patched = false;
+      for (const line of lines) {
+        // Skip garbage: error messages, apologies, unparsed prefixes
+        if (line.toLowerCase().includes('sorry') || line.toLowerCase().includes('unable') || line.toLowerCase().includes('try again')) {
+          continue;
+        }
+        if (line.startsWith('ADD:') || line.startsWith('REPLACE:')) {
+          await this.cartographerService.patchWorkspaceRules(workspaceId, line);
+          patched = true;
+        } else if (line.startsWith('- [Auto-Learned')) {
+          // Already formatted rule — pass through
+          await this.cartographerService.patchWorkspaceRules(workspaceId, line);
+          patched = true;
+        }
+      }
+
+      if (patched) {
+        this.logger.log(`[RulesSentinel] 🛡️ Sentinel evolved ARUNAKI.md from ${lines.length} line(s)`);
+      }
+      return patched;
     } catch (err: any) {
       this.logger.warn(`[RulesSentinel] Rule evolution check skipped: ${err.message}`);
       return false;
