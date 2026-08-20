@@ -29,7 +29,8 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'read',
         displayName: 'Read File',
-        description: 'Reads the full content of a specified file inside the workspace.',
+        description:
+          'Reads the full content of a specified file inside the workspace.',
         tags: ['workspace', 'file', 'read'],
         handler: async (args) =>
           services.readToolService.execute({
@@ -42,9 +43,18 @@ export class WorkspaceFileToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filePath: { type: 'string', description: 'File path relative or absolute' },
-            offset: { type: 'number', description: 'Optional line offset (1-based)' },
-            limit: { type: 'number', description: 'Optional max lines to read' },
+            filePath: {
+              type: 'string',
+              description: 'File path relative or absolute',
+            },
+            offset: {
+              type: 'number',
+              description: 'Optional line offset (1-based)',
+            },
+            limit: {
+              type: 'number',
+              description: 'Optional max lines to read',
+            },
           },
           required: ['filePath'],
         },
@@ -56,7 +66,8 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'write',
         displayName: 'Write File',
-        description: 'Creates a brand new file in the workspace. Fails if the file already exists. To update or modify existing files, you MUST use the edit tool.',
+        description:
+          'Creates a brand new file in the workspace. Fails if the file already exists. To update or modify existing files, you MUST use the edit tool.',
         tags: ['workspace', 'file', 'write'],
         mutating: true,
         handler: async (args) =>
@@ -72,7 +83,10 @@ export class WorkspaceFileToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filePath: { type: 'string', description: 'File path for the new file' },
+            filePath: {
+              type: 'string',
+              description: 'File path for the new file',
+            },
             content: { type: 'string', description: 'File content' },
           },
           required: ['filePath', 'content'],
@@ -85,7 +99,8 @@ export class WorkspaceFileToolsRegistrar {
       ToolAdapter.from({
         name: 'edit',
         displayName: 'Edit File',
-        description: 'Modifies an existing file by surgical replacement or patch (oldString -> newString or patchText). ALWAYS use edit for existing files to preserve all other sections, layout, and data.',
+        description:
+          'Modifies an existing file by surgical replacement or patch (oldString -> newString or patchText). ALWAYS use edit for existing files to preserve all other sections, layout, and data.',
         tags: ['workspace', 'file', 'edit'],
         mutating: true,
         handler: async (args) =>
@@ -101,18 +116,37 @@ export class WorkspaceFileToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string', description: 'Workspace ID' },
-            filePath: { type: 'string', description: 'File path relative to workspace' },
-            patchText: { type: 'string', description: 'Optional unified diff patch text (@@ ... @@)' },
-            oldString: { type: 'string', description: 'Optional exact existing text snippet to replace' },
-            newString: { type: 'string', description: 'Optional new replacement text snippet' },
+            filePath: {
+              type: 'string',
+              description: 'File path relative to workspace',
+            },
+            patchText: {
+              type: 'string',
+              description: 'Optional unified diff patch text (@@ ... @@)',
+            },
+            oldString: {
+              type: 'string',
+              description: 'Optional exact existing text snippet to replace',
+            },
+            newString: {
+              type: 'string',
+              description: 'Optional new replacement text snippet',
+            },
             replacements: {
               type: 'array',
-              description: 'Optional array of multiple { oldString, newString } replacements to apply in one go',
+              description:
+                'Optional array of multiple { oldString, newString } replacements to apply in one go',
               items: {
                 type: 'object',
                 properties: {
-                  oldString: { type: 'string', description: 'Existing text to replace' },
-                  newString: { type: 'string', description: 'New replacement text' },
+                  oldString: {
+                    type: 'string',
+                    description: 'Existing text to replace',
+                  },
+                  newString: {
+                    type: 'string',
+                    description: 'New replacement text',
+                  },
                 },
                 required: ['oldString', 'newString'],
               },
@@ -180,7 +214,8 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'List Files',
         description: 'Lists files and folders inside the workspace directory.',
         tags: ['workspace', 'file', 'list'],
-        handler: async (args) => services.listToolService.execute(args.workspaceId),
+        handler: async (args) =>
+          services.listToolService.execute(args.workspaceId),
         parameters: {
           type: 'object',
           properties: {
@@ -199,7 +234,11 @@ export class WorkspaceFileToolsRegistrar {
         displayName: 'Search Workspace',
         description: 'Searches workspace files for a text pattern or filename.',
         tags: ['workspace', 'file', 'search'],
-        handler: async (args) => services.searchToolService.execute(args.workspaceId, args.query || ''),
+        handler: async (args) =>
+          services.searchToolService.execute(
+            args.workspaceId,
+            args.query || '',
+          ),
         parameters: {
           type: 'object',
           properties: {

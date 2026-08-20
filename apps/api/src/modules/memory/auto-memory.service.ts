@@ -242,7 +242,10 @@ export class AutoMemoryService {
     }>,
   ): Promise<{ merged: number; removed: number }> {
     const memoryText = memories
-      .map((m, i) => `[${i + 1}] ID:${m.id} Key:${m.key} Imp:${m.importance || 5} ${m.content}`)
+      .map(
+        (m, i) =>
+          `[${i + 1}] ID:${m.id} Key:${m.key} Imp:${m.importance || 5} ${m.content}`,
+      )
       .join('\n');
 
     const messages: ChatMessage[] = [

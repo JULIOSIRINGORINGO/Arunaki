@@ -43,9 +43,7 @@ export class TodoStoreService {
   serialize(runId: string): string {
     const items = this.get(runId);
     if (items.length === 0) return '';
-    const lines = items.map(
-      (t) => `- [${t.status}] ${t.id}: ${t.content}`,
-    );
+    const lines = items.map((t) => `- [${t.status}] ${t.id}: ${t.content}`);
     return `=== TODO LIST ===\n${lines.join('\n')}\n=== END TODO LIST ===`;
   }
 }

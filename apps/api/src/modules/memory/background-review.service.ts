@@ -1,4 +1,10 @@
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  Optional,
+} from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { MemoryService } from './memory.service.js';
 import { SkillSelfImproveService } from '../skills/skill-self-improve.service.js';
@@ -16,10 +22,14 @@ export class BackgroundReviewService {
   private readonly logger = new Logger(BackgroundReviewService.name);
 
   constructor(
-    @Inject(forwardRef(() => MemoryService)) private readonly memoryService: MemoryService,
-    @Inject(forwardRef(() => SkillSelfImproveService)) private readonly skillSelfImproveService: SkillSelfImproveService,
+    @Inject(forwardRef(() => MemoryService))
+    private readonly memoryService: MemoryService,
+    @Inject(forwardRef(() => SkillSelfImproveService))
+    private readonly skillSelfImproveService: SkillSelfImproveService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
-    @Optional() @Inject(forwardRef(() => AiService)) private readonly aiService?: AiService,
+    @Optional()
+    @Inject(forwardRef(() => AiService))
+    private readonly aiService?: AiService,
   ) {}
 
   /**
@@ -74,9 +84,13 @@ export class BackgroundReviewService {
         );
       }
 
-      this.logger.log(`[BackgroundReview] Extracted & saved ${savedLearnings.length} verified learnings.`);
+      this.logger.log(
+        `[BackgroundReview] Extracted & saved ${savedLearnings.length} verified learnings.`,
+      );
     } catch (err: any) {
-      this.logger.warn(`[BackgroundReview] Review non-fatal error: ${err.message}`);
+      this.logger.warn(
+        `[BackgroundReview] Review non-fatal error: ${err.message}`,
+      );
     }
   }
 
@@ -85,12 +99,14 @@ export class BackgroundReviewService {
    */
   private async extractLearningsViaLlm(
     messages: Array<{ role: string; content: string }>,
-  ): Promise<Array<{
-    type: string;
-    key: string;
-    content: string;
-    importance: number;
-  }>> {
+  ): Promise<
+    Array<{
+      type: string;
+      key: string;
+      content: string;
+      importance: number;
+    }>
+  > {
     let ai = this.aiService;
     if (!ai) {
       try {
@@ -121,12 +137,16 @@ Output ONLY the raw JSON array without markdown fences.`;
       const response = await ai.chat([
         {
           role: 'system',
-          content: 'You are an AI memory extraction agent. Never generate false positives for normal conversation.',
+          content:
+            'You are an AI memory extraction agent. Never generate false positives for normal conversation.',
         },
         { role: 'user', content: prompt },
       ]);
 
-      const raw = (response?.content || '').trim().replace(/```json|```/g, '').trim();
+      const raw = (response?.content || '')
+        .trim()
+        .replace(/```json|```/g, '')
+        .trim();
       if (!raw || raw === '[]' || !raw.startsWith('[')) {
         return [];
       }
@@ -135,7 +155,12 @@ Output ONLY the raw JSON array without markdown fences.`;
       if (!Array.isArray(parsed)) return [];
 
       return parsed
-        .filter((item) => item && typeof item.content === 'string' && item.content.trim().length > 3)
+        .filter(
+          (item) =>
+            item &&
+            typeof item.content === 'string' &&
+            item.content.trim().length > 3,
+        )
         .map((item, idx) => ({
           type: item.type || 'preference',
           key: `learning-${Date.now()}-${idx}`,

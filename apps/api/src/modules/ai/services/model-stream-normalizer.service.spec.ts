@@ -5,7 +5,9 @@ import { StreamChunk } from '../stream-chat';
 describe('ModelStreamNormalizerService', () => {
   const normalizer = new ModelStreamNormalizerService();
 
-  async function collectChunks(generator: AsyncGenerator<StreamChunk>): Promise<StreamChunk[]> {
+  async function collectChunks(
+    generator: AsyncGenerator<StreamChunk>,
+  ): Promise<StreamChunk[]> {
     const chunks: StreamChunk[] = [];
     for await (const chunk of generator) {
       chunks.push(chunk);
@@ -13,7 +15,9 @@ describe('ModelStreamNormalizerService', () => {
     return chunks;
   }
 
-  async function* toGenerator(chunks: StreamChunk[]): AsyncGenerator<StreamChunk> {
+  async function* toGenerator(
+    chunks: StreamChunk[],
+  ): AsyncGenerator<StreamChunk> {
     for (const chunk of chunks) {
       yield chunk;
     }
@@ -71,9 +75,7 @@ describe('ModelStreamNormalizerService', () => {
 
   it('intercepts leaked [Assistant tool call] text and converts to native tool_call chunk', async () => {
     const leakedText = `[Assistant tool call]: edit(filePath="REKAPAN.txt", oldString="OLD", newString="NEW")`;
-    const rawChunks: StreamChunk[] = [
-      { type: 'content', content: leakedText },
-    ];
+    const rawChunks: StreamChunk[] = [{ type: 'content', content: leakedText }];
 
     const stream = normalizer.normalizeStream(toGenerator(rawChunks));
     const result = await collectChunks(stream);
@@ -99,6 +101,8 @@ Rekapitulasi transaksi harian berhasil diselesaikan.
     expect(cleaned).not.toContain('<think>');
     expect(cleaned).not.toContain('Internal chain of thought');
     expect(cleaned).not.toContain('[Assistant tool call]');
-    expect(cleaned).toContain('Rekapitulasi transaksi harian berhasil diselesaikan.');
+    expect(cleaned).toContain(
+      'Rekapitulasi transaksi harian berhasil diselesaikan.',
+    );
   });
 });

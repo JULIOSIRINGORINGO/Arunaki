@@ -4,7 +4,7 @@
  * Keeps a byte-identical stable prefix separate from dynamic per-turn
  * additions so providers can serve cached_tokens on the prefix.
  */
-export const SYSTEM_PROMPT_CACHE_BOUNDARY = "\n<!-- CACHE_BOUNDARY -->\n";
+export const SYSTEM_PROMPT_CACHE_BOUNDARY = '\n<!-- CACHE_BOUNDARY -->\n';
 
 export function splitSystemPromptCacheBoundary(
   text: string,
@@ -13,7 +13,9 @@ export function splitSystemPromptCacheBoundary(
   if (idx === -1) return undefined;
   return {
     stablePrefix: text.slice(0, idx).trimEnd(),
-    dynamicSuffix: text.slice(idx + SYSTEM_PROMPT_CACHE_BOUNDARY.length).trimStart(),
+    dynamicSuffix: text
+      .slice(idx + SYSTEM_PROMPT_CACHE_BOUNDARY.length)
+      .trimStart(),
   };
 }
 
@@ -45,7 +47,10 @@ export function prependSystemPromptAdditionAfterCacheBoundary(params: {
 const STABLE_PREFIX_CACHE_LIMIT = 64;
 const stablePrefixCache = new Map<string, string>();
 
-export function cacheStablePromptPrefix(key: string, build: () => string): string {
+export function cacheStablePromptPrefix(
+  key: string,
+  build: () => string,
+): string {
   const cached = stablePrefixCache.get(key);
   if (cached !== undefined) {
     stablePrefixCache.delete(key);

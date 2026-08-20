@@ -18,11 +18,17 @@ export class KnowledgeService extends BaseService<Knowledge> {
   }
 
   // ─── Canvas position ─────────────────────────────────
-  async updatePosition(id: string, positionX: number, positionY: number): Promise<Knowledge> {
+  async updatePosition(
+    id: string,
+    positionX: number,
+    positionY: number,
+  ): Promise<Knowledge> {
     return this.repository.updatePosition(id, positionX, positionY);
   }
 
-  async updatePositions(positions: Array<{ id: string; positionX: number; positionY: number }>): Promise<void> {
+  async updatePositions(
+    positions: Array<{ id: string; positionX: number; positionY: number }>,
+  ): Promise<void> {
     return this.repository.updatePositions(positions);
   }
 
@@ -31,7 +37,11 @@ export class KnowledgeService extends BaseService<Knowledge> {
     return this.repository.findAllEdges();
   }
 
-  async createEdge(sourceId: string, targetId: string, label?: string): Promise<KnowledgeEdge> {
+  async createEdge(
+    sourceId: string,
+    targetId: string,
+    label?: string,
+  ): Promise<KnowledgeEdge> {
     return this.repository.createEdge(sourceId, targetId, label);
   }
 
@@ -54,17 +64,22 @@ export class KnowledgeService extends BaseService<Knowledge> {
       const targetTitle = nodeMap.get(edge.targetId)?.title;
       if (sourceTitle && targetTitle) {
         if (!connections.has(edge.sourceId)) connections.set(edge.sourceId, []);
-        connections.get(edge.sourceId)!.push(targetTitle + (edge.label ? ` (${edge.label})` : ''));
+        connections
+          .get(edge.sourceId)!
+          .push(targetTitle + (edge.label ? ` (${edge.label})` : ''));
 
         if (!connections.has(edge.targetId)) connections.set(edge.targetId, []);
-        connections.get(edge.targetId)!.push(sourceTitle + (edge.label ? ` (${edge.label})` : ''));
+        connections
+          .get(edge.targetId)!
+          .push(sourceTitle + (edge.label ? ` (${edge.label})` : ''));
       }
     }
 
     return docNodes
       .map((k) => {
         const conn = connections.get(k.id);
-        const connStr = conn && conn.length > 0 ? ` (Connected to: ${conn.join(', ')})` : '';
+        const connStr =
+          conn && conn.length > 0 ? ` (Connected to: ${conn.join(', ')})` : '';
         return `- ${k.title} [Type: ${k.type}]${connStr}`;
       })
       .join('\n');
@@ -76,14 +91,22 @@ export class KnowledgeService extends BaseService<Knowledge> {
     if (docNodes.length === 0) return 'No data found.';
 
     const q = query.toLowerCase();
-    const tokens = q.split(/[^a-z0-9]+/).filter(t => t.length >= 3);
+    const tokens = q.split(/[^a-z0-9]+/).filter((t) => t.length >= 3);
     const matchScore = (s: string) => {
       const lower = s.toLowerCase();
       if (lower.includes(q)) return 3;
-      return tokens.reduce((score, t) => (lower.includes(t) ? score + 1 : score), 0);
+      return tokens.reduce(
+        (score, t) => (lower.includes(t) ? score + 1 : score),
+        0,
+      );
     };
-    const scored = docNodes.map(n => ({ node: n, score: matchScore(n.title) + matchScore(n.type) }));
-    const best = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+    const scored = docNodes.map((n) => ({
+      node: n,
+      score: matchScore(n.title) + matchScore(n.type),
+    }));
+    const best = scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score);
     const targetNode = best[0]?.node;
     if (!targetNode) return 'Node not found in the Knowledge Graph.';
 
@@ -96,11 +119,11 @@ export class KnowledgeService extends BaseService<Knowledge> {
       }
     }
 
-    const connectedNodes = docNodes.filter(n => connectedIds.has(n.id));
+    const connectedNodes = docNodes.filter((n) => connectedIds.has(n.id));
     const MAX_RELEVANT_URLS = 15;
 
     return connectedNodes
-      .map(k => {
+      .map((k) => {
         let urlsStr = '';
         try {
           const urls = JSON.parse(k.urls || '[]');
@@ -108,10 +131,13 @@ export class KnowledgeService extends BaseService<Knowledge> {
             const ranked = this.rankUrls(urls, q, tokens);
             const top = ranked.slice(0, MAX_RELEVANT_URLS);
             const hidden = urls.length - top.length;
-            urlsStr = `\n\nURLs:\n${top.map(u => `- ${u}`).join('\n')}`;
-            if (hidden > 0) urlsStr += `\n(+${hidden} more product URLs available)`;
+            urlsStr = `\n\nURLs:\n${top.map((u) => `- ${u}`).join('\n')}`;
+            if (hidden > 0)
+              urlsStr += `\n(+${hidden} more product URLs available)`;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         const cityStr = k.city ? `\n\nDefault location: ${k.city}` : '';
         return `--- ${k.title} [${k.type}] ---\n${k.content}${cityStr}${urlsStr}`;
       })
@@ -122,7 +148,11 @@ export class KnowledgeService extends BaseService<Knowledge> {
    * Generic URL ranker: extracts tokens from URL path/params, scores against query.
    * Works for any e-commerce site structure (cititex, tokopedia, shopee, etc.)
    */
-  private rankUrls(urls: string[], query: string, queryTokens: string[]): string[] {
+  private rankUrls(
+    urls: string[],
+    query: string,
+    queryTokens: string[],
+  ): string[] {
     const tokenCache = new Map<string, string[]>();
 
     const urlTokens = (url: string): string[] => {
@@ -135,21 +165,24 @@ export class KnowledgeService extends BaseService<Knowledge> {
         const pathTokens = parsed.pathname
           .toLowerCase()
           .split(/[^a-z0-9]+/)
-          .filter(t => t.length >= 2);
+          .filter((t) => t.length >= 2);
         const paramTokens = [...parsed.searchParams.values()]
           .join(' ')
           .toLowerCase()
           .split(/[^a-z0-9]+/)
-          .filter(t => t.length >= 2);
+          .filter((t) => t.length >= 2);
         tokens = [...pathTokens, ...paramTokens];
       } catch {
-        tokens = url.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2);
+        tokens = url
+          .toLowerCase()
+          .split(/[^a-z0-9]+/)
+          .filter((t) => t.length >= 2);
       }
       tokenCache.set(url, tokens);
       return tokens;
     };
 
-    const scored = urls.map(url => {
+    const scored = urls.map((url) => {
       const tokens = urlTokens(url);
       const tokenSet = new Set(tokens);
       let score = 0;
@@ -158,13 +191,11 @@ export class KnowledgeService extends BaseService<Knowledge> {
       // each query token that appears in URL tokens
       for (const qt of queryTokens) {
         if (tokenSet.has(qt)) score += 3;
-        else if (tokens.some(t => t.includes(qt))) score += 1;
+        else if (tokens.some((t) => t.includes(qt))) score += 1;
       }
       return { url, score };
     });
 
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .map(s => s.url);
+    return scored.sort((a, b) => b.score - a.score).map((s) => s.url);
   }
 }

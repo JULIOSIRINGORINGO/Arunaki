@@ -3,7 +3,8 @@ import { ChatMessage } from '../ai.service.js';
 export interface ContextProjection {
   id: string;
   name: string;
-  source: 'workspace' | 'memory' | 'skills' | 'knowledge' | 'history' | 'custom';
+  source:
+    'workspace' | 'memory' | 'skills' | 'knowledge' | 'history' | 'custom';
   content: string;
   priority: number;
   maxTokens: number;
@@ -28,9 +29,7 @@ export interface IContextEngine {
   readonly name: string;
   readonly config: ContextEngineConfig;
 
-  assemble(
-    params: ContextAssemblyParams,
-  ): Promise<ContextAssemblyResult>;
+  assemble(params: ContextAssemblyParams): Promise<ContextAssemblyResult>;
 
   compress(messages: ChatMessage[]): Promise<ChatMessage[]>;
 

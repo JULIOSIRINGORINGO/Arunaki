@@ -1,6 +1,16 @@
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  Optional,
+} from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { SubAgentRunnerService, SubAgentTask, SubAgentResult } from '../../chat/sub-agent-runner.service.js';
+import {
+  SubAgentRunnerService,
+  SubAgentTask,
+  SubAgentResult,
+} from '../../chat/sub-agent-runner.service.js';
 import { StorageService } from '../../storage/storage.service.js';
 import { TranscriptEngineService } from '../../workspace/services/transcript-engine.service.js';
 
@@ -44,7 +54,10 @@ export class MultiDocOrchestratorService {
     private subAgentRunner?: SubAgentRunnerService,
   ) {
     // If first argument is a SubAgentRunner (e.g. in tests)
-    if (this.moduleRef && typeof (this.moduleRef as any).spawnSubAgent === 'function') {
+    if (
+      this.moduleRef &&
+      typeof (this.moduleRef as any).spawnSubAgent === 'function'
+    ) {
       this.subAgentRunner = this.moduleRef as unknown as SubAgentRunnerService;
     }
   }
@@ -53,7 +66,10 @@ export class MultiDocOrchestratorService {
     if (this.subAgentRunner) return this.subAgentRunner;
     if (this.moduleRef && typeof (this.moduleRef as any).get === 'function') {
       try {
-        this.subAgentRunner = (this.moduleRef as any).get(SubAgentRunnerService, { strict: false });
+        this.subAgentRunner = (this.moduleRef as any).get(
+          SubAgentRunnerService,
+          { strict: false },
+        );
         return this.subAgentRunner || null;
       } catch {
         return null;
@@ -68,10 +84,21 @@ export class MultiDocOrchestratorService {
    */
   async processDocumentsParallel(
     params: MultiDocProcessParams,
-    onProgress?: (event: { type: 'worker_started' | 'worker_completed' | 'worker_failed'; file: string; progress: number }) => void,
+    onProgress?: (event: {
+      type: 'worker_started' | 'worker_completed' | 'worker_failed';
+      file: string;
+      progress: number;
+    }) => void,
   ): Promise<MultiDocProcessResult> {
     const startedAt = Date.now();
-    const { workspaceId, files, instruction, maxConcurrency = 3, allowedTools, sessionId } = params;
+    const {
+      workspaceId,
+      files,
+      instruction,
+      maxConcurrency = 3,
+      allowedTools,
+      sessionId,
+    } = params;
 
     if (!files || files.length === 0) {
       return {
@@ -100,7 +127,12 @@ Steps:
 1. Read file ${file} using available reading tools.
 2. Execute the requested analysis / extraction.
 3. Return a clear, structured summary of findings for ${file}.`,
-      allowedTools: allowedTools || ['read', 'data_query', 'extract_structured_data', 'document_reader'],
+      allowedTools: allowedTools || [
+        'read',
+        'data_query',
+        'extract_structured_data',
+        'document_reader',
+      ],
       maxRounds: 4,
       workspaceId,
       additionalContext: `Target File: ${file}\nWorkspace ID: ${workspaceId}`,
@@ -110,7 +142,10 @@ Steps:
     const results: WorkerDocResult[] = [];
     let completedCount = 0;
 
-    const executeWorker = async (task: SubAgentTask, file: string): Promise<WorkerDocResult> => {
+    const executeWorker = async (
+      task: SubAgentTask,
+      file: string,
+    ): Promise<WorkerDocResult> => {
       onProgress?.({
         type: 'worker_started',
         file,
@@ -138,7 +173,11 @@ Steps:
         return {
           file,
           status: isSuccess ? 'success' : 'error',
-          summary: subResult.content || (isSuccess ? 'Completed successfully' : (subResult.error || 'Execution failed')),
+          summary:
+            subResult.content ||
+            (isSuccess
+              ? 'Completed successfully'
+              : subResult.error || 'Execution failed'),
           toolsUsed: subResult.toolOutputs?.map((t) => t.toolName) || [],
           durationMs,
           error: subResult.error,
@@ -185,7 +224,10 @@ Steps:
 
     // Generate consolidated summary
     const consolidatedSummary = results
-      .map((r, idx) => `### ${idx + 1}. ${r.file} [${r.status.toUpperCase()}]\n${r.summary}`)
+      .map(
+        (r, idx) =>
+          `### ${idx + 1}. ${r.file} [${r.status.toUpperCase()}]\n${r.summary}`,
+      )
       .join('\n\n');
 
     this.logger.log(

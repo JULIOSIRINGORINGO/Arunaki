@@ -9,8 +9,17 @@ import { PrismaModule } from '../../common/providers/prisma.module.js';
 @Module({
   imports: [PrismaModule],
   controllers: [KnowledgeController],
-  providers: [KnowledgeService, KnowledgeRepository, KnowledgeCrawlerService, CryptoHarvesterService],
-  exports: [KnowledgeService, KnowledgeRepository, KnowledgeCrawlerService, CryptoHarvesterService],
+  providers: [
+    KnowledgeService,
+    KnowledgeRepository,
+    KnowledgeCrawlerService,
+    CryptoHarvesterService,
+  ],
+  exports: [
+    KnowledgeService,
+    KnowledgeRepository,
+    KnowledgeCrawlerService,
+    CryptoHarvesterService,
+  ],
 })
 export class KnowledgeModule {}
-

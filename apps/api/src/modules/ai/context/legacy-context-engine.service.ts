@@ -30,7 +30,9 @@ export class LegacyContextEngine implements IContextEngine {
     this.manager = new ContextManager();
   }
 
-  async assemble(params: ContextAssemblyParams): Promise<ContextAssemblyResult> {
+  async assemble(
+    params: ContextAssemblyParams,
+  ): Promise<ContextAssemblyResult> {
     const safeParams = this.quarantine.sanitizeAssemblyParams(params);
     const projections = this.projectionAssembler
       .assemble(safeParams)

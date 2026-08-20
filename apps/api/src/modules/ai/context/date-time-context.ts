@@ -18,7 +18,9 @@ export function getSystemDateTimeContext(): string {
   });
   const isoDate = now.toISOString().split('T')[0]; // e.g. 2026-08-11
   const day = now.getDate();
-  const monthNameUpper = now.toLocaleDateString('id-ID', { month: 'long' }).toUpperCase();
+  const monthNameUpper = now
+    .toLocaleDateString('id-ID', { month: 'long' })
+    .toUpperCase();
   const year = now.getFullYear();
   const formattedHeaderDate = `${day} ${monthNameUpper} ${year}`; // e.g. 11 AGUSTUS 2026
 

@@ -12,21 +12,52 @@ const MAX_BYTES = 50 * 1024;
 const MAX_BYTES_LABEL = `${MAX_BYTES / 1024} KB`;
 const SAMPLE_BYTES = 4096;
 const BINARY_EXTS = new Set([
-  '.zip', '.tar', '.gz', '.exe', '.dll', '.so', '.class', '.jar', '.war',
-  '.7z', '.bin', '.dat', '.obj', '.o', '.a', '.lib', '.wasm', '.pyc', '.pyo',
+  '.zip',
+  '.tar',
+  '.gz',
+  '.exe',
+  '.dll',
+  '.so',
+  '.class',
+  '.jar',
+  '.war',
+  '.7z',
+  '.bin',
+  '.dat',
+  '.obj',
+  '.o',
+  '.a',
+  '.lib',
+  '.wasm',
+  '.pyc',
+  '.pyo',
 ]);
 
 // Binary document types handled by the parser service (Arunaki document focus).
-const PARSER_EXTS = new Set(['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.ods', '.odp', '.pdf']);
+const PARSER_EXTS = new Set([
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.odt',
+  '.ods',
+  '.odp',
+  '.pdf',
+]);
 
 @Injectable()
 export class ReadToolService {
   private readonly logger = new Logger(ReadToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
-    @Inject(forwardRef(() => ParserService)) private readonly parserService: ParserService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
+    @Inject(forwardRef(() => ParserService))
+    private readonly parserService: ParserService,
   ) {}
 
   async execute(params: {
@@ -72,7 +103,8 @@ export class ReadToolService {
           (f) =>
             f.name.toLowerCase() === filePath.toLowerCase() ||
             f.name.toLowerCase().startsWith(filePath.toLowerCase() + '.') ||
-            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filePath.toLowerCase(),
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+              filePath.toLowerCase(),
         );
         if (match) {
           targetPath = match.path;
@@ -85,15 +117,23 @@ export class ReadToolService {
 
     if (!fileExists) {
       const suggestion = await this.suggestSimilar(targetPath);
-      const hint = suggestion.length > 0
-        ? `\n\nDid you mean one of these?\n${suggestion.join('\n')}`
-        : '';
+      const hint =
+        suggestion.length > 0
+          ? `\n\nDid you mean one of these?\n${suggestion.join('\n')}`
+          : '';
       return {
         status: 'error',
         data: {},
         preview: `File not found: ${filePath}${hint}`,
-        metadata: { toolName: 'read', displayName: 'Read File', executionTime: Date.now() - startTime },
-        error: { code: 'FILE_NOT_FOUND', message: `File not found: ${filePath}${hint}` },
+        metadata: {
+          toolName: 'read',
+          displayName: 'Read File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `File not found: ${filePath}${hint}`,
+        },
       };
     }
 
@@ -111,8 +151,15 @@ export class ReadToolService {
           status: 'error',
           data: {},
           preview: `Cannot read binary file: ${filePath}`,
-          metadata: { toolName: 'read', displayName: 'Read File', executionTime: Date.now() - startTime },
-          error: { code: 'BINARY_FILE', message: `Cannot read binary file: ${filePath}` },
+          metadata: {
+            toolName: 'read',
+            displayName: 'Read File',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'BINARY_FILE',
+            message: `Cannot read binary file: ${filePath}`,
+          },
         };
       }
 
@@ -122,13 +169,25 @@ export class ReadToolService {
           status: 'error',
           data: {},
           preview: `Offset ${offset} is out of range for this file (${file.count} lines)`,
-          metadata: { toolName: 'read', displayName: 'Read File', executionTime: Date.now() - startTime },
-          error: { code: 'OFFSET_OUT_OF_RANGE', message: `Offset ${offset} is out of range for this file (${file.count} lines)` },
+          metadata: {
+            toolName: 'read',
+            displayName: 'Read File',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'OFFSET_OUT_OF_RANGE',
+            message: `Offset ${offset} is out of range for this file (${file.count} lines)`,
+          },
         };
       }
 
-      let output = [`<path>${targetPath}</path>`, `<type>file</type>`, '<content>'].join('\n');
-      output += '\n' + file.raw.map((line, i) => `${i + offset}: ${line}`).join('\n');
+      let output = [
+        `<path>${targetPath}</path>`,
+        `<type>file</type>`,
+        '<content>',
+      ].join('\n');
+      output +=
+        '\n' + file.raw.map((line, i) => `${i + offset}: ${line}`).join('\n');
 
       const last = offset + file.raw.length - 1;
       const next = last + 1;
@@ -169,7 +228,11 @@ export class ReadToolService {
         status: 'error',
         data: {},
         preview: `Failed to read file "${filePath}": ${e.message}`,
-        metadata: { toolName: 'read', displayName: 'Read File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'read',
+          displayName: 'Read File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'READ_FAILED', message: e.message },
       };
     }
@@ -186,7 +249,10 @@ export class ReadToolService {
       const ext = path.extname(targetPath).toLowerCase().replace('.', '');
       const parsed = this.parserService
         ? await this.parserService.parse(targetPath, ext)
-        : { content: await fsPromises.readFile(targetPath, 'utf-8'), metadata: {} };
+        : {
+            content: await fsPromises.readFile(targetPath, 'utf-8'),
+            metadata: {},
+          };
 
       const filename = path.basename(targetPath);
       const metadata = (parsed as any).metadata || {};
@@ -199,7 +265,10 @@ export class ReadToolService {
           content: parsed.content,
           metadata,
         },
-        preview: parsed.content.length > 500 ? parsed.content.slice(0, 500) + '...' : parsed.content,
+        preview:
+          parsed.content.length > 500
+            ? parsed.content.slice(0, 500) + '...'
+            : parsed.content,
         metadata: {
           toolName: 'read',
           displayName: 'Read File',
@@ -214,7 +283,11 @@ export class ReadToolService {
         status: 'error',
         data: {},
         preview: `Failed to read file "${filePath}": ${e.message}`,
-        metadata: { toolName: 'read', displayName: 'Read File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'read',
+          displayName: 'Read File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'PARSING_FAILED', message: e.message },
       };
     }
@@ -272,7 +345,10 @@ export class ReadToolService {
         continue;
       }
 
-      const line = text.length > MAX_LINE_LENGTH ? text.substring(0, MAX_LINE_LENGTH) + MAX_LINE_SUFFIX : text;
+      const line =
+        text.length > MAX_LINE_LENGTH
+          ? text.substring(0, MAX_LINE_LENGTH) + MAX_LINE_SUFFIX
+          : text;
       const size = Buffer.byteLength(line, 'utf-8') + (raw.length > 0 ? 1 : 0);
       if (flags.bytes + size <= MAX_BYTES) {
         raw.push(line);

@@ -22,16 +22,26 @@ function toJsonValue(obj: InputProvenance): Prisma.JsonValue {
 
 @Injectable()
 export class MessageService extends BaseService<Message> {
-  constructor(@Inject(MessageRepository) protected readonly repository: MessageRepository) {
+  constructor(
+    @Inject(MessageRepository) protected readonly repository: MessageRepository,
+  ) {
     super(repository);
   }
 
   async createMessage(options: CreateMessageOptions): Promise<Message> {
-    const { chatHistoryId, role, content, metadata, idempotencyKey, provenance } = options;
+    const {
+      chatHistoryId,
+      role,
+      content,
+      metadata,
+      idempotencyKey,
+      provenance,
+    } = options;
 
     // Idempotency check: if key provided, check for existing message
     if (idempotencyKey) {
-      const existing = await this.repository.findByIdempotencyKey(idempotencyKey);
+      const existing =
+        await this.repository.findByIdempotencyKey(idempotencyKey);
       if (existing) {
         return existing;
       }

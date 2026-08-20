@@ -47,7 +47,9 @@ export interface TrajectoryExport {
 @Injectable()
 export class TrajectoryAuditService {
   private readonly logger = new Logger(TrajectoryAuditService.name);
-  private readonly trajectories = new BoundedMap<string, TrajectoryStep[]>(1000);
+  private readonly trajectories = new BoundedMap<string, TrajectoryStep[]>(
+    1000,
+  );
 
   /**
    * Record a trajectory step for a run.
@@ -91,11 +93,19 @@ export class TrajectoryAuditService {
   exportTrajectoryJson(runId: string): TrajectoryExport {
     const steps = this.getTrajectory(runId);
     const startStep = steps.find((s) => s.stepType === 'agent_start');
-    const endStep = steps.find((s) => s.stepType === 'agent_complete' || s.stepType === 'agent_error');
+    const endStep = steps.find(
+      (s) => s.stepType === 'agent_complete' || s.stepType === 'agent_error',
+    );
 
-    const toolCallsCount = steps.filter((s) => s.stepType === 'tool_done').length;
-    const subAgentsCount = steps.filter((s) => s.stepType === 'sub_agent_spawn').length;
-    const selfHealsCount = steps.filter((s) => s.stepType === 'self_heal').length;
+    const toolCallsCount = steps.filter(
+      (s) => s.stepType === 'tool_done',
+    ).length;
+    const subAgentsCount = steps.filter(
+      (s) => s.stepType === 'sub_agent_spawn',
+    ).length;
+    const selfHealsCount = steps.filter(
+      (s) => s.stepType === 'self_heal',
+    ).length;
 
     let status: 'completed' | 'failed' | 'in_progress' = 'in_progress';
     if (endStep) {

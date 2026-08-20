@@ -40,7 +40,6 @@ export class ToolAdapter implements Tool {
     args: Record<string, any>,
   ) => Promise<ToolResult> | ToolResult;
 
-
   readonly cacheable: boolean;
   readonly mutating?: boolean;
 

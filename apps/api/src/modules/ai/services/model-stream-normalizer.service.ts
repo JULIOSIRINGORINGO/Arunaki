@@ -14,7 +14,7 @@ export class ModelStreamNormalizerService {
 
   /**
    * Normalizes an incoming async stream of chunks from any AI provider (DeepSeek, OpenAI, Anthropic, Gemini, Qwen, OpenRouter proxies).
-   * 
+   *
    * Guarantees:
    * 1. Cross-chunk `<think>...</think>` separation into clean { type: 'reasoning', content } events.
    * 2. Pure assistant prose { type: 'content', content } with zero reasoning or tool leakages.
@@ -72,7 +72,10 @@ export class ModelStreamNormalizerService {
             }
 
             // Check if buffer starts with or contains leaked tool call pattern
-            if (suppressToolText && this.containsLeakedToolPrefix(lookaheadBuffer)) {
+            if (
+              suppressToolText &&
+              this.containsLeakedToolPrefix(lookaheadBuffer)
+            ) {
               // Hold in buffer until tool call is fully closed or stream ends
               break;
             }
@@ -191,7 +194,10 @@ export class ModelStreamNormalizerService {
       .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
       .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
       .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
-      .replace(/```(?:json)?\s*\{\s*"(?:name|tool|function|action)"[\s\S]*?\}\s*```/gi, '')
+      .replace(
+        /```(?:json)?\s*\{\s*"(?:name|tool|function|action)"[\s\S]*?\}\s*```/gi,
+        '',
+      )
       .trim();
 
     return content;

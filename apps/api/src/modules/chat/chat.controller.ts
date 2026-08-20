@@ -19,11 +19,12 @@ import {
   PromptInjectionDetector,
   InjectionDetectionResult,
 } from '../ai/prompt-injection-detector.service.js';
-import {
-  InputProvenanceFactory,
-} from '../ai/input-provenance.js';
+import { InputProvenanceFactory } from '../ai/input-provenance.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
-import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
+import {
+  SessionStateEventsService,
+  SessionEventType,
+} from './session-state-events.service.js';
 import {
   successResponse,
   errorResponse,
@@ -140,14 +141,21 @@ export class ChatController {
   @Post(':id/messages')
   async addMessage(
     @Param('id') id: string,
-    @Body() body: { role: 'user' | 'assistant' | 'system'; content: string; idempotencyKey?: string },
+    @Body()
+    body: {
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      idempotencyKey?: string;
+    },
   ) {
     try {
       const message = await this.messageService.createMessage({
         chatHistoryId: id,
         role: body.role,
         content: body.content,
-        idempotencyKey: body.idempotencyKey || (body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined),
+        idempotencyKey:
+          body.idempotencyKey ||
+          (body.role === 'user' ? `turn:${id}:${Date.now()}` : undefined),
         provenance: InputProvenanceFactory.fromRole(body.role),
       });
       return successResponse(message);
@@ -298,7 +306,7 @@ export class ChatController {
         chatId: id,
         userContent: userContent,
         chatMode: chat.mode as 'chat' | 'workspace',
-        workspaceId: chat.workspaceId as string | null,
+        workspaceId: chat.workspaceId,
         historyMessages: history.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
@@ -342,7 +350,12 @@ export class ChatController {
   @Post(':id/stream')
   async streamMessage(
     @Param('id') id: string,
-    @Body() body: { content: string; idempotencyKey?: string; reasoningEffort?: string },
+    @Body()
+    body: {
+      content: string;
+      idempotencyKey?: string;
+      reasoningEffort?: string;
+    },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -419,7 +432,7 @@ export class ChatController {
           chatId: id,
           userContent: userContent,
           chatMode: chat.mode as 'chat' | 'workspace',
-        workspaceId: chat.workspaceId as string | null,
+          workspaceId: chat.workspaceId,
           historyMessages: history.map((m) => ({
             role: m.role as 'user' | 'assistant' | 'system',
             content: m.content,
@@ -479,7 +492,9 @@ export class ChatController {
           lastErrorAt: p.lastErrorAt,
           lastError: p.lastError,
           cooldownUntil: p.cooldownUntil,
-          inCooldown: p.cooldownUntil ? new Date(p.cooldownUntil) > new Date() : false,
+          inCooldown: p.cooldownUntil
+            ? new Date(p.cooldownUntil) > new Date()
+            : false,
         })),
       );
     } catch (error) {

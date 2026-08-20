@@ -59,7 +59,10 @@ describe('SelfHealingService (workspace isolation guard)', () => {
           findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:\\workspace' }),
         },
       };
-      const svc = new SelfHealingService(registryMock as any, prismaMock as any);
+      const svc = new SelfHealingService(
+        registryMock as any,
+        prismaMock as any,
+      );
 
       const result = await svc.executeWithIsolation(
         'read',
@@ -80,7 +83,10 @@ describe('SelfHealingService (workspace isolation guard)', () => {
           findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:\\workspace' }),
         },
       };
-      const svc = new SelfHealingService(registryMock as any, prismaMock as any);
+      const svc = new SelfHealingService(
+        registryMock as any,
+        prismaMock as any,
+      );
 
       await expect(
         svc.validateToolPaths('read', { filePath: '..' }, 'ws-1'),
@@ -93,7 +99,10 @@ describe('SelfHealingService (workspace isolation guard)', () => {
           findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:\\workspace' }),
         },
       };
-      const svc = new SelfHealingService(registryMock as any, prismaMock as any);
+      const svc = new SelfHealingService(
+        registryMock as any,
+        prismaMock as any,
+      );
 
       await expect(
         svc.validateToolPaths('read', { filePath: '../secret.txt' }, 'ws-1'),
@@ -106,7 +115,10 @@ describe('SelfHealingService (workspace isolation guard)', () => {
           findUnique: vi.fn().mockResolvedValue({ rootPath: 'C:\\workspace' }),
         },
       };
-      const svc = new SelfHealingService(registryMock as any, prismaMock as any);
+      const svc = new SelfHealingService(
+        registryMock as any,
+        prismaMock as any,
+      );
 
       await expect(
         svc.validateToolPaths(

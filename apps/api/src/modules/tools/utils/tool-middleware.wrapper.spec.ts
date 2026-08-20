@@ -28,7 +28,11 @@ describe('ToolMiddlewareWrapper', () => {
       status: 'success',
       data: { result: 'ok' },
       preview: 'OK',
-      metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 10 },
+      metadata: {
+        toolName: 'test_tool',
+        displayName: 'Test Tool',
+        executionTime: 10,
+      },
     }),
   };
 
@@ -42,7 +46,7 @@ describe('ToolMiddlewareWrapper', () => {
 
   it('should block path traversal outside workspace across path keys (filePath, path, targetPath)', async () => {
     const wrapped = wrapWorkspaceIsolation(mockTool, '/workspace');
-    
+
     const res1 = await wrapped.execute({ filePath: '../etc/passwd' });
     expect(res1.status).toBe('error');
     expect(res1.error?.code).toBe('WORKSPACE_ISOLATION_VIOLATION');
@@ -60,7 +64,11 @@ describe('ToolMiddlewareWrapper', () => {
         status: 'error',
         data: {},
         preview: 'File not found',
-        metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 5 },
+        metadata: {
+          toolName: 'test_tool',
+          displayName: 'Test Tool',
+          executionTime: 5,
+        },
         error: { code: 'FILE_NOT_FOUND', message: 'File /test.txt not found' },
       }),
     };
@@ -79,7 +87,11 @@ describe('ToolMiddlewareWrapper', () => {
         status: 'error',
         data: {},
         preview: 'Invalid arguments',
-        metadata: { toolName: 'test_tool', displayName: 'Test Tool', executionTime: 2 },
+        metadata: {
+          toolName: 'test_tool',
+          displayName: 'Test Tool',
+          executionTime: 2,
+        },
         error: { code: 'INVALID_ARGS', message: 'Field "path" is required' },
       }),
     };
@@ -92,7 +104,9 @@ describe('ToolMiddlewareWrapper', () => {
   });
 
   it('should apply full pipeline wrapper correctly', async () => {
-    const pipeline = applyToolMiddlewarePipeline(mockTool, { workspaceDir: '/workspace' });
+    const pipeline = applyToolMiddlewarePipeline(mockTool, {
+      workspaceDir: '/workspace',
+    });
     const res = await pipeline.execute({ filePath: 'valid.txt' });
     expect(res.status).toBe('success');
   });

@@ -1,4 +1,10 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Optional,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
 import { repairToolCalls } from './tool-call-repair.js';
@@ -6,13 +12,20 @@ import {
   ProviderService,
   ProviderConfig,
 } from '../provider/provider.service.js';
-import { ContextManager, ESTIMATED_CHARS_PER_TOKEN } from './context-manager.js';
+import {
+  ContextManager,
+  ESTIMATED_CHARS_PER_TOKEN,
+} from './context-manager.js';
 import { countTokens as tokenize } from './tokenizer.js';
 import { ModelRouterService } from './model-router.service.js';
 import { AutoPostureDetector } from './auto-posture-detector.service.js';
 import { streamWithFallback, StreamChunk } from './stream-chat.js';
 import { runWithModelFallback } from './model-fallback.js';
-import { modelSupportsTools, scaleMaxTokens, getModelCapability } from './model-capability.js';
+import {
+  modelSupportsTools,
+  scaleMaxTokens,
+  getModelCapability,
+} from './model-capability.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { SystemPromptBuilderService } from './system-prompt-builder.service.js';
 import { ModelStreamNormalizerService } from './services/model-stream-normalizer.service.js';
@@ -74,7 +87,6 @@ export interface ToolDefinition {
   };
 }
 
-
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -92,17 +104,22 @@ export class AiService {
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(ProviderService) private readonly providerService: ProviderService,
-    @Optional() @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService?: ToolRegistryService,
-    @Optional() @Inject(SystemPromptBuilderService) private readonly systemPromptBuilder?: SystemPromptBuilderService,
-    @Optional() @Inject(ModelStreamNormalizerService) streamNormalizer?: ModelStreamNormalizerService,
+    @Optional()
+    @Inject(forwardRef(() => ToolRegistryService))
+    private readonly toolRegistryService?: ToolRegistryService,
+    @Optional()
+    @Inject(SystemPromptBuilderService)
+    private readonly systemPromptBuilder?: SystemPromptBuilderService,
+    @Optional()
+    @Inject(ModelStreamNormalizerService)
+    streamNormalizer?: ModelStreamNormalizerService,
   ) {
-    this.streamNormalizer = streamNormalizer || new ModelStreamNormalizerService();
+    this.streamNormalizer =
+      streamNormalizer || new ModelStreamNormalizerService();
     this.fallbackApiKey = this.config.get<string>('AI_API_KEY') || '';
     this.fallbackBaseUrl =
       this.config.get<string>('AI_BASE_URL') || 'https://kenari.id/v1';
-    this.fallbackModel =
-      this.config.get<string>('AI_MODEL') ||
-      'gpt-oss-120b';
+    this.fallbackModel = this.config.get<string>('AI_MODEL') || 'gpt-oss-120b';
     this.enc = this.getEncodingForModel(this.fallbackModel);
 
     // Initialize services
@@ -112,7 +129,8 @@ export class AiService {
         // guard already derives the live window from the provider model via
         // getModelCapability; this constructor default only matters when no
         // explicit window is passed (e.g. legacy context engine fallback).
-        contextLength: getModelCapability(this.fallbackModel).contextWindow ?? 32000,
+        contextLength:
+          getModelCapability(this.fallbackModel).contextWindow ?? 32000,
         threshold: 0.25,
         targetRatio: 0.2,
         toolPruneChars: 1000,
@@ -132,13 +150,18 @@ export class AiService {
   private async getProviderConfig(): Promise<ProviderConfig> {
     try {
       // Try active DB provider, but skip if it is cooling down (to avoid repeated hangs)
-    const dbConfig = await this.providerService.getActiveConfigRespectingCooldown();
+      const dbConfig =
+        await this.providerService.getActiveConfigRespectingCooldown();
       if (dbConfig) {
         const models = dbConfig.model
-          ? dbConfig.model.split(',').map((s) => s.trim()).filter(Boolean)
+          ? dbConfig.model
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
           : [];
         const primaryModel = models[0] || dbConfig.model;
-        const initialId = models.length > 1 ? `${dbConfig.id}::${primaryModel}` : dbConfig.id;
+        const initialId =
+          models.length > 1 ? `${dbConfig.id}::${primaryModel}` : dbConfig.id;
         return {
           ...dbConfig,
           id: initialId,
@@ -181,8 +204,6 @@ export class AiService {
     };
   }
 
-
-
   /**
    * Sleep with jittered exponential backoff.
    * attempt 1 → 1-2s, attempt 2 → 2-4s, attempt 3 → 4-8s
@@ -198,7 +219,9 @@ export class AiService {
    * Get appropriate tiktoken encoding for a model.
    * Defaults to cl100k_base (compatible with GPT-4, most modern models).
    */
-  private getEncodingForModel(model: string): ReturnType<typeof encoding_for_model> {
+  private getEncodingForModel(
+    model: string,
+  ): ReturnType<typeof encoding_for_model> {
     try {
       // Try exact model match first
       return encoding_for_model(model as any);
@@ -263,7 +286,9 @@ export class AiService {
 
     const reserve = scaleMaxTokens(model);
     const budgetBeforeReserve = Math.max(1, contextWindow - reserve);
-    const estimated = this.contextManager.estimatePromptTokens(budgeted.messages);
+    const estimated = this.contextManager.estimatePromptTokens(
+      budgeted.messages,
+    );
     if (estimated <= budgetBeforeReserve) {
       return budgeted.messages;
     }
@@ -314,9 +339,13 @@ export class AiService {
     // Get starting provider (optionally pinned for logical failover retries)
     let provider: ProviderConfig | null = null;
     if (options?.preferredProviderId) {
-      provider = await this.providerService.getById(options.preferredProviderId);
+      provider = await this.providerService.getById(
+        options.preferredProviderId,
+      );
       if (!provider) {
-        const base = (await this.providerService.getActiveConfig()) || (await this.getProviderConfig());
+        const base =
+          (await this.providerService.getActiveConfig()) ||
+          (await this.getProviderConfig());
         if (base) {
           provider = { ...base, model: options.preferredProviderId };
         }
@@ -359,7 +388,8 @@ export class AiService {
       body.temperature = this.modelRouter.getRecommendedTemp(provider.model);
     }
 
-    const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
+    const canUseTools =
+      tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
     }
@@ -368,12 +398,14 @@ export class AiService {
       provider,
       body,
       makeRequest: (p, b) => makeSdkRequest(p, b),
-      getNextProvider: (currentId, triedIds = []) => this.providerService.getNextAvailable(currentId, triedIds),
+      getNextProvider: (currentId, triedIds = []) =>
+        this.providerService.getNextAvailable(currentId, triedIds),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
       recordUsage: (id) => this.providerService.recordUsage(id),
       recordError: (id, err) => this.providerService.recordError(id, err),
-      setCooldown: (id, seconds) => this.providerService.setCooldown(id, seconds),
+      setCooldown: (id, seconds) =>
+        this.providerService.setCooldown(id, seconds),
       logger: this.logger,
     });
 
@@ -391,7 +423,9 @@ export class AiService {
       .replace(/&#x27;/g, "'")
       .replace(/&amp;/g, '&');
 
-    const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    const cleanContent = content
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .trim();
     content = cleanContent || content.replace(/<\/?think>/gi, '').trim();
 
     let rawToolCalls: ToolCall[] = (data.toolCalls || []).map((tc: any) => ({
@@ -400,7 +434,9 @@ export class AiService {
       function: {
         name: tc.toolName,
         arguments:
-          typeof tc.input === 'string' ? tc.input : JSON.stringify(tc.input ?? {}),
+          typeof tc.input === 'string'
+            ? tc.input
+            : JSON.stringify(tc.input ?? {}),
       },
     }));
 
@@ -423,8 +459,14 @@ export class AiService {
     if (content) {
       // Always strip hallucinated XML-ish tags (Gemini/DeepSeek often leak these)
       content = content
-        .replace(/<[｜|]+(?:DSML[｜|]+)?tool_calls>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?tool_calls>/gi, '')
-        .replace(/<[｜|]+(?:DSML[｜|]+)?invoke[^>]*>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi, '')
+        .replace(
+          /<[｜|]+(?:DSML[｜|]+)?tool_calls>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?tool_calls>/gi,
+          '',
+        )
+        .replace(
+          /<[｜|]+(?:DSML[｜|]+)?invoke[^>]*>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi,
+          '',
+        )
         .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
         .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
         .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
@@ -467,18 +509,23 @@ export class AiService {
   async *chatStream(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
-    options?: { preferredProviderId?: string; reasoningEffort?: string } | string,
+    options?:
+      { preferredProviderId?: string; reasoningEffort?: string } | string,
   ): AsyncGenerator<StreamChunk> {
     const trimmedMessages = messages;
 
-    const preferredId = typeof options === 'string' ? undefined : options?.preferredProviderId;
-    const reasoningEffort = typeof options === 'string' ? options : options?.reasoningEffort;
+    const preferredId =
+      typeof options === 'string' ? undefined : options?.preferredProviderId;
+    const reasoningEffort =
+      typeof options === 'string' ? options : options?.reasoningEffort;
 
     let provider: ProviderConfig | null = null;
     if (preferredId) {
       provider = await this.providerService.getById(preferredId);
       if (!provider) {
-        const base = (await this.providerService.getActiveConfig()) || (await this.getProviderConfig());
+        const base =
+          (await this.providerService.getActiveConfig()) ||
+          (await this.getProviderConfig());
         if (base) {
           provider = { ...base, model: preferredId };
         }
@@ -514,7 +561,8 @@ export class AiService {
       body.temperature = this.modelRouter.getRecommendedTemp(provider.model);
     }
 
-    const canUseTools = tools && tools.length > 0 && modelSupportsTools(provider.model);
+    const canUseTools =
+      tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
     }
@@ -523,20 +571,22 @@ export class AiService {
       provider,
       body,
       makeRequest: (p, b) => makeSdkRequestStream(p, b),
-      getNextProvider: (currentId) => this.providerService.getNextAvailable(currentId),
+      getNextProvider: (currentId) =>
+        this.providerService.getNextAvailable(currentId),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
       recordUsage: (id) => this.providerService.recordUsage(id),
       recordError: (id, err) => this.providerService.recordError(id, err),
-      setCooldown: (id, seconds) => this.providerService.setCooldown(id, seconds),
+      setCooldown: (id, seconds) =>
+        this.providerService.setCooldown(id, seconds),
     });
 
-    for await (const normalizedChunk of this.streamNormalizer.normalizeStream(rawStream)) {
+    for await (const normalizedChunk of this.streamNormalizer.normalizeStream(
+      rawStream,
+    )) {
       yield normalizedChunk;
     }
   }
-
-
 
   getSystemPrompt(
     mode: 'chat' | 'workspace',
@@ -585,43 +635,53 @@ export class AiService {
    * natural language (in any language/phrasing) to specific tool requirements.
    * Replaces static string-array matching.
    */
-  async classifyIntent(goal: string, allTools: ToolDefinition[]): Promise<{ tools: string[], isMutation: boolean, isGui: boolean }> {
-    const availableToolNames = allTools.map(t => t.function.name).join(', ');
+  async classifyIntent(
+    goal: string,
+    allTools: ToolDefinition[],
+  ): Promise<{ tools: string[]; isMutation: boolean; isGui: boolean }> {
+    const availableToolNames = allTools.map((t) => t.function.name).join(', ');
     const systemPrompt = `You are an Intent Router. Analyze the user's goal and select the exact tools needed from this list: [${availableToolNames}].
 Also determine if the goal requires modifying/writing files or data (isMutation) and if it requires opening a graphical user interface (isGui).
 Always call the 'set_intent' function with your classification.`;
 
-    const routerTools: ToolDefinition[] = [{
-      type: 'function',
-      function: {
-        name: 'set_intent',
-        description: 'Set the classified intent and required tools',
-        parameters: {
-          type: 'object',
-          properties: {
-            tools: { type: 'array', items: { type: 'string' } },
-            isMutation: { type: 'boolean' },
-            isGui: { type: 'boolean' }
+    const routerTools: ToolDefinition[] = [
+      {
+        type: 'function',
+        function: {
+          name: 'set_intent',
+          description: 'Set the classified intent and required tools',
+          parameters: {
+            type: 'object',
+            properties: {
+              tools: { type: 'array', items: { type: 'string' } },
+              isMutation: { type: 'boolean' },
+              isGui: { type: 'boolean' },
+            },
+            required: ['tools', 'isMutation', 'isGui'],
           },
-          required: ['tools', 'isMutation', 'isGui']
-        }
-      }
-    }];
+        },
+      },
+    ];
 
     try {
       // Use a fast model if possible (fallback will use configured model)
-      const response = await this.chat([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: goal }
-      ], routerTools);
+      const response = await this.chat(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: goal },
+        ],
+        routerTools,
+      );
 
-      const toolCall = response.toolCalls.find(tc => tc.function.name === 'set_intent');
+      const toolCall = response.toolCalls.find(
+        (tc) => tc.function.name === 'set_intent',
+      );
       if (toolCall) {
         const args = JSON.parse(toolCall.function.arguments);
         return {
           tools: args.tools || [],
           isMutation: !!args.isMutation,
-          isGui: !!args.isGui
+          isGui: !!args.isGui,
         };
       }
     } catch (e: any) {
@@ -629,6 +689,10 @@ Always call the 'set_intent' function with your classification.`;
     }
 
     // Fallback if LLM fails (safe read-only defaults)
-    return { tools: ['read', 'list', 'document_reader'], isMutation: false, isGui: false };
+    return {
+      tools: ['read', 'list', 'document_reader'],
+      isMutation: false,
+      isGui: false,
+    };
   }
 }

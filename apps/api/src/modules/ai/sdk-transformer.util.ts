@@ -5,7 +5,11 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import type { ChatMessage, ToolDefinition } from './ai.service.js';
 import type { ProviderConfig } from '../provider/provider.service.js';
 import type { StreamChunk } from './stream-chat.js';
-import { getModelCapability, scaleMaxTokens, modelSupportsToolCallHistory } from './model-capability.js';
+import {
+  getModelCapability,
+  scaleMaxTokens,
+  modelSupportsToolCallHistory,
+} from './model-capability.js';
 
 const sdkProviders = new Map<string, any>();
 
@@ -22,9 +26,17 @@ export function getSdkModel(provider: ProviderConfig): any {
     if (provider.headerTitle) headers['X-Title'] = provider.headerTitle;
 
     if (provider.type === 'anthropic') {
-      sdk = createAnthropic({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+      sdk = createAnthropic({
+        baseURL: provider.baseUrl,
+        apiKey: provider.apiKey,
+        headers,
+      });
     } else {
-      sdk = createOpenAI({ baseURL: provider.baseUrl, apiKey: provider.apiKey, headers });
+      sdk = createOpenAI({
+        baseURL: provider.baseUrl,
+        apiKey: provider.apiKey,
+        headers,
+      });
     }
     sdkProviders.set(key, sdk);
   }
@@ -42,11 +54,19 @@ export function extractSystemAndMessages(messages: ChatMessage[]): {
     if (m.role === 'system') {
       if (m.content) systemParts.push(m.content);
     } else if (m.role === 'user') {
-      modelMessages.push({ role: 'user', content: m.content ?? '' } as ModelMessage);
+      modelMessages.push({
+        role: 'user',
+        content: m.content ?? '',
+      });
     } else if (m.role === 'assistant') {
       const parts: Array<
         | { type: 'text'; text: string }
-        | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+        | {
+            type: 'tool-call';
+            toolCallId: string;
+            toolName: string;
+            input: unknown;
+          }
       > = [];
       if (m.content) parts.push({ type: 'text', text: m.content });
       for (const tc of m.tool_calls ?? []) {
@@ -63,7 +83,7 @@ export function extractSystemAndMessages(messages: ChatMessage[]): {
           input,
         });
       }
-      modelMessages.push({ role: 'assistant', content: parts } as ModelMessage);
+      modelMessages.push({ role: 'assistant', content: parts });
     } else if (m.role === 'tool') {
       modelMessages.push({
         role: 'tool',
@@ -75,7 +95,7 @@ export function extractSystemAndMessages(messages: ChatMessage[]): {
             output: { type: 'text', value: m.content ?? '' },
           },
         ],
-      } as ModelMessage);
+      });
     }
   }
 
@@ -125,7 +145,7 @@ export function serializeToolCallHistory(
       j++;
     }
 
-    out.push({ role: 'assistant', content: lines.join('\n') } as ChatMessage);
+    out.push({ role: 'assistant', content: lines.join('\n') });
     i = j - 1;
   }
   return out;
@@ -156,7 +176,10 @@ export function toSdkTools(tools: ToolDefinition[]): ToolSet {
 const REASONING_EFFORT_VALUES = ['low', 'medium', 'high'] as const;
 
 function anthropicThinkingBudgetTokens(): number {
-  const n = parseInt(process.env.ANTHROPIC_THINKING_BUDGET_TOKENS || '1024', 10);
+  const n = parseInt(
+    process.env.ANTHROPIC_THINKING_BUDGET_TOKENS || '1024',
+    10,
+  );
   return Number.isFinite(n) && n > 0 ? n : 1024;
 }
 
@@ -212,7 +235,9 @@ export async function makeSdkRequest(
       ...(body.temperature != null ? { temperature: body.temperature } : {}),
       maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
       ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
-      ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
+      ...(body.providerOptions
+        ? { providerOptions: body.providerOptions }
+        : {}),
       maxRetries: 0,
       timeout: timeoutMs,
     });
@@ -220,7 +245,9 @@ export async function makeSdkRequest(
   } catch (err: any) {
     // If generateText fails with 'Invalid JSON response' or unsupported non-streaming,
     // seamlessly accumulate from makeSdkRequestStream (streaming) instead!
-    console.warn(`[makeSdkRequest] generateText failed (${err.message}), accumulating via stream...`);
+    console.warn(
+      `[makeSdkRequest] generateText failed (${err.message}), accumulating via stream...`,
+    );
     let text = '';
     const toolCalls: any[] = [];
     for await (const chunk of makeSdkRequestStream(provider, body)) {
@@ -241,7 +268,7 @@ export async function makeSdkRequest(
   }
 }
 
-export async function *makeSdkRequestStream(
+export async function* makeSdkRequestStream(
   provider: ProviderConfig,
   body: Record<string, any>,
   options: { firstTokenTimeoutMs?: number; totalTimeoutMs?: number } = {},
@@ -257,16 +284,22 @@ export async function *makeSdkRequestStream(
   const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? defaultTtfb;
   const totalTimeoutMs = options.totalTimeoutMs ?? 180000;
 
-  console.log(`[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`);
+  console.log(
+    `[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`,
+  );
 
   const controller = new AbortController();
   let gotFirstToken = false;
   const firstTokenTimer = setTimeout(() => {
-    console.warn(`[makeSdkRequestStream] TTFB timeout after ${firstTokenTimeoutMs}ms`);
+    console.warn(
+      `[makeSdkRequestStream] TTFB timeout after ${firstTokenTimeoutMs}ms`,
+    );
     controller.abort();
   }, firstTokenTimeoutMs);
   const totalTimer = setTimeout(() => {
-    console.warn(`[makeSdkRequestStream] Total timeout after ${totalTimeoutMs}ms`);
+    console.warn(
+      `[makeSdkRequestStream] Total timeout after ${totalTimeoutMs}ms`,
+    );
     controller.abort();
   }, totalTimeoutMs);
 
@@ -287,7 +320,10 @@ export async function *makeSdkRequestStream(
     maxRetries: 0,
   });
 
-  const pendingToolCalls = new Map<string, { id: string; name: string; args: string }>();
+  const pendingToolCalls = new Map<
+    string,
+    { id: string; name: string; args: string }
+  >();
 
   try {
     for await (const part of result.fullStream) {
@@ -298,8 +334,14 @@ export async function *makeSdkRequestStream(
       if (part.type === 'text-delta') {
         const content = (part as any).text ?? (part as any).textDelta;
         if (content) yield { type: 'content', content };
-      } else if ((part as any).type === 'reasoning' || (part as any).type === 'reasoning-delta') {
-        const reasoning = (part as any).text ?? (part as any).reasoningDelta ?? (part as any).textDelta;
+      } else if (
+        (part as any).type === 'reasoning' ||
+        (part as any).type === 'reasoning-delta'
+      ) {
+        const reasoning =
+          (part as any).text ??
+          (part as any).reasoningDelta ??
+          (part as any).textDelta;
         if (reasoning) yield { type: 'reasoning', content: reasoning };
       } else if (part.type === 'tool-input-start') {
         pendingToolCalls.set(part.id, {
@@ -310,7 +352,8 @@ export async function *makeSdkRequestStream(
       } else if (part.type === 'tool-input-delta') {
         const pending = pendingToolCalls.get(part.id);
         if (pending) {
-          pending.args += (part as any).delta ?? (part as any).argsTextDelta ?? '';
+          pending.args +=
+            (part as any).delta ?? (part as any).argsTextDelta ?? '';
         }
       } else if (part.type === 'tool-call') {
         const rawArgs = (part as any).args ?? (part as any).input ?? {};
@@ -320,9 +363,7 @@ export async function *makeSdkRequestStream(
             id: (part as any).toolCallId ?? (part as any).id,
             name: (part as any).toolName,
             arguments:
-              typeof rawArgs === 'string'
-                ? rawArgs
-                : JSON.stringify(rawArgs),
+              typeof rawArgs === 'string' ? rawArgs : JSON.stringify(rawArgs),
           },
         };
         pendingToolCalls.delete((part as any).toolCallId ?? (part as any).id);
@@ -361,7 +402,12 @@ export async function *makeSdkRequestStream(
     }
     pendingToolCalls.clear();
   } catch (err: any) {
-    console.error('[makeSdkRequestStream caught]', err?.message, 'aborted:', controller.signal.aborted);
+    console.error(
+      '[makeSdkRequestStream caught]',
+      err?.message,
+      'aborted:',
+      controller.signal.aborted,
+    );
     if (controller.signal.aborted) {
       const timeoutErr = new Error(
         gotFirstToken

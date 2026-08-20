@@ -144,7 +144,9 @@ export class DocxReportBuilder {
           fs.mkdirSync(parentDir, { recursive: true });
         }
         fs.writeFileSync(resolvedTarget, buffer);
-        this.logger.log(`Wrote DOCX file physically to disk: ${resolvedTarget}`);
+        this.logger.log(
+          `Wrote DOCX file physically to disk: ${resolvedTarget}`,
+        );
       }
 
       return {

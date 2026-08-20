@@ -10,12 +10,18 @@ export class DeleteToolService {
   private readonly logger = new Logger(DeleteToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageService))
+    private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
   ) {}
 
-  async execute(params: { workspaceId: string; filename: string }): Promise<ToolResult> {
+  async execute(params: {
+    workspaceId: string;
+    filename: string;
+  }): Promise<ToolResult> {
     const { workspaceId, filename } = params;
     const startTime = Date.now();
 
@@ -29,8 +35,15 @@ export class DeleteToolService {
         status: 'error',
         data: {},
         preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'delete', displayName: 'Delete File', executionTime: Date.now() - startTime },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+        metadata: {
+          toolName: 'delete',
+          displayName: 'Delete File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'NO_ROOT_PATH',
+          message: 'Workspace root path is not connected',
+        },
       };
     }
 
@@ -52,7 +65,8 @@ export class DeleteToolService {
           (f) =>
             f.name.toLowerCase() === filename.toLowerCase() ||
             f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
-            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+              filename.toLowerCase(),
         );
         if (match) {
           targetPath = match.path;
@@ -68,20 +82,31 @@ export class DeleteToolService {
         status: 'error',
         data: {},
         preview: `File "${filename}" was not found in the workspace.`,
-        metadata: { toolName: 'delete', displayName: 'Delete File', executionTime: Date.now() - startTime },
-        error: { code: 'FILE_NOT_FOUND', message: `File "${filename}" not found` },
+        metadata: {
+          toolName: 'delete',
+          displayName: 'Delete File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `File "${filename}" not found`,
+        },
       };
     }
 
     try {
       const trashDir = path.join(rootPath, '.arunaki-trash');
       await fsPromises.mkdir(trashDir, { recursive: true });
-      const trashPath = path.join(trashDir, `${Date.now()}_${path.basename(targetPath)}`);
+      const trashPath = path.join(
+        trashDir,
+        `${Date.now()}_${path.basename(targetPath)}`,
+      );
       await fsPromises.rename(targetPath, trashPath);
 
       if (this.fileService) {
         try {
-          const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
+          const existingFiles =
+            await this.fileService.findByWorkspaceId(workspaceId);
           const existing = existingFiles.find((f) => f.path === targetPath);
           if (existing) {
             await this.fileService.delete(existing.id);
@@ -95,14 +120,23 @@ export class DeleteToolService {
         status: 'success',
         data: { filename, trashPath },
         preview: `Successfully moved "${filename}" to trash (.arunaki-trash).`,
-        metadata: { toolName: 'delete', displayName: 'Delete File', executionTime: Date.now() - startTime, filename },
+        metadata: {
+          toolName: 'delete',
+          displayName: 'Delete File',
+          executionTime: Date.now() - startTime,
+          filename,
+        },
       };
     } catch (e: any) {
       return {
         status: 'error',
         data: {},
         preview: `Failed to delete file "${filename}": ${e.message}`,
-        metadata: { toolName: 'delete', displayName: 'Delete File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'delete',
+          displayName: 'Delete File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'DELETE_FAILED', message: e.message },
       };
     }

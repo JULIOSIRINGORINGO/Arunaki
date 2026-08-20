@@ -10,9 +10,12 @@ export class RenameToolService {
   private readonly logger = new Logger(RenameToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageService))
+    private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
   ) {}
 
   async execute(params: {
@@ -33,8 +36,15 @@ export class RenameToolService {
         status: 'error',
         data: {},
         preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'rename', displayName: 'Rename File', executionTime: Date.now() - startTime },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+        metadata: {
+          toolName: 'rename',
+          displayName: 'Rename File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'NO_ROOT_PATH',
+          message: 'Workspace root path is not connected',
+        },
       };
     }
 
@@ -56,7 +66,8 @@ export class RenameToolService {
           (f) =>
             f.name.toLowerCase() === filename.toLowerCase() ||
             f.name.toLowerCase().startsWith(filename.toLowerCase() + '.') ||
-            f.name.toLowerCase().replace(/\.[^.]+$/, '') === filename.toLowerCase(),
+            f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+              filename.toLowerCase(),
         );
         if (match) {
           targetPath = match.path;
@@ -72,8 +83,15 @@ export class RenameToolService {
         status: 'error',
         data: {},
         preview: `File "${filename}" was not found in the workspace.`,
-        metadata: { toolName: 'rename', displayName: 'Rename File', executionTime: Date.now() - startTime },
-        error: { code: 'FILE_NOT_FOUND', message: `File "${filename}" not found` },
+        metadata: {
+          toolName: 'rename',
+          displayName: 'Rename File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `File "${filename}" not found`,
+        },
       };
     }
 
@@ -85,14 +103,25 @@ export class RenameToolService {
 
       if (this.fileService && this.prisma) {
         try {
-          const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
+          const existingFiles =
+            await this.fileService.findByWorkspaceId(workspaceId);
           const existing = existingFiles.find((f) => f.path === targetPath);
           if (existing) {
-            const ext = path.extname(cleanNewFilename).toLowerCase().replace('.', '');
-            await this.fileService.updateContent(existing.id, existing.content || '');
+            const ext = path
+              .extname(cleanNewFilename)
+              .toLowerCase()
+              .replace('.', '');
+            await this.fileService.updateContent(
+              existing.id,
+              existing.content || '',
+            );
             await this.prisma.file.update({
               where: { id: existing.id },
-              data: { name: cleanNewFilename, path: newPath, type: ext || existing.type },
+              data: {
+                name: cleanNewFilename,
+                path: newPath,
+                type: ext || existing.type,
+              },
             });
           }
         } catch {
@@ -117,7 +146,11 @@ export class RenameToolService {
         status: 'error',
         data: {},
         preview: `Failed to rename file "${filename}": ${e.message}`,
-        metadata: { toolName: 'rename', displayName: 'Rename File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'rename',
+          displayName: 'Rename File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'RENAME_FAILED', message: e.message },
       };
     }

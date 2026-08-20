@@ -35,7 +35,9 @@ export class ExcelReportBuilder {
           fs.mkdirSync(parentDir, { recursive: true });
         }
         fs.writeFileSync(resolvedTarget, buffer);
-        this.logger.log(`Wrote Excel file physically to disk: ${resolvedTarget}`);
+        this.logger.log(
+          `Wrote Excel file physically to disk: ${resolvedTarget}`,
+        );
       }
 
       const preview =

@@ -60,7 +60,10 @@ describe('TranscriptEngineService & TimeTravelService', () => {
     );
     expect(evt2.sequence).toBe(2);
 
-    const transcript = await transcriptEngine.getTranscript(tempDir, mockSessionId);
+    const transcript = await transcriptEngine.getTranscript(
+      tempDir,
+      mockSessionId,
+    );
     expect(transcript).toHaveLength(2);
     expect(transcript[0].type).toBe('session_start');
     expect(transcript[1].type).toBe('user_message');
@@ -95,12 +98,18 @@ describe('TranscriptEngineService & TimeTravelService', () => {
     expect(fs.readFileSync(testFilePath, 'utf-8')).toBe(modifiedContent);
 
     // 4. Check checkpoints
-    const checkpoints = await transcriptEngine.getCheckpoints(tempDir, mockSessionId);
+    const checkpoints = await transcriptEngine.getCheckpoints(
+      tempDir,
+      mockSessionId,
+    );
     expect(checkpoints).toHaveLength(1);
     expect(checkpoints[0].checkpointId).toBe(snapEvent.id);
 
     // 5. Execute 1-Click Rollback / Undo
-    const result = await timeTravelService.rollbackSession('test-ws-id', mockSessionId);
+    const result = await timeTravelService.rollbackSession(
+      'test-ws-id',
+      mockSessionId,
+    );
     expect(result.success).toBe(true);
     expect(result.restoredCount).toBe(1);
 
@@ -109,8 +118,12 @@ describe('TranscriptEngineService & TimeTravelService', () => {
     expect(restoredContent).toBe(initialContent);
 
     // 7. Verify audit log has rollback_performed event
-    const transcriptAfterRollback = await transcriptEngine.getTranscript(tempDir, mockSessionId);
-    const lastEvent = transcriptAfterRollback[transcriptAfterRollback.length - 1];
+    const transcriptAfterRollback = await transcriptEngine.getTranscript(
+      tempDir,
+      mockSessionId,
+    );
+    const lastEvent =
+      transcriptAfterRollback[transcriptAfterRollback.length - 1];
     expect(lastEvent.type).toBe('rollback_performed');
   });
 });

@@ -38,10 +38,13 @@ describe('CompactionService (Gap #14/#15)', () => {
     expect(recent.length).toBeGreaterThan(0);
   });
 
-  it('splits recent vs older by token budget, keeping a single oversized tail message', async () => {    const svc = new CompactionService(undefined);
+  it('splits recent vs older by token budget, keeping a single oversized tail message', async () => {
+    const svc = new CompactionService(undefined);
     const bigLine = 'Y'.repeat(100_000); // ~25k tokens, exceeds RECENT_TOKENS_BUDGET alone
     const messages = [
-      ...Array.from({ length: 200 }, (_, i) => msg('user', `${LONG_LINE} pesan #${i}`)),
+      ...Array.from({ length: 200 }, (_, i) =>
+        msg('user', `${LONG_LINE} pesan #${i}`),
+      ),
       msg('user', 'pesan kedua terakhir'),
       msg('user', bigLine),
     ];
@@ -70,25 +73,33 @@ describe('CompactionService (Gap #14/#15)', () => {
     await svc.compactHistory(messages);
 
     expect(chat).toHaveBeenCalledTimes(1);
-    const userInput = chat.mock.calls[0][0].find((m: ChatMessage) => m.role === 'user');
+    const userInput = chat.mock.calls[0][0].find(
+      (m: ChatMessage) => m.role === 'user',
+    );
     const tokens = countTokens(userInput.content);
     expect(tokens).toBeLessThanOrEqual(30_500);
   });
 
   it('falls back to the non-LLM summary when the LLM call throws', async () => {
-    const aiService = { chat: vi.fn().mockRejectedValue(new Error('context overflow')) } as any;
+    const aiService = {
+      chat: vi.fn().mockRejectedValue(new Error('context overflow')),
+    } as any;
     const svc = new CompactionService(aiService);
     const messages = [
       msg('user', 'permulaan'),
-      ...Array.from({ length: 500 }, (_, i) => msg('user', `${LONG_LINE} pesan #${i}`)),
+      ...Array.from({ length: 500 }, (_, i) =>
+        msg('user', `${LONG_LINE} pesan #${i}`),
+      ),
     ];
 
     const result = await svc.compactHistory(messages);
 
     expect(result.wasCompacted).toBe(true);
     expect(
-      result.compactedMessages.some((m) =>
-        typeof m.content === 'string' && m.content.includes('COMPACTION SUMMARY'),
+      result.compactedMessages.some(
+        (m) =>
+          typeof m.content === 'string' &&
+          m.content.includes('COMPACTION SUMMARY'),
       ),
     ).toBe(true);
   });
@@ -115,10 +126,7 @@ describe('CompactionService (Gap #14/#15)', () => {
 
   it('does not compact under the window threshold even when over a tighter budget', async () => {
     const svc = new CompactionService(undefined);
-    const messages = [
-      msg('user', 'halo'),
-      msg('assistant', 'hai'),
-    ];
+    const messages = [msg('user', 'halo'), msg('assistant', 'hai')];
 
     const result = await svc.compactHistory(messages, 32000);
 

@@ -11,7 +11,9 @@ export class HarnessRegistryService {
       this.logger.warn(`Plugin ${plugin.name} already registered, overwriting`);
     }
     this.plugins.set(plugin.name, plugin);
-    this.logger.log(`Harness plugin registered: ${plugin.name} (priority ${plugin.priority})`);
+    this.logger.log(
+      `Harness plugin registered: ${plugin.name} (priority ${plugin.priority})`,
+    );
   }
 
   unregister(name: string): boolean {
@@ -36,7 +38,9 @@ export class HarnessRegistryService {
         try {
           await plugin.onAgentStart(params);
         } catch (err: any) {
-          this.logger.warn(`Plugin ${plugin.name}.onAgentStart failed: ${err.message}`);
+          this.logger.warn(
+            `Plugin ${plugin.name}.onAgentStart failed: ${err.message}`,
+          );
         }
       }
     }
@@ -53,7 +57,9 @@ export class HarnessRegistryService {
         try {
           await plugin.onToolStart(params);
         } catch (err: any) {
-          this.logger.warn(`Plugin ${plugin.name}.onToolStart failed: ${err.message}`);
+          this.logger.warn(
+            `Plugin ${plugin.name}.onToolStart failed: ${err.message}`,
+          );
         }
       }
     }
@@ -71,7 +77,9 @@ export class HarnessRegistryService {
         try {
           await plugin.onToolResult(params);
         } catch (err: any) {
-          this.logger.warn(`Plugin ${plugin.name}.onToolResult failed: ${err.message}`);
+          this.logger.warn(
+            `Plugin ${plugin.name}.onToolResult failed: ${err.message}`,
+          );
         }
       }
     }
@@ -87,7 +95,9 @@ export class HarnessRegistryService {
         try {
           await plugin.onAgentComplete(params);
         } catch (err: any) {
-          this.logger.warn(`Plugin ${plugin.name}.onAgentComplete failed: ${err.message}`);
+          this.logger.warn(
+            `Plugin ${plugin.name}.onAgentComplete failed: ${err.message}`,
+          );
         }
       }
     }
@@ -103,7 +113,9 @@ export class HarnessRegistryService {
         try {
           await plugin.onAgentError(params);
         } catch (err: any) {
-          this.logger.warn(`Plugin ${plugin.name}.onAgentError failed: ${err.message}`);
+          this.logger.warn(
+            `Plugin ${plugin.name}.onAgentError failed: ${err.message}`,
+          );
         }
       }
     }

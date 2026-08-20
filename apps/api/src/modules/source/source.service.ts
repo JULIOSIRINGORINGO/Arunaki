@@ -27,7 +27,9 @@ export class SourceService extends BaseService<Source> {
       where: { id: data.workspaceId },
     });
     if (!workspace) {
-      throw new NotFoundException(`Workspace with id ${data.workspaceId} not found`);
+      throw new NotFoundException(
+        `Workspace with id ${data.workspaceId} not found`,
+      );
     }
     return this.repository.create({
       workspaceId: data.workspaceId,

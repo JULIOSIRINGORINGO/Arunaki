@@ -21,7 +21,8 @@ export class ToolResultFormatter {
    */
   static formatForLlm(toolName: string, result: ToolResultPayload): string {
     if (result.status === 'error') {
-      const rawError = result.error?.message || result.preview || 'Tool execution failed';
+      const rawError =
+        result.error?.message || result.preview || 'Tool execution failed';
       const truncated =
         rawError.length > TOOL_ERROR_PREVIEW_MAX_CHARS
           ? `${rawError.substring(0, TOOL_ERROR_PREVIEW_MAX_CHARS)}... [truncated]`
@@ -31,16 +32,18 @@ export class ToolResultFormatter {
     }
 
     const content =
-      (toolName === 'read' && typeof result.data?.content === 'string')
+      toolName === 'read' && typeof result.data?.content === 'string'
         ? result.data.content
-        : (toolName === 'document_reader' && typeof result.data?.text === 'string')
+        : toolName === 'document_reader' &&
+            typeof result.data?.text === 'string'
           ? result.data.text
           : undefined;
 
     if (content !== undefined) {
-      const text = content.length > READ_CONTENT_MAX_CHARS
-        ? `${content.substring(0, READ_CONTENT_MAX_CHARS)}... [truncated]`
-        : content;
+      const text =
+        content.length > READ_CONTENT_MAX_CHARS
+          ? `${content.substring(0, READ_CONTENT_MAX_CHARS)}... [truncated]`
+          : content;
       return `[TOOL_SUCCESS] ${toolName}:\n${text}`;
     }
 
@@ -50,13 +53,19 @@ export class ToolResultFormatter {
 
     if (result.data) {
       if (typeof result.data === 'string') {
-        const text = result.data.length > 2000 ? `${result.data.substring(0, 2000)}... [truncated]` : result.data;
+        const text =
+          result.data.length > 2000
+            ? `${result.data.substring(0, 2000)}... [truncated]`
+            : result.data;
         return `[TOOL_SUCCESS] ${toolName}:\n${text}`;
       }
 
       try {
         const jsonString = JSON.stringify(result.data, null, 2);
-        const text = jsonString.length > 2000 ? `${jsonString.substring(0, 2000)}... [truncated]` : jsonString;
+        const text =
+          jsonString.length > 2000
+            ? `${jsonString.substring(0, 2000)}... [truncated]`
+            : jsonString;
         return `[TOOL_SUCCESS] ${toolName}:\n${text}`;
       } catch {
         return `[TOOL_SUCCESS] ${toolName}: Executed successfully.`;

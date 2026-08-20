@@ -11,10 +11,14 @@ export class WriteToolService {
   private readonly logger = new Logger(WriteToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => StorageService)) private readonly storageService: StorageService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
-    @Inject(forwardRef(() => ParserService)) private readonly parserService: ParserService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => StorageService))
+    private readonly storageService: StorageService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
+    @Inject(forwardRef(() => ParserService))
+    private readonly parserService: ParserService,
   ) {}
 
   async execute(params: {
@@ -26,7 +30,8 @@ export class WriteToolService {
     title?: string;
     overwrite?: boolean;
   }): Promise<ToolResult> {
-    const { workspaceId, filename, format, content, rows, title, overwrite } = params;
+    const { workspaceId, filename, format, content, rows, title, overwrite } =
+      params;
     const startTime = Date.now();
 
     const workspace = await this.prisma.workspace.findUnique({
@@ -39,8 +44,15 @@ export class WriteToolService {
         status: 'error',
         data: {},
         preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+        metadata: {
+          toolName: 'write',
+          displayName: 'Create File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'NO_ROOT_PATH',
+          message: 'Workspace root path is not connected',
+        },
       };
     }
 
@@ -63,7 +75,11 @@ export class WriteToolService {
           status: 'error',
           data: {},
           preview: `File "${finalFilename}" already exists. You must use the 'edit' tool (with oldString and newString, or patchText) to modify existing files.`,
-          metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+          metadata: {
+            toolName: 'write',
+            displayName: 'Create File',
+            executionTime: Date.now() - startTime,
+          },
           error: {
             code: 'FILE_ALREADY_EXISTS',
             message: `File "${finalFilename}" already exists in the workspace. Calling write on existing files is forbidden. Call the 'edit' tool instead with oldString and newString to preserve existing sections and templates.`,
@@ -87,7 +103,11 @@ export class WriteToolService {
           XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
         } else {
           workbook = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['No Data']]), 'Data');
+          XLSX.utils.book_append_sheet(
+            workbook,
+            XLSX.utils.aoa_to_sheet([['No Data']]),
+            'Data',
+          );
         }
 
         if (format === 'csv') {
@@ -100,9 +120,15 @@ export class WriteToolService {
             await fsPromises.writeFile(targetPath, csvText, 'utf-8');
           }
         } else {
-          const buf = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+          const buf = XLSX.write(workbook, {
+            type: 'buffer',
+            bookType: 'xlsx',
+          });
           if (this.storageService) {
-            await this.storageService.writeFile(targetPath, buf.toString('binary'));
+            await this.storageService.writeFile(
+              targetPath,
+              buf.toString('binary'),
+            );
           } else {
             const fsPromises = await import('fs/promises');
             await fsPromises.writeFile(targetPath, buf);
@@ -112,13 +138,21 @@ export class WriteToolService {
         const pdfText = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kinds [] /Count 0 >> endobj\nxref\n0 3\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \ntrailer << /Size 3 /Root 1 0 R >>\nstartxref\n109\n%%EOF`;
         const fileContent = content || title || 'Document';
         if (this.storageService) {
-          await this.storageService.writeFile(targetPath, `${pdfText}\n% Content: ${fileContent}`);
+          await this.storageService.writeFile(
+            targetPath,
+            `${pdfText}\n% Content: ${fileContent}`,
+          );
         } else {
           const fsPromises = await import('fs/promises');
-          await fsPromises.writeFile(targetPath, `${pdfText}\n% Content: ${fileContent}`, 'utf-8');
+          await fsPromises.writeFile(
+            targetPath,
+            `${pdfText}\n% Content: ${fileContent}`,
+            'utf-8',
+          );
         }
       } else {
-        const textContent = content || (rows ? JSON.stringify(rows, null, 2) : '');
+        const textContent =
+          content || (rows ? JSON.stringify(rows, null, 2) : '');
         if (this.storageService) {
           await this.storageService.writeFile(targetPath, textContent);
         } else {
@@ -129,7 +163,8 @@ export class WriteToolService {
 
       if (defaultSourceId && this.fileService) {
         try {
-          const existingFiles = await this.fileService.findByWorkspaceId(workspaceId);
+          const existingFiles =
+            await this.fileService.findByWorkspaceId(workspaceId);
           const existing = existingFiles.find((f) => f.path === targetPath);
 
           let parsedText = content || '';
@@ -176,7 +211,11 @@ export class WriteToolService {
         status: 'error',
         data: {},
         preview: `Failed to create file "${finalFilename}": ${e.message}`,
-        metadata: { toolName: 'write', displayName: 'Create File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'write',
+          displayName: 'Create File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'WRITE_FAILED', message: e.message },
       };
     }

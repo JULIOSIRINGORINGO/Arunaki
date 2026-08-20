@@ -7,7 +7,8 @@ export class SearchToolService {
   private readonly logger = new Logger(SearchToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => SearchService)) private readonly searchService: SearchService,
+    @Inject(forwardRef(() => SearchService))
+    private readonly searchService: SearchService,
   ) {}
 
   async execute(workspaceId: string, query: string): Promise<ToolResult> {
@@ -45,7 +46,11 @@ export class SearchToolService {
         status: 'error',
         data: {},
         preview: `Failed to search workspace: ${e.message}`,
-        metadata: { toolName: 'search_workspace', displayName: 'Search Workspace', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'search_workspace',
+          displayName: 'Search Workspace',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'SEARCH_FAILED', message: e.message },
       };
     }

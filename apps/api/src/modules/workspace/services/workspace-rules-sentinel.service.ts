@@ -1,4 +1,10 @@
-import { Injectable, Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  OnModuleInit,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import { AiService } from '../../ai/ai.service.js';
@@ -31,7 +37,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    this.logger.log('🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).');
+    this.logger.log(
+      '🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).',
+    );
   }
 
   /**
@@ -43,7 +51,8 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     if (!event.workspaceId) return;
 
     try {
-      const messages: Array<{ role: string; content: string }> = event.messages || [];
+      const messages: Array<{ role: string; content: string }> =
+        event.messages || [];
       if (messages.length === 0 && event.goal) {
         messages.push({ role: 'user', content: event.goal });
         if (event.finalContent) {
@@ -53,7 +62,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
 
       await this.inspectAndEvolveRules(event.workspaceId, messages);
     } catch (err: any) {
-      this.logger.warn(`[RulesSentinel] Sentinel review warning: ${err.message}`);
+      this.logger.warn(
+        `[RulesSentinel] Sentinel review warning: ${err.message}`,
+      );
     }
   }
 
@@ -69,7 +80,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     if (userMessages.length === 0) return false;
 
     // Fast check: Verify if any user message contains rule/correction signals
-    const hasIntentSignal = userMessages.some((m) => this.INTENT_TRIGGER_REGEX.test(m.content));
+    const hasIntentSignal = userMessages.some((m) =>
+      this.INTENT_TRIGGER_REGEX.test(m.content),
+    );
     if (!hasIntentSignal) {
       // No rule or correction signals -> go back to sleep immediately (0ms overhead)
       return false;
@@ -82,7 +95,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
 
     if (!workspace?.rootPath) return false;
 
-    const currentRules = await this.cartographerService.getWorkspaceRules(workspace.rootPath);
+    const currentRules = await this.cartographerService.getWorkspaceRules(
+      workspace.rootPath,
+    );
     const combinedUserText = userMessages.map((m) => m.content).join('\n---\n');
 
     this.logger.log(
@@ -116,23 +131,37 @@ Output ONLY "NO_CHANGE", "REPLACE: <old> -> <new>", or "ADD: <new>".`;
       const response = await this.aiService.chat([
         {
           role: 'system',
-          content: 'You are an expert system rulebook sentinel analyzing conversation diffs to maintain live instructions.',
+          content:
+            'You are an expert system rulebook sentinel analyzing conversation diffs to maintain live instructions.',
         },
         { role: 'user', content: prompt },
       ]);
 
       const result = response?.content?.trim() || 'NO_CHANGE';
-      if (result === 'NO_CHANGE' || result.length < 5 || result.toLowerCase().includes('no_change')) {
-        this.logger.debug('[RulesSentinel] No rule changes needed. Sentinel returning to idle.');
+      if (
+        result === 'NO_CHANGE' ||
+        result.length < 5 ||
+        result.toLowerCase().includes('no_change')
+      ) {
+        this.logger.debug(
+          '[RulesSentinel] No rule changes needed. Sentinel returning to idle.',
+        );
         return false;
       }
 
       // Parse multi-line LLM output — each line may contain ADD: or REPLACE:
-      const lines = result.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const lines = result
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
       let patched = false;
       for (const line of lines) {
         // Skip garbage: error messages, apologies, unparsed prefixes
-        if (line.toLowerCase().includes('sorry') || line.toLowerCase().includes('unable') || line.toLowerCase().includes('try again')) {
+        if (
+          line.toLowerCase().includes('sorry') ||
+          line.toLowerCase().includes('unable') ||
+          line.toLowerCase().includes('try again')
+        ) {
           continue;
         }
         if (line.startsWith('ADD:') || line.startsWith('REPLACE:')) {
@@ -146,11 +175,15 @@ Output ONLY "NO_CHANGE", "REPLACE: <old> -> <new>", or "ADD: <new>".`;
       }
 
       if (patched) {
-        this.logger.log(`[RulesSentinel] 🛡️ Sentinel evolved ARUNAKI.md from ${lines.length} line(s)`);
+        this.logger.log(
+          `[RulesSentinel] 🛡️ Sentinel evolved ARUNAKI.md from ${lines.length} line(s)`,
+        );
       }
       return patched;
     } catch (err: any) {
-      this.logger.warn(`[RulesSentinel] Rule evolution check skipped: ${err.message}`);
+      this.logger.warn(
+        `[RulesSentinel] Rule evolution check skipped: ${err.message}`,
+      );
       return false;
     }
   }

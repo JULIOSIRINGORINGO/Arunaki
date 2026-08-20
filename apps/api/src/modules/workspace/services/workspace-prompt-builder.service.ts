@@ -20,14 +20,22 @@ export class WorkspacePromptBuilderService {
 
   constructor(
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
-    @Inject(forwardRef(() => SmartRecallService)) private readonly smartRecallService: SmartRecallService,
-    @Inject(forwardRef(() => SelfHealingService)) private readonly selfHealingService: SelfHealingService,
-    @Inject(forwardRef(() => PromptInjectionDetector)) private readonly promptInjectionDetector: PromptInjectionDetector,
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => ContextRegistry)) private readonly contextRegistry: ContextRegistry,
-    @Inject(forwardRef(() => WorkspaceCartographerService)) private readonly cartographerService: WorkspaceCartographerService,
+    @Inject(forwardRef(() => ToolRegistryService))
+    private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
+    @Inject(forwardRef(() => SmartRecallService))
+    private readonly smartRecallService: SmartRecallService,
+    @Inject(forwardRef(() => SelfHealingService))
+    private readonly selfHealingService: SelfHealingService,
+    @Inject(forwardRef(() => PromptInjectionDetector))
+    private readonly promptInjectionDetector: PromptInjectionDetector,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ContextRegistry))
+    private readonly contextRegistry: ContextRegistry,
+    @Inject(forwardRef(() => WorkspaceCartographerService))
+    private readonly cartographerService: WorkspaceCartographerService,
   ) {}
 
   async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
@@ -48,7 +56,9 @@ export class WorkspacePromptBuilderService {
       const fsPromises = await import('fs/promises');
       let entries: any[] = [];
       try {
-        entries = await fsPromises.readdir(workspace.rootPath, { withFileTypes: true });
+        entries = await fsPromises.readdir(workspace.rootPath, {
+          withFileTypes: true,
+        });
       } catch {
         return;
       }
@@ -67,12 +77,18 @@ export class WorkspacePromptBuilderService {
         });
       }
 
-      const existingDbFiles = await this.fileService.findByWorkspaceId(workspaceId);
-      const existingPaths = new Set(existingDbFiles.map((f) => f.path.toLowerCase()));
-      const existingNames = new Set(existingDbFiles.map((f) => f.name.toLowerCase()));
+      const existingDbFiles =
+        await this.fileService.findByWorkspaceId(workspaceId);
+      const existingPaths = new Set(
+        existingDbFiles.map((f) => f.path.toLowerCase()),
+      );
+      const existingNames = new Set(
+        existingDbFiles.map((f) => f.name.toLowerCase()),
+      );
 
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        if (entry.name.startsWith('.') || entry.name === 'node_modules')
+          continue;
         const fullPath = path.join(workspace.rootPath, entry.name);
         if (entry.isFile()) {
           const lowerPath = fullPath.toLowerCase();
@@ -80,7 +96,10 @@ export class WorkspacePromptBuilderService {
           if (!existingPaths.has(lowerPath) && !existingNames.has(lowerName)) {
             try {
               const stat = await fsPromises.stat(fullPath);
-              const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+              const ext = path
+                .extname(entry.name)
+                .toLowerCase()
+                .replace('.', '');
               await this.fileService.createFile({
                 sourceId: source.id,
                 name: entry.name,
@@ -103,20 +122,24 @@ export class WorkspacePromptBuilderService {
   async selectToolsForGoal(
     goal: string,
     allTools: ToolDefinition[],
-  ): Promise<{ tools: ToolDefinition[]; hasMutationIntent: boolean; wantsGui: boolean }> {
+  ): Promise<{
+    tools: ToolDefinition[];
+    hasMutationIntent: boolean;
+    wantsGui: boolean;
+  }> {
     const classification = await this.aiService.classifyIntent(goal, allTools);
-    
+
     // Always include mandatory base tools
     const mandatoryTools = ['read', 'list', 'document_reader'];
     const selectedNames = new Set([...mandatoryTools, ...classification.tools]);
 
     // Map names back to actual ToolDefinitions
-    const tools = allTools.filter(t => selectedNames.has(t.function.name));
+    const tools = allTools.filter((t) => selectedNames.has(t.function.name));
 
     return {
       tools,
       hasMutationIntent: classification.isMutation,
-      wantsGui: classification.isGui
+      wantsGui: classification.isGui,
     };
   }
 
@@ -152,7 +175,10 @@ export class WorkspacePromptBuilderService {
     }
   }
 
-  async readMentionedFiles(workspaceId: string, goal: string): Promise<Map<string, string>> {
+  async readMentionedFiles(
+    workspaceId: string,
+    goal: string,
+  ): Promise<Map<string, string>> {
     const contents = new Map<string, string>();
     for (const filename of extractMentionedFilenames(goal)) {
       try {
@@ -162,16 +188,23 @@ export class WorkspacePromptBuilderService {
           workspaceId,
         );
         if (finalResult.status !== 'success') {
-          this.logger.warn(`Pre-read for mentioned file "${filename}" returned status: ${finalResult.preview}`);
+          this.logger.warn(
+            `Pre-read for mentioned file "${filename}" returned status: ${finalResult.preview}`,
+          );
           continue;
         }
-        const text = (finalResult.data as Record<string, unknown>)?.content || (finalResult.data as Record<string, unknown>)?.text;
-        const content = typeof text === 'string'
-          ? text.slice(0, 12000)
-          : ToolResultFormatter.formatForLlm('read', finalResult);
+        const text =
+          (finalResult.data as Record<string, unknown>)?.content ||
+          (finalResult.data as Record<string, unknown>)?.text;
+        const content =
+          typeof text === 'string'
+            ? text.slice(0, 12000)
+            : ToolResultFormatter.formatForLlm('read', finalResult);
         contents.set(filename, content);
       } catch (err: any) {
-        this.logger.warn(`Failed to pre-read mentioned file "${filename}": ${err.message}`);
+        this.logger.warn(
+          `Failed to pre-read mentioned file "${filename}": ${err.message}`,
+        );
       }
     }
     return contents;
@@ -180,7 +213,10 @@ export class WorkspacePromptBuilderService {
   async buildInitialContext(params: {
     workspaceId: string;
     userGoal: string;
-    historyMessages?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    historyMessages?: Array<{
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+    }>;
     modifiedFiles?: Array<{ filename: string }>;
   }): Promise<{
     systemContent: string;
@@ -194,9 +230,17 @@ export class WorkspacePromptBuilderService {
     wantsGui: boolean;
     injectionBlocked?: boolean;
   }> {
-    const { workspaceId, userGoal, historyMessages, modifiedFiles = [] } = params;
+    const {
+      workspaceId,
+      userGoal,
+      historyMessages,
+      modifiedFiles = [],
+    } = params;
 
-    const workspaceContext = await this.buildWorkspaceContext(workspaceId, modifiedFiles);
+    const workspaceContext = await this.buildWorkspaceContext(
+      workspaceId,
+      modifiedFiles,
+    );
 
     let workspaceRootPath = '';
     let recallContext = '';
@@ -216,7 +260,8 @@ export class WorkspacePromptBuilderService {
     }
 
     const allTools = this.toolRegistryService.getToolDefinitions();
-    const { tools, hasMutationIntent, wantsGui } = await this.selectToolsForGoal(userGoal, allTools);
+    const { tools, hasMutationIntent, wantsGui } =
+      await this.selectToolsForGoal(userGoal, allTools);
     const modelCtx = await this.aiService.getActiveModelContext();
 
     const systemPrompt = this.aiService.getSystemPrompt(
@@ -244,10 +289,13 @@ export class WorkspacePromptBuilderService {
     let workspaceRules = '';
     if (workspaceRootPath) {
       try {
-        workspaceRules = await this.cartographerService.getWorkspaceRules(workspaceRootPath);
+        workspaceRules =
+          await this.cartographerService.getWorkspaceRules(workspaceRootPath);
         if (!workspaceRules) {
           // Trigger asynchronous background analysis without blocking current request
-          this.cartographerService.analyzeAndBootstrap(workspaceId).catch(() => {});
+          this.cartographerService
+            .analyzeAndBootstrap(workspaceId)
+            .catch(() => {});
         }
       } catch (err: any) {
         this.logger.debug(`Fetching ARUNAKI.md rules failed: ${err.message}`);
@@ -275,7 +323,11 @@ export class WorkspacePromptBuilderService {
     // Prompt injection check
     const injectionResult = this.promptInjectionDetector.scan(userGoal);
     if (injectionResult.detected && injectionResult.severity === 'high') {
-      this.promptInjectionDetector.logDetection(workspaceId, userGoal, injectionResult);
+      this.promptInjectionDetector.logDetection(
+        workspaceId,
+        userGoal,
+        injectionResult,
+      );
       return {
         systemContent,
         messages,
@@ -290,8 +342,13 @@ export class WorkspacePromptBuilderService {
       };
     }
 
-    const safeGoal = injectionResult.detected ? injectionResult.sanitized : userGoal;
-    const mentionedFileContents = await this.readMentionedFiles(workspaceId, safeGoal);
+    const safeGoal = injectionResult.detected
+      ? injectionResult.sanitized
+      : userGoal;
+    const mentionedFileContents = await this.readMentionedFiles(
+      workspaceId,
+      safeGoal,
+    );
 
     let goalContent = safeGoal;
     for (const [filename, content] of mentionedFileContents) {

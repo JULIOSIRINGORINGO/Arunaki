@@ -147,7 +147,9 @@ export class SemanticSearchService implements OnModuleInit {
         rank: Math.round(s.score * 1000) + i,
       }));
     } catch (err: any) {
-      this.logger.warn(`Semantic search failed (falling back to FTS5): ${err.message}`);
+      this.logger.warn(
+        `Semantic search failed (falling back to FTS5): ${err.message}`,
+      );
       return [];
     }
   }
@@ -159,7 +161,13 @@ export class SemanticSearchService implements OnModuleInit {
    */
   private async ensureBackfilled(workspaceId?: string): Promise<void> {
     const missing = await this.prisma.$queryRawUnsafe<
-      Array<{ id: string; chatHistoryId: string; workspaceId: string | null; role: string; content: string }>
+      Array<{
+        id: string;
+        chatHistoryId: string;
+        workspaceId: string | null;
+        role: string;
+        content: string;
+      }>
     >(
       `SELECT m.id, m.chatHistoryId as chatHistoryId,
               ch.workspaceId as workspaceId, m.role, m.content
@@ -176,16 +184,21 @@ export class SemanticSearchService implements OnModuleInit {
 
     if (missing.length === 0) return;
 
-    this.logger.log(`Embedding ${missing.length} messages (semantic recall)...`);
+    this.logger.log(
+      `Embedding ${missing.length} messages (semantic recall)...`,
+    );
 
     const extractor = await this.getPipeline();
     const batchSize = 20;
     for (let i = 0; i < missing.length; i += batchSize) {
       const batch = missing.slice(i, i + batchSize);
-      const output = await extractor(batch.map((m) => m.content), {
-        pooling: 'mean',
-        normalize: true,
-      });
+      const output = await extractor(
+        batch.map((m) => m.content),
+        {
+          pooling: 'mean',
+          normalize: true,
+        },
+      );
       const dim = 384;
       const data = new Float32Array(output.data);
 

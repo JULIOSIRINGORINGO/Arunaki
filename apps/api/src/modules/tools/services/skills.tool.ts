@@ -223,7 +223,10 @@ export class SkillsTool {
     }>,
   ): Promise<ToolResult> {
     try {
-      const skill = await this.skillService.findByNameInWorkspace(name, workspaceId);
+      const skill = await this.skillService.findByNameInWorkspace(
+        name,
+        workspaceId,
+      );
       if (!skill) {
         return {
           status: 'error',
@@ -248,7 +251,10 @@ export class SkillsTool {
             displayName: 'Skills',
             executionTime: 0,
           },
-          error: { code: 'FORBIDDEN', message: `Cannot update skill from another workspace` },
+          error: {
+            code: 'FORBIDDEN',
+            message: `Cannot update skill from another workspace`,
+          },
         };
       }
 
@@ -293,7 +299,10 @@ export class SkillsTool {
 
   async deleteSkill(name: string, workspaceId: string): Promise<ToolResult> {
     try {
-      const skill = await this.skillService.findByNameInWorkspace(name, workspaceId);
+      const skill = await this.skillService.findByNameInWorkspace(
+        name,
+        workspaceId,
+      );
       if (!skill) {
         return {
           status: 'error',
@@ -318,7 +327,10 @@ export class SkillsTool {
             displayName: 'Skills',
             executionTime: 0,
           },
-          error: { code: 'FORBIDDEN', message: `Cannot delete skill from another workspace` },
+          error: {
+            code: 'FORBIDDEN',
+            message: `Cannot delete skill from another workspace`,
+          },
         };
       }
 

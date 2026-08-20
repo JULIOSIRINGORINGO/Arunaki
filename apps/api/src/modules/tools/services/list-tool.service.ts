@@ -9,8 +9,10 @@ export class ListToolService {
   private readonly logger = new Logger(ListToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
   ) {}
 
   async execute(workspaceId: string): Promise<ToolResult> {
@@ -22,18 +24,28 @@ export class ListToolService {
     });
 
     const rootPath = workspace?.rootPath || null;
-    let filesToDescribe: { name: string; type: string; size: number; path: string }[] = [];
+    let filesToDescribe: {
+      name: string;
+      type: string;
+      size: number;
+      path: string;
+    }[] = [];
 
     if (rootPath) {
       try {
         const fsPromises = await import('fs/promises');
-        const entries = await fsPromises.readdir(rootPath, { withFileTypes: true });
+        const entries = await fsPromises.readdir(rootPath, {
+          withFileTypes: true,
+        });
         for (const entry of entries) {
           if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
             const fullPath = path.join(rootPath, entry.name);
             if (entry.isFile()) {
               const stat = await fsPromises.stat(fullPath);
-              const ext = path.extname(entry.name).toLowerCase().replace('.', '');
+              const ext = path
+                .extname(entry.name)
+                .toLowerCase()
+                .replace('.', '');
               filesToDescribe.push({
                 name: entry.name,
                 type: ext || 'file',
@@ -65,7 +77,10 @@ export class ListToolService {
     const fileListText =
       filesToDescribe.length > 0
         ? filesToDescribe
-            .map((f) => `- ${f.name} (Type: ${f.type}, Size: ${Math.round(f.size / 1024)} KB)`)
+            .map(
+              (f) =>
+                `- ${f.name} (Type: ${f.type}, Size: ${Math.round(f.size / 1024)} KB)`,
+            )
             .join('\n')
         : 'No files in this workspace yet.';
 

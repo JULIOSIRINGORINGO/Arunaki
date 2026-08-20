@@ -125,7 +125,9 @@ export class MemoryTool {
       if (params?.type) {
         memories = await this.memoryService.findByType(params.type);
       } else if (params?.workspaceId) {
-        memories = await this.memoryService.findForWorkspace(params.workspaceId);
+        memories = await this.memoryService.findForWorkspace(
+          params.workspaceId,
+        );
       } else {
         memories = await this.memoryService.findActive();
       }
@@ -165,7 +167,10 @@ export class MemoryTool {
     }
   }
 
-  async searchMemories(query: string, workspaceId: string): Promise<ToolResult> {
+  async searchMemories(
+    query: string,
+    workspaceId: string,
+  ): Promise<ToolResult> {
     try {
       const memories = await this.memoryService.search(query, workspaceId);
 
@@ -214,7 +219,11 @@ export class MemoryTool {
     }
   }
 
-  async deleteMemory(type: string, key: string, workspaceId: string): Promise<ToolResult> {
+  async deleteMemory(
+    type: string,
+    key: string,
+    workspaceId: string,
+  ): Promise<ToolResult> {
     try {
       const memory = await this.memoryService.findByKey(type, key);
       if (!memory) {
@@ -241,7 +250,10 @@ export class MemoryTool {
             displayName: 'Memory',
             executionTime: 0,
           },
-          error: { code: 'FORBIDDEN', message: `Cannot delete memory from another workspace` },
+          error: {
+            code: 'FORBIDDEN',
+            message: `Cannot delete memory from another workspace`,
+          },
         };
       }
 

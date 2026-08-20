@@ -98,7 +98,7 @@ export class DocSearchTool {
         preview:
           d.content && d.content.length > 100
             ? d.content.substring(0, 100) + '...'
-            : (d.content || ''),
+            : d.content || '',
       }));
     } catch {
       return [];

@@ -46,7 +46,9 @@ export class FileController {
   }
 
   @Post('upload')
-  @UseInterceptors(FilesInterceptor('files', 50, { limits: { fileSize: 50 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FilesInterceptor('files', 50, { limits: { fileSize: 50 * 1024 * 1024 } }),
+  )
   async upload(
     @UploadedFiles() files: Express.Multer.File[],
     @Body('workspaceId') workspaceId: string,
@@ -123,10 +125,18 @@ export class FileController {
           const content = await fs.readFile(file.path, 'utf-8');
           return successResponse({ content, path: file.path, name: file.name });
         } catch {
-          return successResponse({ content: file.content || '', path: file.path, name: file.name });
+          return successResponse({
+            content: file.content || '',
+            path: file.path,
+            name: file.name,
+          });
         }
       }
-      return successResponse({ content: file.content || '', path: file.path, name: file.name });
+      return successResponse({
+        content: file.content || '',
+        path: file.path,
+        name: file.name,
+      });
     } catch (error) {
       return errorResponse('FETCH_FAILED', error.message);
     }

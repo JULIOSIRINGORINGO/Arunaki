@@ -101,7 +101,10 @@ describe('SemanticSearchService', () => {
   it('filters out low-similarity matches (score <= 0.35)', async () => {
     const dim = 384;
     const rows = [
-      makeEmbeddingRow({ messageId: 'unrelated', embedding: Buffer.from(new Float32Array(dim).buffer) }),
+      makeEmbeddingRow({
+        messageId: 'unrelated',
+        embedding: Buffer.from(new Float32Array(dim).buffer),
+      }),
     ];
     mockPrisma.$queryRawUnsafe
       .mockResolvedValueOnce([])

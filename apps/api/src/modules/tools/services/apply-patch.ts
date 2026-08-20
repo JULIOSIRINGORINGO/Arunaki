@@ -38,19 +38,29 @@ export interface FileUpdate {
 export class PatchError extends Error {}
 
 const stripHeredoc = (input: string) =>
-  input.match(/^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/)?.[2] ?? input;
+  input.match(/^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/)?.[2] ??
+  input;
 
 export function parse(patchText: string): Hunk[] {
   let cleanText = patchText.trim();
   // Strip code block markers if present (e.g. ```patch ... ``` or ```diff ... ```)
-  cleanText = cleanText.replace(/^```(?:patch|diff|markdown)?\r?\n/i, '').replace(/\r?\n```$/i, '').trim();
+  cleanText = cleanText
+    .replace(/^```(?:patch|diff|markdown)?\r?\n/i, '')
+    .replace(/\r?\n```$/i, '')
+    .trim();
   cleanText = stripHeredoc(cleanText);
 
   // Auto-repair missing Begin/End Patch markers if an operation header is present
-  if (!cleanText.includes('*** Begin Patch') && /(?:\*\*\* (?:Update|Add|Delete) File:)/.test(cleanText)) {
+  if (
+    !cleanText.includes('*** Begin Patch') &&
+    /(?:\*\*\* (?:Update|Add|Delete) File:)/.test(cleanText)
+  ) {
     cleanText = '*** Begin Patch\n' + cleanText;
   }
-  if (!cleanText.includes('*** End Patch') && cleanText.includes('*** Begin Patch')) {
+  if (
+    !cleanText.includes('*** End Patch') &&
+    cleanText.includes('*** Begin Patch')
+  ) {
     cleanText = cleanText + '\n*** End Patch';
   }
 
@@ -64,7 +74,7 @@ export function parse(patchText: string): Hunk[] {
   const hunks: Hunk[] = [];
   let index = begin + 1;
   while (index < end) {
-    const line = lines[index]!;
+    const line = lines[index];
     const addMatch = /^\*\*\*\s*Add File:?\s*(.*)/i.exec(line);
     if (addMatch) {
       const path = addMatch[1].trim();
@@ -85,7 +95,9 @@ export function parse(patchText: string): Hunk[] {
       const path = updateMatch[1].trim();
       let next = index + 1;
       let movePath: string | undefined;
-      const moveMatch = lines[next] ? /^\*\*\*\s*Move to:?\s*(.*)/i.exec(lines[next]!) : null;
+      const moveMatch = lines[next]
+        ? /^\*\*\*\s*Move to:?\s*(.*)/i.exec(lines[next])
+        : null;
       if (moveMatch) {
         movePath = moveMatch[1].trim();
         next++;
@@ -105,24 +117,31 @@ export function parse(patchText: string): Hunk[] {
   return hunks;
 }
 
-function parseAdd(lines: string[], start: number): { content: string; next: number } {
+function parseAdd(
+  lines: string[],
+  start: number,
+): { content: string; next: number } {
   const content: string[] = [];
   let index = start;
-  while (index < lines.length && !lines[index]!.startsWith('***')) {
-    if (!lines[index]!.startsWith('+')) throw new PatchError(`Invalid add file line: ${lines[index]}`);
-    content.push(lines[index]!.slice(1).replace(/^\d+:\s?/, ''));
+  while (index < lines.length && !lines[index].startsWith('***')) {
+    if (!lines[index].startsWith('+'))
+      throw new PatchError(`Invalid add file line: ${lines[index]}`);
+    content.push(lines[index].slice(1).replace(/^\d+:\s?/, ''));
     index++;
   }
   return { content: content.join('\n'), next: index };
 }
 
-function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[]; next: number } {
+function parseUpdate(
+  lines: string[],
+  start: number,
+): { chunks: UpdateFileChunk[]; next: number } {
   const chunks: UpdateFileChunk[] = [];
   let index = start;
-  while (index < lines.length && !lines[index]!.startsWith('***')) {
+  while (index < lines.length && !lines[index].startsWith('***')) {
     let changeContext: string | undefined;
-    if (lines[index]!.startsWith('@@')) {
-      let rawContext = lines[index]!.slice(2).trim() || undefined;
+    if (lines[index].startsWith('@@')) {
+      let rawContext = lines[index].slice(2).trim() || undefined;
       // Strip unified diff line numbers (e.g. -1,53 +1,67 @@) or stray signs
       if (rawContext) {
         rawContext = rawContext.replace(/^[-+\d,\s@]+/, '').trim();
@@ -136,9 +155,9 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
     const deletedLines: string[] = [];
     const addedLines: string[] = [];
     let endOfFile = false;
-    
-    while (index < lines.length && !lines[index]!.startsWith('@@')) {
-      const line = lines[index]!;
+
+    while (index < lines.length && !lines[index].startsWith('@@')) {
+      const line = lines[index];
       if (line === '*** End of File') {
         endOfFile = true;
         index++;
@@ -180,7 +199,11 @@ function parseUpdate(lines: string[], start: number): { chunks: UpdateFileChunk[
   return { chunks, next: index };
 }
 
-export function derive(hunk: Hunk, original: string, location: string): FileUpdate {
+export function derive(
+  hunk: Hunk,
+  original: string,
+  location: string,
+): FileUpdate {
   const chunks = hunk.type === 'update' ? (hunk.chunks ?? []) : [];
   const source = splitBom(original);
   const lines = source.text.split('\n');
@@ -189,7 +212,8 @@ export function derive(hunk: Hunk, original: string, location: string): FileUpda
   const replacements = computeReplacements(lines, location, chunks);
 
   const updated = [...lines];
-  for (const [start, remove, insert] of replacements.reverse()) updated.splice(start, remove, ...insert);
+  for (const [start, remove, insert] of replacements.reverse())
+    updated.splice(start, remove, ...insert);
   if (updated.at(-1) !== '') updated.push('');
   const next = splitBom(updated.join('\n'));
   return { content: next.text, bom: source.bom || next.bom };
@@ -245,7 +269,9 @@ function computeReplacements(
       }
     }
     if (found === -1) {
-      throw new PatchError(`Failed to find expected lines in ${path}:\n${chunk.oldLines.join('\n')}`);
+      throw new PatchError(
+        `Failed to find expected lines in ${path}:\n${chunk.oldLines.join('\n')}`,
+      );
     }
     replacements.push([found, oldLines.length, newLines]);
     lineIndex = found + oldLines.length;
@@ -253,14 +279,24 @@ function computeReplacements(
   return replacements.sort((left, right) => left[0] - right[0]);
 }
 
-function seek(lines: string[], pattern: string[], start: number, eof = false): number {
+function seek(
+  lines: string[],
+  pattern: string[],
+  start: number,
+  eof = false,
+): number {
   if (pattern.length === 0) return -1;
   for (const compare of [exact, rstrip, trim, normalized, alphanumeric]) {
     if (eof) {
       const offset = lines.length - pattern.length;
-      if (offset >= start && matches(lines, pattern, offset, compare)) return offset;
+      if (offset >= start && matches(lines, pattern, offset, compare))
+        return offset;
     }
-    for (let offset = start; offset <= lines.length - pattern.length; offset++) {
+    for (
+      let offset = start;
+      offset <= lines.length - pattern.length;
+      offset++
+    ) {
       if (matches(lines, pattern, offset, compare)) return offset;
     }
   }
@@ -273,14 +309,18 @@ function matches(
   offset: number,
   compare: (left: string, right: string) => boolean,
 ): boolean {
-  return pattern.every((line, index) => compare(lines[offset + index]!, line));
+  return pattern.every((line, index) => compare(lines[offset + index], line));
 }
 
 const exact = (left: string, right: string) => left === right;
-const rstrip = (left: string, right: string) => left.trimEnd() === right.trimEnd();
+const rstrip = (left: string, right: string) =>
+  left.trimEnd() === right.trimEnd();
 const trim = (left: string, right: string) => left.trim() === right.trim();
-const normalized = (left: string, right: string) => normalize(left.trim()) === normalize(right.trim());
-const alphanumeric = (left: string, right: string) => left.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() === right.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+const normalized = (left: string, right: string) =>
+  normalize(left.trim()) === normalize(right.trim());
+const alphanumeric = (left: string, right: string) =>
+  left.replace(/[^a-zA-Z0-9]/g, '').toLowerCase() ===
+  right.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
 const normalize = (value: string) =>
   value
@@ -291,4 +331,6 @@ const normalize = (value: string) =>
     .replace(/\u00A0/g, ' ');
 
 const splitBom = (text: string) =>
-  text.startsWith('\uFEFF') ? { bom: true, text: text.slice(1) } : { bom: false, text: text };
+  text.startsWith('\uFEFF')
+    ? { bom: true, text: text.slice(1) }
+    : { bom: false, text: text };

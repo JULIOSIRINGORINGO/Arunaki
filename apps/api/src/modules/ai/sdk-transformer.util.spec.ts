@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { buildProviderOptions, serializeToolCallHistory } from './sdk-transformer.util.js';
+import {
+  buildProviderOptions,
+  serializeToolCallHistory,
+} from './sdk-transformer.util.js';
 import { modelSupportsToolCallHistory } from './model-capability.js';
 
 const openaiCompat = { type: 'openai-compatible' };
@@ -21,7 +24,9 @@ describe('buildProviderOptions — reasoning effort pruning', () => {
       openai: { reasoningEffort: 'low' },
     });
     // dynamic detection for unknown reasoning variants
-    expect(buildProviderOptions(openaiCompat, 'vendor/qwen3-thinking:free')).toEqual({
+    expect(
+      buildProviderOptions(openaiCompat, 'vendor/qwen3-thinking:free'),
+    ).toEqual({
       openai: { reasoningEffort: 'low' },
     });
   });
@@ -35,7 +40,9 @@ describe('buildProviderOptions — reasoning effort pruning', () => {
     expect(buildProviderOptions(openaiCompat, 'gpt-4o', 'low')).toEqual({
       openai: { reasoningEffort: 'low' },
     });
-    expect(buildProviderOptions(openaiCompat, 'deepseek-reasoner', 'high')).toEqual({
+    expect(
+      buildProviderOptions(openaiCompat, 'deepseek-reasoner', 'high'),
+    ).toEqual({
       openai: { reasoningEffort: 'high' },
     });
   });
@@ -49,13 +56,17 @@ describe('buildProviderOptions — reasoning effort pruning', () => {
       anthropic: { thinking: { type: 'enabled', budgetTokens: 2048 } },
     });
     // non-thinking Claude stays plain
-    expect(buildProviderOptions(anthropic, 'claude-3-5-sonnet')).toBeUndefined();
+    expect(
+      buildProviderOptions(anthropic, 'claude-3-5-sonnet'),
+    ).toBeUndefined();
   });
 
   it('env ARUNAKI_REASONING_EFFORT overrides and "off" disables everything', () => {
     process.env.ARUNAKI_REASONING_EFFORT = 'off';
     expect(buildProviderOptions(openaiCompat, 'gpt-oss-120b')).toBeUndefined();
-    expect(buildProviderOptions(anthropic, 'claude-3-7-sonnet')).toBeUndefined();
+    expect(
+      buildProviderOptions(anthropic, 'claude-3-7-sonnet'),
+    ).toBeUndefined();
 
     process.env.ARUNAKI_REASONING_EFFORT = 'high';
     expect(buildProviderOptions(openaiCompat, 'gpt-4o')).toEqual({
@@ -84,10 +95,18 @@ describe('serializeToolCallHistory', () => {
         role: 'assistant' as const,
         content: 'ok',
         tool_calls: [
-          { id: 'c1', type: 'function' as const, function: { name: 'edit', arguments: '{"path":"a.txt"}' } },
+          {
+            id: 'c1',
+            type: 'function' as const,
+            function: { name: 'edit', arguments: '{"path":"a.txt"}' },
+          },
         ],
       },
-      { role: 'tool' as const, tool_call_id: 'c1', content: '{"status":"success"}' },
+      {
+        role: 'tool' as const,
+        tool_call_id: 'c1',
+        content: '{"status":"success"}',
+      },
       { role: 'user' as const, content: 'recount totals' },
     ];
 
@@ -95,11 +114,14 @@ describe('serializeToolCallHistory', () => {
     expect(out).toHaveLength(3);
     expect(out[1]).toEqual({
       role: 'assistant',
-      content: 'ok\n[Assistant tool call]: edit({"path":"a.txt"})\n[Tool result]: {"status":"success"}',
+      content:
+        'ok\n[Assistant tool call]: edit({"path":"a.txt"})\n[Tool result]: {"status":"success"}',
     });
     expect(out[2].content).toBe('recount totals');
     // no native tool/tool_calls shape survives
-    expect(out.some((m) => m.role === 'tool' || (m as any).tool_calls)).toBe(false);
+    expect(out.some((m) => m.role === 'tool' || (m as any).tool_calls)).toBe(
+      false,
+    );
   });
 
   it('leaves messages without tool_calls untouched', () => {

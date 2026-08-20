@@ -9,7 +9,12 @@ import { SecretsVaultService } from '../security/secrets-vault.service.js';
 @Module({
   imports: [PrismaModule],
   controllers: [ProviderController],
-  providers: [ProviderService, ProviderRepository, ProviderCatalogService, SecretsVaultService],
+  providers: [
+    ProviderService,
+    ProviderRepository,
+    ProviderCatalogService,
+    SecretsVaultService,
+  ],
   exports: [ProviderService, ProviderRepository, ProviderCatalogService],
 })
 export class ProviderModule {}

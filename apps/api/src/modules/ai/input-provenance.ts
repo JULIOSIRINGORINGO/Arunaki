@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-export type ProvenanceKind = 'external_user' | 'inter_session' | 'internal_system';
+export type ProvenanceKind =
+  'external_user' | 'inter_session' | 'internal_system';
 
 export type InputProvenance = {
   kind: ProvenanceKind;

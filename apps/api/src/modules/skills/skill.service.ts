@@ -59,7 +59,10 @@ export class SkillService extends BaseService<Skill> {
    * Find a skill by name, preferring workspace-scoped over global.
    * Returns null if no skill with that name exists in the given workspace or globally.
    */
-  async findByNameInWorkspace(name: string, workspaceId: string): Promise<Skill | null> {
+  async findByNameInWorkspace(
+    name: string,
+    workspaceId: string,
+  ): Promise<Skill | null> {
     const skill = await this.repository.findByName(name);
     if (!skill) return null;
     // Return the skill if it belongs to this workspace or is global
@@ -260,14 +263,20 @@ export class SkillService extends BaseService<Skill> {
     }
 
     // Use LLM to intelligently merge skill content
-    const mergedContent = await this.mergeSkillContent(skills, options.description);
+    const mergedContent = await this.mergeSkillContent(
+      skills,
+      options.description,
+    );
 
     return this.createSkill({
       ...options,
       content: mergedContent,
       tags: skills.flatMap((s) => JSON.parse(s.tags || '[]')),
       sourceType: 'composed',
-      sourceInfo: JSON.stringify({ composedFrom: skillNames, at: new Date().toISOString() }),
+      sourceInfo: JSON.stringify({
+        composedFrom: skillNames,
+        at: new Date().toISOString(),
+      }),
     });
   }
 
@@ -278,9 +287,9 @@ export class SkillService extends BaseService<Skill> {
     skills: Skill[],
     targetDescription: string,
   ): Promise<string> {
-    const skillBlocks = skills.map(
-      (s) => `## ${s.displayName}\n${s.content}`,
-    ).join('\n\n---\n\n');
+    const skillBlocks = skills
+      .map((s) => `## ${s.displayName}\n${s.content}`)
+      .join('\n\n---\n\n');
 
     const messages = [
       {
@@ -340,7 +349,10 @@ RULES:
   // TODO: Implement skill version rollback. Requires a SkillVersion table
   // to store historical content snapshots. Currently only the version counter
   // is incremented on update; the old content is not preserved.
-  async rollbackSkill(skillId: string, targetVersion: string): Promise<Skill | null> {
+  async rollbackSkill(
+    skillId: string,
+    targetVersion: string,
+  ): Promise<Skill | null> {
     this.logger.warn(
       `Rollback requested for ${skillId} to ${targetVersion} — not yet implemented (needs SkillVersion table)`,
     );

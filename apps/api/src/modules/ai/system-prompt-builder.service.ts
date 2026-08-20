@@ -62,7 +62,12 @@ export class SystemPromptBuilderService {
   ): string {
     // Detect posture from conversation history (chat mode only)
     let posturePrompt = '';
-    if (mode === 'chat' && historyMessages && historyMessages.length > 0 && this.postureDetector) {
+    if (
+      mode === 'chat' &&
+      historyMessages &&
+      historyMessages.length > 0 &&
+      this.postureDetector
+    ) {
       const postureResult =
         this.postureDetector.detectPostureFromHistory(historyMessages);
       posturePrompt = this.postureDetector.getPosturePrompt(
@@ -94,8 +99,16 @@ export class SystemPromptBuilderService {
       );
 
       const stablePrefix = cacheStablePromptPrefix(
-        hashStablePromptInput({ identity, rules, memoryContext, verification, modelAdditions, reasoningDirective }),
-        () => `${identity}\n\n${rules}\n\n${memoryContext}\n\n${verification}\n\n${modelAdditions}${reasoningDirective}`,
+        hashStablePromptInput({
+          identity,
+          rules,
+          memoryContext,
+          verification,
+          modelAdditions,
+          reasoningDirective,
+        }),
+        () =>
+          `${identity}\n\n${rules}\n\n${memoryContext}\n\n${verification}\n\n${modelAdditions}${reasoningDirective}`,
       );
 
       const volatileSuffix = `${this.buildToolListSection(toolList)}\n\n---\n${safeWorkspaceContext}\n\n${this.buildWorkspaceMemorySection()}\n\n${this.buildTemporalContextSection()}`;
@@ -115,8 +128,15 @@ export class SystemPromptBuilderService {
       : '(No active Knowledge Base)';
 
     const stablePrefix = cacheStablePromptPrefix(
-      hashStablePromptInput({ identity, rules, knowledgeBuilder, modelAdditions, reasoningDirective }),
-      () => `${identity}\n\n${rules}\n\n${knowledgeBuilder}\n\n${modelAdditions}${reasoningDirective}`,
+      hashStablePromptInput({
+        identity,
+        rules,
+        knowledgeBuilder,
+        modelAdditions,
+        reasoningDirective,
+      }),
+      () =>
+        `${identity}\n\n${rules}\n\n${knowledgeBuilder}\n\n${modelAdditions}${reasoningDirective}`,
     );
 
     const volatileSuffix = `${this.buildToolListSection(toolList)}\n\n---\n${posturePrompt}\n\n## Knowledge Graph Map\n${safeKnowledgeContext}\n\n${this.buildTemporalContextSection()}`;
@@ -131,22 +151,28 @@ export class SystemPromptBuilderService {
   }
 
   buildToolListSummary(tools?: any[]): string {
-    const includedNames = tools ? new Set(tools.map(t => t.function?.name || t.name)) : null;
+    const includedNames = tools
+      ? new Set(tools.map((t) => t.function?.name || t.name))
+      : null;
     let caps = this.toolRegistryService?.getToolCapabilities();
     if (includedNames && caps) {
-      caps = caps.filter(c => includedNames.has(c.name));
+      caps = caps.filter((c) => includedNames.has(c.name));
     }
     if (!caps || caps.length === 0) {
       return '';
     }
-    return caps.map(c => `- \`${c.name}\`: ${c.description || ''}`).join('\n');
+    return caps
+      .map((c) => `- \`${c.name}\`: ${c.description || ''}`)
+      .join('\n');
   }
 
   checkPromptBudget(prompt: string, contextLabel: string): void {
     try {
       const tokens = this.enc.encode(prompt).length;
       if (tokens > 4000) {
-        this.logger.warn(`[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 4K threshold.`);
+        this.logger.warn(
+          `[PROMPT BUDGET] ${contextLabel}: ${tokens} tokens — exceeds 4K threshold.`,
+        );
       }
     } catch {}
   }
@@ -159,10 +185,22 @@ export class SystemPromptBuilderService {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
 
-    const dayIndo = new Intl.DateTimeFormat('id-ID', { weekday: 'long' }).format(now);
-    const dayEng = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
-    const dateFormattedIndo = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
-    const dateFormattedEng = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+    const dayIndo = new Intl.DateTimeFormat('id-ID', {
+      weekday: 'long',
+    }).format(now);
+    const dayEng = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(
+      now,
+    );
+    const dateFormattedIndo = new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(now);
+    const dateFormattedEng = new Intl.DateTimeFormat('en-US', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(now);
 
     const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())} WIB`;
@@ -181,7 +219,8 @@ export class SystemPromptBuilderService {
    */
   private buildReasoningDirective(): string {
     if (process.env.ARUNAKI_CONCISE_REASONING === 'false') return '';
-    if ((process.env.ARUNAKI_REASONING_EFFORT || '').toLowerCase() === 'off') return '';
+    if ((process.env.ARUNAKI_REASONING_EFFORT || '').toLowerCase() === 'off')
+      return '';
     return `\n\n[REASONING EFFORT: LOW]
 - Keep internal reasoning extremely concise (under 30-50 words).
 - Do not write lengthy step-by-step deliberations in reasoning.

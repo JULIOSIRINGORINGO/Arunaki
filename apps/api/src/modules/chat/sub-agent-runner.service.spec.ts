@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SubAgentRunnerService, SubAgentTask } from './sub-agent-runner.service.js';
+import {
+  SubAgentRunnerService,
+  SubAgentTask,
+} from './sub-agent-runner.service.js';
 
 describe('SubAgentRunnerService', () => {
   let service: SubAgentRunnerService;
@@ -12,11 +15,13 @@ describe('SubAgentRunnerService', () => {
       chat: vi.fn(),
     };
     mockToolRegistry = {
-      getToolDefinitions: vi.fn().mockReturnValue([
-        { function: { name: 'read' } },
-        { function: { name: 'calculate' } },
-        { function: { name: 'generate_export' } },
-      ]),
+      getToolDefinitions: vi
+        .fn()
+        .mockReturnValue([
+          { function: { name: 'read' } },
+          { function: { name: 'calculate' } },
+          { function: { name: 'generate_export' } },
+        ]),
     };
     mockSelfHealing = {
       executeWithIsolation: vi.fn(),
@@ -80,7 +85,11 @@ describe('SubAgentRunnerService', () => {
       status: 'success',
       data: { rows: 50 },
       preview: 'Reading data.xlsx — 50 rows',
-      metadata: { toolName: 'read', displayName: 'Read File', executionTime: 120 },
+      metadata: {
+        toolName: 'read',
+        displayName: 'Read File',
+        executionTime: 120,
+      },
     });
 
     const task: SubAgentTask = {
@@ -101,7 +110,7 @@ describe('SubAgentRunnerService', () => {
     expect(mockSelfHealing.executeWithIsolation).toHaveBeenCalledWith(
       'read',
       { path: 'data.xlsx' },
-      'ws-123'
+      'ws-123',
     );
   });
 
@@ -114,9 +123,21 @@ describe('SubAgentRunnerService', () => {
     });
 
     const tasks: SubAgentTask[] = [
-      { taskId: 'p1', taskName: 'Read PDF 1', taskDescription: 'Read invoice-1.pdf' },
-      { taskId: 'p2', taskName: 'Read PDF 2', taskDescription: 'Read invoice-2.pdf' },
-      { taskId: 'p3', taskName: 'Read PDF 3', taskDescription: 'Read invoice-3.pdf' },
+      {
+        taskId: 'p1',
+        taskName: 'Read PDF 1',
+        taskDescription: 'Read invoice-1.pdf',
+      },
+      {
+        taskId: 'p2',
+        taskName: 'Read PDF 2',
+        taskDescription: 'Read invoice-2.pdf',
+      },
+      {
+        taskId: 'p3',
+        taskName: 'Read PDF 3',
+        taskDescription: 'Read invoice-3.pdf',
+      },
     ];
 
     const results = await service.spawnParallel(tasks);

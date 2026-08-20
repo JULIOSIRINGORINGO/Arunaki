@@ -60,22 +60,44 @@ export class BusinessDomainToolsRegistrar {
         displayName: 'Read Document',
         description:
           'Reads document files (.xlsx, .xlsm, .docx, .pdf, .csv) and extracts structured text. For Excel spreadsheets, reads the target or current month sheet and lists available sheet names.',
-        tags: ['read', 'document', 'file', 'pdf', 'docx', 'excel', 'xlsx', 'xlsm', 'csv'],
+        tags: [
+          'read',
+          'document',
+          'file',
+          'pdf',
+          'docx',
+          'excel',
+          'xlsx',
+          'xlsm',
+          'csv',
+        ],
         handler: async (args) => {
           try {
-            const rawPath = args.filePath || args.path || args.filename || args.file;
-            const safePath = await services.workspaceToolsService.resolveWithinWorkspace(
-              args.workspaceId,
-              rawPath,
+            const rawPath =
+              args.filePath || args.path || args.filename || args.file;
+            const safePath =
+              await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                rawPath,
+              );
+            return await services.documentReaderTool.readDocument(
+              safePath,
+              args.sheetName,
             );
-            return await services.documentReaderTool.readDocument(safePath, args.sheetName);
           } catch (err: any) {
             return {
               status: 'error',
               data: {},
               preview: `Access denied: ${err.message}`,
-              metadata: { toolName: 'document_reader', displayName: 'Read Document', executionTime: 0 },
-              error: { code: 'WORKSPACE_ISOLATION_VIOLATION', message: err.message },
+              metadata: {
+                toolName: 'document_reader',
+                displayName: 'Read Document',
+                executionTime: 0,
+              },
+              error: {
+                code: 'WORKSPACE_ISOLATION_VIOLATION',
+                message: err.message,
+              },
             };
           }
         },
@@ -83,10 +105,14 @@ export class BusinessDomainToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Path to document file within workspace' },
+            filePath: {
+              type: 'string',
+              description: 'Path to document file within workspace',
+            },
             sheetName: {
               type: 'string',
-              description: 'Target worksheet name (optional, e.g. "AGUSTUS"). If omitted, auto-selects current month or active sheet.',
+              description:
+                'Target worksheet name (optional, e.g. "AGUSTUS"). If omitted, auto-selects current month or active sheet.',
             },
           },
           required: ['filePath'],
@@ -102,7 +128,8 @@ export class BusinessDomainToolsRegistrar {
         description: 'Real-time database query. SELECT queries only.',
         tags: ['database', 'query', 'sql'],
         handler: async (args) => {
-          if (args.action === 'list_tables') return services.dataQueryTool.listTables();
+          if (args.action === 'list_tables')
+            return services.dataQueryTool.listTables();
           if (args.action === 'describe_table' && args.tableName)
             return services.dataQueryTool.describeTable(args.tableName);
           return services.dataQueryTool.queryData(args.sql || '');
@@ -110,7 +137,10 @@ export class BusinessDomainToolsRegistrar {
         parameters: {
           type: 'object',
           properties: {
-            action: { type: 'string', enum: ['query', 'list_tables', 'describe_table'] },
+            action: {
+              type: 'string',
+              enum: ['query', 'list_tables', 'describe_table'],
+            },
             sql: { type: 'string' },
             tableName: { type: 'string' },
           },
@@ -124,19 +154,38 @@ export class BusinessDomainToolsRegistrar {
       ToolAdapter.from({
         name: 'generate_export',
         displayName: 'Export Document',
-        description: 'Converts structured data into Excel, CSV, PDF, Word, or PPTX.',
-        tags: ['export', 'document', 'excel', 'pdf', 'word', 'powerpoint', 'docx'],
+        description:
+          'Converts structured data into Excel, CSV, PDF, Word, or PPTX.',
+        tags: [
+          'export',
+          'document',
+          'excel',
+          'pdf',
+          'word',
+          'powerpoint',
+          'docx',
+        ],
         mutating: true,
         handler: async (args) => {
-          const { format, filename, title, sheetName, data, content, slides, outputPath } = args;
+          const {
+            format,
+            filename,
+            title,
+            sheetName,
+            data,
+            content,
+            slides,
+            outputPath,
+          } = args;
           let safePath: string | undefined;
           const targetName = filename || outputPath || `document.${format}`;
           if (args.workspaceId) {
             try {
-              safePath = await services.workspaceToolsService.resolveWithinWorkspace(
-                args.workspaceId,
-                targetName,
-              );
+              safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  targetName,
+                );
             } catch {
               safePath = targetName;
             }
@@ -144,22 +193,57 @@ export class BusinessDomainToolsRegistrar {
             safePath = targetName;
           }
 
-          if (format === 'xlsx') return services.documentGeneratorTool.generateExcel(sheetName || 'Sheet1', data || [], targetName, safePath);
-          if (format === 'csv') return services.documentGeneratorTool.generateCsv(data || [], targetName, safePath);
-          if (format === 'pdf') return services.documentGeneratorTool.generatePdf(title || 'Document', content || '', targetName, safePath);
-          if (format === 'docx') return services.documentGeneratorTool.generateDocx(title || 'Document', content || '', targetName, safePath);
-          if (format === 'pptx') return services.documentGeneratorTool.generatePptx(title || 'Presentation', slides || [], targetName);
+          if (format === 'xlsx')
+            return services.documentGeneratorTool.generateExcel(
+              sheetName || 'Sheet1',
+              data || [],
+              targetName,
+              safePath,
+            );
+          if (format === 'csv')
+            return services.documentGeneratorTool.generateCsv(
+              data || [],
+              targetName,
+              safePath,
+            );
+          if (format === 'pdf')
+            return services.documentGeneratorTool.generatePdf(
+              title || 'Document',
+              content || '',
+              targetName,
+              safePath,
+            );
+          if (format === 'docx')
+            return services.documentGeneratorTool.generateDocx(
+              title || 'Document',
+              content || '',
+              targetName,
+              safePath,
+            );
+          if (format === 'pptx')
+            return services.documentGeneratorTool.generatePptx(
+              title || 'Presentation',
+              slides || [],
+              targetName,
+            );
           return {
             status: 'error',
             data: {},
             preview: `Format "${format}" is not supported.`,
-            metadata: { toolName: 'generate_export', displayName: 'Export Document', executionTime: 0 },
+            metadata: {
+              toolName: 'generate_export',
+              displayName: 'Export Document',
+              executionTime: 0,
+            },
           };
         },
         parameters: {
           type: 'object',
           properties: {
-            format: { type: 'string', enum: ['xlsx', 'csv', 'pdf', 'docx', 'pptx'] },
+            format: {
+              type: 'string',
+              enum: ['xlsx', 'csv', 'pdf', 'docx', 'pptx'],
+            },
             filename: { type: 'string' },
             title: { type: 'string' },
             sheetName: { type: 'string' },
@@ -178,21 +262,24 @@ export class BusinessDomainToolsRegistrar {
       ToolAdapter.from({
         name: 'convert_document',
         displayName: 'Convert Document',
-        description: 'Converts existing documents in the workspace between formats (e.g. Word to PDF, Excel to PDF/CSV, Text to PDF/Word).',
+        description:
+          'Converts existing documents in the workspace between formats (e.g. Word to PDF, Excel to PDF/CSV, Text to PDF/Word).',
         tags: ['convert', 'document', 'pdf', 'docx', 'excel', 'csv', 'export'],
         mutating: true,
         handler: async (args) => {
           try {
-            const safeSourcePath = await services.workspaceToolsService.resolveWithinWorkspace(
-              args.workspaceId,
-              args.sourcePath || args.filePath || args.filename,
-            );
+            const safeSourcePath =
+              await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                args.sourcePath || args.filePath || args.filename,
+              );
             let safeOutputPath: string | undefined;
             if (args.outputPath || args.targetFilename) {
-              safeOutputPath = await services.workspaceToolsService.resolveWithinWorkspace(
-                args.workspaceId,
-                args.outputPath || args.targetFilename,
-              );
+              safeOutputPath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.outputPath || args.targetFilename,
+                );
             }
             return await services.documentConverterTool.convertDocument({
               sourcePath: safeSourcePath,
@@ -204,7 +291,11 @@ export class BusinessDomainToolsRegistrar {
               status: 'error',
               data: {},
               preview: `Document conversion failed: ${err.message}`,
-              metadata: { toolName: 'convert_document', displayName: 'Convert Document', executionTime: 0 },
+              metadata: {
+                toolName: 'convert_document',
+                displayName: 'Convert Document',
+                executionTime: 0,
+              },
               error: { code: 'CONVERSION_ERROR', message: err.message },
             };
           }
@@ -212,9 +303,21 @@ export class BusinessDomainToolsRegistrar {
         parameters: {
           type: 'object',
           properties: {
-            sourcePath: { type: 'string', description: 'Source file name or path in workspace (e.g. invoice.docx)' },
-            targetFormat: { type: 'string', enum: ['pdf', 'docx', 'xlsx', 'csv', 'txt'], description: 'Desired target format (e.g. pdf)' },
-            outputPath: { type: 'string', description: 'Optional custom output file name or path (e.g. invoice.pdf)' },
+            sourcePath: {
+              type: 'string',
+              description:
+                'Source file name or path in workspace (e.g. invoice.docx)',
+            },
+            targetFormat: {
+              type: 'string',
+              enum: ['pdf', 'docx', 'xlsx', 'csv', 'txt'],
+              description: 'Desired target format (e.g. pdf)',
+            },
+            outputPath: {
+              type: 'string',
+              description:
+                'Optional custom output file name or path (e.g. invoice.pdf)',
+            },
           },
           required: ['sourcePath', 'targetFormat'],
         },
@@ -253,7 +356,8 @@ export class BusinessDomainToolsRegistrar {
       ToolAdapter.from({
         name: 'unit_converter',
         displayName: 'Convert Units',
-        description: 'Converts currency, length, weight, area, and volume units.',
+        description:
+          'Converts currency, length, weight, area, and volume units.',
         tags: ['convert', 'unit', 'currency'],
         handler: (args) =>
           services.unitConverterTool.convert({

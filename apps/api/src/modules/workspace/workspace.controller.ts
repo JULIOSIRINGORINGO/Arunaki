@@ -117,7 +117,10 @@ export class WorkspaceController {
     @Body() body: { folderPath: string },
   ) {
     try {
-      const result = await this.workspaceService.connectFolder(id, body.folderPath);
+      const result = await this.workspaceService.connectFolder(
+        id,
+        body.folderPath,
+      );
       return successResponse(result);
     } catch (error) {
       return errorResponse('CONNECT_FOLDER_FAILED', error.message);
@@ -204,7 +207,12 @@ export class WorkspaceController {
   async streamAgentGenerator(
     @Param('id') id: string,
     @Body()
-    body: { goal: string; historyMessages?: any[]; modelId?: string; sessionId?: string },
+    body: {
+      goal: string;
+      historyMessages?: any[];
+      modelId?: string;
+      sessionId?: string;
+    },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -263,10 +271,7 @@ export class WorkspaceController {
   }
 
   @Post(':id/agent/steer')
-  async steerAgent(
-    @Param('id') id: string,
-    @Body() body: { message: string },
-  ) {
+  async steerAgent(@Param('id') id: string, @Body() body: { message: string }) {
     try {
       const queued = this.workspaceRunnerService.addSteeringInput(
         id,
@@ -336,8 +341,14 @@ export class WorkspaceController {
       if (!ws || !ws.rootPath) {
         return errorResponse('NOT_FOUND', 'Workspace not found');
       }
-      const events = await this.transcriptEngineService.getTranscript(ws.rootPath, sessionId);
-      const checkpoints = await this.transcriptEngineService.getCheckpoints(ws.rootPath, sessionId);
+      const events = await this.transcriptEngineService.getTranscript(
+        ws.rootPath,
+        sessionId,
+      );
+      const checkpoints = await this.transcriptEngineService.getCheckpoints(
+        ws.rootPath,
+        sessionId,
+      );
       return successResponse({
         sessionId,
         workspaceId: id,
@@ -358,7 +369,11 @@ export class WorkspaceController {
     @Body() body: { targetCheckpointId?: string; targetSequence?: number } = {},
   ) {
     try {
-      const result = await this.timeTravelService.rollbackSession(id, sessionId, body);
+      const result = await this.timeTravelService.rollbackSession(
+        id,
+        sessionId,
+        body,
+      );
       return successResponse(result);
     } catch (error) {
       return errorResponse('ROLLBACK_FAILED', error.message);

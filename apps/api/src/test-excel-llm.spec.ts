@@ -26,21 +26,24 @@ describe('Test LLM Reading Excel', () => {
     if (!workspace) throw new Error('No workspace');
 
     const chat = await prisma.chatHistory.create({
-      data: { title: 'Test Excel LLM', workspaceId: workspace.id }
+      data: { title: 'Test Excel LLM', workspaceId: workspace.id },
     });
 
-    console.log('\n💬 Prompt: "Please read testing.xlsx and show the first 3 customers with their amounts."');
-    
+    console.log(
+      '\n💬 Prompt: "Please read testing.xlsx and show the first 3 customers with their amounts."',
+    );
+
     const agentResult = await agentRunner.runAgentSync({
       chatId: chat.id,
-      userContent: 'Please read file testing.xlsx and show the first 3 customers with their amounts accurately.',
+      userContent:
+        'Please read file testing.xlsx and show the first 3 customers with their amounts accurately.',
       chatMode: 'workspace',
       historyMessages: [],
-      idempotencyKey: 'test-excel-llm-' + Date.now()
+      idempotencyKey: 'test-excel-llm-' + Date.now(),
     });
-    
+
     console.log('\n\n🤖 ==== RESPONS ASLI DARI ARUNAKI ==== 🤖');
     console.log(agentResult.content);
     console.log('============================================\n\n');
-  }, 90000); 
+  }, 90000);
 });

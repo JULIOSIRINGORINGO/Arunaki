@@ -65,7 +65,8 @@ export class PtcExecutorService {
       if (options.atomic && workspaceRoot) {
         for (const op of operations) {
           if (this.toolRegistry.isMutating(op.tool)) {
-            const rawPath = op.args?.filePath || op.args?.path || op.args?.filename;
+            const rawPath =
+              op.args?.filePath || op.args?.path || op.args?.filename;
             if (rawPath) {
               const fullPath = path.isAbsolute(rawPath)
                 ? rawPath
@@ -74,9 +75,13 @@ export class PtcExecutorService {
                 try {
                   const original = fs.readFileSync(fullPath, 'utf-8');
                   snapshots.set(fullPath, original);
-                  this.logger.debug(`[PTC] 📸 Snapshot created for ${path.basename(fullPath)}`);
+                  this.logger.debug(
+                    `[PTC] 📸 Snapshot created for ${path.basename(fullPath)}`,
+                  );
                 } catch (snapErr) {
-                  this.logger.warn(`[PTC] Could not create snapshot for ${fullPath}: ${snapErr}`);
+                  this.logger.warn(
+                    `[PTC] Could not create snapshot for ${fullPath}: ${snapErr}`,
+                  );
                 }
               }
             }
@@ -90,9 +95,14 @@ export class PtcExecutorService {
         const stepNum = i + 1;
         const enrichedArgs = { ...op.args, workspaceId };
 
-        this.logger.log(`[PTC] ▶️ Step ${stepNum}/${operations.length}: Executing "${op.tool}"`);
+        this.logger.log(
+          `[PTC] ▶️ Step ${stepNum}/${operations.length}: Executing "${op.tool}"`,
+        );
 
-        const toolResult: ToolResult = await this.toolRegistry.executeTool(op.tool, enrichedArgs);
+        const toolResult: ToolResult = await this.toolRegistry.executeTool(
+          op.tool,
+          enrichedArgs,
+        );
 
         if (toolResult.status === 'success') {
           results.push({
@@ -115,7 +125,9 @@ export class PtcExecutorService {
             status: 'error',
             error: errorMsg,
           });
-          this.logger.warn(`[PTC] ⚠️ Step ${stepNum} ("${op.tool}") failed: ${errorMsg}`);
+          this.logger.warn(
+            `[PTC] ⚠️ Step ${stepNum} ("${op.tool}") failed: ${errorMsg}`,
+          );
 
           if (options.atomic) {
             // Atomic mode: abort on first failure
@@ -127,21 +139,33 @@ export class PtcExecutorService {
       // Step 3: Handle Rollback if atomic and error occurred
       let rolledBack = false;
       if (hadError && options.atomic && snapshots.size > 0) {
-        this.logger.warn(`[PTC] 🔄 Rolling back ${snapshots.size} file(s) due to batch failure...`);
+        this.logger.warn(
+          `[PTC] 🔄 Rolling back ${snapshots.size} file(s) due to batch failure...`,
+        );
         for (const [filePath, originalContent] of snapshots.entries()) {
           try {
             fs.writeFileSync(filePath, originalContent, 'utf-8');
-            this.logger.log(`[PTC] ⏪ Restored ${path.basename(filePath)} to snapshot state.`);
+            this.logger.log(
+              `[PTC] ⏪ Restored ${path.basename(filePath)} to snapshot state.`,
+            );
           } catch (restoreErr) {
-            this.logger.error(`[PTC] ❌ Failed to restore ${filePath}: ${restoreErr}`);
+            this.logger.error(
+              `[PTC] ❌ Failed to restore ${filePath}: ${restoreErr}`,
+            );
           }
         }
         rolledBack = true;
       }
 
-      const completedCount = results.filter((r) => r.status === 'success').length;
+      const completedCount = results.filter(
+        (r) => r.status === 'success',
+      ).length;
       return {
-        status: !hadError ? 'success' : rolledBack ? 'error' : 'partial_failure',
+        status: !hadError
+          ? 'success'
+          : rolledBack
+            ? 'error'
+            : 'partial_failure',
         totalSteps: operations.length,
         completedSteps: completedCount,
         results,
@@ -153,7 +177,10 @@ export class PtcExecutorService {
             : `Batch completed with errors (${completedCount}/${operations.length} succeeded).`,
       };
     } catch (err: any) {
-      this.logger.error(`[PTC] Fatal error during batch execution: ${err.message}`, err.stack);
+      this.logger.error(
+        `[PTC] Fatal error during batch execution: ${err.message}`,
+        err.stack,
+      );
       return {
         status: 'error',
         totalSteps: operations.length,

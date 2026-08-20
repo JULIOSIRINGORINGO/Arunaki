@@ -3,10 +3,17 @@ import { ToolRegistryService } from '../../tools/tool-registry.service.js';
 import { SelfHealingService } from '../../ai/self-healing.service.js';
 import { ArtifactService } from '../../artifact/artifact.service.js';
 import { TranscriptEngineService } from './transcript-engine.service.js';
-import { WorkspaceRunStateService, WorkspaceStreamEvent, WorkspaceRunState } from './workspace-run-state.service.js';
+import {
+  WorkspaceRunStateService,
+  WorkspaceStreamEvent,
+  WorkspaceRunState,
+} from './workspace-run-state.service.js';
 import { ToolResultFormatter } from '../../tools/utils/tool-result-formatter.js';
 import { ToolResult } from '../../tools/interfaces/tool-result.interface.js';
-import { extractLooseArguments, hasExplicitDeleteIntent } from '../utils/tool-call-extractor.util.js';
+import {
+  extractLooseArguments,
+  hasExplicitDeleteIntent,
+} from '../utils/tool-call-extractor.util.js';
 import * as path from 'path';
 
 const VERIFY_TAIL_MS = 90_000;
@@ -78,12 +85,18 @@ export class WorkspaceToolExecutorService {
       ['search_workspace', 'read', 'list'].includes(tc.function?.name),
     );
     const hasWriteTools = toolCalls.some((tc) =>
-      ['write', 'generate_export', 'draft_communication', 'edit', 'delete', 'rename'].includes(
-        tc.function?.name,
-      ),
+      [
+        'write',
+        'generate_export',
+        'draft_communication',
+        'edit',
+        'delete',
+        'rename',
+      ].includes(tc.function?.name),
     );
     if (hasReadTools) this.stateService.setPhase(runState, 'reading', onEvent);
-    if (hasWriteTools) this.stateService.setPhase(runState, 'generating', onEvent);
+    if (hasWriteTools)
+      this.stateService.setPhase(runState, 'generating', onEvent);
 
     const declaredTools = new Set(tools.map((t) => t.function?.name || ''));
     declaredTools.add('ask_user');
@@ -110,12 +123,15 @@ export class WorkspaceToolExecutorService {
         try {
           args = JSON.parse(rawArgs);
         } catch {
-          const cleaned = rawArgs.replace(/[\u0000-\u001F]+/g, (match: string) => {
-            if (match === '\n') return '\\n';
-            if (match === '\r') return '\\r';
-            if (match === '\t') return '\\t';
-            return '';
-          });
+          const cleaned = rawArgs.replace(
+            /[\u0000-\u001F]+/g,
+            (match: string) => {
+              if (match === '\n') return '\\n';
+              if (match === '\r') return '\\r';
+              if (match === '\t') return '\\t';
+              return '';
+            },
+          );
           args = JSON.parse(cleaned);
         }
       } catch {
@@ -130,7 +146,11 @@ export class WorkspaceToolExecutorService {
           );
         }
       }
-      if (Object.keys(args).length === 0 && rawArgsRaw.length > 0 && rawArgsRaw !== '{}') {
+      if (
+        Object.keys(args).length === 0 &&
+        rawArgsRaw.length > 0 &&
+        rawArgsRaw !== '{}'
+      ) {
         args = extractLooseArguments(rawArgsRaw);
       }
 
@@ -210,7 +230,8 @@ export class WorkspaceToolExecutorService {
           mutationsApplied,
           noProgressRounds,
           concludeRun: true,
-          concludeContent: 'Document changes successfully applied and verified.',
+          concludeContent:
+            'Document changes successfully applied and verified.',
         };
       }
     }
@@ -243,12 +264,12 @@ export class WorkspaceToolExecutorService {
           const artifact = await this.artifactService.createFromAgent({
             workspaceId,
             type:
-              result.metadata.format === 'xlsx' || result.metadata.format === 'csv'
+              result.metadata.format === 'xlsx' ||
+              result.metadata.format === 'csv'
                 ? 'spreadsheet'
                 : 'document',
             name:
-              result.metadata.filename ||
-              `workspace-output-${Date.now()}.file`,
+              result.metadata.filename || `workspace-output-${Date.now()}.file`,
             mimeType: result.metadata.mimeType || 'application/octet-stream',
             contentBase64: result.metadata.contentBase64,
             preview: result.preview,
@@ -272,13 +293,17 @@ export class WorkspaceToolExecutorService {
           },
         });
 
-        if (['search_workspace', 'read', 'list'].includes(toolCall.function.name)) {
+        if (
+          ['search_workspace', 'read', 'list'].includes(toolCall.function.name)
+        ) {
           this.stateService.trackReadFile(
             workspaceId,
             args.filename || args.path || 'unknown',
           );
           if (result.status === 'success') {
-            const rf = String(args.filename || args.path || args.filePath || '');
+            const rf = String(
+              args.filename || args.path || args.filePath || '',
+            );
             if (rf) touchedFiles.add(path.basename(rf).toLowerCase());
           }
         }
@@ -286,7 +311,10 @@ export class WorkspaceToolExecutorService {
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: ToolResultFormatter.formatForLlm(toolCall.function.name, result),
+          content: ToolResultFormatter.formatForLlm(
+            toolCall.function.name,
+            result,
+          ),
         });
       }
     }
@@ -316,14 +344,19 @@ export class WorkspaceToolExecutorService {
           (name) => path.basename(name).toLowerCase() === targetBasename,
         );
         if (mentionedFiles.size > 0 && funcName === 'write' && !isMentioned) {
-          throw new Error('A file referenced with @ must be the update target.');
+          throw new Error(
+            'A file referenced with @ must be the update target.',
+          );
         }
         if (isMentioned && ['delete', 'rename'].includes(funcName)) {
           throw new Error(
             'Files referenced with @ cannot be deleted or renamed during an edit run.',
           );
         }
-        if (funcName === 'delete' && !hasExplicitDeleteIntent(safeGoal, rawTargetName)) {
+        if (
+          funcName === 'delete' &&
+          !hasExplicitDeleteIntent(safeGoal, rawTargetName)
+        ) {
           throw new Error(
             'Deletion denied: the instruction must explicitly ask to delete and name the target file.',
           );
@@ -391,12 +424,12 @@ export class WorkspaceToolExecutorService {
           if (result.status === 'success') {
             this.transcriptEngine
               .appendEvent(workspaceRootPath, sessionId, 'file_snapshot_post', {
-              tool: funcName,
-              filePath: rawTargetName,
-              snapshotContent: postSnapshot,
-              timestamp: new Date().toISOString(),
-            })
-            .catch(() => {});
+                tool: funcName,
+                filePath: rawTargetName,
+                snapshotContent: postSnapshot,
+                timestamp: new Date().toISOString(),
+              })
+              .catch(() => {});
           }
         }
       } catch (e: any) {
@@ -423,7 +456,8 @@ export class WorkspaceToolExecutorService {
         const artifact = await this.artifactService.createFromAgent({
           workspaceId,
           type:
-            result.metadata.format === 'xlsx' || result.metadata.format === 'csv'
+            result.metadata.format === 'xlsx' ||
+            result.metadata.format === 'csv'
               ? 'spreadsheet'
               : 'document',
           name:
@@ -450,7 +484,8 @@ export class WorkspaceToolExecutorService {
 
       if (result.status === 'success') {
         mutationsApplied++;
-        const filename = args.filename || args.path || args.filePath || 'unknown';
+        const filename =
+          args.filename || args.path || args.filePath || 'unknown';
         const fname = String(filename);
         if (fname && fname !== 'unknown') {
           touchedFiles.add(path.basename(fname).toLowerCase());

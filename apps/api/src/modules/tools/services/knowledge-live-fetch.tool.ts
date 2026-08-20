@@ -32,14 +32,24 @@ export class KnowledgeLiveFetchTool implements Tool {
       name: this.name,
       displayName: this.displayName,
       description: this.description,
-      tags: ['knowledge', 'live', 'fetch', 'web', 'catalog', 'price', 'docs', 'url'],
+      tags: [
+        'knowledge',
+        'live',
+        'fetch',
+        'web',
+        'catalog',
+        'price',
+        'docs',
+        'url',
+      ],
       inputSchema: {
         url: 'The URL to fetch content from',
         format: 'Format to return: "markdown" (default), "text", or "html"',
         timeout: 'Optional timeout in seconds (max 120)',
         query: 'Optional search context for knowledge resolution',
         workspaceId: 'Optional workspace identifier',
-        browser: 'Set true to render with a real browser (needed for JS-only content)',
+        browser:
+          'Set true to render with a real browser (needed for JS-only content)',
       },
       outputType: 'markdown' as const,
       estimatedLatency: 'fast' as const,
@@ -61,16 +71,19 @@ export class KnowledgeLiveFetchTool implements Tool {
           properties: {
             url: {
               type: 'string',
-              description: 'The URL to fetch content from (must start with http:// or https://)',
+              description:
+                'The URL to fetch content from (must start with http:// or https://)',
             },
             format: {
               type: 'string',
               enum: ['markdown', 'text', 'html'],
-              description: 'Format to return the content in. Defaults to markdown.',
+              description:
+                'Format to return the content in. Defaults to markdown.',
             },
             timeout: {
               type: 'number',
-              description: 'Optional timeout in seconds (max 120). Default: 30.',
+              description:
+                'Optional timeout in seconds (max 120). Default: 30.',
             },
             query: {
               type: 'string',
@@ -78,11 +91,13 @@ export class KnowledgeLiveFetchTool implements Tool {
             },
             workspaceId: {
               type: 'string',
-              description: 'Optional workspace ID to resolve registered Knowledge links.',
+              description:
+                'Optional workspace ID to resolve registered Knowledge links.',
             },
             browser: {
               type: 'boolean',
-              description: 'Set true to render with a real browser (Playwright). Needed for JS-only content.',
+              description:
+                'Set true to render with a real browser (Playwright). Needed for JS-only content.',
             },
           },
           required: ['url'],
@@ -101,7 +116,13 @@ export class KnowledgeLiveFetchTool implements Tool {
 
   async execute(args: Record<string, any>): Promise<ToolResult> {
     const startTime = Date.now();
-    const { url: explicitUrl, format = 'markdown', timeout, query = '', workspaceId } = args;
+    const {
+      url: explicitUrl,
+      format = 'markdown',
+      timeout,
+      query = '',
+      workspaceId,
+    } = args;
 
     if (!explicitUrl || typeof explicitUrl !== 'string') {
       return {
@@ -117,7 +138,10 @@ export class KnowledgeLiveFetchTool implements Tool {
       };
     }
 
-    if (!explicitUrl.startsWith('http://') && !explicitUrl.startsWith('https://')) {
+    if (
+      !explicitUrl.startsWith('http://') &&
+      !explicitUrl.startsWith('https://')
+    ) {
       return {
         status: 'error',
         data: {},
@@ -127,12 +151,17 @@ export class KnowledgeLiveFetchTool implements Tool {
           displayName: this.displayName,
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'INVALID_URL', message: 'URL must start with http:// or https://' },
+        error: {
+          code: 'INVALID_URL',
+          message: 'URL must start with http:// or https://',
+        },
       };
     }
 
     try {
-      this.logger.log(`[KnowledgeLiveFetch] Fetching: ${explicitUrl} (format: ${format})`);
+      this.logger.log(
+        `[KnowledgeLiveFetch] Fetching: ${explicitUrl} (format: ${format})`,
+      );
 
       const result = await this.crawlerService.fetchLiveKnowledge({
         url: explicitUrl,

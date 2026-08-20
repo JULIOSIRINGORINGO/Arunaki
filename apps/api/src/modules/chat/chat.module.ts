@@ -43,6 +43,15 @@ import { ProviderModule } from '../provider/provider.module.js';
     SubAgentRunnerService,
     HarnessRegistryService,
   ],
-  exports: [ChatHistoryService, MessageService, AgentRunnerService, SessionAdmissionService, UserTurnTranscriptService, SessionStateEventsService, SubAgentRunnerService, HarnessRegistryService],
+  exports: [
+    ChatHistoryService,
+    MessageService,
+    AgentRunnerService,
+    SessionAdmissionService,
+    UserTurnTranscriptService,
+    SessionStateEventsService,
+    SubAgentRunnerService,
+    HarnessRegistryService,
+  ],
 })
 export class ChatModule {}

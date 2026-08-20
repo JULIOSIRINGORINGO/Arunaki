@@ -81,7 +81,11 @@ describe('tool call repair integration', () => {
                 finish_reason: 'stop',
               },
             ],
-            usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 10,
+              total_tokens: 20,
+            },
           }),
         ),
       )
@@ -102,7 +106,11 @@ describe('tool call repair integration', () => {
                 finish_reason: 'stop',
               },
             ],
-            usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 10,
+              total_tokens: 20,
+            },
           }),
         ),
       );
@@ -155,11 +163,17 @@ describe('tool call repair integration', () => {
     const assistant = followUp.messages.find(
       (message: any) => message.role === 'assistant',
     );
-    const tool = followUp.messages.find((message: any) => message.role === 'tool');
+    const tool = followUp.messages.find(
+      (message: any) => message.role === 'tool',
+    );
     expect(assistant).toBeDefined();
     expect(tool).toBeDefined();
-    const toolContent = Array.isArray(tool?.content) ? tool?.content[0]?.output?.value : tool?.content;
-    expect(typeof toolContent === 'string' ? JSON.parse(toolContent) : toolContent).toMatchObject({
+    const toolContent = Array.isArray(tool?.content)
+      ? tool?.content[0]?.output?.value
+      : tool?.content;
+    expect(
+      typeof toolContent === 'string' ? JSON.parse(toolContent) : toolContent,
+    ).toMatchObject({
       status: 'success',
       data: { content: 'Isi file laporan' },
     });

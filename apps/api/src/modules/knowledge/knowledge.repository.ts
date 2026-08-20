@@ -4,7 +4,10 @@ import { PrismaBaseRepository } from '../../common/providers/prisma-base.reposit
 import { PrismaService } from '../../common/providers/prisma.service.js';
 
 @Injectable()
-export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> implements OnModuleInit {
+export class KnowledgeRepository
+  extends PrismaBaseRepository<Knowledge>
+  implements OnModuleInit
+{
   protected readonly model: any;
 
   constructor(@Inject(PrismaService) protected readonly prisma: PrismaService) {
@@ -15,7 +18,7 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
   async onModuleInit() {
     try {
       const existing = await this.prisma.knowledge.findUnique({
-        where: { id: 'main-ai-node' }
+        where: { id: 'main-ai-node' },
       });
       if (!existing) {
         await this.prisma.knowledge.create({
@@ -27,7 +30,7 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
             active: true,
             nodeColor: '#10b981',
             icon: 'bot',
-          }
+          },
         });
       }
     } catch (error) {
@@ -57,14 +60,20 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
   }
 
   // ─── Canvas position ─────────────────────────────────
-  async updatePosition(id: string, positionX: number, positionY: number): Promise<Knowledge> {
+  async updatePosition(
+    id: string,
+    positionX: number,
+    positionY: number,
+  ): Promise<Knowledge> {
     return this.prisma.knowledge.update({
       where: { id },
       data: { positionX, positionY },
     });
   }
 
-  async updatePositions(positions: Array<{ id: string; positionX: number; positionY: number }>): Promise<void> {
+  async updatePositions(
+    positions: Array<{ id: string; positionX: number; positionY: number }>,
+  ): Promise<void> {
     await this.prisma.$transaction(
       positions.map((p) =>
         this.prisma.knowledge.update({
@@ -82,7 +91,11 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
     });
   }
 
-  async createEdge(sourceId: string, targetId: string, label?: string): Promise<KnowledgeEdge> {
+  async createEdge(
+    sourceId: string,
+    targetId: string,
+    label?: string,
+  ): Promise<KnowledgeEdge> {
     return this.prisma.knowledgeEdge.create({
       data: { sourceId, targetId, label },
     });
@@ -103,7 +116,10 @@ export class KnowledgeRepository extends PrismaBaseRepository<Knowledge> impleme
   }
 
   // ─── Graph-aware active context for AI (Strictly reachable from main-ai-node) ──
-  async findActiveWithEdges(): Promise<{ nodes: Knowledge[]; edges: KnowledgeEdge[] }> {
+  async findActiveWithEdges(): Promise<{
+    nodes: Knowledge[];
+    edges: KnowledgeEdge[];
+  }> {
     const [allNodes, allEdges] = await Promise.all([
       this.prisma.knowledge.findMany({
         where: { active: true },

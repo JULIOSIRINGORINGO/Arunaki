@@ -10,7 +10,8 @@ export class DataQueryTool {
   private serializeBigInt(obj: any): any {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj === 'bigint') return obj.toString();
-    if (Array.isArray(obj)) return obj.map(item => this.serializeBigInt(item));
+    if (Array.isArray(obj))
+      return obj.map((item) => this.serializeBigInt(item));
     if (typeof obj === 'object' && !(obj instanceof Date)) {
       const result: any = {};
       for (const key of Object.keys(obj)) {
@@ -67,7 +68,8 @@ export class DataQueryTool {
       'REINDEX',
     ];
 
-    const hasForbiddenVerb = verbMatches && verbMatches.some(verb => forbiddenVerbs.includes(verb));
+    const hasForbiddenVerb =
+      verbMatches && verbMatches.some((verb) => forbiddenVerbs.includes(verb));
 
     if (
       !verbMatches ||

@@ -42,7 +42,10 @@ export class WorkspaceHeartbeatService
   private readonly logger = new Logger(WorkspaceHeartbeatService.name);
 
   /** In-memory cache of last-known workspace states */
-  private readonly snapshots = new BoundedMap<string, Map<string, FileSnapshot>>(1000);
+  private readonly snapshots = new BoundedMap<
+    string,
+    Map<string, FileSnapshot>
+  >(1000);
 
   /** Interval reference for cleanup */
   private intervalHandle: ReturnType<typeof setInterval> | null = null;

@@ -11,8 +11,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  * Threshold is configurable via env RUN_TOKEN_BUDGET (default 200_000).
  */
 
-const DEFAULT_TOKEN_BUDGET =
-  Number(process.env.RUN_TOKEN_BUDGET) || 200_000;
+const DEFAULT_TOKEN_BUDGET = Number(process.env.RUN_TOKEN_BUDGET) || 200_000;
 
 const als = new AsyncLocalStorage<RunTokenBudget>();
 

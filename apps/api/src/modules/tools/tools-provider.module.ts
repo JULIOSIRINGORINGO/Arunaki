@@ -1,4 +1,10 @@
-import { Module, OnModuleInit, Inject, Optional, forwardRef } from '@nestjs/common';
+import {
+  Module,
+  OnModuleInit,
+  Inject,
+  Optional,
+  forwardRef,
+} from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { ParserModule } from '../parser/parser.module.js';
 import { KnowledgeModule } from '../knowledge/knowledge.module.js';
@@ -148,14 +154,22 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
 })
 export class ToolsProviderModule implements OnModuleInit {
   constructor(
-    @Inject(forwardRef(() => ToolRegistryService)) private readonly registry: ToolRegistryService,
+    @Inject(forwardRef(() => ToolRegistryService))
+    private readonly registry: ToolRegistryService,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
-    @Inject(forwardRef(() => ContextQuarantine)) private readonly contextQuarantine: ContextQuarantine,
-    @Inject(forwardRef(() => WorkspaceFileToolsRegistrar)) private readonly workspaceFileToolsRegistrar: WorkspaceFileToolsRegistrar,
-    @Inject(forwardRef(() => BusinessDomainToolsRegistrar)) private readonly businessDomainToolsRegistrar: BusinessDomainToolsRegistrar,
-    @Inject(forwardRef(() => HarnessMetaToolsRegistrar)) private readonly harnessMetaToolsRegistrar: HarnessMetaToolsRegistrar,
-    @Inject(forwardRef(() => DesktopToolsRegistrar)) private readonly desktopToolsRegistrar: DesktopToolsRegistrar,
-    @Optional() @Inject(forwardRef(() => CronService)) private readonly cronService?: CronService,
+    @Inject(forwardRef(() => ContextQuarantine))
+    private readonly contextQuarantine: ContextQuarantine,
+    @Inject(forwardRef(() => WorkspaceFileToolsRegistrar))
+    private readonly workspaceFileToolsRegistrar: WorkspaceFileToolsRegistrar,
+    @Inject(forwardRef(() => BusinessDomainToolsRegistrar))
+    private readonly businessDomainToolsRegistrar: BusinessDomainToolsRegistrar,
+    @Inject(forwardRef(() => HarnessMetaToolsRegistrar))
+    private readonly harnessMetaToolsRegistrar: HarnessMetaToolsRegistrar,
+    @Inject(forwardRef(() => DesktopToolsRegistrar))
+    private readonly desktopToolsRegistrar: DesktopToolsRegistrar,
+    @Optional()
+    @Inject(forwardRef(() => CronService))
+    private readonly cronService?: CronService,
   ) {}
 
   onModuleInit() {
@@ -165,26 +179,48 @@ export class ToolsProviderModule implements OnModuleInit {
   private registerTools() {
     // 1. Register Workspace File Tools
     this.workspaceFileToolsRegistrar.register(this.registry, {
-      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
+      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
+        strict: false,
+      }),
       readToolService: this.moduleRef.get(ReadToolService, { strict: false }),
       writeToolService: this.moduleRef.get(WriteToolService, { strict: false }),
       editToolService: this.moduleRef.get(EditToolService, { strict: false }),
-      deleteToolService: this.moduleRef.get(DeleteToolService, { strict: false }),
-      renameToolService: this.moduleRef.get(RenameToolService, { strict: false }),
+      deleteToolService: this.moduleRef.get(DeleteToolService, {
+        strict: false,
+      }),
+      renameToolService: this.moduleRef.get(RenameToolService, {
+        strict: false,
+      }),
       listToolService: this.moduleRef.get(ListToolService, { strict: false }),
-      searchToolService: this.moduleRef.get(SearchToolService, { strict: false }),
+      searchToolService: this.moduleRef.get(SearchToolService, {
+        strict: false,
+      }),
     });
 
     // 2. Register Business Domain Tools
     this.businessDomainToolsRegistrar.register(this.registry, {
-      textExtractorTool: this.moduleRef.get(TextExtractorTool, { strict: false }),
-      documentGeneratorTool: this.moduleRef.get(DocumentGeneratorTool, { strict: false }),
-      documentReaderTool: this.moduleRef.get(DocumentReaderTool, { strict: false }),
-      documentConverterTool: this.moduleRef.get(DocumentConverterTool, { strict: false }),
+      textExtractorTool: this.moduleRef.get(TextExtractorTool, {
+        strict: false,
+      }),
+      documentGeneratorTool: this.moduleRef.get(DocumentGeneratorTool, {
+        strict: false,
+      }),
+      documentReaderTool: this.moduleRef.get(DocumentReaderTool, {
+        strict: false,
+      }),
+      documentConverterTool: this.moduleRef.get(DocumentConverterTool, {
+        strict: false,
+      }),
       dataQueryTool: this.moduleRef.get(DataQueryTool, { strict: false }),
-      draftCommunicationTool: this.moduleRef.get(DraftCommunicationTool, { strict: false }),
-      unitConverterTool: this.moduleRef.get(UnitConverterTool, { strict: false }),
-      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
+      draftCommunicationTool: this.moduleRef.get(DraftCommunicationTool, {
+        strict: false,
+      }),
+      unitConverterTool: this.moduleRef.get(UnitConverterTool, {
+        strict: false,
+      }),
+      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
+        strict: false,
+      }),
     });
 
     // 3. Register Harness Meta Tools (including PTC Batch Execute)
@@ -197,33 +233,49 @@ export class ToolsProviderModule implements OnModuleInit {
       docSearchTool: this.moduleRef.get(DocSearchTool, { strict: false }),
       skillsTool: this.moduleRef.get(SkillsTool, { strict: false }),
       memoryTool: this.moduleRef.get(MemoryTool, { strict: false }),
-      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
-      subAgentRunner: this.moduleRef.get(SubAgentRunnerService, { strict: false }),
+      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
+        strict: false,
+      }),
+      subAgentRunner: this.moduleRef.get(SubAgentRunnerService, {
+        strict: false,
+      }),
       ptcExecutor: this.moduleRef.get(PtcExecutorService, { strict: false }),
-      multiDocOrchestrator: this.moduleRef.get(MultiDocOrchestratorService, { strict: false }),
+      multiDocOrchestrator: this.moduleRef.get(MultiDocOrchestratorService, {
+        strict: false,
+      }),
     });
 
     // 4. Register Desktop COM Automation Tools
     this.desktopToolsRegistrar.register(this.registry, {
-      desktopBridge: this.moduleRef.get(DesktopBridgeService, { strict: false }),
+      desktopBridge: this.moduleRef.get(DesktopBridgeService, {
+        strict: false,
+      }),
       excelCom: this.moduleRef.get(ExcelComService, { strict: false }),
-      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
+      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
+        strict: false,
+      }),
     });
 
     // 5. Register Knowledge Tools
-    const knowledgeLiveFetch = this.moduleRef.get(KnowledgeLiveFetchTool, { strict: false });
+    const knowledgeLiveFetch = this.moduleRef.get(KnowledgeLiveFetchTool, {
+      strict: false,
+    });
     if (knowledgeLiveFetch) {
       this.registry.register(knowledgeLiveFetch);
     }
 
     // 6. Register General Browser Tool
-    const browserInteraction = this.moduleRef.get(BrowserInteractionTool, { strict: false });
+    const browserInteraction = this.moduleRef.get(BrowserInteractionTool, {
+      strict: false,
+    });
     if (browserInteraction) {
       this.registry.register(browserInteraction);
     }
 
     // 7. Register IP Geolocation Tool
-    const ipGeolocation = this.moduleRef.get(IpGeolocationTool, { strict: false });
+    const ipGeolocation = this.moduleRef.get(IpGeolocationTool, {
+      strict: false,
+    });
     if (ipGeolocation) {
       this.registry.register(ipGeolocation);
     }

@@ -26,7 +26,7 @@ describe('SessionSearchService - hybrid FTS5 + semantic fallback', () => {
     mockSemantic = {
       semanticSearch: vi.fn().mockResolvedValue([]),
     };
-    service = new SessionSearchService(mockPrisma as any, mockSemantic as any);
+    service = new SessionSearchService(mockPrisma, mockSemantic);
   });
 
   it('returns FTS5 results unchanged when enough hits', async () => {
@@ -44,9 +44,15 @@ describe('SessionSearchService - hybrid FTS5 + semantic fallback', () => {
   });
 
   it('supplements with semantic results when FTS5 is sparse', async () => {
-    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([makeResult({ messageId: 'a', rank: 1 })]);
+    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+      makeResult({ messageId: 'a', rank: 1 }),
+    ]);
     mockSemantic.semanticSearch.mockResolvedValue([
-      makeResult({ messageId: 'sem1', rank: 200, content: 'nilai penjualan bulan Maret' }),
+      makeResult({
+        messageId: 'sem1',
+        rank: 200,
+        content: 'nilai penjualan bulan Maret',
+      }),
     ]);
 
     const out = await service.search('nilai penjualan', { limit: 5 });
@@ -61,7 +67,9 @@ describe('SessionSearchService - hybrid FTS5 + semantic fallback', () => {
   });
 
   it('deduplicates messageIds already returned by FTS5', async () => {
-    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([makeResult({ messageId: 'a', rank: 1 })]);
+    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+      makeResult({ messageId: 'a', rank: 1 }),
+    ]);
     mockSemantic.semanticSearch.mockResolvedValue([
       makeResult({ messageId: 'a', rank: 200 }),
       makeResult({ messageId: 'new', rank: 300 }),
@@ -74,7 +82,9 @@ describe('SessionSearchService - hybrid FTS5 + semantic fallback', () => {
   });
 
   it('respects limit after merging semantic results', async () => {
-    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([makeResult({ messageId: 'a', rank: 1 })]);
+    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+      makeResult({ messageId: 'a', rank: 1 }),
+    ]);
     mockSemantic.semanticSearch.mockResolvedValue([
       makeResult({ messageId: 's1', rank: 100 }),
       makeResult({ messageId: 's2', rank: 200 }),

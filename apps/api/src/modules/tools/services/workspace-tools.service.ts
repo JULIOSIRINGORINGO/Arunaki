@@ -19,14 +19,22 @@ export class WorkspaceToolsService {
   private readonly logger = new Logger(WorkspaceToolsService.name);
 
   constructor(
-    @Inject(forwardRef(() => EditToolService)) private readonly editTool: EditToolService,
-    @Inject(forwardRef(() => WriteToolService)) private readonly writeTool: WriteToolService,
-    @Inject(forwardRef(() => ReadToolService)) private readonly readTool: ReadToolService,
-    @Inject(forwardRef(() => DeleteToolService)) private readonly deleteTool: DeleteToolService,
-    @Inject(forwardRef(() => RenameToolService)) private readonly renameTool: RenameToolService,
-    @Inject(forwardRef(() => ListToolService)) private readonly listTool: ListToolService,
-    @Inject(forwardRef(() => SearchToolService)) private readonly searchTool: SearchToolService,
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => EditToolService))
+    private readonly editTool: EditToolService,
+    @Inject(forwardRef(() => WriteToolService))
+    private readonly writeTool: WriteToolService,
+    @Inject(forwardRef(() => ReadToolService))
+    private readonly readTool: ReadToolService,
+    @Inject(forwardRef(() => DeleteToolService))
+    private readonly deleteTool: DeleteToolService,
+    @Inject(forwardRef(() => RenameToolService))
+    private readonly renameTool: RenameToolService,
+    @Inject(forwardRef(() => ListToolService))
+    private readonly listTool: ListToolService,
+    @Inject(forwardRef(() => SearchToolService))
+    private readonly searchTool: SearchToolService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -40,7 +48,9 @@ export class WorkspaceToolsService {
       : path.resolve(resolvedRoot, targetPath);
     const rel = path.relative(resolvedRoot, resolvedTarget);
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
-      throw new Error('Path Traversal detected. Target path is outside workspace root.');
+      throw new Error(
+        'Path Traversal detected. Target path is outside workspace root.',
+      );
     }
     return resolvedTarget;
   }
@@ -49,13 +59,18 @@ export class WorkspaceToolsService {
    * Resolves a caller-supplied path against the workspace root and returns the
    * safe absolute path, or throws if the path escapes the workspace.
    */
-  async resolveWithinWorkspace(workspaceId: string, targetPath: string): Promise<string> {
+  async resolveWithinWorkspace(
+    workspaceId: string,
+    targetPath: string,
+  ): Promise<string> {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
       select: { rootPath: true },
     });
     if (!workspace?.rootPath) {
-      throw new Error(`Workspace "${workspaceId}" not found or root path is missing`);
+      throw new Error(
+        `Workspace "${workspaceId}" not found or root path is missing`,
+      );
     }
     return this.requirePathInWorkspace(targetPath, workspace.rootPath);
   }
@@ -63,7 +78,10 @@ export class WorkspaceToolsService {
   /**
    * Creates a rolling backup of a file before editing.
    */
-  async createRollingBackup(workspaceRoot: string, filename: string): Promise<string> {
+  async createRollingBackup(
+    workspaceRoot: string,
+    filename: string,
+  ): Promise<string> {
     const sourcePath = path.join(workspaceRoot, filename);
     const backupDir = path.join(workspaceRoot, BACKUP_DIR);
 
@@ -89,7 +107,9 @@ export class WorkspaceToolsService {
       await fsp.copyFile(sourcePath, backupPath);
       this.logger.log(`Backup created: ${backupPath}`);
     } catch (err: any) {
-      throw new Error(`Failed to create backup for "${filename}": ${err.message}.`);
+      throw new Error(
+        `Failed to create backup for "${filename}": ${err.message}.`,
+      );
     }
 
     try {
@@ -99,7 +119,10 @@ export class WorkspaceToolsService {
         .sort();
 
       if (backupsForFile.length > MAX_BACKUPS) {
-        const toDelete = backupsForFile.slice(0, backupsForFile.length - MAX_BACKUPS);
+        const toDelete = backupsForFile.slice(
+          0,
+          backupsForFile.length - MAX_BACKUPS,
+        );
         for (const old of toDelete) {
           await fsp.unlink(path.join(backupDir, old));
         }
@@ -138,7 +161,10 @@ export class WorkspaceToolsService {
     return this.editTool.execute(params);
   }
 
-  async deleteWorkspaceFile(params: { workspaceId: string; filename: string }): Promise<ToolResult> {
+  async deleteWorkspaceFile(params: {
+    workspaceId: string;
+    filename: string;
+  }): Promise<ToolResult> {
     return this.deleteTool.execute(params);
   }
 
@@ -154,7 +180,10 @@ export class WorkspaceToolsService {
     return this.listTool.execute(workspaceId);
   }
 
-  async searchWorkspace(workspaceId: string, query: string): Promise<ToolResult> {
+  async searchWorkspace(
+    workspaceId: string,
+    query: string,
+  ): Promise<ToolResult> {
     return this.searchTool.execute(workspaceId, query);
   }
 }

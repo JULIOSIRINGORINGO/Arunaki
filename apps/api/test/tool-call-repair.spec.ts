@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { repairToolCalls, parseCallObject, repairJson } from '../src/modules/ai/tool-call-repair.js';
+import {
+  repairToolCalls,
+  parseCallObject,
+  repairJson,
+} from '../src/modules/ai/tool-call-repair.js';
 
 describe('ToolCallRepair (Universal Mature Harness)', () => {
   it('should parse native XML function tags', () => {
-    const text = '<function_call name="edit">{"filePath": "laporan.txt", "oldString": "100", "newString": "200"}</function_call>';
+    const text =
+      '<function_call name="edit">{"filePath": "laporan.txt", "oldString": "100", "newString": "200"}</function_call>';
     const calls = repairToolCalls(text);
     expect(calls.length).toBe(1);
     expect(calls[0].function.name).toBe('edit');
@@ -13,7 +18,8 @@ describe('ToolCallRepair (Universal Mature Harness)', () => {
   });
 
   it('should parse DeepSeek / OpenCode slash and colon function tags', () => {
-    const text1 = '<function/edit>{"filePath": "rekap.txt", "patchText": "*** Update"}</function>';
+    const text1 =
+      '<function/edit>{"filePath": "rekap.txt", "patchText": "*** Update"}</function>';
     const calls1 = repairToolCalls(text1);
     expect(calls1.length).toBe(1);
     expect(calls1[0].function.name).toBe('edit');
@@ -65,7 +71,7 @@ describe('ToolCallRepair (Universal Mature Harness)', () => {
       action: 'edit',
       filePath: 'laporan.txt',
       oldString: 'old',
-      newString: 'new'
+      newString: 'new',
     };
     const parsed = parseCallObject(flatObj);
     expect(parsed).not.toBeNull();

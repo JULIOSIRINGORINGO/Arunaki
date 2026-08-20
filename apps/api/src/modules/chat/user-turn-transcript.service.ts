@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BoundedMap } from '../../common/utils/bounded-map.js';
 
 export type TranscriptState =
-  | 'created'
-  | 'sent_to_provider'
-  | 'runtime_persisted'
-  | 'approved'
-  | 'failed';
+  'created' | 'sent_to_provider' | 'runtime_persisted' | 'approved' | 'failed';
 
 export interface TurnTranscript {
   runId: string;
@@ -26,7 +22,11 @@ export class UserTurnTranscriptService {
   private readonly transcripts = new BoundedMap<string, TurnTranscript>(1000);
   private readonly TURN_TIMEOUT_MS = 25_000;
 
-  createTurn(runId: string, sessionKey: string, messageCountBefore: number): TurnTranscript {
+  createTurn(
+    runId: string,
+    sessionKey: string,
+    messageCountBefore: number,
+  ): TurnTranscript {
     const existing = this.transcripts.get(runId);
     if (existing) {
       this.logger.warn(`Turn ${runId} already exists, returning existing`);
@@ -42,7 +42,9 @@ export class UserTurnTranscriptService {
     };
 
     this.transcripts.set(runId, transcript);
-    this.logger.debug(`Turn created: ${runId} (messages before: ${messageCountBefore})`);
+    this.logger.debug(
+      `Turn created: ${runId} (messages before: ${messageCountBefore})`,
+    );
     return transcript;
   }
 
@@ -57,7 +59,10 @@ export class UserTurnTranscriptService {
     return t;
   }
 
-  markRuntimePersisted(runId: string, messageCountAfter: number): TurnTranscript | null {
+  markRuntimePersisted(
+    runId: string,
+    messageCountAfter: number,
+  ): TurnTranscript | null {
     const t = this.transcripts.get(runId);
     if (!t) {
       this.logger.warn(`markRuntimePersisted: turn ${runId} not found`);

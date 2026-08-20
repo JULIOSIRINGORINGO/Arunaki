@@ -87,8 +87,12 @@ export class SecretsVaultService {
       decrypted += decipher.final('utf8');
       return decrypted;
     } catch (err: any) {
-      this.logger.error(`Failed to retrieve secret: integrity check failed (${err.message})`);
-      throw new Error('Failed to decrypt secret: data has been altered or the master key is wrong.');
+      this.logger.error(
+        `Failed to retrieve secret: integrity check failed (${err.message})`,
+      );
+      throw new Error(
+        'Failed to decrypt secret: data has been altered or the master key is wrong.',
+      );
     }
   }
 
@@ -98,7 +102,9 @@ export class SecretsVaultService {
   storeSecret(keyName: string, plainText: string): void {
     const encrypted = this.encryptSecret(plainText);
     this.vault.set(keyName, encrypted);
-    this.logger.log(`Secret [${keyName}] has been stored encrypted in the vault.`);
+    this.logger.log(
+      `Secret [${keyName}] has been stored encrypted in the vault.`,
+    );
   }
 
   /**

@@ -26,13 +26,20 @@ export class SessionAdmissionService implements OnModuleDestroy {
   private readonly timeoutMs: number;
 
   constructor(config?: ConfigService) {
-    const configuredTimeout = Number(config?.get<string>('SESSION_ADMISSION_TIMEOUT_MS') || process.env.SESSION_ADMISSION_TIMEOUT_MS);
-    this.timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0
-      ? configuredTimeout
-      : 15000;
+    const configuredTimeout = Number(
+      config?.get<string>('SESSION_ADMISSION_TIMEOUT_MS') ||
+        process.env.SESSION_ADMISSION_TIMEOUT_MS,
+    );
+    this.timeoutMs =
+      Number.isFinite(configuredTimeout) && configuredTimeout > 0
+        ? configuredTimeout
+        : 15000;
   }
 
-  async acquireAdmission(sessionKey: string, signal?: AbortSignal): Promise<SessionAdmissionLease> {
+  async acquireAdmission(
+    sessionKey: string,
+    signal?: AbortSignal,
+  ): Promise<SessionAdmissionLease> {
     let state = this.state.get(sessionKey);
     if (!state) {
       state = { active: true, queue: [] };
@@ -45,14 +52,18 @@ export class SessionAdmissionService implements OnModuleDestroy {
         resolve,
         reject,
         timeoutId: setTimeout(() => {
-          this.removeQueuedAdmission(sessionKey, state!, queued);
-          reject(new Error(`Admission timeout for session ${sessionKey} after ${this.timeoutMs}ms`));
+          this.removeQueuedAdmission(sessionKey, state, queued);
+          reject(
+            new Error(
+              `Admission timeout for session ${sessionKey} after ${this.timeoutMs}ms`,
+            ),
+          );
         }, this.timeoutMs),
         signal,
       };
       queued.onAbort = () => {
         clearTimeout(queued.timeoutId);
-        this.removeQueuedAdmission(sessionKey, state!, queued);
+        this.removeQueuedAdmission(sessionKey, state, queued);
         reject(new Error(`Admission aborted for session ${sessionKey}`));
       };
       if (signal?.aborted) {
@@ -68,9 +79,13 @@ export class SessionAdmissionService implements OnModuleDestroy {
     return this.state.has(sessionKey);
   }
 
-  getAdmissionStatus(sessionKey: string): { active: boolean; waiting: boolean } | null {
+  getAdmissionStatus(
+    sessionKey: string,
+  ): { active: boolean; waiting: boolean } | null {
     const state = this.state.get(sessionKey);
-    return state ? { active: state.active, waiting: state.queue.length > 0 } : null;
+    return state
+      ? { active: state.active, waiting: state.queue.length > 0 }
+      : null;
   }
 
   isAdmitted(sessionKey: string): boolean {
@@ -83,7 +98,10 @@ export class SessionAdmissionService implements OnModuleDestroy {
     return state?.queue.length ?? 0;
   }
 
-  private createLease(sessionKey: string, state: AdmissionState): SessionAdmissionLease {
+  private createLease(
+    sessionKey: string,
+    state: AdmissionState,
+  ): SessionAdmissionLease {
     let released = false;
 
     const lease: SessionAdmissionLease = {
@@ -97,7 +115,8 @@ export class SessionAdmissionService implements OnModuleDestroy {
           return;
         }
         clearTimeout(next.timeoutId);
-        if (next.onAbort) next.signal?.removeEventListener('abort', next.onAbort);
+        if (next.onAbort)
+          next.signal?.removeEventListener('abort', next.onAbort);
         next.resolve(this.createLease(sessionKey, state));
       },
       run: async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -119,7 +138,8 @@ export class SessionAdmissionService implements OnModuleDestroy {
   ): void {
     const index = state.queue.indexOf(queued);
     if (index >= 0) state.queue.splice(index, 1);
-    if (!state.active && state.queue.length === 0) this.state.delete(sessionKey);
+    if (!state.active && state.queue.length === 0)
+      this.state.delete(sessionKey);
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -131,6 +151,8 @@ export class SessionAdmissionService implements OnModuleDestroy {
       state.queue = [];
     }
     this.state.clear();
-    this.logger.log('SessionAdmissionService: all admissions cleared on shutdown');
+    this.logger.log(
+      'SessionAdmissionService: all admissions cleared on shutdown',
+    );
   }
 }

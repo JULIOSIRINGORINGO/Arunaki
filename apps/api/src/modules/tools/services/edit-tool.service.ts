@@ -12,8 +12,10 @@ export class EditToolService {
   private readonly logger = new Logger(EditToolService.name);
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => FileService)) private readonly fileService: FileService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => FileService))
+    private readonly fileService: FileService,
   ) {}
 
   async execute(params: {
@@ -27,10 +29,21 @@ export class EditToolService {
     [key: string]: any;
   }): Promise<ToolResult> {
     const rawParams = (params || {}) as Record<string, any>;
-    this.logger.log(`[edit-tool] RAW PARAMS: ${JSON.stringify(rawParams).slice(0, 500)}`);
+    this.logger.log(
+      `[edit-tool] RAW PARAMS: ${JSON.stringify(rawParams).slice(0, 500)}`,
+    );
     const workspaceId = rawParams.workspaceId;
-    let filePath: string = rawParams.filePath || rawParams.path || rawParams.filename || rawParams.file || '';
-    let patchText: string | undefined = rawParams.patchText ?? rawParams.patch ?? rawParams.diff ?? rawParams.patch_text;
+    let filePath: string =
+      rawParams.filePath ||
+      rawParams.path ||
+      rawParams.filename ||
+      rawParams.file ||
+      '';
+    let patchText: string | undefined =
+      rawParams.patchText ??
+      rawParams.patch ??
+      rawParams.diff ??
+      rawParams.patch_text;
     const startTime = Date.now();
 
     let rootPath: string = rawParams.rootPath || '';
@@ -47,8 +60,15 @@ export class EditToolService {
         status: 'error',
         data: {},
         preview: 'Workspace root path is not connected.',
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-        error: { code: 'NO_ROOT_PATH', message: 'Workspace root path is not connected' },
+        metadata: {
+          toolName: 'edit',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'NO_ROOT_PATH',
+          message: 'Workspace root path is not connected',
+        },
       };
     }
 
@@ -60,8 +80,13 @@ export class EditToolService {
         return {
           status: 'error',
           data: {},
-          preview: 'Missing path parameter and no *** Update File: directive found in patch text.',
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          preview:
+            'Missing path parameter and no *** Update File: directive found in patch text.',
+          metadata: {
+            toolName: 'edit',
+            displayName: 'Edit File',
+            executionTime: Date.now() - startTime,
+          },
           error: { code: 'MISSING_PARAMS', message: 'filePath is required' },
         };
       }
@@ -70,14 +95,16 @@ export class EditToolService {
     // Multi-block replacements array when provided
     const replacementsList = Array.isArray(params.replacements)
       ? params.replacements
-      : (Array.isArray(params.changes)
-      ? params.changes
-      : (Array.isArray(params.edits)
-      ? params.edits
-      : null));
+      : Array.isArray(params.changes)
+        ? params.changes
+        : Array.isArray(params.edits)
+          ? params.edits
+          : null;
 
     if (replacementsList && replacementsList.length > 0) {
-      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      let targetPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(rootPath, filePath);
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -92,7 +119,8 @@ export class EditToolService {
           const match = files.find(
             (f) =>
               f.name.toLowerCase() === filePath.toLowerCase() ||
-              f.name.toLowerCase().replace(/\.[^.]+$/, '') === filePath.toLowerCase(),
+              f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+                filePath.toLowerCase(),
           );
           if (match) {
             targetPath = match.path;
@@ -107,11 +135,25 @@ export class EditToolService {
         let currentContent = await fsPromises.readFile(targetPath, 'utf-8');
         let successCount = 0;
         let searchCursor = 0;
-        const stripLineNums = (s: string) => s.split('\n').map((l: string) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+        const stripLineNums = (s: string) =>
+          s
+            .split('\n')
+            .map((l: string) => l.replace(/^\s*\d+:\s*/, ''))
+            .join('\n');
 
         for (const item of replacementsList) {
-          const itemOld = item.oldString ?? item.old_str ?? item.find ?? item.search ?? item.target;
-          const itemNew = item.newString ?? item.new_str ?? item.replace ?? item.replacement ?? '';
+          const itemOld =
+            item.oldString ??
+            item.old_str ??
+            item.find ??
+            item.search ??
+            item.target;
+          const itemNew =
+            item.newString ??
+            item.new_str ??
+            item.replace ??
+            item.replacement ??
+            '';
           if (itemOld === undefined) continue;
 
           // 1. Exact match (prefer from searchCursor)
@@ -120,7 +162,10 @@ export class EditToolService {
             idx = currentContent.indexOf(itemOld, 0);
           }
           if (idx !== -1) {
-            currentContent = currentContent.slice(0, idx) + itemNew + currentContent.slice(idx + itemOld.length);
+            currentContent =
+              currentContent.slice(0, idx) +
+              itemNew +
+              currentContent.slice(idx + itemOld.length);
             searchCursor = idx + itemNew.length;
             successCount++;
             continue;
@@ -135,7 +180,10 @@ export class EditToolService {
             normIdx = normRaw.indexOf(normOld, 0);
           }
           if (normIdx !== -1) {
-            currentContent = normRaw.slice(0, normIdx) + normNew + normRaw.slice(normIdx + normOld.length);
+            currentContent =
+              normRaw.slice(0, normIdx) +
+              normNew +
+              normRaw.slice(normIdx + normOld.length);
             searchCursor = normIdx + normNew.length;
             successCount++;
             continue;
@@ -150,7 +198,10 @@ export class EditToolService {
               sIdx = normRaw.indexOf(strippedOld, 0);
             }
             if (sIdx !== -1) {
-              currentContent = normRaw.slice(0, sIdx) + strippedNew + normRaw.slice(sIdx + strippedOld.length);
+              currentContent =
+                normRaw.slice(0, sIdx) +
+                strippedNew +
+                normRaw.slice(sIdx + strippedOld.length);
               searchCursor = sIdx + strippedNew.length;
               successCount++;
               continue;
@@ -177,19 +228,37 @@ export class EditToolService {
             status: 'error',
             data: {},
             preview: `Could not match any target replacement chunks in ${path.basename(targetPath)}. Please ensure oldString exactly matches existing text.`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-            error: { code: 'NO_MATCH', message: 'No replacement matches found' },
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+            },
+            error: {
+              code: 'NO_MATCH',
+              message: 'No replacement matches found',
+            },
           };
         }
       }
     }
 
     // Direct surgical replacement when oldString / newString are provided
-    const oldStr = rawParams.oldString ?? rawParams.old_str ?? rawParams.find ?? rawParams.search ?? rawParams.target;
-    const newStr = rawParams.newString ?? rawParams.new_str ?? rawParams.replace ?? rawParams.replacement;
+    const oldStr =
+      rawParams.oldString ??
+      rawParams.old_str ??
+      rawParams.find ??
+      rawParams.search ??
+      rawParams.target;
+    const newStr =
+      rawParams.newString ??
+      rawParams.new_str ??
+      rawParams.replace ??
+      rawParams.replacement;
 
     if (oldStr !== undefined && newStr !== undefined) {
-      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      let targetPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(rootPath, filePath);
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -204,7 +273,8 @@ export class EditToolService {
           const match = files.find(
             (f) =>
               f.name.toLowerCase() === filePath.toLowerCase() ||
-              f.name.toLowerCase().replace(/\.[^.]+$/, '') === filePath.toLowerCase(),
+              f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+                filePath.toLowerCase(),
           );
           if (match) {
             targetPath = match.path;
@@ -256,7 +326,11 @@ export class EditToolService {
         }
 
         // 3. Try stripped line-number prefix match (e.g. "1: REKAPAN..." -> "REKAPAN...")
-        const stripLineNums = (s: string) => s.split('\n').map((l: string) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+        const stripLineNums = (s: string) =>
+          s
+            .split('\n')
+            .map((l: string) => l.replace(/^\s*\d+:\s*/, ''))
+            .join('\n');
         const strippedOld = stripLineNums(normOld);
         const strippedNew = stripLineNums(normNew);
         if (strippedOld && normRaw.includes(strippedOld)) {
@@ -286,7 +360,7 @@ export class EditToolService {
           for (let i = 0; i <= rawLines.length - oldLines.length; i++) {
             let matches = true;
             for (let j = 0; j < oldLines.length; j++) {
-              if (normalize(rawLines[i + j]!) !== normSearch[j]) {
+              if (normalize(rawLines[i + j]) !== normSearch[j]) {
                 matches = false;
                 break;
               }
@@ -318,8 +392,14 @@ export class EditToolService {
 
     // Auto-convert oldString/newString to patch format if patchText is not provided
     if (!patchText && oldStr) {
-      const oldLines = oldStr.split(/\r?\n/).map((l: string) => `-${l}`).join('\n');
-      const newLines = (newStr || '').split(/\r?\n/).map((l: string) => `+${l}`).join('\n');
+      const oldLines = oldStr
+        .split(/\r?\n/)
+        .map((l: string) => `-${l}`)
+        .join('\n');
+      const newLines = (newStr || '')
+        .split(/\r?\n/)
+        .map((l: string) => `+${l}`)
+        .join('\n');
       patchText = `@@\n${oldLines}\n${newLines}`;
     }
 
@@ -327,9 +407,17 @@ export class EditToolService {
       return {
         status: 'error',
         data: {},
-        preview: 'Missing required parameter: patchText (or oldString/newString)',
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-        error: { code: 'MISSING_PARAMS', message: 'patchText or oldString/newString is required' },
+        preview:
+          'Missing required parameter: patchText (or oldString/newString)',
+        metadata: {
+          toolName: 'edit',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'MISSING_PARAMS',
+          message: 'patchText or oldString/newString is required',
+        },
       };
     }
 
@@ -340,7 +428,9 @@ export class EditToolService {
       hunks = parse(finalPatchText);
     } catch (e: any) {
       // If strict parse fails, try direct fallback extraction on the target file
-      let targetPath = path.isAbsolute(filePath) ? filePath : path.join(rootPath, filePath);
+      const targetPath = path.isAbsolute(filePath)
+        ? filePath
+        : path.join(rootPath, filePath);
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -352,12 +442,21 @@ export class EditToolService {
         const rawContent = await fsPromises.readFile(targetPath, 'utf-8');
         const fallbackRes = extractAndApplyFallback(patchText, rawContent);
         if (fallbackRes.success) {
-          await fsPromises.writeFile(targetPath, fallbackRes.updatedContent, 'utf-8');
+          await fsPromises.writeFile(
+            targetPath,
+            fallbackRes.updatedContent,
+            'utf-8',
+          );
           return {
             status: 'success',
             data: { files: [filePath], replacements: fallbackRes.replacements },
             preview: `Successfully applied healed patch to ${path.basename(targetPath)} (${fallbackRes.replacements} replacements).\n\nUpdated content:\n${fallbackRes.updatedContent.slice(0, 1500)}`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime, replacements: fallbackRes.replacements },
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+              replacements: fallbackRes.replacements,
+            },
           };
         }
       }
@@ -366,17 +465,25 @@ export class EditToolService {
         status: 'error',
         data: {},
         preview: `Failed to parse patch: ${e.message}`,
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'edit',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'PATCH_PARSE_FAILED', message: e.message },
       };
     }
-    
+
     if (hunks.length === 0) {
       return {
         status: 'error',
         data: {},
         preview: 'Patch text contains no hunks.',
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'edit',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'EMPTY_PATCH', message: 'No valid patch hunks found.' },
       };
     }
@@ -387,7 +494,9 @@ export class EditToolService {
     // Dry-run all hunks to ensure they apply cleanly before writing
     const newFileContents = new Map<string, string>();
     for (const hunk of hunks) {
-      let targetPath = path.isAbsolute(hunk.path) ? hunk.path : path.join(rootPath, hunk.path);
+      let targetPath = path.isAbsolute(hunk.path)
+        ? hunk.path
+        : path.join(rootPath, hunk.path);
 
       let fileExists = false;
       try {
@@ -403,7 +512,8 @@ export class EditToolService {
           const match = files.find(
             (f) =>
               f.name.toLowerCase() === hunk.path.toLowerCase() ||
-              f.name.toLowerCase().replace(/\.[^.]+$/, '') === hunk.path.toLowerCase(),
+              f.name.toLowerCase().replace(/\.[^.]+$/, '') ===
+                hunk.path.toLowerCase(),
           );
           if (match) {
             targetPath = match.path;
@@ -415,34 +525,44 @@ export class EditToolService {
       }
 
       if (!fileExists && hunk.type !== 'add') {
-         return {
+        return {
           status: 'error',
           data: {},
           preview: `File "${hunk.path}" not found in workspace for patch.`,
-          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
-          error: { code: 'FILE_NOT_FOUND', message: `File "${hunk.path}" not found` },
+          metadata: {
+            toolName: 'edit',
+            displayName: 'Edit File',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'FILE_NOT_FOUND',
+            message: `File "${hunk.path}" not found`,
+          },
         };
       }
-      
+
       let originalContent = '';
       if (fileExists && hunk.type !== 'add') {
         originalContent = await fsPromises.readFile(targetPath, 'utf-8');
       }
-      
+
       try {
         if (hunk.type === 'add') {
-           newFileContents.set(targetPath, hunk.contents);
-           replacements += 1;
-           filesModified.push(hunk.path);
+          newFileContents.set(targetPath, hunk.contents);
+          replacements += 1;
+          filesModified.push(hunk.path);
         } else if (hunk.type === 'delete') {
-           newFileContents.set(targetPath, null as any); // mark for deletion
-           replacements += 1;
-           filesModified.push(hunk.path);
+          newFileContents.set(targetPath, null as any); // mark for deletion
+          replacements += 1;
+          filesModified.push(hunk.path);
         } else {
-           const derived = derive(hunk, originalContent, hunk.path);
-           newFileContents.set(targetPath, joinBom(derived.content, derived.bom));
-           replacements += hunk.chunks?.length || 0;
-           filesModified.push(hunk.path);
+          const derived = derive(hunk, originalContent, hunk.path);
+          newFileContents.set(
+            targetPath,
+            joinBom(derived.content, derived.bom),
+          );
+          replacements += hunk.chunks?.length || 0;
+          filesModified.push(hunk.path);
         }
       } catch (e: any) {
         // Fallback for smaller models: try relaxed direct search & replace on each chunk!
@@ -454,7 +574,7 @@ export class EditToolService {
             const oldStr = chunk.oldLines.join('\n');
             const newStr = chunk.newLines.join('\n');
             if (!oldStr) continue;
-            
+
             // 1. Try raw replacement
             if (modified.includes(oldStr)) {
               modified = modified.replace(oldStr, newStr);
@@ -469,7 +589,11 @@ export class EditToolService {
                 appliedCount++;
               } else {
                 // 3. Try stripped line-numbers replacement
-                const stripL = (s: string) => s.split('\n').map((l) => l.replace(/^\s*\d+:\s*/, '')).join('\n');
+                const stripL = (s: string) =>
+                  s
+                    .split('\n')
+                    .map((l) => l.replace(/^\s*\d+:\s*/, ''))
+                    .join('\n');
                 const sOld = stripL(normOld);
                 const sNew = stripL(normNew);
                 if (sOld && normMod.includes(sOld)) {
@@ -488,7 +612,10 @@ export class EditToolService {
         }
 
         if (!relaxedSuccess) {
-          const fallbackRes = extractAndApplyFallback(finalPatchText, originalContent);
+          const fallbackRes = extractAndApplyFallback(
+            finalPatchText,
+            originalContent,
+          );
           if (fallbackRes.success && fallbackRes.replacements > 0) {
             newFileContents.set(targetPath, fallbackRes.updatedContent);
             replacements += fallbackRes.replacements;
@@ -502,7 +629,11 @@ export class EditToolService {
             status: 'error',
             data: {},
             preview: `Patch failed to apply cleanly to "${hunk.path}": ${e.message}\n\nCurrent content of "${hunk.path}" is:\n${originalContent}`,
-            metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+            metadata: {
+              toolName: 'edit',
+              displayName: 'Edit File',
+              executionTime: Date.now() - startTime,
+            },
             error: { code: 'PATCH_APPLY_FAILED', message: e.message },
           };
         }
@@ -535,13 +666,20 @@ export class EditToolService {
         status: 'error',
         data: {},
         preview: `Failed to write patch: ${e.message}`,
-        metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: 'edit',
+          displayName: 'Edit File',
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'WRITE_FAILED', message: e.message },
       };
     }
   }
 
-  private async createAutoBackup(targetPath: string, rootPath: string): Promise<void> {
+  private async createAutoBackup(
+    targetPath: string,
+    rootPath: string,
+  ): Promise<void> {
     try {
       if (!rootPath || !targetPath) return;
       const backupDir = path.join(rootPath, '.arunaki', 'backups');

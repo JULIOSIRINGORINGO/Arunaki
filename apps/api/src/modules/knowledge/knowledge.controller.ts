@@ -65,7 +65,12 @@ function extractInternalLinks(html: string, baseUrl: string): string[] {
     try {
       const u = new URL(h, base);
       if (u.hostname !== base.hostname) continue;
-      if (/\.(jpg|jpeg|png|gif|webp|css|js|svg|ico|woff2?|pdf|zip)$/i.test(u.pathname)) continue;
+      if (
+        /\.(jpg|jpeg|png|gif|webp|css|js|svg|ico|woff2?|pdf|zip)$/i.test(
+          u.pathname,
+        )
+      )
+        continue;
       u.hash = '';
       out.add(u.toString());
     } catch {
@@ -100,7 +105,10 @@ export class KnowledgeController {
       const content = result.extractedContent
         ? `# ${result.title}\n\n${result.extractedContent}`
         : `# ${result.title}\n\n${body.url}`;
-      const links = extractInternalLinks(result.extractedContent || '', body.url);
+      const links = extractInternalLinks(
+        result.extractedContent || '',
+        body.url,
+      );
       const productUrls = await fetchSitemapProductUrls(body.url);
       const urls = [...new Set([...links, ...productUrls])].slice(0, 60);
       return successResponse({ title: result.title, content, urls });

@@ -11,7 +11,10 @@ describe('ContextManager — preemptive compaction guards', () => {
   describe('estimateTokens uses the real tokenizer', () => {
     it('counts Indonesian prose with tiktoken, not the char/4 heuristic', () => {
       const cm = new ContextManager();
-      const id = `Laporan keuangan bulan ini menunjukkan peningkatan penjualan sebesar 15 persen dibandingkan periode sebelumnya. Kami mencatat total pendapatan Rp 250.000.000 dan biaya operasional Rp 180.000.000, sehingga laba bersih mencapai Rp 70.000.000. Rekomendasi kami adalah meningkatkan alokasi pemasaran digital dan memperkuat layanan pelanggan.`.repeat(20);
+      const id =
+        `Laporan keuangan bulan ini menunjukkan peningkatan penjualan sebesar 15 persen dibandingkan periode sebelumnya. Kami mencatat total pendapatan Rp 250.000.000 dan biaya operasional Rp 180.000.000, sehingga laba bersih mencapai Rp 70.000.000. Rekomendasi kami adalah meningkatkan alokasi pemasaran digital dan memperkuat layanan pelanggan.`.repeat(
+          20,
+        );
       const msgs: ChatMessage[] = [{ role: 'user', content: id }];
       const total = cm.estimateTokens(msgs);
       // 4 per-message overhead + exact tokenizer count (not char/4)
@@ -43,8 +46,10 @@ describe('ContextManager — preemptive compaction guards', () => {
         toolMessage('a'.repeat(1000)),
         toolMessage('b'.repeat(1000)),
       ];
-      const { messages, truncatedCount } =
-        cm.enforceAggregateToolResultBudget(msgs, 32000);
+      const { messages, truncatedCount } = cm.enforceAggregateToolResultBudget(
+        msgs,
+        32000,
+      );
       expect(truncatedCount).toBe(0);
       expect(messages).toBe(msgs);
     });
@@ -61,8 +66,10 @@ describe('ContextManager — preemptive compaction guards', () => {
         toolMessage('fresh2'),
         toolMessage('fresh3'),
       ];
-      const { messages, truncatedCount } =
-        cm.enforceAggregateToolResultBudget(msgs, 32000);
+      const { messages, truncatedCount } = cm.enforceAggregateToolResultBudget(
+        msgs,
+        32000,
+      );
       // share = 32000*4*0.5 = 64000 chars; 4*20000 = 80000 > 64000
       expect(truncatedCount).toBe(1);
       expect(messages[0].content).toContain('[Old tool output cleared');
@@ -153,13 +160,21 @@ describe('ContextManager — preemptive compaction guards', () => {
     it('removes think blocks from old assistant messages but keeps the latest', () => {
       const cm = new ContextManager();
       const msgs: ChatMessage[] = [
-        { role: 'assistant', content: '<think>old reasoning</think>answer one' },
+        {
+          role: 'assistant',
+          content: '<think>old reasoning</think>answer one',
+        },
         { role: 'tool', content: 'result' },
-        { role: 'assistant', content: '<think>latest reasoning</think>answer two' },
+        {
+          role: 'assistant',
+          content: '<think>latest reasoning</think>answer two',
+        },
       ];
       const result = cm.stripThinkingFromContext(msgs);
       expect(result[0].content).toBe('answer one');
-      expect(result[2].content).toBe('<think>latest reasoning</think>answer two');
+      expect(result[2].content).toBe(
+        '<think>latest reasoning</think>answer two',
+      );
     });
 
     it('returns the same reference when nothing changes', () => {

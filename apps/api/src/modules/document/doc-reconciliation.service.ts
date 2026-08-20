@@ -57,7 +57,8 @@ export class DocumentReconciliationService {
     // Helper to find case-insensitive key value
     const extractKey = (row: Record<string, any>): string => {
       if (!row) return '';
-      if (row[matchKey] !== undefined) return String(row[matchKey]).trim().toLowerCase();
+      if (row[matchKey] !== undefined)
+        return String(row[matchKey]).trim().toLowerCase();
       // Case-insensitive lookup
       const foundKey = Object.keys(row).find(
         (k) => k.toLowerCase() === matchKey.toLowerCase(),
@@ -104,7 +105,9 @@ export class DocumentReconciliationService {
           sourceValues: srcVal,
           hasMismatch: true,
           status: 'MISSING_IN_TARGET',
-          details: [`Record "${key}" exists in ${sourceName} but is missing in ${targetName}`],
+          details: [
+            `Record "${key}" exists in ${sourceName} but is missing in ${targetName}`,
+          ],
         });
       } else if (!srcVal && tgtVal) {
         missingCount++;
@@ -113,21 +116,33 @@ export class DocumentReconciliationService {
           sourceValues: tgtVal,
           hasMismatch: true,
           status: 'MISSING_IN_SOURCE',
-          details: [`Record "${key}" exists in ${targetName} but is missing in ${sourceName}`],
+          details: [
+            `Record "${key}" exists in ${targetName} but is missing in ${sourceName}`,
+          ],
         });
       } else if (srcVal && tgtVal) {
         const diffs: string[] = [];
         // Compare common properties
-        const allProps = new Set([...Object.keys(srcVal), ...Object.keys(tgtVal)]);
+        const allProps = new Set([
+          ...Object.keys(srcVal),
+          ...Object.keys(tgtVal),
+        ]);
         for (const prop of allProps) {
           if (prop.toLowerCase() === matchKey.toLowerCase()) continue;
           const v1 = srcVal[prop];
           const v2 = tgtVal[prop];
 
           // If numeric, compare float values
-          if (!isNaN(Number(v1)) && !isNaN(Number(v2)) && v1 !== '' && v2 !== '') {
+          if (
+            !isNaN(Number(v1)) &&
+            !isNaN(Number(v2)) &&
+            v1 !== '' &&
+            v2 !== ''
+          ) {
             if (Math.abs(Number(v1) - Number(v2)) > 0.001) {
-              diffs.push(`Property "${prop}": ${sourceName}=${v1} vs ${targetName}=${v2}`);
+              diffs.push(
+                `Property "${prop}": ${sourceName}=${v1} vs ${targetName}=${v2}`,
+              );
             }
           } else if (v1 !== undefined && v2 !== undefined) {
             if (String(v1).trim() !== String(v2).trim()) {
@@ -159,7 +174,8 @@ export class DocumentReconciliationService {
     }
 
     const total = allKeys.size;
-    const matchPercentage = total > 0 ? Math.round((matchCount / total) * 100) : 100;
+    const matchPercentage =
+      total > 0 ? Math.round((matchCount / total) * 100) : 100;
 
     // Generate clean formatted Markdown Table
     let tableMd = `### Document Reconciliation Report\n\n`;
@@ -174,8 +190,8 @@ export class DocumentReconciliationService {
         d.status === 'MATCH'
           ? '✅ MATCH'
           : d.status === 'MISMATCH'
-          ? '⚠️ MISMATCH'
-          : '❌ MISSING';
+            ? '⚠️ MISMATCH'
+            : '❌ MISSING';
       const detailStr = d.details.join('; ').replace(/\|/g, '\\|');
       tableMd += `| **${d.key}** | ${badge} | ${detailStr} |\n`;
     });

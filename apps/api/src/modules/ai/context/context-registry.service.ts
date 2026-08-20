@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { IContextEngine, ContextEngineConfig } from './context-engine.interface.js';
+import {
+  IContextEngine,
+  ContextEngineConfig,
+} from './context-engine.interface.js';
 
 @Injectable()
 export class ContextRegistry {
@@ -21,14 +24,22 @@ export class ContextRegistry {
     const engineName = name || this.activeEngine;
     let engine = this.engines.get(engineName);
     if (!engine) {
-      engine = this.engines.get('legacy') || Array.from(this.engines.values())[0];
+      engine =
+        this.engines.get('legacy') || Array.from(this.engines.values())[0];
     }
     if (!engine) {
       // Auto-fallback: instantiate a default LegacyContextEngine if none registered yet
-      const { LegacyContextEngine } = require('./legacy-context-engine.service.js');
-      const { ProjectionAssembler } = require('./projection-assembler.service.js');
+      const {
+        LegacyContextEngine,
+      } = require('./legacy-context-engine.service.js');
+      const {
+        ProjectionAssembler,
+      } = require('./projection-assembler.service.js');
       const { ContextQuarantine } = require('./context-quarantine.service.js');
-      const defaultEngine = new LegacyContextEngine(new ProjectionAssembler(), new ContextQuarantine());
+      const defaultEngine = new LegacyContextEngine(
+        new ProjectionAssembler(),
+        new ContextQuarantine(),
+      );
       this.register(defaultEngine);
       return defaultEngine;
     }

@@ -19,7 +19,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
     if (this.launchAttempted) {
       throw new Error(
         'Browser previously failed to launch. Check that Chromium is installed ' +
-        '(run: npx playwright install chromium) and restart the server.',
+          '(run: npx playwright install chromium) and restart the server.',
       );
     }
     this.launchAttempted = true;
@@ -41,7 +41,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
       this.launchAttempted = false;
       throw new Error(
         `Failed to launch Chromium: ${err.message}. ` +
-        'Ensure Chrome/Chromium is installed and try again.',
+          'Ensure Chrome/Chromium is installed and try again.',
       );
     }
   }
@@ -54,7 +54,9 @@ export class BrowserInteractionService implements OnModuleDestroy {
       throw new Error(`Invalid URL: "${url}"`);
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error(`Blocked protocol: ${parsed.protocol} (only http/https allowed)`);
+      throw new Error(
+        `Blocked protocol: ${parsed.protocol} (only http/https allowed)`,
+      );
     }
     const hostname = parsed.hostname.toLowerCase();
     const blocked = [
@@ -68,7 +70,9 @@ export class BrowserInteractionService implements OnModuleDestroy {
     ];
     for (const pattern of blocked) {
       if (pattern.test(hostname)) {
-        throw new Error(`Blocked URL: cannot navigate to private network address (${hostname})`);
+        throw new Error(
+          `Blocked URL: cannot navigate to private network address (${hostname})`,
+        );
       }
     }
   }
@@ -104,14 +108,17 @@ export class BrowserInteractionService implements OnModuleDestroy {
 
   // ponytail: config-driven default location injected into location-aware URLs.
   // ARUNAKI_DEFAULT_LOCATION=Medan & ARUNAKI_LOCATION_PARAM=location; UI will set these later.
-  private readonly defaultLocation: string | null = process.env.ARUNAKI_DEFAULT_LOCATION || null;
-  private readonly locationParam: string = process.env.ARUNAKI_LOCATION_PARAM || 'location';
+  private readonly defaultLocation: string | null =
+    process.env.ARUNAKI_DEFAULT_LOCATION || null;
+  private readonly locationParam: string =
+    process.env.ARUNAKI_LOCATION_PARAM || 'location';
 
   private injectLocationParam(url: string): string {
     if (!this.defaultLocation) return url;
     const parsed = new URL(url);
     const key = this.locationParam.toLowerCase();
-    if ([...parsed.searchParams.keys()].some((k) => k.toLowerCase() === key)) return url;
+    if ([...parsed.searchParams.keys()].some((k) => k.toLowerCase() === key))
+      return url;
     parsed.searchParams.append(this.locationParam, this.defaultLocation);
     return parsed.toString();
   }
@@ -122,14 +129,21 @@ export class BrowserInteractionService implements OnModuleDestroy {
    */
   private async grantIpGeolocation(context: BrowserContext): Promise<void> {
     try {
-      if (!this.geoCache || Date.now() - this.geoCachedAt > this.GEO_CACHE_TTL_MS) {
+      if (
+        !this.geoCache ||
+        Date.now() - this.geoCachedAt > this.GEO_CACHE_TTL_MS
+      ) {
         const res = await fetch('http://ip-api.com/json/?fields=lat,lon', {
           headers: { 'User-Agent': 'Arunaki/1.0' },
           signal: AbortSignal.timeout(8000),
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (data.status === 'success' && typeof data.lat === 'number' && typeof data.lon === 'number') {
+        if (
+          data.status === 'success' &&
+          typeof data.lat === 'number' &&
+          typeof data.lon === 'number'
+        ) {
           this.geoCache = { lat: data.lat, lon: data.lon };
           this.geoCachedAt = Date.now();
           this.logger.log(`IP geolocation: ${data.lat},${data.lon}`);
@@ -137,7 +151,10 @@ export class BrowserInteractionService implements OnModuleDestroy {
       }
       if (!this.geoCache) return;
       await context.grantPermissions(['geolocation']);
-      await context.setGeolocation({ latitude: this.geoCache.lat, longitude: this.geoCache.lon });
+      await context.setGeolocation({
+        latitude: this.geoCache.lat,
+        longitude: this.geoCache.lon,
+      });
     } catch (err) {
       this.logger.warn(`Geolocation setup failed: ${err.message}`);
     }
@@ -150,7 +167,10 @@ export class BrowserInteractionService implements OnModuleDestroy {
     this.validateUrl(url);
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.goto(this.injectLocationParam(url), { waitUntil: 'networkidle', timeout: 30000 });
+      await page.goto(this.injectLocationParam(url), {
+        waitUntil: 'networkidle',
+        timeout: 30000,
+      });
     } catch (err) {
       throw new Error(`Navigation failed: ${err.message}`);
     }
@@ -160,16 +180,23 @@ export class BrowserInteractionService implements OnModuleDestroy {
   async click(selector: string, sessionId = 'default'): Promise<void> {
     const page = await this.getOrCreatePage(sessionId);
     try {
-      await page.locator(this.normalizeSelector(selector)).first().click({ timeout: 10000 });
+      await page
+        .locator(this.normalizeSelector(selector))
+        .first()
+        .click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
         `Cannot click "${selector}": ${err.message}. ` +
-        'Try browser_screenshot to see the current page state.',
+          'Try browser_screenshot to see the current page state.',
       );
     }
   }
 
-  async type(selector: string, text: string, sessionId = 'default'): Promise<void> {
+  async type(
+    selector: string,
+    text: string,
+    sessionId = 'default',
+  ): Promise<void> {
     const page = await this.getOrCreatePage(sessionId);
     try {
       const locator = page.locator(this.normalizeSelector(selector)).first();
@@ -178,7 +205,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
     } catch (err) {
       throw new Error(
         `Cannot type into "${selector}": ${err.message}. ` +
-        'Try browser_screenshot to see the current page state.',
+          'Try browser_screenshot to see the current page state.',
       );
     }
   }
@@ -197,7 +224,7 @@ export class BrowserInteractionService implements OnModuleDestroy {
     } catch (err) {
       throw new Error(
         `Cannot type into "${selector}": ${err.message}. ` +
-        'Try browser_screenshot to see the current page state.',
+          'Try browser_screenshot to see the current page state.',
       );
     }
   }

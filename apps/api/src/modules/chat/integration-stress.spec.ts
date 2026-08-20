@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 import { SecretsVaultService } from '../security/secrets-vault.service.js';
 import { TrajectoryAuditService } from '../audit/trajectory-audit.service.js';
-import { SubAgentRunnerService, SubAgentTask } from './sub-agent-runner.service.js';
+import {
+  SubAgentRunnerService,
+  SubAgentTask,
+} from './sub-agent-runner.service.js';
 import { ProviderService } from '../provider/provider.service.js';
 
 describe('System Integration & Stress Testing', () => {
@@ -44,10 +47,16 @@ describe('System Integration & Stress Testing', () => {
       audit.recordStep(runId, chatId, 'agent_start', { prompt: 'Stress test' });
 
       for (let i = 0; i < 498; i++) {
-        audit.recordStep(runId, chatId, 'tool_done', {
-          toolName: `tool_${i % 10}`,
-          index: i,
-        }, i % 50);
+        audit.recordStep(
+          runId,
+          chatId,
+          'tool_done',
+          {
+            toolName: `tool_${i % 10}`,
+            index: i,
+          },
+          i % 50,
+        );
       }
 
       audit.recordStep(runId, chatId, 'agent_complete', { total: 500 });
@@ -74,9 +83,9 @@ describe('System Integration & Stress Testing', () => {
         }),
       };
       const mockToolRegistry = {
-        getToolDefinitions: vi.fn().mockReturnValue([
-          { function: { name: 'read' } },
-        ]),
+        getToolDefinitions: vi
+          .fn()
+          .mockReturnValue([{ function: { name: 'read' } }]),
       };
       const mockSelfHealing = { executeWithIsolation: vi.fn() };
 
@@ -115,7 +124,10 @@ describe('System Integration & Stress Testing', () => {
 
       // Simulate 50 rapid rate-limit classifications
       for (let i = 0; i < 50; i++) {
-        const classified = providerService.classifyError(429, `Rate limit hit ${i}`);
+        const classified = providerService.classifyError(
+          429,
+          `Rate limit hit ${i}`,
+        );
         expect(classified.action).toBe('rotate');
         expect(classified.cooldownSeconds).toBe(20);
       }

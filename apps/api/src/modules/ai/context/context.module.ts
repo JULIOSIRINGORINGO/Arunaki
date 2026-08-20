@@ -25,7 +25,11 @@ export class ContextModule implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    if (this.registry && typeof this.registry.register === 'function' && this.legacy) {
+    if (
+      this.registry &&
+      typeof this.registry.register === 'function' &&
+      this.legacy
+    ) {
       this.registry.register(this.legacy);
     }
   }

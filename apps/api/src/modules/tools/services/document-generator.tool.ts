@@ -32,7 +32,12 @@ export class DocumentGeneratorTool {
     filename: string = 'export.xlsx',
     outputPath?: string,
   ): ToolResult {
-    return this.excelBuilder.generateExcel(sheetName, rows, filename, outputPath);
+    return this.excelBuilder.generateExcel(
+      sheetName,
+      rows,
+      filename,
+      outputPath,
+    );
   }
 
   generateCsv(
@@ -67,7 +72,9 @@ export class DocumentGeneratorTool {
     filename: string = 'presentation.pptx',
   ): Promise<ToolResult> {
     const startTime = Date.now();
-    const safeFilename = filename.endsWith('.pptx') ? filename : `${filename}.pptx`;
+    const safeFilename = filename.endsWith('.pptx')
+      ? filename
+      : `${filename}.pptx`;
 
     try {
       const pptx = new PptxGenJS();
@@ -106,7 +113,9 @@ export class DocumentGeneratorTool {
           });
         }
 
-        const bulletLines = slide.content.split('\n').filter((l) => l.trim().length > 0);
+        const bulletLines = slide.content
+          .split('\n')
+          .filter((l) => l.trim().length > 0);
         const bulletItems = bulletLines.map((line) => ({
           text: line.replace(/^[-*•]\s*/, '').replace(/^\d+[.)]\s*/, ''),
           options: { fontSize: 16, color: '374151', bullet: true },
@@ -135,7 +144,8 @@ export class DocumentGeneratorTool {
           executionTime: Date.now() - startTime,
           format: 'pptx',
           filename: safeFilename,
-          mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          mimeType:
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
           contentBase64,
         },
       };
@@ -161,10 +171,16 @@ export class DocumentGeneratorTool {
     filename: string = 'rug-report.xlsx',
   ): Promise<ToolResult> {
     const summaryRows: Array<Record<string, string | number>> = [
-      { Laporan: 'Laporan Rincian Usaha (RUG)', Periode: data.period, Perusahaan: data.companyName },
+      {
+        Laporan: 'Laporan Rincian Usaha (RUG)',
+        Periode: data.period,
+        Perusahaan: data.companyName,
+      },
     ];
     if (data.revenue) {
-      data.revenue.forEach((r) => summaryRows.push({ Laporan: r.category, Jumlah: r.amount }));
+      data.revenue.forEach((r) =>
+        summaryRows.push({ Laporan: r.category, Jumlah: r.amount }),
+      );
     }
     return this.excelBuilder.generateExcel('RUG', summaryRows, filename);
   }
@@ -174,10 +190,16 @@ export class DocumentGeneratorTool {
     filename: string = 'neraca-report.xlsx',
   ): Promise<ToolResult> {
     const summaryRows: Array<Record<string, string | number>> = [
-      { Laporan: 'Laporan Neraca Keuangan', Periode: data.period, Perusahaan: data.companyName },
+      {
+        Laporan: 'Laporan Neraca Keuangan',
+        Periode: data.period,
+        Perusahaan: data.companyName,
+      },
     ];
     if (data.assets) {
-      data.assets.forEach((a) => summaryRows.push({ Laporan: a.category, Jumlah: a.amount }));
+      data.assets.forEach((a) =>
+        summaryRows.push({ Laporan: a.category, Jumlah: a.amount }),
+      );
     }
     return this.excelBuilder.generateExcel('Neraca', summaryRows, filename);
   }
@@ -187,10 +209,16 @@ export class DocumentGeneratorTool {
     filename: string = 'laba-rugi-report.xlsx',
   ): Promise<ToolResult> {
     const summaryRows: Array<Record<string, string | number>> = [
-      { Laporan: 'Laporan Laba Rugi', Periode: data.period, Perusahaan: data.companyName },
+      {
+        Laporan: 'Laporan Laba Rugi',
+        Periode: data.period,
+        Perusahaan: data.companyName,
+      },
     ];
     if (data.incomeItems) {
-      data.incomeItems.forEach((i) => summaryRows.push({ Laporan: i.category, Jumlah: i.amount }));
+      data.incomeItems.forEach((i) =>
+        summaryRows.push({ Laporan: i.category, Jumlah: i.amount }),
+      );
     }
     return this.excelBuilder.generateExcel('Laba Rugi', summaryRows, filename);
   }

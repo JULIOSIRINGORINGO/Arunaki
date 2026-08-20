@@ -88,7 +88,9 @@ export class ContextManager {
 
     const effectiveContext = contextLength ?? this.config.contextLength;
     const tokenCount = this.estimateTokens(messages);
-    const thresholdTokens = Math.floor(effectiveContext * this.config.threshold);
+    const thresholdTokens = Math.floor(
+      effectiveContext * this.config.threshold,
+    );
 
     // Don't compress if under threshold
     if (tokenCount <= thresholdTokens) {
@@ -582,8 +584,7 @@ Provide a concise summary (max 300 chars).`;
 
     const pruneThreshold = toolIdx.length - 3;
     // Marker text + `...[truncated]` overhead added by pruneOldToolResults.
-    const keptAfterPrune =
-      this.config.toolPreviewChars + 80;
+    const keptAfterPrune = this.config.toolPreviewChars + 80;
     let total = 0;
     for (let n = 0; n < pruneThreshold; n++) {
       const len = messages[toolIdx[n]].content?.length || 0;
@@ -629,10 +630,15 @@ Provide a concise summary (max 300 chars).`;
       ) {
         return msg;
       }
-      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      const cleaned = msg.content
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .trim();
       if (cleaned === msg.content) return msg;
       touched = true;
-      return { ...msg, content: cleaned || '[Reasoning omitted to save context]' };
+      return {
+        ...msg,
+        content: cleaned || '[Reasoning omitted to save context]',
+      };
     });
     return touched ? result : messages;
   }

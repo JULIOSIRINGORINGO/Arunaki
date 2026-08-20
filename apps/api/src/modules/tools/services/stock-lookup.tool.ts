@@ -42,7 +42,14 @@ export class StockLookupTool implements Tool {
       name: this.name,
       displayName: this.displayName,
       description: this.description,
-      tags: ['stock', 'inventory', 'availability', 'ready', 'out-of-stock', 'remaining'],
+      tags: [
+        'stock',
+        'inventory',
+        'availability',
+        'ready',
+        'out-of-stock',
+        'remaining',
+      ],
       inputSchema: {
         url: 'Product page URL (works for any vendor, e.g. from knowledge nodes)',
         city: 'City name, e.g. Medan, Jakarta. Use ip_geolocation first if unknown.',
@@ -55,7 +62,7 @@ export class StockLookupTool implements Tool {
   }
 
   get description(): string {
-    return 'SCOPE: stock availability numbers ONLY (ready/out-of-stock/remaining count per branch & variant). Fetches real-time stock from any product URL: calls the site\'s own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first. IMPORTANT: when you report stock numbers to the user, always end your answer with the exact URL you checked, formatted as `Source: <url>` using the `url` value from the tool result.';
+    return "SCOPE: stock availability numbers ONLY (ready/out-of-stock/remaining count per branch & variant). Fetches real-time stock from any product URL: calls the site's own API when auto-learned, otherwise fetches over plain HTTP (static pages, JSON, CSV/spreadsheets), only renders a browser when JS is needed. NOT for catalog questions (available colors, sizes, prices, descriptions) - answer those from knowledge nodes or knowledge_live_fetch. Input: product URL + city. Use ip_geolocation to determine the user city first. IMPORTANT: when you report stock numbers to the user, always end your answer with the exact URL you checked, formatted as `Source: <url>` using the `url` value from the tool result.";
   }
 
   get definition(): ToolDefinition {
@@ -95,7 +102,9 @@ export class StockLookupTool implements Tool {
     if (!learned) return undefined;
     return {
       apiUrl: (productId: string, city: string) =>
-        learned.apiUrlTemplate.replace('{productId}', productId).replace('{city}', encodeURIComponent(city)),
+        learned.apiUrlTemplate
+          .replace('{productId}', productId)
+          .replace('{city}', encodeURIComponent(city)),
       secret: learned.secret,
       keySizeBytes: learned.keySizeBytes,
       iterations: learned.iterations,
@@ -106,7 +115,12 @@ export class StockLookupTool implements Tool {
     };
   }
 
-  async execute(args: { url: string; city: string; color?: string; size?: string }): Promise<ToolResult> {
+  async execute(args: {
+    url: string;
+    city: string;
+    color?: string;
+    size?: string;
+  }): Promise<ToolResult> {
     const startTime = Date.now();
     try {
       const host = new URL(args.url).hostname;
@@ -114,7 +128,10 @@ export class StockLookupTool implements Tool {
 
       // Override any location/city query param with the user's city —
       // product URLs in knowledge nodes may pin a fixed location (e.g. ?location=Medan).
-      const located: typeof args = { ...args, url: this.withLocation(args.url, args.city) };
+      const located: typeof args = {
+        ...args,
+        url: this.withLocation(args.url, args.city),
+      };
 
       let rows: string[] = [];
       if (site) {
@@ -123,7 +140,9 @@ export class StockLookupTool implements Tool {
         // Fast path: plain HTTP first (static HTML/SSR, JSON, CSV, spreadsheets).
         // Browser only when the page needs JS rendering.
         const httpRows = await this.lookupViaHttp(located);
-        rows = httpRows?.length ? httpRows : await this.lookupViaBrowser(located);
+        rows = httpRows?.length
+          ? httpRows
+          : await this.lookupViaBrowser(located);
       }
 
       if (rows.length === 0) {
@@ -131,16 +150,29 @@ export class StockLookupTool implements Tool {
           status: 'error',
           data: {},
           preview: `Could not find stock data on ${host}. If the stock is behind a login/click, use browser_interaction to open the page and read it manually.`,
-          metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
-          error: { code: 'NO_STOCK_FOUND', message: `No stock data found on ${host}` },
+          metadata: {
+            toolName: this.name,
+            displayName: this.displayName,
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'NO_STOCK_FOUND',
+            message: `No stock data found on ${host}`,
+          },
         };
       }
 
       return {
         status: 'success',
         data: { city: args.city, host, url: located.url, rows },
-        preview: `Stock in ${args.city} (${args.color || 'all colors'} / ${args.size || 'all sizes'}):\n` + rows.join('\n'),
-        metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
+        preview:
+          `Stock in ${args.city} (${args.color || 'all colors'} / ${args.size || 'all sizes'}):\n` +
+          rows.join('\n'),
+        metadata: {
+          toolName: this.name,
+          displayName: this.displayName,
+          executionTime: Date.now() - startTime,
+        },
       };
     } catch (err: any) {
       this.logger.error(`[StockLookup] ${err.message}`);
@@ -148,7 +180,11 @@ export class StockLookupTool implements Tool {
         status: 'error',
         data: {},
         preview: `Stock lookup failed: ${err.message}`,
-        metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: this.name,
+          displayName: this.displayName,
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'STOCK_LOOKUP_FAILED', message: err.message },
       };
     }
@@ -165,12 +201,14 @@ export class StockLookupTool implements Tool {
     },
   ): Promise<string[]> {
     const productId = site.parseId(args.url);
-    if (!productId) throw new Error(`Could not extract product id from URL: ${args.url}`);
+    if (!productId)
+      throw new Error(`Could not extract product id from URL: ${args.url}`);
 
     const apiUrl = site.apiUrl(productId, args.city);
     const response = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
         'Accept-Language': 'id-ID,id;q=0.9',
       },
       signal: AbortSignal.timeout(15000),
@@ -181,18 +219,29 @@ export class StockLookupTool implements Tool {
       throw new Error('API response is not encrypted (unexpected shape).');
     }
 
-    const stockData = JSON.parse(this.decrypt(json.encrypt, site.secret, site.keySizeBytes, site.iterations || 1000));
+    const stockData = JSON.parse(
+      this.decrypt(
+        json.encrypt,
+        site.secret,
+        site.keySizeBytes,
+        site.iterations || 1000,
+      ),
+    );
 
     const rows: string[] = [];
     for (const branch of stockData) {
       const branchName = branch.name || branch.groupLocation || '?';
       const products = branch.products || [];
-      const filtered = products.filter((p: any) =>
-        (!args.color || p.color.toLowerCase() === args.color.toLowerCase()) &&
-        (!args.size || p.size.toLowerCase() === args.size.toLowerCase()),
+      const filtered = products.filter(
+        (p: any) =>
+          (!args.color || p.color.toLowerCase() === args.color.toLowerCase()) &&
+          (!args.size || p.size.toLowerCase() === args.size.toLowerCase()),
       );
       if (filtered.length === 0) continue;
-      const parts = filtered.map((p: any) => `${p.color} ${p.size}: ${p.stock} Left (${p.price1.toLocaleString('id-ID')})`);
+      const parts = filtered.map(
+        (p: any) =>
+          `${p.color} ${p.size}: ${p.stock} Left (${p.price1.toLocaleString('id-ID')})`,
+      );
       rows.push(`${branchName}: ${parts.join(', ')}`);
     }
     return rows;
@@ -217,12 +266,18 @@ export class StockLookupTool implements Tool {
    * spreadsheet/text files — no browser needed. Returns null when the content
    * needs JS rendering (then the caller falls back to the browser).
    */
-  private async lookupViaHttp(args: { url: string; city: string; color?: string; size?: string }): Promise<string[] | null> {
+  private async lookupViaHttp(args: {
+    url: string;
+    city: string;
+    color?: string;
+    size?: string;
+  }): Promise<string[] | null> {
     let response: Response;
     try {
       response = await fetch(args.url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
           'Accept-Language': 'id-ID,id;q=0.9',
         },
         signal: AbortSignal.timeout(10000),
@@ -267,11 +322,17 @@ export class StockLookupTool implements Tool {
   private stockRowsFrom(items: any[]): string[] {
     const rows: string[] = [];
     for (const item of items) {
-      const stock = typeof item.stock === 'number' || typeof item.stok === 'number' ? (item.stock ?? item.stok) : undefined;
+      const stock =
+        typeof item.stock === 'number' || typeof item.stok === 'number'
+          ? (item.stock ?? item.stok)
+          : undefined;
       if (stock === undefined) continue;
       const color = typeof item.color === 'string' ? item.color : '';
       const size = typeof item.size === 'string' ? item.size : '';
-      const price = typeof item.price1 === 'number' ? ` (${item.price1.toLocaleString('id-ID')})` : '';
+      const price =
+        typeof item.price1 === 'number'
+          ? ` (${item.price1.toLocaleString('id-ID')})`
+          : '';
       rows.push(`${color} ${size}: ${stock} Left${price}`.trim());
     }
     return rows;
@@ -282,7 +343,12 @@ export class StockLookupTool implements Tool {
    * evidence: decrypted API payloads (most structured), SSR JSON blobs,
    * then visible text. No per-site knowledge required.
    */
-  private async lookupViaBrowser(args: { url: string; city: string; color?: string; size?: string }): Promise<string[]> {
+  private async lookupViaBrowser(args: {
+    url: string;
+    city: string;
+    color?: string;
+    size?: string;
+  }): Promise<string[]> {
     const { chromium } = await import('playwright');
     const browser = await chromium.launch({ headless: true });
     try {
@@ -292,11 +358,17 @@ export class StockLookupTool implements Tool {
       // Many product pages only embed stock once color/size/location are
       // selected via query params — add them when missing (harmless elsewhere).
       const target = new URL(args.url);
-      if (args.color && !target.searchParams.has('color')) target.searchParams.set('color', args.color);
-      if (args.size && !target.searchParams.has('size')) target.searchParams.set('size', args.size);
-      if (args.city && !target.searchParams.has('location')) target.searchParams.set('location', args.city);
+      if (args.color && !target.searchParams.has('color'))
+        target.searchParams.set('color', args.color);
+      if (args.size && !target.searchParams.has('size'))
+        target.searchParams.set('size', args.size);
+      if (args.city && !target.searchParams.has('location'))
+        target.searchParams.set('location', args.city);
 
-      await page.goto(target.toString(), { waitUntil: 'domcontentloaded', timeout: 45000 });
+      await page.goto(target.toString(), {
+        waitUntil: 'domcontentloaded',
+        timeout: 45000,
+      });
       await page.waitForTimeout(4000);
 
       const rows: string[] = [];
@@ -312,8 +384,13 @@ export class StockLookupTool implements Tool {
       if (this.cryptoHarvester) {
         const host = new URL(args.url).hostname;
         const captured = await this.cryptoHarvester.collect(page, host);
-        for (const p of this.cryptoHarvester.stockPayloadsFrom(captured.decrypted)) {
-          const price = typeof p.price1 === 'number' ? ` (${p.price1.toLocaleString('id-ID')})` : '';
+        for (const p of this.cryptoHarvester.stockPayloadsFrom(
+          captured.decrypted,
+        )) {
+          const price =
+            typeof p.price1 === 'number'
+              ? ` (${p.price1.toLocaleString('id-ID')})`
+              : '';
           add(`${p.color} ${p.size}: ${p.stock} Left${price}`);
         }
       }
@@ -358,7 +435,10 @@ export class StockLookupTool implements Tool {
    * (stok/stock/sisa) plus optional color (warna) and size (ukuran) columns.
    */
   private extractCsvRows(text: string): string[] {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     if (lines.length < 2) return [];
     const header = lines[0].toLowerCase().split(/[,;\t]/);
     const iStock = header.findIndex((h) => /stok|stock|sisa/.test(h));
@@ -385,22 +465,40 @@ export class StockLookupTool implements Tool {
     return text
       .split('\n')
       .map((l) => l.trim())
-      .filter((l) => l.length > 0 && l.length < 140 && /\d/.test(l) && /(left|habis|tersisa|ready|stok|stock)/i.test(l))
+      .filter(
+        (l) =>
+          l.length > 0 &&
+          l.length < 140 &&
+          /\d/.test(l) &&
+          /(left|habis|tersisa|ready|stok|stock)/i.test(l),
+      )
       .slice(0, 20);
   }
 
   private filterRows(rows: string[], color?: string, size?: string): string[] {
-    return rows.filter((r) =>
-      (!color || r.toLowerCase().includes(color.toLowerCase())) &&
-      (!size || r.toLowerCase().includes(size.toLowerCase())),
+    return rows.filter(
+      (r) =>
+        (!color || r.toLowerCase().includes(color.toLowerCase())) &&
+        (!size || r.toLowerCase().includes(size.toLowerCase())),
     );
   }
 
-  private decrypt(b64: string, secret: string, keySizeBytes: number, iterations = 1000): string {
+  private decrypt(
+    b64: string,
+    secret: string,
+    keySizeBytes: number,
+    iterations = 1000,
+  ): string {
     const buf = Buffer.from(b64, 'base64');
     const salt = buf.subarray(0, 16);
     const cipher = buf.subarray(16);
-    const derived = crypto.pbkdf2Sync(secret, salt, iterations, keySizeBytes, 'sha256');
+    const derived = crypto.pbkdf2Sync(
+      secret,
+      salt,
+      iterations,
+      keySizeBytes,
+      'sha256',
+    );
     const key = derived.subarray(0, 32);
     const iv = derived.subarray(32);
     const dec = crypto.createDecipheriv('aes-256-cbc', key, iv);

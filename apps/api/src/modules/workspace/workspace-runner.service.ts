@@ -61,17 +61,28 @@ export class WorkspaceRunnerService {
 
   constructor(
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    @Inject(forwardRef(() => ArtifactService)) private readonly artifactService: ArtifactService,
-    @Inject(forwardRef(() => MemoryService)) private readonly memoryService: MemoryService,
-    @Inject(forwardRef(() => BackgroundReviewService)) private readonly backgroundReviewService: BackgroundReviewService,
-    @Inject(forwardRef(() => CompactionService)) private readonly compactionService: CompactionService,
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => EventEmitter2)) private readonly eventEmitter: EventEmitter2,
-    @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore: TodoStoreService,
-    @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService: SessionAdmissionService,
-    @Inject(forwardRef(() => WorkspacePromptBuilderService)) private readonly promptBuilder: WorkspacePromptBuilderService,
-    @Inject(forwardRef(() => TranscriptEngineService)) private readonly transcriptEngine: TranscriptEngineService,
-    @Inject(forwardRef(() => ModelStreamNormalizerService)) private readonly streamNormalizer: ModelStreamNormalizerService,
+    @Inject(forwardRef(() => ArtifactService))
+    private readonly artifactService: ArtifactService,
+    @Inject(forwardRef(() => MemoryService))
+    private readonly memoryService: MemoryService,
+    @Inject(forwardRef(() => BackgroundReviewService))
+    private readonly backgroundReviewService: BackgroundReviewService,
+    @Inject(forwardRef(() => CompactionService))
+    private readonly compactionService: CompactionService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => EventEmitter2))
+    private readonly eventEmitter: EventEmitter2,
+    @Inject(forwardRef(() => TodoStoreService))
+    private readonly todoStore: TodoStoreService,
+    @Inject(forwardRef(() => SessionAdmissionService))
+    private readonly sessionAdmissionService: SessionAdmissionService,
+    @Inject(forwardRef(() => WorkspacePromptBuilderService))
+    private readonly promptBuilder: WorkspacePromptBuilderService,
+    @Inject(forwardRef(() => TranscriptEngineService))
+    private readonly transcriptEngine: TranscriptEngineService,
+    @Inject(forwardRef(() => ModelStreamNormalizerService))
+    private readonly streamNormalizer: ModelStreamNormalizerService,
     private readonly stateService: WorkspaceRunStateService,
     private readonly toolExecutor: WorkspaceToolExecutorService,
   ) {}
@@ -117,7 +128,8 @@ export class WorkspaceRunnerService {
     params: WorkspaceRunParams,
   ): AsyncGenerator<WorkspaceStreamEvent> {
     const eventQueue: WorkspaceStreamEvent[] = [];
-    let resolveEvent: ((value: WorkspaceStreamEvent | null) => void) | null = null;
+    let resolveEvent: ((value: WorkspaceStreamEvent | null) => void) | null =
+      null;
     let done = false;
 
     const onEvent = (event: WorkspaceStreamEvent) => {
@@ -146,9 +158,11 @@ export class WorkspaceRunnerService {
       if (eventQueue.length > 0) {
         yield eventQueue.shift()!;
       } else {
-        const event = await new Promise<WorkspaceStreamEvent | null>((resolve) => {
-          resolveEvent = resolve;
-        });
+        const event = await new Promise<WorkspaceStreamEvent | null>(
+          (resolve) => {
+            resolveEvent = resolve;
+          },
+        );
         if (event) yield event;
       }
     }
@@ -212,7 +226,8 @@ export class WorkspaceRunnerService {
         onEvent({
           type: 'error',
           data: {
-            message: 'Input contains disallowed content. Please fix it and try again.',
+            message:
+              'Input contains disallowed content. Please fix it and try again.',
           },
         });
         return;
@@ -375,7 +390,9 @@ export class WorkspaceRunnerService {
               modelId ? { preferredProviderId: modelId } : undefined,
             );
           } catch (chatErr: any) {
-            this.logger.error(`Non-streaming fallback failed: ${chatErr.message}`);
+            this.logger.error(
+              `Non-streaming fallback failed: ${chatErr.message}`,
+            );
           }
         }
 
@@ -396,13 +413,31 @@ export class WorkspaceRunnerService {
               );
               aiResponse.toolCalls = repaired;
               aiResponse.content = (aiResponse.content || '')
-                .replace(/```(?:json|tool|function)?\s*\{[\s\S]*?\}\s*```/gi, '')
-                .replace(/<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
-                .replace(/<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi, '')
+                .replace(
+                  /```(?:json|tool|function)?\s*\{[\s\S]*?\}\s*```/gi,
+                  '',
+                )
+                .replace(
+                  /<\s*function\/[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi,
+                  '',
+                )
+                .replace(
+                  /<\s*function:[a-zA-Z0-9_-]+\s*>[\s\S]*?<\/\s*function\s*>/gi,
+                  '',
+                )
                 .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
-                .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
-                .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
-                .replace(/(?:Action|Tool|Function)\s*:\s*[a-zA-Z0-9_-]+\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*\{[\s\S]*?\}/gi, '')
+                .replace(
+                  /<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi,
+                  '',
+                )
+                .replace(
+                  /<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi,
+                  '',
+                )
+                .replace(
+                  /(?:Action|Tool|Function)\s*:\s*[a-zA-Z0-9_-]+\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*\{[\s\S]*?\}/gi,
+                  '',
+                )
                 .trim();
             } else if (rawTextToSearch.includes('<|tool_call>')) {
               const toolCallMatch = rawTextToSearch.match(
@@ -412,7 +447,10 @@ export class WorkspaceRunnerService {
                 const funcName = toolCallMatch[1];
                 let rawArgs = toolCallMatch[2].trim();
                 rawArgs = rawArgs.replace(/<\|">/g, '"');
-                rawArgs = rawArgs.replace(/([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+                rawArgs = rawArgs.replace(
+                  /([{\[,]\s*)([a-zA-Z0-9_]+)\s*:/g,
+                  '$1"$2":',
+                );
                 aiResponse.toolCalls.push({
                   id: `call_fallback_${Date.now()}`,
                   type: 'function',
@@ -422,7 +460,10 @@ export class WorkspaceRunnerService {
                   },
                 });
                 aiResponse.content = (aiResponse.content || '')
-                  .replace(/<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s, '')
+                  .replace(
+                    /<\|tool_call>.*?(?:<tool_call\|>|<\|tool_call\|>|$)/s,
+                    '',
+                  )
                   .trim();
               }
             }
@@ -437,7 +478,10 @@ export class WorkspaceRunnerService {
           finalContent = `Run stopped: the token budget limit (${budget.limit.toLocaleString('en-US')} tokens) was exceeded after ${budget.used.toLocaleString('en-US')} tokens. Please break the task into smaller parts or continue in a new session.`;
           onEvent({
             type: 'error',
-            data: { message: finalContent, budget: { used: budget.used, limit: budget.limit } },
+            data: {
+              message: finalContent,
+              budget: { used: budget.used, limit: budget.limit },
+            },
           });
           reachedMaxRounds = false;
           break;
@@ -448,7 +492,9 @@ export class WorkspaceRunnerService {
           const hasFileMutationIntent = hasMutationIntent;
 
           const isEarlyRoundWithoutAction =
-            runState.round <= 2 && hasFileMutationIntent && executedToolCount === 0;
+            runState.round <= 2 &&
+            hasFileMutationIntent &&
+            executedToolCount === 0;
 
           if (isEarlyRoundWithoutAction && nudgeAttempts < 2) {
             nudgeAttempts++;
@@ -458,12 +504,15 @@ export class WorkspaceRunnerService {
             if (aiResponse.content) {
               messages.push({
                 role: 'assistant',
-                content: this.streamNormalizer.cleanseAssistantMessageForHistory(
-                  aiResponse.content,
-                ),
+                content:
+                  this.streamNormalizer.cleanseAssistantMessageForHistory(
+                    aiResponse.content,
+                  ),
               });
             }
-            const availableTools = tools.map((t) => `\`${t.function.name}\``).join(', ');
+            const availableTools = tools
+              .map((t) => `\`${t.function.name}\``)
+              .join(', ');
             messages.push({
               role: 'user',
               content:
@@ -483,7 +532,9 @@ export class WorkspaceRunnerService {
             data: { content: finalContent, artifacts: createdArtifactIds },
           });
           reachedMaxRounds = false;
-          this.logger.log('Workspace agent finished goal execution within round limit.');
+          this.logger.log(
+            'Workspace agent finished goal execution within round limit.',
+          );
           break;
         }
 
@@ -515,8 +566,9 @@ export class WorkspaceRunnerService {
         messages.push({
           role: 'assistant',
           content:
-            this.streamNormalizer.cleanseAssistantMessageForHistory(aiResponse.content) ||
-            null,
+            this.streamNormalizer.cleanseAssistantMessageForHistory(
+              aiResponse.content,
+            ) || null,
           tool_calls: aiResponse.toolCalls,
         });
 
@@ -524,7 +576,8 @@ export class WorkspaceRunnerService {
           (tc) => tc.function.name === 'ask_user',
         );
         if (askUserToolCall) {
-          let message = 'Please provide additional information to process this request.';
+          let message =
+            'Please provide additional information to process this request.';
           try {
             const args = JSON.parse(askUserToolCall.function.arguments || '{}');
             if (args.message) message = args.message;
@@ -572,7 +625,9 @@ export class WorkspaceRunnerService {
           this.logger.log(
             `[WorkspaceRunner] Concluding run: ${mutationsApplied} mutation(s) applied and verified across rounds.`,
           );
-          finalContent = finalContent || 'File modifications have been applied and verified.';
+          finalContent =
+            finalContent ||
+            'File modifications have been applied and verified.';
           reachedMaxRounds = false;
           break;
         }
@@ -603,7 +658,9 @@ export class WorkspaceRunnerService {
       }
 
       if (reachedMaxRounds) {
-        this.logger.warn('Workspace agent reached max round limit without completion.');
+        this.logger.warn(
+          'Workspace agent reached max round limit without completion.',
+        );
       }
       if (!finalContent) {
         if (reachedMaxRounds) {
@@ -648,7 +705,10 @@ export class WorkspaceRunnerService {
         workspaceId,
         goal: userGoal,
         finalContent: finalContent.substring(0, 200),
-        messages: messages.map((m) => ({ role: m.role, content: m.content || '' })),
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content || '',
+        })),
         artifactsCount: artifacts.length,
         timestamp: new Date(),
       });
@@ -732,14 +792,19 @@ export class WorkspaceRunnerService {
       const friendly = /rate limit|429|free-models-per-day/i.test(error.message)
         ? 'The AI server is rate-limited (HTTP 429). Try again in a few minutes or use a paid API key.'
         : error.message;
-      onEvent({ type: 'error', data: { message: friendly, code: 'AI_PROVIDER_ERROR' } });
+      onEvent({
+        type: 'error',
+        data: { message: friendly, code: 'AI_PROVIDER_ERROR' },
+      });
       throw error;
     } finally {
       this.stateService.deleteRunState(workspaceId);
       if (lease) {
-        await lease.release().catch((e: any) =>
-          this.logger.warn(`Failed to release lease: ${e.message}`),
-        );
+        await lease
+          .release()
+          .catch((e: any) =>
+            this.logger.warn(`Failed to release lease: ${e.message}`),
+          );
       }
     }
   }

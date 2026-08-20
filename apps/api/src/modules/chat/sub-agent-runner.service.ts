@@ -73,7 +73,8 @@ export class SubAgentRunnerService {
 
   constructor(
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => ToolRegistryService))
+    private readonly toolRegistryService: ToolRegistryService,
     private readonly selfHealingService: SelfHealingService,
   ) {}
 
@@ -383,10 +384,7 @@ export class SubAgentRunnerService {
     }
 
     if (task.allowedTools && task.allowedTools.length > 0) {
-      parts.push(
-        '',
-        `Allowed tools: ${task.allowedTools.join(', ')}`,
-      );
+      parts.push('', `Allowed tools: ${task.allowedTools.join(', ')}`);
     }
 
     return parts.join('\n');

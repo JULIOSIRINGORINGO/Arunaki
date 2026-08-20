@@ -13,10 +13,12 @@ describe('PtcExecutorService (DeepSeek Harness PTC Engine)', () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'arunaki-ptc-test-'));
     mockToolRegistry = {
-      isMutating: vi.fn((toolName: string) => ['edit', 'write', 'delete'].includes(toolName)),
+      isMutating: vi.fn((toolName: string) =>
+        ['edit', 'write', 'delete'].includes(toolName),
+      ),
       executeTool: vi.fn(),
     };
-    ptcService = new PtcExecutorService(mockToolRegistry as unknown as ToolRegistryService);
+    ptcService = new PtcExecutorService(mockToolRegistry);
   });
 
   afterEach(() => {
@@ -63,7 +65,10 @@ describe('PtcExecutorService (DeepSeek Harness PTC Engine)', () => {
     // Simulate Step 2 throwing an error
     mockToolRegistry.executeTool.mockResolvedValueOnce({
       status: 'error',
-      error: { code: 'SYNTAX_ERR', message: 'Calculation syntax error on step 2' },
+      error: {
+        code: 'SYNTAX_ERR',
+        message: 'Calculation syntax error on step 2',
+      },
     });
 
     const result = await ptcService.executeBatch(

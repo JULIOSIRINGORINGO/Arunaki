@@ -21,7 +21,8 @@ export class SelfHealingService {
   private readonly logger = new Logger(SelfHealingService.name);
 
   constructor(
-    @Inject(ToolRegistryService) private readonly toolRegistryService: ToolRegistryService,
+    @Inject(ToolRegistryService)
+    private readonly toolRegistryService: ToolRegistryService,
     @Inject(PrismaService) @Optional() private readonly prisma?: PrismaService,
   ) {}
 
@@ -64,7 +65,9 @@ export class SelfHealingService {
   /**
    * Get workspace root path for isolation validation.
    */
-  private async getWorkspaceRootPath(workspaceId: string): Promise<string | null> {
+  private async getWorkspaceRootPath(
+    workspaceId: string,
+  ): Promise<string | null> {
     try {
       const workspace = this.prisma
         ? await this.prisma.workspace.findUnique({
@@ -82,7 +85,11 @@ export class SelfHealingService {
    * Validate that a path is within the workspace root (Workspace Isolation).
    * Returns validated path or throws if outside workspace.
    */
-  validateWorkspacePath(workspaceId: string, requestedPath: string, rootPath: string): string {
+  validateWorkspacePath(
+    workspaceId: string,
+    requestedPath: string,
+    rootPath: string,
+  ): string {
     const resolvedRequested = path.resolve(requestedPath);
     const resolvedRoot = path.resolve(rootPath);
     const rel = path.relative(resolvedRoot, resolvedRequested);
@@ -128,8 +135,14 @@ export class SelfHealingService {
             // Only validate absolute paths, paths with separators, or plain
             // traversal values (Gap #13: "." / ".." / "../" resolve outside the
             // workspace but never contain a separator on their own).
-            const isTraversal = value === '.' || value === '..' || /^\.\.[/\\]/.test(value);
-            if (path.isAbsolute(value) || value.includes('/') || value.includes('\\') || isTraversal) {
+            const isTraversal =
+              value === '.' || value === '..' || /^\.\.[/\\]/.test(value);
+            if (
+              path.isAbsolute(value) ||
+              value.includes('/') ||
+              value.includes('\\') ||
+              isTraversal
+            ) {
               paths.push(value);
             }
           }
@@ -145,7 +158,9 @@ export class SelfHealingService {
       try {
         this.validateWorkspacePath(workspaceId, p, rootPath);
       } catch (err: any) {
-        throw new Error(`Tool "${toolName}" argument validation failed: ${err.message}`);
+        throw new Error(
+          `Tool "${toolName}" argument validation failed: ${err.message}`,
+        );
       }
     }
   }

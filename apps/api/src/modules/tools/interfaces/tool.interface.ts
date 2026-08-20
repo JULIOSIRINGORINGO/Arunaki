@@ -46,8 +46,6 @@ export interface Tool {
   /** True if the tool modifies workspace state (requires safety checks) */
   readonly mutating?: boolean;
 
-
-
   /** Read-only/idempotent result may be cached per-run (default false). */
   readonly cacheable?: boolean;
 

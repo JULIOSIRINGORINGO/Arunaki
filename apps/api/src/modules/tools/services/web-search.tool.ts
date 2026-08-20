@@ -9,7 +9,10 @@ export class WebSearchTool {
   private readonly apiKey: string;
 
   constructor(private readonly config?: ConfigService) {
-    this.apiKey = this.config?.get<string>('TAVILY_API_KEY') || process.env.TAVILY_API_KEY || '';
+    this.apiKey =
+      this.config?.get<string>('TAVILY_API_KEY') ||
+      process.env.TAVILY_API_KEY ||
+      '';
   }
 
   async searchWeb(

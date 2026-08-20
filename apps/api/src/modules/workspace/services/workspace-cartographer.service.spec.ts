@@ -12,7 +12,9 @@ describe('WorkspaceCartographerService', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'arunaki-cartographer-test-'));
+    tempDir = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'arunaki-cartographer-test-'),
+    );
 
     mockPrisma = {
       workspace: {
@@ -27,7 +29,8 @@ describe('WorkspaceCartographerService', () => {
 
     mockAiService = {
       chat: vi.fn().mockResolvedValue({
-        content: '# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain Profile\n- Custom dynamic analysis',
+        content:
+          '# ARUNAKI WORKSPACE OPERATING SYSTEM\n\n## 1. Domain Profile\n- Custom dynamic analysis',
       }),
     };
 
@@ -77,14 +80,24 @@ describe('WorkspaceCartographerService', () => {
       rootPath: tempDir,
     });
 
-    await service.patchWorkspaceRules('ws-1', 'Always format transaction currency with RB suffix.');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'Always format transaction currency with RB suffix.',
+    );
 
     const rules = await service.getWorkspaceRules(tempDir);
-    expect(rules).toContain('Always format transaction currency with RB suffix.');
+    expect(rules).toContain(
+      'Always format transaction currency with RB suffix.',
+    );
 
     // Patching the same rule again should not create duplicates
-    await service.patchWorkspaceRules('ws-1', 'Always format transaction currency with RB suffix.');
-    const occurrences = (rules.match(/Always format transaction currency with RB suffix/g) || []).length;
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'Always format transaction currency with RB suffix.',
+    );
+    const occurrences = (
+      rules.match(/Always format transaction currency with RB suffix/g) || []
+    ).length;
     expect(occurrences).toBe(1);
   });
 
@@ -135,7 +148,10 @@ describe('WorkspaceCartographerService', () => {
     expect(rules).not.toMatch(/## 7\. User Preferences/);
 
     // Add second different rule
-    await service.patchWorkspaceRules('ws-1', 'Recalculate BCA total from individual transactions');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'Recalculate BCA total from individual transactions',
+    );
 
     rules = await service.getWorkspaceRules(tempDir);
     console.log('After second rule:', rules.slice(-300));
@@ -159,7 +175,10 @@ describe('WorkspaceCartographerService', () => {
       rootPath: tempDir,
     });
 
-    await service.patchWorkspaceRules('ws-1', 'Always format numbers with commas');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'Always format numbers with commas',
+    );
 
     const rules = await service.getWorkspaceRules(tempDir);
     // Should use ## 8 (minimum), not ## 1
@@ -187,7 +206,10 @@ describe('WorkspaceCartographerService', () => {
     });
 
     // Replace existing rule
-    await service.patchWorkspaceRules('ws-1', 'REPLACE: Always update date to today -> Always update date header to current date');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'REPLACE: Always update date to today -> Always update date header to current date',
+    );
 
     const rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('Always update date header to current date');
@@ -214,14 +236,20 @@ describe('WorkspaceCartographerService', () => {
     });
 
     // Step 1: ADD Rule 1 (date)
-    await service.patchWorkspaceRules('ws-1', 'ADD: Tanggal judul harus selalu hari ini');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'ADD: Tanggal judul harus selalu hari ini',
+    );
     let rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('## 8. User Preferences');
     expect(rules).toContain('Tanggal judul harus selalu hari ini');
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(1);
 
     // Step 2: ADD Rule 2 (format — different rule)
-    await service.patchWorkspaceRules('ws-1', 'ADD: Format angka harus pakai titik sebagai pemisah ribuan');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'ADD: Format angka harus pakai titik sebagai pemisah ribuan',
+    );
     rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('Format angka harus pakai titik');
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
@@ -229,7 +257,10 @@ describe('WorkspaceCartographerService', () => {
     expect(rules).toContain('## 8. User Preferences');
 
     // Step 3: REPLACE Rule 1 (edit date rule)
-    await service.patchWorkspaceRules('ws-1', 'REPLACE: Tanggal judul harus selalu hari ini -> Format tanggal harus DD/MM/YYYY');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'REPLACE: Tanggal judul harus selalu hari ini -> Format tanggal harus DD/MM/YYYY',
+    );
     rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('Format tanggal harus DD/MM/YYYY');
     expect(rules).not.toContain('Tanggal judul harus selalu hari ini');
@@ -239,12 +270,18 @@ describe('WorkspaceCartographerService', () => {
     expect(rules).toContain('## 8. User Preferences');
 
     // Step 4: Reject garbage
-    await service.patchWorkspaceRules('ws-1', 'Sorry, I am unable to provide an answer');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'Sorry, I am unable to provide an answer',
+    );
     rules = await service.getWorkspaceRules(tempDir);
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
 
     // Step 5: Reject duplicate
-    await service.patchWorkspaceRules('ws-1', 'ADD: Format angka harus pakai titik sebagai pemisah ribuan');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      'ADD: Format angka harus pakai titik sebagai pemisah ribuan',
+    );
     rules = await service.getWorkspaceRules(tempDir);
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);
   });
@@ -253,7 +290,11 @@ describe('WorkspaceCartographerService', () => {
     const arunakiDir = path.join(tempDir, '.arunaki');
     await fsp.mkdir(arunakiDir, { recursive: true });
     const filePath = path.join(arunakiDir, 'ARUNAKI.md');
-    await fsp.writeFile(filePath, '# Rules\n\n## 7. Behavior\n1. Read before write\n', 'utf8');
+    await fsp.writeFile(
+      filePath,
+      '# Rules\n\n## 7. Behavior\n1. Read before write\n',
+      'utf8',
+    );
 
     mockPrisma.workspace.findUnique.mockResolvedValue({
       id: 'ws-1',
@@ -262,7 +303,10 @@ describe('WorkspaceCartographerService', () => {
     });
 
     // Pre-formatted rule (as sentinel sends it)
-    await service.patchWorkspaceRules('ws-1', '- [Auto-Learned 2026-08-20]: Selalu format angka dengan titik');
+    await service.patchWorkspaceRules(
+      'ws-1',
+      '- [Auto-Learned 2026-08-20]: Selalu format angka dengan titik',
+    );
     const rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('Selalu format angka dengan titik');
     expect(rules).toContain('## 8. User Preferences');
@@ -290,7 +334,9 @@ describe('WorkspaceCartographerService', () => {
     await service.analyzeAndBootstrap('ws-1');
 
     const generatedRules = await service.getWorkspaceRules(tempDir);
-    expect(generatedRules).toContain('DYNAMICALLY COMPILED ARUNAKI.MD BY LLM SUB-AGENT');
+    expect(generatedRules).toContain(
+      'DYNAMICALLY COMPILED ARUNAKI.MD BY LLM SUB-AGENT',
+    );
     // ARUNAKI.md stays an internal workspace file - never synced to the Knowledge Graph
     expect(mockPrisma.knowledge.create).not.toHaveBeenCalled();
   });
@@ -320,7 +366,9 @@ describe('WorkspaceCartographerService', () => {
     await service.analyzeAndBootstrap('ws-1');
 
     const generatedRules = await service.getWorkspaceRules(tempDir);
-    expect(generatedRules).toContain('# ARUNAKI WORKSPACE OPERATING SYSTEM — OFFLINE WORKSPACE');
+    expect(generatedRules).toContain(
+      '# ARUNAKI WORKSPACE OPERATING SYSTEM — OFFLINE WORKSPACE',
+    );
     expect(generatedRules).toContain('sample_data.csv');
     expect(generatedRules).toContain('Tool Usage Directives');
     expect(generatedRules).toContain('Minimal Typing, Maximum Automation');

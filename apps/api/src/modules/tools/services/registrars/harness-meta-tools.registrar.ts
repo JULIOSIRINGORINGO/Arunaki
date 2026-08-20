@@ -37,7 +37,8 @@ export class HarnessMetaToolsRegistrar {
       ToolAdapter.from({
         name: 'ask_user',
         displayName: 'Ask User',
-        description: 'Requests clarification or missing details directly from the user.',
+        description:
+          'Requests clarification or missing details directly from the user.',
         tags: ['communication'],
         handler: async (args) => services.askUser.execute(args),
         parameters: {
@@ -64,7 +65,11 @@ export class HarnessMetaToolsRegistrar {
             status: 'success',
             data: { todos: services.todoStore.get(runId), runId },
             preview: `Todo list saved (${items.length} steps)`,
-            metadata: { toolName: 'todo_write', displayName: 'Write Todo', executionTime: 0 },
+            metadata: {
+              toolName: 'todo_write',
+              displayName: 'Write Todo',
+              executionTime: 0,
+            },
           };
         },
         parameters: {
@@ -108,7 +113,11 @@ export class HarnessMetaToolsRegistrar {
               status: 'error',
               data: {},
               preview: 'Sub-agent runner unavailable',
-              metadata: { toolName: 'agent_spawn', displayName: 'Spawn Sub-Agent', executionTime: 0 },
+              metadata: {
+                toolName: 'agent_spawn',
+                displayName: 'Spawn Sub-Agent',
+                executionTime: 0,
+              },
             };
           }
           return services.subAgentRunner.spawnSubAgents({
@@ -163,8 +172,16 @@ export class HarnessMetaToolsRegistrar {
           return {
             status: res.status === 'success' ? 'success' : 'error',
             data: res,
-            preview: res.message || `Executed ${res.completedSteps}/${res.totalSteps} batch operations.`,
-            error: res.status !== 'success' ? { code: 'BATCH_ERROR', message: res.message || 'Batch failed' } : undefined,
+            preview:
+              res.message ||
+              `Executed ${res.completedSteps}/${res.totalSteps} batch operations.`,
+            error:
+              res.status !== 'success'
+                ? {
+                    code: 'BATCH_ERROR',
+                    message: res.message || 'Batch failed',
+                  }
+                : undefined,
             metadata: {
               toolName: 'batch_execute',
               displayName: 'Programmatic Batch Execute',
@@ -177,7 +194,8 @@ export class HarnessMetaToolsRegistrar {
           properties: {
             operations: {
               type: 'array',
-              description: 'Array of tool operations: [{ tool: "read", args: { filePath: "..." } }, { tool: "edit", args: { ... } }]',
+              description:
+                'Array of tool operations: [{ tool: "read", args: { filePath: "..." } }, { tool: "edit", args: { ... } }]',
               items: {
                 type: 'object',
                 properties: {
@@ -189,7 +207,8 @@ export class HarnessMetaToolsRegistrar {
             },
             atomic: {
               type: 'boolean',
-              description: 'If true, rolls back all file modifications if any operation fails. Defaults to true.',
+              description:
+                'If true, rolls back all file modifications if any operation fails. Defaults to true.',
             },
           },
           required: ['operations'],
@@ -209,23 +228,35 @@ export class HarnessMetaToolsRegistrar {
           if (!services.multiDocOrchestrator) {
             return {
               status: 'error',
-              error: { code: 'ORCHESTRATOR_UNAVAILABLE', message: 'Multi-document orchestrator is not available.' },
+              error: {
+                code: 'ORCHESTRATOR_UNAVAILABLE',
+                message: 'Multi-document orchestrator is not available.',
+              },
               data: {},
               preview: 'Multi-doc orchestrator unavailable',
-              metadata: { toolName: 'multi_doc_process', displayName: 'Parallel Multi-Document Process', executionTime: 0 },
+              metadata: {
+                toolName: 'multi_doc_process',
+                displayName: 'Parallel Multi-Document Process',
+                executionTime: 0,
+              },
             };
           }
-          const res = await services.multiDocOrchestrator.processDocumentsParallel({
-            workspaceId: args.workspaceId,
-            files: args.files || [],
-            instruction: args.instruction || '',
-            maxConcurrency: args.maxConcurrency || 3,
-          });
+          const res =
+            await services.multiDocOrchestrator.processDocumentsParallel({
+              workspaceId: args.workspaceId,
+              files: args.files || [],
+              instruction: args.instruction || '',
+              maxConcurrency: args.maxConcurrency || 3,
+            });
           return {
             status: res.failedCount === 0 ? 'success' : 'error',
             data: res,
             preview: `Processed ${res.successCount}/${res.totalFiles} documents in parallel (${res.totalDurationMs}ms).`,
-            metadata: { toolName: 'multi_doc_process', displayName: 'Parallel Multi-Document Process', executionTime: res.totalDurationMs },
+            metadata: {
+              toolName: 'multi_doc_process',
+              displayName: 'Parallel Multi-Document Process',
+              executionTime: res.totalDurationMs,
+            },
           };
         },
         parameters: {
@@ -234,11 +265,13 @@ export class HarnessMetaToolsRegistrar {
             files: {
               type: 'array',
               items: { type: 'string' },
-              description: 'List of relative file paths to process concurrently.',
+              description:
+                'List of relative file paths to process concurrently.',
             },
             instruction: {
               type: 'string',
-              description: 'The task instruction / extraction goal for each document.',
+              description:
+                'The task instruction / extraction goal for each document.',
             },
             maxConcurrency: {
               type: 'number',

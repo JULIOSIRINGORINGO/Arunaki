@@ -32,11 +32,18 @@ export interface FallbackOptions {
     provider: FallbackProvider,
     body: Record<string, any>,
   ) => Promise<{ data: any; statusCode: number }>;
-  getNextProvider: (currentId: string, triedIds?: string[]) => Promise<FallbackProvider | null>;
+  getNextProvider: (
+    currentId: string,
+    triedIds?: string[],
+  ) => Promise<FallbackProvider | null>;
   classifyError: (
     statusCode: number,
     body: string,
-  ) => { action: 'retry' | 'rotate' | 'fatal'; message?: string; cooldownSeconds?: number };
+  ) => {
+    action: 'retry' | 'rotate' | 'fatal';
+    message?: string;
+    cooldownSeconds?: number;
+  };
   recordUsage?: (providerId: string) => Promise<void>;
   recordError?: (providerId: string, error: string) => Promise<void>;
   setCooldown?: (providerId: string, seconds: number) => Promise<void>;
@@ -107,7 +114,9 @@ export async function runWithModelFallback(
               error: lastError,
             });
             if (provider.id !== 'env-fallback' && options.recordError) {
-              await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+              await options
+                .recordError(provider.id, lastError.substring(0, 200))
+                .catch(() => {});
             }
             if (provider.id !== 'env-fallback' && options.setCooldown) {
               await options.setCooldown(provider.id, 300).catch(() => {});
@@ -149,10 +158,12 @@ export async function runWithModelFallback(
         });
 
         if (provider.id !== 'env-fallback' && options.recordError) {
-          await options.recordError(
-            provider.id,
-            `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
-          ).catch(() => {});
+          await options
+            .recordError(
+              provider.id,
+              `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
+            )
+            .catch(() => {});
         }
 
         if (classified.action === 'retry') {
@@ -165,8 +176,14 @@ export async function runWithModelFallback(
         }
 
         if (classified.action === 'rotate') {
-          if (provider.id !== 'env-fallback' && classified.cooldownSeconds && options.setCooldown) {
-            await options.setCooldown(provider.id, classified.cooldownSeconds).catch(() => {});
+          if (
+            provider.id !== 'env-fallback' &&
+            classified.cooldownSeconds &&
+            options.setCooldown
+          ) {
+            await options
+              .setCooldown(provider.id, classified.cooldownSeconds)
+              .catch(() => {});
           }
           await new Promise((r) => setTimeout(r, 5000));
           break;
@@ -181,7 +198,10 @@ export async function runWithModelFallback(
     rotationCount++;
     if (rotationCount > MAX_ROTATIONS) break;
 
-    const nextProvider = await options.getNextProvider(provider.id, Array.from(triedProviders));
+    const nextProvider = await options.getNextProvider(
+      provider.id,
+      Array.from(triedProviders),
+    );
     if (!nextProvider) {
       log.log('No more available providers for rotation');
       break;

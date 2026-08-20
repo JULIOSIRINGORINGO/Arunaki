@@ -20,10 +20,7 @@ export class ProviderCatalogService {
       baseUrl: 'https://api.groq.com/openai/v1',
       keyPrefix: 'gsk_',
       urlKeyword: 'groq.com',
-      fallbackModels: [
-        'llama-3.3-70b-versatile',
-        'llama3-70b-8192',
-      ],
+      fallbackModels: ['llama-3.3-70b-versatile', 'llama3-70b-8192'],
     },
     {
       id: 'openrouter',
@@ -49,7 +46,10 @@ export class ProviderCatalogService {
       name: 'Together AI',
       baseUrl: 'https://api.together.xyz/v1',
       urlKeyword: 'together.xyz',
-      fallbackModels: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'Qwen/Qwen2.5-Coder-32B-Instruct'],
+      fallbackModels: [
+        'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+        'Qwen/Qwen2.5-Coder-32B-Instruct',
+      ],
     },
     {
       id: 'kenari',
@@ -61,17 +61,27 @@ export class ProviderCatalogService {
     },
   ];
 
-  detectPreset(apiKey: string = '', baseUrl: string = ''): ProviderCatalogPreset {
+  detectPreset(
+    apiKey: string = '',
+    baseUrl: string = '',
+  ): ProviderCatalogPreset {
     const matched = ProviderCatalogService.PRESETS.find(
       (p) =>
         (p.keyPrefix && apiKey.startsWith(p.keyPrefix)) ||
         (p.urlKeyword && baseUrl.includes(p.urlKeyword)),
     );
 
-    return matched || ProviderCatalogService.PRESETS.find(p => p.id === 'kenari') || ProviderCatalogService.PRESETS[1]; // Default to Kenari
+    return (
+      matched ||
+      ProviderCatalogService.PRESETS.find((p) => p.id === 'kenari') ||
+      ProviderCatalogService.PRESETS[1]
+    ); // Default to Kenari
   }
 
-  getNextModelInPreset(preset: ProviderCatalogPreset, currentModelId?: string): string {
+  getNextModelInPreset(
+    preset: ProviderCatalogPreset,
+    currentModelId?: string,
+  ): string {
     const pool = preset.fallbackModels;
     if (!pool || pool.length === 0) return 'default';
 

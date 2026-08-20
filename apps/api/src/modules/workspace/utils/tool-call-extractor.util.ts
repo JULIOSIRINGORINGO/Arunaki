@@ -3,14 +3,23 @@
  */
 
 export function extractMentionedFilenames(text: string): string[] {
-  return [...text.matchAll(/@\[?([^\n@\]]+?\.[A-Za-z0-9]{1,10})\]?(?=\s|$|[.,;:!?])/g)]
+  return [
+    ...text.matchAll(
+      /@\[?([^\n@\]]+?\.[A-Za-z0-9]{1,10})\]?(?=\s|$|[.,;:!?])/g,
+    ),
+  ]
     .map((match) => match[1].trim().replace(/^\[|\]$/g, ''))
     .filter(Boolean);
 }
 
-export function hasExplicitDeleteIntent(goal: string, filename: string): boolean {
-  return /\b(hapus|hapuskan|delete|remove)\b/i.test(goal)
-    && goal.toLowerCase().includes(filename.toLowerCase());
+export function hasExplicitDeleteIntent(
+  goal: string,
+  filename: string,
+): boolean {
+  return (
+    /\b(hapus|hapuskan|delete|remove)\b/i.test(goal) &&
+    goal.toLowerCase().includes(filename.toLowerCase())
+  );
 }
 
 export function extractLooseArguments(raw: string): Record<string, any> {
@@ -21,7 +30,10 @@ export function extractLooseArguments(raw: string): Record<string, any> {
     const stringPropRegex = /"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/gs;
     let match;
     while ((match = stringPropRegex.exec(raw)) !== null) {
-      result[match[1]] = match[2].replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t');
+      result[match[1]] = match[2]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t');
     }
   } catch {}
 
@@ -30,7 +42,8 @@ export function extractLooseArguments(raw: string): Record<string, any> {
     const patchMatch = /"patchText"\s*:\s*"([\s\S]*)/.exec(raw);
     if (patchMatch) {
       let text = patchMatch[1];
-      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
+      if (text.endsWith('"}') || text.endsWith('"} \n'))
+        text = text.slice(0, text.lastIndexOf('"}'));
       else if (text.endsWith('"')) text = text.slice(0, -1);
       result.patchText = text;
     }
@@ -39,7 +52,8 @@ export function extractLooseArguments(raw: string): Record<string, any> {
     const contentMatch = /"content"\s*:\s*"([\s\S]*)/.exec(raw);
     if (contentMatch) {
       let text = contentMatch[1];
-      if (text.endsWith('"}') || text.endsWith('"} \n')) text = text.slice(0, text.lastIndexOf('"}'));
+      if (text.endsWith('"}') || text.endsWith('"} \n'))
+        text = text.slice(0, text.lastIndexOf('"}'));
       else if (text.endsWith('"')) text = text.slice(0, -1);
       result.content = text;
     }
@@ -49,15 +63,23 @@ export function extractLooseArguments(raw: string): Record<string, any> {
     if (fileMatch) result.filePath = fileMatch[1];
   }
   if (!result.oldString) {
-    const oldMatch = /"(?:oldString|old_str|find)"\s*:\s*"([\s\S]*?)(?:",\s*"(?:newString|new_str|replace)"|$)/.exec(raw);
+    const oldMatch =
+      /"(?:oldString|old_str|find)"\s*:\s*"([\s\S]*?)(?:",\s*"(?:newString|new_str|replace)"|$)/.exec(
+        raw,
+      );
     if (oldMatch) {
-      result.oldString = oldMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+      result.oldString = oldMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r');
     }
   }
   if (!result.newString) {
-    const newMatch = /"(?:newString|new_str|replace)"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/.exec(raw);
+    const newMatch =
+      /"(?:newString|new_str|replace)"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/.exec(raw);
     if (newMatch) {
-      result.newString = newMatch[1].replace(/\\n/g, '\n').replace(/\\r/g, '\r');
+      result.newString = newMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r');
     }
   }
 
@@ -69,11 +91,16 @@ export function extractInlineFunctionCalls(content: string): Array<{
   type: 'function';
   function: { name: string; arguments: string };
 }> {
-  const result: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }> = [];
+  const result: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }> = [];
   if (!content || typeof content !== 'string') return result;
 
   // Pattern 1: <function/tool_name...>BODY</function> or <function/tool_name[...]>{...}
-  const funcRegex = /<function\/([a-zA-Z0-9_-]+)(?:\[.*?\])?>?([\s\S]*?)(?:<\/function>|$)/g;
+  const funcRegex =
+    /<function\/([a-zA-Z0-9_-]+)(?:\[.*?\])?>?([\s\S]*?)(?:<\/function>|$)/g;
   let match;
   let idx = 1;
   while ((match = funcRegex.exec(content)) !== null) {
@@ -106,7 +133,10 @@ export function extractInlineFunctionCalls(content: string): Array<{
           type: 'function',
           function: {
             name: parsed.name,
-            arguments: typeof parsed.arguments === 'string' ? parsed.arguments : JSON.stringify(parsed.arguments || {}),
+            arguments:
+              typeof parsed.arguments === 'string'
+                ? parsed.arguments
+                : JSON.stringify(parsed.arguments || {}),
           },
         });
       }

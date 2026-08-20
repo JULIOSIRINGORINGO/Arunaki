@@ -9,7 +9,8 @@ describe('PromptInjectionDetector', () => {
   });
 
   it('should NOT flag legitimate Indonesian prompts with "dan"', () => {
-    const prompt = 'Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.';
+    const prompt =
+      'Baca dan analisis semua dokumen dalam workspace ini. Buat ringkasan singkat isi setiap dokumen dan identifikasi poin-poin penting.';
     const result = detector.scan(prompt);
     expect(result.detected).toBe(false);
   });

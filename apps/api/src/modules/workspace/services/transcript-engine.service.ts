@@ -43,7 +43,12 @@ export class TranscriptEngineService {
    * Get the directory path where session transcripts are stored.
    */
   getSessionDir(workspaceRoot: string, sessionId: string): string {
-    const sessionDir = path.join(workspaceRoot, '.arunaki', 'sessions', sessionId);
+    const sessionDir = path.join(
+      workspaceRoot,
+      '.arunaki',
+      'sessions',
+      sessionId,
+    );
     if (!fs.existsSync(sessionDir)) {
       fs.mkdirSync(sessionDir, { recursive: true });
     }
@@ -70,7 +75,7 @@ export class TranscriptEngineService {
     try {
       const transcriptPath = this.getTranscriptPath(workspaceRoot, sessionId);
       const counterKey = `${workspaceRoot}:${sessionId}`;
-      
+
       let seq = this.sequenceCounters.get(counterKey);
       if (seq === undefined) {
         // Compute from existing lines if any
@@ -100,7 +105,9 @@ export class TranscriptEngineService {
 
       return event;
     } catch (err: any) {
-      this.logger.error(`Failed to append transcript event (${type}): ${err.message}`);
+      this.logger.error(
+        `Failed to append transcript event (${type}): ${err.message}`,
+      );
       throw err;
     }
   }
@@ -108,7 +115,10 @@ export class TranscriptEngineService {
   /**
    * Read the full chronological transcript for a session.
    */
-  async getTranscript(workspaceRoot: string, sessionId: string): Promise<TranscriptEvent[]> {
+  async getTranscript(
+    workspaceRoot: string,
+    sessionId: string,
+  ): Promise<TranscriptEvent[]> {
     const transcriptPath = this.getTranscriptPath(workspaceRoot, sessionId);
     if (!fs.existsSync(transcriptPath)) {
       return [];
@@ -127,7 +137,9 @@ export class TranscriptEngineService {
       }
       return events;
     } catch (err: any) {
-      this.logger.error(`Failed to read transcript for session ${sessionId}: ${err.message}`);
+      this.logger.error(
+        `Failed to read transcript for session ${sessionId}: ${err.message}`,
+      );
       return [];
     }
   }
@@ -135,12 +147,15 @@ export class TranscriptEngineService {
   /**
    * Read file content safely for snapshotting.
    */
-  captureFileSnapshot(workspaceRoot: string, relativePath: string): string | null {
+  captureFileSnapshot(
+    workspaceRoot: string,
+    relativePath: string,
+  ): string | null {
     try {
       const targetPath = path.isAbsolute(relativePath)
         ? relativePath
         : path.join(workspaceRoot, relativePath);
-      
+
       if (!fs.existsSync(targetPath)) {
         return null;
       }
@@ -154,7 +169,10 @@ export class TranscriptEngineService {
   /**
    * Extract all rollbackable checkpoints from the transcript.
    */
-  async getCheckpoints(workspaceRoot: string, sessionId: string): Promise<CheckpointInfo[]> {
+  async getCheckpoints(
+    workspaceRoot: string,
+    sessionId: string,
+  ): Promise<CheckpointInfo[]> {
     const events = await this.getTranscript(workspaceRoot, sessionId);
     const checkpoints: CheckpointInfo[] = [];
 
@@ -166,7 +184,9 @@ export class TranscriptEngineService {
           timestamp: evt.timestamp,
           tool: evt.payload.tool || 'edit',
           filePath: evt.payload.filePath || 'document',
-          description: evt.payload.description || `Pre-mutation snapshot of ${evt.payload.filePath}`,
+          description:
+            evt.payload.description ||
+            `Pre-mutation snapshot of ${evt.payload.filePath}`,
           hasSnapshot: !!evt.payload.snapshotContent,
         });
       }

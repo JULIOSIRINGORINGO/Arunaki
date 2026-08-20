@@ -26,7 +26,10 @@ describe('ToolRegistryService.validateArgs', () => {
   });
 
   it('rejects a boolean of the wrong type', () => {
-    const result = service.validateArgs({ name: 'x', enabled: 'true' }, parameters);
+    const result = service.validateArgs(
+      { name: 'x', enabled: 'true' },
+      parameters,
+    );
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('enabled');
     expect(result.errors[0]).toContain('boolean');
@@ -60,7 +63,11 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
         description: 'reads a file',
         tags: ['read'],
         handler,
-        parameters: { type: 'object', properties: { filePath: { type: 'string' } }, required: ['filePath'] },
+        parameters: {
+          type: 'object',
+          properties: { filePath: { type: 'string' } },
+          required: ['filePath'],
+        },
         cacheable: true,
       }),
     );
@@ -88,7 +95,10 @@ describe('ToolRegistryService result cache (Gap #3)', () => {
         description: 'searches the web',
         tags: ['search'],
         handler,
-        parameters: { type: 'object', properties: { query: { type: 'string' } } },
+        parameters: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
+        },
         cacheable: false,
       }),
     );

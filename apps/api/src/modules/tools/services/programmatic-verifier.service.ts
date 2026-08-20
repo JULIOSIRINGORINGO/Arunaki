@@ -35,7 +35,10 @@ export class ProgrammaticVerifierService {
   /**
    * Perform instant deterministic verification on a file target.
    */
-  async verifyFile(filePath: string, rule: VerificationRule = {}): Promise<ProgrammaticVerificationResult> {
+  async verifyFile(
+    filePath: string,
+    rule: VerificationRule = {},
+  ): Promise<ProgrammaticVerificationResult> {
     const startTime = Date.now();
     const checksPassed: string[] = [];
     const checksFailed: string[] = [];
@@ -90,7 +93,11 @@ export class ProgrammaticVerifierService {
     }
 
     // Format & Content checks if file exists and has size
-    if (exists && sizeBytes > 0 && (defaultRule.mustContainRegex || defaultRule.validFormat !== 'any')) {
+    if (
+      exists &&
+      sizeBytes > 0 &&
+      (defaultRule.mustContainRegex || defaultRule.validFormat !== 'any')
+    ) {
       try {
         // Read bounded buffer to avoid memory overflow on huge binary files
         const readLength = Math.min(sizeBytes, MAX_VERIFICATION_READ_BYTES);
@@ -118,7 +125,11 @@ export class ProgrammaticVerifierService {
             checksFailed.push('VALID_JSON_FORMAT');
           }
         } else if (defaultRule.validFormat === 'csv') {
-          if (content.includes(',') || content.includes(';') || content.includes('\n')) {
+          if (
+            content.includes(',') ||
+            content.includes(';') ||
+            content.includes('\n')
+          ) {
             checksPassed.push('VALID_CSV_FORMAT');
           } else {
             formatValid = false;
@@ -126,7 +137,9 @@ export class ProgrammaticVerifierService {
           }
         }
       } catch (err) {
-        this.logger.warn(`Failed reading file for content verification: ${filePath} - ${err.message}`);
+        this.logger.warn(
+          `Failed reading file for content verification: ${filePath} - ${err.message}`,
+        );
       }
     }
 

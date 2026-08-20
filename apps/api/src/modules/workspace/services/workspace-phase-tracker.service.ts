@@ -39,7 +39,10 @@ export class WorkspacePhaseTrackerService {
   setPhase(
     currentPhaseRef: { current: ExecutionPhase },
     newPhase: ExecutionPhase,
-    onEvent?: (event: { type: 'phase_changed'; data: PhaseChangeEvent }) => void,
+    onEvent?: (event: {
+      type: 'phase_changed';
+      data: PhaseChangeEvent;
+    }) => void,
   ) {
     if (currentPhaseRef.current === newPhase) return;
     currentPhaseRef.current = newPhase;

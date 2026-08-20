@@ -56,12 +56,15 @@ export class ProviderService extends BaseService<Provider> {
     this.vaultService = vaultService || new SecretsVaultService();
   }
 
-  private encryptApiKey(key: string): string {    if (!key || !this.vaultService) return key;
+  private encryptApiKey(key: string): string {
+    if (!key || !this.vaultService) return key;
     try {
       const payload = this.vaultService.encryptSecret(key);
       return JSON.stringify(payload);
     } catch (error: any) {
-      this.logger.warn(`Failed to encrypt API key, storing as plaintext: ${error.message}`);
+      this.logger.warn(
+        `Failed to encrypt API key, storing as plaintext: ${error.message}`,
+      );
       return key;
     }
   }
@@ -105,11 +108,19 @@ export class ProviderService extends BaseService<Provider> {
     return this.buildActiveConfig(true);
   }
 
-  private async buildActiveConfig(respectCooldown: boolean): Promise<ProviderConfig | null> {
-    const provider = this.repository ? await this.repository.findActive() : null;
+  private async buildActiveConfig(
+    respectCooldown: boolean,
+  ): Promise<ProviderConfig | null> {
+    const provider = this.repository
+      ? await this.repository.findActive()
+      : null;
     if (!provider) return null;
 
-    if (respectCooldown && provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date()) {
+    if (
+      respectCooldown &&
+      provider.cooldownUntil &&
+      new Date(provider.cooldownUntil) > new Date()
+    ) {
       this.logger.warn(
         `Active provider ${provider.name} is in cooldown until ${provider.cooldownUntil.toISOString()} — deferring to fallback provider`,
       );
@@ -126,8 +137,12 @@ export class ProviderService extends BaseService<Provider> {
         .map((m) => m.trim())
         .filter(Boolean);
       if (models.length === 0) return null;
-      const cooled = models.filter((m) => this.isModelCoolingDown(`${provider.id}::${m}`));
-      const eligible = models.filter((m) => !this.isModelCoolingDown(`${provider.id}::${m}`));
+      const cooled = models.filter((m) =>
+        this.isModelCoolingDown(`${provider.id}::${m}`),
+      );
+      const eligible = models.filter(
+        (m) => !this.isModelCoolingDown(`${provider.id}::${m}`),
+      );
       if (eligible.length === 0) {
         this.logger.warn(
           `Active provider ${provider.name} has all models in cooldown — deferring to fallback provider`,
@@ -172,29 +187,54 @@ export class ProviderService extends BaseService<Provider> {
 
   async recordUsage(id: string): Promise<void> {
     const realId = id.split('::')[0];
-    if (this.repository && this.repository.recordUsage && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
-      await Promise.resolve(this.repository.recordUsage(realId)).catch(() => {});
+    if (
+      this.repository &&
+      this.repository.recordUsage &&
+      !realId.startsWith('fallback-') &&
+      !realId.startsWith('env-')
+    ) {
+      await Promise.resolve(this.repository.recordUsage(realId)).catch(
+        () => {},
+      );
     }
   }
 
   async recordError(id: string, errorMessage: string): Promise<void> {
     const realId = id.split('::')[0];
-    if (this.repository && this.repository.recordError && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
-      await Promise.resolve(this.repository.recordError(realId, errorMessage)).catch(() => {});
+    if (
+      this.repository &&
+      this.repository.recordError &&
+      !realId.startsWith('fallback-') &&
+      !realId.startsWith('env-')
+    ) {
+      await Promise.resolve(
+        this.repository.recordError(realId, errorMessage),
+      ).catch(() => {});
     }
   }
 
   async setCooldown(id: string, seconds: number): Promise<void> {
     const parts = id.split('::');
-    if (parts.length > 1 && !parts[0].startsWith('fallback-') && !parts[0].startsWith('env-')) {
+    if (
+      parts.length > 1 &&
+      !parts[0].startsWith('fallback-') &&
+      !parts[0].startsWith('env-')
+    ) {
       // Model-level cooldown: cool only this model, keep sibling models usable.
       const key = `${parts[0]}::${parts[1]}`;
       this.modelCooldowns.set(key, Date.now() + seconds * 1000);
       return;
     }
     const realId = id.split('::')[0];
-    if (this.repository && this.repository.setCooldown && !realId.startsWith('fallback-') && !realId.startsWith('env-')) {
-      await Promise.resolve(this.repository.setCooldown(realId, seconds)).catch(() => {});
+    if (
+      this.repository &&
+      this.repository.setCooldown &&
+      !realId.startsWith('fallback-') &&
+      !realId.startsWith('env-')
+    ) {
+      await Promise.resolve(this.repository.setCooldown(realId, seconds)).catch(
+        () => {},
+      );
     }
   }
 
@@ -211,7 +251,12 @@ export class ProviderService extends BaseService<Provider> {
     }
 
     if ((statusCode >= 500 && statusCode < 600) || statusCode === 400) {
-      if (statusCode === 400 && (body.includes('model_decommissioned') || body.includes('model_not_found') || body.includes('invalid_api_key'))) {
+      if (
+        statusCode === 400 &&
+        (body.includes('model_decommissioned') ||
+          body.includes('model_not_found') ||
+          body.includes('invalid_api_key'))
+      ) {
         return {
           action: 'rotate',
           statusCode,
@@ -251,9 +296,13 @@ export class ProviderService extends BaseService<Provider> {
     let available: Provider[] = [];
     if (this.repository) {
       if (typeof this.repository.findAvailable === 'function') {
-        available = await Promise.resolve(this.repository.findAvailable()).catch(() => []);
+        available = await Promise.resolve(
+          this.repository.findAvailable(),
+        ).catch(() => []);
       } else if (typeof this.repository.findAllEnabled === 'function') {
-        available = await Promise.resolve(this.repository.findAllEnabled()).catch(() => []);
+        available = await Promise.resolve(
+          this.repository.findAllEnabled(),
+        ).catch(() => []);
       }
     }
     if (!Array.isArray(available)) {
@@ -261,7 +310,10 @@ export class ProviderService extends BaseService<Provider> {
     }
 
     for (const p of available) {
-      const models = (p.model || '').split(',').map((m) => m.trim()).filter(Boolean);
+      const models = (p.model || '')
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean);
       for (let i = 0; i < models.length; i++) {
         const m = models[i];
         const candidateId = models.length > 1 ? `${p.id}::${m}` : p.id;
@@ -271,7 +323,9 @@ export class ProviderService extends BaseService<Provider> {
           triedProviderIds.includes(p.id) ||
           (currentProviderId &&
             (currentProviderId === candidateId ||
-              (i === 0 && (currentProviderId === p.id || currentProviderId.startsWith(p.id + '::')))));
+              (i === 0 &&
+                (currentProviderId === p.id ||
+                  currentProviderId.startsWith(p.id + '::')))));
 
         if (!isTried) {
           const modelKey = models.length > 1 ? `${p.id}::${m}` : p.id;
@@ -281,7 +335,9 @@ export class ProviderService extends BaseService<Provider> {
             );
             continue;
           }
-          this.logger.log(`Rotating to provider pool candidate [${p.name}] model: ${m}`);
+          this.logger.log(
+            `Rotating to provider pool candidate [${p.name}] model: ${m}`,
+          );
           return {
             id: candidateId,
             name: models.length > 1 ? `${p.name} (${m})` : p.name,
@@ -297,14 +353,26 @@ export class ProviderService extends BaseService<Provider> {
     }
 
     // 2. Check enabled database providers for registered fallback credentials
-    const allProviders = this.repository ? await this.repository.findAvailable().catch(() => []) : [];
-    const openrouterProv = allProviders.find((p) => p.baseUrl.includes('openrouter.ai'));
+    const allProviders = this.repository
+      ? await this.repository.findAvailable().catch(() => [])
+      : [];
+    const openrouterProv = allProviders.find((p) =>
+      p.baseUrl.includes('openrouter.ai'),
+    );
 
     if (openrouterProv) {
-      const preset = this.catalogService.detectPreset(openrouterProv.apiKey, openrouterProv.baseUrl);
-      const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
+      const preset = this.catalogService.detectPreset(
+        openrouterProv.apiKey,
+        openrouterProv.baseUrl,
+      );
+      const nextModel = this.catalogService.getNextModelInPreset(
+        preset,
+        currentProviderId,
+      );
 
-      this.logger.log(`Rotating to OpenRouter database candidate: ${nextModel}`);
+      this.logger.log(
+        `Rotating to OpenRouter database candidate: ${nextModel}`,
+      );
       return {
         id: `fallback-${nextModel}`,
         name: `OpenRouter Fallback (${nextModel})`,
@@ -321,7 +389,10 @@ export class ProviderService extends BaseService<Provider> {
 
     if (envKey) {
       const preset = this.catalogService.detectPreset(envKey, envBaseUrl);
-      const nextModel = this.catalogService.getNextModelInPreset(preset, currentProviderId);
+      const nextModel = this.catalogService.getNextModelInPreset(
+        preset,
+        currentProviderId,
+      );
       const targetId = `fallback-${preset.id}-${nextModel}`;
 
       if (triedProviderIds.includes(targetId)) {
@@ -329,7 +400,9 @@ export class ProviderService extends BaseService<Provider> {
         return null;
       }
 
-      this.logger.log(`Rotating ${preset.name} fallback candidate to: ${nextModel}`);
+      this.logger.log(
+        `Rotating ${preset.name} fallback candidate to: ${nextModel}`,
+      );
       return {
         id: targetId,
         name: `${preset.name} Fallback (${nextModel})`,
@@ -340,7 +413,9 @@ export class ProviderService extends BaseService<Provider> {
       };
     }
 
-    this.logger.warn('No secondary API key available for fallback candidate rotation');
+    this.logger.warn(
+      'No secondary API key available for fallback candidate rotation',
+    );
     return null;
   }
 
@@ -350,9 +425,13 @@ export class ProviderService extends BaseService<Provider> {
    * fallback provider instead of wasting another timeout window.
    */
   async isActiveProviderCoolingDown(): Promise<boolean> {
-    const provider = this.repository ? await this.repository.findActive() : null;
+    const provider = this.repository
+      ? await this.repository.findActive()
+      : null;
     if (!provider) return false;
-    return !!provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date();
+    return (
+      !!provider.cooldownUntil && new Date(provider.cooldownUntil) > new Date()
+    );
   }
 
   isModelCoolingDown(modelKey: string): boolean {
@@ -362,7 +441,14 @@ export class ProviderService extends BaseService<Provider> {
     return false;
   }
 
-  async createProvider(data: Partial<Provider> & { name: string; baseUrl: string; apiKey: string; model: string }): Promise<Provider> {
+  async createProvider(
+    data: Partial<Provider> & {
+      name: string;
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+    },
+  ): Promise<Provider> {
     const provider = await this.repository.create({
       name: data.name,
       type: data.type || 'openai-compatible',
@@ -382,10 +468,7 @@ export class ProviderService extends BaseService<Provider> {
     return provider;
   }
 
-  async updateProvider(
-    id: string,
-    data: Partial<Provider>,
-  ): Promise<Provider> {
+  async updateProvider(id: string, data: Partial<Provider>): Promise<Provider> {
     if (data.apiKey === '' || (data.apiKey && data.apiKey.includes('...'))) {
       delete data.apiKey;
     } else if (data.apiKey) {

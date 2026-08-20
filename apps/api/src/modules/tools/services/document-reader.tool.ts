@@ -7,7 +7,10 @@ import * as path from 'path';
 export class DocumentReaderTool {
   private readonly logger = new Logger(DocumentReaderTool.name);
 
-  async readDocument(filePath: string, targetSheetName?: string): Promise<ToolResult> {
+  async readDocument(
+    filePath: string,
+    targetSheetName?: string,
+  ): Promise<ToolResult> {
     const startTime = Date.now();
 
     if (!filePath || filePath.trim().length === 0) {
@@ -87,7 +90,8 @@ export class DocumentReaderTool {
           };
       }
 
-      const preview = text.length > 2500 ? text.substring(0, 2500) + '... [truncated]' : text;
+      const preview =
+        text.length > 2500 ? text.substring(0, 2500) + '... [truncated]' : text;
 
       return {
         status: 'success',
@@ -165,7 +169,10 @@ export class DocumentReaderTool {
     return result.value;
   }
 
-  private async readExcel(filePath: string, targetSheetName?: string): Promise<string> {
+  private async readExcel(
+    filePath: string,
+    targetSheetName?: string,
+  ): Promise<string> {
     const XLSXModule = await import('xlsx');
     const XLSX = XLSXModule.default || XLSXModule;
     const workbook = XLSX.readFile(filePath);
@@ -186,8 +193,34 @@ export class DocumentReaderTool {
     // If no specific sheet requested, try to pick current month (e.g. AGUSTUS / AUGUST) or first sheet
     if (!selectedSheet) {
       const now = new Date();
-      const monthNamesId = ['JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'];
-      const monthNamesEn = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+      const monthNamesId = [
+        'JANUARI',
+        'FEBRUARI',
+        'MARET',
+        'APRIL',
+        'MEI',
+        'JUNI',
+        'JULI',
+        'AGUSTUS',
+        'SEPTEMBER',
+        'OKTOBER',
+        'NOVEMBER',
+        'DESEMBER',
+      ];
+      const monthNamesEn = [
+        'JANUARY',
+        'FEBRUARY',
+        'MARCH',
+        'APRIL',
+        'MAY',
+        'JUNE',
+        'JULY',
+        'AUGUST',
+        'SEPTEMBER',
+        'OCTOBER',
+        'NOVEMBER',
+        'DECEMBER',
+      ];
       const currentMonthId = monthNamesId[now.getMonth()];
       const currentMonthEn = monthNamesEn[now.getMonth()];
 

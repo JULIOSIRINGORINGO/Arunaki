@@ -77,20 +77,51 @@ describe('DesktopBridgeService', () => {
       }
     });
 
-    const excelRes = await service.excelWriteCell(undefined, 'A1', 'Hello Excel');
-    expect(excelRes).toEqual({ success: true, method: 'excelWriteCell', args: { cell: 'A1', value: 'Hello Excel' } });
+    const excelRes = await service.excelWriteCell(
+      undefined,
+      'A1',
+      'Hello Excel',
+    );
+    expect(excelRes).toEqual({
+      success: true,
+      method: 'excelWriteCell',
+      args: { cell: 'A1', value: 'Hello Excel' },
+    });
 
-    const formatRes = await service.excelSetFormat(undefined, 'A1:B1', { bold: true });
-    expect(formatRes).toEqual({ success: true, method: 'excelSetFormat', args: { range: 'A1:B1', bold: true } });
+    const formatRes = await service.excelSetFormat(undefined, 'A1:B1', {
+      bold: true,
+    });
+    expect(formatRes).toEqual({
+      success: true,
+      method: 'excelSetFormat',
+      args: { range: 'A1:B1', bold: true },
+    });
 
     const wordRes = await service.wordType('Paragraph text', true, true, 20);
-    expect(wordRes).toEqual({ success: true, method: 'wordType', args: { text: 'Paragraph text', addNewline: true, smoothStream: true, delayMs: 20 } });
+    expect(wordRes).toEqual({
+      success: true,
+      method: 'wordType',
+      args: {
+        text: 'Paragraph text',
+        addNewline: true,
+        smoothStream: true,
+        delayMs: 20,
+      },
+    });
 
     const wordFmtRes = await service.wordFormat({ style: 'Heading 1' });
-    expect(wordFmtRes).toEqual({ success: true, method: 'wordFormat', args: { style: 'Heading 1' } });
+    expect(wordFmtRes).toEqual({
+      success: true,
+      method: 'wordFormat',
+      args: { style: 'Heading 1' },
+    });
 
     const keysRes = await service.sendKeys('^s');
-    expect(keysRes).toEqual({ success: true, method: 'sendKeys', args: { keys: '^s' } });
+    expect(keysRes).toEqual({
+      success: true,
+      method: 'sendKeys',
+      args: { keys: '^s' },
+    });
 
     client.close();
   });
@@ -115,9 +146,9 @@ describe('DesktopBridgeService', () => {
       }
     });
 
-    await expect(service.sendCommand('openFile', { path: '/invalid' })).rejects.toThrow(
-      'File not found',
-    );
+    await expect(
+      service.sendCommand('openFile', { path: '/invalid' }),
+    ).rejects.toThrow('File not found');
 
     client.close();
   });

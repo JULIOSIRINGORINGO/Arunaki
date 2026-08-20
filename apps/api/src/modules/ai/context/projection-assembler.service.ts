@@ -10,13 +10,48 @@ export class ProjectionAssembler {
   assemble(params: ContextAssemblyParams): ContextProjection[] {
     const projections: ContextProjection[] = [];
 
-    this.add(projections, 'workspace', 'Workspace', 'workspace', params.workspaceContext, 100, 4000);
-    this.add(projections, 'knowledge', 'Knowledge', 'knowledge', params.knowledgeContext, 90, 2000);
-    this.add(projections, 'memory', 'Memory', 'memory', params.memoryContext, 80, 2000);
-    this.add(projections, 'skills', 'Skills', 'skills', params.skillsContext, 70, 2000);
+    this.add(
+      projections,
+      'workspace',
+      'Workspace',
+      'workspace',
+      params.workspaceContext,
+      100,
+      4000,
+    );
+    this.add(
+      projections,
+      'knowledge',
+      'Knowledge',
+      'knowledge',
+      params.knowledgeContext,
+      90,
+      2000,
+    );
+    this.add(
+      projections,
+      'memory',
+      'Memory',
+      'memory',
+      params.memoryContext,
+      80,
+      2000,
+    );
+    this.add(
+      projections,
+      'skills',
+      'Skills',
+      'skills',
+      params.skillsContext,
+      70,
+      2000,
+    );
 
     for (const projection of params.additionalProjections || []) {
-      if (typeof projection?.content === 'string' && projection.content.trim()) {
+      if (
+        typeof projection?.content === 'string' &&
+        projection.content.trim()
+      ) {
         projections.push(projection);
       }
     }
@@ -32,9 +67,10 @@ export class ProjectionAssembler {
       if (remainingChars <= 0) break;
       const limit = Math.min(projection.maxTokens * 4, remainingChars);
       const content = String(projection.content);
-      const outputStr = content.length > limit
-        ? `${content.slice(0, limit)}\n[Projection truncated]`
-        : content;
+      const outputStr =
+        content.length > limit
+          ? `${content.slice(0, limit)}\n[Projection truncated]`
+          : content;
 
       sections.push(`## ${projection.name}\n${outputStr}`);
       remainingChars -= outputStr.length;

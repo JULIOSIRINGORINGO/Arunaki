@@ -35,9 +35,7 @@ export class ToolRegistryService {
   private readonly tools = new Map<string, RegisteredTool>();
   private readonly cacheService: ToolResultCacheService;
 
-  constructor(
-    @Optional() cacheService?: ToolResultCacheService,
-  ) {
+  constructor(@Optional() cacheService?: ToolResultCacheService) {
     this.cacheService = cacheService || new ToolResultCacheService();
   }
 
@@ -151,10 +149,7 @@ export class ToolRegistryService {
     return toolRecord ? !!toolRecord.tool.mutating : false;
   }
 
-  validateArgs(
-    args: Record<string, any>,
-    parameters: Record<string, any>,
-  ) {
+  validateArgs(args: Record<string, any>, parameters: Record<string, any>) {
     return validateToolArgs(args, parameters);
   }
 
@@ -331,7 +326,10 @@ export class ToolRegistryService {
       const errorChunk: ToolResultChunk = {
         type: 'error',
         toolName: name,
-        error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
+        error: {
+          code: 'TOOL_NOT_FOUND',
+          message: `Tool "${name}" not recognized`,
+        },
       };
       const asyncGen = (async function* () {
         yield errorChunk;
@@ -343,7 +341,10 @@ export class ToolRegistryService {
           data: {},
           preview: `Tool "${name}" is not recognized`,
           metadata: { toolName: name, displayName: name, executionTime: 0 },
-          error: { code: 'TOOL_NOT_FOUND', message: `Tool "${name}" not recognized` },
+          error: {
+            code: 'TOOL_NOT_FOUND',
+            message: `Tool "${name}" not recognized`,
+          },
         }),
       };
     }
@@ -376,7 +377,10 @@ export class ToolRegistryService {
             displayName: tool.capability.displayName,
             executionTime: 0,
           },
-          error: { code: 'INVALID_ARGS', message: validation.errors.join('; ') },
+          error: {
+            code: 'INVALID_ARGS',
+            message: validation.errors.join('; '),
+          },
         }),
       };
     }

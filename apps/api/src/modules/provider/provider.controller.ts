@@ -70,7 +70,9 @@ export class ProviderController {
       if (!item) {
         return errorResponse('NOT_FOUND', 'Provider not found');
       }
-      const decrypted = this.providerService.decryptApiKey((item as any).apiKey);
+      const decrypted = this.providerService.decryptApiKey(
+        (item as any).apiKey,
+      );
       return successResponse({
         ...item,
         apiKey: decrypted ? `${decrypted.substring(0, 8)}...` : '',
@@ -255,18 +257,33 @@ export class ProviderController {
 
       if (!response.ok) {
         const errText = await response.text();
-        return errorResponse('FETCH_MODELS_FAILED', `HTTP ${response.status}: ${errText.substring(0, 150)}`);
+        return errorResponse(
+          'FETCH_MODELS_FAILED',
+          `HTTP ${response.status}: ${errText.substring(0, 150)}`,
+        );
       }
 
       const data = await response.json();
       let models: string[] = [];
 
       if (Array.isArray(data.data)) {
-        models = data.data.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+        models = data.data
+          .map((m: any) =>
+            typeof m === 'string' ? m : m.id || m.name || m.model,
+          )
+          .filter(Boolean);
       } else if (Array.isArray(data.models)) {
-        models = data.models.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+        models = data.models
+          .map((m: any) =>
+            typeof m === 'string' ? m : m.id || m.name || m.model,
+          )
+          .filter(Boolean);
       } else if (Array.isArray(data)) {
-        models = data.map((m: any) => (typeof m === 'string' ? m : m.id || m.name || m.model)).filter(Boolean);
+        models = data
+          .map((m: any) =>
+            typeof m === 'string' ? m : m.id || m.name || m.model,
+          )
+          .filter(Boolean);
       }
 
       return successResponse({ models });

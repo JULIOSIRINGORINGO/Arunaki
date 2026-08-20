@@ -10,7 +10,14 @@ import { WorkspaceModule } from '../workspace/workspace.module.js';
 
 @Module({
   // forwardRef: WorkspaceModule -> ToolsModule -> CronModule -> WorkspaceModule is circular
-  imports: [StorageModule, ArtifactModule, forwardRef(() => ToolsModule), forwardRef(() => MemoryModule), forwardRef(() => SkillsModule), forwardRef(() => WorkspaceModule)],
+  imports: [
+    StorageModule,
+    ArtifactModule,
+    forwardRef(() => ToolsModule),
+    forwardRef(() => MemoryModule),
+    forwardRef(() => SkillsModule),
+    forwardRef(() => WorkspaceModule),
+  ],
   controllers: [CronController],
   providers: [CronService],
   exports: [CronService],

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MultiDocOrchestratorService } from './multi-doc-orchestrator.service';
-import { SubAgentRunnerService, SubAgentTask, SubAgentResult } from '../../chat/sub-agent-runner.service';
+import {
+  SubAgentRunnerService,
+  SubAgentTask,
+  SubAgentResult,
+} from '../../chat/sub-agent-runner.service';
 
 describe('MultiDocOrchestratorService', () => {
   let orchestrator: MultiDocOrchestratorService;
@@ -8,23 +12,36 @@ describe('MultiDocOrchestratorService', () => {
 
   beforeEach(() => {
     mockSubAgentRunner = {
-      spawnSubAgent: vi.fn(async (task: SubAgentTask): Promise<SubAgentResult> => {
-        const isFail = task.taskName.includes('broken.txt');
-        return {
-          taskId: task.taskId,
-          taskName: task.taskName,
-          status: isFail ? 'error' : 'success',
-          content: isFail ? '' : `Extracted data from ${task.taskName}: Total = 100RB`,
-          toolOutputs: isFail ? [] : [{ toolName: 'read', args: {}, preview: 'read ok', status: 'success' }],
-          metadata: {
-            rounds: 1,
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
-            durationMs: 25,
-          },
-          error: isFail ? 'File corrupted' : undefined,
-        };
-      }),
+      spawnSubAgent: vi.fn(
+        async (task: SubAgentTask): Promise<SubAgentResult> => {
+          const isFail = task.taskName.includes('broken.txt');
+          return {
+            taskId: task.taskId,
+            taskName: task.taskName,
+            status: isFail ? 'error' : 'success',
+            content: isFail
+              ? ''
+              : `Extracted data from ${task.taskName}: Total = 100RB`,
+            toolOutputs: isFail
+              ? []
+              : [
+                  {
+                    toolName: 'read',
+                    args: {},
+                    preview: 'read ok',
+                    status: 'success',
+                  },
+                ],
+            metadata: {
+              rounds: 1,
+              startedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              durationMs: 25,
+            },
+            error: isFail ? 'File corrupted' : undefined,
+          };
+        },
+      ),
       spawnParallel: vi.fn(),
     } as unknown as SubAgentRunnerService;
 
@@ -32,7 +49,11 @@ describe('MultiDocOrchestratorService', () => {
   });
 
   it('partitions multiple files into isolated sub-agents and consolidates results', async () => {
-    const files = ['laporan-januari.txt', 'laporan-februari.txt', 'laporan-maret.txt'];
+    const files = [
+      'laporan-januari.txt',
+      'laporan-februari.txt',
+      'laporan-maret.txt',
+    ];
     const progressEvents: any[] = [];
 
     const result = await orchestrator.processDocumentsParallel(
@@ -52,8 +73,12 @@ describe('MultiDocOrchestratorService', () => {
     expect(result.results).toHaveLength(3);
 
     // Verify consolidated summary contains findings from all 3 files
-    expect(result.consolidatedSummary).toContain('laporan-januari.txt [SUCCESS]');
-    expect(result.consolidatedSummary).toContain('laporan-februari.txt [SUCCESS]');
+    expect(result.consolidatedSummary).toContain(
+      'laporan-januari.txt [SUCCESS]',
+    );
+    expect(result.consolidatedSummary).toContain(
+      'laporan-februari.txt [SUCCESS]',
+    );
     expect(result.consolidatedSummary).toContain('laporan-maret.txt [SUCCESS]');
     expect(result.consolidatedSummary).toContain('Total = 100RB');
 

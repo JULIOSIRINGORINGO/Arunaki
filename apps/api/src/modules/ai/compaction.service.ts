@@ -1,4 +1,10 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Optional,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import type { ChatMessage } from './ai.service.js';
 import { AiService } from './ai.service.js';
 import { countTokens } from './tokenizer.js';
@@ -58,7 +64,9 @@ export class CompactionService {
   private readonly useLlmSummary: boolean;
 
   constructor(
-    @Optional() @Inject(forwardRef(() => AiService)) private readonly aiService?: AiService,
+    @Optional()
+    @Inject(forwardRef(() => AiService))
+    private readonly aiService?: AiService,
   ) {
     this.useLlmSummary = !!aiService;
   }
@@ -83,8 +91,10 @@ export class CompactionService {
 
     const systemMessages = messages.filter((m) => m.role === 'system');
     const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-    const { recentMessages, olderMessages } =
-      this.splitRecentByTokens(nonSystemMessages, recentBudget);
+    const { recentMessages, olderMessages } = this.splitRecentByTokens(
+      nonSystemMessages,
+      recentBudget,
+    );
 
     if (this.useLlmSummary) {
       return this.compactWithLLM(
@@ -95,7 +105,11 @@ export class CompactionService {
       );
     }
 
-    return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
+    return this.compactWithSummary(
+      systemMessages,
+      olderMessages,
+      recentMessages,
+    );
   }
 
   /**
@@ -120,7 +134,10 @@ export class CompactionService {
       recentMessages.unshift(messages[i]);
       used += tokens;
     }
-    const olderMessages = messages.slice(0, messages.length - recentMessages.length);
+    const olderMessages = messages.slice(
+      0,
+      messages.length - recentMessages.length,
+    );
     return { recentMessages, olderMessages };
   }
 
@@ -154,7 +171,10 @@ export class CompactionService {
         await this.aiService!.chat(
           [
             { role: 'system', content: LLM_SUMMARY_INSTRUCTIONS },
-            { role: 'user', content: `Compact the following history into a concise summary:\n\n${olderTexts}` },
+            {
+              role: 'user',
+              content: `Compact the following history into a concise summary:\n\n${olderTexts}`,
+            },
           ],
           [],
         )
@@ -166,7 +186,11 @@ export class CompactionService {
       };
 
       return {
-        compactedMessages: [...systemMessages, summaryMessage, ...recentMessages],
+        compactedMessages: [
+          ...systemMessages,
+          summaryMessage,
+          ...recentMessages,
+        ],
         wasCompacted: true,
         summary,
       };
@@ -174,7 +198,11 @@ export class CompactionService {
       this.logger.warn(
         `Compaction: LLM summary failed (${err.message}). Falling back to COMPACTION SUMMARY (non-LLM).`,
       );
-      return this.compactWithSummary(systemMessages, olderMessages, recentMessages);
+      return this.compactWithSummary(
+        systemMessages,
+        olderMessages,
+        recentMessages,
+      );
     }
   }
 
@@ -191,8 +219,11 @@ export class CompactionService {
         userPrompts.push(msg.content);
       }
       if (typeof msg.content === 'string') {
-        const scanText = msg.content.length > 5000 ? msg.content.slice(0, 5000) : msg.content;
-        const matches = scanText.match(/[a-zA-Z0-9_\-.]+\.(?:txt|xlsx|pdf|docx|csv|json|md)\b/gi);
+        const scanText =
+          msg.content.length > 5000 ? msg.content.slice(0, 5000) : msg.content;
+        const matches = scanText.match(
+          /[a-zA-Z0-9_\-.]+\.(?:txt|xlsx|pdf|docx|csv|json|md)\b/gi,
+        );
         if (matches) {
           matches.forEach((f: string) => touchedFiles.add(f));
         }

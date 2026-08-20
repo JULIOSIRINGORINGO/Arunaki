@@ -43,7 +43,7 @@ describe('DocumentReconciliationService', () => {
     const targetRows = [
       { id: 'INV-001', amount: 1000 },
       { id: 'INV-002', amount: 3000 }, // Mismatch
-      { id: 'INV-004', amount: 750 },  // Missing in source
+      { id: 'INV-004', amount: 750 }, // Missing in source
     ];
 
     const report = service.reconcileDocuments(
@@ -65,9 +65,18 @@ describe('DocumentReconciliationService', () => {
 
   it('should cross-reference occurrences across text documents', () => {
     const docs = [
-      { name: 'kontrak.docx', content: 'Pembayaran invoice INV-1002 harus dilakukan dalam 30 hari.' },
-      { name: 'surat_jalan.pdf', content: 'Pengiriman barang sesuai PO-555 dan INV-1002 telah diterima.' },
-      { name: 'memo.txt', content: 'Memo internal mengenai perpanjangan vendor PT Maju.' },
+      {
+        name: 'kontrak.docx',
+        content: 'Pembayaran invoice INV-1002 harus dilakukan dalam 30 hari.',
+      },
+      {
+        name: 'surat_jalan.pdf',
+        content: 'Pengiriman barang sesuai PO-555 dan INV-1002 telah diterima.',
+      },
+      {
+        name: 'memo.txt',
+        content: 'Memo internal mengenai perpanjangan vendor PT Maju.',
+      },
     ];
 
     const matches = service.crossReference('INV-1002', docs);

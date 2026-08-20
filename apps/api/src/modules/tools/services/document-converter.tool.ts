@@ -33,7 +33,10 @@ export class DocumentConverterTool {
           displayName: 'Convert Document',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'FILE_NOT_FOUND', message: `Source file not found at ${sourcePath}` },
+        error: {
+          code: 'FILE_NOT_FOUND',
+          message: `Source file not found at ${sourcePath}`,
+        },
       };
     }
 
@@ -97,15 +100,30 @@ export class DocumentConverterTool {
             path: targetPath,
             format: 'A4',
             printBackground: true,
-            margin: { top: '20mm', right: '15mm', bottom: '20mm', left: '15mm' },
+            margin: {
+              top: '20mm',
+              right: '15mm',
+              bottom: '20mm',
+              left: '15mm',
+            },
           });
           await browser.close();
           convertedViaChromium = true;
-          this.logger.log(`Rendered DOCX -> PDF via Chromium Engine: ${targetPath}`);
+          this.logger.log(
+            `Rendered DOCX -> PDF via Chromium Engine: ${targetPath}`,
+          );
         } catch (chromiumErr: any) {
-          this.logger.warn(`Chromium render unavailable (${chromiumErr.message}), falling back to vector PDF builder`);
-          const text = (await mammoth.extractRawText({ path: sourcePath })).value || '';
-          await this.pdfBuilder.generatePdf(title, text, path.basename(targetPath), targetPath);
+          this.logger.warn(
+            `Chromium render unavailable (${chromiumErr.message}), falling back to vector PDF builder`,
+          );
+          const text =
+            (await mammoth.extractRawText({ path: sourcePath })).value || '';
+          await this.pdfBuilder.generatePdf(
+            title,
+            text,
+            path.basename(targetPath),
+            targetPath,
+          );
         }
 
         return {
@@ -115,7 +133,9 @@ export class DocumentConverterTool {
             targetPath,
             sourceFormat: sourceExt,
             targetFormat,
-            engine: convertedViaChromium ? 'Chromium (A4 CSS Print)' : 'PDF-Lib Vector',
+            engine: convertedViaChromium
+              ? 'Chromium (A4 CSS Print)'
+              : 'PDF-Lib Vector',
             size: fs.existsSync(targetPath) ? fs.statSync(targetPath).size : 0,
           },
           preview: `Successfully converted ${path.basename(sourcePath)} to PDF (${path.basename(targetPath)})`,
@@ -129,13 +149,26 @@ export class DocumentConverterTool {
       }
 
       // 2. TXT / MD -> PDF
-      if ((sourceExt === 'txt' || sourceExt === 'md') && targetFormat === 'pdf') {
+      if (
+        (sourceExt === 'txt' || sourceExt === 'md') &&
+        targetFormat === 'pdf'
+      ) {
         const text = fs.readFileSync(sourcePath, 'utf-8');
         const title = sourceBase.replace(/[-_]/g, ' ');
-        await this.pdfBuilder.generatePdf(title, text, path.basename(targetPath), targetPath);
+        await this.pdfBuilder.generatePdf(
+          title,
+          text,
+          path.basename(targetPath),
+          targetPath,
+        );
         return {
           status: 'success',
-          data: { sourcePath, targetPath, sourceFormat: sourceExt, targetFormat },
+          data: {
+            sourcePath,
+            targetPath,
+            sourceFormat: sourceExt,
+            targetFormat,
+          },
           preview: `Successfully converted ${path.basename(sourcePath)} to PDF (${path.basename(targetPath)})`,
           metadata: {
             toolName: 'convert_document',
@@ -146,13 +179,26 @@ export class DocumentConverterTool {
       }
 
       // 3. TXT / MD -> DOCX
-      if ((sourceExt === 'txt' || sourceExt === 'md') && targetFormat === 'docx') {
+      if (
+        (sourceExt === 'txt' || sourceExt === 'md') &&
+        targetFormat === 'docx'
+      ) {
         const text = fs.readFileSync(sourcePath, 'utf-8');
         const title = sourceBase.replace(/[-_]/g, ' ');
-        await this.docxBuilder.generateDocx(title, text, path.basename(targetPath), targetPath);
+        await this.docxBuilder.generateDocx(
+          title,
+          text,
+          path.basename(targetPath),
+          targetPath,
+        );
         return {
           status: 'success',
-          data: { sourcePath, targetPath, sourceFormat: sourceExt, targetFormat },
+          data: {
+            sourcePath,
+            targetPath,
+            sourceFormat: sourceExt,
+            targetFormat,
+          },
           preview: `Successfully converted ${path.basename(sourcePath)} to DOCX (${path.basename(targetPath)})`,
           metadata: {
             toolName: 'convert_document',
@@ -163,14 +209,22 @@ export class DocumentConverterTool {
       }
 
       // 4. XLSX -> CSV
-      if ((sourceExt === 'xlsx' || sourceExt === 'xls') && targetFormat === 'csv') {
+      if (
+        (sourceExt === 'xlsx' || sourceExt === 'xls') &&
+        targetFormat === 'csv'
+      ) {
         const wb = XLSX.readFile(sourcePath);
         const firstSheet = wb.Sheets[wb.SheetNames[0]];
         const csvContent = XLSX.utils.sheet_to_csv(firstSheet);
         fs.writeFileSync(targetPath, csvContent, 'utf-8');
         return {
           status: 'success',
-          data: { sourcePath, targetPath, sourceFormat: sourceExt, targetFormat },
+          data: {
+            sourcePath,
+            targetPath,
+            sourceFormat: sourceExt,
+            targetFormat,
+          },
           preview: `Successfully converted ${path.basename(sourcePath)} to CSV (${path.basename(targetPath)})`,
           metadata: {
             toolName: 'convert_document',
@@ -181,18 +235,33 @@ export class DocumentConverterTool {
       }
 
       // 5. XLSX -> PDF
-      if ((sourceExt === 'xlsx' || sourceExt === 'xls') && targetFormat === 'pdf') {
+      if (
+        (sourceExt === 'xlsx' || sourceExt === 'xls') &&
+        targetFormat === 'pdf'
+      ) {
         const wb = XLSX.readFile(sourcePath);
         const firstSheet = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, {
+          header: 1,
+        });
         const formattedLines = rows
           .map((r) => (Array.isArray(r) ? r.join(' | ') : String(r)))
           .join('\n');
         const title = `${sourceBase} Spreadsheet Report`;
-        await this.pdfBuilder.generatePdf(title, formattedLines, path.basename(targetPath), targetPath);
+        await this.pdfBuilder.generatePdf(
+          title,
+          formattedLines,
+          path.basename(targetPath),
+          targetPath,
+        );
         return {
           status: 'success',
-          data: { sourcePath, targetPath, sourceFormat: sourceExt, targetFormat },
+          data: {
+            sourcePath,
+            targetPath,
+            sourceFormat: sourceExt,
+            targetFormat,
+          },
           preview: `Successfully converted ${path.basename(sourcePath)} to PDF (${path.basename(targetPath)})`,
           metadata: {
             toolName: 'convert_document',

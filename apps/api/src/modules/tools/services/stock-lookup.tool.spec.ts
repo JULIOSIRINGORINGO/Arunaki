@@ -30,7 +30,9 @@ beforeAll(async () => {
       res.end('warna,ukuran,stok\nRed,S,65\nWhite,L,3\n');
     } else if (req.url === '/stock.json') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end('[{"color":"Red","size":"S","stock":65,"price1":42000},{"color":"White","size":"L","stock":3,"price1":39000}]');
+      res.end(
+        '[{"color":"Red","size":"S","stock":65,"price1":42000},{"color":"White","size":"L","stock":3,"price1":39000}]',
+      );
     } else {
       res.writeHead(404);
       res.end();
@@ -48,20 +50,28 @@ afterAll(() => {
 describe('StockLookupTool browser read path (no hardcoded sites)', () => {
   it('reads stock from a generic product page without any per-site config', async () => {
     const tool = new StockLookupTool();
-    const res = await tool.execute({ url: fixture, city: 'Jakarta', color: 'Red', size: 'S' });
+    const res = await tool.execute({
+      url: fixture,
+      city: 'Jakarta',
+      color: 'Red',
+      size: 'S',
+    });
 
     expect(res.status).toBe('success');
     const rows = (res.data as any).rows as string[];
     expect(rows.length).toBeGreaterThan(0);
-expect(rows.some((r) => r.includes('65'))).toBe(true);
+    expect(rows.some((r) => r.includes('65'))).toBe(true);
     expect(rows.every((r) => r.toLowerCase().includes('red'))).toBe(true);
   }, 60000);
 
-it('returns NO_STOCK_FOUND for a page without stock data', async () => {
+  it('returns NO_STOCK_FOUND for a page without stock data', async () => {
     const emptyPath = path.join(os.tmpdir(), 'arunaki-empty-fixture.html');
     fs.writeFileSync(emptyPath, '<html><body><h1>Halo</h1></body></html>');
     const tool = new StockLookupTool();
-    const res = await tool.execute({ url: `file:///${emptyPath.replace(/\\/g, '/')}`, city: 'Jakarta' });
+    const res = await tool.execute({
+      url: `file:///${emptyPath.replace(/\\/g, '/')}`,
+      city: 'Jakarta',
+    });
     fs.rmSync(emptyPath, { force: true });
 
     expect(res.status).toBe('error');
@@ -70,7 +80,12 @@ it('returns NO_STOCK_FOUND for a page without stock data', async () => {
 
   it('reads stock from a CSV (spreadsheet) over plain HTTP - no browser', async () => {
     const tool = new StockLookupTool();
-    const res = await tool.execute({ url: `${baseUrl}/stock.csv`, city: 'Jakarta', color: 'Red', size: 'S' });
+    const res = await tool.execute({
+      url: `${baseUrl}/stock.csv`,
+      city: 'Jakarta',
+      color: 'Red',
+      size: 'S',
+    });
 
     expect(res.status).toBe('success');
     const rows = (res.data as any).rows as string[];
@@ -80,7 +95,12 @@ it('returns NO_STOCK_FOUND for a page without stock data', async () => {
 
   it('reads stock from a JSON file over plain HTTP - no browser', async () => {
     const tool = new StockLookupTool();
-    const res = await tool.execute({ url: `${baseUrl}/stock.json`, city: 'Jakarta', color: 'White', size: 'L' });
+    const res = await tool.execute({
+      url: `${baseUrl}/stock.json`,
+      city: 'Jakarta',
+      color: 'White',
+      size: 'L',
+    });
 
     expect(res.status).toBe('success');
     const rows = (res.data as any).rows as string[];
@@ -88,4 +108,3 @@ it('returns NO_STOCK_FOUND for a page without stock data', async () => {
     expect(rows.every((r) => r.toLowerCase().includes('white'))).toBe(true);
   }, 30000);
 });
-

@@ -10,7 +10,9 @@ function throwingStream(err: any) {
 describe('streamWithFallback', () => {
   it('rotates immediately on provider timeout (no 3x retry) and sets cooldown', async () => {
     const makeRequest = vi.fn(
-      throwingStream(Object.assign(new Error('timeout'), { statusCode: 0, isTimeout: true })),
+      throwingStream(
+        Object.assign(new Error('timeout'), { statusCode: 0, isTimeout: true }),
+      ),
     );
     const getNextProvider = vi
       .fn()

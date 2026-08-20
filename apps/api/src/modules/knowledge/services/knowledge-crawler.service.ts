@@ -43,16 +43,28 @@ turndownService.remove(['script', 'style', 'meta', 'link', 'noscript']);
 @Injectable()
 export class KnowledgeCrawlerService {
   private readonly logger = new Logger(KnowledgeCrawlerService.name);
-  private cache = new Map<string, { data: KnowledgeLiveFetchResult; timestamp: number }>();
+  private cache = new Map<
+    string,
+    { data: KnowledgeLiveFetchResult; timestamp: number }
+  >();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
 
   constructor(private readonly cryptoHarvester: CryptoHarvesterService) {}
 
-  async fetchLiveKnowledge(options: KnowledgeLiveFetchOptions): Promise<KnowledgeLiveFetchResult> {
+  async fetchLiveKnowledge(
+    options: KnowledgeLiveFetchOptions,
+  ): Promise<KnowledgeLiveFetchResult> {
     const startTime = Date.now();
-    const { url, query = '', format = 'markdown', timeout: userTimeout, browser } = options;
+    const {
+      url,
+      query = '',
+      format = 'markdown',
+      timeout: userTimeout,
+      browser,
+    } = options;
 
-    const cacheKey = `${url}|${query}|${format}|browser=${!!browser}`.toLowerCase();
+    const cacheKey =
+      `${url}|${query}|${format}|browser=${!!browser}`.toLowerCase();
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL_MS) {
       this.logger.log(`[KnowledgeCrawler] Cache hit for ${url} (0ms)`);
@@ -61,7 +73,10 @@ export class KnowledgeCrawlerService {
 
     // Browser path: JS-rendered data (e.g. stock per location) — HTTP cannot see it.
     if (browser) {
-      const result = await this.fetchWithBrowser({ url, query, format, timeout: userTimeout }, startTime);
+      const result = await this.fetchWithBrowser(
+        { url, query, format, timeout: userTimeout },
+        startTime,
+      );
       this.cache.set(cacheKey, { data: result, timestamp: Date.now() });
       return result;
     }
@@ -73,7 +88,10 @@ export class KnowledgeCrawlerService {
     let structuredData: Record<string, any> = {};
 
     try {
-      const timeout = Math.min((userTimeout ?? DEFAULT_TIMEOUT / 1000) * 1000, MAX_TIMEOUT);
+      const timeout = Math.min(
+        (userTimeout ?? DEFAULT_TIMEOUT / 1000) * 1000,
+        MAX_TIMEOUT,
+      );
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
 
@@ -81,22 +99,27 @@ export class KnowledgeCrawlerService {
       let acceptHeader = '*/*';
       switch (format) {
         case 'markdown':
-          acceptHeader = 'text/markdown;q=1.0, text/x-markdown;q=0.9, text/plain;q=0.8, text/html;q=0.7, */*;q=0.1';
+          acceptHeader =
+            'text/markdown;q=1.0, text/x-markdown;q=0.9, text/plain;q=0.8, text/html;q=0.7, */*;q=0.1';
           break;
         case 'text':
-          acceptHeader = 'text/plain;q=1.0, text/markdown;q=0.9, text/html;q=0.8, */*;q=0.1';
+          acceptHeader =
+            'text/plain;q=1.0, text/markdown;q=0.9, text/html;q=0.8, */*;q=0.1';
           break;
         case 'html':
-          acceptHeader = 'text/html;q=1.0, application/xhtml+xml;q=0.9, text/plain;q=0.8, text/markdown;q=0.7, */*;q=0.1';
+          acceptHeader =
+            'text/html;q=1.0, application/xhtml+xml;q=0.9, text/plain;q=0.8, text/markdown;q=0.7, */*;q=0.1';
           break;
         default:
-          acceptHeader = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8';
+          acceptHeader =
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8';
       }
 
       let response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-          'Accept': acceptHeader,
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+          Accept: acceptHeader,
           'Accept-Language': 'en-US,en;q=0.9',
         },
         signal: controller.signal,
@@ -105,13 +128,16 @@ export class KnowledgeCrawlerService {
       clearTimeout(timer);
 
       // Retry with honest UA if blocked by Cloudflare
-      if (response.status === 403 && response.headers.get('cf-mitigated') === 'challenge') {
+      if (
+        response.status === 403 &&
+        response.headers.get('cf-mitigated') === 'challenge'
+      ) {
         const retryController = new AbortController();
         const retryTimer = setTimeout(() => retryController.abort(), timeout);
         response = await fetch(url, {
           headers: {
             'User-Agent': 'opencode',
-            'Accept': acceptHeader,
+            Accept: acceptHeader,
             'Accept-Language': 'en-US,en;q=0.9',
           },
           signal: retryController.signal,
@@ -175,7 +201,6 @@ export class KnowledgeCrawlerService {
         contentType: mime,
         size: arrayBuffer.byteLength,
       };
-
     } catch (err: any) {
       this.logger.warn(`[KnowledgeCrawler] Fetch error: ${err.message}`);
     }
@@ -184,7 +209,8 @@ export class KnowledgeCrawlerService {
       title: extractedTitle || 'External Live Knowledge Page',
       url,
       query,
-      extractedContent: extractedContent || 'No readable text extracted from target page.',
+      extractedContent:
+        extractedContent || 'No readable text extracted from target page.',
       structuredData,
       durationMs: Date.now() - startTime,
       extractedAt: new Date().toISOString(),
@@ -234,7 +260,9 @@ export class KnowledgeCrawlerService {
         apiEncrypted = captured.encrypted;
         apiDecrypted = captured.decrypted;
         if (apiEncrypted.length > 0) {
-          this.logger.log(`[KnowledgeCrawler] Captured ${apiEncrypted.length} encrypted API response(s) on ${host}`);
+          this.logger.log(
+            `[KnowledgeCrawler] Captured ${apiEncrypted.length} encrypted API response(s) on ${host}`,
+          );
         }
       } finally {
         await browser.close();
@@ -270,7 +298,9 @@ export class KnowledgeCrawlerService {
       title: extractedTitle || 'External Live Knowledge Page',
       url,
       query,
-      extractedContent: extractedContent || 'No readable text extracted from target page (browser).',
+      extractedContent:
+        extractedContent ||
+        'No readable text extracted from target page (browser).',
       structuredData,
       durationMs: Date.now() - startTime,
       extractedAt: new Date().toISOString(),
@@ -292,8 +322,8 @@ export class KnowledgeCrawlerService {
       .replace(/<[^>]+>/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .split('\n')
-      .map(l => l.trim())
-      .filter(l => l.length > 0)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
       .join('\n');
 
     return text.trim();

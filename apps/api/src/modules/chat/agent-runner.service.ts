@@ -1,4 +1,10 @@
-import { Injectable, Logger, Inject, Optional, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  Optional,
+  forwardRef,
+} from '@nestjs/common';
 import { AiService, ChatMessage } from '../ai/ai.service.js';
 import { ToolRegistryService } from '../tools/tool-registry.service.js';
 import { KnowledgeService } from '../knowledge/knowledge.service.js';
@@ -10,15 +16,15 @@ import { ToolResult } from '../tools/interfaces/tool-result.interface.js';
 import { SessionAdmissionService } from './session-admission.service.js';
 import { MessageService } from './message.service.js';
 import { UserTurnTranscriptService } from './user-turn-transcript.service.js';
-import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
+import {
+  SessionStateEventsService,
+  SessionEventType,
+} from './session-state-events.service.js';
 import { HarnessRegistryService } from './harness/harness-registry.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 import { InputProvenanceFactory } from '../ai/input-provenance.js';
-import {
-  createRunBudget,
-  enterRunBudget,
-} from '../ai/token-budget.service.js';
+import { createRunBudget, enterRunBudget } from '../ai/token-budget.service.js';
 import { serializeToolCallHistory } from '../ai/sdk-transformer.util.js';
 
 export interface AgentRunParams {
@@ -64,19 +70,39 @@ export class AgentRunnerService {
 
   constructor(
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    @Inject(forwardRef(() => ToolRegistryService)) private readonly toolRegistryService: ToolRegistryService,
-    @Inject(forwardRef(() => KnowledgeService)) private readonly knowledgeService: KnowledgeService,
-    @Inject(forwardRef(() => ArtifactService)) private readonly artifactService: ArtifactService,
-    @Inject(forwardRef(() => BackgroundReviewService)) private readonly backgroundReviewService: BackgroundReviewService,
-    @Inject(forwardRef(() => SelfHealingService)) private readonly selfHealingService: SelfHealingService,
-    @Inject(forwardRef(() => AutoMemoryService)) private readonly autoMemoryService: AutoMemoryService,
-    @Optional() @Inject(forwardRef(() => SessionAdmissionService)) private readonly sessionAdmissionService?: SessionAdmissionService,
-    @Optional() @Inject(forwardRef(() => MessageService)) private readonly messageService?: MessageService,
-    @Optional() @Inject(forwardRef(() => UserTurnTranscriptService)) private readonly transcriptService?: UserTurnTranscriptService,
-    @Optional() @Inject(forwardRef(() => SessionStateEventsService)) private readonly sessionEvents?: SessionStateEventsService,
-    @Optional() @Inject(forwardRef(() => HarnessRegistryService)) private readonly harnessRegistry?: HarnessRegistryService,
-    @Optional() @Inject(forwardRef(() => TodoStoreService)) private readonly todoStore?: TodoStoreService,
-    @Optional() @Inject(forwardRef(() => ContextQuarantine)) private readonly quarantine?: ContextQuarantine,
+    @Inject(forwardRef(() => ToolRegistryService))
+    private readonly toolRegistryService: ToolRegistryService,
+    @Inject(forwardRef(() => KnowledgeService))
+    private readonly knowledgeService: KnowledgeService,
+    @Inject(forwardRef(() => ArtifactService))
+    private readonly artifactService: ArtifactService,
+    @Inject(forwardRef(() => BackgroundReviewService))
+    private readonly backgroundReviewService: BackgroundReviewService,
+    @Inject(forwardRef(() => SelfHealingService))
+    private readonly selfHealingService: SelfHealingService,
+    @Inject(forwardRef(() => AutoMemoryService))
+    private readonly autoMemoryService: AutoMemoryService,
+    @Optional()
+    @Inject(forwardRef(() => SessionAdmissionService))
+    private readonly sessionAdmissionService?: SessionAdmissionService,
+    @Optional()
+    @Inject(forwardRef(() => MessageService))
+    private readonly messageService?: MessageService,
+    @Optional()
+    @Inject(forwardRef(() => UserTurnTranscriptService))
+    private readonly transcriptService?: UserTurnTranscriptService,
+    @Optional()
+    @Inject(forwardRef(() => SessionStateEventsService))
+    private readonly sessionEvents?: SessionStateEventsService,
+    @Optional()
+    @Inject(forwardRef(() => HarnessRegistryService))
+    private readonly harnessRegistry?: HarnessRegistryService,
+    @Optional()
+    @Inject(forwardRef(() => TodoStoreService))
+    private readonly todoStore?: TodoStoreService,
+    @Optional()
+    @Inject(forwardRef(() => ContextQuarantine))
+    private readonly quarantine?: ContextQuarantine,
   ) {}
 
   async getKnowledgeContext(userContent: string = ''): Promise<string> {
@@ -85,7 +111,8 @@ export class AgentRunnerService {
 
       // 1. If userContent is provided, search for relevant Knowledge node contents
       if (userContent.trim()) {
-        const searchResult = await this.knowledgeService.searchNodes(userContent);
+        const searchResult =
+          await this.knowledgeService.searchNodes(userContent);
         if (
           searchResult &&
           searchResult !== 'No data found.' &&
@@ -111,7 +138,8 @@ export class AgentRunnerService {
     const lease = this.sessionAdmissionService
       ? await this.sessionAdmissionService.acquireAdmission(params.chatId)
       : { release: async () => {} };
-    const runId = params.idempotencyKey || `sync:${params.chatId}:${Date.now()}`;
+    const runId =
+      params.idempotencyKey || `sync:${params.chatId}:${Date.now()}`;
     try {
       if (params.idempotencyKey && this.messageService) {
         const assistant = await this.messageService.findByIdempotencyKey(
@@ -139,13 +167,17 @@ export class AgentRunnerService {
         userContent: params.userContent,
       });
 
-      const messages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      const messages = this.messageService
+        ? await this.messageService.findByChatHistoryId(params.chatId)
+        : [];
       this.transcriptService?.createTurn(runId, params.chatId, messages.length);
       this.transcriptService?.markSentToProvider(runId);
 
       const result = await this.runAgentSyncInternal(params);
 
-      const afterMessages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      const afterMessages = this.messageService
+        ? await this.messageService.findByChatHistoryId(params.chatId)
+        : [];
       this.transcriptService?.markRuntimePersisted(runId, afterMessages.length);
       this.transcriptService?.markApproved(runId);
 
@@ -182,19 +214,23 @@ export class AgentRunnerService {
     const knowledgeContext = this.quarantine
       ? this.quarantine.sanitizeText(rawKnowledge, 'knowledge-map')
       : rawKnowledge;
-    const contextForTools = historyMessages
-      .slice(-3)
-      .map(m => m.content)
-      .join(' ') + ' ' + (params.userContent || '');
-      
-    const tools = this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
+    const contextForTools =
+      historyMessages
+        .slice(-3)
+        .map((m) => m.content)
+        .join(' ') +
+      ' ' +
+      (params.userContent || '');
+
+    const tools =
+      this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
 
     const systemPrompt = this.aiService.getSystemPrompt(
       chatMode,
       undefined,
       knowledgeContext,
       historyMessages,
-      tools
+      tools,
     );
 
     const messages: ChatMessage[] = [
@@ -223,7 +259,10 @@ export class AgentRunnerService {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       // Inject current todo list (working memory) so LLM stays anchored
       const todoText = this.todoStore?.serialize(todoRunId);
-      const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
+      const todoIdx = messages.findIndex(
+        (m) =>
+          m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='),
+      );
       if (todoText) {
         const todoMsg = { role: 'system' as const, content: todoText };
         if (todoIdx >= 0) messages[todoIdx] = todoMsg;
@@ -232,7 +271,9 @@ export class AgentRunnerService {
         messages.splice(todoIdx, 1);
       }
 
-      const aiResponse = await this.aiService.chat(messages, tools, { reasoningEffort: params.reasoningEffort });
+      const aiResponse = await this.aiService.chat(messages, tools, {
+        reasoningEffort: params.reasoningEffort,
+      });
       usage = aiResponse.usage;
       budget.consume(aiResponse.usage?.totalTokens || 0);
       if (budget.exceeded) {
@@ -255,14 +296,17 @@ export class AgentRunnerService {
       }
 
       // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
-      const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
+      const askUserToolCall = aiResponse.toolCalls.find(
+        (tc) => tc.function.name === 'ask_user',
+      );
       if (askUserToolCall) {
-        let message = 'Please provide additional information to process this request.';
-        try { 
+        let message =
+          'Please provide additional information to process this request.';
+        try {
           const args = JSON.parse(askUserToolCall.function.arguments || '{}');
           if (args.message) message = args.message;
         } catch {}
-        
+
         finalContent = message;
         reachedMaxRounds = false;
         break;
@@ -277,7 +321,11 @@ export class AgentRunnerService {
       // Notify harness of tool starts (in order)
       for (const tc of aiResponse.toolCalls) {
         let args: Record<string, any> = {};
-        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
+        try {
+          args = JSON.parse(tc.function.arguments || '{}');
+        } catch {
+          args = {};
+        }
         this.harnessRegistry?.onToolStart({
           chatId,
           runId: params.idempotencyKey || '',
@@ -308,7 +356,10 @@ export class AgentRunnerService {
               params.workspaceId,
             );
           }
-          result = await this.toolRegistryService.executeTool(funcName, safeArgs);
+          result = await this.toolRegistryService.executeTool(
+            funcName,
+            safeArgs,
+          );
         } catch (e) {
           const isIsolation = e.message?.includes('Access denied');
           result = {
@@ -378,15 +429,23 @@ export class AgentRunnerService {
     }
 
     if (!finalContent && reachedMaxRounds) {
-      this.logger.warn(`[AgentRunner] Reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`);
+      this.logger.warn(
+        `[AgentRunner] Reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`,
+      );
       try {
         const flattenedMessages = serializeToolCallHistory(messages);
-        const finalSynthesis = await this.aiService.chat(flattenedMessages, undefined, { reasoningEffort: params.reasoningEffort });
+        const finalSynthesis = await this.aiService.chat(
+          flattenedMessages,
+          undefined,
+          { reasoningEffort: params.reasoningEffort },
+        );
         if (finalSynthesis.content) {
           finalContent = finalSynthesis.content;
         }
       } catch (err: any) {
-        this.logger.warn(`[AgentRunner] Final synthesis fallback error: ${err.message}`);
+        this.logger.warn(
+          `[AgentRunner] Final synthesis fallback error: ${err.message}`,
+        );
       }
       if (!finalContent) {
         finalContent = 'Eksekusi selesai.';
@@ -427,7 +486,8 @@ export class AgentRunnerService {
     const lease = this.sessionAdmissionService
       ? await this.sessionAdmissionService.acquireAdmission(params.chatId)
       : { release: async () => {} };
-    const runId = params.idempotencyKey || `stream:${params.chatId}:${Date.now()}`;
+    const runId =
+      params.idempotencyKey || `stream:${params.chatId}:${Date.now()}`;
     try {
       if (params.idempotencyKey && this.messageService) {
         const assistant = await this.messageService.findByIdempotencyKey(
@@ -461,13 +521,17 @@ export class AgentRunnerService {
         userContent: params.userContent,
       });
 
-      const messages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      const messages = this.messageService
+        ? await this.messageService.findByChatHistoryId(params.chatId)
+        : [];
       this.transcriptService?.createTurn(runId, params.chatId, messages.length);
       this.transcriptService?.markSentToProvider(runId);
 
       const result = await this.runAgentStreamInternal(params, onEvent);
 
-      const afterMessages = this.messageService ? await this.messageService.findByChatHistoryId(params.chatId) : [];
+      const afterMessages = this.messageService
+        ? await this.messageService.findByChatHistoryId(params.chatId)
+        : [];
       this.transcriptService?.markRuntimePersisted(runId, afterMessages.length);
       this.transcriptService?.markApproved(runId);
 
@@ -513,19 +577,23 @@ export class AgentRunnerService {
       const knowledgeContext = this.quarantine
         ? this.quarantine.sanitizeText(rawKnowledge, 'knowledge-context')
         : rawKnowledge;
-      const contextForTools = historyMessages
-        .slice(-3)
-        .map(m => m.content)
-        .join(' ') + ' ' + (params.userContent || '');
-        
-      const tools = this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
+      const contextForTools =
+        historyMessages
+          .slice(-3)
+          .map((m) => m.content)
+          .join(' ') +
+        ' ' +
+        (params.userContent || '');
+
+      const tools =
+        this.toolRegistryService.getRelevantToolDefinitions(contextForTools);
 
       const systemPrompt = this.aiService.getSystemPrompt(
         chatMode,
         undefined,
         knowledgeContext,
         historyMessages,
-        tools
+        tools,
       );
 
       const messages: ChatMessage[] = [
@@ -541,7 +609,11 @@ export class AgentRunnerService {
 
       let finalContent = '';
       const createdArtifactIds: string[] = [];
-      const toolOutputs: Array<{ toolName: string; args: any; result: ToolResult }> = [];
+      const toolOutputs: Array<{
+        toolName: string;
+        args: any;
+        result: ToolResult;
+      }> = [];
 
       const MAX_ROUNDS = 5;
       let reachedMaxRounds = true;
@@ -551,7 +623,10 @@ export class AgentRunnerService {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         // Inject current todo list (working memory) so LLM stays anchored
         const todoText = this.todoStore?.serialize(todoRunId);
-        const todoIdx = messages.findIndex((m) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='));
+        const todoIdx = messages.findIndex(
+          (m) =>
+            m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='),
+        );
         if (todoText) {
           const todoMsg = { role: 'system' as const, content: todoText };
           if (todoIdx >= 0) messages[todoIdx] = todoMsg;
@@ -560,11 +635,18 @@ export class AgentRunnerService {
           messages.splice(todoIdx, 1);
         }
 
-        let aiResponse: { content: string; toolCalls: any[]; usage?: any } = { content: '', toolCalls: [] };
+        let aiResponse: { content: string; toolCalls: any[]; usage?: any } = {
+          content: '',
+          toolCalls: [],
+        };
         try {
           let streamedText = '';
           const streamedToolCalls: any[] = [];
-          for await (const chunk of this.aiService.chatStream(messages, tools, params.reasoningEffort)) {
+          for await (const chunk of this.aiService.chatStream(
+            messages,
+            tools,
+            params.reasoningEffort,
+          )) {
             if (chunk.type === 'content' && chunk.content) {
               streamedText += chunk.content;
               onEvent({ type: 'text_delta', data: chunk.content });
@@ -585,8 +667,12 @@ export class AgentRunnerService {
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
           };
         } catch (err: any) {
-          this.logger.warn(`chatStream failed, falling back to chat: ${err.message}`);
-          aiResponse = await this.aiService.chat(messages, tools, { reasoningEffort: params.reasoningEffort });
+          this.logger.warn(
+            `chatStream failed, falling back to chat: ${err.message}`,
+          );
+          aiResponse = await this.aiService.chat(messages, tools, {
+            reasoningEffort: params.reasoningEffort,
+          });
           if (aiResponse.content) {
             onEvent({ type: 'text_delta', data: aiResponse.content });
           }
@@ -609,20 +695,23 @@ export class AgentRunnerService {
           break;
         }
 
-      // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
-      const askUserToolCall = aiResponse.toolCalls.find(tc => tc.function.name === 'ask_user');
-      if (askUserToolCall) {
-        let message = 'Please provide additional information to process this request.';
-        try { 
-          const args = JSON.parse(askUserToolCall.function.arguments || '{}');
-          if (args.message) message = args.message;
-        } catch {}
-        
-        finalContent = message;
-        onEvent({ type: 'text_delta', data: finalContent });
-        reachedMaxRounds = false;
-        break;
-      }
+        // Intercept ask_user: if the AI explicitly wants to ask the user, stop the execution loop immediately!
+        const askUserToolCall = aiResponse.toolCalls.find(
+          (tc) => tc.function.name === 'ask_user',
+        );
+        if (askUserToolCall) {
+          let message =
+            'Please provide additional information to process this request.';
+          try {
+            const args = JSON.parse(askUserToolCall.function.arguments || '{}');
+            if (args.message) message = args.message;
+          } catch {}
+
+          finalContent = message;
+          onEvent({ type: 'text_delta', data: finalContent });
+          reachedMaxRounds = false;
+          break;
+        }
 
         messages.push({
           role: 'assistant',
@@ -644,7 +733,11 @@ export class AgentRunnerService {
           // Notify harness of tool starts
           for (const tc of aiResponse.toolCalls) {
             let args: Record<string, any> = {};
-            try { args = JSON.parse(tc.function.arguments || '{}'); } catch { args = {}; }
+            try {
+              args = JSON.parse(tc.function.arguments || '{}');
+            } catch {
+              args = {};
+            }
             this.harnessRegistry?.onToolStart({
               chatId,
               runId: params.idempotencyKey || '',
@@ -679,8 +772,18 @@ export class AgentRunnerService {
           const healedResults = await Promise.all(healingPromises);
 
           for (const { toolCall, result } of healedResults) {
-            const parsedArgs = (() => { try { return JSON.parse(toolCall.function.arguments || '{}'); } catch { return {}; } })();
-            toolOutputs.push({ toolName: toolCall.function.name, args: parsedArgs, result });
+            const parsedArgs = (() => {
+              try {
+                return JSON.parse(toolCall.function.arguments || '{}');
+              } catch {
+                return {};
+              }
+            })();
+            toolOutputs.push({
+              toolName: toolCall.function.name,
+              args: parsedArgs,
+              result,
+            });
             this.harnessRegistry?.onToolResult({
               chatId,
               runId: params.idempotencyKey || '',
@@ -740,10 +843,16 @@ export class AgentRunnerService {
       }
 
       if (!finalContent && reachedMaxRounds) {
-        this.logger.warn(`[AgentRunner] Stream reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`);
+        this.logger.warn(
+          `[AgentRunner] Stream reached max rounds (${MAX_ROUNDS}). Forcing final answer synthesis turn.`,
+        );
         try {
           const flattenedMessages = serializeToolCallHistory(messages);
-          const finalSynthesis = await this.aiService.chat(flattenedMessages, undefined, { reasoningEffort: params.reasoningEffort });
+          const finalSynthesis = await this.aiService.chat(
+            flattenedMessages,
+            undefined,
+            { reasoningEffort: params.reasoningEffort },
+          );
           if (finalSynthesis.content) {
             finalContent = finalSynthesis.content;
             if (onEvent) {
@@ -751,7 +860,9 @@ export class AgentRunnerService {
             }
           }
         } catch (err: any) {
-          this.logger.warn(`[AgentRunner] Final synthesis fallback error: ${err.message}`);
+          this.logger.warn(
+            `[AgentRunner] Final synthesis fallback error: ${err.message}`,
+          );
         }
         if (!finalContent) {
           finalContent = 'Eksekusi selesai.';

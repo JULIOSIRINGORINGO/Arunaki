@@ -43,7 +43,11 @@ export class ExcelComService {
     filePath: string,
     actions: ExcelAction[],
     sheetName?: string,
-  ): Promise<{ success: boolean; actionsExecuted: number; results: ExcelActionResult[] }> {
+  ): Promise<{
+    success: boolean;
+    actionsExecuted: number;
+    results: ExcelActionResult[];
+  }> {
     if (!this.isAvailable) {
       throw new Error('Excel COM automation only available on Windows');
     }
@@ -74,48 +78,73 @@ export class ExcelComService {
       this.logger.error(`Excel COM error: ${err.message}`);
       throw new Error(`Excel COM automation failed: ${err.message}`);
     } finally {
-      try { await unlink(scriptPath); } catch { /* ignore */ }
+      try {
+        await unlink(scriptPath);
+      } catch {
+        /* ignore */
+      }
     }
   }
 
-  private buildPowerShellScript(filePath: string, actions: ExcelAction[], sheetName?: string): string {
+  private buildPowerShellScript(
+    filePath: string,
+    actions: ExcelAction[],
+    sheetName?: string,
+  ): string {
     const escapedPath = filePath.replace(/'/g, "''");
     const escapedSheet = sheetName ? sheetName.replace(/'/g, "''") : '';
 
-    const actionBlocks = actions.map((act, i) => {
-      switch (act.action) {
-        case 'write_cell': {
-          const val = typeof act.value === 'string' ? `'${act.value.replace(/'/g, "''")}'` : act.value;
-          return `        $cell = $ws.Range('${act.cell}'); $cell.Value2 = ${val}; $results += @{ action='write_cell'; success=$true; cell='${act.cell}' }`;
-        }
-        case 'insert_row':
-          return `        $ws.Rows(${act.row}).Insert(); $results += @{ action='insert_row'; success=$true; row=${act.row} }`;
-        case 'delete_row':
-          return `        $ws.Rows(${act.row}).Delete(); $results += @{ action='delete_row'; success=$true; row=${act.row} }`;
-        case 'insert_column':
-          return `        $ws.Columns(${act.column}).Insert(); $results += @{ action='insert_column'; success=$true; column=${act.column} }`;
-        case 'delete_column':
-          return `        $ws.Columns(${act.column}).Delete(); $results += @{ action='delete_column'; success=$true; column=${act.column} }`;
-        case 'set_format': {
-          const rangeRef = act.range || 'A1';
-          const parts: string[] = [`$rng = $ws.Range('${rangeRef}')`];
-          if (act.bold !== undefined) parts.push(`$rng.Font.Bold = ${act.bold ? '$true' : '$false'}`);
-          if (act.italic !== undefined) parts.push(`$rng.Font.Italic = ${act.italic ? '$true' : '$false'}`);
-          if (act.fontSize) parts.push(`$rng.Font.Size = ${act.fontSize}`);
-          if (act.bgColor) parts.push(`$rng.Interior.ColorIndex = ${act.bgColor}`);
-          if (act.alignment) {
-            const hAlign = act.alignment === 'center' ? '-4108' : act.alignment === 'right' ? '-4152' : '-4131';
-            parts.push(`$rng.HorizontalAlignment = ${hAlign}`);
+    const actionBlocks = actions
+      .map((act, i) => {
+        switch (act.action) {
+          case 'write_cell': {
+            const val =
+              typeof act.value === 'string'
+                ? `'${act.value.replace(/'/g, "''")}'`
+                : act.value;
+            return `        $cell = $ws.Range('${act.cell}'); $cell.Value2 = ${val}; $results += @{ action='write_cell'; success=$true; cell='${act.cell}' }`;
           }
-          parts.push(`$results += @{ action='set_format'; success=$true; range='${rangeRef}' }`);
-          return `        ${parts.join('; ')}`;
+          case 'insert_row':
+            return `        $ws.Rows(${act.row}).Insert(); $results += @{ action='insert_row'; success=$true; row=${act.row} }`;
+          case 'delete_row':
+            return `        $ws.Rows(${act.row}).Delete(); $results += @{ action='delete_row'; success=$true; row=${act.row} }`;
+          case 'insert_column':
+            return `        $ws.Columns(${act.column}).Insert(); $results += @{ action='insert_column'; success=$true; column=${act.column} }`;
+          case 'delete_column':
+            return `        $ws.Columns(${act.column}).Delete(); $results += @{ action='delete_column'; success=$true; column=${act.column} }`;
+          case 'set_format': {
+            const rangeRef = act.range || 'A1';
+            const parts: string[] = [`$rng = $ws.Range('${rangeRef}')`];
+            if (act.bold !== undefined)
+              parts.push(`$rng.Font.Bold = ${act.bold ? '$true' : '$false'}`);
+            if (act.italic !== undefined)
+              parts.push(
+                `$rng.Font.Italic = ${act.italic ? '$true' : '$false'}`,
+              );
+            if (act.fontSize) parts.push(`$rng.Font.Size = ${act.fontSize}`);
+            if (act.bgColor)
+              parts.push(`$rng.Interior.ColorIndex = ${act.bgColor}`);
+            if (act.alignment) {
+              const hAlign =
+                act.alignment === 'center'
+                  ? '-4108'
+                  : act.alignment === 'right'
+                    ? '-4152'
+                    : '-4131';
+              parts.push(`$rng.HorizontalAlignment = ${hAlign}`);
+            }
+            parts.push(
+              `$results += @{ action='set_format'; success=$true; range='${rangeRef}' }`,
+            );
+            return `        ${parts.join('; ')}`;
+          }
+          case 'save':
+            return `        $wb.Save(); $results += @{ action='save'; success=$true }`;
+          default:
+            return `        $results += @{ action='${act.action}'; success=$false; error='Unknown action' }`;
         }
-        case 'save':
-          return `        $wb.Save(); $results += @{ action='save'; success=$true }`;
-        default:
-          return `        $results += @{ action='${act.action}'; success=$false; error='Unknown action' }`;
-      }
-    }).join('\n');
+      })
+      .join('\n');
 
     const sheetActivate = escapedSheet
       ? `foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${escapedSheet}') { $wb.Worksheets.Item($s).Activate(); break } }`

@@ -11,7 +11,8 @@ export const SessionEventType = {
   SESSION_TERMINATED: 'session_terminated',
 } as const;
 
-export type SessionEventTypeValue = (typeof SessionEventType)[keyof typeof SessionEventType];
+export type SessionEventTypeValue =
+  (typeof SessionEventType)[keyof typeof SessionEventType];
 
 export interface SessionEventRecord {
   id: string;

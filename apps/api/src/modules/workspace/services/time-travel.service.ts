@@ -2,7 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
-import { TranscriptEngineService, TranscriptEvent } from './transcript-engine.service.js';
+import {
+  TranscriptEngineService,
+  TranscriptEvent,
+} from './transcript-engine.service.js';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 export interface RollbackResult {
@@ -39,14 +42,21 @@ export class TimeTravelService {
     });
 
     if (!ws || !ws.rootPath) {
-      throw new NotFoundException(`Workspace ${workspaceId} not found or has no rootPath`);
+      throw new NotFoundException(
+        `Workspace ${workspaceId} not found or has no rootPath`,
+      );
     }
 
     const workspaceRoot = ws.rootPath;
-    const events = await this.transcriptEngine.getTranscript(workspaceRoot, sessionId);
+    const events = await this.transcriptEngine.getTranscript(
+      workspaceRoot,
+      sessionId,
+    );
 
     if (events.length === 0) {
-      throw new NotFoundException(`No transcript events found for session ${sessionId}`);
+      throw new NotFoundException(
+        `No transcript events found for session ${sessionId}`,
+      );
     }
 
     // Find candidate snapshot events
@@ -64,25 +74,33 @@ export class TimeTravelService {
       };
     }
 
-    const restoredFiles: Array<{ filePath: string; bytesRestored: number }> = [];
+    const restoredFiles: Array<{ filePath: string; bytesRestored: number }> =
+      [];
     let targetCheckpointId = '';
     let targetSequence = 0;
 
     if (options.targetCheckpointId) {
-      const targetEvent = snapshotEvents.find((e) => e.id === options.targetCheckpointId);
+      const targetEvent = snapshotEvents.find(
+        (e) => e.id === options.targetCheckpointId,
+      );
       if (!targetEvent) {
-        throw new NotFoundException(`Checkpoint ${options.targetCheckpointId} not found in transcript`);
+        throw new NotFoundException(
+          `Checkpoint ${options.targetCheckpointId} not found in transcript`,
+        );
       }
       targetCheckpointId = targetEvent.id;
       targetSequence = targetEvent.sequence;
 
       const relPath = targetEvent.payload.filePath || targetEvent.payload.path;
       if (relPath) {
-        const fullPath = path.isAbsolute(relPath) ? relPath : path.join(workspaceRoot, relPath);
+        const fullPath = path.isAbsolute(relPath)
+          ? relPath
+          : path.join(workspaceRoot, relPath);
         const snapshotContent = targetEvent.payload.snapshotContent;
         if (snapshotContent !== undefined && snapshotContent !== null) {
           const parentDir = path.dirname(fullPath);
-          if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+          if (!fs.existsSync(parentDir))
+            fs.mkdirSync(parentDir, { recursive: true });
           fs.writeFileSync(fullPath, snapshotContent, 'utf-8');
           restoredFiles.push({
             filePath: relPath,
@@ -101,23 +119,30 @@ export class TimeTravelService {
         if (!relPath || filesSeen.has(relPath)) continue;
         filesSeen.add(relPath);
 
-        const fullPath = path.isAbsolute(relPath) ? relPath : path.join(workspaceRoot, relPath);
+        const fullPath = path.isAbsolute(relPath)
+          ? relPath
+          : path.join(workspaceRoot, relPath);
         const snapshotContent = snap.payload.snapshotContent;
 
         if (snapshotContent !== undefined && snapshotContent !== null) {
           const parentDir = path.dirname(fullPath);
-          if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+          if (!fs.existsSync(parentDir))
+            fs.mkdirSync(parentDir, { recursive: true });
           fs.writeFileSync(fullPath, snapshotContent, 'utf-8');
           restoredFiles.push({
             filePath: relPath,
             bytesRestored: Buffer.byteLength(snapshotContent, 'utf-8'),
           });
-          this.logger.log(`[TimeTravel] Restored file "${relPath}" to initial session state`);
+          this.logger.log(
+            `[TimeTravel] Restored file "${relPath}" to initial session state`,
+          );
         } else if (snap.payload.fileExisted === false) {
           if (fs.existsSync(fullPath)) {
             fs.unlinkSync(fullPath);
             restoredFiles.push({ filePath: relPath, bytesRestored: 0 });
-            this.logger.log(`[TimeTravel] Removed newly created file "${relPath}" on session undo`);
+            this.logger.log(
+              `[TimeTravel] Removed newly created file "${relPath}" on session undo`,
+            );
           }
         }
       }

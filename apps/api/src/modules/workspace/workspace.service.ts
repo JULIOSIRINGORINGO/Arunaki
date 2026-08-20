@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Workspace } from '@prisma/client';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -7,7 +11,10 @@ import { WorkspaceRepository } from './workspace.repository.js';
 import { StorageService } from '../storage/storage.service.js';
 import { FileService } from '../file/file.service.js';
 import { SourceService } from '../source/source.service.js';
-import { WorkspaceHeartbeatService, FileSnapshot } from '../ai/workspace-heartbeat.service.js';
+import {
+  WorkspaceHeartbeatService,
+  FileSnapshot,
+} from '../ai/workspace-heartbeat.service.js';
 
 @Injectable()
 export class WorkspaceService extends BaseService<Workspace> {
@@ -56,9 +63,11 @@ export class WorkspaceService extends BaseService<Workspace> {
 
   async connectFolder(id: string, folderPath: string) {
     const workspace = await this.findById(id);
-    
+
     if (workspace.rootPath && workspace.rootPath !== folderPath) {
-      throw new BadRequestException('Workspace is already connected to another folder');
+      throw new BadRequestException(
+        'Workspace is already connected to another folder',
+      );
     }
 
     // Validate folder exists and is readable
@@ -69,7 +78,10 @@ export class WorkspaceService extends BaseService<Workspace> {
     }
 
     // Update workspace with root path
-    await this.repository.update(id, { rootPath: folderPath, status: 'processing' });
+    await this.repository.update(id, {
+      rootPath: folderPath,
+      status: 'processing',
+    });
 
     // Create a source for this folder
     const source = await this.sourceService.create({
@@ -94,21 +106,45 @@ export class WorkspaceService extends BaseService<Workspace> {
     return { success: true, sourceId: source.id };
   }
 
-  private async collectFileSnapshots(dir: string, result: FileSnapshot[], relativePath = ''): Promise<void> {
+  private async collectFileSnapshots(
+    dir: string,
+    result: FileSnapshot[],
+    relativePath = '',
+  ): Promise<void> {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.name.startsWith('.') ||
-          ['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', '.idea', '.vscode', 'coverage', '.cache'].includes(entry.name)) {
+      if (
+        entry.name.startsWith('.') ||
+        [
+          'node_modules',
+          '.git',
+          'dist',
+          'build',
+          '.next',
+          '.venv',
+          '__pycache__',
+          '.idea',
+          '.vscode',
+          'coverage',
+          '.cache',
+        ].includes(entry.name)
+      ) {
         continue;
       }
       const fullPath = path.join(dir, entry.name);
-      const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      const relPath = relativePath
+        ? `${relativePath}/${entry.name}`
+        : entry.name;
       if (entry.isDirectory()) {
         await this.collectFileSnapshots(fullPath, result, relPath);
       } else if (entry.isFile()) {
         try {
           const stats = await fs.stat(fullPath);
-          result.push({ path: relPath, sizeBytes: stats.size, lastModified: stats.mtimeMs });
+          result.push({
+            path: relPath,
+            sizeBytes: stats.size,
+            lastModified: stats.mtimeMs,
+          });
         } catch {
           // skip unreadable
         }
@@ -116,20 +152,51 @@ export class WorkspaceService extends BaseService<Workspace> {
     }
   }
 
-  private async scanFolder(workspaceId: string, sourceId: string, folderPath: string) {
-    const supportedExtensions = ['.txt', '.md', '.csv', '.pdf', '.docx', '.xlsx', '.xls', '.json', '.html', '.xml'];
+  private async scanFolder(
+    workspaceId: string,
+    sourceId: string,
+    folderPath: string,
+  ) {
+    const supportedExtensions = [
+      '.txt',
+      '.md',
+      '.csv',
+      '.pdf',
+      '.docx',
+      '.xlsx',
+      '.xls',
+      '.json',
+      '.html',
+      '.xml',
+    ];
 
     const scanDir = async (dir: string, relativePath = '') => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
-      
+
       for (const entry of entries) {
-        if (entry.name.startsWith('.') || 
-            ['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', '.idea', '.vscode', 'coverage', '.cache'].includes(entry.name)) {
+        if (
+          entry.name.startsWith('.') ||
+          [
+            'node_modules',
+            '.git',
+            'dist',
+            'build',
+            '.next',
+            '.venv',
+            '__pycache__',
+            '.idea',
+            '.vscode',
+            'coverage',
+            '.cache',
+          ].includes(entry.name)
+        ) {
           continue;
         }
 
         const fullPath = path.join(dir, entry.name);
-        const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+        const relPath = relativePath
+          ? `${relativePath}/${entry.name}`
+          : entry.name;
 
         if (entry.isDirectory()) {
           await scanDir(fullPath, relPath);
@@ -147,7 +214,9 @@ export class WorkspaceService extends BaseService<Workspace> {
               path: fullPath,
               type: ext.replace('.', ''),
               size: stats.size,
-              mimeType: this.storageService['mimeTypes'][ext] || 'application/octet-stream',
+              mimeType:
+                this.storageService['mimeTypes'][ext] ||
+                'application/octet-stream',
             });
           } catch (err) {
             // Skip unreadable files

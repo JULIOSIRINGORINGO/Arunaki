@@ -18,11 +18,18 @@ export interface StreamFallbackOptions {
     provider: ProviderConfig,
     body: Record<string, any>,
   ) => AsyncGenerator<StreamChunk>;
-  getNextProvider: (currentId: string, triedIds?: string[]) => Promise<ProviderConfig | null>;
+  getNextProvider: (
+    currentId: string,
+    triedIds?: string[],
+  ) => Promise<ProviderConfig | null>;
   classifyError: (
     statusCode: number,
     body: string,
-  ) => { action: 'retry' | 'rotate' | 'fatal'; message?: string; cooldownSeconds?: number };
+  ) => {
+    action: 'retry' | 'rotate' | 'fatal';
+    message?: string;
+    cooldownSeconds?: number;
+  };
   recordUsage?: (providerId: string) => Promise<void>;
   recordError?: (providerId: string, error: string) => Promise<void>;
   setCooldown?: (providerId: string, seconds: number) => Promise<void>;
@@ -65,10 +72,14 @@ export async function* streamWithFallback(
         }
 
         if (!anyChunk) {
-          console.warn(`[streamWithFallback] Empty stream from provider ${provider.name} (${provider.model})`);
+          console.warn(
+            `[streamWithFallback] Empty stream from provider ${provider.name} (${provider.model})`,
+          );
           lastError = 'Empty stream (no chunks received)';
           if (provider.id !== 'env-fallback' && options.recordError) {
-            await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+            await options
+              .recordError(provider.id, lastError.substring(0, 200))
+              .catch(() => {});
           }
           if (provider.id !== 'env-fallback' && options.setCooldown) {
             await options.setCooldown(provider.id, 60).catch(() => {});
@@ -79,7 +90,15 @@ export async function* streamWithFallback(
         yield { type: 'done' };
         return;
       } catch (err: any) {
-        console.error(`[streamWithFallback ERROR] Provider ${provider.name} (${provider.model}):`, err?.message, 'statusCode:', err?.statusCode, 'responseBody:', err?.responseBody, err?.cause);
+        console.error(
+          `[streamWithFallback ERROR] Provider ${provider.name} (${provider.model}):`,
+          err?.message,
+          'statusCode:',
+          err?.statusCode,
+          'responseBody:',
+          err?.responseBody,
+          err?.cause,
+        );
         const statusCode = err?.statusCode ?? 0;
         const errorBody =
           (err?.responseBody as string) ?? err?.body ?? err?.message ?? '';
@@ -92,7 +111,9 @@ export async function* streamWithFallback(
             // immediately and cooldown the model so later rounds skip it.
             lastError = `Timeout: ${err?.message || 'provider did not respond'}`;
             if (provider.id !== 'env-fallback' && options.recordError) {
-              await options.recordError(provider.id, lastError.substring(0, 200)).catch(() => {});
+              await options
+                .recordError(provider.id, lastError.substring(0, 200))
+                .catch(() => {});
             }
             if (provider.id !== 'env-fallback' && options.setCooldown) {
               await options.setCooldown(provider.id, 300).catch(() => {});
@@ -109,10 +130,18 @@ export async function* streamWithFallback(
 
         const isContextOverflow =
           statusCode === 413 ||
-          /context_length_exceeded|maximum context length|prompt is too long|token limit/i.test(errorBody);
+          /context_length_exceeded|maximum context length|prompt is too long|token limit/i.test(
+            errorBody,
+          );
 
-        if (isContextOverflow && Array.isArray(options.body.messages) && options.body.messages.length > 2) {
-          options.body.messages = emergencyCompactMessages(options.body.messages);
+        if (
+          isContextOverflow &&
+          Array.isArray(options.body.messages) &&
+          options.body.messages.length > 2
+        ) {
+          options.body.messages = emergencyCompactMessages(
+            options.body.messages,
+          );
           retryCount++;
           if (retryCount < MAX_RETRIES_PER_PROVIDER) {
             await jitteredBackoff(retryCount);
@@ -124,10 +153,12 @@ export async function* streamWithFallback(
         lastError = classified.message || `HTTP ${statusCode}`;
 
         if (provider.id !== 'env-fallback' && options.recordError) {
-          await options.recordError(
-            provider.id,
-            `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
-          ).catch(() => {});
+          await options
+            .recordError(
+              provider.id,
+              `HTTP ${statusCode}: ${errorBody.substring(0, 200)}`,
+            )
+            .catch(() => {});
         }
 
         if (classified.action === 'retry') {
@@ -140,8 +171,14 @@ export async function* streamWithFallback(
         }
 
         if (classified.action === 'rotate') {
-          if (provider.id !== 'env-fallback' && classified.cooldownSeconds && options.setCooldown) {
-            await options.setCooldown(provider.id, classified.cooldownSeconds).catch(() => {});
+          if (
+            provider.id !== 'env-fallback' &&
+            classified.cooldownSeconds &&
+            options.setCooldown
+          ) {
+            await options
+              .setCooldown(provider.id, classified.cooldownSeconds)
+              .catch(() => {});
           }
           break;
         }
@@ -156,14 +193,20 @@ export async function* streamWithFallback(
     rotationCount++;
     if (rotationCount > MAX_ROTATIONS) break;
 
-    const nextProvider = await options.getNextProvider(provider.id, Array.from(triedProviders));
+    const nextProvider = await options.getNextProvider(
+      provider.id,
+      Array.from(triedProviders),
+    );
     if (!nextProvider) break;
 
     triedProviders.add(nextProvider.id);
     provider = nextProvider;
   }
 
-  yield { type: 'error', error: `All providers exhausted. Last error: ${lastError || 'unknown'}` };
+  yield {
+    type: 'error',
+    error: `All providers exhausted. Last error: ${lastError || 'unknown'}`,
+  };
 }
 
 function emergencyCompactMessages(messages: any[]): any[] {
@@ -174,10 +217,16 @@ function emergencyCompactMessages(messages: any[]): any[] {
 
   // Prune all tool results to max 500 chars
   const pruned = nonSystem.map((msg) => {
-    if (msg.role === 'tool' && typeof msg.content === 'string' && msg.content.length > 500) {
+    if (
+      msg.role === 'tool' &&
+      typeof msg.content === 'string' &&
+      msg.content.length > 500
+    ) {
       return {
         ...msg,
-        content: msg.content.substring(0, 500) + '\n[...truncated for context recovery]',
+        content:
+          msg.content.substring(0, 500) +
+          '\n[...truncated for context recovery]',
       };
     }
     return msg;

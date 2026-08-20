@@ -13,11 +13,20 @@ import type { Page } from 'playwright';
 export class CryptoHarvesterService implements OnModuleInit {
   private readonly logger = new Logger(CryptoHarvesterService.name);
 
-  private hostSecrets = new Map<string, { secret: string; iterations: number; keySize: number }>();
+  private hostSecrets = new Map<
+    string,
+    { secret: string; iterations: number; keySize: number }
+  >();
 
   private learnedSites = new Map<
     string,
-    { host: string; apiUrlTemplate: string; secret: string; iterations: number; keySizeBytes: number }
+    {
+      host: string;
+      apiUrlTemplate: string;
+      secret: string;
+      iterations: number;
+      keySizeBytes: number;
+    }
   >();
 
   constructor(private readonly prisma: PrismaService) {}
@@ -43,7 +52,10 @@ export class CryptoHarvesterService implements OnModuleInit {
         });
       } catch {}
     }
-    if (rows.length) this.logger.log(`[CryptoHarvester] Loaded ${rows.length} learned site(s) from DB`);
+    if (rows.length)
+      this.logger.log(
+        `[CryptoHarvester] Loaded ${rows.length} learned site(s) from DB`,
+      );
   }
 
   getLearnedSite(host: string) {
@@ -130,16 +142,31 @@ export class CryptoHarvesterService implements OnModuleInit {
   async collect(
     page: Page,
     host: string,
-  ): Promise<{ encrypted: { url: string; body: string }[]; decrypted: string[] }> {
-    const result = { encrypted: [] as { url: string; body: string }[], decrypted: [] as string[] };
+  ): Promise<{
+    encrypted: { url: string; body: string }[];
+    decrypted: string[];
+  }> {
+    const result = {
+      encrypted: [] as { url: string; body: string }[],
+      decrypted: [] as string[],
+    };
     try {
-      const captures = await page.evaluate(() => (window as any).__arunakiCrypto || []);
+      const captures = await page.evaluate(
+        () => (window as any).__arunakiCrypto || [],
+      );
       for (const c of captures) {
-        if (c.type === 'encrypted') result.encrypted.push({ url: c.url || '', body: c.body });
+        if (c.type === 'encrypted')
+          result.encrypted.push({ url: c.url || '', body: c.body });
         if (c.type === 'decrypted') result.decrypted.push(c.sample);
         if (c.type === 'secret') {
-          this.hostSecrets.set(host, { secret: c.secret, iterations: c.iterations || 1000, keySize: c.keySize || 12 });
-          this.logger.log(`[CryptoHarvester] Captured decrypt secret for ${host} (${c.secret.slice(0, 8)}...)`);
+          this.hostSecrets.set(host, {
+            secret: c.secret,
+            iterations: c.iterations || 1000,
+            keySize: c.keySize || 12,
+          });
+          this.logger.log(
+            `[CryptoHarvester] Captured decrypt secret for ${host} (${c.secret.slice(0, 8)}...)`,
+          );
         }
       }
       await this.learnFromCaptures(host, page.url(), result);
@@ -150,21 +177,33 @@ export class CryptoHarvesterService implements OnModuleInit {
   async learnFromCaptures(
     host: string,
     pageUrl: string,
-    captures: { encrypted: { url: string; body: string }[]; decrypted: string[] },
+    captures: {
+      encrypted: { url: string; body: string }[];
+      decrypted: string[];
+    },
     secret?: { secret: string; iterations: number; keySize: number },
   ): Promise<boolean> {
     if (this.learnedSites.has(host)) return false;
     const sec = secret || this.hostSecrets.get(host);
     if (!sec) return false;
 
-    const stockCall = captures.encrypted.find((c) => /\/stock\/\d+\/[^/?]+/.test(c.url));
+    const stockCall = captures.encrypted.find((c) =>
+      /\/stock\/\d+\/[^/?]+/.test(c.url),
+    );
     if (!stockCall) return false;
 
-    const hasStockPayload = captures.decrypted.some((s) => this.stockPayloadsFrom([s]).length > 0);
+    const hasStockPayload = captures.decrypted.some(
+      (s) => this.stockPayloadsFrom([s]).length > 0,
+    );
     if (!hasStockPayload) return false;
 
-    const abs = stockCall.url.startsWith('http') ? stockCall.url : `https://${host}${stockCall.url}`;
-    const template = abs.replace(/\/stock\/\d+\/[^/?]+/, '/stock/{productId}/{city}');
+    const abs = stockCall.url.startsWith('http')
+      ? stockCall.url
+      : `https://${host}${stockCall.url}`;
+    const template = abs.replace(
+      /\/stock\/\d+\/[^/?]+/,
+      '/stock/{productId}/{city}',
+    );
     const entry = {
       host,
       apiUrlTemplate: template,
@@ -173,23 +212,44 @@ export class CryptoHarvesterService implements OnModuleInit {
       keySizeBytes: sec.keySize * 4,
     };
     this.learnedSites.set(host, entry);
-    this.hostSecrets.set(host, { secret: sec.secret, iterations: sec.iterations, keySize: sec.keySize });
+    this.hostSecrets.set(host, {
+      secret: sec.secret,
+      iterations: sec.iterations,
+      keySize: sec.keySize,
+    });
 
     // Persist to DB
     try {
       const json = JSON.stringify(entry);
-      const existing = await this.prisma.memory.findFirst({ where: { type: 'site', key: host } });
+      const existing = await this.prisma.memory.findFirst({
+        where: { type: 'site', key: host },
+      });
       if (existing) {
-        await this.prisma.memory.update({ where: { id: existing.id }, data: { content: json, active: true } });
+        await this.prisma.memory.update({
+          where: { id: existing.id },
+          data: { content: json, active: true },
+        });
       } else {
-        await this.prisma.memory.create({ data: { type: 'site', key: host, content: json, source: 'auto', importance: 8 } });
+        await this.prisma.memory.create({
+          data: {
+            type: 'site',
+            key: host,
+            content: json,
+            source: 'auto',
+            importance: 8,
+          },
+        });
       }
       this.logger.log(`[CryptoHarvester] Persisted site ${host} to DB`);
     } catch (e: any) {
-      this.logger.warn(`[CryptoHarvester] Failed to persist site ${host}: ${e.message}`);
+      this.logger.warn(
+        `[CryptoHarvester] Failed to persist site ${host}: ${e.message}`,
+      );
     }
 
-    this.logger.log(`[CryptoHarvester] Learned stock API for ${host}: ${template}`);
+    this.logger.log(
+      `[CryptoHarvester] Learned stock API for ${host}: ${template}`,
+    );
     return true;
   }
 
@@ -199,9 +259,15 @@ export class CryptoHarvesterService implements OnModuleInit {
       try {
         const j = JSON.parse(s);
         if (!Array.isArray(j)) continue;
-        const items = j.flatMap((b: any) => (Array.isArray(b?.products) ? b.products : [b]));
+        const items = j.flatMap((b: any) =>
+          Array.isArray(b?.products) ? b.products : [b],
+        );
         for (const p of items) {
-          if (typeof p?.stock === 'number' && typeof p?.color === 'string' && typeof p?.size === 'string') {
+          if (
+            typeof p?.stock === 'number' &&
+            typeof p?.color === 'string' &&
+            typeof p?.size === 'string'
+          ) {
             rows.push(p);
           }
         }

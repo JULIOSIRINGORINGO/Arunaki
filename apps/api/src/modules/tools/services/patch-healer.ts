@@ -8,14 +8,22 @@ export interface HealedChunk {
   newLines: string[];
 }
 
-export function healPatchText(rawPatch: string, defaultFilePath: string): string {
+export function healPatchText(
+  rawPatch: string,
+  defaultFilePath: string,
+): string {
   let text = (rawPatch || '').trim();
 
   // 1. Strip markdown code fences (```diff ... ```, ```patch ... ```, etc.)
-  text = text.replace(/^```[a-zA-Z0-9_-]*\r?\n/i, '').replace(/\r?\n```$/i, '').trim();
+  text = text
+    .replace(/^```[a-zA-Z0-9_-]*\r?\n/i, '')
+    .replace(/\r?\n```$/i, '')
+    .trim();
 
   // 2. Strip bash heredocs: cat << 'EOF' ... EOF
-  text = text.replace(/^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/, '$2').trim();
+  text = text
+    .replace(/^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/, '$2')
+    .trim();
 
   // 3. Remove outer *** Begin Patch / *** End Patch if present
   text = text.replace(/^\*\*\*\s*Begin Patch\s*\r?\n?/i, '');
@@ -27,7 +35,7 @@ export function healPatchText(rawPatch: string, defaultFilePath: string): string
   let foundUpdateFile = false;
 
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i]!;
+    let line = lines[i];
 
     // Check for file directive
     if (/^\*\*\*\s*Update File:\s*(.*)/i.test(line)) {
@@ -91,7 +99,10 @@ export function extractAndApplyFallback(
   let replacements = 0;
 
   // Clean fences
-  const clean = rawPatch.replace(/^```[a-zA-Z0-9_-]*\r?\n/i, '').replace(/\r?\n```$/i, '').trim();
+  const clean = rawPatch
+    .replace(/^```[a-zA-Z0-9_-]*\r?\n/i, '')
+    .replace(/\r?\n```$/i, '')
+    .trim();
   const lines = clean.split(/\r?\n/);
 
   // Group lines into hunks
@@ -102,7 +113,12 @@ export function extractAndApplyFallback(
   let inHunk = false;
 
   const applyHunk = () => {
-    if (currentOld.length === 0 && currentNew.length === 0 && currentMinus.length === 0) return;
+    if (
+      currentOld.length === 0 &&
+      currentNew.length === 0 &&
+      currentMinus.length === 0
+    )
+      return;
     const oldBlock = currentOld.join('\n');
     const newBlock = currentNew.join('\n');
     let matched = false;
@@ -126,7 +142,11 @@ export function extractAndApplyFallback(
         const searchLines = normOld.split('\n');
         const matchIdx = findFuzzyBlock(targetLines, searchLines);
         if (matchIdx !== -1) {
-          targetLines.splice(matchIdx, searchLines.length, ...normNew.split('\n'));
+          targetLines.splice(
+            matchIdx,
+            searchLines.length,
+            ...normNew.split('\n'),
+          );
           content = targetLines.join('\n');
           replacements++;
           matched = true;
@@ -150,7 +170,11 @@ export function extractAndApplyFallback(
         const searchLines = normMinOld.split('\n');
         const matchIdx = findFuzzyBlock(targetLines, searchLines);
         if (matchIdx !== -1) {
-          targetLines.splice(matchIdx, searchLines.length, ...normMinNew.split('\n'));
+          targetLines.splice(
+            matchIdx,
+            searchLines.length,
+            ...normMinNew.split('\n'),
+          );
           content = targetLines.join('\n');
           replacements++;
           matched = true;
@@ -213,7 +237,7 @@ function findFuzzyBlock(target: string[], search: string[]): number {
   for (let i = 0; i <= target.length - search.length; i++) {
     let match = true;
     for (let j = 0; j < search.length; j++) {
-      if (norm(target[i + j]!) !== searchNorm[j]) {
+      if (norm(target[i + j]) !== searchNorm[j]) {
         match = false;
         break;
       }

@@ -60,12 +60,18 @@ export function validateToolArgs(
 /**
  * Normalizes common argument aliases (path vs filePath vs filename).
  */
-export function normalizeToolArgs(args: Record<string, any>): Record<string, any> {
+export function normalizeToolArgs(
+  args: Record<string, any>,
+): Record<string, any> {
   const normalized = { ...args };
-  if (!normalized.filePath && normalized.path) normalized.filePath = normalized.path;
-  if (!normalized.path && normalized.filePath) normalized.path = normalized.filePath;
-  if (!normalized.filePath && normalized.filename) normalized.filePath = normalized.filename;
-  if (!normalized.filename && normalized.filePath) normalized.filename = normalized.filePath;
+  if (!normalized.filePath && normalized.path)
+    normalized.filePath = normalized.path;
+  if (!normalized.path && normalized.filePath)
+    normalized.path = normalized.filePath;
+  if (!normalized.filePath && normalized.filename)
+    normalized.filePath = normalized.filename;
+  if (!normalized.filename && normalized.filePath)
+    normalized.filename = normalized.filePath;
   if (!normalized.query && normalized.q) normalized.query = normalized.q;
   return normalized;
 }

@@ -51,7 +51,9 @@ const mockToolDefinitions = () =>
 
 describe('extractMentionedFilenames', () => {
   it('extracts an explicit file reference', () => {
-    expect(extractMentionedFilenames('@REKAPAN TERBARU2.txt tambahkan pemasukan')).toEqual(['REKAPAN TERBARU2.txt']);
+    expect(
+      extractMentionedFilenames('@REKAPAN TERBARU2.txt tambahkan pemasukan'),
+    ).toEqual(['REKAPAN TERBARU2.txt']);
   });
 
   it('ignores ordinary @ text', () => {
@@ -61,9 +63,21 @@ describe('extractMentionedFilenames', () => {
 
 describe('hasExplicitDeleteIntent', () => {
   it('requires a delete verb and the exact target name', () => {
-    expect(hasExplicitDeleteIntent('hapus REKAPAN TERBARU2.txt', 'REKAPAN TERBARU2.txt')).toBe(true);
-    expect(hasExplicitDeleteIntent('hapus file itu', 'REKAPAN TERBARU2.txt')).toBe(false);
-    expect(hasExplicitDeleteIntent('tambahkan data ke REKAPAN TERBARU2.txt', 'REKAPAN TERBARU2.txt')).toBe(false);
+    expect(
+      hasExplicitDeleteIntent(
+        'hapus REKAPAN TERBARU2.txt',
+        'REKAPAN TERBARU2.txt',
+      ),
+    ).toBe(true);
+    expect(
+      hasExplicitDeleteIntent('hapus file itu', 'REKAPAN TERBARU2.txt'),
+    ).toBe(false);
+    expect(
+      hasExplicitDeleteIntent(
+        'tambahkan data ke REKAPAN TERBARU2.txt',
+        'REKAPAN TERBARU2.txt',
+      ),
+    ).toBe(false);
   });
 });
 
@@ -81,7 +95,10 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
         WorkspacePromptBuilderService,
         TranscriptEngineService,
         ModelStreamNormalizerService,
-        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
+        {
+          provide: WorkspaceCartographerService,
+          useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: AiService,
           useValue: {
@@ -95,14 +112,38 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: ToolRegistryService,
           useValue: {
             getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
-            isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
-            executeTool: vi.fn().mockResolvedValue({ status: 'success', data: {} }),
+            isMutating: vi
+              .fn()
+              .mockImplementation((name) =>
+                [
+                  'write',
+                  'edit',
+                  'delete',
+                  'rename',
+                  'desktop_send_keys',
+                  'desktop_excel_edit',
+                  'desktop_word_type',
+                  'desktop_word_format',
+                ].includes(name),
+              ),
+            executeTool: vi
+              .fn()
+              .mockResolvedValue({ status: 'success', data: {} }),
           },
         },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
-        { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
-        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
-        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: StorageService,
+          useValue: { exists: vi.fn(), readFile: vi.fn() },
+        },
+        {
+          provide: FileService,
+          useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: SearchService,
+          useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
+        },
         { provide: ArtifactService, useValue: { createArtifact: vi.fn() } },
         { provide: MemoryService, useValue: { getActiveContext: vi.fn() } },
         { provide: BackgroundReviewService, useValue: {} },
@@ -113,14 +154,33 @@ describe('WorkspaceRunnerService (System Engine Integration Unit Test)', () => {
           provide: PromptInjectionDetector,
           useValue: { scan: vi.fn().mockReturnValue({ isInjection: false }) },
         },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
-        { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn() } } },
-        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: { workspace: { findUnique: vi.fn() } },
+        },
+        {
+          provide: ProviderService,
+          useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() },
+        },
         { provide: ContextRegistry, useValue: { registerContext: vi.fn() } },
-        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        {
+          provide: DomainRegistryService,
+          useValue: { getDomainSpec: vi.fn() },
+        },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
-        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
+        {
+          provide: SessionAdmissionService,
+          useValue: {
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+          },
+        },
       ],
     }).compile();
 
@@ -156,19 +216,38 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
         WorkspacePromptBuilderService,
         TranscriptEngineService,
         ModelStreamNormalizerService,
-        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
+        {
+          provide: WorkspaceCartographerService,
+          useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: AiService,
           useValue: {
             getSystemPrompt: vi.fn().mockReturnValue('system'),
-            getActiveModelContext: vi.fn().mockResolvedValue({ model: 'deepseek-v4-flash', contextWindow: 32000, maxTokens: 8192 }),
+            getActiveModelContext: vi.fn().mockResolvedValue({
+              model: 'deepseek-v4-flash',
+              contextWindow: 32000,
+              maxTokens: 8192,
+            }),
             chat: vi
               .fn()
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'call_1', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
-                  { id: 'call_2', function: { name: 'search_workspace', arguments: '{"query":"x"}' } },
+                  {
+                    id: 'call_1',
+                    function: {
+                      name: 'read',
+                      arguments: '{"filename":"a.txt"}',
+                    },
+                  },
+                  {
+                    id: 'call_2',
+                    function: {
+                      name: 'search_workspace',
+                      arguments: '{"query":"x"}',
+                    },
+                  },
                   { id: 'call_3', function: { name: 'list', arguments: '{}' } },
                 ],
               })
@@ -179,7 +258,20 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: ToolRegistryService,
           useValue: {
             getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
-            isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)),
+            isMutating: vi
+              .fn()
+              .mockImplementation((name) =>
+                [
+                  'write',
+                  'edit',
+                  'delete',
+                  'rename',
+                  'desktop_send_keys',
+                  'desktop_excel_edit',
+                  'desktop_word_type',
+                  'desktop_word_format',
+                ].includes(name),
+              ),
             getToolDirectoryText: vi.fn().mockReturnValue(''),
           },
         },
@@ -188,13 +280,28 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
           provide: StorageService,
           useValue: { exists: vi.fn(), readFile: vi.fn() },
         },
-        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
-        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: FileService,
+          useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: SearchService,
+          useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
+        },
         { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
-        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: MemoryService,
+          useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
+        },
         { provide: BackgroundReviewService, useValue: {} },
-        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
-        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SmartRecallService,
+          useValue: { recall: vi.fn().mockResolvedValue('') },
+        },
+        {
+          provide: SkillService,
+          useValue: { getSkillsContext: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: SelfHealingService,
           useValue: {
@@ -207,28 +314,53 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
             }),
           },
         },
-        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
+        {
+          provide: PromptInjectionDetector,
+          useValue: { scan: vi.fn().mockReturnValue({ detected: false }) },
+        },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
         {
           provide: PrismaService,
           useValue: {
-            workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) },
+            workspace: {
+              findUnique: vi
+                .fn()
+                .mockResolvedValue({ rootPath: null, businessType: null }),
+            },
             source: { findFirst: vi.fn().mockResolvedValue(null) },
           },
         },
-        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() } },
+        {
+          provide: ProviderService,
+          useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn() },
+        },
         {
           provide: ContextRegistry,
           useValue: {
             getActive: vi.fn().mockReturnValue({
-              assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }),
+              assemble: vi
+                .fn()
+                .mockResolvedValue({ systemPrompt: '', messages: [] }),
             }),
           },
         },
-        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        {
+          provide: DomainRegistryService,
+          useValue: { getDomainSpec: vi.fn() },
+        },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
-        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
+        {
+          provide: SessionAdmissionService,
+          useValue: {
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+          },
+        },
       ],
     }).compile();
 
@@ -242,26 +374,26 @@ describe('WorkspaceRunnerService read-only parallel execution', () => {
     for await (const event of runnerService.runWorkspaceAgentGenerator({
       workspaceId: 'ws-parallel-test',
       userGoal: 'read a.txt and search for x',
-      historyMessages: [{ role: 'user', content: 'read a.txt and search for x' }],
+      historyMessages: [
+        { role: 'user', content: 'read a.txt and search for x' },
+      ],
     })) {
       events.push(event);
       if (event.type === 'tool_done') {
         doneOrder.push(event.data.toolName);
       }
     }
-    
-    if (doneOrder.length === 0) console.log('DEBUG EVENTS:', JSON.stringify(events, null, 2));
 
-    expect(doneOrder).toEqual([
-      'read',
-      'search_workspace',
-      'list',
-    ]);
+    if (doneOrder.length === 0)
+      console.log('DEBUG EVENTS:', JSON.stringify(events, null, 2));
+
+    expect(doneOrder).toEqual(['read', 'search_workspace', 'list']);
     expect(maxActive).toBeGreaterThan(1);
-    const hasParallelEvent = events.some((e) =>
-      e.type === 'tool_start' &&
-      typeof e.data.toolName === 'string' &&
-      e.data.toolName.startsWith('parallel ('),
+    const hasParallelEvent = events.some(
+      (e) =>
+        e.type === 'tool_start' &&
+        typeof e.data.toolName === 'string' &&
+        e.data.toolName.startsWith('parallel ('),
     );
     expect(hasParallelEvent).toBe(true);
   });
@@ -279,13 +411,27 @@ describe('WorkspaceRunnerService todo list injection', () => {
       .mockResolvedValueOnce({
         content: null,
         toolCalls: [
-          { id: 'todo_1', function: { name: 'todo_write', arguments: '{"todos":[{"id":"1","content":"Baca file","status":"in_progress"},{"id":"2","content":"Hitung total","status":"pending"}]}' } },
+          {
+            id: 'todo_1',
+            function: {
+              name: 'todo_write',
+              arguments:
+                '{"todos":[{"id":"1","content":"Baca file","status":"in_progress"},{"id":"2","content":"Hitung total","status":"pending"}]}',
+            },
+          },
         ],
       })
       .mockResolvedValueOnce({
         content: null,
         toolCalls: [
-          { id: 'call_1', function: { name: 'todo_write', arguments: '{"todos":[{"id":1,"content":"Baca file","status":"in_progress"},{"id":2,"content":"Hitung total","status":"pending"}]}' } },
+          {
+            id: 'call_1',
+            function: {
+              name: 'todo_write',
+              arguments:
+                '{"todos":[{"id":1,"content":"Baca file","status":"in_progress"},{"id":2,"content":"Hitung total","status":"pending"}]}',
+            },
+          },
         ],
       })
       .mockResolvedValue({ content: 'Laporan selesai.', toolCalls: [] });
@@ -298,42 +444,137 @@ describe('WorkspaceRunnerService todo list injection', () => {
         WorkspacePromptBuilderService,
         TranscriptEngineService,
         ModelStreamNormalizerService,
-        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
+        {
+          provide: WorkspaceCartographerService,
+          useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: AiService,
-          useValue: { getSystemPrompt: vi.fn().mockReturnValue('system'), getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }), chat: chatMock },
+          useValue: {
+            getSystemPrompt: vi.fn().mockReturnValue('system'),
+            getActiveModelContext: vi
+              .fn()
+              .mockResolvedValue({ contextWindow: 32000 }),
+            chat: chatMock,
+          },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockImplementation((name) => ['write', 'edit', 'delete', 'rename', 'desktop_send_keys', 'desktop_excel_edit', 'desktop_word_type', 'desktop_word_format'].includes(name)) } },
+        {
+          provide: ToolRegistryService,
+          useValue: {
+            getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
+            isMutating: vi
+              .fn()
+              .mockImplementation((name) =>
+                [
+                  'write',
+                  'edit',
+                  'delete',
+                  'rename',
+                  'desktop_send_keys',
+                  'desktop_excel_edit',
+                  'desktop_word_type',
+                  'desktop_word_format',
+                ].includes(name),
+              ),
+          },
+        },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
-        { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
-        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
-        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: StorageService,
+          useValue: { exists: vi.fn(), readFile: vi.fn() },
+        },
+        {
+          provide: FileService,
+          useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: SearchService,
+          useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
+        },
         { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
-        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: MemoryService,
+          useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
+        },
         { provide: BackgroundReviewService, useValue: {} },
-        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
-        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: SmartRecallService,
+          useValue: { recall: vi.fn().mockResolvedValue('') },
+        },
+        {
+          provide: SkillService,
+          useValue: { getSkillsContext: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: SelfHealingService,
           useValue: {
-            executeWithIsolation: vi.fn().mockImplementation(async (name: string, args: any) => {
-              if (name === 'todo_write' && Array.isArray(args?.todos)) {
-                todoStore.set(args.workspaceId || 'ws-todo-test', args.todos);
-              }
-              return { status: 'success', data: { text: 'ok' } };
+            executeWithIsolation: vi
+              .fn()
+              .mockImplementation(async (name: string, args: any) => {
+                if (name === 'todo_write' && Array.isArray(args?.todos)) {
+                  todoStore.set(args.workspaceId || 'ws-todo-test', args.todos);
+                }
+                return { status: 'success', data: { text: 'ok' } };
+              }),
+          },
+        },
+        {
+          provide: PromptInjectionDetector,
+          useValue: { scan: vi.fn().mockReturnValue({ detected: false }) },
+        },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            workspace: {
+              findUnique: vi
+                .fn()
+                .mockResolvedValue({ rootPath: null, businessType: null }),
+            },
+            source: { findFirst: vi.fn().mockResolvedValue(null) },
+          },
+        },
+        {
+          provide: ProviderService,
+          useValue: {
+            getActiveModel: vi.fn(),
+            rotateProvider: vi.fn(),
+            getNextAvailable: vi.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: ContextRegistry,
+          useValue: {
+            getActive: vi.fn().mockReturnValue({
+              assemble: vi
+                .fn()
+                .mockResolvedValue({ systemPrompt: '', messages: [] }),
             }),
           },
         },
-        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
-        { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) }, source: { findFirst: vi.fn().mockResolvedValue(null) } } },
-        { provide: ProviderService, useValue: { getActiveModel: vi.fn(), rotateProvider: vi.fn(), getNextAvailable: vi.fn().mockResolvedValue(null) } },
-        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
-        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        {
+          provide: DomainRegistryService,
+          useValue: { getDomainSpec: vi.fn() },
+        },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
         { provide: TodoStoreService, useValue: todoStore },
-        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
+        {
+          provide: SessionAdmissionService,
+          useValue: {
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+          },
+        },
       ],
     }).compile();
 
@@ -352,7 +593,8 @@ describe('WorkspaceRunnerService todo list injection', () => {
     const chatCalls = chatMock.mock.calls;
     const secondRoundMessages = chatCalls[1][0] as any[];
     const todoMsg = secondRoundMessages.find(
-      (m: any) => m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='),
+      (m: any) =>
+        m.role === 'system' && m.content?.startsWith('=== TODO LIST ==='),
     );
     expect(todoMsg).toBeDefined();
     expect(todoMsg.content).toContain('- [in_progress] 1: Baca file');
@@ -378,46 +620,138 @@ describe('WorkspaceRunnerService undeclared tool rejection', () => {
         WorkspacePromptBuilderService,
         TranscriptEngineService,
         ModelStreamNormalizerService,
-        { provide: WorkspaceCartographerService, useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') } },
+        {
+          provide: WorkspaceCartographerService,
+          useValue: { getWorkspaceRules: vi.fn().mockResolvedValue('') },
+        },
         {
           provide: AiService,
           useValue: {
             getSystemPrompt: vi.fn().mockReturnValue('system'),
-            getActiveModelContext: vi.fn().mockResolvedValue({ contextWindow: 32000 }),
+            getActiveModelContext: vi
+              .fn()
+              .mockResolvedValue({ contextWindow: 32000 }),
             chat: vi
               .fn()
               .mockResolvedValueOnce({
                 content: null,
                 toolCalls: [
-                  { id: 'c1', function: { name: 'web_search', arguments: '{"query":"test"}' } },
-                  { id: 'c2', function: { name: 'edit', arguments: '{"filename":"a.txt"}' } },
-                  { id: 'c3', function: { name: 'read', arguments: '{"filename":"a.txt"}' } },
+                  {
+                    id: 'c1',
+                    function: {
+                      name: 'web_search',
+                      arguments: '{"query":"test"}',
+                    },
+                  },
+                  {
+                    id: 'c2',
+                    function: {
+                      name: 'edit',
+                      arguments: '{"filename":"a.txt"}',
+                    },
+                  },
+                  {
+                    id: 'c3',
+                    function: {
+                      name: 'read',
+                      arguments: '{"filename":"a.txt"}',
+                    },
+                  },
                 ],
               })
               .mockResolvedValue({ content: 'Selesai.', toolCalls: [] }),
           },
         },
-        { provide: ToolRegistryService, useValue: { getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()), isMutating: vi.fn().mockReturnValue(false) } },
+        {
+          provide: ToolRegistryService,
+          useValue: {
+            getToolDefinitions: vi.fn().mockReturnValue(mockToolDefinitions()),
+            isMutating: vi.fn().mockReturnValue(false),
+          },
+        },
         { provide: DocumentReaderTool, useValue: { readDocument: vi.fn() } },
-        { provide: StorageService, useValue: { exists: vi.fn(), readFile: vi.fn() } },
-        { provide: FileService, useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) } },
-        { provide: SearchService, useValue: { searchFiles: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: StorageService,
+          useValue: { exists: vi.fn(), readFile: vi.fn() },
+        },
+        {
+          provide: FileService,
+          useValue: { findByWorkspaceId: vi.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: SearchService,
+          useValue: { searchFiles: vi.fn().mockResolvedValue([]) },
+        },
         { provide: ArtifactService, useValue: { createFromAgent: vi.fn() } },
-        { provide: MemoryService, useValue: { getMemoryContext: vi.fn().mockResolvedValue('') } },
+        {
+          provide: MemoryService,
+          useValue: { getMemoryContext: vi.fn().mockResolvedValue('') },
+        },
         { provide: BackgroundReviewService, useValue: {} },
-        { provide: SmartRecallService, useValue: { recall: vi.fn().mockResolvedValue('') } },
-        { provide: SkillService, useValue: { getSkillsContext: vi.fn().mockResolvedValue('') } },
-        { provide: SelfHealingService, useValue: { executeWithIsolation: healMock } },
-        { provide: PromptInjectionDetector, useValue: { scan: vi.fn().mockReturnValue({ detected: false }) } },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
-        { provide: CompactionService, useValue: { compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }) } },
-        { provide: PrismaService, useValue: { workspace: { findUnique: vi.fn().mockResolvedValue({ rootPath: null, businessType: null }) } } },
-        { provide: ContextRegistry, useValue: { getActive: vi.fn().mockReturnValue({ assemble: vi.fn().mockResolvedValue({ systemPrompt: '', messages: [] }) }) } },
-        { provide: DomainRegistryService, useValue: { getDomainSpec: vi.fn() } },
+        {
+          provide: SmartRecallService,
+          useValue: { recall: vi.fn().mockResolvedValue('') },
+        },
+        {
+          provide: SkillService,
+          useValue: { getSkillsContext: vi.fn().mockResolvedValue('') },
+        },
+        {
+          provide: SelfHealingService,
+          useValue: { executeWithIsolation: healMock },
+        },
+        {
+          provide: PromptInjectionDetector,
+          useValue: { scan: vi.fn().mockReturnValue({ detected: false }) },
+        },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
+        {
+          provide: CompactionService,
+          useValue: {
+            compactHistory: vi.fn().mockResolvedValue({ wasCompacted: false }),
+          },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            workspace: {
+              findUnique: vi
+                .fn()
+                .mockResolvedValue({ rootPath: null, businessType: null }),
+            },
+          },
+        },
+        {
+          provide: ContextRegistry,
+          useValue: {
+            getActive: vi.fn().mockReturnValue({
+              assemble: vi
+                .fn()
+                .mockResolvedValue({ systemPrompt: '', messages: [] }),
+            }),
+          },
+        },
+        {
+          provide: DomainRegistryService,
+          useValue: { getDomainSpec: vi.fn() },
+        },
         { provide: EventEmitter2, useValue: { emit: vi.fn() } },
-        { provide: ProviderService, useValue: { getNextAvailable: vi.fn().mockResolvedValue(null) } },
+        {
+          provide: ProviderService,
+          useValue: { getNextAvailable: vi.fn().mockResolvedValue(null) },
+        },
         { provide: TodoStoreService, useValue: new TodoStoreService() },
-        { provide: SessionAdmissionService, useValue: { acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }) } },
+        {
+          provide: SessionAdmissionService,
+          useValue: {
+            acquireAdmission: vi.fn().mockResolvedValue({ release: vi.fn() }),
+          },
+        },
       ],
     }).compile();
 

@@ -21,14 +21,20 @@ export interface RepairedToolCall {
   function: { name: string; arguments: string };
 }
 
-const XML_ISH_TAG_RE = /<\s*(?:tool_call|function_call|tool|function|call)[^>]*>([\s\S]*?)<\/\s*(?:tool_call|function_call|tool|function|call)\s*>/gi;
+const XML_ISH_TAG_RE =
+  /<\s*(?:tool_call|function_call|tool|function|call)[^>]*>([\s\S]*?)<\/\s*(?:tool_call|function_call|tool|function|call)\s*>/gi;
 const FENCED_JSON_RE = /```(?:json|tool|function)?\s*([\s\S]*?)```/gi;
 const BARE_JSON_RE = /\{[\s\S]*?\}/g;
-const FUNCT_TAG_RE = /<\s*function\s*(?:\([^)]+\))?=\s*([\s\S]*?)\s*>\s*<\/\s*function\s*>/gi;
-const SLASH_FUNCTION_TAG_RE = /<\s*function\/([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
-const COLON_FUNCTION_TAG_RE = /<\s*function:([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
-const ACTION_INPUT_RE = /(?:Action|Tool|Function)\s*:\s*([a-zA-Z0-9_-]+)\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*(\{[\s\S]*?\})/gi;
-const ASSISTANT_TOOL_CALL_RE = /\[Assistant tool call\]:\s*([a-zA-Z0-9_-]+)\s*\(([\s\S]*?)\)/gi;
+const FUNCT_TAG_RE =
+  /<\s*function\s*(?:\([^)]+\))?=\s*([\s\S]*?)\s*>\s*<\/\s*function\s*>/gi;
+const SLASH_FUNCTION_TAG_RE =
+  /<\s*function\/([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
+const COLON_FUNCTION_TAG_RE =
+  /<\s*function:([a-zA-Z0-9_-]+)\s*>([\s\S]*?)<\/\s*function\s*>/gi;
+const ACTION_INPUT_RE =
+  /(?:Action|Tool|Function)\s*:\s*([a-zA-Z0-9_-]+)\s*(?:Action Input|Arguments|Parameters|Input)\s*:\s*(\{[\s\S]*?\})/gi;
+const ASSISTANT_TOOL_CALL_RE =
+  /\[Assistant tool call\]:\s*([a-zA-Z0-9_-]+)\s*\(([\s\S]*?)\)/gi;
 
 /** Repair malformed JSON: strip code fences, fix trailing commas, auto-close unclosed strings and braces. */
 export function repairJson(raw: string): string {
@@ -37,7 +43,10 @@ export function repairJson(raw: string): string {
   // Strip surrounding code fences if any
   s = s.replace(/^```(?:json|tool|function)?\s*/i, '').replace(/```\s*$/, '');
   // Strip common prefix annotations
-  s = s.replace(/^\s*(?:tool_call|tool_calls?|function|call|action)\s*[:=]\s*/i, '');
+  s = s.replace(
+    /^\s*(?:tool_call|tool_calls?|function|call|action)\s*[:=]\s*/i,
+    '',
+  );
   // Remove trailing commas before } or ]
   s = s.replace(/,(\s*[}\]])/g, '$1');
 
@@ -82,15 +91,36 @@ export function repairJson(raw: string): string {
 
 /** Known tool names in Arunaki to help disambiguate flat objects */
 const KNOWN_ARUNAKI_TOOLS = new Set([
-  'edit', 'read', 'write', 'delete', 'rename', 'list', 'search_workspace',
-  'extract_structured_data', 'document_reader', 'data_query', 'generate_export',
-  'draft_communication', 'unit_converter', 'ask_user', 'todo_write', 'web_search',
-  'agent_spawn', 'memory_search', 'memory_store', 'knowledge_live_fetch',
-  'knowledge_search', 'knowledge_map_lookup', 'fetch_live_page', 'live_web_extract'
+  'edit',
+  'read',
+  'write',
+  'delete',
+  'rename',
+  'list',
+  'search_workspace',
+  'extract_structured_data',
+  'document_reader',
+  'data_query',
+  'generate_export',
+  'draft_communication',
+  'unit_converter',
+  'ask_user',
+  'todo_write',
+  'web_search',
+  'agent_spawn',
+  'memory_search',
+  'memory_store',
+  'knowledge_live_fetch',
+  'knowledge_search',
+  'knowledge_map_lookup',
+  'fetch_live_page',
+  'live_web_extract',
 ]);
 
 /** Parse a JSON object that may use name/function/action/arguments aliases or flat top-level parameters. */
-export function parseCallObject(obj: any): { name?: string; args?: unknown } | null {
+export function parseCallObject(
+  obj: any,
+): { name?: string; args?: unknown } | null {
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
 
   const name =
@@ -98,22 +128,25 @@ export function parseCallObject(obj: any): { name?: string; args?: unknown } | n
       ? obj.name
       : typeof obj.tool_name === 'string'
         ? obj.tool_name
-      : typeof obj.tool === 'string'
-        ? obj.tool
-      : typeof obj.action === 'string'
-        ? obj.action
-      : typeof obj.function === 'string'
-        ? obj.function
-      : typeof obj.function?.name === 'string'
-        ? obj.function.name
-      : typeof obj.command === 'string'
-        ? obj.command
-      : undefined;
+        : typeof obj.tool === 'string'
+          ? obj.tool
+          : typeof obj.action === 'string'
+            ? obj.action
+            : typeof obj.function === 'string'
+              ? obj.function
+              : typeof obj.function?.name === 'string'
+                ? obj.function.name
+                : typeof obj.command === 'string'
+                  ? obj.command
+                  : undefined;
 
   // If no explicit tool name key found, check if a known tool name exists as a key or property
   if (!name) {
     for (const key of Object.keys(obj)) {
-      if (KNOWN_ARUNAKI_TOOLS.has(key.toLowerCase()) && typeof obj[key] === 'object') {
+      if (
+        KNOWN_ARUNAKI_TOOLS.has(key.toLowerCase()) &&
+        typeof obj[key] === 'object'
+      ) {
         return { name: key.toLowerCase(), args: obj[key] };
       }
     }
@@ -138,7 +171,7 @@ export function parseCallObject(obj: any): { name?: string; args?: unknown } | n
   }
 
   // If arguments were not in a nested property, extract all non-meta top-level properties as args
-  if (!args || (typeof args === 'object' && Object.keys(args as object).length === 0)) {
+  if (!args || (typeof args === 'object' && Object.keys(args).length === 0)) {
     const {
       name: _n,
       tool_name: _tn,
@@ -161,7 +194,10 @@ export function parseCallObject(obj: any): { name?: string; args?: unknown } | n
 }
 
 /** Normalize one raw tool call text into a RepairedToolCall, or null. */
-export function repairOneToolCall(text: string, index: number): RepairedToolCall | null {
+export function repairOneToolCall(
+  text: string,
+  index: number,
+): RepairedToolCall | null {
   const cleaned = repairJson(text);
   try {
     const parsed = JSON.parse(cleaned);
@@ -172,7 +208,10 @@ export function repairOneToolCall(text: string, index: number): RepairedToolCall
         type: 'function',
         function: {
           name: call.name,
-          arguments: typeof call.args === 'string' ? call.args : JSON.stringify(call.args ?? {}),
+          arguments:
+            typeof call.args === 'string'
+              ? call.args
+              : JSON.stringify(call.args ?? {}),
         },
       };
     }
@@ -184,7 +223,7 @@ export function repairOneToolCall(text: string, index: number): RepairedToolCall
   const attrMatch = text.match(/name=["']([^"']+)["']\s*([\s\S]*)/);
   if (attrMatch) {
     const name = attrMatch[1];
-    let argsRaw = attrMatch[2].trim();
+    const argsRaw = attrMatch[2].trim();
     if (argsRaw) {
       try {
         const parsed = JSON.parse(repairJson(argsRaw));
@@ -195,7 +234,10 @@ export function repairOneToolCall(text: string, index: number): RepairedToolCall
             type: 'function',
             function: {
               name: call.name,
-              arguments: typeof call.args === 'string' ? call.args : JSON.stringify(call.args ?? {}),
+              arguments:
+                typeof call.args === 'string'
+                  ? call.args
+                  : JSON.stringify(call.args ?? {}),
             },
           };
         }
@@ -234,7 +276,10 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
 
   const tryPush = (text: string) => {
     const repaired = repairOneToolCall(text, calls.length);
-    if (repaired && !seen.has(repaired.function.name + ':' + repaired.function.arguments)) {
+    if (
+      repaired &&
+      !seen.has(repaired.function.name + ':' + repaired.function.arguments)
+    ) {
       seen.add(repaired.function.name + ':' + repaired.function.arguments);
       calls.push(repaired);
     }
@@ -261,7 +306,8 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         type: 'function',
         function: {
           name: fnName,
-          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+          arguments:
+            typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
         },
       };
       if (!seen.has(fnName + ':' + call.function.arguments)) {
@@ -292,7 +338,8 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         type: 'function',
         function: {
           name: fnName,
-          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+          arguments:
+            typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
         },
       };
       if (!seen.has(fnName + ':' + call.function.arguments)) {
@@ -315,9 +362,11 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
   // 1c. DeepSeek DSML / XML invoke format:
   // <｜DSML｜invoke name="tool_name"><｜DSML｜parameter name="url" string="true">value</｜DSML｜parameter></｜DSML｜invoke>
   // or <｜｜DSML｜｜invoke name="tool_name">...</｜｜DSML｜｜invoke>
-  const DSML_INVOKE_RE = /<[｜|]+(?:DSML[｜|]+)?invoke\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi;
-  const DSML_PARAM_RE = /<[｜|]+(?:DSML[｜|]+)?parameter\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?parameter>/gi;
-  
+  const DSML_INVOKE_RE =
+    /<[｜|]+(?:DSML[｜|]+)?invoke\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi;
+  const DSML_PARAM_RE =
+    /<[｜|]+(?:DSML[｜|]+)?parameter\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/[｜|]+(?:DSML[｜|]+)?parameter>/gi;
+
   DSML_INVOKE_RE.lastIndex = 0;
   while ((m = DSML_INVOKE_RE.exec(content)) !== null) {
     const fnName = m[1];
@@ -357,13 +406,15 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
     if (attrName) {
       try {
         const args = JSON.parse(repairJson(inner));
-        const argsObj = typeof args === 'string' ? args : JSON.stringify(args ?? {});
+        const argsObj =
+          typeof args === 'string' ? args : JSON.stringify(args ?? {});
         const call = {
           id: `repaired-tool-${Date.now()}-${calls.length}`,
           type: 'function' as const,
           function: {
             name: attrName,
-            arguments: typeof args === 'string' ? args : JSON.stringify(args ?? {}),
+            arguments:
+              typeof args === 'string' ? args : JSON.stringify(args ?? {}),
           },
         };
         if (!seen.has(attrName + ':' + call.function.arguments)) {
@@ -390,7 +441,8 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         type: 'function',
         function: {
           name: fnName,
-          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+          arguments:
+            typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
         },
       };
       if (!seen.has(fnName + ':' + call.function.arguments)) {
@@ -414,7 +466,8 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         type: 'function',
         function: {
           name: fnName,
-          arguments: typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
+          arguments:
+            typeof parsed === 'string' ? parsed : JSON.stringify(parsed ?? {}),
         },
       };
       if (!seen.has(fnName + ':' + call.function.arguments)) {
@@ -447,7 +500,11 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
   BARE_JSON_RE.lastIndex = 0;
   while ((m = BARE_JSON_RE.exec(content)) !== null) {
     const candidate = m[0];
-    if (/\{\s*"(?:name|tool|tool_name|action|function|filePath|oldString|patchText|query|workspaceId)"/i.test(candidate)) {
+    if (
+      /\{\s*"(?:name|tool|tool_name|action|function|filePath|oldString|patchText|query|workspaceId)"/i.test(
+        candidate,
+      )
+    ) {
       tryPush(candidate);
     }
   }
@@ -457,7 +514,11 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
   const greedy = content.match(/\{[\s\S]*\}/);
   if (greedy && calls.length === 0) {
     const candidate = greedy[0];
-    if (/\{\s*"(?:name|tool|tool_name|action|function|filePath|oldString|patchText|query|workspaceId)"/i.test(candidate)) {
+    if (
+      /\{\s*"(?:name|tool|tool_name|action|function|filePath|oldString|patchText|query|workspaceId)"/i.test(
+        candidate,
+      )
+    ) {
       tryPush(candidate);
     }
   }

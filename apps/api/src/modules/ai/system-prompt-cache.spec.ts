@@ -27,7 +27,9 @@ describe('system-prompt-cache', () => {
       systemPromptAddition: '## Temporal\ntoday',
     });
     expect(prompt.startsWith(stable)).toBe(true);
-    expect(prompt.indexOf('## Temporal') > prompt.indexOf('CACHE_BOUNDARY')).toBe(true);
+    expect(
+      prompt.indexOf('## Temporal') > prompt.indexOf('CACHE_BOUNDARY'),
+    ).toBe(true);
   });
 
   it('caches stable prefix — same input, identical output, reused', () => {
@@ -41,8 +43,12 @@ describe('system-prompt-cache', () => {
     const base = `## Identity\n## Rules\n## Memory\n## Verification`;
     const p1 = `${base}${SYSTEM_PROMPT_CACHE_BOUNDARY}tools-A\nworkspace-X\n${new Date().toISOString()}`;
     const p2 = `${base}${SYSTEM_PROMPT_CACHE_BOUNDARY}tools-B\nworkspace-Y\n${new Date().toISOString()}`;
-    const h1 = createHash('sha256').update(splitSystemPromptCacheBoundary(p1)!.stablePrefix).digest('hex');
-    const h2 = createHash('sha256').update(splitSystemPromptCacheBoundary(p2)!.stablePrefix).digest('hex');
+    const h1 = createHash('sha256')
+      .update(splitSystemPromptCacheBoundary(p1)!.stablePrefix)
+      .digest('hex');
+    const h2 = createHash('sha256')
+      .update(splitSystemPromptCacheBoundary(p2)!.stablePrefix)
+      .digest('hex');
     expect(h1).toBe(h2);
   });
 });

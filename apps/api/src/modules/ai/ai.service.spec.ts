@@ -33,37 +33,65 @@ describe('AiService & SystemPromptBuilderService - System Prompt Caching Stabili
     const postureDetector = new AutoPostureDetector();
     const modelRouter = new ModelRouterService();
     const contextManager = new ContextManager(
-      { contextLength: 32000, threshold: 0.25, targetRatio: 0.2, toolPruneChars: 1000, toolPreviewChars: 250, injectionMaxChars: 2000, useLlmSummary: true },
+      {
+        contextLength: 32000,
+        threshold: 0.25,
+        targetRatio: 0.2,
+        toolPruneChars: 1000,
+        toolPreviewChars: 250,
+        injectionMaxChars: 2000,
+        useLlmSummary: true,
+      },
       { chat: vi.fn() },
     );
 
     promptBuilder = new SystemPromptBuilderService(
       postureDetector,
       modelRouter,
-      mockToolRegistryService as any,
+      mockToolRegistryService,
       contextManager,
     );
 
     service = new AiService(
       mockConfig,
       mockProviderService,
-      mockToolRegistryService as any,
+      mockToolRegistryService,
       promptBuilder,
     );
 
     // Mock internal methods that load files to ensure deterministic tests
-    vi.spyOn(promptBuilder as any, 'loadPrompt').mockImplementation((filename: string) => {
-      return `Mock content for ${filename}`;
-    });
+    vi.spyOn(promptBuilder as any, 'loadPrompt').mockImplementation(
+      (filename: string) => {
+        return `Mock content for ${filename}`;
+      },
+    );
 
-    vi.spyOn(promptBuilder as any, 'buildToolListSummary').mockReturnValue('Mock Tool List');
-    vi.spyOn(promptBuilder as any, 'buildWorkspaceMemorySection').mockReturnValue('Mock Workspace Memory');
-    vi.spyOn(promptBuilder as any, 'buildTemporalContextSection').mockReturnValue('Mock Temporal Context');
+    vi.spyOn(promptBuilder as any, 'buildToolListSummary').mockReturnValue(
+      'Mock Tool List',
+    );
+    vi.spyOn(
+      promptBuilder as any,
+      'buildWorkspaceMemorySection',
+    ).mockReturnValue('Mock Workspace Memory');
+    vi.spyOn(
+      promptBuilder as any,
+      'buildTemporalContextSection',
+    ).mockReturnValue('Mock Temporal Context');
   });
 
   it('should maintain an identical static prefix for workspace mode regardless of dynamic workspaceContext', () => {
-    const prompt1 = service.getSystemPrompt('workspace', 'Folder A context', undefined, []);
-    const prompt2 = service.getSystemPrompt('workspace', 'Folder B entirely different context', undefined, []);
+    const prompt1 = service.getSystemPrompt(
+      'workspace',
+      'Folder A context',
+      undefined,
+      [],
+    );
+    const prompt2 = service.getSystemPrompt(
+      'workspace',
+      'Folder B entirely different context',
+      undefined,
+      [],
+    );
 
     // Split by the '---' which is the boundary for dynamic content
     const prefix1 = prompt1.split('---')[0];
@@ -78,8 +106,18 @@ describe('AiService & SystemPromptBuilderService - System Prompt Caching Stabili
   });
 
   it('should maintain an identical static prefix for chat mode regardless of dynamic knowledgeContext', () => {
-    const prompt1 = service.getSystemPrompt('chat', undefined, 'Knowledge Base Context 1', []);
-    const prompt2 = service.getSystemPrompt('chat', undefined, 'Completely Different KB Context 2', []);
+    const prompt1 = service.getSystemPrompt(
+      'chat',
+      undefined,
+      'Knowledge Base Context 1',
+      [],
+    );
+    const prompt2 = service.getSystemPrompt(
+      'chat',
+      undefined,
+      'Completely Different KB Context 2',
+      [],
+    );
 
     // Split by '## Knowledge Graph Map'
     const prefix1 = prompt1.split('## Knowledge Graph Map')[0];

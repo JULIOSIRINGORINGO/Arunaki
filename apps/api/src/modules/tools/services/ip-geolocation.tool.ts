@@ -32,7 +32,7 @@ export class IpGeolocationTool implements Tool {
   }
 
   get description(): string {
-    return 'Detects the user\'s current city and region from their network IP. Use before browsing location-aware sites (e.g. stock availability per city) so the location follows the user\'s network.';
+    return "Detects the user's current city and region from their network IP. Use before browsing location-aware sites (e.g. stock availability per city) so the location follows the user's network.";
   }
 
   get definition(): ToolDefinition {
@@ -61,10 +61,13 @@ export class IpGeolocationTool implements Tool {
   async execute(): Promise<ToolResult> {
     const startTime = Date.now();
     try {
-      const response = await fetch('http://ip-api.com/json/?fields=query,city,regionName,region,country,countryCode,isp,lat,lon', {
-        headers: { 'User-Agent': 'Arunaki/1.0' },
-        signal: AbortSignal.timeout(10000),
-      });
+      const response = await fetch(
+        'http://ip-api.com/json/?fields=query,city,regionName,region,country,countryCode,isp,lat,lon',
+        {
+          headers: { 'User-Agent': 'Arunaki/1.0' },
+          signal: AbortSignal.timeout(10000),
+        },
+      );
       if (!response.ok) {
         throw new Error(`ip-api responded ${response.status}`);
       }
@@ -76,7 +79,11 @@ export class IpGeolocationTool implements Tool {
         status: 'success',
         data,
         preview: `Location from IP ${data.query}: ${data.city}, ${data.regionName} (${data.country}).`,
-        metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: this.name,
+          displayName: this.displayName,
+          executionTime: Date.now() - startTime,
+        },
       };
     } catch (err: any) {
       this.logger.error(`[IpGeolocation] ${err.message}`);
@@ -84,7 +91,11 @@ export class IpGeolocationTool implements Tool {
         status: 'error',
         data: {},
         preview: `IP geolocation failed: ${err.message}`,
-        metadata: { toolName: this.name, displayName: this.displayName, executionTime: Date.now() - startTime },
+        metadata: {
+          toolName: this.name,
+          displayName: this.displayName,
+          executionTime: Date.now() - startTime,
+        },
         error: { code: 'GEO_FAILED', message: err.message },
       };
     }

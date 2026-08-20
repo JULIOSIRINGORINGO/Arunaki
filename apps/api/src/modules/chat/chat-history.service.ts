@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ChatHistory } from '@prisma/client';
 import { BaseService } from '../../common/base.service.js';
 import { ChatHistoryRepository } from './chat-history.repository.js';
-import { SessionStateEventsService, SessionEventType } from './session-state-events.service.js';
+import {
+  SessionStateEventsService,
+  SessionEventType,
+} from './session-state-events.service.js';
 
 @Injectable()
 export class ChatHistoryService extends BaseService<ChatHistory> {
@@ -23,12 +26,10 @@ export class ChatHistoryService extends BaseService<ChatHistory> {
       title: null,
     });
 
-    this.sessionEvents.record(
-      SessionEventType.SESSION_CREATED,
-      chat.id,
+    this.sessionEvents.record(SessionEventType.SESSION_CREATED, chat.id, mode, {
+      workspaceId: workspaceId || null,
       mode,
-      { workspaceId: workspaceId || null, mode },
-    );
+    });
 
     return chat;
   }

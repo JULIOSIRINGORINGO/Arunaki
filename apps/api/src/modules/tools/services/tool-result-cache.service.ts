@@ -8,9 +8,16 @@ const CACHE_MAX_ENTRIES = 1000;
 @Injectable()
 export class ToolResultCacheService {
   private readonly logger = new Logger(ToolResultCacheService.name);
-  private readonly cache = new Map<string, { result: ToolResult; expiresAt: number }>();
+  private readonly cache = new Map<
+    string,
+    { result: ToolResult; expiresAt: number }
+  >();
 
-  private computeKey(scope: string, toolName: string, args: Record<string, any>): string {
+  private computeKey(
+    scope: string,
+    toolName: string,
+    args: Record<string, any>,
+  ): string {
     const argHash = createHash('sha256')
       .update(JSON.stringify(args ?? {}))
       .digest('hex')
@@ -18,7 +25,11 @@ export class ToolResultCacheService {
     return `${scope}:${toolName}:${argHash}`;
   }
 
-  get(scope: string, toolName: string, args: Record<string, any>): ToolResult | undefined {
+  get(
+    scope: string,
+    toolName: string,
+    args: Record<string, any>,
+  ): ToolResult | undefined {
     const key = this.computeKey(scope, toolName, args);
     const cached = this.cache.get(key);
     if (cached && cached.expiresAt > Date.now()) {
@@ -30,7 +41,12 @@ export class ToolResultCacheService {
     return undefined;
   }
 
-  set(scope: string, toolName: string, args: Record<string, any>, result: ToolResult): void {
+  set(
+    scope: string,
+    toolName: string,
+    args: Record<string, any>,
+    result: ToolResult,
+  ): void {
     this.cleanExpired();
     const key = this.computeKey(scope, toolName, args);
     this.cache.set(key, {

@@ -195,7 +195,9 @@ export class CronService implements OnModuleInit {
         return;
       }
 
-      this.logger.log(`Running auto-memory distillation for ${workspaces.length} workspaces...`);
+      this.logger.log(
+        `Running auto-memory distillation for ${workspaces.length} workspaces...`,
+      );
 
       for (const ws of workspaces) {
         try {
@@ -215,7 +217,9 @@ export class CronService implements OnModuleInit {
         }
       }
     } catch (err: any) {
-      this.logger.error(`Auto-memory distillation sweep failed: ${err.message}`);
+      this.logger.error(
+        `Auto-memory distillation sweep failed: ${err.message}`,
+      );
     }
   }
 
@@ -254,7 +258,9 @@ export class CronService implements OnModuleInit {
         }
       }
       if (boosted > 0) {
-        this.logger.log(`Curator: boosted ${boosted} high-usage skills to pinned`);
+        this.logger.log(
+          `Curator: boosted ${boosted} high-usage skills to pinned`,
+        );
       }
 
       // 4. Seed missing starter skills for each active domain
@@ -263,10 +269,14 @@ export class CronService implements OnModuleInit {
         try {
           const count = await this.skillService.seedStarterSkills(domain, []);
           if (count > 0) {
-            this.logger.log(`Curator: seeded ${count} starter skills for domain ${domain}`);
+            this.logger.log(
+              `Curator: seeded ${count} starter skills for domain ${domain}`,
+            );
           }
         } catch (err: any) {
-          this.logger.warn(`Curator: failed to seed domain ${domain}: ${err.message}`);
+          this.logger.warn(
+            `Curator: failed to seed domain ${domain}: ${err.message}`,
+          );
         }
       }
 
@@ -294,7 +304,9 @@ export class CronService implements OnModuleInit {
         return;
       }
 
-      this.logger.log(`Memory consolidation: processing ${workspaces.length} workspaces...`);
+      this.logger.log(
+        `Memory consolidation: processing ${workspaces.length} workspaces...`,
+      );
 
       for (const ws of workspaces) {
         try {
@@ -396,7 +408,7 @@ export class CronService implements OnModuleInit {
     return artifact;
   }
 
-/**
+  /**
    * Execute scheduled agent run for a workspace.
    * Uses WorkspaceRunnerService to run agent with a goal.
    */

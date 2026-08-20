@@ -1,4 +1,10 @@
-import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Optional,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,7 +17,9 @@ export class VisionAiTool {
 
   constructor(
     @Optional() private readonly config?: ConfigService,
-    @Optional() @Inject(forwardRef(() => ProviderService)) private readonly providerService?: ProviderService,
+    @Optional()
+    @Inject(forwardRef(() => ProviderService))
+    private readonly providerService?: ProviderService,
   ) {}
 
   async analyzeImage(
@@ -30,7 +38,10 @@ export class VisionAiTool {
           displayName: 'Local OCR Vision',
           executionTime: Date.now() - startTime,
         },
-        error: { code: 'INVALID_INPUT', message: 'Image path or URL is required' },
+        error: {
+          code: 'INVALID_INPUT',
+          message: 'Image path or URL is required',
+        },
       };
     }
 
@@ -64,13 +75,21 @@ export class VisionAiTool {
       }
 
       const buffer = fs.readFileSync(absolutePath);
-      const ext = path.extname(absolutePath).toLowerCase().replace('.', '') || 'jpeg';
-      const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+      const ext =
+        path.extname(absolutePath).toLowerCase().replace('.', '') || 'jpeg';
+      const mimeType =
+        ext === 'png'
+          ? 'image/png'
+          : ext === 'webp'
+            ? 'image/webp'
+            : 'image/jpeg';
       imageUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
     }
 
     try {
-      this.logger.log(`Processing local OCR (Tesseract) for: ${imageSource.substring(0, 50)}...`);
+      this.logger.log(
+        `Processing local OCR (Tesseract) for: ${imageSource.substring(0, 50)}...`,
+      );
       const Tesseract = await import('tesseract.js');
       const { data } = await Tesseract.recognize(imageUrl, 'eng');
       const text = data.text.trim();

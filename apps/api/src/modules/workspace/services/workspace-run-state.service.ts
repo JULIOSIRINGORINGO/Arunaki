@@ -2,12 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 export type AgentState =
-  | 'idle'
-  | 'running'
-  | 'steering'
-  | 'aborting'
-  | 'completed'
-  | 'failed';
+  'idle' | 'running' | 'steering' | 'aborting' | 'completed' | 'failed';
 
 export type ExecutionPhase =
   | 'scanning'
@@ -48,10 +43,16 @@ export class WorkspaceRunStateService {
   private readonly logger = new Logger(WorkspaceRunStateService.name);
 
   /** Track modified files per workspace session */
-  private readonly modifiedFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+  private readonly modifiedFiles = new Map<
+    string,
+    Array<{ filename: string; timestamp: Date }>
+  >();
 
   /** Track read files per workspace session */
-  private readonly readFiles = new Map<string, Array<{ filename: string; timestamp: Date }>>();
+  private readonly readFiles = new Map<
+    string,
+    Array<{ filename: string; timestamp: Date }>
+  >();
 
   /** Track explicitly mentioned files in current goal */
   private readonly mentionedFiles = new Map<string, Set<string>>();
@@ -77,7 +78,10 @@ export class WorkspaceRunStateService {
       resolve: () => void;
       reject: (error: Error) => void;
       goal: string;
-      historyMessages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+      historyMessages: Array<{
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+      }>;
       onEvent: (event: WorkspaceStreamEvent) => void;
       timestamp: Date;
     }>
@@ -134,7 +138,9 @@ export class WorkspaceRunStateService {
     }
     state.state = 'aborting';
     state.abortController.abort(reason);
-    this.logger.log(`Workspace run abort requested: ${workspaceId} (${reason})`);
+    this.logger.log(
+      `Workspace run abort requested: ${workspaceId} (${reason})`,
+    );
     return true;
   }
 
@@ -153,7 +159,9 @@ export class WorkspaceRunStateService {
   ): void {
     const oldPhase = runState.currentPhase;
     runState.currentPhase = phase;
-    this.logger.debug(`Phase: ${oldPhase} → ${phase} (workspace: ${runState.workspaceId})`);
+    this.logger.debug(
+      `Phase: ${oldPhase} → ${phase} (workspace: ${runState.workspaceId})`,
+    );
     onEvent({
       type: 'phase_changed',
       data: {
@@ -214,7 +222,9 @@ export class WorkspaceRunStateService {
       const timer = setTimeout(() => {
         if (this.approvalQueue.get(workspaceId)?.toolName === toolName) {
           this.approvalQueue.delete(workspaceId);
-          this.logger.warn(`Approval for ${toolName} timed out after ${timeoutMs}ms, rejecting`);
+          this.logger.warn(
+            `Approval for ${toolName} timed out after ${timeoutMs}ms, rejecting`,
+          );
           resolve(false);
         }
       }, timeoutMs);
@@ -227,7 +237,9 @@ export class WorkspaceRunStateService {
         args,
         timestamp: new Date(),
       });
-      this.logger.log(`Approval queue: waiting for user approval (${toolName})`);
+      this.logger.log(
+        `Approval queue: waiting for user approval (${toolName})`,
+      );
     });
   }
 
@@ -236,7 +248,9 @@ export class WorkspaceRunStateService {
     if (!pending) return false;
     pending.resolve(approved);
     this.approvalQueue.delete(workspaceId);
-    this.logger.log(`Approval resolved: ${approved ? 'approved' : 'rejected'} (${pending.toolName})`);
+    this.logger.log(
+      `Approval resolved: ${approved ? 'approved' : 'rejected'} (${pending.toolName})`,
+    );
     return true;
   }
 
@@ -252,7 +266,9 @@ export class WorkspaceRunStateService {
     return true;
   }
 
-  consumeSteeringInput(workspaceId: string): { message: string; timestamp: Date } | undefined {
+  consumeSteeringInput(
+    workspaceId: string,
+  ): { message: string; timestamp: Date } | undefined {
     const queue = this.steeringQueue.get(workspaceId);
     if (!queue || queue.length === 0) return undefined;
     const steering = queue.shift();
@@ -268,7 +284,9 @@ export class WorkspaceRunStateService {
     this.mentionedFiles.delete(workspaceId);
   }
 
-  getModifiedFiles(workspaceId: string): Array<{ filename: string; timestamp: Date }> {
+  getModifiedFiles(
+    workspaceId: string,
+  ): Array<{ filename: string; timestamp: Date }> {
     return this.modifiedFiles.get(workspaceId) || [];
   }
 
@@ -278,7 +296,9 @@ export class WorkspaceRunStateService {
     this.modifiedFiles.set(workspaceId, current.slice(-30));
   }
 
-  getReadFiles(workspaceId: string): Array<{ filename: string; timestamp: Date }> {
+  getReadFiles(
+    workspaceId: string,
+  ): Array<{ filename: string; timestamp: Date }> {
     return this.readFiles.get(workspaceId) || [];
   }
 

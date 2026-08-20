@@ -1,4 +1,10 @@
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  Optional,
+} from '@nestjs/common';
 import * as path from 'path';
 import { promises as fsp } from 'fs';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
@@ -24,9 +30,12 @@ export class WorkspaceCartographerService {
   private rulesCache = new Map<string, { content: string; mtime: number }>();
 
   constructor(
-    @Inject(forwardRef(() => PrismaService)) private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => PrismaService))
+    private readonly prisma: PrismaService,
     @Inject(forwardRef(() => AiService)) private readonly aiService: AiService,
-    @Optional() @Inject(forwardRef(() => SubAgentRunnerService)) private readonly subAgentRunner?: SubAgentRunnerService,
+    @Optional()
+    @Inject(forwardRef(() => SubAgentRunnerService))
+    private readonly subAgentRunner?: SubAgentRunnerService,
   ) {}
 
   /**
@@ -91,17 +100,25 @@ export class WorkspaceCartographerService {
         // Does not exist yet
       }
 
-      this.logger.log(`[Cartographer] Starting background analysis for workspace "${workspace.name}"...`);
+      this.logger.log(
+        `[Cartographer] Starting background analysis for workspace "${workspace.name}"...`,
+      );
 
       // 1. Scan top-level workspace files
       const fileSamples = await this.gatherWorkspaceSamples(rootPath);
       if (fileSamples.length === 0) {
-        this.logger.log(`[Cartographer] Workspace "${workspace.name}" has no text/data files to analyze.`);
+        this.logger.log(
+          `[Cartographer] Workspace "${workspace.name}" has no text/data files to analyze.`,
+        );
         return;
       }
 
       // 2. Synthesize ARUNAKI.md via LLM or generic fallback
-      const generatedRules = await this.synthesizeOperatingRules(workspace.name, fileSamples, existingRules);
+      const generatedRules = await this.synthesizeOperatingRules(
+        workspace.name,
+        fileSamples,
+        existingRules,
+      );
 
       // 3. Save to .arunaki/ARUNAKI.md
       await fsp.mkdir(path.join(rootPath, ARUNAKI_DIR), { recursive: true });
@@ -109,13 +126,20 @@ export class WorkspaceCartographerService {
 
       // Update in-memory cache
       const stat = await fsp.stat(targetRulesPath);
-      this.rulesCache.set(rootPath, { content: generatedRules, mtime: stat.mtimeMs });
+      this.rulesCache.set(rootPath, {
+        content: generatedRules,
+        mtime: stat.mtimeMs,
+      });
 
       // 4. (ARUNAKI.md is an internal workspace file - intentionally NOT shown in the Knowledge Graph)
 
-      this.logger.log(`[Cartographer] Autonomous ARUNAKI.md created & synced successfully for "${workspace.name}".`);
+      this.logger.log(
+        `[Cartographer] Autonomous ARUNAKI.md created & synced successfully for "${workspace.name}".`,
+      );
     } catch (err: any) {
-      this.logger.error(`[Cartographer] Background indexing failed: ${err.message}`);
+      this.logger.error(
+        `[Cartographer] Background indexing failed: ${err.message}`,
+      );
     }
   }
 
@@ -147,7 +171,9 @@ export class WorkspaceCartographerService {
       let newRule = learnedCorrection.trim();
 
       // Handle pre-formatted rules: extract the actual rule text
-      const autoLearnedMatch = newRule.match(/^- \[Auto-Learned \d{4}-\d{2}-\d{2}\]: (.+)$/);
+      const autoLearnedMatch = newRule.match(
+        /^- \[Auto-Learned \d{4}-\d{2}-\d{2}\]: (.+)$/,
+      );
       if (autoLearnedMatch) {
         newRule = autoLearnedMatch[1].trim();
       }
@@ -163,7 +189,10 @@ export class WorkspaceCartographerService {
       }
 
       // Validate AFTER prefix stripping
-      if (newRule.length < 5 || /^(sorry|unable|error|try again)/i.test(newRule)) {
+      if (
+        newRule.length < 5 ||
+        /^(sorry|unable|error|try again)/i.test(newRule)
+      ) {
         return;
       }
 
@@ -174,7 +203,8 @@ export class WorkspaceCartographerService {
         return;
       }
 
-      const prefHeaderRegex = /## (\d+\. )?User Preferences & Learned Corrections/i;
+      const prefHeaderRegex =
+        /## (\d+\. )?User Preferences & Learned Corrections/i;
       const prefMatch = content.match(prefHeaderRegex);
 
       if (prefMatch && prefMatch.index !== undefined) {
@@ -182,12 +212,18 @@ export class WorkspaceCartographerService {
         const beforePref = content.slice(0, prefIndex);
         let prefSection = content.slice(prefIndex);
 
-        if (oldSnippet && prefSection.toLowerCase().includes(oldSnippet.toLowerCase())) {
+        if (
+          oldSnippet &&
+          prefSection.toLowerCase().includes(oldSnippet.toLowerCase())
+        ) {
           const prefLines = prefSection.split('\n');
           let replaced = false;
           prefSection = prefLines
             .map((line) => {
-              if (!replaced && line.toLowerCase().includes(oldSnippet.toLowerCase())) {
+              if (
+                !replaced &&
+                line.toLowerCase().includes(oldSnippet.toLowerCase())
+              ) {
                 replaced = true;
                 return entry;
               }
@@ -211,7 +247,9 @@ export class WorkspaceCartographerService {
 
           for (const l of restLines) {
             if (l.trim().startsWith('- [')) {
-              const matchCount = keywords.filter((k) => l.toLowerCase().includes(k)).length;
+              const matchCount = keywords.filter((k) =>
+                l.toLowerCase().includes(k),
+              ).length;
               if (matchCount >= 2) {
                 if (!replacedOld) {
                   filteredRest.push(entry);
@@ -245,13 +283,17 @@ export class WorkspaceCartographerService {
         content += `\n\n## ${nextSection}. User Preferences & Learned Corrections\n${entry}\n`;
       }
 
-      await fsp.mkdir(path.join(workspace.rootPath, ARUNAKI_DIR), { recursive: true });
+      await fsp.mkdir(path.join(workspace.rootPath, ARUNAKI_DIR), {
+        recursive: true,
+      });
       await fsp.writeFile(rulesPath, content, 'utf8');
 
       const stat = await fsp.stat(rulesPath);
       this.rulesCache.set(workspace.rootPath, { content, mtime: stat.mtimeMs });
 
-      this.logger.log(`[Cartographer] Dynamic rule learned & patched: "${newRule.slice(0, 60)}..."`);
+      this.logger.log(
+        `[Cartographer] Dynamic rule learned & patched: "${newRule.slice(0, 60)}..."`,
+      );
     } catch (err: any) {
       this.logger.warn(`[Cartographer] Failed to patch rules: ${err.message}`);
     }
@@ -260,11 +302,21 @@ export class WorkspaceCartographerService {
   /**
    * Gathers lightweight samples (max 40 lines) from text/data files in workspace.
    */
-  private async gatherWorkspaceSamples(rootPath: string): Promise<WorkspaceFileMetadata[]> {
+  private async gatherWorkspaceSamples(
+    rootPath: string,
+  ): Promise<WorkspaceFileMetadata[]> {
     const samples: WorkspaceFileMetadata[] = [];
     try {
       const entries = await fsp.readdir(rootPath, { withFileTypes: true });
-      const relevantExts = new Set(['.txt', '.csv', '.json', '.md', '.xlsx', '.xls', '.tsv']);
+      const relevantExts = new Set([
+        '.txt',
+        '.csv',
+        '.json',
+        '.md',
+        '.xlsx',
+        '.xls',
+        '.tsv',
+      ]);
 
       for (const entry of entries) {
         if (samples.length >= MAX_FILES_TO_SAMPLE) break;
@@ -277,7 +329,13 @@ export class WorkspaceCartographerService {
         const stats = await fsp.stat(filePath);
 
         let sampleText = '';
-        if (ext === '.txt' || ext === '.csv' || ext === '.tsv' || ext === '.md' || ext === '.json') {
+        if (
+          ext === '.txt' ||
+          ext === '.csv' ||
+          ext === '.tsv' ||
+          ext === '.md' ||
+          ext === '.json'
+        ) {
           const raw = await fsp.readFile(filePath, 'utf8');
           const lines = raw.split('\n').slice(0, MAX_SAMPLE_LINES);
           sampleText = lines.join('\n');
@@ -294,7 +352,9 @@ export class WorkspaceCartographerService {
         });
       }
     } catch (err: any) {
-      this.logger.warn(`[Cartographer] Sample gathering warning: ${err.message}`);
+      this.logger.warn(
+        `[Cartographer] Sample gathering warning: ${err.message}`,
+      );
     }
     return samples;
   }
@@ -345,7 +405,9 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
             return subResult.content.trim();
           }
         } catch (subErr: any) {
-          this.logger.debug(`Sub-agent cartography fallback to direct LLM: ${subErr.message}`);
+          this.logger.debug(
+            `Sub-agent cartography fallback to direct LLM: ${subErr.message}`,
+          );
         }
       }
 
@@ -363,7 +425,9 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
         return response.content.trim();
       }
     } catch (err: any) {
-      this.logger.warn(`[Cartographer] LLM synthesis skipped (${err.message}). Using deterministic fallback.`);
+      this.logger.warn(
+        `[Cartographer] LLM synthesis skipped (${err.message}). Using deterministic fallback.`,
+      );
     }
 
     // Deterministic Generic Fallback (Completely domain-agnostic metadata index)
@@ -374,28 +438,33 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
    * Deterministic fallback generator when LLM is offline.
    * Completely domain-agnostic: generates a clean metadata & schema index without hardcoded assumptions.
    */
-  private buildDeterministicRules(workspaceName: string, samples: WorkspaceFileMetadata[]): string {
-    const fileEntries = samples.map((s) => {
-      const sizeKb = (s.size / 1024).toFixed(1);
-      const lines = (s.sampleContent || '')
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0 && !l.startsWith('[Binary'));
+  private buildDeterministicRules(
+    workspaceName: string,
+    samples: WorkspaceFileMetadata[],
+  ): string {
+    const fileEntries = samples
+      .map((s) => {
+        const sizeKb = (s.size / 1024).toFixed(1);
+        const lines = (s.sampleContent || '')
+          .split('\n')
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0 && !l.startsWith('[Binary'));
 
-      let header = '';
-      let sampleLine = '';
+        let header = '';
+        let sampleLine = '';
 
-      if (lines.length > 0) {
-        header = lines[0].replace(/[";]/g, '').slice(0, 120);
-        if (lines.length > 1) {
-          sampleLine = lines[1].replace(/[";]/g, '').slice(0, 120);
+        if (lines.length > 0) {
+          header = lines[0].replace(/[";]/g, '').slice(0, 120);
+          if (lines.length > 1) {
+            sampleLine = lines[1].replace(/[";]/g, '').slice(0, 120);
+          }
         }
-      }
 
-      return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
+        return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
   ${header ? `- **Header/Structure**: \`${header}\`` : ''}
   ${sampleLine ? `- **Sample Line**: \`${sampleLine}\`` : ''}`;
-    }).join('\n');
+      })
+      .join('\n');
 
     return `# ARUNAKI WORKSPACE OPERATING SYSTEM — ${workspaceName.toUpperCase()}
 

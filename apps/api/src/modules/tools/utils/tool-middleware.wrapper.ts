@@ -17,7 +17,10 @@ export interface ToolMiddlewareOptions {
  * Prevents file paths from escaping the target workspace directory.
  * Uses path.resolve containment check for cross-platform efficiency (Windows & POSIX).
  */
-export function wrapWorkspaceIsolation(tool: Tool, workspaceDir?: string): Tool {
+export function wrapWorkspaceIsolation(
+  tool: Tool,
+  workspaceDir?: string,
+): Tool {
   if (!workspaceDir) return tool;
 
   const originalExecute = tool.execute.bind(tool);
@@ -26,13 +29,15 @@ export function wrapWorkspaceIsolation(tool: Tool, workspaceDir?: string): Tool 
   return {
     ...tool,
     execute: async (args: Record<string, any>): Promise<ToolResult> => {
-      const pathArg = args.filePath || args.path || args.file || args.targetPath;
+      const pathArg =
+        args.filePath || args.path || args.file || args.targetPath;
 
       if (typeof pathArg === 'string') {
         const resolvedPath = path.resolve(normalizedRoot, pathArg);
         const relativePath = path.relative(normalizedRoot, resolvedPath);
 
-        const isOutside = relativePath.startsWith('..') || path.isAbsolute(relativePath);
+        const isOutside =
+          relativePath.startsWith('..') || path.isAbsolute(relativePath);
 
         if (isOutside) {
           return {
@@ -70,14 +75,21 @@ export function wrapActionableError(tool: Tool): Tool {
       const result = await originalExecute(args);
 
       if (result.status === 'error' && result.error) {
-        let suggestedAction = 'Check the input parameters again or check the file status.';
+        let suggestedAction =
+          'Check the input parameters again or check the file status.';
 
-        if (result.error.code === 'FILE_NOT_FOUND' || result.error.message.includes('not found')) {
-          suggestedAction = 'Use the "search_workspace" or "list" tool to find the correct file path.';
+        if (
+          result.error.code === 'FILE_NOT_FOUND' ||
+          result.error.message.includes('not found')
+        ) {
+          suggestedAction =
+            'Use the "search_workspace" or "list" tool to find the correct file path.';
         } else if (result.error.code === 'INVALID_ARGS') {
-          suggestedAction = 'Adjust the function arguments to match the parameter schema.';
+          suggestedAction =
+            'Adjust the function arguments to match the parameter schema.';
         } else if (result.error.code === 'WORKSPACE_ISOLATION_VIOLATION') {
-          suggestedAction = 'Use only relative paths inside the workspace folder.';
+          suggestedAction =
+            'Use only relative paths inside the workspace folder.';
         }
 
         return {
@@ -98,7 +110,10 @@ export function wrapActionableError(tool: Tool): Tool {
  * 3. HOF Pipeline Composer
  * Composes multiple wrappers into a single tool wrapper pipeline.
  */
-export function applyToolMiddlewarePipeline(tool: Tool, options: ToolMiddlewareOptions = {}): Tool {
+export function applyToolMiddlewarePipeline(
+  tool: Tool,
+  options: ToolMiddlewareOptions = {},
+): Tool {
   let wrapped = tool;
   wrapped = wrapWorkspaceIsolation(wrapped, options.workspaceDir);
   wrapped = wrapActionableError(wrapped);
