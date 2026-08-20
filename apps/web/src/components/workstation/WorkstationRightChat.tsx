@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
+import { LiveDocumentPreview } from "./LiveDocumentPreview";
 import { cn } from "../../lib/utils";
 import { getFileIcon } from "../workspace/tree-utils";
 import { apiFetch, API_BASE } from "../../lib/api";
@@ -396,6 +397,7 @@ function WorkstationRightChatComponent({
         {isStreaming && (
           <div className="mr-auto items-start max-w-[92%] space-y-2">
             <LiveExecutionBadge status={liveStatus} />
+            <LiveDocumentPreview status={liveStatus} />
             <LiveMirrorCard screenshotUrl={liveStatus?.screenshot || ""} timestamp={liveStatus?.timestamp} />
           </div>
         )}
