@@ -82,7 +82,7 @@ export class VisionAiTool {
           analysis: text,
           methodUsed: 'local_ocr',
         },
-        preview: text || '[Tidak ada teks yang terdeteksi]',
+        preview: text || '[No text detected]',
         metadata: {
           toolName: 'vision_ai',
           displayName: 'Local OCR Vision',
