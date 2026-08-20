@@ -47,6 +47,7 @@ import { BusinessDomainToolsRegistrar } from './services/registrars/business-dom
 import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-tools.registrar.js';
 import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.registrar.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
+import { ExcelComService } from '../interaction/excel-com.service.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
 
 import { PrismaModule } from '../../common/providers/prisma.module.js';
@@ -203,6 +204,7 @@ export class ToolsProviderModule implements OnModuleInit {
     // 4. Register Desktop COM Automation Tools
     this.desktopToolsRegistrar.register(this.registry, {
       desktopBridge: this.moduleRef.get(DesktopBridgeService, { strict: false }),
+      excelCom: this.moduleRef.get(ExcelComService, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, { strict: false }),
     });
 

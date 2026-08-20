@@ -4,6 +4,7 @@ import * as path from 'path';
 import { ToolRegistryService } from '../../tool-registry.service.js';
 import { ToolAdapter } from '../tool-adapter.js';
 import { DesktopBridgeService } from '../../../interaction/desktop-bridge.service.js';
+import { ExcelComService } from '../../../interaction/excel-com.service.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class DesktopToolsRegistrar {
     registry: ToolRegistryService,
     services: {
       desktopBridge: DesktopBridgeService;
+      excelCom: ExcelComService;
       workspaceToolsService: WorkspaceToolsService;
     },
   ) {
@@ -189,8 +191,8 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell edits and modifications on Excel (.xlsx) worksheets. Supports write_cell, insert_row, delete_row, set_format, and save.',
-        tags: ['desktop', 'excel', 'edit', 'com', 'cells', 'xlsx', 'spreadsheet'],
+          'Performs precise cell edits and modifications on Excel (.xlsx / .xlsm / .xls) worksheets. Supports write_cell, insert_row, delete_row, set_format, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
+        tags: ['desktop', 'excel', 'edit', 'com', 'cells', 'xlsx', 'xlsm', 'spreadsheet', 'sheet'],
         mutating: true,
         handler: async (args) => {
           try {
@@ -201,72 +203,31 @@ export class DesktopToolsRegistrar {
                 args.filePath || args.path || args.filename,
               );
             }
-            const actions = Array.isArray(args.actions) ? args.actions : [];
-
-            // If desktop bridge is active, use native COM automation
-            if (services.desktopBridge.isConnected) {
-              const res = await services.desktopBridge.excelEdit(safePath, actions);
-              return {
-                status: 'success',
-                data: res,
-                preview: `Executed ${actions.length} Excel COM action(s) on ${args.filePath || 'active sheet'}`,
-                metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel via COM', executionTime: 0 },
-              };
+            let actions: any[] = [];
+            if (Array.isArray(args.actions) && args.actions.length > 0) {
+              actions = args.actions;
+            } else if (args.cell || args.value !== undefined || args.action) {
+              actions = [{
+                action: args.action || 'write_cell',
+                cell: args.cell,
+                value: args.value,
+              }];
             }
 
-            // Headless Direct XLSX Fallback
+            // Always use backend COM automation (headless, Visible=false)
             if (!safePath) {
               throw new Error('filePath is required to edit Excel spreadsheet.');
             }
-            const xlsxModule = await import('xlsx');
-            const XLSX = (xlsxModule as any).default || xlsxModule;
-            let wb: any;
-            if (fs.existsSync(safePath)) {
-              wb = XLSX.readFile(safePath, { cellDates: true });
-            } else {
-              wb = XLSX.utils.book_new();
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]), 'Sheet1');
-            }
-            const sheetName = args.sheetName || wb.SheetNames[0] || 'Sheet1';
-            let ws = wb.Sheets[sheetName];
-            if (!ws) {
-              ws = XLSX.utils.aoa_to_sheet([[]]);
-              XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            if (!services.excelCom.isAvailable) {
+              throw new Error('Excel COM automation not available — winax not installed or not on Windows.');
             }
 
-            for (const act of actions) {
-              if (act.action === 'write_cell' && act.cell) {
-                const cellRef = String(act.cell).toUpperCase().trim();
-                const val = act.value;
-                const cellType = typeof val === 'number' ? 'n' : typeof val === 'boolean' ? 'b' : 's';
-                ws[cellRef] = { t: cellType, v: val };
-              }
-            }
-
-            // Recalculate sheet bounding box (!ref)
-            const cellKeys = Object.keys(ws).filter((k) => !k.startsWith('!'));
-            if (cellKeys.length > 0) {
-              let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
-              for (const k of cellKeys) {
-                try {
-                  const decoded = XLSX.utils.decode_cell(k);
-                  if (decoded.r < minR) minR = decoded.r;
-                  if (decoded.r > maxR) maxR = decoded.r;
-                  if (decoded.c < minC) minC = decoded.c;
-                  if (decoded.c > maxC) maxC = decoded.c;
-                } catch { /* ignore */ }
-              }
-              if (minR !== Infinity) {
-                ws['!ref'] = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
-              }
-            }
-
-            XLSX.writeFile(wb, safePath);
+            const res = await services.excelCom.editExcel(safePath, actions, args.sheetName);
             return {
               status: 'success',
-              data: { modified: true, actionsApplied: actions.length, filePath: safePath },
-              preview: `Successfully applied ${actions.length} cell modification(s) to ${path.basename(safePath)}`,
-              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel', executionTime: 0 },
+              data: res,
+              preview: `Executed ${actions.length} Excel COM action(s) on ${path.basename(safePath)}${args.sheetName ? ` [Sheet: ${args.sheetName}]` : ''}`,
+              metadata: { toolName: 'desktop_excel_edit', displayName: 'Edit Excel via COM', executionTime: 0 },
             };
           } catch (err: any) {
             return {
@@ -282,14 +243,17 @@ export class DesktopToolsRegistrar {
           type: 'object',
           properties: {
             workspaceId: { type: 'string' },
-            filePath: { type: 'string', description: 'Path to .xlsx file within workspace' },
-            sheetName: { type: 'string', description: 'Target worksheet name (optional, defaults to first sheet)' },
+            filePath: { type: 'string', description: 'Path to .xlsx / .xlsm file within workspace' },
+            sheetName: { type: 'string', description: 'Target worksheet name (e.g. "AGUSTUS")' },
             actions: {
               type: 'array',
-              description: 'Array of actions: { action: "write_cell"|"insert_row"|"delete_row"|"set_format"|"save", cell: "A1", value: "Text"|123, row, column, bold, fontSize, bgColor, alignment }',
+              description: 'Array of actions: [{ action: "write_cell", cell: "V4", value: 1175 }, ...]',
             },
+            action: { type: 'string', description: 'Single action type (e.g. "write_cell")' },
+            cell: { type: 'string', description: 'Target cell coordinate (e.g. "V4")' },
+            value: { description: 'Cell value (number, text, or boolean)' },
           },
-          required: ['filePath', 'actions'],
+          required: ['filePath'],
         },
         timeoutMs: 35000,
       }),
