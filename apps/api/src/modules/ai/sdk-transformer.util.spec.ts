@@ -83,7 +83,8 @@ describe('modelSupportsToolCallHistory', () => {
 
   it('defaults to true for standard models that support native tool call history', () => {
     expect(modelSupportsToolCallHistory('gpt-4o')).toBe(true);
-    expect(modelSupportsToolCallHistory('deepseek-v4-flash')).toBe(true);
+    expect(modelSupportsToolCallHistory('deepseek-chat')).toBe(true);
+    expect(modelSupportsToolCallHistory('deepseek-v4-flash')).toBe(false);
   });
 });
 

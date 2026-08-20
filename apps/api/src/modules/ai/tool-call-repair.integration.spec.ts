@@ -118,6 +118,7 @@ describe('tool call repair integration', () => {
 
     const provider = {
       getActiveConfig: vi.fn().mockResolvedValue(null),
+      getActiveConfigRespectingCooldown: vi.fn().mockResolvedValue(null),
       getNextAvailable: vi.fn().mockResolvedValue(null),
       classifyError: vi.fn(),
       recordUsage: vi.fn(),
