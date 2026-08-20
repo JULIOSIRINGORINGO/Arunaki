@@ -73,17 +73,43 @@ export class ReadToolService {
 
     let targetPath = filePath;
 
+    let rootPath = '';
     if (this.prisma) {
       try {
         const workspace = await this.prisma.workspace.findUnique({
           where: { id: workspaceId },
           select: { rootPath: true },
         });
-        if (workspace?.rootPath && !path.isAbsolute(filePath)) {
-          targetPath = path.join(workspace.rootPath, filePath);
+        if (workspace?.rootPath) {
+          rootPath = workspace.rootPath;
+          if (!path.isAbsolute(filePath)) {
+            targetPath = path.join(workspace.rootPath, filePath);
+          }
         }
       } catch {
         /* Fallback */
+      }
+    }
+
+    // Workspace Isolation Enforcement (Path Traversal Protection)
+    if (rootPath) {
+      const resolvedTarget = path.resolve(targetPath);
+      const resolvedRoot = path.resolve(rootPath);
+      if (!resolvedTarget.startsWith(resolvedRoot)) {
+        return {
+          status: 'error',
+          data: {},
+          preview: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+          metadata: {
+            toolName: 'read',
+            displayName: 'Read File',
+            executionTime: Date.now() - startTime,
+          },
+          error: {
+            code: 'WORKSPACE_ISOLATION_VIOLATION',
+            message: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+          },
+        };
       }
     }
 

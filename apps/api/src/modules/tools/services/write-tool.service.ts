@@ -66,6 +66,26 @@ export class WriteToolService {
       : `${cleanFilename}.${format}`;
     const targetPath = path.join(rootPath, finalFilename);
 
+    // Workspace Isolation Enforcement (Path Traversal Protection)
+    const resolvedTarget = path.resolve(targetPath);
+    const resolvedRoot = path.resolve(rootPath);
+    if (!resolvedTarget.startsWith(resolvedRoot)) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+        metadata: {
+          toolName: 'write',
+          displayName: 'Create File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'WORKSPACE_ISOLATION_VIOLATION',
+          message: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+        },
+      };
+    }
+
     try {
       const fsPromises = await import('fs/promises');
       try {

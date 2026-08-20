@@ -105,6 +105,15 @@ export class EditToolService {
       let targetPath = path.isAbsolute(filePath)
         ? filePath
         : path.join(rootPath, filePath);
+      if (!path.resolve(targetPath).startsWith(path.resolve(rootPath))) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Security violation: Path traversal blocked. Cannot access files outside the workspace root.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'WORKSPACE_ISOLATION_VIOLATION', message: 'Security violation: Path traversal blocked.' },
+        };
+      }
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -259,6 +268,15 @@ export class EditToolService {
       let targetPath = path.isAbsolute(filePath)
         ? filePath
         : path.join(rootPath, filePath);
+      if (!path.resolve(targetPath).startsWith(path.resolve(rootPath))) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Security violation: Path traversal blocked. Cannot access files outside the workspace root.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'WORKSPACE_ISOLATION_VIOLATION', message: 'Security violation: Path traversal blocked.' },
+        };
+      }
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -431,6 +449,15 @@ export class EditToolService {
       const targetPath = path.isAbsolute(filePath)
         ? filePath
         : path.join(rootPath, filePath);
+      if (!path.resolve(targetPath).startsWith(path.resolve(rootPath))) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Security violation: Path traversal blocked. Cannot access files outside the workspace root.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'WORKSPACE_ISOLATION_VIOLATION', message: 'Security violation: Path traversal blocked.' },
+        };
+      }
       let fileExists = false;
       try {
         await fsPromises.access(targetPath);
@@ -497,6 +524,16 @@ export class EditToolService {
       let targetPath = path.isAbsolute(hunk.path)
         ? hunk.path
         : path.join(rootPath, hunk.path);
+
+      if (!path.resolve(targetPath).startsWith(path.resolve(rootPath))) {
+        return {
+          status: 'error',
+          data: {},
+          preview: 'Security violation: Path traversal blocked. Cannot access files outside the workspace root.',
+          metadata: { toolName: 'edit', displayName: 'Edit File', executionTime: Date.now() - startTime },
+          error: { code: 'WORKSPACE_ISOLATION_VIOLATION', message: 'Security violation: Path traversal blocked.' },
+        };
+      }
 
       let fileExists = false;
       try {

@@ -50,6 +50,26 @@ export class RenameToolService {
 
     const rootPath = workspace.rootPath;
     let targetPath = path.join(rootPath, filename);
+
+    // Workspace Isolation Enforcement (Path Traversal Protection)
+    const resolvedTarget = path.resolve(targetPath);
+    const resolvedRoot = path.resolve(rootPath);
+    if (!resolvedTarget.startsWith(resolvedRoot)) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+        metadata: {
+          toolName: 'rename',
+          displayName: 'Rename File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'WORKSPACE_ISOLATION_VIOLATION',
+          message: `Security violation: Path traversal blocked. Cannot access files outside the workspace root.`,
+        },
+      };
+    }
     const fsPromises = await import('fs/promises');
     let fileExists = false;
     try {
