@@ -67,10 +67,10 @@ function log(msg: string) {
   fs.appendFileSync(LOG_FILE, msg + '\n', 'utf-8');
 }
 
-async function sendAgentMessage(goal: string, history: Array<{ role: 'user' | 'assistant'; content: string }> = [], modelId = 'agnes-2-5-flash:free') {
+async function sendAgentMessage(goal: string, history: Array<{ role: 'user' | 'assistant'; content: string }> = [], modelId = 'deepseek/deepseek-chat-v3-0324:free') {
   const apiKey = process.env.ARUNAKI_API_KEY || 'arunaki-dev-key';
   const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), 90_000);
+  const timeout = setTimeout(() => abortController.abort(), 180_000);
   const t0 = Date.now();
   let fullResponse = '';
   const calledTools: string[] = [];

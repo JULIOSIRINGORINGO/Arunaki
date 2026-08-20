@@ -64,3 +64,4 @@ Perbandingan_Arunaki_vs_OpenClaw_LLM.md
 # Runtime sessions & workspace caches
 .arunaki/sessions/
 **/.arunaki/sessions/
+**/.arunaki/backups/
