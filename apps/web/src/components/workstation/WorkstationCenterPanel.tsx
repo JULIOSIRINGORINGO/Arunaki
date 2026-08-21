@@ -210,6 +210,18 @@ function WorkstationCenterPanelComponent({
               <div
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCloseTab(tab.id);
+                  }
+                }}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                  }
+                }}
                 className={cn(
                   "group flex items-center gap-2 px-3 py-1 rounded text-xs font-sans cursor-pointer transition-all duration-150 border select-none shrink-0",
                   isActive
@@ -225,7 +237,7 @@ function WorkstationCenterPanelComponent({
                     onCloseTab(tab.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
-                  title="Close Tab"
+                  title="Close Tab (Middle-click to close)"
                 >
                   <X className="w-3 h-3" strokeWidth={1.5} />
                 </button>
