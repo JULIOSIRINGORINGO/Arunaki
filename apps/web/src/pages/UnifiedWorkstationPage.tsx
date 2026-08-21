@@ -36,6 +36,23 @@ interface Workspace {
   status: string;
 }
 
+export interface CanvasItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt?: string;
+  timeStr?: string;
+}
+
+function extractCanvasTitle(content: string): string {
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return "Document Canvas";
+  const firstLine = lines[0].replace(/^#+\s*/, "").replace(/[`*|]/g, "").trim();
+  if (firstLine.length > 0 && firstLine.length <= 36) return firstLine;
+  if (firstLine.length > 36) return firstLine.slice(0, 34) + "...";
+  return "Document Canvas";
+}
+
 function extractCanvasContent(llmText: string): string {
   if (!llmText) return "";
 
@@ -95,6 +112,15 @@ export function UnifiedWorkstationPage() {
 
   const [tabs, setTabs] = useState<CenterTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  const [recentCanvases, setRecentCanvases] = useState<CanvasItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("arunaki_recent_canvases");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [inputPrompt, setInputPrompt] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
@@ -280,6 +306,62 @@ export function UnifiedWorkstationPage() {
     },
     enabled: !!activeChatId,
   });
+
+  // Extract and sync recent canvases from chat messages
+  useEffect(() => {
+    if (!chatMessages || chatMessages.length === 0) return;
+
+    setRecentCanvases((prev) => {
+      const items: CanvasItem[] = [...prev];
+      const seenContents = new Set(items.map((i) => i.content.trim()));
+
+      for (const msg of chatMessages) {
+        if (msg.role !== "assistant" || !msg.content) continue;
+        const canvasContent = extractCanvasContent(msg.content);
+        if (!canvasContent || seenContents.has(canvasContent.trim())) continue;
+
+        seenContents.add(canvasContent.trim());
+        const title = extractCanvasTitle(canvasContent);
+        const timeStr = msg.createdAt
+          ? new Date(msg.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+          : undefined;
+
+        items.unshift({
+          id: msg.id || `canvas-${Date.now()}-${Math.random()}`,
+          title,
+          content: canvasContent,
+          createdAt: msg.createdAt,
+          timeStr,
+        });
+      }
+
+      const top5 = items.slice(0, 5);
+      try {
+        localStorage.setItem("arunaki_recent_canvases", JSON.stringify(top5));
+      } catch {}
+      return top5;
+    });
+  }, [chatMessages]);
+
+  const handleOpenCanvasTab = useCallback((item: CanvasItem) => {
+    const canvasTabId = `tab-canvas-${item.id}`;
+    setTabs((prev) => {
+      const existingIdx = prev.findIndex((t) => t.id === canvasTabId);
+      const newTab: CenterTab = {
+        id: canvasTabId,
+        type: "canvas",
+        title: item.title,
+        content: item.content,
+      };
+      if (existingIdx >= 0) {
+        const copy = [...prev];
+        copy[existingIdx] = newTab;
+        return copy;
+      }
+      return [...prev, newTab];
+    });
+    setActiveTabId(canvasTabId);
+  }, []);
 
   const handleSelectWorkspace = useCallback((wsId: string | null) => {
     setSelectedWorkspaceId(wsId);
@@ -717,6 +799,8 @@ export function UnifiedWorkstationPage() {
           onOpenFolderModal={() => setShowFolderModal(true)}
           width="var(--left-panel-width, 256px)"
           onNativeFilesChange={setNativeFileNames}
+          recentCanvases={recentCanvases}
+          onOpenCanvasTab={handleOpenCanvasTab}
         />
 
         <div

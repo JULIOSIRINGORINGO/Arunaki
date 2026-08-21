@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, memo } from "react";
-import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
+import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw, ChevronDown, Sparkles } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
 import { toast } from "sonner";
+import { cn } from "../../lib/utils";
 
 const flattenFileNames = (nodes: NativeNode[]): string[] => {
   const out: string[] = [];
@@ -15,6 +16,14 @@ const flattenFileNames = (nodes: NativeNode[]): string[] => {
   walk(nodes);
   return out;
 };
+
+export interface CanvasItem {
+  id: string;
+  title: string;
+  content: string;
+  createdAt?: string;
+  timeStr?: string;
+}
 
 interface WorkspaceFile {
   id: string;
@@ -39,6 +48,8 @@ interface WorkstationLeftExplorerProps {
   onOpenFolderModal?: () => void;
   width?: number | string;
   onNativeFilesChange?: (names: string[]) => void;
+  recentCanvases?: CanvasItem[];
+  onOpenCanvasTab?: (item: CanvasItem) => void;
 }
 
 type LoadState = "idle" | "loading" | "done" | "error";
@@ -51,10 +62,13 @@ function WorkstationLeftExplorerComponent({
   onOpenFileTab,
   width = 256,
   onNativeFilesChange,
+  recentCanvases = [],
+  onOpenCanvasTab,
 }: WorkstationLeftExplorerProps) {
   const [nativeTree, setNativeTree] = useState<NativeNode[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCanvasSectionOpen, setIsCanvasSectionOpen] = useState(true);
   const lastLoadedPath = useRef<string | null>(null);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -263,6 +277,56 @@ function WorkstationLeftExplorerComponent({
           <p className="text-xs text-[var(--text-dim)] font-normal">No folder opened</p>
         </div>
       )}
+
+      {/* ── CANVAS SECTION (VS Code / Antigravity Outline Parity - Top 5 Recent Canvases) ── */}
+      <div className="border-t border-[var(--border-color)] bg-[var(--bg-panel)] flex flex-col shrink-0">
+        <button
+          type="button"
+          onClick={() => setIsCanvasSectionOpen(!isCanvasSectionOpen)}
+          className="w-full h-7 px-3 flex items-center justify-between text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors select-none cursor-pointer"
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform text-[var(--text-muted)]", !isCanvasSectionOpen && "-rotate-90")} />
+            <span className="font-semibold text-xs tracking-tight text-[var(--text-primary)]">Canvas</span>
+            {recentCanvases.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-card)] text-[var(--text-dim)] border border-[var(--border-color)] font-mono">
+                {recentCanvases.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] text-[var(--text-dim)] font-mono">top 5</span>
+        </button>
+
+        {isCanvasSectionOpen && (
+          <div className="p-1 space-y-0.5 max-h-44 overflow-y-auto overflow-x-hidden select-none">
+            {recentCanvases.length === 0 ? (
+              <div className="px-3 py-2 text-[11px] text-[var(--text-dim)] italic">
+                No recent canvas
+              </div>
+            ) : (
+              recentCanvases.slice(0, 5).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onOpenCanvasTab?.(item)}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer"
+                  title={`Open Canvas: ${item.title}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 opacity-80 group-hover:opacity-100" />
+                    <span className="truncate text-[11px] font-medium group-hover:text-[var(--text-primary)]">
+                      {item.title}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-[var(--text-dim)] shrink-0 ml-2 font-mono">
+                    {item.timeStr || "open"}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
