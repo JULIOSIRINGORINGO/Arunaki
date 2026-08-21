@@ -3,31 +3,29 @@ import { Panel } from '@xyflow/react';
 import { 
   Plus, 
   Search,
-  UploadCloud,
+  Globe,
   ShieldCheck,
-  Database,
-  Type
+  Table2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface KnowledgeToolbarProps {
   onAddNode: (type: string, x: number, y: number) => void;
-  onUpload: () => void;
+  onUpload?: () => void;
 }
 
-export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps) {
+export function KnowledgeToolbar({ onAddNode }: KnowledgeToolbarProps) {
   const [isAdding, setIsAdding] = useState(false);
 
   // Helper to place new nodes in the center of the viewport
   const handleAdd = (type: string) => {
-    // We pass 0,0 here, but the parent should calculate the real viewport center
     onAddNode(type, 0, 0);
     setIsAdding(false);
   };
 
   return (
     <Panel position="top-center" className="mt-4 pointer-events-auto">
-      <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-2xl">
+      <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-2xl shadow-xl">
         
         {/* Search */}
         <div className="relative w-48 hidden sm:block">
@@ -53,25 +51,25 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
             )}
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
-            <span>Add</span>
+            <span>Add Node</span>
           </button>
 
           {isAdding && (
-            <div className="absolute top-full mt-2 right-0 w-48 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute top-full mt-2 right-0 w-52 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl p-1.5 flex flex-col gap-1 z-50 animate-in fade-in zoom-in-95 duration-150 shadow-2xl">
               <button
-                onClick={() => handleAdd('document')}
+                onClick={() => handleAdd('catalog')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
-                <Type className="w-4 h-4 text-sky-500" strokeWidth={1.5} />
-                Text Document
+                <Globe className="w-4 h-4 text-blue-500" strokeWidth={1.5} />
+                <span>Website / Catalog URL</span>
               </button>
               
               <button
-                onClick={() => handleAdd('database')}
+                onClick={() => handleAdd('sheet')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
-                <Database className="w-4 h-4 text-emerald-500" strokeWidth={1.5} />
-                Structured Data
+                <Table2 className="w-4 h-4 text-emerald-500" strokeWidth={1.5} />
+                <span>Price List / Stock URL</span>
               </button>
 
               <button
@@ -79,17 +77,7 @@ export function KnowledgeToolbar({ onAddNode, onUpload }: KnowledgeToolbarProps)
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
                 <ShieldCheck className="w-4 h-4 text-amber-500" strokeWidth={1.5} />
-                Rules SOP
-              </button>
-              
-              <div className="h-px bg-[var(--border-color)] my-1" />
-              
-              <button
-                onClick={onUpload}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
-              >
-                <UploadCloud className="w-4 h-4 text-indigo-500" strokeWidth={1.5} />
-                Upload File...
+                <span>SOP & Business Rules</span>
               </button>
             </div>
           )}

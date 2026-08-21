@@ -138,7 +138,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           !isActive && "opacity-60 grayscale"
         )}
       >
-        {/* Distributed Multi-Pin Circuit Array (18 Connection Ports along all 4 sides) */}
+        {/* Distributed Multi-Pin Circuit Array (18 Connection Ports along all 4 sides - Hidden dots, active on hover & drag) */}
         {/* Top Array */}
         {[15, 32, 50, 68, 85].map((pos, idx) => (
           <div key={`top-${idx}`} style={{ position: 'absolute', left: `${pos}%`, top: 0 }}>
@@ -146,13 +146,13 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
               type="target"
               position={Position.Top}
               id={`target-top-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-top-1 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Top}
               id={`source-top-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-top-1 opacity-0 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -164,13 +164,13 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
               type="target"
               position={Position.Bottom}
               id={`target-bottom-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-bottom-1 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-2 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Bottom}
               id={`source-bottom-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-bottom-1 opacity-0 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-2 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -182,13 +182,13 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
               type="target"
               position={Position.Left}
               id={idx === 1 ? "in-left" : `target-left-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-left-1 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Left}
               id={`source-left-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-left-1 opacity-0 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -214,13 +214,13 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
               type="target"
               position={Position.Right}
               id={`target-right-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-right-1 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-2 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Right}
               id={idx === 1 ? "out-right" : `source-right-${idx}`}
-              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-right-1 opacity-0 cursor-crosshair"
+              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-2 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -250,7 +250,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
             type="target"
             position={Position.Top}
             id="top"
-            className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)]"
+            className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
           />
 
           <div
@@ -278,7 +278,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 3. STANDARD ACTION / DOCUMENT / KNOWLEDGE CARD NODE (Single Connection Port)
+  // 3. STANDARD ACTION / DOCUMENT / KNOWLEDGE CARD NODE (Single Clean Connection Port)
   // ─────────────────────────────────────────────────────────────────────────
   const colorTheme = getNodeColorTheme(data.type, data.icon);
 
@@ -293,18 +293,18 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         !isActive && "opacity-60 grayscale"
       )}
     >
-      {/* 1 Single Clean Connection Port (Omnidirectional Source & Target) */}
+      {/* 1 Single Clean Connection Port (Hidden dot, connects seamlessly on hover/drag) */}
       <Handle
         type="target"
         position={Position.Left}
         id="in-left"
-        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5"
+        className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="out-left"
-        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5 opacity-0"
+        className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
       />
 
       {/* Center Icon Box */}
