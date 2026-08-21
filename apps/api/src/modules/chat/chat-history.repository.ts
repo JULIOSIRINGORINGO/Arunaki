@@ -21,7 +21,6 @@ export class ChatHistoryRepository extends PrismaBaseRepository<ChatHistory> {
 
   async findAllChats(): Promise<any[]> {
     return this.prisma.chatHistory.findMany({
-      where: { mode: 'chat' },
       orderBy: [{ pinned: 'desc' }, { updatedAt: 'desc' }],
       include: {
         messages: {
