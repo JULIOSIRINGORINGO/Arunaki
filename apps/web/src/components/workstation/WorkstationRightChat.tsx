@@ -5,7 +5,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Sparkles,
-  Paperclip,
   Send,
   BookOpen,
   Search,
@@ -517,9 +516,6 @@ function WorkstationRightChatComponent({
 
           <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
             <div className="flex items-center gap-2">
-              <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded transition-colors cursor-pointer" title="Attach file">
-                <Paperclip className="w-3.5 h-3.5" strokeWidth={1.5} />
-              </button>
               {activeWorkspace && (
                 <div className="relative" ref={effortDropdownRef}>
                   <button
