@@ -221,7 +221,7 @@ function WorkstationLeftExplorerComponent({
       {/* Panel Header */}
       <div className="h-9 px-3 box-border border-b border-[var(--border-color)] flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <Folder className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80" strokeWidth={1.5} />
+          <Folder className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.5} />
           Explorer
         </span>
         <div className="flex items-center gap-0.5">

@@ -117,9 +117,9 @@ export function TreeNodeItem({
               )}
             </span>
             {open ? (
-              <FolderOpen className="w-3.5 h-3.5 text-amber-500/90 dark:text-amber-400/90 shrink-0" strokeWidth={1.5} />
+              <FolderOpen className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80 shrink-0" strokeWidth={1.5} />
+              <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />
             )}
             {isRenaming ? (
               <input

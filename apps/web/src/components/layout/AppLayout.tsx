@@ -208,7 +208,7 @@ export function AppLayout() {
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <Sun className="w-3.5 h-3.5 text-[var(--text-primary)]" />
                       <span>Light Mode</span>
                     </div>
                     {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
@@ -227,7 +227,7 @@ export function AppLayout() {
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                      <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" />
                       <span>Dark Mode</span>
                     </div>
                     {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
@@ -276,9 +276,9 @@ export function AppLayout() {
             title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLight ? (
-              <Moon className="w-3.5 h-3.5 text-indigo-500" strokeWidth={1.5} />
+              <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
             ) : (
-              <Sun className="w-3.5 h-3.5 text-amber-400" strokeWidth={1.5} />
+              <Sun className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
             )}
           </button>
 
@@ -330,7 +330,7 @@ export function AppLayout() {
             title={workspaceInfo?.rootPath ? `Folder Kerja Aktif: ${workspaceInfo.rootPath}` : "Tidak ada folder aktif"}
             className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
-            <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
             <span className="text-[11px] truncate text-[var(--text-primary)]">
               {workspaceInfo?.name || (workspaceInfo?.rootPath ? workspaceInfo.rootPath.split(/[\\/]/).pop() : "Belum ada folder aktif")}
             </span>
