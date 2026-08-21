@@ -7,7 +7,7 @@ interface ProviderCardProps {
   provider: Provider;
   index: number;
   totalProviders: number;
-  testResult?: { success: boolean; status?: number; error?: string; reply?: string; model?: string; timeMs?: number };
+  testResult?: { success: boolean; status?: number; error?: string; prompt?: string; reply?: string; model?: string; timeMs?: number };
   isTesting: boolean;
   onToggleActive: (p: Provider) => void;
   onMovePriority?: (index: number, direction: "up" | "down") => void;
@@ -184,7 +184,7 @@ export function ProviderCard({
             <div>
               <span className="text-[var(--text-muted)] block">Prompt Sent:</span>
               <p className="p-1.5 bg-[var(--bg-card)] rounded border border-[var(--border-color)] text-[var(--text-primary)] mt-0.5">
-                "Reply with exactly: ok"
+                {result.prompt ? `"${result.prompt}"` : '"Hello, connection test."'}
               </p>
             </div>
             <div>

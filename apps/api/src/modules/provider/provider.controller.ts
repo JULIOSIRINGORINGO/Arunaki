@@ -173,6 +173,8 @@ export class ProviderController {
       }
 
       const url = `${body.baseUrl.replace(/\/$/, '')}/chat/completions`;
+      const testPrompt = 'Hello, connection test.';
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -183,7 +185,7 @@ export class ProviderController {
         },
         body: JSON.stringify({
           model: body.model,
-          messages: [{ role: 'user', content: 'Ping test. Reply with: PONG' }],
+          messages: [{ role: 'user', content: testPrompt }],
           max_tokens: 64,
           temperature: 0.1,
         }),
@@ -195,6 +197,7 @@ export class ProviderController {
         return successResponse({
           success: false,
           status: response.status,
+          prompt: testPrompt,
           error: errorText.substring(0, 200),
         });
       }
@@ -209,7 +212,7 @@ export class ProviderController {
         reply = data.choices[0].text.trim();
       }
       if (!reply) {
-        reply = 'PONG';
+        reply = 'Connected successfully.';
       }
 
       // Clean think tags if model outputs raw XML thinking
@@ -218,12 +221,14 @@ export class ProviderController {
       return successResponse({
         success: true,
         status: response.status,
+        prompt: testPrompt,
         reply: reply.substring(0, 150),
         model: data.model || body.model,
       });
     } catch (error: any) {
       return successResponse({
         success: false,
+        prompt: 'Hello, connection test.',
         error: error.message,
       });
     }

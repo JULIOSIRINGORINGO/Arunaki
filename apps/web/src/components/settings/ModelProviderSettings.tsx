@@ -320,6 +320,7 @@ export function ModelProviderSettings({
       const elapsed = Date.now() - startMs;
       const isOk = data.data?.success;
       const reply = data.data?.reply || "";
+      const prompt = data.data?.prompt || "Hello, connection test.";
 
       setTestResults((prev) => ({
         ...prev,
@@ -327,6 +328,7 @@ export function ModelProviderSettings({
           success: !!isOk,
           status: data.data?.status || (isOk ? 200 : 500),
           error: data.data?.error,
+          prompt: prompt,
           reply: reply,
           timeMs: elapsed,
         },
@@ -364,11 +366,13 @@ export function ModelProviderSettings({
       const elapsed = Date.now() - startMs;
       const isOk = data.data?.success;
       const reply = data.data?.reply || "";
+      const prompt = data.data?.prompt || "Hello, connection test.";
 
       const result: FormTestResult = {
         success: !!isOk,
         status: data.data?.status || (isOk ? 200 : 500),
         error: data.data?.error,
+        prompt: prompt,
         reply: reply,
         model: data.data?.model,
         timeMs: elapsed,

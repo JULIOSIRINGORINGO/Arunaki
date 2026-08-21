@@ -16,6 +16,7 @@ export interface FormTestResult {
   success: boolean;
   status?: number;
   error?: string;
+  prompt?: string;
   reply?: string;
   model?: string;
   timeMs?: number;
