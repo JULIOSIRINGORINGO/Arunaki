@@ -56,10 +56,8 @@ interface WorkstationRightChatProps {
   liveStatus: LiveStatusData | null;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   activeWorkspace: Workspace | null;
-  inputPrompt: string;
-  setInputPrompt: (val: string) => void;
   isStreaming: boolean;
-  onSendMessage: () => void;
+  onSendMessage: (text: string) => void;
   width?: number | string;
   files?: { name: string }[];
   queuedPrompts?: string[];
@@ -159,7 +157,7 @@ function parseContentBlocks(rawContent: string): ContentBlock[] {
   return blocks.length > 0 ? blocks : [{ type: "text", content }];
 }
 
-function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
+const ChatMessageContent = memo(function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
   const blocks = useMemo(() => parseContentBlocks(content), [content]);
 
   return (
@@ -254,7 +252,49 @@ function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
       })}
     </div>
   );
-}
+});
+
+const ChatMessageBubble = memo(function ChatMessageBubble({
+  msg,
+  isUser,
+}: {
+  msg: Message;
+  isUser: boolean;
+}) {
+  let steps = msg.executionSteps;
+  let thoughtSec = msg.thoughtSec;
+  if (!steps && msg.metadata) {
+    try {
+      const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
+      if (meta?.executionSteps) steps = meta.executionSteps;
+      if (meta?.thoughtSec) thoughtSec = meta.thoughtSec;
+    } catch {}
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1 w-full max-w-[96%] min-w-0",
+        isUser ? "ml-auto items-end" : "mr-auto items-start"
+      )}
+    >
+      {!isUser && (
+        <MessageThoughtBadge steps={steps} thoughtSec={thoughtSec} />
+      )}
+
+      <div
+        className={cn(
+          "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans",
+          isUser
+            ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
+            : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
+        )}
+      >
+        <ChatMessageContent content={msg.content || ""} isUser={isUser} />
+      </div>
+    </div>
+  );
+});
 
 function WorkstationRightChatComponent({
   collapsed,
@@ -264,8 +304,6 @@ function WorkstationRightChatComponent({
   liveStatus,
   messagesEndRef,
   activeWorkspace,
-  inputPrompt,
-  setInputPrompt,
   isStreaming,
   onSendMessage,
   width = 320,
@@ -279,6 +317,7 @@ function WorkstationRightChatComponent({
   onCancelStream,
 }: WorkstationRightChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [localPrompt, setLocalPrompt] = useState("");
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -328,7 +367,7 @@ function WorkstationRightChatComponent({
       const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 24), 160);
       textareaRef.current.style.height = `${nextHeight}px`;
     }
-  }, [inputPrompt]);
+  }, [localPrompt]);
 
   const mentionResults = useMemo(() => {
     if (!showMentions) return [];
@@ -363,7 +402,7 @@ function WorkstationRightChatComponent({
   }
 
   const handleInputChange = (val: string) => {
-    setInputPrompt(val);
+    setLocalPrompt(val);
 
     const mentionMatch = val.match(/@(\w*)$/);
     if (mentionMatch) {
@@ -384,6 +423,16 @@ function WorkstationRightChatComponent({
       return;
     } else {
       setShowCommands(false);
+    }
+  };
+
+  const submitPrompt = () => {
+    const text = localPrompt.trim();
+    if (!text) return;
+    onSendMessage(text);
+    setLocalPrompt("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
     }
   };
 
@@ -434,31 +483,31 @@ function WorkstationRightChatComponent({
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onSendMessage();
+      submitPrompt();
     }
   };
 
   const insertMention = (filename: string) => {
-    const updated = inputPrompt.replace(/@\w*$/, `@${filename} `);
-    setInputPrompt(updated);
+    const updated = localPrompt.replace(/@\w*$/, `@${filename} `);
+    setLocalPrompt(updated);
     setShowMentions(false);
     if (textareaRef.current) textareaRef.current.focus();
   };
 
   const handleCommandSelect = (cmdName: string) => {
     if (cmdName === "/search-section") {
-      setInputPrompt("");
+      setLocalPrompt("");
       setShowCommands(false);
       onSearchSection?.();
       return;
     }
     if (cmdName === "/new" || cmdName === "/clear") {
-      setInputPrompt("");
+      setLocalPrompt("");
       setShowCommands(false);
       onNewChat?.();
       return;
     }
-    setInputPrompt(`${cmdName} `);
+    setLocalPrompt(`${cmdName} `);
     setShowCommands(false);
     if (textareaRef.current) textareaRef.current.focus();
   };
@@ -498,7 +547,7 @@ function WorkstationRightChatComponent({
            const json = await res.json();
            if (json.data && json.data.length > 0) {
              const uploadedName = json.data[0].name;
-             setInputPrompt(inputPrompt + (inputPrompt && !inputPrompt.endsWith(' ') ? ' ' : '') + `@${uploadedName} `);
+             setLocalPrompt(localPrompt + (localPrompt && !localPrompt.endsWith(' ') ? ' ' : '') + `@${uploadedName} `);
              toast.success(`Image uploaded as ${uploadedName}`, { id: toastId });
            } else {
              toast.error("Failed to parse upload response", { id: toastId });
@@ -564,40 +613,12 @@ function WorkstationRightChatComponent({
               return null;
             }
 
-            // Parse metadata if executionSteps not directly on msg
-            let steps = msg.executionSteps;
-            let thoughtSec = msg.thoughtSec;
-            if (!steps && msg.metadata) {
-              try {
-                const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
-                if (meta?.executionSteps) steps = meta.executionSteps;
-                if (meta?.thoughtSec) thoughtSec = meta.thoughtSec;
-              } catch {}
-            }
-
             return (
-              <div
+              <ChatMessageBubble
                 key={msg.id || idx}
-                className={cn(
-                  "flex flex-col gap-1 w-full max-w-[96%] min-w-0",
-                  isUser ? "ml-auto items-end" : "mr-auto items-start"
-                )}
-              >
-                {!isUser && (
-                  <MessageThoughtBadge steps={steps} thoughtSec={thoughtSec} />
-                )}
-
-                <div
-                  className={cn(
-                    "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans",
-                    isUser
-                      ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
-                      : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
-                  )}
-                >
-                  <ChatMessageContent content={msg.content || ""} isUser={isUser} />
-                </div>
-              </div>
+                msg={msg}
+                isUser={isUser}
+              />
             );
           })
         )}
@@ -697,7 +718,7 @@ function WorkstationRightChatComponent({
 
           <textarea
             ref={textareaRef}
-            value={inputPrompt}
+            value={localPrompt}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -765,11 +786,11 @@ function WorkstationRightChatComponent({
                 </button>
               )}
 
-              {(!isStreaming || inputPrompt.trim()) && (
+              {(!isStreaming || localPrompt.trim()) && (
                 <button
                   type="button"
-                  onClick={() => onSendMessage()}
-                  disabled={!inputPrompt.trim()}
+                  onClick={submitPrompt}
+                  disabled={!localPrompt.trim()}
                   className={cn(
                     "w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer",
                     isStreaming

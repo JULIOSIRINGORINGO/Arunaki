@@ -165,7 +165,6 @@ export function UnifiedWorkstationPage() {
     }
   });
 
-  const [inputPrompt, setInputPrompt] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
@@ -586,22 +585,15 @@ export function UnifiedWorkstationPage() {
     toast.info("Generasi dihentikan");
   }, []);
 
-  const handleSendMessage = async (textOverride?: string) => {
-    const rawText = textOverride !== undefined ? textOverride : inputPrompt;
-    if (!rawText.trim()) return;
+  const handleSendMessage = async (textToSend: string) => {
+    const userText = textToSend ? textToSend.trim() : "";
+    if (!userText) return;
 
     // If currently streaming another turn, QUEUE the message (Google Antigravity pattern)!
-    if (isStreaming && textOverride === undefined) {
-      const textToQueue = rawText.trim();
-      setQueuedPrompts((prev) => [...prev, textToQueue]);
-      setInputPrompt("");
+    if (isStreaming) {
+      setQueuedPrompts((prev) => [...prev, userText]);
       toast.info("Pesan masuk ke antrian dan akan diproses otomatis setelah ini");
       return;
-    }
-
-    const userText = rawText.trim();
-    if (textOverride === undefined) {
-      setInputPrompt("");
     }
 
     const userMessageId = `user-${Date.now()}`;
@@ -942,8 +934,6 @@ export function UnifiedWorkstationPage() {
           liveStatus={liveStatus}
           messagesEndRef={messagesEndRef}
           activeWorkspace={activeWorkspace}
-          inputPrompt={inputPrompt}
-          setInputPrompt={setInputPrompt}
           isStreaming={isStreaming}
           onSendMessage={handleSendMessage}
           width="var(--right-panel-width, 320px)"
