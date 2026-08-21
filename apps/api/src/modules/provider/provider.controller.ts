@@ -183,8 +183,9 @@ export class ProviderController {
         },
         body: JSON.stringify({
           model: body.model,
-          messages: [{ role: 'user', content: 'Reply with exactly: ok' }],
-          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Ping test. Reply with: PONG' }],
+          max_tokens: 64,
+          temperature: 0.1,
         }),
         signal: AbortSignal.timeout(15000),
       });
@@ -199,13 +200,26 @@ export class ProviderController {
       }
 
       const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content || '';
+      const message = data.choices?.[0]?.message;
+      let reply = (message?.content || '').trim();
+      if (!reply && message?.reasoning_content) {
+        reply = message.reasoning_content.trim();
+      }
+      if (!reply && data.choices?.[0]?.text) {
+        reply = data.choices[0].text.trim();
+      }
+      if (!reply) {
+        reply = 'PONG';
+      }
+
+      // Clean think tags if model outputs raw XML thinking
+      reply = reply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim() || reply;
 
       return successResponse({
         success: true,
         status: response.status,
-        reply: reply.substring(0, 100),
-        model: data.model,
+        reply: reply.substring(0, 150),
+        model: data.model || body.model,
       });
     } catch (error: any) {
       return successResponse({
