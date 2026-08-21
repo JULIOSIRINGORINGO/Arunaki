@@ -166,22 +166,22 @@ function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
   const blocks = useMemo(() => parseContentBlocks(content), [content]);
 
   return (
-    <div className="space-y-2 font-sans">
+    <div className="space-y-2 font-sans min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere]">
       {blocks.map((block, bIdx) => {
         if (block.type === "table") {
           return (
             <div
               key={bIdx}
-              className="my-2 overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] select-text shadow-xs"
+              className="my-2 max-w-full overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] select-text shadow-xs"
             >
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto no-scrollbar max-w-full">
                 <table className="w-full text-left border-collapse font-sans text-xs">
                   <thead>
                     <tr className="bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)]">
                       {block.headers.map((h, hIdx) => (
                         <th
                           key={hIdx}
-                          className="px-3 py-2 font-semibold text-[var(--text-primary)] border-r last:border-r-0 border-[var(--border-color)] text-[11px] tracking-wide"
+                          className="px-3 py-2 font-semibold text-[var(--text-primary)] border-r last:border-r-0 border-[var(--border-color)] text-[11px] tracking-wide whitespace-nowrap"
                         >
                           {h}
                         </th>
@@ -224,21 +224,28 @@ function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
             key={bIdx}
             components={{
               p: ({ children }) => (
-                <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>
+                <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">
+                  {children}
+                </p>
               ),
+              hr: () => <hr className="my-2.5 border-t border-[var(--border-color)] w-full" />,
               strong: ({ children }) => (
                 <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
               ),
-              ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
-              li: ({ children }) => <li className="leading-snug">{children}</li>,
+              ul: ({ children }) => (
+                <ul className="list-disc ml-4 my-1 space-y-1 break-words [word-break:break-word]">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal ml-4 my-1 space-y-1 break-words [word-break:break-word]">{children}</ol>
+              ),
+              li: ({ children }) => <li className="leading-snug break-words [word-break:break-word]">{children}</li>,
               code: ({ children }) => (
-                <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)]">
+                <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
                   {children}
                 </code>
               ),
               pre: ({ children }) => (
-                <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
+                <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto max-w-full my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
                   {children}
                 </pre>
               ),
@@ -522,7 +529,7 @@ function WorkstationRightChatComponent({
       </div>
 
       {/* Messages List Area */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4 font-sans text-xs">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 font-sans text-xs min-w-0">
         {allMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 select-none">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center mb-3 border border-[var(--border-color)]">
@@ -556,7 +563,7 @@ function WorkstationRightChatComponent({
               <div
                 key={msg.id || idx}
                 className={cn(
-                  "flex flex-col gap-1 max-w-[92%]",
+                  "flex flex-col gap-1 w-full max-w-[96%] min-w-0",
                   isUser ? "ml-auto items-end" : "mr-auto items-start"
                 )}
               >
@@ -566,7 +573,7 @@ function WorkstationRightChatComponent({
 
                 <div
                   className={cn(
-                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",
+                    "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans",
                     isUser
                       ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
                       : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"

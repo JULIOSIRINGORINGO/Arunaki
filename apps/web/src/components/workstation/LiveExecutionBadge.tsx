@@ -212,30 +212,30 @@ export function MessageThoughtBadge({
 
   if (hasToolExecution) {
     return (
-      <div className="mb-2 max-w-sm font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
+      <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             <Check size={12} className="text-emerald-500 shrink-0" />
-            <span className="font-semibold text-[var(--text-primary)]">
+            <span className="font-semibold text-[var(--text-primary)] truncate">
               Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
             </span>
-            <span className="text-[10px] text-[var(--text-dim)]">({steps.length} steps)</span>
+            <span className="text-[10px] text-[var(--text-dim)] shrink-0">({steps.length} steps)</span>
           </div>
-          <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+          <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </div>
         </button>
 
         {isExpanded && (
-          <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)]">
+          <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
             {steps.map((step, idx) => (
-              <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)]">
+              <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
                 <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
-                <span className="truncate max-w-[260px] text-[var(--text-muted)]">
+                <span className="truncate max-w-full text-[var(--text-muted)]">
                   {step.label}
                 </span>
               </div>
@@ -248,7 +248,7 @@ export function MessageThoughtBadge({
 
   // Pure Thought Reasoning (like "Thought for 1s >" in Antigravity / Gemini)
   return (
-    <div className="mb-2 font-sans select-none max-w-fit">
+    <div className="mb-2 font-sans select-none max-w-full min-w-0">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -263,13 +263,13 @@ export function MessageThoughtBadge({
       </button>
 
       {isExpanded && (
-        <div className="mt-1 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-md font-sans">
+        <div className="mt-1 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-full min-w-0 font-sans break-words [overflow-wrap:anywhere]">
           {steps.length > 0 ? (
             <div className="space-y-1">
               {steps.map((s, i) => (
-                <div key={s.id || i} className="flex items-center gap-1.5">
+                <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
                   <Check size={10} className="text-emerald-500 shrink-0" />
-                  <span>{s.label}</span>
+                  <span className="truncate max-w-full">{s.label}</span>
                 </div>
               ))}
             </div>
