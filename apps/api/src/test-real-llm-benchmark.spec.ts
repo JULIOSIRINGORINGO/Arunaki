@@ -295,4 +295,91 @@ Kontrak Versi 2 (Revisi):
       if (fs.existsSync(mergedPath)) fs.unlinkSync(mergedPath);
     } catch {}
   }, 180000);
+
+  // =========================================================================
+  // SCENARIO 5: Native Excel COM Automation (desktop_excel_edit)
+  // =========================================================================
+  it('Scenario 5 (Real LLM): Native Excel COM Spreadsheet Automation', async () => {
+    const chat = await prisma.chatHistory.create({
+      data: { title: 'Real LLM Scenario 5 - Excel COM', workspaceId: workspace.id },
+    });
+
+    const userPrompt = `Tolong edit file spreadsheet laporan_keuangan.xlsx menggunakan tool excel: Tulis cell B2 dengan teks 'Penjualan Q3', cell B3 nilai 50000000, cell B4 nilai 75000000, dan cell B5 formula '=SUM(B3:B4)'`;
+
+    console.log(`\n💬 [SCENARIO 5 PROMPT]: Sending Excel COM instruction to LLM...`);
+    const t0 = Date.now();
+
+    const result = await agentRunner.runAgentSync({
+      chatId: chat.id,
+      userContent: userPrompt,
+      chatMode: 'workspace',
+      historyMessages: [],
+      idempotencyKey: `real-llm-excel-${Date.now()}`,
+    });
+
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    console.log(`⏱️ LLM completed in ${elapsed}s`);
+    console.log(`🤖 Tools executed:`, result.toolOutputs?.map((t) => t.toolName) || []);
+
+    expect(result.content).toBeDefined();
+    expect(result.content.length).toBeGreaterThan(10);
+  }, 180000);
+
+  // =========================================================================
+  // SCENARIO 6: Native Word COM Document Automation (desktop_word_edit)
+  // =========================================================================
+  it('Scenario 6 (Real LLM): Native Word COM Document Automation', async () => {
+    const chat = await prisma.chatHistory.create({
+      data: { title: 'Real LLM Scenario 6 - Word COM', workspaceId: workspace.id },
+    });
+
+    const userPrompt = `Tolong perbarui surat resmi template_surat.docx menggunakan tool word: Ganti teks placeholder '{{NAMA_KLIEN}}' menjadi 'PT Surya Mandiri', dan tambahkan paragraf penutup 'Demikian surat penawaran ini kami sampaikan.'`;
+
+    console.log(`\n💬 [SCENARIO 6 PROMPT]: Sending Word COM instruction to LLM...`);
+    const t0 = Date.now();
+
+    const result = await agentRunner.runAgentSync({
+      chatId: chat.id,
+      userContent: userPrompt,
+      chatMode: 'workspace',
+      historyMessages: [],
+      idempotencyKey: `real-llm-word-${Date.now()}`,
+    });
+
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    console.log(`⏱️ LLM completed in ${elapsed}s`);
+    console.log(`🤖 Tools executed:`, result.toolOutputs?.map((t) => t.toolName) || []);
+
+    expect(result.content).toBeDefined();
+    expect(result.content.length).toBeGreaterThan(10);
+  }, 180000);
+
+  // =========================================================================
+  // SCENARIO 7: Native PowerPoint COM Automation (desktop_ppt_edit)
+  // =========================================================================
+  it('Scenario 7 (Real LLM): Native PowerPoint COM Automation', async () => {
+    const chat = await prisma.chatHistory.create({
+      data: { title: 'Real LLM Scenario 7 - PPT COM', workspaceId: workspace.id },
+    });
+
+    const userPrompt = `Tolong perbarui file presentasi pitch_deck.pptx menggunakan tool ppt: Tambahkan slide baru dengan judul 'Pencapaian Q3' dan poin 'Pertumbuhan Revenue +45%'`;
+
+    console.log(`\n💬 [SCENARIO 7 PROMPT]: Sending PPT COM instruction to LLM...`);
+    const t0 = Date.now();
+
+    const result = await agentRunner.runAgentSync({
+      chatId: chat.id,
+      userContent: userPrompt,
+      chatMode: 'workspace',
+      historyMessages: [],
+      idempotencyKey: `real-llm-ppt-${Date.now()}`,
+    });
+
+    const elapsed = Math.round((Date.now() - t0) / 1000);
+    console.log(`⏱️ LLM completed in ${elapsed}s`);
+    console.log(`🤖 Tools executed:`, result.toolOutputs?.map((t) => t.toolName) || []);
+
+    expect(result.content).toBeDefined();
+    expect(result.content.length).toBeGreaterThan(10);
+  }, 180000);
 });
