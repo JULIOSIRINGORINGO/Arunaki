@@ -6,6 +6,7 @@ import { UnifiedWorkstationPage } from "./pages/UnifiedWorkstationPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { KnowledgePage } from "./pages/KnowledgePage";
+import { useTheme, getSystemTheme } from "./lib/theme";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,9 +21,19 @@ const isFileProtocol = typeof window !== 'undefined' && window.location.protocol
 const RouterComponent = isFileProtocol ? HashRouter : BrowserRouter;
 
 export default function App() {
+  const { theme } = useTheme();
+  const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;
+
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster position="bottom-right" richColors />
+      <Toaster 
+        theme={effectiveTheme as 'light' | 'dark'} 
+        position="bottom-right" 
+        toastOptions={{
+          className: 'dark:!bg-[#141416] dark:!text-[#F4F4F5] dark:!border-[#2E2E35] !bg-white !text-[#111827] !border-[#E5E7EB] !rounded-xl !shadow-2xl !p-3.5 !text-xs !font-medium',
+          duration: 2500,
+        }}
+      />
       <RouterComponent>
         <Routes>
           <Route element={<AppLayout />}>

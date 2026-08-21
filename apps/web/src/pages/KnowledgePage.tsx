@@ -535,11 +535,11 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
             type: 'floating',
             style: { stroke: isLight ? '#64748B' : '#94A3B8', strokeWidth: 2.75 },
           }}
-          // Update selected style via custom prop to our node
-          onSelectionChange={(params) => {
-            if (params.nodes.length > 0) {
-              setSelectedNodeId(params.nodes[0].id);
-            }
+          onNodeClick={(_, node) => {
+            setSelectedNodeId(node.id);
+          }}
+          onPaneClick={() => {
+            setSelectedNodeId(null);
           }}
         >
           <Background color={isLight ? "#D1D5DB" : "#333338"} gap={20} size={1.2} />
