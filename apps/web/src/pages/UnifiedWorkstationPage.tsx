@@ -153,18 +153,47 @@ export function UnifiedWorkstationPage() {
     },
   });
 
-  const activeWorkspace = workspaces.find((w) => w.id === selectedWorkspaceId) || workspaces[0] || null;
+  const activeWorkspace = useMemo(() => {
+    const match = workspaces.find((w) => w.id === selectedWorkspaceId);
+    if (match) return match;
+    const cachedPath = localStorage.getItem("arunaki_workspace_path");
+    if (cachedPath) {
+      const cachedName = cachedPath.split(/[\\/]/).filter(Boolean).pop() || "Workspace";
+      return {
+        id: selectedWorkspaceId || "current-ws",
+        name: cachedName,
+        rootPath: cachedPath,
+        status: "ready",
+      };
+    }
+    return workspaces[0] || null;
+  }, [workspaces, selectedWorkspaceId]);
 
   const openFolderParam = searchParams.get("openFolder");
   const wsIdParam = searchParams.get("wsId");
 
   useEffect(() => {
+    const handleWorkspaceChange = () => {
+      const currentWsId = localStorage.getItem("arunaki_workspace_id");
+      if (currentWsId && currentWsId !== selectedWorkspaceId) {
+        setSelectedWorkspaceId(currentWsId);
+      }
+      refetchWorkspaces();
+    };
+
+    window.addEventListener("arunaki-workspace-change", handleWorkspaceChange);
+    return () => {
+      window.removeEventListener("arunaki-workspace-change", handleWorkspaceChange);
+    };
+  }, [selectedWorkspaceId, refetchWorkspaces]);
+
+  useEffect(() => {
     if (wsIdParam && wsIdParam !== selectedWorkspaceId) {
       setSelectedWorkspaceId(wsIdParam);
       localStorage.setItem("arunaki_workspace_id", wsIdParam);
-      window.dispatchEvent(new Event("arunaki-workspace-change"));
+      refetchWorkspaces();
     }
-  }, [wsIdParam, selectedWorkspaceId]);
+  }, [wsIdParam, selectedWorkspaceId, refetchWorkspaces]);
 
   useEffect(() => {
     async function syncOpenFolder() {
@@ -185,7 +214,6 @@ export function UnifiedWorkstationPage() {
             setSelectedWorkspaceId(json.data.id);
             localStorage.setItem("arunaki_workspace_id", json.data.id);
             localStorage.setItem("arunaki_workspace_path", openFolderParam);
-            window.dispatchEvent(new Event("arunaki-workspace-change"));
             refetchWorkspaces();
           }
         } catch (err) {
@@ -209,10 +237,6 @@ export function UnifiedWorkstationPage() {
       } else if (match.rootPath) {
         localStorage.setItem("arunaki_workspace_path", match.rootPath);
       }
-    } else {
-      setSelectedWorkspaceId(null);
-      localStorage.removeItem("arunaki_workspace_id");
-      localStorage.removeItem("arunaki_workspace_path");
     }
   }, [workspaces, selectedWorkspaceId]);
 
