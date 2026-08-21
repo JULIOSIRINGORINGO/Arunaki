@@ -3,7 +3,8 @@ import { ParseResult, ParserProvider } from './parser-provider.interface';
 
 export class XlsxParser implements ParserProvider {
   async parse(filePath: string): Promise<ParseResult> {
-    const XLSX = await import('xlsx');
+    const XLSXMod = await import('xlsx');
+    const XLSX = (XLSXMod as any).default || XLSXMod;
     const buffer = await fs.readFile(filePath);
     const workbook = XLSX.read(buffer, { type: 'buffer' });
 

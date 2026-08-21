@@ -23,6 +23,7 @@ export class ParserService {
     this.parsers.set('pdf', new PdfParser());
     this.parsers.set('docx', new DocxParser());
     this.parsers.set('xlsx', new XlsxParser());
+    this.parsers.set('xlsm', new XlsxParser());
     this.parsers.set('xls', new XlsxParser());
 
     this.logger.log(

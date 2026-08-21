@@ -39,6 +39,7 @@ const PARSER_EXTS = new Set([
   '.docx',
   '.xls',
   '.xlsx',
+  '.xlsm',
   '.ppt',
   '.pptx',
   '.odt',
