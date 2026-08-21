@@ -328,9 +328,9 @@ function WorkstationCenterPanelComponent({
         ) : (
           /* CENTER ARUNAKI AGENTS WATERMARK (Antigravity Style) */
           <div className="h-full w-full flex flex-col items-center justify-center select-none p-8 animate-in fade-in duration-300">
-            <div className="flex flex-col items-center gap-4 text-[#D4D4D8] opacity-90">
-              <ArunakiLogo className="w-14 h-14 text-current" />
-              <span className="font-noto-serif italic text-4xl md:text-5xl font-medium tracking-wide text-current select-none">
+            <div className="flex flex-col items-center gap-2.5 text-[var(--text-muted)] opacity-70 hover:opacity-90 transition-opacity">
+              <ArunakiLogo className="w-8 h-8 text-current" />
+              <span className="font-noto-serif italic text-lg md:text-xl font-medium tracking-wider text-current select-none">
                 Arunaki Agents
               </span>
             </div>
