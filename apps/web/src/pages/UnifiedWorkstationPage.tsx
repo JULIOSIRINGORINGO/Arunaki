@@ -44,13 +44,13 @@ function extractCanvasContent(llmText: string): string {
   const streamMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*)$/i);
   if (streamMatch?.[1]?.trim()) return streamMatch[1].trim();
 
-  // 3. Explicit deliverable codeblocks (```deliverable, ```canvas, ```csv, etc.)
-  const fencedMatch = llmText.match(/```(?:deliverable|canvas|document|csv|table|markdown)?\s*\n([\s\S]*?)\n```/i);
-  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 30) {
+  // 3. Explicit deliverable codeblocks (```deliverable, ```canvas, ```csv, ```table, ```excel)
+  const fencedMatch = llmText.match(/```(?:deliverable|canvas|document|csv|table|excel)\s*\n([\s\S]*?)\n```/i);
+  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 20) {
     return fencedMatch[1].trim();
   }
 
-  // 4. Markdown Table (with row newline normalization)
+  // 4. Real Markdown Table (Must have proper table headers and data rows)
   if (llmText.includes("|") && (llmText.includes("---") || llmText.includes("-|-"))) {
     const normalized = llmText.replace(/\|\|\s*\|/g, "|\n|");
     const tableMatch = normalized.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
@@ -59,18 +59,15 @@ function extractCanvasContent(llmText: string): string {
     }
   }
 
-  // 5. Multi-line Structured Deliverable / Recap / List
-  // (Detects recaps, sizes, quantities, totals, inventory breakdowns)
+  // 5. Multi-line Structured Deliverable Matrix (Must be a true recap/matrix, NOT conversational text)
   const lines = llmText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (lines.length >= 3) {
-    const dataLineCount = lines.filter((l) =>
-      /\b(total|pcs|qty|ukuran|harga|rp|s\s*\d|m\s*\d|l\s*\d|xl\s*\d|xxl\s*\d|\d+\s*pcs|\d+\s*kg|\d+\s*unit)\b/i.test(l) ||
-      /^[-*•]\s+/.test(l) ||
-      /^[A-Za-z0-9\s_-]+:\s+\d+/i.test(l) ||
-      /^(pendek|panjang|hitam|putih|merah|biru|hijau|kuning|abu|navy)\b/i.test(l)
+  if (lines.length >= 4) {
+    const hasDeliverableHeader = /^(REKAPAN|DAFTAR PESANAN|TABEL|LAPORAN|RINCIAN|INVOICE|ORDER RECAP)\b/i.test(lines[0]);
+    const structuredOrderLines = lines.filter((l) =>
+      /\b(TOTAL\s*=|TOTAL\s*:|\d+\s*PCS|\d+\s*RB|RP\s*[\d.,]+|\b(BCA|BRI|BNI|MANDIRI)\b|\[\s*\d+\s*PCS\s*\])\b/i.test(l)
     ).length;
 
-    if (dataLineCount >= 2) {
+    if (hasDeliverableHeader || structuredOrderLines >= 3) {
       return llmText.trim();
     }
   }
