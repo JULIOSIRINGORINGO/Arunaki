@@ -46,20 +46,33 @@ function extractCanvasContent(llmText: string): string {
 
   // 3. Explicit deliverable codeblocks (```deliverable, ```canvas, ```csv, etc.)
   const fencedMatch = llmText.match(/```(?:deliverable|canvas|document|csv|table|markdown)?\s*\n([\s\S]*?)\n```/i);
-  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 50) {
+  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 30) {
     return fencedMatch[1].trim();
   }
 
-  // 4. Intelligent Markdown Table Detection (multi-line table deliverable)
-  const tableMatch = llmText.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
-  if (tableMatch?.[0]?.trim() && tableMatch[0].trim().split("\n").length >= 3) {
-    return tableMatch[0].trim();
+  // 4. Markdown Table (with row newline normalization)
+  if (llmText.includes("|") && (llmText.includes("---") || llmText.includes("-|-"))) {
+    const normalized = llmText.replace(/\|\|\s*\|/g, "|\n|");
+    const tableMatch = normalized.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
+    if (tableMatch?.[0]?.trim()) {
+      return tableMatch[0].trim();
+    }
   }
 
-  // 5. Intelligent Document Structure (Heading + formatted data lines)
-  const docMatch = llmText.match(/(?:^|\n)(#{1,3}\s+[^\n]+\r?\n(?:[-*]|\d+\.|\w+:|[^\n]+\r?\n){3,})/);
-  if (docMatch?.[1]?.trim() && docMatch[1].trim().length > 100) {
-    return docMatch[1].trim();
+  // 5. Multi-line Structured Deliverable / Recap / List
+  // (Detects recaps, sizes, quantities, totals, inventory breakdowns)
+  const lines = llmText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length >= 3) {
+    const dataLineCount = lines.filter((l) =>
+      /\b(total|pcs|qty|ukuran|harga|rp|s\s*\d|m\s*\d|l\s*\d|xl\s*\d|xxl\s*\d|\d+\s*pcs|\d+\s*kg|\d+\s*unit)\b/i.test(l) ||
+      /^[-*•]\s+/.test(l) ||
+      /^[A-Za-z0-9\s_-]+:\s+\d+/i.test(l) ||
+      /^(pendek|panjang|hitam|putih|merah|biru|hijau|kuning|abu|navy)\b/i.test(l)
+    ).length;
+
+    if (dataLineCount >= 2) {
+      return llmText.trim();
+    }
   }
 
   return "";
