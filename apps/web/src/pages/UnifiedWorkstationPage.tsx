@@ -35,7 +35,8 @@ interface Workspace {
 
 function extractCanvasContent(llmText: string): string {
   if (!llmText) return "";
-  // 1. Complete [CANVAS]...[/CANVAS] block
+
+  // 1. Explicit [CANVAS]...[/CANVAS] block
   const completeMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
   if (completeMatch?.[1]?.trim()) return completeMatch[1].trim();
 
@@ -43,10 +44,22 @@ function extractCanvasContent(llmText: string): string {
   const streamMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*)$/i);
   if (streamMatch?.[1]?.trim()) return streamMatch[1].trim();
 
-  // 3. Fallback: Multi-line Markdown table detection (e.g. formatted recaps/deliverables)
+  // 3. Explicit deliverable codeblocks (```deliverable, ```canvas, ```csv, etc.)
+  const fencedMatch = llmText.match(/```(?:deliverable|canvas|document|csv|table|markdown)?\s*\n([\s\S]*?)\n```/i);
+  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 50) {
+    return fencedMatch[1].trim();
+  }
+
+  // 4. Intelligent Markdown Table Detection (multi-line table deliverable)
   const tableMatch = llmText.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
-  if (tableMatch?.[0]?.trim() && llmText.length > 40) {
+  if (tableMatch?.[0]?.trim() && tableMatch[0].trim().split("\n").length >= 3) {
     return tableMatch[0].trim();
+  }
+
+  // 5. Intelligent Document Structure (Heading + formatted data lines)
+  const docMatch = llmText.match(/(?:^|\n)(#{1,3}\s+[^\n]+\r?\n(?:[-*]|\d+\.|\w+:|[^\n]+\r?\n){3,})/);
+  if (docMatch?.[1]?.trim() && docMatch[1].trim().length > 100) {
+    return docMatch[1].trim();
   }
 
   return "";
