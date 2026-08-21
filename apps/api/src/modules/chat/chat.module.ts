@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { WorkspaceModule } from '../workspace/workspace.module.js';
 import { ChatController } from './chat.controller.js';
 import { ChatHistoryService } from './chat-history.service.js';
 import { ChatHistoryRepository } from './chat-history.repository.js';
@@ -29,6 +30,7 @@ import { ProviderModule } from '../provider/provider.module.js';
     ArtifactModule,
     MemoryModule,
     ProviderModule,
+    forwardRef(() => WorkspaceModule),
   ],
   controllers: [ChatController],
   providers: [

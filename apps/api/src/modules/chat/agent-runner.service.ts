@@ -64,6 +64,8 @@ export interface ToolOutputRecord {
   result: ToolResult;
 }
 
+import { WorkspaceRulesSentinelService } from '../workspace/services/workspace-rules-sentinel.service.js';
+
 @Injectable()
 export class AgentRunnerService {
   private readonly logger = new Logger(AgentRunnerService.name);
@@ -82,6 +84,9 @@ export class AgentRunnerService {
     private readonly selfHealingService: SelfHealingService,
     @Inject(forwardRef(() => AutoMemoryService))
     private readonly autoMemoryService: AutoMemoryService,
+    @Optional()
+    @Inject(forwardRef(() => WorkspaceRulesSentinelService))
+    private readonly workspaceRulesSentinel?: WorkspaceRulesSentinelService,
     @Optional()
     @Inject(forwardRef(() => SessionAdmissionService))
     private readonly sessionAdmissionService?: SessionAdmissionService,
@@ -471,6 +476,51 @@ export class AgentRunnerService {
         status: 'draft',
         createdAt: a!.createdAt,
       };
+    });
+
+    // Fire-and-forget: Background review & distillation asynchronously without blocking response
+    setImmediate(async () => {
+      const rawTurnMessages = messages.map((m) => ({
+        role: m.role,
+        content: m.content || '',
+      }));
+
+      try {
+        await this.backgroundReviewService.reviewAndLearn(
+          rawTurnMessages,
+          params.workspaceId || undefined,
+        );
+      } catch (err: any) {
+        this.logger.debug(
+          `Background review failed (non-critical): ${err.message}`,
+        );
+      }
+
+      if (params.workspaceId && this.workspaceRulesSentinel) {
+        try {
+          await this.workspaceRulesSentinel.inspectAndEvolveRules(
+            params.workspaceId,
+            rawTurnMessages,
+          );
+        } catch (err: any) {
+          this.logger.debug(
+            `Rules Sentinel evolution non-critical error: ${err.message}`,
+          );
+        }
+      }
+
+      try {
+        const distillResult = await this.autoMemoryService.checkAndDistill();
+        if (distillResult.distilled) {
+          this.logger.log(
+            `Memory distilled: ${distillResult.count} entries compressed`,
+          );
+        }
+      } catch (err: any) {
+        this.logger.debug(
+          `Memory distillation failed (non-critical): ${err.message}`,
+        );
+      }
     });
 
     return {
@@ -947,14 +997,34 @@ export class AgentRunnerService {
 
       // Fire-and-forget: Background review & distillation asynchronously without blocking response
       setImmediate(async () => {
+        const rawTurnMessages = messages.map((m) => ({
+          role: m.role,
+          content: m.content || '',
+        }));
+
         try {
           await this.backgroundReviewService.reviewAndLearn(
-            messages.map((m) => ({ role: m.role, content: m.content || '' })),
+            rawTurnMessages,
+            params.workspaceId || undefined,
           );
         } catch (err: any) {
           this.logger.debug(
             `Background review failed (non-critical): ${err.message}`,
           );
+        }
+
+        // Trigger Rules Sentinel to detect user corrections/preferences and update .arunaki/ARUNAKI.md!
+        if (params.workspaceId && this.workspaceRulesSentinel) {
+          try {
+            await this.workspaceRulesSentinel.inspectAndEvolveRules(
+              params.workspaceId,
+              rawTurnMessages,
+            );
+          } catch (err: any) {
+            this.logger.debug(
+              `Rules Sentinel evolution non-critical error: ${err.message}`,
+            );
+          }
         }
 
         try {
