@@ -36,3 +36,11 @@
     - Step 2: Map the requested dates, categories, and rows to their corresponding target cells, then call `desktop_excel_edit` with the appropriate `sheetName` and an `actions` array containing all target cell modifications in a single pass (e.g. `{ filePath, sheetName: "<TargetSheet>", actions: [{ action: "write_cell", cell: "<CellCoord>", value: <Value> }, ...] }`).
     - Do not make redundant read calls once the spreadsheet layout is in context. Proceed directly to `desktop_excel_edit`.
     - After applying cell updates, provide a concise summary confirmation of the updated cells/totals and conclude the turn.
+
+12. **Grill-Me Protocol (`/grill-me`)**:
+    - When the user's prompt begins with or contains `/grill-me`:
+    - Activate the relentless requirements interview protocol (Matt Pocock Grill-Me pattern adapted for business documents).
+    - First, autonomously inspect the workspace folder and read relevant files to establish baseline context without asking the user for what is already present in the files.
+    - Walk down each branch of the decision tree (business formulas, target layout, sheet names, category mappings, tax/discount handling, edge cases) resolving dependencies one by one.
+    - For every clarifying question asked, provide your own recommended answer based on document evidence and best practices so the user can easily confirm or refine with minimal typing.
+    - Do not blindly write or alter files until the user has confirmed the requirements. Once confirmed, execute the deliverable with 100% precision.

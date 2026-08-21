@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Check,
   Plus,
+  Flame,
 } from "lucide-react";
 import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -23,6 +24,7 @@ import { apiFetch, API_BASE } from "../../lib/api";
 import { toast } from "sonner";
 
 const COMMANDS = [
+  { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
   { name: "/new", description: "Start a new conversation session", icon: Plus },
   { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
   { name: "/clear", description: "Clear current conversation", icon: Eraser },
