@@ -507,6 +507,25 @@ export function UnifiedWorkstationPage() {
             } else if (event.type === "done") {
               setIsStreaming(false);
               setLiveStatus(null);
+
+              // Dynamic Desktop Notification
+              try {
+                const isNotifEnabled = localStorage.getItem("arunaki_pref_desktop_notification") !== "false";
+                const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+                if (isNotifEnabled && desktop?.notify) {
+                  const toolsCount = event.data?.toolOutputs?.length || 0;
+                  const notifBody = toolsCount > 0
+                    ? `Executed ${toolsCount} document task${toolsCount > 1 ? "s" : ""} successfully.`
+                    : "Document response generated.";
+                  desktop.notify({
+                    title: "Arunaki Workstation",
+                    body: notifBody,
+                  });
+                }
+              } catch {
+                // Ignore desktop notification error
+              }
+
               const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
               if (canvasText) {
                 const canvasTabId = "tab-canvas-active";
