@@ -102,6 +102,7 @@ export class ToolRegistryService {
       'desktop_open_ppt',
       'vision_ai',
       'knowledge_live_fetch',
+      'web_search',
     ]);
 
     const ctx = contextText.toLowerCase();

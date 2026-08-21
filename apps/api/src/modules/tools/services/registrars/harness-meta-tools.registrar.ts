@@ -87,8 +87,9 @@ export class HarnessMetaToolsRegistrar {
       ToolAdapter.from({
         name: 'web_search',
         displayName: 'Search Web',
-        description: 'Searches the web for up-to-date information.',
-        tags: ['search', 'web', 'internet'],
+        description:
+          'Searches the public web for real-time information, product catalogs, colors, specifications, prices, external facts, and documentation. Use this when the user asks about products, brands, or information not found in local workspace files.',
+        tags: ['search', 'web', 'internet', 'products', 'prices', 'colors', 'specs'],
         handler: (args) => services.webSearchTool.searchWeb(args.query),
         parameters: {
           type: 'object',
