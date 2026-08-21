@@ -1,6 +1,18 @@
-import { useState, useEffect } from "react";
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Pencil, Trash2, Sparkles } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Pencil,
+  Trash2,
+  Sparkles,
+  MoreVertical,
+  Copy,
+} from "lucide-react";
 import { TreeNode, getFileIcon, formatSize } from "./tree-utils";
+import { cn } from "../../lib/utils";
+import { toast } from "sonner";
 
 interface TreeNodeItemProps {
   node: TreeNode;
@@ -24,6 +36,8 @@ export function TreeNodeItem({
   activeAgentAction,
 }: TreeNodeItemProps) {
   const [open, setOpen] = useState(depth < 2);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Auto-collapse when user triggers Collapse All Quick Action
   useEffect(() => {
@@ -31,6 +45,18 @@ export function TreeNodeItem({
       setOpen(false);
     }
   }, [collapseSignal]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   const isAgentTarget = Boolean(
     activeAgentAction?.args?.filename &&
@@ -64,32 +90,72 @@ export function TreeNodeItem({
             </span>
           </div>
 
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {node.nativePath && onRenameClick && (
-              <button
-                type="button"
-                title="Rename Folder"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRenameClick(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors"
+          <div className="relative shrink-0" ref={menuRef}>
+            <button
+              type="button"
+              title="Folder Actions"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((prev) => !prev);
+              }}
+              className={cn(
+                "p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors",
+                menuOpen ? "opacity-100 text-[var(--text-primary)] bg-[var(--bg-hover)]" : "opacity-0 group-hover:opacity-100"
+              )}
+            >
+              <MoreVertical className="w-3.5 h-3.5" strokeWidth={1.5} />
+            </button>
+
+            {menuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 z-50 animate-in fade-in duration-100 text-xs space-y-0.5"
               >
-                <Pencil className="w-3 h-3" strokeWidth={1.5} />
-              </button>
-            )}
-            {node.nativePath && onDeletePath && (
-              <button
-                type="button"
-                title="Delete Folder"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeletePath(node.nativePath!, node.name);
-                }}
-                className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--text-muted)] cursor-pointer transition-colors"
-              >
-                <Trash2 className="w-3 h-3" strokeWidth={1.5} />
-              </button>
+                {node.nativePath && onRenameClick && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onRenameClick(node.nativePath!, node.name);
+                    }}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-3 h-3 text-[var(--text-muted)]" />
+                    <span>Rename Folder</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    const pathStr = node.nativePath || node.name;
+                    navigator.clipboard.writeText(pathStr);
+                    toast.success("Folder path copied to clipboard.");
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3 h-3 text-[var(--text-muted)]" />
+                  <span>Copy Path</span>
+                </button>
+
+                {node.nativePath && onDeletePath && (
+                  <>
+                    <div className="h-px bg-[var(--border-color)] my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDeletePath(node.nativePath!, node.name);
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                      <span>Delete Folder</span>
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -147,52 +213,91 @@ export function TreeNodeItem({
         )}
       </div>
 
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 relative" ref={menuRef}>
         <span className="text-[10px] text-[var(--text-dim)] font-mono group-hover:hidden pr-1">
           {node.size ? formatSize(node.size) : node.file ? formatSize(node.file.size) : ""}
         </span>
 
-        <div className="hidden group-hover:flex items-center gap-0.5">
-          {onAnalyzeFile && (
+        <button
+          type="button"
+          title="File Actions"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((prev) => !prev);
+          }}
+          className={cn(
+            "p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors",
+            menuOpen ? "opacity-100 text-[var(--text-primary)] bg-[var(--bg-hover)]" : "opacity-0 group-hover:opacity-100"
+          )}
+        >
+          <MoreVertical className="w-3.5 h-3.5" strokeWidth={1.5} />
+        </button>
+
+        {menuOpen && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 z-50 animate-in fade-in duration-100 text-xs space-y-0.5"
+          >
+            {node.nativePath && onRenameClick && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onRenameClick(node.nativePath!, node.name);
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3 text-[var(--text-muted)]" />
+                <span>Rename / Edit</span>
+              </button>
+            )}
+
+            {onAnalyzeFile && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAnalyzeFile(node.name, node.nativePath);
+                }}
+                className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3 text-purple-400" />
+                <span>Ask AI to Analyze</span>
+              </button>
+            )}
+
             <button
               type="button"
-              title="Ask AI to Analyze This File"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAnalyzeFile(node.name, node.nativePath);
+              onClick={() => {
+                setMenuOpen(false);
+                const pathStr = node.nativePath || node.name;
+                navigator.clipboard.writeText(pathStr);
+                toast.success("File path copied to clipboard.");
               }}
-              className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] transition-colors cursor-pointer"
+              className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3 h-3" strokeWidth={1.5} />
+              <Copy className="w-3 h-3 text-[var(--text-muted)]" />
+              <span>Copy Path</span>
             </button>
-          )}
-          {node.nativePath && onRenameClick && (
-            <button
-              type="button"
-              title="Rename File"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRenameClick(node.nativePath!, node.name);
-              }}
-              className="p-1 hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] rounded text-[var(--text-muted)] cursor-pointer transition-colors"
-            >
-              <Pencil className="w-3 h-3" strokeWidth={1.5} />
-            </button>
-          )}
-          {node.nativePath && onDeletePath && (
-            <button
-              type="button"
-              title="Delete File"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeletePath(node.nativePath!, node.name);
-              }}
-              className="p-1 hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--text-muted)] cursor-pointer transition-colors"
-            >
-              <Trash2 className="w-3 h-3" strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
+
+            {node.nativePath && onDeletePath && (
+              <>
+                <div className="h-px bg-[var(--border-color)] my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDeletePath(node.nativePath!, node.name);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                  <span>Delete File</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
