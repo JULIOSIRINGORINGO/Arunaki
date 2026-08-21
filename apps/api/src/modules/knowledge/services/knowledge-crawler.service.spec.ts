@@ -53,4 +53,17 @@ describe('KnowledgeCrawlerService & KnowledgeLiveFetchTool E2E', () => {
     expect(toolResult.data.extractedContent).toBeTruthy();
     expect(toolResult.preview).toContain('grill-me');
   }, 25000);
+
+  it('Test 5: Live Fetch on Cititex website (cititex.com/id)', async () => {
+    const result = await crawlerService.fetchLiveKnowledge({
+      url: 'https://cititex.com/id',
+      format: 'markdown',
+    });
+
+    expect(result).toBeDefined();
+    expect(result.extractedContent).toBeTruthy();
+    expect(result.extractedContent.length).toBeGreaterThan(100);
+    console.log('Cititex Title:', result.title);
+    console.log('Cititex Content Length:', result.extractedContent.length);
+  }, 30000);
 });
