@@ -121,7 +121,6 @@ export class SystemPromptBuilderService {
     // Chat mode
     const identity = this.loadPrompt('chat-identity.md');
     const rules = this.loadPrompt('chat-rules.md');
-    const knowledgeBuilder = this.loadPrompt('chat-knowledge-builder.md');
 
     const safeKnowledgeContext = knowledgeContext
       ? this.contextManager.limitInjection(knowledgeContext, 'knowledge-base')
@@ -131,12 +130,11 @@ export class SystemPromptBuilderService {
       hashStablePromptInput({
         identity,
         rules,
-        knowledgeBuilder,
         modelAdditions,
         reasoningDirective,
       }),
       () =>
-        `${identity}\n\n${rules}\n\n${knowledgeBuilder}\n\n${modelAdditions}${reasoningDirective}`,
+        `${identity}\n\n${rules}\n\n${modelAdditions}${reasoningDirective}`,
     );
 
     const volatileSuffix = `${this.buildToolListSection(toolList)}\n\n---\n${posturePrompt}\n\n## Knowledge Graph Map\n${safeKnowledgeContext}\n\n${this.buildTemporalContextSection()}`;
