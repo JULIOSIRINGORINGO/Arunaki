@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Check, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles, GripVertical } from "lucide-react";
+import { Plus, Check, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles, GripVertical, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface ProviderFormData {
@@ -120,6 +120,22 @@ export function ProviderForm({
     setDraggedIdx(null);
   };
 
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const typeDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
+        setIsTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedTypeObj = providerTypes.find((pt) => pt.value === form.type);
+  const selectedTypeLabel = selectedTypeObj ? selectedTypeObj.label : form.type;
+
   return (
     <form
       onSubmit={onSubmit}
@@ -144,19 +160,49 @@ export function ProviderForm({
       {!isEditing && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            {/* Custom Scrollable Provider Type Dropdown (Shows ~4-5 items with scrollbar and Other at the end) */}
+            <div className="relative" ref={typeDropdownRef}>
               <label className="block text-[11px] text-[var(--text-muted)] mb-1 font-medium">Provider Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => onTypeChange(e.target.value)}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+              <button
+                type="button"
+                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-strong)] transition-colors flex items-center justify-between cursor-pointer"
               >
-                {providerTypes.map((pt) => (
-                  <option key={pt.value} value={pt.value}>
-                    {pt.label}
-                  </option>
-                ))}
-              </select>
+                <span className="truncate">{selectedTypeLabel}</span>
+                <ChevronDown className={cn("w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-150 shrink-0 ml-1", isTypeDropdownOpen && "rotate-180")} />
+              </button>
+
+              {isTypeDropdownOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-full max-h-48 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
+                  {providerTypes.map((pt, ptIdx) => {
+                    const isSelected = form.type === pt.value;
+                    const isOther = pt.value === "openai-compatible";
+                    return (
+                      <React.Fragment key={pt.value}>
+                        {isOther && ptIdx > 0 && (
+                          <div className="my-1 border-t border-[var(--border-color)]" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onTypeChange(pt.value);
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                            isSelected
+                              ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold"
+                              : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                          )}
+                        >
+                          <span className="truncate">{pt.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[var(--text-primary)] shrink-0 ml-1" />}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div>
