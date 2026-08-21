@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   MessageSquare,
   BookOpen,
@@ -16,6 +16,10 @@ import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 import { useTheme } from "../../lib/theme";
 import { API_BASE, apiFetch } from "../../lib/api";
+import { UnifiedWorkstationPage } from "../../pages/UnifiedWorkstationPage";
+import { KnowledgePage } from "../../pages/KnowledgePage";
+import { HistoryPage } from "../../pages/HistoryPage";
+import { SettingsPage } from "../../pages/SettingsPage";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -288,9 +292,34 @@ export function AppLayout() {
         </div>
       </header>
 
-      {/* 2. MAIN CONTENT CONTAINER (3-PANEL LAYOUT) */}
+      {/* 2. MAIN CONTENT CONTAINER WITH ZERO-LATENCY KEEP-ALIVE */}
       <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
-        <Outlet />
+        {/* Workstation View: Kept alive in memory for instant 0ms switching & preserving tabs */}
+        <div
+          className={cn(
+            "w-full h-full flex flex-col flex-1",
+            !(location.pathname === "/" || location.pathname.startsWith("/workspace")) && "hidden"
+          )}
+        >
+          <UnifiedWorkstationPage />
+        </div>
+
+        {/* Sub-pages: Fast render with subtle micro-transition */}
+        {location.pathname === "/knowledge" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <KnowledgePage />
+          </div>
+        )}
+        {location.pathname === "/history" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <HistoryPage />
+          </div>
+        )}
+        {location.pathname === "/settings" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <SettingsPage />
+          </div>
+        )}
       </main>
 
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
