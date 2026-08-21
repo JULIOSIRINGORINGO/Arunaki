@@ -12,6 +12,7 @@ import { DraftCommunicationTool } from '../draft-communication.tool.js';
 import { UnitConverterTool } from '../unit-converter.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 import { PdfPagesTool } from '../pdf-pages.tool.js';
+import { PdfStampTool } from '../pdf-stamp.tool.js';
 import { DocCompareTool } from '../doc-compare.tool.js';
 import { DocRedactTool } from '../doc-redact.tool.js';
 
@@ -29,6 +30,7 @@ export class BusinessDomainToolsRegistrar {
       unitConverterTool: UnitConverterTool;
       workspaceToolsService: WorkspaceToolsService;
       pdfPagesTool: PdfPagesTool;
+      pdfStampTool: PdfStampTool;
       docCompareTool: DocCompareTool;
       docRedactTool: DocRedactTool;
     },
@@ -736,6 +738,109 @@ export class BusinessDomainToolsRegistrar {
           },
         },
         timeoutMs: 10000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'pdf_stamp_image',
+        displayName: 'Stamp Signature / Materai on PDF',
+        description:
+          'Stamps an image (signature, company stamp, e-Materai) onto a PDF page at specified coordinates or preset position (e.g. "bottom-right", "bottom-left", "center").',
+        tags: [
+          'pdf',
+          'stamp',
+          'signature',
+          'materai',
+          'image',
+          'document',
+        ],
+        mutating: true,
+        handler: async (args) => {
+          try {
+            const safePdf =
+              await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                args.pdfPath || args.filePath,
+              );
+            const safeImage =
+              await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                args.imagePath || args.stampPath,
+              );
+            const safeOutput =
+              await services.workspaceToolsService.resolveWithinWorkspace(
+                args.workspaceId,
+                args.outputPath || args.pdfPath || 'stamped.pdf',
+              );
+
+            return services.pdfStampTool.stampImage(
+              safePdf,
+              safeImage,
+              safeOutput,
+              {
+                page: args.page,
+                position: args.position,
+                x: args.x,
+                y: args.y,
+                width: args.width,
+                height: args.height,
+                opacity: args.opacity,
+              },
+            );
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `PDF stamp failed: ${err.message}`,
+              metadata: {
+                toolName: 'pdf_stamp_image',
+                displayName: 'Stamp PDF',
+                executionTime: 0,
+              },
+              error: { code: 'PDF_STAMP_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string' },
+            pdfPath: {
+              type: 'string',
+              description: 'Path to source PDF file in workspace',
+            },
+            imagePath: {
+              type: 'string',
+              description: 'Path to PNG/JPEG signature or stamp image in workspace',
+            },
+            outputPath: {
+              type: 'string',
+              description: 'Path to write stamped PDF output',
+            },
+            page: {
+              description: 'Page number (1-based) or "last" (default: last page)',
+            },
+            position: {
+              type: 'string',
+              enum: [
+                'bottom-right',
+                'bottom-left',
+                'top-right',
+                'top-left',
+                'center',
+              ],
+              description: 'Preset position on the page',
+            },
+            x: { type: 'number', description: 'Custom X position in points' },
+            y: { type: 'number', description: 'Custom Y position in points' },
+            width: { type: 'number', description: 'Stamp width in points (default: 120)' },
+            height: { type: 'number', description: 'Stamp height in points (default: 60)' },
+            opacity: { type: 'number', description: 'Opacity (0.0 to 1.0, default 1.0)' },
+          },
+          required: ['pdfPath', 'imagePath'],
+        },
+        timeoutMs: 25000,
       }),
     );
   }

@@ -5,6 +5,8 @@ import {
   DESKTOP_BRIDGE_PORT,
 } from './desktop-bridge.service.js';
 import { ExcelComService } from './excel-com.service.js';
+import { WordComService } from './word-com.service.js';
+import { PptComService } from './ppt-com.service.js';
 
 @Global()
 @Module({
@@ -12,8 +14,16 @@ import { ExcelComService } from './excel-com.service.js';
     BrowserInteractionService,
     DesktopBridgeService,
     ExcelComService,
+    WordComService,
+    PptComService,
     { provide: DESKTOP_BRIDGE_PORT, useValue: 31524 },
   ],
-  exports: [BrowserInteractionService, DesktopBridgeService, ExcelComService],
+  exports: [
+    BrowserInteractionService,
+    DesktopBridgeService,
+    ExcelComService,
+    WordComService,
+    PptComService,
+  ],
 })
 export class InteractionModule {}

@@ -201,6 +201,18 @@ export class ExcelComService {
               `        $results += @{ action='list_sheets'; success=$true; sheets=($sheetList -join ','); count=$wb.Worksheets.Count }`,
             ].join('\n');
           }
+          case 'export_pdf': {
+            const pdfOut = (act.range || filePath.replace(/\.xlsx?$/i, '.pdf')).replace(/'/g, "''");
+            // xlTypePDF = 0, xlQualityStandard = 0
+            return [
+              `        try {`,
+              `          $wb.ExportAsFixedFormat(0, '${pdfOut}')`,
+              `          $results += @{ action='export_pdf'; success=$true; pdfPath='${pdfOut}' }`,
+              `        } catch {`,
+              `          $results += @{ action='export_pdf'; success=$false; error=$_.Exception.Message }`,
+              `        }`,
+            ].join('\n');
+          }
           case 'save':
             return `        $wb.Save(); $results += @{ action='save'; success=$true }`;
           default:

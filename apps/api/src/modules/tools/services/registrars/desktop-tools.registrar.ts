@@ -5,6 +5,8 @@ import { ToolRegistryService } from '../../tool-registry.service.js';
 import { ToolAdapter } from '../tool-adapter.js';
 import { DesktopBridgeService } from '../../../interaction/desktop-bridge.service.js';
 import { ExcelComService } from '../../../interaction/excel-com.service.js';
+import { WordComService } from '../../../interaction/word-com.service.js';
+import { PptComService } from '../../../interaction/ppt-com.service.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 
 @Injectable()
@@ -14,6 +16,8 @@ export class DesktopToolsRegistrar {
     services: {
       desktopBridge: DesktopBridgeService;
       excelCom: ExcelComService;
+      wordCom: WordComService;
+      pptCom: PptComService;
       workspaceToolsService: WorkspaceToolsService;
     },
   ) {
@@ -625,6 +629,267 @@ export class DesktopToolsRegistrar {
           properties: {},
         },
         timeoutMs: 15000,
+      }),
+    );
+
+    // 10. desktop_word_edit (Headless Native COM)
+    registry.register(
+      ToolAdapter.from({
+        name: 'desktop_word_edit',
+        displayName: 'Edit Word Document via COM',
+        description:
+          'Performs precise document modifications on Word (.docx / .doc) files via Native COM automation. Supports: replace_text (find & replace template placeholders like {{NAMA}} -> "Budi"), append_paragraph, insert_table, export_pdf, and save. Preserves formatting, fonts, margins, and styles 100%.',
+        tags: [
+          'desktop',
+          'word',
+          'edit',
+          'com',
+          'docx',
+          'template',
+          'replace',
+          'pdf',
+        ],
+        mutating: true,
+        handler: async (args) => {
+          try {
+            let safePath: string | undefined;
+            if (args.filePath || args.path || args.filename) {
+              safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.filePath || args.path || args.filename,
+                );
+            }
+            if (!safePath) {
+              throw new Error('filePath is required to edit Word document.');
+            }
+            if (!services.wordCom.isAvailable) {
+              throw new Error(
+                'Word COM automation is only available on Windows OS.',
+              );
+            }
+
+            let actions: any[] = [];
+            if (Array.isArray(args.actions) && args.actions.length > 0) {
+              actions = args.actions;
+            } else if (
+              args.action ||
+              args.findText ||
+              args.replaceText ||
+              args.text
+            ) {
+              actions = [
+                {
+                  action: args.action || (args.findText ? 'replace_text' : 'append_paragraph'),
+                  findText: args.findText,
+                  replaceText: args.replaceText,
+                  text: args.text,
+                  style: args.style,
+                  bold: args.bold,
+                  italic: args.italic,
+                  fontSize: args.fontSize,
+                  color: args.color,
+                  alignment: args.alignment,
+                  tableRows: args.tableRows,
+                  headers: args.headers,
+                  exportPdfPath: args.exportPdfPath,
+                },
+              ];
+            }
+
+            const res = await services.wordCom.editWord(safePath, actions);
+            return {
+              status: 'success',
+              data: res,
+              preview: `Executed ${actions.length} Word COM action(s) on ${path.basename(safePath)}`,
+              metadata: {
+                toolName: 'desktop_word_edit',
+                displayName: 'Edit Word via COM',
+                executionTime: 0,
+              },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error',
+              data: {},
+              preview: `Word edit failed: ${err.message}`,
+              metadata: {
+                toolName: 'desktop_word_edit',
+                displayName: 'Edit Word via COM',
+                executionTime: 0,
+              },
+              error: { code: 'DESKTOP_WORD_EDIT_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string' },
+            filePath: {
+              type: 'string',
+              description: 'Path to .docx / .doc file within workspace',
+            },
+            actions: {
+              type: 'array',
+              description:
+                'Array of actions: [{ action: "replace_text", findText: "{{NAMA}}", replaceText: "Budi" }, { action: "export_pdf" }]',
+            },
+            action: {
+              type: 'string',
+              enum: [
+                'replace_text',
+                'fill_template',
+                'append_paragraph',
+                'append_text',
+                'insert_table',
+                'export_pdf',
+                'save',
+              ],
+              description: 'Single action type',
+            },
+            findText: {
+              type: 'string',
+              description: 'Text or placeholder to find (e.g. "{{NAMA_KLIEN}}")',
+            },
+            replaceText: {
+              type: 'string',
+              description: 'Replacement text (e.g. "PT Surya Mandiri")',
+            },
+            text: {
+              type: 'string',
+              description: 'Text content to append as a new paragraph',
+            },
+            style: {
+              type: 'string',
+              description: 'Word style (e.g. "Heading 1", "Heading 2", "Normal")',
+            },
+            bold: { type: 'boolean' },
+            italic: { type: 'boolean' },
+            fontSize: { type: 'number' },
+            exportPdfPath: {
+              type: 'string',
+              description: 'Target PDF output path when using export_pdf',
+            },
+          },
+          required: ['filePath'],
+        },
+        timeoutMs: 45000,
+      }),
+    );
+
+    // 11. desktop_ppt_edit (Headless Native COM)
+    registry.register(
+      ToolAdapter.from({
+        name: 'desktop_ppt_edit',
+        displayName: 'Edit PowerPoint Presentation via COM',
+        description:
+          'Performs precise presentation modifications on PowerPoint (.pptx / .ppt) files via Native COM automation. Supports: replace_text (across all slides/shapes), add_slide (with title & bullets), export_pdf, and save.',
+        tags: [
+          'desktop',
+          'ppt',
+          'powerpoint',
+          'edit',
+          'com',
+          'pptx',
+          'slides',
+          'export',
+          'pdf',
+        ],
+        mutating: true,
+        handler: async (args) => {
+          try {
+            let safePath: string | undefined;
+            if (args.filePath || args.path || args.filename) {
+              safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.filePath || args.path || args.filename,
+                );
+            }
+            if (!safePath) {
+              throw new Error('filePath is required to edit PowerPoint.');
+            }
+            if (!services.pptCom.isAvailable) {
+              throw new Error(
+                'PowerPoint COM automation is only available on Windows OS.',
+              );
+            }
+
+            let actions: any[] = [];
+            if (Array.isArray(args.actions) && args.actions.length > 0) {
+              actions = args.actions;
+            } else if (args.action || args.findText || args.title) {
+              actions = [
+                {
+                  action: args.action || (args.findText ? 'replace_text' : 'add_slide'),
+                  findText: args.findText,
+                  replaceText: args.replaceText,
+                  title: args.title,
+                  content: args.content,
+                  exportPdfPath: args.exportPdfPath,
+                },
+              ];
+            }
+
+            const res = await services.pptCom.editPpt(safePath, actions);
+            return {
+              status: 'success',
+              data: res,
+              preview: `Executed ${actions.length} PowerPoint COM action(s) on ${path.basename(safePath)}`,
+              metadata: {
+                toolName: 'desktop_ppt_edit',
+                displayName: 'Edit PowerPoint via COM',
+                executionTime: 0,
+              },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error',
+              data: {},
+              preview: `PowerPoint edit failed: ${err.message}`,
+              metadata: {
+                toolName: 'desktop_ppt_edit',
+                displayName: 'Edit PowerPoint via COM',
+                executionTime: 0,
+              },
+              error: { code: 'DESKTOP_PPT_EDIT_ERROR', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            workspaceId: { type: 'string' },
+            filePath: {
+              type: 'string',
+              description: 'Path to .pptx / .ppt file within workspace',
+            },
+            actions: {
+              type: 'array',
+              description:
+                'Array of actions: [{ action: "replace_text", findText: "2025", replaceText: "2026" }, { action: "add_slide", title: "Ringkasan", content: ["Poin 1", "Poin 2"] }]',
+            },
+            action: {
+              type: 'string',
+              enum: ['replace_text', 'add_slide', 'export_pdf', 'save'],
+              description: 'Single action type',
+            },
+            findText: { type: 'string', description: 'Text to find' },
+            replaceText: { type: 'string', description: 'Replacement text' },
+            title: { type: 'string', description: 'Slide title for add_slide' },
+            content: {
+              type: 'array',
+              description: 'Array of bullet point strings for add_slide',
+            },
+            exportPdfPath: {
+              type: 'string',
+              description: 'Target PDF output path when using export_pdf',
+            },
+          },
+          required: ['filePath'],
+        },
+        timeoutMs: 45000,
       }),
     );
   }

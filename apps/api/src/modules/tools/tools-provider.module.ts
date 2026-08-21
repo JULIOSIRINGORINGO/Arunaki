@@ -47,6 +47,7 @@ import { MultiDocOrchestratorService } from './services/multi-doc-orchestrator.s
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
 import { PdfPagesTool } from './services/pdf-pages.tool.js';
+import { PdfStampTool } from './services/pdf-stamp.tool.js';
 import { DocCompareTool } from './services/doc-compare.tool.js';
 import { DocRedactTool } from './services/doc-redact.tool.js';
 import { AiModule } from '../ai/ai.module.js';
@@ -57,6 +58,8 @@ import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-to
 import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.registrar.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { ExcelComService } from '../interaction/excel-com.service.js';
+import { WordComService } from '../interaction/word-com.service.js';
+import { PptComService } from '../interaction/ppt-com.service.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
 
 import { PrismaModule } from '../../common/providers/prisma.module.js';
@@ -115,6 +118,7 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
     MultiDocOrchestratorService,
     ToolResultCacheService,
     PdfPagesTool,
+    PdfStampTool,
     DocCompareTool,
     DocRedactTool,
     WorkspaceFileToolsRegistrar,
@@ -157,6 +161,7 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
     PtcExecutorService,
     MultiDocOrchestratorService,
     PdfPagesTool,
+    PdfStampTool,
     DocCompareTool,
     DocRedactTool,
   ],
@@ -231,6 +236,7 @@ export class ToolsProviderModule implements OnModuleInit {
         strict: false,
       }),
       pdfPagesTool: this.moduleRef.get(PdfPagesTool, { strict: false }),
+      pdfStampTool: this.moduleRef.get(PdfStampTool, { strict: false }),
       docCompareTool: this.moduleRef.get(DocCompareTool, { strict: false }),
       docRedactTool: this.moduleRef.get(DocRedactTool, { strict: false }),
     });
@@ -257,12 +263,14 @@ export class ToolsProviderModule implements OnModuleInit {
       }),
     });
 
-    // 4. Register Desktop COM Automation Tools
+    // 4. Register Desktop COM Automation Tools (Office Suite)
     this.desktopToolsRegistrar.register(this.registry, {
       desktopBridge: this.moduleRef.get(DesktopBridgeService, {
         strict: false,
       }),
       excelCom: this.moduleRef.get(ExcelComService, { strict: false }),
+      wordCom: this.moduleRef.get(WordComService, { strict: false }),
+      pptCom: this.moduleRef.get(PptComService, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
         strict: false,
       }),

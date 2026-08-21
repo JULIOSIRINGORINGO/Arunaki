@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import mammoth from 'mammoth';
@@ -7,6 +7,9 @@ import { ToolResult } from '../interfaces/tool-result.interface.js';
 import { PdfReportBuilder } from './generators/pdf-report-builder.js';
 import { DocxReportBuilder } from './generators/docx-report-builder.js';
 import { ExcelReportBuilder } from './generators/excel-report-builder.js';
+import { WordComService } from '../../interaction/word-com.service.js';
+import { ExcelComService } from '../../interaction/excel-com.service.js';
+import { PptComService } from '../../interaction/ppt-com.service.js';
 
 @Injectable()
 export class DocumentConverterTool {
@@ -14,6 +17,12 @@ export class DocumentConverterTool {
   private readonly pdfBuilder = new PdfReportBuilder();
   private readonly docxBuilder = new DocxReportBuilder();
   private readonly excelBuilder = new ExcelReportBuilder();
+
+  constructor(
+    @Optional() @Inject(WordComService) private readonly wordCom?: WordComService,
+    @Optional() @Inject(ExcelComService) private readonly excelCom?: ExcelComService,
+    @Optional() @Inject(PptComService) private readonly pptCom?: PptComService,
+  ) {}
 
   async convertDocument(options: {
     sourcePath: string;
@@ -47,8 +56,38 @@ export class DocumentConverterTool {
       path.join(path.dirname(sourcePath), `${sourceBase}.${targetFormat}`);
 
     try {
-      // 1. DOCX -> PDF (High-Fidelity HTML + Chromium / Electron Native Engine)
+      // 1. DOCX -> PDF (Prioritize Native Word COM for 100% font/layout fidelity)
       if (sourceExt === 'docx' && targetFormat === 'pdf') {
+        if (this.wordCom?.isAvailable) {
+          try {
+            await this.wordCom.editWord(sourcePath, [
+              { action: 'export_pdf', exportPdfPath: targetPath },
+            ]);
+            if (fs.existsSync(targetPath)) {
+              return {
+                status: 'success',
+                data: {
+                  sourcePath,
+                  targetPath,
+                  sourceFormat: sourceExt,
+                  targetFormat,
+                  engine: 'Microsoft Word Native COM Engine',
+                  size: fs.statSync(targetPath).size,
+                },
+                preview: `Successfully converted ${path.basename(sourcePath)} to PDF via Native Microsoft Word Engine (${path.basename(targetPath)})`,
+                metadata: {
+                  toolName: 'convert_document',
+                  displayName: 'Convert Document',
+                  executionTime: Date.now() - startTime,
+                  filename: path.basename(targetPath),
+                },
+              };
+            }
+          } catch (comErr: any) {
+            this.logger.warn(`Native Word COM export failed (${comErr.message}), falling back to HTML/Chromium`);
+          }
+        }
+
         const htmlResult = await mammoth.convertToHtml({ path: sourcePath });
         const rawHtml = htmlResult.value || '';
         const title = sourceBase.replace(/[-_]/g, ' ');
@@ -234,11 +273,41 @@ export class DocumentConverterTool {
         };
       }
 
-      // 5. XLSX -> PDF
+      // 5. XLSX -> PDF (Prioritize Native Excel COM)
       if (
         (sourceExt === 'xlsx' || sourceExt === 'xls') &&
         targetFormat === 'pdf'
       ) {
+        if (this.excelCom?.isAvailable) {
+          try {
+            await this.excelCom.editExcel(sourcePath, [
+              { action: 'export_pdf', range: targetPath },
+            ]);
+            if (fs.existsSync(targetPath)) {
+              return {
+                status: 'success',
+                data: {
+                  sourcePath,
+                  targetPath,
+                  sourceFormat: sourceExt,
+                  targetFormat,
+                  engine: 'Microsoft Excel Native COM Engine',
+                  size: fs.statSync(targetPath).size,
+                },
+                preview: `Successfully converted ${path.basename(sourcePath)} to PDF via Native Microsoft Excel Engine (${path.basename(targetPath)})`,
+                metadata: {
+                  toolName: 'convert_document',
+                  displayName: 'Convert Document',
+                  executionTime: Date.now() - startTime,
+                  filename: path.basename(targetPath),
+                },
+              };
+            }
+          } catch (comErr: any) {
+            this.logger.warn(`Native Excel COM export failed (${comErr.message}), falling back to table renderer`);
+          }
+        }
+
         const wb = XLSX.readFile(sourcePath);
         const firstSheet = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(firstSheet, {
@@ -271,7 +340,43 @@ export class DocumentConverterTool {
         };
       }
 
-      // 6. Fallback / Unsupported pair
+      // 6. PPTX -> PDF (Prioritize Native PowerPoint COM)
+      if (
+        (sourceExt === 'pptx' || sourceExt === 'ppt') &&
+        targetFormat === 'pdf'
+      ) {
+        if (this.pptCom?.isAvailable) {
+          try {
+            await this.pptCom.editPpt(sourcePath, [
+              { action: 'export_pdf', exportPdfPath: targetPath },
+            ]);
+            if (fs.existsSync(targetPath)) {
+              return {
+                status: 'success',
+                data: {
+                  sourcePath,
+                  targetPath,
+                  sourceFormat: sourceExt,
+                  targetFormat,
+                  engine: 'Microsoft PowerPoint Native COM Engine',
+                  size: fs.statSync(targetPath).size,
+                },
+                preview: `Successfully converted ${path.basename(sourcePath)} to PDF via Native Microsoft PowerPoint Engine (${path.basename(targetPath)})`,
+                metadata: {
+                  toolName: 'convert_document',
+                  displayName: 'Convert Document',
+                  executionTime: Date.now() - startTime,
+                  filename: path.basename(targetPath),
+                },
+              };
+            }
+          } catch (comErr: any) {
+            this.logger.warn(`Native PPT COM export failed (${comErr.message})`);
+          }
+        }
+      }
+
+      // 7. Fallback / Unsupported pair
       return {
         status: 'error',
         data: {},
