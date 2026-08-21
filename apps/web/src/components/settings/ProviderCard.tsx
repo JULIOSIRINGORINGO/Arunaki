@@ -1,4 +1,5 @@
-import { Loader2, Wifi, Trash2, Check, ArrowUp, ArrowDown, Settings2 } from "lucide-react";
+import { useState } from "react";
+import { Loader2, Wifi, Trash2, Check, ArrowUp, ArrowDown, Settings2, Info, X, Terminal } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Provider } from "./ModelProviderSettings";
 
@@ -6,7 +7,7 @@ interface ProviderCardProps {
   provider: Provider;
   index: number;
   totalProviders: number;
-  testResult?: { success: boolean; status?: number; error?: string; reply?: string; timeMs?: number };
+  testResult?: { success: boolean; status?: number; error?: string; reply?: string; model?: string; timeMs?: number };
   isTesting: boolean;
   onToggleActive: (p: Provider) => void;
   onMovePriority?: (index: number, direction: "up" | "down") => void;
@@ -27,6 +28,8 @@ export function ProviderCard({
   onEdit,
   onDelete,
 }: ProviderCardProps) {
+  const [showTestDetails, setShowTestDetails] = useState(false);
+
   const getSelectedModels = (modelStr: string): string[] => {
     if (!modelStr) return [];
     return modelStr.split(",").map((s) => s.trim()).filter(Boolean);
@@ -93,19 +96,23 @@ export function ProviderCard({
                 {p.type}
               </span>
 
-              {/* Inline Test Result */}
+              {/* Clickable Inline Test Result Badge */}
               {result && (
-                <span
+                <button
+                  type="button"
+                  onClick={() => setShowTestDetails(!showTestDetails)}
+                  title="Click to view ping payload & LLM response details"
                   className={cn(
-                    "text-[10px] font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 font-mono",
+                    "text-[10px] font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 font-mono cursor-pointer transition-all hover:scale-105",
                     result.success
                       ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)]"
                       : "bg-red-500/10 text-red-400 border-red-500/20"
                   )}
                 >
                   <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-500" : "bg-red-400")} />
-                  {result.success ? `Connected (${result.timeMs}ms)` : `Failed: ${result.error || result.status}`}
-                </span>
+                  <span>{result.success ? `Connected (${result.timeMs}ms)` : `Failed: ${result.error || result.status}`}</span>
+                  <Info className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+                </button>
               )}
             </div>
 
@@ -119,13 +126,6 @@ export function ProviderCard({
                 </span>
               )}
             </div>
-
-            {/* Test Reply Preview if Available */}
-            {result?.reply && (
-              <p className="text-[11px] text-[var(--text-muted)] font-mono mt-1.5 truncate max-w-xl">
-                💬 Response: "{result.reply}"
-              </p>
-            )}
           </div>
         </div>
 
@@ -135,7 +135,7 @@ export function ProviderCard({
             onClick={() => onTestConnection(p.id)}
             disabled={isTesting}
             className="px-3 py-1.5 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 font-medium shadow-xs"
-            title="Test ping connection to provider endpoint"
+            title="Send live ping request to provider endpoint"
           >
             {isTesting ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-primary)]" />
@@ -162,6 +162,46 @@ export function ProviderCard({
           </button>
         </div>
       </div>
+
+      {/* EXPANDABLE TEST RESULT INSPECTION CARD */}
+      {result && showTestDetails && (
+        <div className="p-3.5 rounded-xl bg-[var(--bg-app)] border border-[var(--border-strong)] text-xs font-mono space-y-2 animate-in fade-in zoom-in-95 duration-100">
+          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
+            <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              Live Ping Inspection Details
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowTestDetails(false)}
+              className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-[var(--text-muted)] block">Prompt Sent:</span>
+              <p className="p-1.5 bg-[var(--bg-card)] rounded border border-[var(--border-color)] text-[var(--text-primary)] mt-0.5">
+                "Reply with exactly: ok"
+              </p>
+            </div>
+            <div>
+              <span className="text-[var(--text-muted)] block">LLM Reply Received:</span>
+              <p className="p-1.5 bg-[var(--bg-card)] rounded border border-[var(--border-color)] text-[var(--text-primary)] font-semibold mt-0.5">
+                {result.reply ? `"${result.reply}"` : result.error || "No text content"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)] pt-1">
+            <span>Latency: <strong className="text-[var(--text-primary)]">{result.timeMs}ms</strong></span>
+            <span>Status: <strong className="text-[var(--text-primary)]">HTTP {result.status || (result.success ? 200 : 500)}</strong></span>
+            <span>Endpoint: <strong className="text-[var(--text-primary)] truncate">{p.baseUrl}</strong></span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
