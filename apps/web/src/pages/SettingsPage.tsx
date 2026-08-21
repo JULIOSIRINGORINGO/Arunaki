@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import { Brain, User, Puzzle, Monitor, FileSpreadsheet, LogIn, LogOut, ShieldCheck, Mail, Sparkles, Camera, Bell } from "lucide-react";
+import { Cpu, User, Sliders, Monitor, FileSpreadsheet, LogIn, LogOut, ShieldCheck, Mail, Camera, Bell, Check, Key } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch } from "../lib/api";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
 
 const tabs = [
-  { id: "ai", label: "AI Models", icon: Brain },
+  { id: "models", label: "Model Routing & Providers", icon: Cpu },
   { id: "account", label: "Account & License", icon: User },
-  { id: "integrations", label: "Desktop Automation", icon: Puzzle },
+  { id: "integrations", label: "Desktop Automation & Behavior", icon: Sliders },
 ];
 
 export function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("ai");
+  const [activeTab, setActiveTab] = useState("models");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,10 +69,19 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-y-auto select-none p-6 transition-colors duration-150">
-      <div className="max-w-4xl w-full mx-auto flex-1 flex flex-col min-h-0">
-        <h1 className="text-xl font-bold text-[var(--text-primary)] mb-4">System & AI Settings</h1>
+    <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-y-auto select-none p-6 transition-colors duration-150">
+      <div className="w-full flex-1 flex flex-col min-h-0">
+        {/* Header Title */}
+        <div className="mb-4">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
+            Workstation & System Settings
+          </h1>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Konfigurasi model language harness, akun pengguna, lisensi, dan perilaku otomasi desktop.
+          </p>
+        </div>
 
+        {/* Tab Navigation Pill Bar (Monochrome) */}
         <div className="flex items-center gap-2 border-b border-[var(--border-color)] pb-3 mb-6 overflow-x-auto shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -82,21 +91,23 @@ export function SettingsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer shrink-0 border",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 border",
                   isActive
-                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)]"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-xs"
                     : "bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border-transparent"
                 )}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex-1 bg-[var(--bg-panel)] rounded-xl border border-[var(--border-color)] p-6 overflow-y-auto min-h-0 transition-colors duration-150">
-          {activeTab === "ai" && (
+        {/* Main Settings Panel Content (Full Width) */}
+        <div className="flex-1 w-full bg-[var(--bg-panel)] rounded-2xl border border-[var(--border-color)] p-6 overflow-y-auto min-h-0 transition-colors duration-150">
+          {/* TAB 1: MODEL ROUTING & PROVIDERS */}
+          {activeTab === "models" && (
             <ModelProviderSettings
               providers={providers}
               loading={loading}
@@ -104,32 +115,33 @@ export function SettingsPage() {
             />
           )}
 
+          {/* TAB 2: ACCOUNT & LICENSE */}
           {activeTab === "account" && (
-            <div className="space-y-6 max-w-xl">
+            <div className="w-full space-y-6">
               <div>
-                <h3 className="font-bold text-[var(--text-primary)] text-base mb-1">
+                <h3 className="font-bold text-[var(--text-primary)] text-base">
                   User Account & License
                 </h3>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Manage your personal profile, photo, license tier, and multi-device cloud synchronization.
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  Kelola profil kerja, sinkronisasi cloud terenkripsi, dan lisensi workstation multi-perangkat.
                 </p>
               </div>
 
               {isLoggedIn ? (
-                <div className="space-y-5">
-                  {/* Profile Edit Card */}
-                  <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-5">
+                <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left 2 Cols: Profile Card */}
+                  <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-6">
                     <div className="flex items-center gap-4">
-                      {/* Avatar with Camera Overlay */}
-                      <div className="relative group cursor-pointer">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-500 font-bold text-2xl overflow-hidden shadow-sm">
+                      {/* Avatar with Camera Overlay (Monochrome) */}
+                      <div className="relative group cursor-pointer shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-[var(--bg-hover)] border border-[var(--border-strong)] flex items-center justify-center text-[var(--text-primary)] font-bold text-2xl overflow-hidden shadow-xs">
                           {userAvatar ? (
                             <img src={userAvatar} alt="Profile" className="w-full h-full object-cover" />
                           ) : (
                             <span>{userName ? userName[0].toUpperCase() : userEmail ? userEmail[0].toUpperCase() : "U"}</span>
                           )}
                         </div>
-                        <label className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <label className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                           <Camera className="w-5 h-5" />
                           <input
                             type="file"
@@ -157,150 +169,137 @@ export function SettingsPage() {
                           <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
                             {userName || userEmail.split("@")[0] || "User"}
                           </h4>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20 flex items-center gap-1 shrink-0">
-                            <Sparkles className="w-2.5 h-2.5" /> Pro License
+                          <span className="px-2.5 py-0.5 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)] flex items-center gap-1 shrink-0">
+                            <Check className="w-2.5 h-2.5 text-[var(--text-muted)]" /> Pro License
                           </span>
                         </div>
                         <p className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5 truncate">
-                          <Mail className="w-3 h-3 text-[var(--text-dim)] shrink-0" />
+                          <Mail className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
                           <span className="truncate">{userEmail}</span>
                         </p>
                       </div>
                     </div>
 
-                    {/* Profile Fields */}
-                    <div className="space-y-3 pt-3 border-t border-[var(--border-color)]">
-                      <div>
-                        <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
-                          Nama Lengkap / Nama Bisnis
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={userName}
-                            onChange={(e) => setUserName(e.target.value)}
-                            placeholder="Contoh: Budi Santoso / Toko Roti Harum"
-                            className="flex-1 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              localStorage.setItem("arunaki_user_name", userName);
-                              toast.success("Nama profil berhasil disimpan!");
-                            }}
-                            className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                          >
-                            Simpan
-                          </button>
+                    {/* Profile Form Field */}
+                    <div className="pt-4 border-t border-[var(--border-color)]">
+                      <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1.5">
+                        Nama Lengkap / Identitas Bisnis
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={userName}
+                          onChange={(e) => setUserName(e.target.value)}
+                          placeholder="Contoh: Budi Santoso / Toko Roti Harum"
+                          className="flex-1 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            localStorage.setItem("arunaki_user_name", userName);
+                            toast.success("Nama profil berhasil disimpan!");
+                          }}
+                          className="px-5 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                        >
+                          Simpan
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="px-4 py-2 bg-[var(--bg-hover)] hover:bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-xl text-xs font-medium border border-[var(--border-color)] transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Keluar dari Akun (Sign Out)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right 1 Col: License & Device Status (Monochrome) */}
+                  <div className="space-y-4">
+                    <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-4">
+                      <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider text-[var(--text-muted)]">
+                        Detail Lisensi
+                      </h4>
+                      <div className="space-y-3 text-xs">
+                        <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
+                          <p className="text-[11px] text-[var(--text-muted)]">Status Verifikasi</p>
+                          <p className="font-semibold text-[var(--text-primary)] mt-0.5 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" /> Active & Verified
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
+                          <p className="text-[11px] text-[var(--text-muted)]">Perangkat Terhubung</p>
+                          <p className="font-semibold text-[var(--text-primary)] mt-0.5">
+                            Windows Desktop Workstation
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Meta details */}
-                    <div className="pt-2 grid grid-cols-2 gap-3 text-xs">
-                      <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
-                        <p className="text-[11px] text-[var(--text-muted)]">Status Lisensi</p>
-                        <p className="font-semibold text-[var(--text-primary)] mt-0.5 flex items-center gap-1 text-emerald-500">
-                          <ShieldCheck className="w-3.5 h-3.5" /> Active & Verified
-                        </p>
+                    <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-semibold text-[var(--text-primary)]">Cloud Workspace Sync</h4>
+                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Enkripsi AES-256 lokal</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
-                        <p className="text-[11px] text-[var(--text-muted)]">Perangkat Aktif</p>
-                        <p className="font-semibold text-[var(--text-primary)] mt-0.5">
-                          Windows Desktop App
-                        </p>
-                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)]">
+                        Active
+                      </span>
                     </div>
-                  </div>
-
-                  {/* Cloud Sync Status */}
-                  <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-semibold text-[var(--text-primary)]">Knowledge & Workspace Cloud Backup</h4>
-                      <p className="text-[11px] text-[var(--text-muted)]">Tersinkronisasi otomatis dengan penyimpanan terenkripsi</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20">
-                      Active
-                    </span>
-                  </div>
-
-                  {/* Logout Button */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="px-4 py-2 bg-[var(--bg-hover)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 rounded-xl text-xs font-medium border border-[var(--border-color)] hover:border-rose-500/20 transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Keluar dari Akun (Sign Out)</span>
-                    </button>
                   </div>
                 </div>
               ) : (
-                <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-5">
+                /* Full Width Clean Login Form (Monochrome, No Emojis) */
+                <div className="w-full p-8 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-color)] text-[var(--text-primary)]">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] text-[var(--text-primary)] shrink-0">
                       <LogIn className="w-5 h-5 text-[var(--text-muted)]" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-[var(--text-primary)]">
+                      <h4 className="text-sm font-bold text-[var(--text-primary)]">
                         {isRegisterMode ? "Buat Akun Arunaki Baru" : "Masuk ke Akun Arunaki"}
                       </h4>
-                      <p className="text-[11px] text-[var(--text-muted)]">
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
                         {isRegisterMode
-                          ? "Daftar untuk mengaktifkan cloud backup & lisensi multi-perangkat."
-                          : "Hubungkan akun untuk sinkronisasi workspace & lisensi pro."}
+                          ? "Daftar untuk mengaktifkan sinkronisasi workspace dan lisensi pro."
+                          : "Hubungkan akun Anda untuk sinkronisasi workspace dan konfigurasi multi-perangkat."}
                       </p>
                     </div>
                   </div>
 
-                  {/* Social Login Buttons (OAuth Google & GitHub UI) */}
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Clean Monochrome Social Buttons */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
                     <button
                       type="button"
-                      onClick={() => toast.info("Login via Google akan segera hadir!")}
-                      className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
+                      onClick={() => toast.info("Login via Google akan segera hadir pada update berikutnya.")}
+                      className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
                     >
-                      <svg className="w-4 h-4" viewBox="0 0 24 24">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                      <span>Google</span>
+                      <Key className="w-4 h-4 text-[var(--text-muted)]" />
+                      <span>Masuk dengan Google</span>
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => toast.info("Login via GitHub akan segera hadir!")}
-                      className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
+                      onClick={() => toast.info("Login via GitHub akan segera hadir pada update berikutnya.")}
+                      className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
                     >
                       <svg className="w-4 h-4 fill-current text-[var(--text-primary)]" viewBox="0 0 24 24">
                         <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
                       </svg>
-                      <span>GitHub</span>
+                      <span>Masuk dengan GitHub</span>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 max-w-2xl">
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--text-dim)]">atau email</span>
+                    <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">atau dengan email</span>
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
                   </div>
 
-                  <form onSubmit={handleLogin} className="space-y-3.5">
+                  <form onSubmit={handleLogin} className="space-y-4 max-w-2xl">
                     <div>
                       <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
                         Alamat Email
@@ -311,7 +310,7 @@ export function SettingsPage() {
                         placeholder="nama@perusahaan.com"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
                       />
                     </div>
 
@@ -325,14 +324,14 @@ export function SettingsPage() {
                         placeholder="••••••••"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                        className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
                       />
                     </div>
 
                     <div className="pt-2 flex items-center justify-between">
                       <button
                         type="submit"
-                        className="px-5 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2"
+                        className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shadow-xs"
                       >
                         <LogIn className="w-3.5 h-3.5" />
                         <span>{isRegisterMode ? "Daftar & Masuk" : "Masuk"}</span>
@@ -348,34 +347,37 @@ export function SettingsPage() {
                     </div>
                   </form>
 
-                  <div className="pt-3 border-t border-[var(--border-color)]">
-                    <p className="text-[11px] text-[var(--text-dim)] leading-relaxed">
-                      💡 <strong>Jaminan Privasi & Offline:</strong> Anda tetap dapat menggunakan Arunaki secara offline penuh di mode lokal tanpa harus login.
-                    </p>
+                  {/* Clean Privacy Notice (No Emoji) */}
+                  <div className="pt-4 border-t border-[var(--border-color)] flex items-start gap-2.5 text-[11px] text-[var(--text-muted)] leading-relaxed">
+                    <ShieldCheck className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+                    <span>
+                      <strong className="text-[var(--text-primary)]">Jaminan Privasi & Operasi Offline:</strong> Anda tetap dapat menggunakan Arunaki secara offline penuh pada mode lokal tanpa harus login atau membuat akun.
+                    </span>
                   </div>
                 </div>
               )}
             </div>
           )}
 
+          {/* TAB 3: DESKTOP AUTOMATION & BEHAVIOR (Monochrome & Full Width) */}
           {activeTab === "integrations" && (
-            <div className="space-y-6 max-w-xl">
+            <div className="w-full space-y-6">
               <div>
-                <h3 className="font-bold text-[var(--text-primary)] text-base mb-1">
+                <h3 className="font-bold text-[var(--text-primary)] text-base">
                   Desktop Automation & OS Behavior
                 </h3>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
                   Konfigurasi perilaku otomasi desktop, interaksi jendela Excel, dan notifikasi Windows.
                 </p>
               </div>
 
-              {/* 3 Interactive Setting Cards */}
-              <div className="space-y-3">
+              {/* 3 Interactive Setting Cards (Monochrome) */}
+              <div className="w-full space-y-4">
                 {/* 1. Auto Open Excel Saat Mulai Mengedit */}
-                <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
-                  <div className="flex gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                      <FileSpreadsheet className="w-5 h-5" />
+                <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
+                  <div className="flex gap-3.5">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">
+                      <FileSpreadsheet className="w-4 h-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-[var(--text-primary)]">
@@ -395,31 +397,31 @@ export function SettingsPage() {
                       toast.success(next ? "Otomatis buka Excel diaktifkan." : "Otomatis buka Excel dinonaktifkan (mode background).");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                      autoOpenExcel ? "bg-emerald-500" : "bg-[var(--border-strong)]"
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      autoOpenExcel ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                        autoOpenExcel ? "translate-x-5" : "translate-x-0"
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        autoOpenExcel ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
                   </button>
                 </div>
 
                 {/* 2. Auto-Backup Dokumen Sebelum Dimodifikasi */}
-                <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
-                  <div className="flex gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 border border-blue-500/20">
-                      <ShieldCheck className="w-5 h-5" />
+                <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
+                  <div className="flex gap-3.5">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">
+                      <ShieldCheck className="w-4 h-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-[var(--text-primary)]">
                         Auto-Backup Dokumen Sebelum Dimodifikasi
                       </h4>
                       <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
-                        Secara otomatis membuat salinan cadangan (<code className="px-1 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px]">.bak</code>) di folder <code className="px-1 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px]">.arunaki/backups/</code> sebelum AI menyentuh file untuk keamanan data 100%.
+                        Secara otomatis membuat salinan cadangan (<code className="px-1.5 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px] text-[var(--text-primary)]">.bak</code>) di folder <code className="px-1.5 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px] text-[var(--text-primary)]">.arunaki/backups/</code> sebelum agen memodifikasi file untuk keamanan data 100%.
                       </p>
                     </div>
                   </div>
@@ -432,24 +434,24 @@ export function SettingsPage() {
                       toast.success(next ? "Auto-backup dokumen diaktifkan." : "Auto-backup dokumen dinonaktifkan.");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                      autoBackup ? "bg-emerald-500" : "bg-[var(--border-strong)]"
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      autoBackup ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                        autoBackup ? "translate-x-5" : "translate-x-0"
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        autoBackup ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
                   </button>
                 </div>
 
                 {/* 3. Notifikasi Panel Windows */}
-                <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
-                  <div className="flex gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 border border-purple-500/20">
-                      <Bell className="w-5 h-5" />
+                <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
+                  <div className="flex gap-3.5">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">
+                      <Bell className="w-4 h-4 text-[var(--text-muted)]" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-[var(--text-primary)]">
@@ -459,7 +461,7 @@ export function SettingsPage() {
                         Menampilkan notifikasi pop-up di panel sistem operasi Windows ketika tugas rekap dokumen selesai dijalankan.
                       </p>
                       {desktopNotification && (
-                        <div className="mt-2">
+                        <div className="mt-3">
                           <button
                             type="button"
                             onClick={() => {
@@ -467,16 +469,17 @@ export function SettingsPage() {
                               if (desktop?.notify) {
                                 desktop.notify({
                                   title: "Arunaki Dokumen",
-                                  body: "✅ Tugas rekap harian telah selesai dikerjakan!",
+                                  body: "Tugas rekap dokumen telah selesai dikerjakan.",
                                 });
                                 toast.success("Notifikasi desktop Windows telah dikirim!");
                               } else {
                                 toast.info("Notifikasi desktop aktif saat berjalan di aplikasi Electron.");
                               }
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[11px] font-medium border border-[var(--border-color)] transition-colors cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-[var(--bg-hover)] text-[var(--text-primary)] text-[11px] font-medium border border-[var(--border-color)] transition-colors cursor-pointer flex items-center gap-1.5"
                           >
-                            🔔 Uji Notifikasi Windows
+                            <Bell className="w-3 h-3 text-[var(--text-muted)]" />
+                            <span>Uji Notifikasi Desktop</span>
                           </button>
                         </div>
                       )}
@@ -491,30 +494,32 @@ export function SettingsPage() {
                       toast.success(next ? "Notifikasi desktop Windows diaktifkan." : "Notifikasi desktop Windows dinonaktifkan.");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                      desktopNotification ? "bg-emerald-500" : "bg-[var(--border-strong)]"
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      desktopNotification ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                        desktopNotification ? "translate-x-5" : "translate-x-0"
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        desktopNotification ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
                   </button>
                 </div>
               </div>
 
-              {/* Electron Diagnostic Bridge Status */}
-              <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Monitor className="w-5 h-5 text-emerald-500" />
+              {/* Electron Diagnostic Bridge Status (Monochrome) */}
+              <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">
+                    <Monitor className="w-4 h-4 text-[var(--text-muted)]" />
+                  </div>
                   <div>
                     <h4 className="text-xs font-semibold text-[var(--text-primary)]">Electron Native Desktop Shell</h4>
-                    <p className="text-[11px] text-[var(--text-muted)]">Native OS filesystem, window overlay, and IPC bridge</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Native OS filesystem, window overlay, and IPC bridge</p>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-semibold border border-emerald-500/20">
+                <span className="px-3 py-1 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)]">
                   Connected
                 </span>
               </div>
