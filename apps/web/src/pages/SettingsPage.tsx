@@ -70,7 +70,7 @@ export function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-y-auto select-none p-6 transition-colors duration-150">
-      <div className="w-full flex-1 flex flex-col min-h-0">
+      <div className="max-w-5xl w-full mx-auto flex-1 flex flex-col min-h-0">
         {/* Header Title */}
         <div className="mb-4">
           <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
@@ -271,7 +271,7 @@ export function SettingsPage() {
                   </div>
 
                   {/* Clean Monochrome Social Buttons */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                     <button
                       type="button"
                       onClick={() => toast.info("Login via Google akan segera hadir pada update berikutnya.")}
@@ -293,13 +293,13 @@ export function SettingsPage() {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-3 max-w-2xl">
+                  <div className="flex items-center gap-3 w-full">
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
                     <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">atau dengan email</span>
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
                   </div>
 
-                  <form onSubmit={handleLogin} className="space-y-4 max-w-2xl">
+                  <form onSubmit={handleLogin} className="space-y-4 w-full">
                     <div>
                       <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
                         Alamat Email
