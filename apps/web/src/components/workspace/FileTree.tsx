@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -6,6 +6,8 @@ import {
   FolderPlus,
   RotateCw,
   ChevronsUp,
+  Folder,
+  FileText,
 } from "lucide-react";
 import {
   FileItem,
@@ -46,8 +48,9 @@ export default function FileTree({
 }: FileTreeProps) {
   const [isRootExpanded, setIsRootExpanded] = useState(true);
   const [collapseSignal, setCollapseSignal] = useState(0);
-  const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
-  const [newItemName, setNewItemName] = useState("");
+  const [inlineCreating, setInlineCreating] = useState<"file" | "folder" | null>(null);
+  const [inlineName, setInlineName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const tree = useMemo(() => {
     if (nativeTree && nativeTree.length > 0) {
@@ -81,13 +84,14 @@ export default function FileTree({
     }
   };
 
-  const handleCreateNewItemSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newItemName.trim()) return;
-    if (promptModal === "file" && onCreateFile) onCreateFile(newItemName.trim());
-    else if (promptModal === "folder" && onCreateFolder) onCreateFolder(newItemName.trim());
-    setPromptModal(null);
-    setNewItemName("");
+  const commitInlineCreate = () => {
+    const val = inlineName.trim();
+    if (val) {
+      if (inlineCreating === "file" && onCreateFile) onCreateFile(val);
+      else if (inlineCreating === "folder" && onCreateFolder) onCreateFolder(val);
+    }
+    setInlineCreating(null);
+    setInlineName("");
   };
 
   const handleCollapseAll = () => {
@@ -121,8 +125,10 @@ export default function FileTree({
             type="button"
             title="New File"
             onClick={() => {
-              setNewItemName("");
-              setPromptModal("file");
+              setIsRootExpanded(true);
+              setInlineCreating("file");
+              setInlineName("");
+              setTimeout(() => inputRef.current?.focus(), 30);
             }}
             className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
           >
@@ -133,8 +139,10 @@ export default function FileTree({
             type="button"
             title="New Folder"
             onClick={() => {
-              setNewItemName("");
-              setPromptModal("folder");
+              setIsRootExpanded(true);
+              setInlineCreating("folder");
+              setInlineName("");
+              setTimeout(() => inputRef.current?.focus(), 30);
             }}
             className="p-1 hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded transition-colors cursor-pointer"
           >
@@ -166,7 +174,41 @@ export default function FileTree({
       {/* 2. FLAT TREE LIST (Direct Hierarchy List with Compact Indentation) */}
       {isRootExpanded && (
         <div className="flex-1 overflow-y-auto py-1 min-h-0">
-          {tree.length === 0 ? (
+          {/* Inline New File / Folder Input (VS Code Parity) */}
+          {inlineCreating && (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--bg-hover)] rounded border border-[var(--border-strong)] mx-1 mb-1 select-none animate-in fade-in duration-100">
+              {inlineCreating === "folder" ? (
+                <Folder className="w-3.5 h-3.5 text-[var(--text-primary)] shrink-0 opacity-95" strokeWidth={2} />
+              ) : (
+                <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={inlineName}
+                onChange={(e) => setInlineName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    commitInlineCreate();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setInlineCreating(null);
+                    setInlineName("");
+                  }
+                }}
+                onBlur={() => {
+                  commitInlineCreate();
+                }}
+                placeholder={inlineCreating === "file" ? "example.txt" : "folder_name"}
+                className="w-full bg-[var(--bg-input)] text-xs text-[var(--text-primary)] px-1.5 py-0.5 rounded border border-[var(--border-color)] focus:outline-none focus:border-sky-500 font-sans"
+              />
+            </div>
+          )}
+
+          {tree.length === 0 && !inlineCreating ? (
             <p className="text-xs text-[var(--text-dim)] text-center py-6 font-mono">
               No files found in this workspace
             </p>
@@ -187,42 +229,6 @@ export default function FileTree({
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Modals for Create */}
-      {promptModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full border border-[var(--border-strong)]">
-            <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">
-              {promptModal === "file" ? "New File" : "New Folder"}
-            </h4>
-            <form onSubmit={handleCreateNewItemSubmit} className="space-y-3">
-              <input
-                type="text"
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                placeholder={promptModal === "file" ? "example: Report.xlsx" : "example: BusinessDocs"}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-md px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
-                autoFocus
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPromptModal(null)}
-                  className="px-3 py-1 bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs rounded-md font-medium cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs rounded-md font-semibold cursor-pointer transition-opacity"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>

@@ -287,7 +287,7 @@ export function AppLayout() {
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
-            <User className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <User className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
           </button>
         </div>
       </header>

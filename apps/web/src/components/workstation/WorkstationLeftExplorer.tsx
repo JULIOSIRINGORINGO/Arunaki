@@ -4,6 +4,7 @@ import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
+import { API_BASE, apiFetch } from "../../lib/api";
 
 const flattenFileNames = (nodes: NativeNode[]): string[] => {
   const out: string[] = [];
@@ -185,6 +186,69 @@ function WorkstationLeftExplorerComponent({
     [handleRefresh]
   );
 
+  const handleCreateFile = useCallback(
+    async (fileName: string) => {
+      if (!fileName || !fileName.trim() || !activeWorkspace?.rootPath) return;
+      const cleanName = fileName.trim();
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      const separator = activeWorkspace.rootPath.includes("\\") ? "\\" : "/";
+      const fullPath = `${activeWorkspace.rootPath}${separator}${cleanName}`;
+
+      if (desktop?.writeFile) {
+        try {
+          const res = await desktop.writeFile(fullPath, "");
+          if (res?.success) {
+            toast.success(`Created file "${cleanName}"`);
+            await handleRefresh();
+            onOpenFileTab(fullPath, cleanName, "");
+          } else {
+            toast.error(res?.error || "Failed to create file");
+          }
+        } catch (err: any) {
+          toast.error(`Create file failed: ${err.message}`);
+        }
+      } else {
+        try {
+          const res = await apiFetch(`${API_BASE}/workspaces/${activeWorkspace.id}/files`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: cleanName, content: "" }),
+          });
+          if (res.ok) {
+            toast.success(`Created file "${cleanName}"`);
+            handleRefresh();
+          }
+        } catch {}
+      }
+    },
+    [activeWorkspace, handleRefresh, onOpenFileTab]
+  );
+
+  const handleCreateFolder = useCallback(
+    async (folderName: string) => {
+      if (!folderName || !folderName.trim() || !activeWorkspace?.rootPath) return;
+      const cleanName = folderName.trim();
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      const separator = activeWorkspace.rootPath.includes("\\") ? "\\" : "/";
+      const fullPath = `${activeWorkspace.rootPath}${separator}${cleanName}`;
+
+      if (desktop?.createFolder) {
+        try {
+          const res = await desktop.createFolder(fullPath);
+          if (res?.success) {
+            toast.success(`Created folder "${cleanName}"`);
+            await handleRefresh();
+          } else {
+            toast.error(res?.error || "Failed to create folder");
+          }
+        } catch (err: any) {
+          toast.error(`Create folder failed: ${err.message}`);
+        }
+      }
+    },
+    [activeWorkspace, handleRefresh]
+  );
+
   // ─────────────────────────────────────────────────────────────────────────
   // Collapsed strip
   // ─────────────────────────────────────────────────────────────────────────
@@ -279,6 +343,8 @@ function WorkstationLeftExplorerComponent({
               workspaceFolderPath={activeWorkspace.rootPath || undefined}
               onFileClick={(p, n, content) => onOpenFileTab(p, n, content)}
               onRefresh={handleRefresh}
+              onCreateFile={handleCreateFile}
+              onCreateFolder={handleCreateFolder}
               onRenamePath={handleRenamePath}
               onDeletePath={handleDeletePath}
             />
