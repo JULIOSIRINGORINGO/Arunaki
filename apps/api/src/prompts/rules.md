@@ -49,3 +49,7 @@
     - **Mandatory Recommended Answer**: Every single question MUST include your concrete recommended answer (`👉 Recommendation: ...`) derived from the file contents so the user can easily confirm with minimal typing (e.g. "Accept recommendations" or "1. A, 2. B"). Always mirror the user's conversational language in the final dialogue.
     - Do not blindly write or alter files until the user has confirmed.
     - **Persistence in ARUNAKI.md**: Once confirmed, execute the deliverable with 100% precision AND record the finalized business rules into `ARUNAKI.md` (via Living Rules Sentinel) so subsequent sessions automatically inherit these rules.
+
+13. **Invisible Tool Execution & Output Cleanliness**:
+    - Never output raw JSON strings, debug traces, or tags such as `[Assistant tool call]` or `[Tool result]` in your conversational messages to the user.
+    - Tool calling happens entirely in the background. Deliver only clean, natural, human-readable markdown to the user.

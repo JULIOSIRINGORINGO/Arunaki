@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { encoding_for_model } from 'tiktoken';
-import { repairToolCalls } from './tool-call-repair.js';
+import { repairToolCalls, stripToolArtifactsFromText } from './tool-call-repair.js';
 import {
   ProviderService,
   ProviderConfig,
@@ -457,20 +457,8 @@ export class AiService {
     }
 
     if (content) {
-      // Always strip hallucinated XML-ish tags (Gemini/DeepSeek often leak these)
-      content = content
-        .replace(
-          /<[｜|]+(?:DSML[｜|]+)?tool_calls>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?tool_calls>/gi,
-          '',
-        )
-        .replace(
-          /<[｜|]+(?:DSML[｜|]+)?invoke[^>]*>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi,
-          '',
-        )
-        .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
-        .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
-        .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '')
-        .trim();
+      // Strip hallucinated tool invocation tags, [Assistant tool call] logs, and raw JSON metadata dumps
+      content = stripToolArtifactsFromText(content);
     }
 
     if (!content && rawToolCalls.length === 0) {

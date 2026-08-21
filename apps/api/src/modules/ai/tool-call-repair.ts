@@ -600,3 +600,33 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
 
   return calls;
 }
+
+/**
+ * Strips leaked tool invocation artifacts, hallucinated tool call headers,
+ * and raw tool result JSON blocks from text meant for display to the user.
+ */
+export function stripToolArtifactsFromText(rawText: string): string {
+  if (!rawText) return '';
+  let text = rawText;
+
+  // 1. Strip XML-ish tool invocation tags
+  text = text
+    .replace(/<[｜|]+(?:DSML[｜|]+)?tool_calls>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?tool_calls>/gi, '')
+    .replace(/<[｜|]+(?:DSML[｜|]+)?invoke[^>]*>[\s\S]*?<\/[｜|]+(?:DSML[｜|]+)?invoke>/gi, '')
+    .replace(/<\s*tool_call\s*>[\s\S]*?<\/\s*tool_call\s*>/gi, '')
+    .replace(/<\s*function_call\s*>[\s\S]*?<\/\s*function_call\s*>/gi, '')
+    .replace(/<\s*function(?:[^>]*)>[\s\S]*?<\/\s*function\s*>/gi, '');
+
+  // 2. Strip leaked [Assistant tool call] and [Tool call] / [Tool result] tags and their contents
+  text = text.replace(/\[(?:Assistant tool call|Tool call|Tool result)\]:[\s\S]*?(?=\n\n|\n[A-Z0-9#\*\-]|$)/gi, '');
+
+  // 3. Strip raw JSON payloads with status/toolName metadata
+  text = text.replace(/```(?:json)?\s*\{[\s\S]*?"(?:status|toolName|executionTime|preview)"[\s\S]*?\}\s*```/gi, '');
+  text = text.replace(/\{"status"\s*:\s*"(?:success|error)"[\s\S]*?"metadata"[\s\S]*?\}/gi, '');
+
+  // 4. Strip repeated trailing json metadata fragments
+  text = text.replace(/(?:\s*,\s*"metadata"\s*:\s*\{"toolName"[\s\S]*?\})+/gi, '');
+
+  return text.trim();
+}
+
