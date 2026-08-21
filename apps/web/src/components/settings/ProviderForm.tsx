@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Check, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles } from "lucide-react";
+import { Plus, Check, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles, GripVertical } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface ProviderFormData {
@@ -93,6 +93,33 @@ export function ProviderForm({
     onReorderModels(list);
   };
 
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.setData("text/plain", String(index));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    const sourceIdx = draggedIdx !== null ? draggedIdx : Number(e.dataTransfer.getData("text/plain"));
+    if (sourceIdx === dropIndex || isNaN(sourceIdx)) {
+      setDraggedIdx(null);
+      return;
+    }
+    const list = [...selectedModels];
+    const [movedItem] = list.splice(sourceIdx, 1);
+    list.splice(dropIndex, 0, movedItem);
+    onReorderModels(list);
+    setDraggedIdx(null);
+  };
+
   return (
     <form
       onSubmit={onSubmit}
@@ -172,7 +199,7 @@ export function ProviderForm({
         </div>
       )}
 
-      {/* ACTIVE MODEL ROUTING PRIORITY (RE-ORDERABLE LIST) */}
+      {/* ACTIVE MODEL ROUTING PRIORITY (DRAGGABLE & RE-ORDERABLE LIST) */}
       {selectedModels.length > 0 && (
         <div className="p-4 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] space-y-2.5">
           <div className="flex items-center justify-between">
@@ -181,7 +208,7 @@ export function ProviderForm({
               Active Model Routing Priority ({selectedModels.length} selected)
             </span>
             <span className="text-[11px] text-[var(--text-muted)]">
-              Use arrows to adjust fallback order
+              Drag dots or use arrows to adjust priority order
             </span>
           </div>
 
@@ -189,11 +216,22 @@ export function ProviderForm({
             {selectedModels.map((m, idx) => (
               <div
                 key={m}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg-hover)] border border-[var(--border-strong)] rounded-lg text-xs font-mono text-[var(--text-primary)] shadow-xs"
+                draggable
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={() => setDraggedIdx(null)}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--bg-hover)] border border-[var(--border-strong)] rounded-xl text-xs font-mono text-[var(--text-primary)] shadow-xs transition-all select-none cursor-grab active:cursor-grabbing",
+                  draggedIdx === idx && "opacity-40 border-dashed scale-95"
+                )}
+                title="Drag to reorder model priority"
               >
+                {/* 6-Dot Grip Handle */}
+                <GripVertical className="w-3.5 h-3.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0 cursor-grab active:cursor-grabbing" />
                 <span className="text-[10px] font-bold text-[var(--text-muted)]">#{idx + 1}</span>
                 <span className="font-semibold truncate max-w-[180px]">{m}</span>
-                <span className="text-[9px] px-1.5 py-0.2 bg-[var(--bg-app)] rounded text-[var(--text-muted)]">
+                <span className="text-[9px] px-1.5 py-0.5 bg-[var(--bg-app)] rounded text-[var(--text-muted)] border border-[var(--border-color)]">
                   {idx === 0 ? "Primary" : `Fallback ${idx}`}
                 </span>
 
