@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
+import { toast } from "sonner";
 
 const flattenFileNames = (nodes: NativeNode[]): string[] => {
   const out: string[] = [];
@@ -111,6 +112,52 @@ function WorkstationLeftExplorerComponent({
     setIsRefreshing(false);
   }, [activeWorkspace?.rootPath, isRefreshing, loadNativeTree]);
 
+  const handleRenamePath = useCallback(
+    async (oldPath: string, oldName: string, newName: string) => {
+      if (!newName || newName.trim() === oldName) return;
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      if (desktop?.renamePath) {
+        const lastSlash = Math.max(oldPath.lastIndexOf("\\"), oldPath.lastIndexOf("/"));
+        const parentDir = lastSlash !== -1 ? oldPath.substring(0, lastSlash) : "";
+        const separator = oldPath.includes("\\") ? "\\" : "/";
+        const newPath = parentDir ? `${parentDir}${separator}${newName.trim()}` : newName.trim();
+        try {
+          const res = await desktop.renamePath(oldPath, newPath);
+          if (res?.success) {
+            toast.success(`Renamed to "${newName.trim()}"`);
+            handleRefresh();
+          } else {
+            toast.error(res?.error || "Failed to rename");
+          }
+        } catch (err: any) {
+          toast.error(`Rename failed: ${err.message}`);
+        }
+      }
+    },
+    [handleRefresh]
+  );
+
+  const handleDeletePath = useCallback(
+    async (targetPath: string, targetName: string) => {
+      if (!confirm(`Are you sure you want to delete "${targetName}"?`)) return;
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      if (desktop?.deletePath) {
+        try {
+          const res = await desktop.deletePath(targetPath);
+          if (res?.success) {
+            toast.success(`Deleted "${targetName}"`);
+            handleRefresh();
+          } else {
+            toast.error(res?.error || "Failed to delete");
+          }
+        } catch (err: any) {
+          toast.error(`Delete failed: ${err.message}`);
+        }
+      }
+    },
+    [handleRefresh]
+  );
+
   // ─────────────────────────────────────────────────────────────────────────
   // Collapsed strip
   // ─────────────────────────────────────────────────────────────────────────
@@ -205,6 +252,8 @@ function WorkstationLeftExplorerComponent({
               workspaceFolderPath={activeWorkspace.rootPath || undefined}
               onFileClick={(p, n, content) => onOpenFileTab(p, n, content)}
               onRefresh={handleRefresh}
+              onRenamePath={handleRenamePath}
+              onDeletePath={handleDeletePath}
             />
           )}
         </div>

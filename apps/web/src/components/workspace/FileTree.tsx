@@ -48,8 +48,6 @@ export default function FileTree({
   const [collapseSignal, setCollapseSignal] = useState(0);
   const [promptModal, setPromptModal] = useState<"file" | "folder" | null>(null);
   const [newItemName, setNewItemName] = useState("");
-  const [renameModalState, setRenameModalState] = useState<{ oldPath: string; oldName: string } | null>(null);
-  const [renameNewName, setRenameNewName] = useState("");
 
   const tree = useMemo(() => {
     if (nativeTree && nativeTree.length > 0) {
@@ -182,10 +180,7 @@ export default function FileTree({
                   collapseSignal={collapseSignal}
                   onFileClick={(p, n) => handleItemClick(p, n)}
                   onDeletePath={onDeletePath}
-                  onRenameClick={(p, n) => {
-                    setRenameModalState({ oldPath: p, oldName: n });
-                    setRenameNewName(n);
-                  }}
+                  onRenamePath={onRenamePath}
                   onAnalyzeFile={onAnalyzeFile}
                   activeAgentAction={activeAgentAction}
                 />
@@ -195,7 +190,7 @@ export default function FileTree({
         </div>
       )}
 
-      {/* Modals for Create & Rename */}
+      {/* Modals for Create */}
       {promptModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full border border-[var(--border-strong)]">
@@ -224,47 +219,6 @@ export default function FileTree({
                   className="px-3 py-1 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs rounded-md font-semibold cursor-pointer transition-opacity"
                 >
                   Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {renameModalState && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] text-[var(--text-primary)] rounded-xl p-5 max-w-xs w-full border border-[var(--border-strong)]">
-            <h4 className="text-xs font-bold text-[var(--text-primary)] mb-3">Rename File / Folder</h4>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (onRenamePath && renameNewName.trim()) {
-                  onRenamePath(renameModalState.oldPath, renameModalState.oldName, renameNewName.trim());
-                }
-                setRenameModalState(null);
-              }}
-              className="space-y-3"
-            >
-              <input
-                type="text"
-                value={renameNewName}
-                onChange={(e) => setRenameNewName(e.target.value)}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-md px-3 py-1.5 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)]"
-                autoFocus
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRenameModalState(null)}
-                  className="px-3 py-1 bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs rounded-md font-medium cursor-pointer transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs rounded-md font-semibold cursor-pointer transition-opacity"
-                >
-                  Save
                 </button>
               </div>
             </form>

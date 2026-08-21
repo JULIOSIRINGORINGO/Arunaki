@@ -20,7 +20,7 @@ interface TreeNodeItemProps {
   collapseSignal?: number;
   onFileClick?: (path: string, name: string) => void;
   onDeletePath?: (path: string, name: string) => void;
-  onRenameClick?: (path: string, currentName: string) => void;
+  onRenamePath?: (oldPath: string, oldName: string, newName: string) => void;
   onAnalyzeFile?: (name: string, path?: string) => void;
   activeAgentAction?: { toolName: string; args?: any } | null;
 }
@@ -31,13 +31,34 @@ export function TreeNodeItem({
   collapseSignal,
   onFileClick,
   onDeletePath,
-  onRenameClick,
+  onRenamePath,
   onAnalyzeFile,
   activeAgentAction,
 }: TreeNodeItemProps) {
   const [open, setOpen] = useState(depth < 2);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [editName, setEditName] = useState(node.name);
   const menuRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync editName when node.name changes
+  useEffect(() => {
+    setEditName(node.name);
+  }, [node.name]);
+
+  // Focus and preselect basename when entering rename mode
+  useEffect(() => {
+    if (isRenaming && editInputRef.current) {
+      editInputRef.current.focus();
+      const dotIndex = node.name.lastIndexOf(".");
+      if (dotIndex > 0 && !node.isDir) {
+        editInputRef.current.setSelectionRange(0, dotIndex);
+      } else {
+        editInputRef.current.select();
+      }
+    }
+  }, [isRenaming, node.name, node.isDir]);
 
   // Auto-collapse when user triggers Collapse All Quick Action
   useEffect(() => {
@@ -58,6 +79,19 @@ export function TreeNodeItem({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
+  const handleCommitRename = () => {
+    const trimmed = editName.trim();
+    if (trimmed && trimmed !== node.name && onRenamePath) {
+      onRenamePath(node.nativePath || node.name, node.name, trimmed);
+    }
+    setIsRenaming(false);
+  };
+
+  const handleCancelRename = () => {
+    setEditName(node.name);
+    setIsRenaming(false);
+  };
+
   const isAgentTarget = Boolean(
     activeAgentAction?.args?.filename &&
       (activeAgentAction.args.filename.endsWith(node.name) ||
@@ -70,7 +104,9 @@ export function TreeNodeItem({
         <div
           className="group flex items-center justify-between py-[3px] px-1.5 hover:bg-[var(--bg-hover)] transition-colors text-xs text-[var(--text-primary)] select-none cursor-pointer border-l-2 border-transparent hover:border-[var(--border-strong)]"
           style={{ paddingLeft: `${depth * 12 + 12}px` }}
-          onClick={() => setOpen(!open)}
+          onClick={() => {
+            if (!isRenaming) setOpen(!open);
+          }}
         >
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span className="shrink-0 text-[var(--text-muted)]">
@@ -85,9 +121,33 @@ export function TreeNodeItem({
             ) : (
               <Folder className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80 shrink-0" strokeWidth={1.5} />
             )}
-            <span className="truncate font-medium text-[var(--text-primary)] text-xs">
-              {node.name}
-            </span>
+            {isRenaming ? (
+              <input
+                ref={editInputRef}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCommitRename();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCancelRename();
+                  }
+                }}
+                onBlur={handleCommitRename}
+                onClick={(e) => e.stopPropagation()}
+                className="px-1.5 py-0.5 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--text-primary)] rounded text-xs font-medium w-full focus:outline-none select-text"
+                autoFocus
+              />
+            ) : (
+              <span className="truncate font-medium text-[var(--text-primary)] text-xs">
+                {node.name}
+              </span>
+            )}
           </div>
 
           <div className="relative shrink-0" ref={menuRef}>
@@ -111,17 +171,18 @@ export function TreeNodeItem({
                 onClick={(e) => e.stopPropagation()}
                 className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 z-50 animate-in fade-in duration-100 text-xs space-y-0.5"
               >
-                {node.nativePath && onRenameClick && (
+                {node.nativePath && onRenamePath && (
                   <button
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
-                      onRenameClick(node.nativePath!, node.name);
+                      setEditName(node.name);
+                      setIsRenaming(true);
                     }}
                     className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
                   >
                     <Pencil className="w-3 h-3 text-[var(--text-muted)]" />
-                    <span>Rename Folder</span>
+                    <span>Rename / Edit</span>
                   </button>
                 )}
 
@@ -170,7 +231,7 @@ export function TreeNodeItem({
                 collapseSignal={collapseSignal}
                 onFileClick={onFileClick}
                 onDeletePath={onDeletePath}
-                onRenameClick={onRenameClick}
+                onRenamePath={onRenamePath}
                 onAnalyzeFile={onAnalyzeFile}
                 activeAgentAction={activeAgentAction}
               />
@@ -191,11 +252,11 @@ export function TreeNodeItem({
 
   return (
     <div
-      onClick={() =>
-        node.nativePath
-          ? onFileClick?.(node.nativePath, node.name)
-          : onFileClick?.(node.name, node.name)
-      }
+      onClick={() => {
+        if (isRenaming) return;
+        if (node.nativePath) onFileClick?.(node.nativePath, node.name);
+        else onFileClick?.(node.name, node.name);
+      }}
       className={`group flex items-center justify-between py-[3px] px-1.5 transition-all text-xs select-none cursor-pointer border-l-2 border-transparent ${
         isAgentTarget
           ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold border-[var(--text-primary)] animate-pulse"
@@ -205,7 +266,31 @@ export function TreeNodeItem({
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {getFileIcon(node.name)}
-        <span className="truncate text-[var(--text-primary)] font-normal">{node.name}</span>
+        {isRenaming ? (
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCommitRename();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCancelRename();
+              }
+            }}
+            onBlur={handleCommitRename}
+            onClick={(e) => e.stopPropagation()}
+            className="px-1.5 py-0.5 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--text-primary)] rounded text-xs font-normal w-full focus:outline-none select-text"
+            autoFocus
+          />
+        ) : (
+          <span className="truncate text-[var(--text-primary)] font-normal">{node.name}</span>
+        )}
         {isAgentTarget && (
           <span className="ml-1 px-1.5 py-0.5 rounded bg-[var(--text-primary)] text-[var(--bg-app)] text-[9px] font-bold shrink-0 animate-pulse">
             AI Working...
@@ -238,12 +323,13 @@ export function TreeNodeItem({
             onClick={(e) => e.stopPropagation()}
             className="absolute right-0 top-full mt-1 w-44 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 z-50 animate-in fade-in duration-100 text-xs space-y-0.5"
           >
-            {node.nativePath && onRenameClick && (
+            {node.nativePath && onRenamePath && (
               <button
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
-                  onRenameClick(node.nativePath!, node.name);
+                  setEditName(node.name);
+                  setIsRenaming(true);
                 }}
                 className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
               >
