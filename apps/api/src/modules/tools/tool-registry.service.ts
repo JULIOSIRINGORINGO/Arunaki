@@ -88,11 +88,20 @@ export class ToolRegistryService {
       'search_workspace',
       'write',
       'invoke_subagent',
+      'desktop_excel_edit',
+      'desktop_word_edit',
+      'desktop_ppt_edit',
+      'pdf_manage_pages',
+      'pdf_stamp_image',
+      'doc_compare_versions',
+      'doc_redact_pii',
+      'convert_document',
+      'text_extractor',
       'desktop_open_excel',
+      'desktop_open_word',
+      'desktop_open_ppt',
       'vision_ai',
       'knowledge_live_fetch',
-      'stock_lookup',
-      'ip_geolocation',
     ]);
 
     const ctx = contextText.toLowerCase();
