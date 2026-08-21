@@ -81,6 +81,177 @@ const EFFORT_OPTIONS = [
   { label: "High", value: "high" },
 ];
 
+interface TableBlock {
+  type: "table";
+  headers: string[];
+  rows: string[][];
+}
+
+interface TextBlock {
+  type: "text";
+  content: string;
+}
+
+type ContentBlock = TableBlock | TextBlock;
+
+function parseContentBlocks(rawContent: string): ContentBlock[] {
+  const content = rawContent.replace(/\[\/?CANVAS\]/gi, "").trim();
+  if (!content.includes("|")) {
+    return [{ type: "text", content }];
+  }
+
+  const lines = content.split("\n");
+  const blocks: ContentBlock[] = [];
+  let currentTextLines: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (line.startsWith("|") && line.endsWith("|") && i + 1 < lines.length) {
+      const nextLine = lines[i + 1].trim();
+      const isSeparator =
+        nextLine.startsWith("|") &&
+        nextLine.endsWith("|") &&
+        /^\|[\s\-:]+(\|[\s\-:]+)+\|$/.test(nextLine);
+
+      if (isSeparator) {
+        if (currentTextLines.length > 0) {
+          const text = currentTextLines.join("\n").trim();
+          if (text) blocks.push({ type: "text", content: text });
+          currentTextLines = [];
+        }
+
+        const headers = line
+          .slice(1, -1)
+          .split("|")
+          .map((h) => h.trim());
+
+        i += 2;
+        const rows: string[][] = [];
+
+        while (
+          i < lines.length &&
+          lines[i].trim().startsWith("|") &&
+          lines[i].trim().endsWith("|")
+        ) {
+          const rowLine = lines[i].trim();
+          const cells = rowLine
+            .slice(1, -1)
+            .split("|")
+            .map((c) => c.trim());
+          rows.push(cells);
+          i++;
+        }
+
+        blocks.push({ type: "table", headers, rows });
+        continue;
+      }
+    }
+
+    currentTextLines.push(lines[i]);
+    i++;
+  }
+
+  if (currentTextLines.length > 0) {
+    const remainingText = currentTextLines.join("\n").trim();
+    if (remainingText) {
+      blocks.push({ type: "text", content: remainingText });
+    }
+  }
+
+  return blocks.length > 0 ? blocks : [{ type: "text", content }];
+}
+
+function ChatMessageContent({ content }: { content: string; isUser: boolean }) {
+  const blocks = useMemo(() => parseContentBlocks(content), [content]);
+
+  return (
+    <div className="space-y-2 font-sans">
+      {blocks.map((block, bIdx) => {
+        if (block.type === "table") {
+          return (
+            <div
+              key={bIdx}
+              className="my-2 overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] select-text shadow-xs"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse font-sans text-xs">
+                  <thead>
+                    <tr className="bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)]">
+                      {block.headers.map((h, hIdx) => (
+                        <th
+                          key={hIdx}
+                          className="px-3 py-2 font-semibold text-[var(--text-primary)] border-r last:border-r-0 border-[var(--border-color)] text-[11px] tracking-wide"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-color)]">
+                    {block.rows.map((row, rIdx) => {
+                      const isTotal = row.some((c) => c.toLowerCase().includes("total"));
+                      return (
+                        <tr
+                          key={rIdx}
+                          className={cn(
+                            "transition-colors",
+                            isTotal
+                              ? "bg-[var(--bg-card)] font-semibold text-[var(--text-primary)]"
+                              : "hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]"
+                          )}
+                        >
+                          {row.map((cell, cIdx) => (
+                            <td
+                              key={cIdx}
+                              className="px-3 py-1.5 border-r last:border-r-0 border-[var(--border-color)] text-xs font-normal"
+                            >
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <Markdown
+            key={bIdx}
+            components={{
+              p: ({ children }) => (
+                <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>
+              ),
+              strong: ({ children }) => (
+                <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
+              ),
+              ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
+              li: ({ children }) => <li className="leading-snug">{children}</li>,
+              code: ({ children }) => (
+                <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)]">
+                  {children}
+                </code>
+              ),
+              pre: ({ children }) => (
+                <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
+                  {children}
+                </pre>
+              ),
+            }}
+          >
+            {block.content}
+          </Markdown>
+        );
+      })}
+    </div>
+  );
+}
+
 function WorkstationRightChatComponent({
   collapsed,
   onClose,
@@ -395,33 +566,13 @@ function WorkstationRightChatComponent({
 
                 <div
                   className={cn(
-                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans whitespace-pre-wrap",
+                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",
                     isUser
                       ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
                       : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
                   )}
                 >
-                  <Markdown
-                    components={{
-                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
-                      strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
-                      ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
-                      li: ({ children }) => <li className="leading-snug">{children}</li>,
-                      code: ({ children }) => (
-                        <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)]">
-                          {children}
-                        </code>
-                      ),
-                      pre: ({ children }) => (
-                        <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
-                          {children}
-                        </pre>
-                      ),
-                    }}
-                  >
-                    {msg.content ? msg.content.replace(/\[\/?CANVAS\]/gi, "").trim() : ""}
-                  </Markdown>
+                  <ChatMessageContent content={msg.content || ""} isUser={isUser} />
                 </div>
               </div>
             );
