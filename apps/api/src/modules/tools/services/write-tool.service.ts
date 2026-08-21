@@ -66,6 +66,30 @@ export class WriteToolService {
       : `${cleanFilename}.${format}`;
     const targetPath = path.join(rootPath, finalFilename);
 
+    // Enforce Document-Centric Mission: Block creating programming source files
+    const fileExt = path.extname(finalFilename).toLowerCase().replace(/^\./, '') || format.toLowerCase();
+    const BLOCKED_CODE_EXTS = new Set([
+      'js', 'ts', 'jsx', 'tsx', 'py', 'pyw', 'java', 'c', 'cpp', 'h', 'hpp', 'cs',
+      'go', 'rs', 'php', 'rb', 'swift', 'kt', 'kts', 'scala', 'sh', 'bash', 'zsh',
+      'bat', 'cmd', 'ps1', 'vbs', 'pl', 'lua', 'asm', 'r', 'dart'
+    ]);
+    if (BLOCKED_CODE_EXTS.has(fileExt)) {
+      return {
+        status: 'error',
+        data: {},
+        preview: `Arunaki is a Document & Office Operations Agent and does not support creating programming source files (.${fileExt}). Supported formats: .xlsx, .xlsm, .docx, .pdf, .txt, .csv, .md, .json.`,
+        metadata: {
+          toolName: 'write',
+          displayName: 'Create File',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'PROGRAMMING_FILE_BLOCKED',
+          message: `Creating programming source code files (.${fileExt}) is out of scope for Arunaki document operations.`,
+        },
+      };
+    }
+
     // Workspace Isolation Enforcement (Path Traversal Protection)
     const resolvedTarget = path.resolve(targetPath);
     const resolvedRoot = path.resolve(rootPath);
