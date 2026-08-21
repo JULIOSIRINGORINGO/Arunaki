@@ -6,11 +6,6 @@ import {
   PanelRightOpen,
   Sparkles,
   Send,
-  BookOpen,
-  Search,
-  Calculator,
-  FileText,
-  FilePlus,
   FileSearch,
   Eraser,
   Clock,
@@ -28,13 +23,9 @@ import { apiFetch, API_BASE } from "../../lib/api";
 import { toast } from "sonner";
 
 const COMMANDS = [
-  { name: "/new-section", description: "Create a new document section", icon: FilePlus },
-  { name: "/search-section", description: "Search within a document section", icon: FileSearch },
-  { name: "/knowledge", description: "Create new Knowledge Base", icon: BookOpen },
-  { name: "/search", description: "Search documents or knowledge", icon: Search },
-  { name: "/calculate", description: "Calculate prices/totals", icon: Calculator },
-  { name: "/export", description: "Export to PDF/Excel/Word", icon: FileText },
-  { name: "/clear", description: "Clear the current conversation", icon: Eraser },
+  { name: "/new", description: "Start a new conversation session", icon: Plus },
+  { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
+  { name: "/clear", description: "Clear current conversation", icon: Eraser },
 ];
 
 interface Message {
@@ -454,6 +445,12 @@ function WorkstationRightChatComponent({
       setInputPrompt("");
       setShowCommands(false);
       onSearchSection?.();
+      return;
+    }
+    if (cmdName === "/new" || cmdName === "/clear") {
+      setInputPrompt("");
+      setShowCommands(false);
+      onNewChat?.();
       return;
     }
     setInputPrompt(`${cmdName} `);
