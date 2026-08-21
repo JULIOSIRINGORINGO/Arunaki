@@ -1,8 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Panel } from '@xyflow/react';
-import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Save, Trash2, CheckCircle2, XCircle, ChevronDown, Check } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
+
+const CITY_OPTIONS = [
+  { value: "", label: "Not set (ask user / detect)" },
+  { value: "Medan", label: "Medan" },
+  { value: "Jakarta", label: "Jakarta" },
+  { value: "Kedoya", label: "Kedoya" },
+  { value: "Tebet", label: "Tebet" },
+  { value: "Buaran", label: "Buaran" },
+  { value: "Kemang", label: "Kemang" },
+  { value: "Transyogi", label: "Transyogi" },
+  { value: "Cempaka Putih", label: "Cempaka Putih" },
+  { value: "Surabaya", label: "Surabaya" },
+  { value: "Bandung", label: "Bandung" },
+  { value: "Semarang", label: "Semarang" },
+  { value: "Yogyakarta", label: "Yogyakarta" },
+  { value: "Makassar", label: "Makassar" },
+  { value: "Palembang", label: "Palembang" },
+  { value: "Denpasar", label: "Denpasar" },
+  { value: "Balikpapan", label: "Balikpapan" },
+];
 
 interface KnowledgeNodePanelProps {
   nodeId: string | null;
@@ -23,6 +43,19 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   const [content, setContent] = useState('');
   const [composing, setComposing] = useState(false);
   const [composeError, setComposeError] = useState('');
+
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!nodeId || nodeId === 'main-ai-node') {
@@ -227,31 +260,45 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                   {urls.length - 1} pages discovered from this site (categories, products...)
                 </div>
               )}
-              <div>
-                <label className="text-xs font-semibold text-[var(--text-muted)]">Default City (stock checks)</label>
-                <select
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
+              <div className="relative" ref={cityDropdownRef}>
+                <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
+                  Default City (stock checks)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                  className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-xl text-xs flex items-center justify-between cursor-pointer transition-colors focus:outline-none"
                 >
-                  <option value="">Not set (ask user / detect)</option>
-                  <option value="Medan">Medan</option>
-                  <option value="Jakarta">Jakarta</option>
-                  <option value="Kedoya">Kedoya</option>
-                  <option value="Tebet">Tebet</option>
-                  <option value="Buaran">Buaran</option>
-                  <option value="Kemang">Kemang</option>
-                  <option value="Transyogi">Transyogi</option>
-                  <option value="Cempaka Putih">Cempaka Putih</option>
-                  <option value="Surabaya">Surabaya</option>
-                  <option value="Bandung">Bandung</option>
-                  <option value="Semarang">Semarang</option>
-                  <option value="Yogyakarta">Yogyakarta</option>
-                  <option value="Makassar">Makassar</option>
-                  <option value="Palembang">Palembang</option>
-                  <option value="Denpasar">Denpasar</option>
-                  <option value="Balikpapan">Balikpapan</option>
-                </select>
+                  <span className="truncate">{CITY_OPTIONS.find((c) => c.value === city)?.label || "Not set (ask user / detect)"}</span>
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-[var(--text-muted)] transition-transform duration-150 shrink-0 ml-1", isCityDropdownOpen && "rotate-180")} />
+                </button>
+
+                {isCityDropdownOpen && (
+                  <div className="absolute left-0 top-full mt-1.5 w-full max-h-44 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
+                    {CITY_OPTIONS.map((opt) => {
+                      const isSelected = city === opt.value;
+                      return (
+                        <button
+                          key={opt.value || "empty"}
+                          type="button"
+                          onClick={() => {
+                            setCity(opt.value);
+                            setIsCityDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                            isSelected
+                              ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-semibold"
+                              : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                          )}
+                        >
+                          <span className="truncate">{opt.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[var(--text-primary)] shrink-0 ml-1" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {urls[0] && /^https?:\/\/\S+$/i.test(urls[0].trim()) && (
                 <button
