@@ -343,8 +343,49 @@ export class WorkspaceCartographerService {
           const raw = await fsp.readFile(filePath, 'utf8');
           const lines = raw.split('\n').slice(0, MAX_SAMPLE_LINES);
           sampleText = lines.join('\n');
+        } else if (ext === '.xlsx' || ext === '.xlsm' || ext === '.xls') {
+          try {
+            const XLSX = await import('xlsx');
+            const xlsxLib = (XLSX as any).default || XLSX;
+            const workbook = xlsxLib.readFile(filePath, { sheetRows: 10 });
+            const sheetSummaries: string[] = [];
+            for (const sName of workbook.SheetNames.slice(0, 6)) {
+              const sheet = workbook.Sheets[sName];
+              if (sheet) {
+                const csv = xlsxLib.utils.sheet_to_csv(sheet);
+                const rows = csv
+                  .split('\n')
+                  .map((r: string) => r.trim())
+                  .filter((r: string) => r.length > 0)
+                  .slice(0, 6)
+                  .join('\n');
+                if (rows) {
+                  sheetSummaries.push(`[Sheet: "${sName}"]\n${rows}`);
+                }
+              }
+            }
+            sampleText =
+              sheetSummaries.join('\n\n') ||
+              `[Spreadsheet: ${entry.name}, Sheets: ${workbook.SheetNames.join(', ')}]`;
+          } catch (xlErr: any) {
+            sampleText = `[Spreadsheet document: ${entry.name}, Size: ${(stats.size / 1024).toFixed(1)} KB]`;
+          }
+        } else if (ext === '.docx') {
+          try {
+            const mammothMod = await import('mammoth');
+            const mammoth = (mammothMod as any).default || mammothMod;
+            const result = await mammoth.extractRawText({ path: filePath });
+            const lines = result.value
+              .split('\n')
+              .map((l: string) => l.trim())
+              .filter((l: string) => l.length > 0)
+              .slice(0, MAX_SAMPLE_LINES);
+            sampleText = lines.join('\n');
+          } catch (docErr: any) {
+            sampleText = `[Word document: ${entry.name}, Size: ${(stats.size / 1024).toFixed(1)} KB]`;
+          }
         } else {
-          sampleText = `[Binary/Spreadsheet document: ${entry.name}, Size: ${(stats.size / 1024).toFixed(1)} KB]`;
+          sampleText = `[Document: ${entry.name}, Size: ${(stats.size / 1024).toFixed(1)} KB]`;
         }
 
         samples.push({
@@ -449,7 +490,55 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
     const fileEntries = samples
       .map((s) => {
         const sizeKb = (s.size / 1024).toFixed(1);
-        const lines = (s.sampleContent || '')
+        const ext = s.extension.toLowerCase();
+        const content = s.sampleContent || '';
+
+        // 1. Spreadsheet (.xlsx, .xlsm, .xls)
+        if (ext === '.xlsx' || ext === '.xlsm' || ext === '.xls') {
+          const sheetBlocks = content.split(/\[Sheet:\s*"([^"]+)"\]/);
+          const sheets: { name: string; header: string; sample: string }[] = [];
+
+          for (let i = 1; i < sheetBlocks.length; i += 2) {
+            const sheetName = sheetBlocks[i];
+            const sheetRows = (sheetBlocks[i + 1] || '')
+              .split('\n')
+              .map((r) => r.trim())
+              .filter((r) => r.length > 0);
+            const header = sheetRows[0] || '';
+            const sample = sheetRows.slice(1, 3).join(' | ');
+            sheets.push({ name: sheetName, header, sample });
+          }
+
+          let sheetDetails = '';
+          if (sheets.length > 0) {
+            sheetDetails = sheets
+              .map(
+                (sh) =>
+                  `\n  - **Sheet \`${sh.name}\`**: Kolom: \`${sh.header.slice(0, 100)}\`${sh.sample ? `\n    - *Contoh Data*: \`${sh.sample.slice(0, 120)}\`` : ''}`,
+              )
+              .join('');
+          }
+
+          return `- \`${s.name}\` (${ext.toUpperCase().replace('.', '')}, ${sizeKb} KB)${sheetDetails || `\n  - *Info Spreadsheet*: ${content.slice(0, 150)}`}`;
+        }
+
+        // 2. JSON files
+        if (ext === '.json') {
+          try {
+            const parsed = JSON.parse(content);
+            const isArr = Array.isArray(parsed);
+            const targetObj = isArr ? parsed[0] : parsed;
+            const keys = targetObj && typeof targetObj === 'object' ? Object.keys(targetObj) : [];
+            return `- \`${s.name}\` (JSON, ${sizeKb} KB)
+  - **Struktur**: ${isArr ? `Array of Objects (${parsed.length} items)` : 'Root Object'}
+  - **Field/Kunci**: ${keys.map((k) => `\`${k}\``).join(', ')}`;
+          } catch {
+            return `- \`${s.name}\` (JSON, ${sizeKb} KB)\n  - *Sample*: \`${content.slice(0, 100)}\``;
+          }
+        }
+
+        // 3. Text, CSV, Markdown, Word (.txt, .csv, .tsv, .docx, .md)
+        const lines = content
           .split('\n')
           .map((l) => l.trim())
           .filter((l) => l.length > 0 && !l.startsWith('[Binary'));
@@ -494,7 +583,7 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
           sampleStr = `\n  - **Contoh Baris Data**: ${dataSamples.map((ds) => `\`${ds.slice(0, 80)}\``).join(', ')}`;
         }
 
-        return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
+        return `- \`${s.name}\` (${ext.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
   - **Judul/Header**: \`${header}\`${sectionStr}${sampleStr}`;
       })
       .join('\n\n');
