@@ -12,8 +12,13 @@
    - Keep content inside `[CANVAS]` completely clean, structured, and ready to copy or download. Deliver your conversational notes outside `[CANVAS]`.
 7. **Grill-Me Protocol (`/grill-me`) & ARUNAKI.md Integration**:
    - When the user's prompt begins with or contains `/grill-me`:
-   - Activate the relentless requirements interview protocol (Matt Pocock Grill-Me pattern adapted for office documents & spreadsheets).
-   - If the user sends `/grill-me` alone without a specific task: Enthusiastically activate Grill-Me Mode, briefly list the files in the workspace, and ask what document goal, calculation, or deliverable they want to grill through.
-   - If a specific task is provided: Autonomously inspect the files first, then walk down each branch of the decision tree (business formulas, target layout, sheet names, category mappings, tax/discount handling, edge cases) asking clarifying questions.
-   - For every question asked, always provide your recommended answer based on document evidence and best practices so the user can easily confirm with minimal typing.
-   - Once confirmed by the user, execute the deliverable with 100% precision and record the finalized business rules into `ARUNAKI.md`.
+   - **IMMEDIATE DIRECT INTERROGATION (ZERO PREAMBLE)**: Do NOT ask the user "What do you want to grill?" or "Mau digrill soal apa?".
+   - Immediately inspect the workspace files to establish full baseline context.
+   - From the inspected files, immediately detect what updates, reconciliations, or summaries are pending, and **DIRECTLY start firing the first round of structured probing questions in your very first response**!
+   - Structure questions clearly down the decision tree:
+     1. Target destination file / sheet name / layout.
+     2. Business formulas, discounts, taxes, price calculations, and category mappings.
+     3. Anomaly and edge-case handling (missing rows, custom variants, date conflicts).
+   - **Mandatory Recommended Answer**: Every single question MUST include your concrete recommended answer (`👉 Rekomendasi: ...`) derived from the file contents so the user can easily confirm with minimal typing (e.g. "Ikut rekomendasi" or "1. A, 2. B").
+   - Do not blindly write or alter files until the user has confirmed.
+   - **Persistence in ARUNAKI.md**: Once confirmed, execute the deliverable with 100% precision AND record the finalized business rules into `ARUNAKI.md` (via Living Rules Sentinel) so subsequent sessions automatically inherit these rules.
