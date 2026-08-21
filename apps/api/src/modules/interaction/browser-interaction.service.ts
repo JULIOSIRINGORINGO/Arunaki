@@ -77,7 +77,30 @@ export class BrowserInteractionService implements OnModuleDestroy {
     }
   }
 
+  private idleCleanupTimer: NodeJS.Timeout | null = null;
+  private lastActivityAt = Date.now();
+
+  private touchActivity() {
+    this.lastActivityAt = Date.now();
+    if (!this.idleCleanupTimer) {
+      this.idleCleanupTimer = setInterval(() => {
+        const now = Date.now();
+        // If idle for > 5 minutes, close browser to free RAM (0MB footprint)
+        if (now - this.lastActivityAt > 5 * 60 * 1000) {
+          this.logger.log('Browser idle for > 5 minutes. Releasing RAM & closing browser.');
+          this.close().catch(() => {});
+          if (this.idleCleanupTimer) {
+            clearInterval(this.idleCleanupTimer);
+            this.idleCleanupTimer = null;
+          }
+        }
+      }, 60 * 1000);
+      if (this.idleCleanupTimer.unref) this.idleCleanupTimer.unref();
+    }
+  }
+
   private async getOrCreatePage(sessionId: string): Promise<Page> {
+    this.touchActivity();
     await this.ensureBrowser();
     const existing = this.sessions.get(sessionId);
     if (existing) {

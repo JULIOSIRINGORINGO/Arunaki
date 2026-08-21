@@ -104,6 +104,8 @@ function createWindow() {
       height: 35,
     },
     webPreferences: {
+      backgroundThrottling: true,
+      spellcheck: false,
       contextIsolation: true,
       sandbox: false,
       nodeIntegration: false,
