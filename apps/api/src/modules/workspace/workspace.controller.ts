@@ -21,6 +21,7 @@ import {
 } from './dtos/workspace.dto.js';
 import { TimeTravelService } from './services/time-travel.service.js';
 import { TranscriptEngineService } from './services/transcript-engine.service.js';
+import { WorkspaceCartographerService } from './services/workspace-cartographer.service.js';
 import {
   successResponse,
   errorResponse,
@@ -35,6 +36,7 @@ export class WorkspaceController {
     private readonly fileService: FileService,
     private readonly timeTravelService: TimeTravelService,
     private readonly transcriptEngineService: TranscriptEngineService,
+    private readonly cartographerService: WorkspaceCartographerService,
   ) {}
 
   @Post()

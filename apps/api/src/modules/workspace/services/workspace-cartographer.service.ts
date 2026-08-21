@@ -315,7 +315,11 @@ export class WorkspaceCartographerService {
         '.md',
         '.xlsx',
         '.xls',
+        '.xlsm',
         '.tsv',
+        '.docx',
+        '.doc',
+        '.pdf',
       ]);
 
       for (const entry of entries) {

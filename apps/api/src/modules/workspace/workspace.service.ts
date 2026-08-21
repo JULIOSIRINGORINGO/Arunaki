@@ -15,6 +15,8 @@ import {
   WorkspaceHeartbeatService,
   FileSnapshot,
 } from '../ai/workspace-heartbeat.service.js';
+import { WorkspaceCartographerService } from './services/workspace-cartographer.service.js';
+import { Optional, Inject, forwardRef } from '@nestjs/common';
 
 @Injectable()
 export class WorkspaceService extends BaseService<Workspace> {
@@ -24,6 +26,8 @@ export class WorkspaceService extends BaseService<Workspace> {
     private readonly fileService: FileService,
     private readonly sourceService: SourceService,
     private readonly heartbeatService: WorkspaceHeartbeatService,
+    @Optional() @Inject(forwardRef(() => WorkspaceCartographerService))
+    private readonly cartographerService?: WorkspaceCartographerService,
   ) {
     super(repository);
   }
@@ -40,21 +44,29 @@ export class WorkspaceService extends BaseService<Workspace> {
         (w) => w.rootPath && w.rootPath.toLowerCase() === data.rootPath!.toLowerCase()
       );
       if (match) {
-        return this.repository.update(match.id, {
+        const updated = await this.repository.update(match.id, {
           name: data.name || match.name,
           businessType: data.businessType || match.businessType,
           status: 'ready',
         });
+        this.cartographerService?.analyzeAndBootstrap(updated.id).catch(() => {});
+        return updated;
       }
     }
 
-    return this.repository.create({
+    const created = await this.repository.create({
       name: data.name,
       description: data.description,
       businessType: data.businessType || 'generic',
       rootPath: data.rootPath,
       status: 'ready',
     });
+
+    if (created.rootPath) {
+      this.cartographerService?.analyzeAndBootstrap(created.id).catch(() => {});
+    }
+
+    return created;
   }
 
   async findAll(): Promise<Workspace[]> {
