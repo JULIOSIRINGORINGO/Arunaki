@@ -48,9 +48,10 @@ export class SearchToolService {
 
                 // If text/data file, also check content if name didn't match
                 const ext = path.extname(entry.name).toLowerCase();
-                const isText = ['.txt', '.md', '.csv', '.json', '.tsv', '.log', '.docx', '.xlsx', '.xlsm'].includes(ext);
+                const isPlainText = ['.txt', '.md', '.csv', '.json', '.tsv', '.log'].includes(ext);
+                const isSpreadsheet = ['.xlsx', '.xlsm', '.xls'].includes(ext);
 
-                if (isText && fs.existsSync(fullPath)) {
+                if (isPlainText && fs.existsSync(fullPath)) {
                   try {
                     const sample = fs.readFileSync(fullPath, 'utf8').slice(0, 10000);
                     if (!matched && lowerQuery && sample.toLowerCase().includes(lowerQuery)) {
@@ -61,7 +62,31 @@ export class SearchToolService {
                       contentSnippet = sample.slice(0, 200);
                     }
                   } catch {
-                    // Binary or unreadable text sample
+                    // Unreadable text sample
+                  }
+                } else if (isSpreadsheet && fs.existsSync(fullPath)) {
+                  try {
+                    const XLSX = require('xlsx');
+                    const wb = XLSX.readFile(fullPath, { sheetRows: 20 });
+                    const sheetTexts: string[] = [];
+                    for (const sName of wb.SheetNames.slice(0, 6)) {
+                      const sheet = wb.Sheets[sName];
+                      if (sheet) {
+                        const csv = XLSX.utils.sheet_to_csv(sheet);
+                        sheetTexts.push(`[Sheet: ${sName}]\n${csv}`);
+                      }
+                    }
+                    const allText = sheetTexts.join('\n\n').slice(0, 10000);
+                    if (!matched && lowerQuery && allText.toLowerCase().includes(lowerQuery)) {
+                      matched = true;
+                      const idx = allText.toLowerCase().indexOf(lowerQuery);
+                      contentSnippet = allText.slice(Math.max(0, idx - 50), Math.min(allText.length, idx + 150));
+                    } else if (nameMatches) {
+                      contentSnippet = `Sheets: ${wb.SheetNames.join(', ')}`;
+                    }
+                  } catch {
+                    // Spreadsheet read error
+                    if (nameMatches) contentSnippet = `Spreadsheet file: ${entry.name}`;
                   }
                 }
 
