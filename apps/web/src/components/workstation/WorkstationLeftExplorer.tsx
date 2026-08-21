@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, memo } from "react";
-import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw, ChevronDown, Sparkles } from "lucide-react";
+import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw, ChevronDown, PanelsTopLeft } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
 import { toast } from "sonner";
@@ -53,6 +53,19 @@ interface WorkstationLeftExplorerProps {
 }
 
 type LoadState = "idle" | "loading" | "done" | "error";
+
+function formatCanvasTitle(title: string): string {
+  if (!title) return "Document Canvas";
+  const clean = title.replace(/^#+\s*/, "").replace(/[`*|_]/g, "").trim();
+  if (clean === clean.toUpperCase() && clean.length > 2) {
+    return clean
+      .toLowerCase()
+      .split(" ")
+      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+      .join(" ");
+  }
+  return clean;
+}
 
 function WorkstationLeftExplorerComponent({
   collapsed,
@@ -287,6 +300,7 @@ function WorkstationLeftExplorerComponent({
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform text-[var(--text-muted)]", !isCanvasSectionOpen && "-rotate-90")} />
+            <PanelsTopLeft className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.5} />
             <span className="font-semibold text-xs tracking-tight text-[var(--text-primary)]">Canvas</span>
             {recentCanvases.length > 0 && (
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-card)] text-[var(--text-dim)] border border-[var(--border-color)] font-mono">
@@ -304,25 +318,28 @@ function WorkstationLeftExplorerComponent({
                 No recent canvas
               </div>
             ) : (
-              recentCanvases.slice(0, 5).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onOpenCanvasTab?.(item)}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer"
-                  title={`Open Canvas: ${item.title}`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 opacity-80 group-hover:opacity-100" />
-                    <span className="truncate text-[11px] font-medium group-hover:text-[var(--text-primary)]">
-                      {item.title}
+              recentCanvases.slice(0, 5).map((item) => {
+                const formattedTitle = formatCanvasTitle(item.title);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onOpenCanvasTab?.(item)}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-left text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors group cursor-pointer"
+                    title={`Open Canvas: ${formattedTitle}`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <PanelsTopLeft className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" strokeWidth={1.5} />
+                      <span className="truncate text-[11px] font-normal text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
+                        {formattedTitle}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-dim)] shrink-0 ml-2 font-mono">
+                      {item.timeStr || "open"}
                     </span>
-                  </div>
-                  <span className="text-[10px] text-[var(--text-dim)] shrink-0 ml-2 font-mono">
-                    {item.timeStr || "open"}
-                  </span>
-                </button>
-              ))
+                  </button>
+                );
+              })
             )}
           </div>
         )}

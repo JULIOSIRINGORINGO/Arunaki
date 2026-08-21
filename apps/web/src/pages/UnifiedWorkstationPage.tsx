@@ -352,6 +352,8 @@ export function UnifiedWorkstationPage() {
         type: "canvas",
         title: item.title,
         content: item.content,
+        timeStr: item.timeStr,
+        createdAt: item.createdAt,
       };
       if (existingIdx >= 0) {
         const copy = [...prev];
@@ -668,13 +670,18 @@ export function UnifiedWorkstationPage() {
               const canvasText = extractCanvasContent(accumulatedResponseText);
               if (canvasText) {
                 const canvasTabId = "tab-canvas-active";
+                const canvasTitle = extractCanvasTitle(canvasText);
+                const currentTimeStr = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                const currentCreatedAt = new Date().toISOString();
                 setTabs((prev) => {
                   const existingIdx = prev.findIndex((t) => t.id === canvasTabId);
                   const newTab: CenterTab = {
                     id: canvasTabId,
                     type: "canvas",
-                    title: "Canvas",
+                    title: canvasTitle,
                     content: canvasText,
+                    timeStr: currentTimeStr,
+                    createdAt: currentCreatedAt,
                   };
                   if (existingIdx >= 0) {
                     const copy = [...prev];
@@ -724,13 +731,18 @@ export function UnifiedWorkstationPage() {
               const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
               if (canvasText) {
                 const canvasTabId = "tab-canvas-active";
+                const canvasTitle = extractCanvasTitle(canvasText);
+                const currentTimeStr = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+                const currentCreatedAt = new Date().toISOString();
                 setTabs((prev) => {
                   const existingIdx = prev.findIndex((t) => t.id === canvasTabId);
                   const newTab: CenterTab = {
                     id: canvasTabId,
                     type: "canvas",
-                    title: "Canvas",
+                    title: canvasTitle,
                     content: canvasText,
+                    timeStr: currentTimeStr,
+                    createdAt: currentCreatedAt,
                   };
                   if (existingIdx >= 0) {
                     const copy = [...prev];
@@ -740,6 +752,25 @@ export function UnifiedWorkstationPage() {
                   return [...prev, newTab];
                 });
                 setActiveTabId(canvasTabId);
+
+                // Update recent canvases
+                setRecentCanvases((prev) => {
+                  const filtered = prev.filter((i) => i.content.trim() !== canvasText.trim());
+                  const top5 = [
+                    {
+                      id: `canvas-${Date.now()}`,
+                      title: canvasTitle,
+                      content: canvasText,
+                      createdAt: currentCreatedAt,
+                      timeStr: currentTimeStr,
+                    },
+                    ...filtered,
+                  ].slice(0, 5);
+                  try {
+                    localStorage.setItem("arunaki_recent_canvases", JSON.stringify(top5));
+                  } catch {}
+                  return top5;
+                });
               }
               queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] }).then(() => {
                 setOptimisticMessages([]);

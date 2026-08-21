@@ -16,6 +16,21 @@ export interface CenterTab {
   path?: string;
   fileType?: string;
   content?: string;
+  createdAt?: string;
+  timeStr?: string;
+}
+
+function formatCanvasTitle(title: string): string {
+  if (!title) return "Document Canvas";
+  const clean = title.replace(/^#+\s*/, "").replace(/[`*|_]/g, "").trim();
+  if (clean === clean.toUpperCase() && clean.length > 2) {
+    return clean
+      .toLowerCase()
+      .split(" ")
+      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+      .join(" ");
+  }
+  return clean;
 }
 
 interface WorkstationCenterPanelProps {
@@ -228,13 +243,15 @@ function WorkstationCenterPanelComponent({
             <div className="h-full w-full flex flex-col bg-[var(--bg-app)] overflow-hidden select-text">
               {/* Clean Sub-Header Bar */}
               <div className="h-9 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-5 flex items-center justify-between text-xs select-none shrink-0">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold text-[var(--text-primary)] tracking-wide">
-                    {activeTab.title}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-xs font-semibold text-[var(--text-primary)] tracking-wide truncate">
+                    {formatCanvasTitle(activeTab.title)}
                   </span>
-                  <span className="text-[11px] text-[var(--text-muted)]">
-                    less than a minute ago
-                  </span>
+                  {(activeTab.timeStr || activeTab.createdAt) && (
+                    <span className="text-[11px] text-[var(--text-muted)] font-mono shrink-0">
+                      {activeTab.timeStr || (activeTab.createdAt ? new Date(activeTab.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "")}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
