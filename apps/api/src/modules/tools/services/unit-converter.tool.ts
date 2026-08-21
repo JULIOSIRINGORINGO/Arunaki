@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { DomainRegistryService } from '../../domain/domain.registry.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
 
@@ -12,7 +12,11 @@ import { ToolResult } from '../interfaces/tool-result.interface.js';
 export class UnitConverterTool {
   private readonly logger = new Logger(UnitConverterTool.name);
 
-  constructor(private readonly domainRegistry: DomainRegistryService) {}
+  constructor(@Optional() private domainRegistry?: DomainRegistryService) {
+    if (!this.domainRegistry) {
+      this.domainRegistry = new DomainRegistryService();
+    }
+  }
 
   async convert(params: {
     value: number;

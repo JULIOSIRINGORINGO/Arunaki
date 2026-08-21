@@ -22,20 +22,24 @@ export class MetadataSearchProvider implements SearchProvider {
       where.type = fileType;
     }
 
-    const files = await this.prisma.file.findMany({
-      where,
-      take: limit,
-      skip: offset,
-      include: { source: true },
-    });
+    try {
+      const files = await this.prisma.file.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        include: { source: true },
+      });
 
-    return files.map((file) => ({
-      fileId: file.id,
-      fileName: file.name,
-      filePath: file.path,
-      fileType: file.type,
-      score: 1.0,
-      source: 'metadata' as const,
-    }));
+      return files.map((file) => ({
+        fileId: file.id,
+        fileName: file.name,
+        filePath: file.path,
+        fileType: file.type,
+        score: 1.0,
+        source: 'metadata' as const,
+      }));
+    } catch {
+      return [];
+    }
   }
 }

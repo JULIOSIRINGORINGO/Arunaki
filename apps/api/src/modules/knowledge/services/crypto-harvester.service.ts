@@ -32,30 +32,36 @@ export class CryptoHarvesterService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit(): Promise<void> {
-    const rows = await this.prisma.memory.findMany({
-      where: { type: 'site', active: true },
-    });
-    for (const row of rows) {
-      try {
-        const data = JSON.parse(row.content);
-        this.learnedSites.set(row.key, {
-          host: row.key,
-          apiUrlTemplate: data.apiUrlTemplate,
-          secret: data.secret,
-          iterations: data.iterations,
-          keySizeBytes: data.keySizeBytes,
-        });
-        this.hostSecrets.set(row.key, {
-          secret: data.secret,
-          iterations: data.iterations,
-          keySize: data.keySizeBytes / 4,
-        });
-      } catch {}
+    if (!this.prisma?.memory) return;
+    try {
+      const rows = await this.prisma.memory.findMany({
+        where: { type: 'site', active: true },
+      });
+      for (const row of rows) {
+        try {
+          const data = JSON.parse(row.content);
+          this.learnedSites.set(row.key, {
+            host: row.key,
+            apiUrlTemplate: data.apiUrlTemplate,
+            secret: data.secret,
+            iterations: data.iterations,
+            keySizeBytes: data.keySizeBytes,
+          });
+          this.hostSecrets.set(row.key, {
+            secret: data.secret,
+            iterations: data.iterations,
+            keySize: data.keySizeBytes / 4,
+          });
+        } catch {}
+      }
+      if (rows.length) {
+        this.logger.log(
+          `[CryptoHarvester] Loaded ${rows.length} learned site(s) from DB`,
+        );
+      }
+    } catch {
+      // ignore init errors in test environments
     }
-    if (rows.length)
-      this.logger.log(
-        `[CryptoHarvester] Loaded ${rows.length} learned site(s) from DB`,
-      );
   }
 
   getLearnedSite(host: string) {

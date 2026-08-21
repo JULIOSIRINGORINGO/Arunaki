@@ -13,10 +13,10 @@ export class SearchService {
   private readonly providers: SearchProvider[];
 
   constructor(
-    private readonly metadataSearch: MetadataSearchProvider,
-    private readonly ftsSearch: FtsSearchProvider,
+    private readonly metadataSearch?: MetadataSearchProvider,
+    private readonly ftsSearch?: FtsSearchProvider,
   ) {
-    this.providers = [metadataSearch, ftsSearch];
+    this.providers = [metadataSearch, ftsSearch].filter(Boolean) as SearchProvider[];
     this.logger.log('SearchService initialized with metadata + FTS providers');
   }
 

@@ -24,6 +24,7 @@ export class DomainRegistryService {
     // dist/src/modules/domain/configs (prod) or src/modules/domain/configs (dev)
     const configPaths = [
       path.join(__dirname, 'configs'),
+      path.join(process.cwd(), 'apps', 'api', 'src', 'modules', 'domain', 'configs'),
       path.join(__dirname, '..', '..', 'src', 'modules', 'domain', 'configs'),
       path.join(process.cwd(), 'src', 'modules', 'domain', 'configs'),
     ];

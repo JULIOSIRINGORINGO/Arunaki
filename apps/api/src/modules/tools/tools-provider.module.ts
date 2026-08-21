@@ -69,10 +69,13 @@ import { BrowserInteractionTool } from './services/browser-interaction.tool.js';
 import { IpGeolocationTool } from './services/ip-geolocation.tool.js';
 import { StockLookupTool } from './services/stock-lookup.tool.js';
 
+import { DomainModule } from '../domain/domain.module.js';
+
 @Module({
   imports: [
     PrismaModule,
     ProviderModule,
+    DomainModule,
     ParserModule,
     KnowledgeModule,
     StorageModule,

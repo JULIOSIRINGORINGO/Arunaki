@@ -344,9 +344,9 @@ export class BusinessDomainToolsRegistrar {
         handler: (args) =>
           services.draftCommunicationTool.draft({
             type: args.type || 'email',
-            recipientName: args.recipient || args.recipientName || '',
-            topic: args.subject || args.topic || '',
-            keyPoints: args.keyPoints || [],
+            recipientName: args.recipient || args.recipientName || 'Client',
+            topic: args.subject || args.topic || args.context || 'General',
+            keyPoints: args.keyPoints || (args.context ? [args.context] : []),
           }),
         parameters: {
           type: 'object',
