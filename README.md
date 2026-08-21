@@ -2,219 +2,190 @@
   <img src="docs/assets/logo.svg" alt="Arunaki Logo" width="80" height="80" />
 </p>
 
-<h1 align="center">Arunaki</h1>
+<h1 align="center">Arunaki Documentation</h1>
 
 <p align="center">
   <strong>The Desktop Document Agent Workstation & Automation Harness</strong><br>
-  <em>A native desktop application for autonomous document editing, native Office COM execution, PDF processing pipelines, and structured workspace ledgers.</em>
+  <em>Native desktop computer-use for Microsoft Excel spreadsheets, Word contracts, PowerPoint decks, PDF pipelines, and financial ledgers.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Build-Passing-2ea44f?style=flat-square" alt="Build Status" />
-  <img src="https://img.shields.io/badge/Tests-252%20Passing-brightgreen?style=flat-square" alt="Test Status" />
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-blue?style=flat-square" alt="Platform" />
-  <img src="https://img.shields.io/badge/Node-%3E%3D20.0.0-informational?style=flat-square" alt="Node Engine" />
-  <img src="https://img.shields.io/badge/License-Proprietary-orange?style=flat-square" alt="License" />
-</p>
-
-<p align="center">
-  <a href="#about-arunaki">About</a> •
-  <a href="#application-interface">Workstation UI</a> •
-  <a href="#core-features">Core Features</a> •
-  <a href="#system-architecture">Architecture</a> •
-  <a href="#tool-harness-reference">Tool Reference</a> •
-  <a href="#security--sandboxing">Security Model</a> •
-  <a href="#getting-started">Getting Started</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#core-concepts">Core Concepts</a> •
+  <a href="#feature-guides">Feature Guides</a> •
+  <a href="#tool-catalog">Tool Catalog</a> •
+  <a href="#security--sandboxing">Security</a> •
   <a href="#configuration">Configuration</a> •
-  <a href="#testing--verification">Testing</a>
+  <a href="#building-from-source">Developer Setup</a>
 </p>
 
 ---
 
-## About Arunaki
+## 🚀 Quick Start
 
-**Arunaki** is an integrated desktop workstation and agentic execution harness built specifically for office documents, spreadsheets, and business files.
+### 1. Download & Install
 
-Traditional tools require manual formula construction, line-by-line formatting, and complex scripts. Arunaki operates as an autonomous desktop agent directly within a user-selected workspace folder: reading, editing, and authoring documents across Microsoft Office (Excel, Word, PowerPoint), PDF pipelines, and tabular databases while maintaining 100% layout and formula integrity.
+Arunaki is distributed as a native desktop application with pre-built installers for Windows and macOS.
 
----
+| Platform | Installer Package | Requirements | Status |
+| :--- | :--- | :--- | :--- |
+| **Windows** | `Arunaki-Setup-x64.exe` *(Setup Installer)*<br>`Arunaki-Portable.zip` *(Standalone)* | Windows 10 / 11 (64-bit)<br>Microsoft Office 2016+ *(for COM features)* | ✅ **Latest Release** |
+| **macOS** | `Arunaki-Universal.dmg` *(Apple Silicon / Intel)* | macOS 12.0 (Monterey) or higher | ⏳ *In Development* |
 
-## Application Interface
+1. Download the latest `Arunaki-Setup-x64.exe` installer.
+2. Run the installer and follow the setup wizard.
+3. Launch **Arunaki** from your Start Menu or Desktop shortcut.
 
-Arunaki provides a unified desktop workspace divided into focused operational zones:
+### 2. Select Your Workspace Folder
+When Arunaki opens, select the dedicated folder containing your business documents (e.g., `C:\Users\Admin\Documents\CompanyFiles`). 
+> **Security Note**: Arunaki is sandboxed strictly to this folder. It cannot read, modify, or access any files outside your selected workspace.
 
-```
-+-------------------------------------------------------------------------------+
-| [Arunaki Workstation]          File  Edit  View  Terminal  Help       [-] [o] [x] |
-+------------------+-----------------------------------------+------------------+
-| WORKSPACE FILES  | ACTIVE DOCUMENT VIEWER / EDITOR         | AGENT CONSOLE    |
-|                  |                                         |                  |
-| > Financial/     | Document: Sales_Report_2026.xlsx        | > User:          |
-|   - Q1_Rekap.xlsx|                                         | "Update sales"   |
-|   - Budget.csv   | +---+---------------+---------------+---|                  |
-| > Contracts/     | |   | A             | B             | C | * Thinking...    |
-|   - Vendor_v1.docx | 1 | Category      | Revenue (IDR) | % |                  |
-|   - Vendor_v2.docx | 2 | IT Services   | 45,000,000    | 60| [OK] read_file   |
-| > Invoices/      | 3 | Consultation  | 30,000,000    | 40| [OK] excel_edit  |
-|   - INV_001.pdf  | 4 | TOTAL         | =SUM(B2:B3)   |100|                  |
-|                  | +---+---------------+---------------+---| "Updated 2 rows |
-|                  |                                         |  Formula kept."  |
-+------------------+-----------------------------------------+------------------+
-| STATUS: Workspace Connected (C:\Workspace)                 | Engine: Online   |
-+------------------------------------------------------------+------------------+
-```
-
-1. **Workspace Explorer**: Real-time folder tree with instant local file sync and native OS launch.
-2. **Central Document Canvas**: Multi-format viewer and code editor supporting text, Markdown, spreadsheets, and PDF previews.
-3. **Agent Conversation & Execution Stream**: Floating command console showing real-time step telemetry, tool execution badges, and progress status.
+### 3. Start Automating
+Type short natural instructions in the chat console or paste raw text notes directly:
+- *"Rekap pemasukan dan pengeluaran hari ini ke laporan_keuangan.xlsx"*
+- *"Ganti nama klien di kontrak_kerjasama.docx menjadi PT Surya Mandiri"*
+- *"Gabungkan semua file PDF invoice bulan ini dan beri watermark LUNAS"*
 
 ---
 
-## Core Features
-
-### 1. Native Office COM Automation Engine
-Direct headless COM execution for Microsoft Office on Windows, guaranteeing zero layout corruption:
-- **Microsoft Excel**: Cell reading, multi-cell writing, formula preservation (`=SUM(...)`, `=VLOOKUP(...)`), multi-sheet cloning, constants clearing, and direct PDF publishing.
-- **Microsoft Word**: Template placeholder find-and-replace, dynamic paragraph formatting, table creation, and PDF conversion.
-- **Microsoft PowerPoint**: Slide creation, structured bullet list insertion, shape text replacement, and presentation deck exporting.
-
-### 2. Enterprise PDF & Redaction Pipeline
-Comprehensive manipulation and compliance tools for binary PDF documents:
-- **Page Management**: Merge multi-file documents, slice/extract page ranges, and apply custom opacity diagonal text watermarks.
-- **Digital Stamping**: Coordinate-based placement of signatures, corporate seals, and digital tax stamps (e-Materai).
-- **PII Data Redaction**: Automatic pattern detection and masking for sensitive personal data (national ID numbers, tax codes, bank account details, phone numbers, and email addresses).
-- **Universal Format Converter**: Automated bidirectional conversion bridging Word, Excel, PowerPoint, PDF, CSV, and plain text.
-
-### 3. Financial Reconciliation & Ledger Engine
-Autonomous accounting calculations designed for minimal typing:
-- **Surgical Content Patching**: Differential line replacements that preserve template structures, past transaction logs, and customer notes.
-- **Multi-Bank Subtotals**: Automated balancing across payment methods (bank transfers, cash ledgers, e-commerce channels).
-- **Cash & Expense Tracking**: Autonomous derivation of operating expenses, cash-in-drawer (*uang di laci*), and net variance (*selisih*).
-
-### 4. Document Audit & Version Diffing
-- Line-by-line comparison between document and contract drafts.
-- Automatic generation of structured redline Markdown tables highlighting additions, modifications, and deletions.
-- Quantitative variance reporting for commercial terms, pricing changes, and SLA commitments.
-
-### 5. Structured Data & Database Management
-- **Embedded SQLite Engine**: Direct structured SQL query execution and schema inspection.
-- **Multi-Domain Unit Converter**: Standardized conversion across length, weight, area, volume, and multi-currency exchange rates.
-- **Automated Communication Drafter**: Template generation for WhatsApp messages, invoice payment reminders, quotation summaries, and formal letters.
-
----
-
-## System Architecture
+## 🧠 Core Concepts
 
 ```mermaid
-graph TD
-    User([User Instruction]) --> Workstation[Electron Desktop / Web Workstation]
-    
-    subgraph Frontend Layer
-        Workstation --> ChatPanel[Agent Console & Streaming Trace]
-        Workstation --> DocViewer[Document Canvas & Grid Viewer]
-        Workstation --> Explorer[Native Workspace Explorer]
-    end
-
-    subgraph Backend Core Engine
-        ChatPanel --> AgentRunner[Agent Runner Service]
-        AgentRunner --> ToolRegistry[Tool Registry & Alias Normalizer]
-        
-        ToolRegistry --> COMBridge[Office COM Bridge Service]
-        ToolRegistry --> PDFEngine[PDF & Binary Processor]
-        ToolRegistry --> LedgerEngine[Financial Ledger Engine]
-        ToolRegistry --> DBEngine[SQLite & Storage Service]
-    end
-
-    subgraph Native Operating System
-        COMBridge --> MSExcel[(Microsoft Excel)]
-        COMBridge --> MSWord[(Microsoft Word)]
-        COMBridge --> MSPPT[(Microsoft PowerPoint)]
-        
-        PDFEngine --> WorkspaceFS[(Workspace Folder)]
-        LedgerEngine --> WorkspaceFS
-        DBEngine --> WorkspaceFS
-    end
-
-    subgraph Security Boundary
-        WorkspaceFS -. Sandboxed Access Only .- OSFiles[(OS & Personal Files - BLOCKED)]
-    end
+graph LR
+    User[User Instruction] --> Workstation[Arunaki Desktop Shell]
+    Workstation --> Harness[Agent Execution Harness]
+    Harness --> Tools[Tool Registry & Normalizer]
+    Tools --> COM[Native Office COM Bridge]
+    Tools --> PDF[PDF & Binary Processor]
+    Tools --> Ledger[Ledger Engine]
+    COM --> Workspace[(Sandboxed Workspace Folder)]
+    PDF --> Workspace
+    Ledger --> Workspace
 ```
 
+### 1. The Workspace Sandbox
+All document operations occur within your chosen **Workspace Folder**. The agent harness cannot execute system commands, access root operating system files, or read external drives.
+
+### 2. Native COM vs File Modification
+- **Standard Text / PDF Files**: Modified using surgical differential patching and byte-level manipulation without overwriting unreferenced template sections.
+- **Microsoft Office Files (`.xlsx`, `.docx`, `.pptx`)**: Executed directly through native Windows COM automation, ensuring formulas, fonts, margins, charts, and colors remain 100% intact.
+
+### 3. Checkpoints & 1-Click Rollback
+Before applying changes to any document, Arunaki automatically creates an immutable local snapshot. If an automated modification needs to be undone, restore the original file instantly with a single click.
+
 ---
 
-## Tool Harness Reference
+## 📖 Feature Guides
 
-The Arunaki harness includes over 50 registered tools organized into discrete functional modules:
+### 📊 1. Excel Spreadsheet Automation
+Arunaki interacts directly with Microsoft Excel via headless COM automation:
+- **Cell Population**: Reads and writes values directly to target cell coordinates (`B2`, `S4`, `S14`).
+- **Formula Preservation**: Evaluates and updates dynamic formulas (`=SUM(B2:B20)`, `=VLOOKUP(...)`) without converting them into static numbers.
+- **Multi-Sheet Management**: Clones monthly template sheets, clears transaction constants, and exports workbooks to PDF.
 
-| Module | Primary Tools | Capabilities |
+### 📝 2. Word Document Authoring
+Automate corporate correspondence and legal agreements:
+- **Template Placeholders**: Detects and replaces custom placeholders (e.g. `{{NAMA_KLIEN}}`, `{{TANGGAL}}`, `{{NILAI_KONTRAK}}`).
+- **Structured Content**: Inserts formatted headings, styled paragraphs, and multi-column tables.
+- **PDF Publishing**: Exports formatted `.docx` documents directly to PDF.
+
+### 📑 3. PowerPoint Slide Decks
+Automate presentation authoring:
+- **Slide Generation**: Adds new presentation slides with structured titles and bullet points.
+- **Shape Text Editing**: Updates text frames and metric callouts across existing slides.
+- **Deck Export**: Compiles presentation slides to PDF for distribution.
+
+### 🛡️ 4. Enterprise PDF & PII Redaction Pipeline
+Comprehensive PDF document management:
+- **Page Management (`pdf_manage_pages`)**: Merge multiple PDF invoices into a single document or extract specific page ranges.
+- **Watermarking & Stamping (`pdf_stamp_image`)**: Apply custom diagonal text watermarks or position digital signatures and e-Materai stamps on exact coordinates.
+- **PII Data Masking (`doc_redact_pii`)**: Detect and redact sensitive identifiers:
+  - NIK KTP (Indonesian National Identity)
+  - NPWP (Tax Identification Number)
+  - Bank Account & Credit Card Numbers
+  - Mobile Phone Numbers & Email Addresses
+
+### ⚖️ 5. Version Audit & Redline Comparison (`doc_compare_versions`)
+Compare document revisions with line-by-line diffing:
+- Produces a structured Markdown redline table showing added, modified, and deleted clauses.
+- Calculates document similarity scores and extracts commercial term changes (pricing, timelines, SLA terms).
+
+---
+
+## 🛠️ Tool Catalog
+
+The Arunaki harness includes over 50 registered tools:
+
+| Module | Primary Tools | Scope of Operation |
 | :--- | :--- | :--- |
-| **Workspace Files** | `read`, `write`, `edit`, `list`, `search_workspace`, `rename`, `delete` | Surgical diff editing, file reading, pattern search, atomic file lifecycle. |
-| **Office Automation** | `desktop_excel_edit`, `desktop_word_edit`, `desktop_ppt_edit`, `desktop_open_file` | Headless COM mutations, formula preservation, template authoring, PDF export. |
-| **PDF & Redaction** | `pdf_manage_pages`, `pdf_stamp_image`, `doc_redact_pii`, `convert_document` | PDF merging, page splitting, watermark stamping, e-Materai, PII masking. |
-| **Document Audit** | `doc_compare_versions`, `extract_structured_data`, `document_reader` | Redline diff tables, similarity analysis, document structure parsing. |
-| **Business & Data** | `data_query`, `unit_converter`, `draft_communication`, `generate_export` | SQL database queries, unit/currency conversions, communication drafts, CSV/XLSX export. |
-| **Meta & Orchestration** | `todo_write`, `batch_execute`, `agent_spawn`, `ask_user` | Working memory checklist, programmatic tool calling (PTC), sub-agent delegation. |
+| **Workspace Files** | `read`, `write`, `edit`, `list`, `search_workspace`, `rename`, `delete` | File CRUD, surgical line patching, pattern search, atomic file lifecycle. |
+| **Office Automation** | `desktop_excel_edit`, `desktop_word_edit`, `desktop_ppt_edit`, `desktop_open_file` | Native COM automation, formula retention, template authoring, PDF export. |
+| **PDF & Compliance** | `pdf_manage_pages`, `pdf_stamp_image`, `doc_redact_pii`, `convert_document` | PDF merging, page extraction, watermark stamping, e-Materai, PII masking. |
+| **Document Audit** | `doc_compare_versions`, `extract_structured_data`, `document_reader` | Redline diff tables, similarity analysis, document structure extraction. |
+| **Business & Data** | `data_query`, `unit_converter`, `draft_communication`, `generate_export` | SQLite database queries, unit/currency conversion, message drafts, CSV/XLSX export. |
+| **Orchestration** | `todo_write`, `batch_execute`, `agent_spawn`, `ask_user` | Working memory checklist, programmatic tool calling (PTC), sub-agent spawning. |
 
 ---
 
-## Security & Sandboxing
+## 🔒 Security & Sandboxing
 
-Arunaki is engineered with strict operational boundaries:
+Arunaki is engineered with defense-in-depth boundaries:
 
-- 🔒 **Workspace Folder Sandboxing**: The agent is restricted entirely to the selected workspace folder. Access to operating system files, user home directories, and external drives is blocked.
-- 🚫 **No Arbitrary Shell Execution**: The agent harness cannot execute arbitrary terminal commands, download unverified executables, or alter system settings.
-- ⏪ **1-Click Snapshot Rollback**: Checkpoint snapshots are captured before file modifications, allowing instant one-click restoration to previous states.
-- 🛡️ **Approval Gate for Destructive Actions**: Irreversible modifications require explicit user authorization prior to execution.
+- **Isolated Workspace Sandbox**: All file reads and writes are restricted exclusively to the selected workspace folder. Path traversal attempts (`../`) are intercepted and blocked.
+- **Zero OS Shell Access**: The harness does not execute arbitrary terminal commands, download external scripts, or modify operating system settings.
+- **Approval Gate for Destructive Actions**: Irreversible modifications require explicit user authorization before execution.
+- **Automatic Local Snapshots**: Immutable backup copies are saved locally before every file mutation for instant 1-click rollback.
 
 ---
 
-## Getting Started
+## ⚙️ Configuration
 
-### System Requirements
-- **Operating System**: Windows 10/11 (64-bit) for native Office COM automation; macOS/Linux for standard document and PDF workflows.
-- **Node.js**: v20.0.0 or higher
-- **Package Manager**: npm v10.0.0 or higher
+Application settings can be configured through the **Settings Panel** in the UI or via `apps/api/.env`:
 
-### Installation
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `3000` | Local API server communication port. |
+| `WORKSPACE_ROOT` | `./workspace` | Default path for the isolated document workspace. |
+| `DATABASE_URL` | `file:./dev.db` | Local SQLite database storage path. |
+| `ENCRYPTION_KEY` | *(Auto-generated)* | 256-bit AES key for securing local session configurations. |
+| `DEFAULT_MODEL` | `deepseek-v4-flash:free` | Default model routed through the agent harness. |
+
+---
+
+## 💻 Building from Source
+
+For developers contributing to Arunaki:
+
+### Prerequisites
+- Node.js v20.0.0 or higher
+- npm v10.0.0 or higher
+- Windows 10/11 (64-bit) recommended for full Office COM development
+
+### Build Instructions
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
 cd Arunaki
 
-# 2. Install dependencies across all workspaces
+# 2. Install workspace dependencies
 npm install
 
-# 3. Initialize application database
+# 3. Setup local database schema
 npx prisma generate --schema=apps/api/prisma/schema.prisma
 npx prisma db push --schema=apps/api/prisma/schema.prisma
 
-# 4. Launch development environment (API Backend + Web Interface)
+# 4. Start local development server (Backend API + Web Interface)
 npm run dev
+
+# 5. Build Desktop Windows Installer (.exe)
+npm run build -w apps/desktop
 ```
 
----
-
-## Configuration
-
-Application configuration is managed via environment variables in `apps/api/.env`:
-
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `PORT` | `3000` | Backend API HTTP server port. |
-| `WORKSPACE_ROOT` | `./workspace` | Default path for the isolated file workspace. |
-| `DATABASE_URL` | `file:./dev.db` | SQLite database connection string. |
-| `ENCRYPTION_KEY` | *(Auto-generated)* | 256-bit key for securing local session credentials. |
-| `DEFAULT_MODEL` | `deepseek-v4-flash:free` | Default model routed through the agent harness. |
-
----
-
-## Testing & Verification
-
-Arunaki maintains an exhaustive test suite covering unit logic, multi-batch load stress, and end-to-end live document benchmark scenarios.
+### Running Test Suites
 
 ```bash
-# Run complete test suite (51 test suites, 252 tests)
+# Run complete test suite (51 test files, 252 tests)
 npm test
 
 # Run the 50-Tool batched stress and concurrency hammer test
@@ -226,6 +197,6 @@ npx vitest run apps/api/src/test-real-llm-benchmark.spec.ts
 
 ---
 
-## License
+## 📄 License
 
 Copyright © 2026 Arunaki. All rights reserved.
