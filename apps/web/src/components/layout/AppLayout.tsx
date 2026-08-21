@@ -34,25 +34,25 @@ export function AppLayout() {
     async function loadActiveWs() {
       const activeWsId = localStorage.getItem("arunaki_workspace_id");
       const cachedPath = localStorage.getItem("arunaki_workspace_path");
-      if (cachedPath) {
-        setWorkspaceInfo((prev) => ({
-          id: activeWsId || prev?.id || "ws",
-          name: prev?.name || cachedPath.split(/[\\/]/).pop() || "Workspace",
-          rootPath: cachedPath,
-        }));
-      }
 
       try {
         const res = await apiFetch(`${API_BASE}/workspaces`);
         if (res.ok) {
           const json = await res.json();
           const list = json.data || [];
-          const current = list.find((w: any) => w.id === activeWsId) || list[0];
+          if (list.length === 0) {
+            setWorkspaceInfo(null);
+            localStorage.removeItem("arunaki_workspace_id");
+            localStorage.removeItem("arunaki_workspace_path");
+            return;
+          }
+          const current =
+            list.find((w: any) => w.id === activeWsId) ||
+            list.find((w: any) => cachedPath && w.rootPath && w.rootPath.toLowerCase() === cachedPath.toLowerCase()) ||
+            list[0];
           if (current) {
             setWorkspaceInfo(current);
-            if (!activeWsId) {
-              localStorage.setItem("arunaki_workspace_id", current.id);
-            }
+            localStorage.setItem("arunaki_workspace_id", current.id);
             if (current.rootPath) {
               localStorage.setItem("arunaki_workspace_path", current.rootPath);
             }

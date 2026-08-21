@@ -206,11 +206,13 @@ export function UnifiedWorkstationPage() {
         if (first.rootPath) {
           localStorage.setItem("arunaki_workspace_path", first.rootPath);
         }
-        window.dispatchEvent(new Event("arunaki-workspace-change"));
       } else if (match.rootPath) {
         localStorage.setItem("arunaki_workspace_path", match.rootPath);
-        window.dispatchEvent(new Event("arunaki-workspace-change"));
       }
+    } else {
+      setSelectedWorkspaceId(null);
+      localStorage.removeItem("arunaki_workspace_id");
+      localStorage.removeItem("arunaki_workspace_path");
     }
   }, [workspaces, selectedWorkspaceId]);
 

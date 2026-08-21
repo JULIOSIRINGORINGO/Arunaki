@@ -34,12 +34,26 @@ export class WorkspaceService extends BaseService<Workspace> {
     businessType?: string;
     rootPath?: string;
   }): Promise<Workspace> {
+    if (data.rootPath) {
+      const existing = await this.repository.findAll();
+      const match = existing.find(
+        (w) => w.rootPath && w.rootPath.toLowerCase() === data.rootPath!.toLowerCase()
+      );
+      if (match) {
+        return this.repository.update(match.id, {
+          name: data.name || match.name,
+          businessType: data.businessType || match.businessType,
+          status: 'ready',
+        });
+      }
+    }
+
     return this.repository.create({
       name: data.name,
       description: data.description,
       businessType: data.businessType || 'generic',
       rootPath: data.rootPath,
-      status: 'pending',
+      status: 'ready',
     });
   }
 
