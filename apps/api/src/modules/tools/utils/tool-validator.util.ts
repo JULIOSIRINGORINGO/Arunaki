@@ -100,10 +100,32 @@ export function normalizeToolArgs(
   }
 
   // Diff text mapping
+  if (Array.isArray(normalized.documents) && normalized.documents.length >= 2) {
+    if (!normalized.sourceText)
+      normalized.sourceText =
+        normalized.documents[0]?.content ||
+        normalized.documents[0]?.text ||
+        JSON.stringify(normalized.documents[0]);
+    if (!normalized.targetText)
+      normalized.targetText =
+        normalized.documents[1]?.content ||
+        normalized.documents[1]?.text ||
+        JSON.stringify(normalized.documents[1]);
+  }
   if (!normalized.sourceText && normalized.textA)
     normalized.sourceText = normalized.textA;
   if (!normalized.targetText && normalized.textB)
     normalized.targetText = normalized.textB;
+
+  // PII Redaction field mapping
+  if (!normalized.fields && normalized.piiTypes)
+    normalized.fields = normalized.piiTypes;
+  if (!normalized.fields && normalized.types)
+    normalized.fields = normalized.types;
+
+  // PDF files array mapping
+  if (!normalized.fileList && Array.isArray(normalized.files))
+    normalized.fileList = normalized.files;
 
   if (!normalized.query && normalized.q) normalized.query = normalized.q;
   return normalized;

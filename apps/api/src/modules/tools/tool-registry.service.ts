@@ -190,13 +190,18 @@ export class ToolRegistryService {
       doc_redact: 'doc_redact_pii',
       pii_redact: 'doc_redact_pii',
       mask_pii: 'doc_redact_pii',
+      mask_data: 'doc_redact_pii',
       sensor_data: 'doc_redact_pii',
 
       // Document diffing
       diff: 'doc_compare_versions',
       compare: 'doc_compare_versions',
+      compare_document: 'doc_compare_versions',
       compare_documents: 'doc_compare_versions',
       compare_versions: 'doc_compare_versions',
+      compare_files: 'doc_compare_versions',
+      diff_files: 'doc_compare_versions',
+      document_diff: 'doc_compare_versions',
       doc_diff: 'doc_compare_versions',
 
       // PDF operations
@@ -204,6 +209,9 @@ export class ToolRegistryService {
       pdf_merge: 'pdf_manage_pages',
       split_pdf: 'pdf_manage_pages',
       watermark_pdf: 'pdf_manage_pages',
+      pdf_tool: 'pdf_manage_pages',
+      pdf_util: 'pdf_manage_pages',
+      pdf_utility: 'pdf_manage_pages',
       pdf: 'pdf_manage_pages',
       stamp_pdf: 'pdf_stamp_image',
       pdf_stamp: 'pdf_stamp_image',
