@@ -440,7 +440,7 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
 
   /**
    * Deterministic fallback generator when LLM is offline.
-   * Completely domain-agnostic: generates a clean metadata & schema index without hardcoded assumptions.
+   * Completely domain-agnostic: generates a clean metadata & schema index with rich section and data samples.
    */
   private buildDeterministicRules(
     workspaceName: string,
@@ -454,21 +454,50 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
           .map((l) => l.trim())
           .filter((l) => l.length > 0 && !l.startsWith('[Binary'));
 
-        let header = '';
-        let sampleLine = '';
+        const cleanLines = lines.filter(
+          (l) => !/^[-=_*~]{3,}$/.test(l) && !/^#+\s*/.test(l),
+        );
 
-        if (lines.length > 0) {
-          header = lines[0].replace(/[";]/g, '').slice(0, 120);
-          if (lines.length > 1) {
-            sampleLine = lines[1].replace(/[";]/g, '').slice(0, 120);
-          }
+        const header = cleanLines[0]?.slice(0, 120) || s.name;
+
+        // Extract key sections (e.g. "PEMASUKAN :", "NOTE BELUM BAYAR :", etc.)
+        const sections = lines
+          .filter(
+            (l) =>
+              /^[A-Z\s_-]{3,30}\s*:/i.test(l) &&
+              !l.toLowerCase().startsWith('http'),
+          )
+          .map((l) => l.replace(/:\s*$/, '').trim())
+          .slice(0, 8);
+
+        // Extract real sample data lines (skip section titles and delimiters)
+        const dataSamples = cleanLines
+          .filter(
+            (l) =>
+              l !== cleanLines[0] &&
+              !/^[A-Z\s_-]{3,30}\s*:/i.test(l) &&
+              (l.includes('=') ||
+                l.includes(':') ||
+                l.includes('[') ||
+                l.includes('✅') ||
+                /\d/.test(l)),
+          )
+          .slice(0, 3);
+
+        let sectionStr = '';
+        if (sections.length > 0) {
+          sectionStr = `\n  - **Bagian/Seksi Utama**: ${sections.map((sec) => `\`${sec}\``).join(', ')}`;
+        }
+
+        let sampleStr = '';
+        if (dataSamples.length > 0) {
+          sampleStr = `\n  - **Contoh Baris Data**: ${dataSamples.map((ds) => `\`${ds.slice(0, 80)}\``).join(', ')}`;
         }
 
         return `- \`${s.name}\` (${s.extension.toUpperCase().replace('.', '') || 'FILE'}, ${sizeKb} KB)
-  ${header ? `- **Header/Structure**: \`${header}\`` : ''}
-  ${sampleLine ? `- **Sample Line**: \`${sampleLine}\`` : ''}`;
+  - **Judul/Header**: \`${header}\`${sectionStr}${sampleStr}`;
       })
-      .join('\n');
+      .join('\n\n');
 
     return `# ARUNAKI WORKSPACE OPERATING SYSTEM — ${workspaceName.toUpperCase()}
 
