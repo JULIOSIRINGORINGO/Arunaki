@@ -114,4 +114,51 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  /* React Flow Full Dark Theme & Watermark Removal */
+  .react-flow__attribution {
+    display: none !important;
+  }
+
+  .dark .react-flow,
+  [data-theme="dark"] .react-flow {
+    background-color: var(--bg-app);
+  }
+
+  .dark .react-flow__node,
+  [data-theme="dark"] .react-flow__node {
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .dark .react-flow__minimap,
+  [data-theme="dark"] .react-flow__minimap {
+    background-color: #121214 !important;
+  }
+
+  .dark .react-flow__controls,
+  [data-theme="dark"] .react-flow__controls {
+    background-color: #141416 !important;
+    border-color: #2E2E35 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .dark .react-flow__controls-button,
+  [data-theme="dark"] .react-flow__controls-button {
+    background-color: #141416 !important;
+    color: #FFFFFF !important;
+    border-bottom-color: #222226 !important;
+    fill: #FFFFFF !important;
+  }
+
+  .dark .react-flow__controls-button:hover,
+  [data-theme="dark"] .react-flow__controls-button:hover {
+    background-color: #26262B !important;
+  }
+
+  .dark .react-flow__controls-button svg,
+  [data-theme="dark"] .react-flow__controls-button svg {
+    fill: #FFFFFF !important;
+  }
 }
+
