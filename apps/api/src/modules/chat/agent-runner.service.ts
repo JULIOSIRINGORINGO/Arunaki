@@ -346,18 +346,20 @@ export class AgentRunnerService {
 
         let result: ToolResult;
         try {
+          const canonicalName =
+            this.toolRegistryService.resolveToolAlias(funcName);
           const safeArgs = params.workspaceId
             ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
             : { ...args, runId: todoRunId };
           if (params.workspaceId) {
             await this.selfHealingService.validateToolPaths(
-              funcName,
+              canonicalName,
               safeArgs,
               params.workspaceId,
             );
           }
           result = await this.toolRegistryService.executeTool(
-            funcName,
+            canonicalName,
             safeArgs,
           );
         } catch (e) {

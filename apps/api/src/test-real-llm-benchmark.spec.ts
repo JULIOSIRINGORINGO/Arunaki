@@ -94,7 +94,7 @@ SISA DEPOSIT RP 14.207.640,-
       data: { title: 'Real LLM Scenario 1 - Rekap', workspaceId: workspace.id },
     });
 
-    const userPrompt = `Update laporan harian di file ${targetFileName} dengan data transaksi berikut dan hitung ulang semua total:
+    const userPrompt = `Baca terlebih dahulu isi file ${targetFileName} dengan tool read, lalu perbarui laporan dan hitung ulang semua total secara otomatis:
 
 PEMASUKAN:
 CK DEDI = 300RB(BCA) [ DTF ]✅
