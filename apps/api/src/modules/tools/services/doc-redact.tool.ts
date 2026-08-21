@@ -36,8 +36,8 @@ const PII_PATTERNS: PiiPattern[] = [
   {
     name: 'phone_id',
     label: 'Phone (ID)',
-    // Indonesian phone: +62xxx, 08xxx, 021-xxx, (021) xxx
-    regex: /(?:\+62|0)[\s-]?(?:\d[\s-]?){8,13}/g,
+    // Indonesian phone: +62xxx, 08xxx, 021-xxx, (021) xxx with word boundary
+    regex: /(?:\b\+?62|\b0)[\s-]?(?:\d[\s-]?){8,13}\b/g,
     mask: '+62-***-****-****',
   },
   {
@@ -52,7 +52,7 @@ const PII_PATTERNS: PiiPattern[] = [
     label: 'Bank Account',
     // Indonesian bank account numbers (typically 10-16 digits)
     // We look for patterns like "Rek: 1234567890" or "No. Rekening: 1234567890"
-    regex: /(?:(?:rek(?:ening)?|account|no\.?\s*(?:rek|akun))\s*[:.]?\s*)(\d{10,16})/gi,
+    regex: /((?:rek(?:ening)?|account|no\.?\s*(?:rek|akun))\s*[:.]?\s*)(\d{10,16})/gi,
     mask: '****-****-****',
   },
 ];
@@ -136,9 +136,16 @@ export class DocRedactTool {
       if (matches.length > 0) {
         const mask = options?.customMask || pattern.mask;
 
-        // Replace all occurrences
+        // Replace all occurrences (preserve prefix label if pattern has 2 capture groups)
         const replaceRegex = new RegExp(pattern.regex.source, pattern.regex.flags);
-        redactedText = redactedText.replace(replaceRegex, mask);
+        if (pattern.name === 'bank_account') {
+          redactedText = redactedText.replace(
+            replaceRegex,
+            (_match, prefix, _digits) => `${prefix}${mask}`,
+          );
+        } else {
+          redactedText = redactedText.replace(replaceRegex, mask);
+        }
 
         totalRedacted += matches.length;
 

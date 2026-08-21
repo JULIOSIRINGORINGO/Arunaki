@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ToolRegistryService } from '../../tool-registry.service.js';
 import { ToolAdapter } from '../tool-adapter.js';
 import { TextExtractorTool } from '../text-extractor.tool.js';
@@ -534,7 +536,7 @@ export class BusinessDomainToolsRegistrar {
         name: 'doc_compare_versions',
         displayName: 'Compare Document Versions',
         description:
-          'Compares two document texts line-by-line and produces a structured diff report with similarity percentage, added/removed counts, and Markdown redline table.',
+          'Compares two document texts or files line-by-line and produces a structured diff report with similarity percentage, added/removed counts, and Markdown redline table.',
         tags: [
           'compare',
           'diff',
@@ -543,16 +545,56 @@ export class BusinessDomainToolsRegistrar {
           'redline',
           'audit',
         ],
-        handler: (args) =>
-          services.docCompareTool.compare(
-            args.sourceText || '',
-            args.targetText || '',
-            args.sourceName || 'Document A',
-            args.targetName || 'Document B',
-          ),
+        handler: async (args) => {
+          try {
+            let sText = args.sourceText || '';
+            let tText = args.targetText || '';
+            let sName = args.sourceName || 'Document A';
+            let tName = args.targetName || 'Document B';
+
+            if (!sText && args.sourcePath) {
+              const safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.sourcePath,
+                );
+              sText = fs.readFileSync(safePath, 'utf-8');
+              sName = args.sourceName || path.basename(safePath);
+            }
+            if (!tText && args.targetPath) {
+              const safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.targetPath,
+                );
+              tText = fs.readFileSync(safePath, 'utf-8');
+              tName = args.targetName || path.basename(safePath);
+            }
+
+            return services.docCompareTool.compare(
+              sText,
+              tText,
+              sName,
+              tName,
+            );
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Document comparison failed: ${err.message}`,
+              metadata: {
+                toolName: 'doc_compare_versions',
+                displayName: 'Compare Documents',
+                executionTime: 0,
+              },
+              error: { code: 'DOC_COMPARE_ERROR', message: err.message },
+            };
+          }
+        },
         parameters: {
           type: 'object',
           properties: {
+            workspaceId: { type: 'string' },
             sourceText: {
               type: 'string',
               description: 'Full text content of the first (source) document',
@@ -561,6 +603,14 @@ export class BusinessDomainToolsRegistrar {
               type: 'string',
               description:
                 'Full text content of the second (target) document',
+            },
+            sourcePath: {
+              type: 'string',
+              description: 'Path to source file in workspace (if sourceText is not provided)',
+            },
+            targetPath: {
+              type: 'string',
+              description: 'Path to target file in workspace (if targetText is not provided)',
             },
             sourceName: {
               type: 'string',
@@ -571,7 +621,6 @@ export class BusinessDomainToolsRegistrar {
               description: 'Display name for target document',
             },
           },
-          required: ['sourceText', 'targetText'],
         },
         timeoutMs: 15000,
       }),
@@ -582,7 +631,7 @@ export class BusinessDomainToolsRegistrar {
         name: 'doc_redact_pii',
         displayName: 'Redact PII Data',
         description:
-          'Scans document text for Indonesian PII (NIK/KTP, NPWP, phone numbers, email, bank accounts, credit cards) and returns a redacted version with detection report. Use action "scan" for detection-only without modification.',
+          'Scans document text or files for Indonesian PII (NIK/KTP, NPWP, phone numbers, email, bank accounts, credit cards) and returns a redacted version with detection report. Use action "scan" for detection-only without modification.',
         tags: [
           'redact',
           'pii',
@@ -592,18 +641,70 @@ export class BusinessDomainToolsRegistrar {
           'nik',
           'npwp',
         ],
-        handler: (args) => {
-          if (args.action === 'scan') {
-            return services.docRedactTool.scan(args.text || '');
+        handler: async (args) => {
+          try {
+            let textToProcess = args.text || '';
+            let safeOutput: string | undefined;
+
+            if (!textToProcess && args.filePath) {
+              const safePath =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.filePath,
+                );
+              textToProcess = fs.readFileSync(safePath, 'utf-8');
+            }
+
+            if (args.outputPath) {
+              safeOutput =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.outputPath,
+                );
+            }
+
+            if (args.action === 'scan') {
+              return services.docRedactTool.scan(textToProcess);
+            }
+
+            const result = services.docRedactTool.redact(textToProcess, {
+              patterns: args.patterns,
+              customMask: args.customMask,
+            });
+
+            if (
+              result.status === 'success' &&
+              safeOutput &&
+              result.data.redactedText
+            ) {
+              const parentDir = path.dirname(safeOutput);
+              if (!fs.existsSync(parentDir)) {
+                fs.mkdirSync(parentDir, { recursive: true });
+              }
+              fs.writeFileSync(safeOutput, result.data.redactedText, 'utf-8');
+              result.preview += ` Saved to ${path.basename(safeOutput)}.`;
+              result.data.outputPath = safeOutput;
+            }
+
+            return result;
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `PII redaction failed: ${err.message}`,
+              metadata: {
+                toolName: 'doc_redact_pii',
+                displayName: 'Redact PII',
+                executionTime: 0,
+              },
+              error: { code: 'DOC_REDACT_ERROR', message: err.message },
+            };
           }
-          return services.docRedactTool.redact(args.text || '', {
-            patterns: args.patterns,
-            customMask: args.customMask,
-          });
         },
         parameters: {
           type: 'object',
           properties: {
+            workspaceId: { type: 'string' },
             action: {
               type: 'string',
               enum: ['redact', 'scan'],
@@ -613,6 +714,14 @@ export class BusinessDomainToolsRegistrar {
             text: {
               type: 'string',
               description: 'Document text to scan/redact',
+            },
+            filePath: {
+              type: 'string',
+              description: 'Path to text/document file in workspace (if text is not provided)',
+            },
+            outputPath: {
+              type: 'string',
+              description: 'Optional path to write redacted output file in workspace',
             },
             patterns: {
               type: 'array',
@@ -625,7 +734,6 @@ export class BusinessDomainToolsRegistrar {
                 'Optional custom replacement mask string (default: pattern-specific)',
             },
           },
-          required: ['text'],
         },
         timeoutMs: 10000,
       }),

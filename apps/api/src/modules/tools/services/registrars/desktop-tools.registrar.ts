@@ -251,7 +251,7 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell edits and modifications on Excel (.xlsx / .xlsm / .xls) worksheets. Supports write_cell, insert_row, delete_row, set_format, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
+          'Performs precise cell edits and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
         tags: [
           'desktop',
           'excel',
@@ -262,6 +262,7 @@ export class DesktopToolsRegistrar {
           'xlsm',
           'spreadsheet',
           'sheet',
+          'clone',
         ],
         mutating: true,
         handler: async (args) => {
@@ -277,12 +278,32 @@ export class DesktopToolsRegistrar {
             let actions: any[] = [];
             if (Array.isArray(args.actions) && args.actions.length > 0) {
               actions = args.actions;
-            } else if (args.cell || args.value !== undefined || args.action) {
+            } else if (
+              args.cell ||
+              args.value !== undefined ||
+              args.action ||
+              args.sourceSheet ||
+              args.newSheetName ||
+              args.range ||
+              args.row !== undefined ||
+              args.column !== undefined
+            ) {
               actions = [
                 {
                   action: args.action || 'write_cell',
                   cell: args.cell,
                   value: args.value,
+                  sourceSheet: args.sourceSheet,
+                  newSheetName: args.newSheetName,
+                  clearConstants: args.clearConstants,
+                  range: args.range,
+                  row: args.row,
+                  column: args.column,
+                  bold: args.bold,
+                  italic: args.italic,
+                  fontSize: args.fontSize,
+                  bgColor: args.bgColor,
+                  alignment: args.alignment,
                 },
               ];
             }
@@ -295,7 +316,7 @@ export class DesktopToolsRegistrar {
             }
             if (!services.excelCom.isAvailable) {
               throw new Error(
-                'Excel COM automation not available — winax not installed or not on Windows.',
+                'Excel COM automation not available — only available on Windows OS.',
               );
             }
 
@@ -343,17 +364,53 @@ export class DesktopToolsRegistrar {
             actions: {
               type: 'array',
               description:
-                'Array of actions: [{ action: "write_cell", cell: "V4", value: 1175 }, ...]',
+                'Array of actions: [{ action: "write_cell", cell: "V4", value: 1175 }, { action: "clone_sheet", sourceSheet: "TEMPLATE", newSheetName: "SEPTEMBER" }]',
             },
             action: {
               type: 'string',
-              description: 'Single action type (e.g. "write_cell")',
+              enum: [
+                'write_cell',
+                'insert_row',
+                'delete_row',
+                'insert_column',
+                'delete_column',
+                'set_format',
+                'clone_sheet',
+                'clear_constants',
+                'rename_sheet',
+                'delete_sheet',
+                'list_sheets',
+                'save',
+              ],
+              description: 'Single action type',
             },
             cell: {
               type: 'string',
               description: 'Target cell coordinate (e.g. "V4")',
             },
             value: { description: 'Cell value (number, text, or boolean)' },
+            sourceSheet: {
+              type: 'string',
+              description: 'Source sheet name for clone_sheet or rename_sheet',
+            },
+            newSheetName: {
+              type: 'string',
+              description: 'New sheet name for clone_sheet or rename_sheet',
+            },
+            clearConstants: {
+              type: 'boolean',
+              description:
+                'Whether to clear constant values while preserving formulas when cloning (default true)',
+            },
+            range: {
+              type: 'string',
+              description: 'Cell range for format/clear (e.g. "A1:D10")',
+            },
+            row: { type: 'number', description: 'Row index for row ops' },
+            column: {
+              type: 'number',
+              description: 'Column index for column ops',
+            },
           },
           required: ['filePath'],
         },

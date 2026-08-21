@@ -102,11 +102,21 @@ export class ExcelComService {
       .map((act, i) => {
         switch (act.action) {
           case 'write_cell': {
-            const val =
-              typeof act.value === 'string'
-                ? `'${act.value.replace(/'/g, "''")}'`
-                : act.value;
-            return `        $cell = $ws.Range('${act.cell}'); $cell.Value2 = ${val}; $results += @{ action='write_cell'; success=$true; cell='${act.cell}' }`;
+            const cellCoord = act.cell || 'A1';
+            if (typeof act.value === 'string' && act.value.startsWith('=')) {
+              return `        $cell = $ws.Range('${cellCoord}'); $cell.Formula = '${act.value.replace(/'/g, "''")}'; $results += @{ action='write_cell'; success=$true; cell='${cellCoord}' }`;
+            }
+            let val: any;
+            if (typeof act.value === 'string') {
+              val = `'${act.value.replace(/'/g, "''")}'`;
+            } else if (typeof act.value === 'boolean') {
+              val = act.value ? '$true' : '$false';
+            } else if (act.value === null || act.value === undefined) {
+              val = '$null';
+            } else {
+              val = act.value;
+            }
+            return `        $cell = $ws.Range('${cellCoord}'); $cell.Value2 = ${val}; $results += @{ action='write_cell'; success=$true; cell='${cellCoord}' }`;
           }
           case 'insert_row':
             return `        $ws.Rows(${act.row}).Insert(); $results += @{ action='insert_row'; success=$true; row=${act.row} }`;
