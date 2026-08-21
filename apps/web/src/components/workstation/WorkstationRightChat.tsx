@@ -395,7 +395,7 @@ function WorkstationRightChatComponent({
 
                 <div
                   className={cn(
-                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",
+                    "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans whitespace-pre-wrap",
                     isUser
                       ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
                       : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
@@ -403,7 +403,7 @@ function WorkstationRightChatComponent({
                 >
                   <Markdown
                     components={{
-                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap">{children}</p>,
                       strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
                       ul: ({ children }) => <ul className="list-disc ml-4 my-1 space-y-1">{children}</ul>,
                       ol: ({ children }) => <ol className="list-decimal ml-4 my-1 space-y-1">{children}</ol>,
