@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { getFileIcon } from "../workspace/tree-utils";
+import { ArunakiLogo } from "../common/ArunakiLogo";
 
 export interface CenterTab {
   id: string;
@@ -325,14 +326,14 @@ function WorkstationCenterPanelComponent({
             </div>
           )
         ) : (
-          /* CENTER SVG WORDMARK */
-          <div className="h-full flex items-center justify-center select-none">
-            <img
-              src="/text-center.svg"
-              alt=""
-              className="max-w-[70%] max-h-[40%] object-contain opacity-70"
-              draggable={false}
-            />
+          /* CENTER ARUNAKI AGENTS WATERMARK (Antigravity Style) */
+          <div className="h-full w-full flex flex-col items-center justify-center select-none p-6 animate-in fade-in duration-300">
+            <div className="flex flex-col items-center gap-3.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-300">
+              <ArunakiLogo className="w-11 h-11 text-current opacity-80" />
+              <span className="font-noto-serif text-[15px] tracking-wide text-current opacity-85">
+                Arunaki Agents
+              </span>
+            </div>
           </div>
         )}
       </div>
