@@ -308,8 +308,8 @@ export function AppLayout() {
           </div>
         </div>
 
-        {/* Center: Main Navigation Floating Capsule */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-sm">
+        {/* Center: Main Navigation Floating Capsule (Spacious & Modern) */}
+        <div className="flex items-center gap-1.5 p-1 rounded-full bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-sm">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -322,13 +322,14 @@ export function AppLayout() {
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                  "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer",
                   isActive
-                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)]"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)] shadow-xs"
                     : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                 )}
               >
-                <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
+                <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                <span className="leading-none">{item.label}</span>
               </button>
             );
           })}
