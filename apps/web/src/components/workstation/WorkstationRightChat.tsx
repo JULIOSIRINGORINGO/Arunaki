@@ -683,8 +683,8 @@ function WorkstationRightChatComponent({
                       )}
                     >
                       <Icon size={14} className="text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />
-                      <span className="text-xs font-medium text-[var(--text-primary)]">{command.name}</span>
-                      <span className="text-[10px] text-[var(--text-dim)] truncate">{command.description}</span>
+                      <span className="text-xs font-medium text-[var(--text-primary)] whitespace-nowrap shrink-0">{command.name}</span>
+                      <span className="text-[10px] text-[var(--text-dim)] truncate min-w-0">{command.description}</span>
                     </button>
                   );
                 })}
