@@ -138,47 +138,60 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           !isActive && "opacity-60 grayscale"
         )}
       >
-        {/* Top Handles */}
-        <Handle
-          type="target"
-          position={Position.Top}
-          id="target-top"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-top-1.5"
-        />
-        <Handle
-          type="source"
-          position={Position.Top}
-          id="source-top"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-top-1.5 opacity-0"
-        />
+        {/* Distributed Multi-Pin Circuit Array (18 Connection Ports along all 4 sides) */}
+        {/* Top Array */}
+        {[15, 32, 50, 68, 85].map((pos, idx) => (
+          <div key={`top-${idx}`} style={{ position: 'absolute', left: `${pos}%`, top: 0 }}>
+            <Handle
+              type="target"
+              position={Position.Top}
+              id={`target-top-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-top-1 cursor-crosshair"
+            />
+            <Handle
+              type="source"
+              position={Position.Top}
+              id={`source-top-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-top-1 opacity-0 cursor-crosshair"
+            />
+          </div>
+        ))}
 
-        {/* Bottom Handles */}
-        <Handle
-          type="target"
-          position={Position.Bottom}
-          id="target-bottom"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-bottom-1.5"
-        />
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="source-bottom"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-bottom-1.5 opacity-0"
-        />
+        {/* Bottom Array */}
+        {[15, 32, 50, 68, 85].map((pos, idx) => (
+          <div key={`bottom-${idx}`} style={{ position: 'absolute', left: `${pos}%`, bottom: 0 }}>
+            <Handle
+              type="target"
+              position={Position.Bottom}
+              id={`target-bottom-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-bottom-1 cursor-crosshair"
+            />
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id={`source-bottom-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-bottom-1 opacity-0 cursor-crosshair"
+            />
+          </div>
+        ))}
 
-        {/* Left Handles */}
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="target-left"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5"
-        />
-        <Handle
-          type="source"
-          position={Position.Left}
-          id="source-left"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5 opacity-0"
-        />
+        {/* Left Array */}
+        {[18, 38, 62, 82].map((pos, idx) => (
+          <div key={`left-${idx}`} style={{ position: 'absolute', top: `${pos}%`, left: 0 }}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={idx === 1 ? "in-left" : `target-left-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-left-1 cursor-crosshair"
+            />
+            <Handle
+              type="source"
+              position={Position.Left}
+              id={`source-left-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-left-1 opacity-0 cursor-crosshair"
+            />
+          </div>
+        ))}
 
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
@@ -194,19 +207,23 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           </div>
         </div>
 
-        {/* Right Handles */}
-        <Handle
-          type="target"
-          position={Position.Right}
-          id="target-right"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-right-1.5"
-        />
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="source-right"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-right-1.5 opacity-0"
-        />
+        {/* Right Array */}
+        {[18, 38, 62, 82].map((pos, idx) => (
+          <div key={`right-${idx}`} style={{ position: 'absolute', top: `${pos}%`, right: 0 }}>
+            <Handle
+              type="target"
+              position={Position.Right}
+              id={`target-right-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-right-1 cursor-crosshair"
+            />
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={idx === 1 ? "out-right" : `source-right-${idx}`}
+              className="!w-2 !h-2 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] hover:!bg-[var(--text-primary)] !transition-all hover:!scale-150 !-right-1 opacity-0 cursor-crosshair"
+            />
+          </div>
+        ))}
       </div>
     );
   }
