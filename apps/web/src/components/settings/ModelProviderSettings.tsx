@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Cpu, Info } from "lucide-react";
 import { API_BASE, apiFetch } from "../../lib/api";
 import { toast } from "sonner";
 import { ProviderCard } from "./ProviderCard";
-import { ProviderForm, type ProviderFormData } from "./ProviderForm";
+import { ProviderForm, type ProviderFormData, type FormTestResult } from "./ProviderForm";
 
 export interface Provider {
   id: string;
@@ -24,11 +24,11 @@ export interface Provider {
 const PROVIDER_TYPES = [
   { value: "9router", label: "9Router (Local Gateway)", defaultUrl: "http://localhost:20128/v1" },
   { value: "openrouter", label: "OpenRouter", defaultUrl: "https://openrouter.ai/api/v1" },
-  { value: "kenari", label: "Kenari (Kenari.id)", defaultUrl: "https://api.kenari.id/v1" },
-  { value: "openai", label: "OpenAI", defaultUrl: "https://api.openai.com/v1" },
-  { value: "anthropic", label: "Anthropic", defaultUrl: "https://api.anthropic.com/v1" },
-  { value: "openai-compatible", label: "OpenAI-Compatible", defaultUrl: "" },
-  { value: "ollama", label: "Ollama (Local)", defaultUrl: "http://localhost:11434/v1" },
+  { value: "kenari", label: "Kenari Cloud", defaultUrl: "https://api.kenari.id/v1" },
+  { value: "openai", label: "OpenAI Official", defaultUrl: "https://api.openai.com/v1" },
+  { value: "anthropic", label: "Anthropic Official", defaultUrl: "https://api.anthropic.com/v1" },
+  { value: "openai-compatible", label: "OpenAI-Compatible Generic", defaultUrl: "" },
+  { value: "ollama", label: "Ollama (Local Host)", defaultUrl: "http://localhost:11434/v1" },
 ];
 
 const DEFAULT_MODELS: Record<string, string[]> = {
@@ -69,12 +69,13 @@ export function ModelProviderSettings({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [isTestingForm, setIsTestingForm] = useState(false);
+  const [formTestResult, setFormTestResult] = useState<FormTestResult | null>(null);
   const [isFetchingFormModels, setIsFetchingFormModels] = useState(false);
   const [isAddingFormModel, setIsAddingFormModel] = useState(false);
   const [formNewModelInput, setFormNewModelInput] = useState("");
-  const [testResults, setTestResults] = useState<Record<string, { success: boolean; status?: number; error?: string; timeMs?: number }>>({});
+  const [testResults, setTestResults] = useState<Record<string, FormTestResult>>({});
 
-  // 9Router-style Custom Models per Provider Map (persisted in localStorage)
+  // Custom Models per Provider Map (persisted in localStorage)
   const [customModelsMap, setCustomModelsMap] = useState<Record<string, string[]>>(() => {
     try {
       const saved = localStorage.getItem("arunaki_custom_provider_models");
@@ -113,6 +114,7 @@ export function ModelProviderSettings({
     setFormAvailableModels(DEFAULT_MODELS["9router"] || []);
     setIsAddingFormModel(false);
     setFormNewModelInput("");
+    setFormTestResult(null);
     setShowAddForm(false);
     setEditingId(null);
   };
@@ -127,7 +129,7 @@ export function ModelProviderSettings({
     let updated: string[];
     if (current.includes(m)) {
       if (current.length <= 1) {
-        toast.info("Minimal 1 model harus terpilih.");
+        toast.info("At least 1 model must remain selected in the routing pool.");
         return;
       }
       updated = current.filter((id) => id !== m);
@@ -135,6 +137,10 @@ export function ModelProviderSettings({
       updated = [...current, m];
     }
     setForm((f) => ({ ...f, model: updated.join(", ") }));
+  };
+
+  const handleReorderModels = (newOrder: string[]) => {
+    setForm((f) => ({ ...f, model: newOrder.join(", ") }));
   };
 
   const handleTypeChange = (type: string) => {
@@ -149,6 +155,7 @@ export function ModelProviderSettings({
       name: pt?.label || f.name,
     }));
     setFormAvailableModels(defaults);
+    setFormTestResult(null);
   };
 
   const handleEdit = (p: Provider) => {
@@ -170,6 +177,7 @@ export function ModelProviderSettings({
     setFormAvailableModels(combined);
     setIsAddingFormModel(false);
     setFormNewModelInput("");
+    setFormTestResult(null);
     setShowAddForm(true);
   };
 
@@ -182,7 +190,7 @@ export function ModelProviderSettings({
           method: "PUT",
           body: JSON.stringify(form),
         });
-        toast.success("Provider connection updated successfully!");
+        toast.success("Provider connection updated successfully.");
       } else {
         const res = await apiFetch(`${API_BASE}/providers`, {
           method: "POST",
@@ -190,7 +198,7 @@ export function ModelProviderSettings({
         });
         const data = await res.json();
         providerId = data.data?.id || null;
-        toast.success("Provider added successfully!");
+        toast.success("New provider added successfully.");
       }
 
       if (providerId) {
@@ -203,15 +211,15 @@ export function ModelProviderSettings({
       resetForm();
       onRefresh();
     } catch {
-      toast.error("Failed to save provider.");
+      toast.error("Failed to save provider configuration.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this provider catalog?")) return;
+    if (!confirm("Are you sure you want to delete this provider configuration?")) return;
     try {
       await apiFetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
-      toast.success("Provider deleted successfully!");
+      toast.success("Provider deleted successfully.");
       onRefresh();
     } catch {
       toast.error("Failed to delete provider.");
@@ -224,16 +232,43 @@ export function ModelProviderSettings({
         method: "PUT",
         body: JSON.stringify({ active: !provider.active }),
       });
-      toast.success(`Provider ${provider.active ? "deactivated" : "activated"}`);
+      toast.success(`Provider ${provider.active ? "deactivated" : "set as primary"}`);
       onRefresh();
     } catch {
       toast.error("Failed to update provider status.");
     }
   };
 
+  const handleMoveProviderPriority = async (index: number, direction: "up" | "down") => {
+    const list = [...providers];
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+
+    const currentP = list[index];
+    const targetP = list[targetIdx];
+
+    try {
+      // Swap priorities
+      await Promise.all([
+        apiFetch(`${API_BASE}/providers/${currentP.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ priority: targetP.priority ?? targetIdx }),
+        }),
+        apiFetch(`${API_BASE}/providers/${targetP.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ priority: currentP.priority ?? index }),
+        }),
+      ]);
+      toast.success("Routing priority updated.");
+      onRefresh();
+    } catch {
+      toast.error("Failed to update provider priority.");
+    }
+  };
+
   const handleFetchModelsInForm = async () => {
     if (!form.baseUrl) {
-      toast.error("Isi Base URL / Endpoint terlebih dahulu.");
+      toast.error("Please enter a valid Base URL / Endpoint first.");
       return;
     }
     setIsFetchingFormModels(true);
@@ -248,23 +283,23 @@ export function ModelProviderSettings({
       const data = await res.json();
       const fetchedModels: string[] = data.data?.models || [];
 
-      if (fetchedModels.length > 0) {
-        setFormAvailableModels((prev) => Array.from(new Set([...fetchedModels, ...prev])));
-        if (!fetchedModels.includes(form.model)) {
-          setForm((f) => ({ ...f, model: fetchedModels[0] }));
-        }
-        toast.success(`Berhasil menarik ${fetchedModels.length} model otomatis dari API!`);
-      } else {
-        toast.info("API tersambung tetapi tidak mengembalikan daftar model.");
+      if (fetchedModels.length === 0) {
+        toast.info("No models discovered from endpoint. Keeping default catalog.");
+        return;
       }
+
+      const existingSelected = getSelectedModels(form.model);
+      const combined = Array.from(new Set([...existingSelected, ...fetchedModels]));
+      setFormAvailableModels(combined);
+      toast.success(`Discovered ${fetchedModels.length} models from endpoint!`);
     } catch (err: any) {
-      toast.error(`Gagal mengambil model: ${err.message}`);
+      toast.error(`Sync models failed: ${err.message}`);
     } finally {
       setIsFetchingFormModels(false);
     }
   };
 
-  const handleAddFormCustomModelSubmit = (e: React.FormEvent) => {
+  const handleAddCustomModelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = formNewModelInput.trim();
     if (!clean) return;
@@ -273,7 +308,7 @@ export function ModelProviderSettings({
     setForm((f) => ({ ...f, model: clean }));
     setIsAddingFormModel(false);
     setFormNewModelInput("");
-    toast.success(`Model ${clean} ditambahkan dan dipilih.`);
+    toast.success(`Model "${clean}" added to selection.`);
   };
 
   const handleTestConnection = async (id: string) => {
@@ -284,6 +319,7 @@ export function ModelProviderSettings({
       const data = await res.json();
       const elapsed = Date.now() - startMs;
       const isOk = data.data?.success;
+      const reply = data.data?.reply || "";
 
       setTestResults((prev) => ({
         ...prev,
@@ -291,21 +327,22 @@ export function ModelProviderSettings({
           success: !!isOk,
           status: data.data?.status || (isOk ? 200 : 500),
           error: data.data?.error,
+          reply: reply,
           timeMs: elapsed,
         },
       }));
 
       if (isOk) {
-        toast.success(`Ping successful! (${elapsed}ms)`);
+        toast.success(`Connection Test Passed! (${elapsed}ms) ${reply ? `— "${reply}"` : ""}`);
       } else {
-        toast.error(`Connection failed: ${data.data?.error || "Invalid response"}`);
+        toast.error(`Connection Test Failed: ${data.data?.error || "Endpoint unreachable"}`);
       }
     } catch (err: any) {
       setTestResults((prev) => ({
         ...prev,
         [id]: { success: false, error: err.message },
       }));
-      toast.error(`Connection failed: ${err.message}`);
+      toast.error(`Connection Test Failed: ${err.message}`);
     } finally {
       setTestingId(null);
     }
@@ -320,53 +357,84 @@ export function ModelProviderSettings({
         body: JSON.stringify({
           baseUrl: form.baseUrl,
           apiKey: form.apiKey,
-          model: form.model,
+          model: form.model ? form.model.split(",")[0].trim() : "",
         }),
       });
       const data = await res.json();
       const elapsed = Date.now() - startMs;
-      if (data.data?.success) {
-        toast.success(`Test Ping Successful! (${elapsed}ms) — Model ${form.model} responding.`);
+      const isOk = data.data?.success;
+      const reply = data.data?.reply || "";
+
+      const result: FormTestResult = {
+        success: !!isOk,
+        status: data.data?.status || (isOk ? 200 : 500),
+        error: data.data?.error,
+        reply: reply,
+        model: data.data?.model,
+        timeMs: elapsed,
+      };
+
+      setFormTestResult(result);
+
+      if (isOk) {
+        toast.success(`Ping Successful! (${elapsed}ms) ${reply ? `— "${reply}"` : ""}`);
       } else {
-        toast.error(`Test Ping Failed: ${data.data?.error || "No response"}`);
+        toast.error(`Ping Failed: ${data.data?.error || "Endpoint unreachable"}`);
       }
     } catch (err: any) {
-      toast.error(`Test Ping Error: ${err.message}`);
+      setFormTestResult({ success: false, error: err.message });
+      toast.error(`Ping Error: ${err.message}`);
     } finally {
       setIsTestingForm(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 w-full">
+      {/* Top Description & Header */}
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-bold text-[var(--text-primary)]">Custom LLM Provider Catalogs</h3>
-          <p className="text-xs text-[var(--text-muted)]">
-            Manage provider credentials, API endpoints, and model catalog settings.
+          <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-[var(--text-primary)]" />
+            Language Model Routing & Provider Catalogs
+          </h3>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Manage provider credentials, API endpoints, and fallback model priority order.
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowAddForm(true);
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 text-xs font-semibold rounded-lg transition-opacity cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Provider Catalog</span>
-        </button>
+
+        {!showAddForm && (
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddForm(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Provider</span>
+          </button>
+        )}
       </div>
 
-      {/* Add Provider Form (ONLY when adding a NEW provider) */}
-      {showAddForm && !editingId && (
+      {/* Info Banner */}
+      <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start gap-3 text-xs text-[var(--text-muted)] leading-relaxed">
+        <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+        <div>
+          <strong className="text-[var(--text-primary)] font-semibold">Automatic Fallback Routing:</strong> When executing document tasks, Arunaki routes to the primary active model. If an endpoint encounters rate limits or errors, it automatically falls back sequentially to subsequent models in the pool without interrupting your workflow.
+        </div>
+      </div>
+
+      {/* Form (Add or Edit) */}
+      {showAddForm && (
         <ProviderForm
           form={form}
           setForm={setForm}
           formAvailableModels={formAvailableModels}
           providerTypes={PROVIDER_TYPES}
-          isEditing={false}
+          isEditing={!!editingId}
           isTestingForm={isTestingForm}
+          testResult={formTestResult}
           isFetchingFormModels={isFetchingFormModels}
           isAddingFormModel={isAddingFormModel}
           setIsAddingFormModel={setIsAddingFormModel}
@@ -374,63 +442,52 @@ export function ModelProviderSettings({
           setFormNewModelInput={setFormNewModelInput}
           onTypeChange={handleTypeChange}
           onToggleModelSelection={handleToggleModelSelection}
+          onReorderModels={handleReorderModels}
           onFetchModels={handleFetchModelsInForm}
-          onAddCustomModelSubmit={handleAddFormCustomModelSubmit}
+          onAddCustomModelSubmit={handleAddCustomModelSubmit}
           onTestConnection={handleTestFormConnection}
           onSubmit={handleSave}
           onCancel={resetForm}
         />
       )}
 
+      {/* List of Configured Providers */}
       {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-white animate-spin" />
+        <div className="py-12 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
+          <Loader2 className="w-4 h-4 animate-spin text-[var(--text-primary)]" />
+          <span>Loading provider configurations...</span>
+        </div>
+      ) : providers.length === 0 ? (
+        <div className="p-8 text-center bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] space-y-3">
+          <Cpu className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-50" />
+          <p className="text-xs text-[var(--text-muted)]">No model providers configured yet.</p>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddForm(true);
+            }}
+            className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] rounded-xl text-xs font-semibold cursor-pointer"
+          >
+            + Add First Provider
+          </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {providers.map((p) => {
-            const isBeingEdited = editingId === p.id;
-            const result = testResults[p.id];
-
-            if (isBeingEdited) {
-              return (
-                <ProviderForm
-                  key={p.id}
-                  form={form}
-                  setForm={setForm}
-                  formAvailableModels={formAvailableModels}
-                  providerTypes={PROVIDER_TYPES}
-                  isEditing={true}
-                  isTestingForm={isTestingForm}
-                  isFetchingFormModels={isFetchingFormModels}
-                  isAddingFormModel={isAddingFormModel}
-                  setIsAddingFormModel={setIsAddingFormModel}
-                  formNewModelInput={formNewModelInput}
-                  setFormNewModelInput={setFormNewModelInput}
-                  onTypeChange={handleTypeChange}
-                  onToggleModelSelection={handleToggleModelSelection}
-                  onFetchModels={handleFetchModelsInForm}
-                  onAddCustomModelSubmit={handleAddFormCustomModelSubmit}
-                  onTestConnection={handleTestFormConnection}
-                  onSubmit={handleSave}
-                  onCancel={resetForm}
-                />
-              );
-            }
-
-            return (
-              <ProviderCard
-                key={p.id}
-                provider={p}
-                testResult={result}
-                isTesting={testingId === p.id}
-                onToggleActive={handleToggleActive}
-                onTestConnection={handleTestConnection}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            );
-          })}
+        <div className="space-y-3 w-full">
+          {providers.map((p, idx) => (
+            <ProviderCard
+              key={p.id}
+              provider={p}
+              index={idx}
+              totalProviders={providers.length}
+              testResult={testResults[p.id]}
+              isTesting={testingId === p.id}
+              onToggleActive={handleToggleActive}
+              onMovePriority={handleMoveProviderPriority}
+              onTestConnection={handleTestConnection}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ))}
         </div>
       )}
     </div>
