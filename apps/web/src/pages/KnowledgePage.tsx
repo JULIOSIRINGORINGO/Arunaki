@@ -384,10 +384,13 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
             ...node,
             data: {
               ...node.data,
-              title: updatedData.title,
-              content: updatedData.content,
-              type: updatedData.type,
-              active: updatedData.active,
+              ...updatedData,
+              title: updatedData.title ?? node.data.title,
+              content: updatedData.content ?? node.data.content,
+              type: updatedData.type ?? node.data.type,
+              active: updatedData.active !== undefined ? updatedData.active : node.data.active,
+              city: updatedData.city !== undefined ? updatedData.city : node.data.city,
+              urls: updatedData.urls !== undefined ? updatedData.urls : node.data.urls,
             },
           };
         }
