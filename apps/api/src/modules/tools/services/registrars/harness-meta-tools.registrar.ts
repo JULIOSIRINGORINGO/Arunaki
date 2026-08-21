@@ -11,7 +11,9 @@ import { SkillsTool } from '../skills.tool.js';
 import { MemoryTool } from '../memory.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 import { PtcExecutorService } from '../ptc-executor.service.js';
-
+import { BrowserInteractionTool } from '../browser-interaction.tool.js';
+import { StockLookupTool } from '../stock-lookup.tool.js';
+import { IpGeolocationTool } from '../ip-geolocation.tool.js';
 import { MultiDocOrchestratorService } from '../multi-doc-orchestrator.service.js';
 
 @Injectable()
@@ -28,11 +30,23 @@ export class HarnessMetaToolsRegistrar {
       skillsTool: SkillsTool;
       memoryTool: MemoryTool;
       workspaceToolsService: WorkspaceToolsService;
+      browserInteractionTool?: BrowserInteractionTool;
+      stockLookupTool?: StockLookupTool;
+      ipGeolocationTool?: IpGeolocationTool;
       subAgentRunner?: any;
       ptcExecutor?: PtcExecutorService;
       multiDocOrchestrator?: MultiDocOrchestratorService;
     },
   ) {
+    if (services.browserInteractionTool) {
+      registry.register(services.browserInteractionTool);
+    }
+    if (services.stockLookupTool) {
+      registry.register(services.stockLookupTool);
+    }
+    if (services.ipGeolocationTool) {
+      registry.register(services.ipGeolocationTool);
+    }
     registry.register(
       ToolAdapter.from({
         name: 'ask_user',

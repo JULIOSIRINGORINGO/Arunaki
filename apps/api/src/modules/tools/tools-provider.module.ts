@@ -264,6 +264,11 @@ export class ToolsProviderModule implements OnModuleInit {
       multiDocOrchestrator: this.moduleRef.get(MultiDocOrchestratorService, {
         strict: false,
       }),
+      browserInteractionTool: this.moduleRef.get(BrowserInteractionTool, {
+        strict: false,
+      }),
+      stockLookupTool: this.moduleRef.get(StockLookupTool, { strict: false }),
+      ipGeolocationTool: this.moduleRef.get(IpGeolocationTool, { strict: false }),
     });
 
     // 4. Register Desktop COM Automation Tools (Office Suite)
