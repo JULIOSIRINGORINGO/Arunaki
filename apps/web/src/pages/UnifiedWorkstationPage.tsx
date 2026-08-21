@@ -35,8 +35,20 @@ interface Workspace {
 
 function extractCanvasContent(llmText: string): string {
   if (!llmText) return "";
-  const canvasMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
-  if (canvasMatch?.[1]?.trim()) return canvasMatch[1].trim();
+  // 1. Complete [CANVAS]...[/CANVAS] block
+  const completeMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
+  if (completeMatch?.[1]?.trim()) return completeMatch[1].trim();
+
+  // 2. Real-time streaming [CANVAS]...
+  const streamMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*)$/i);
+  if (streamMatch?.[1]?.trim()) return streamMatch[1].trim();
+
+  // 3. Fallback: Multi-line Markdown table detection (e.g. formatted recaps/deliverables)
+  const tableMatch = llmText.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
+  if (tableMatch?.[0]?.trim() && llmText.length > 40) {
+    return tableMatch[0].trim();
+  }
+
   return "";
 }
 

@@ -402,7 +402,7 @@ function WorkstationRightChatComponent({
                       ),
                     }}
                   >
-                    {msg.content}
+                    {msg.content ? msg.content.replace(/\[\/?CANVAS\]/gi, "").trim() : ""}
                   </Markdown>
                 </div>
               </div>
