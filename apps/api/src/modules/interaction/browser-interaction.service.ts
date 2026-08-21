@@ -168,13 +168,14 @@ export class BrowserInteractionService implements OnModuleDestroy {
     const page = await this.getOrCreatePage(sessionId);
     try {
       await page.goto(this.injectLocationParam(url), {
-        waitUntil: 'networkidle',
+        waitUntil: 'domcontentloaded',
         timeout: 30000,
       });
-    } catch (err) {
+      await page.waitForTimeout(2000);
+    } catch (err: any) {
       throw new Error(`Navigation failed: ${err.message}`);
     }
-    return { title: await page.title(), url: page.url() };
+    return { title: (await page.title()) || url, url: page.url() };
   }
 
   async click(selector: string, sessionId = 'default'): Promise<void> {

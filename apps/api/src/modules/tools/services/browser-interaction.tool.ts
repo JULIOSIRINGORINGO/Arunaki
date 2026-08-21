@@ -194,7 +194,7 @@ export class BrowserInteractionTool implements Tool {
           const content = await this.browserService.getContent(sessionId);
           return this.success(
             { content },
-            `Page content (${content.length} chars).`,
+            content.slice(0, 4000) || `Page content (${content.length} chars).`,
             startTime,
           );
         }
