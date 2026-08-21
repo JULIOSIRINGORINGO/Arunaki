@@ -1,4 +1,4 @@
-import { RefObject, useRef, useLayoutEffect, useState, useMemo, memo } from "react";
+import { RefObject, useRef, useLayoutEffect, useState, useMemo, useEffect, memo } from "react";
 import Markdown from "react-markdown";
 import {
   Bot,
@@ -16,6 +16,8 @@ import {
   Eraser,
   Clock,
   X,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -105,6 +107,22 @@ function WorkstationRightChatComponent({
   const [showCommands, setShowCommands] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+  const [isEffortDropdownOpen, setIsEffortDropdownOpen] = useState(false);
+  const effortDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (effortDropdownRef.current && !effortDropdownRef.current.contains(event.target as Node)) {
+        setIsEffortDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
+  const currentEffortLabel = currentEffortObj ? currentEffortObj.label : "Default";
 
   const allMessages = useMemo(() => {
     if (!optimisticMessages || optimisticMessages.length === 0) {
@@ -503,18 +521,47 @@ function WorkstationRightChatComponent({
                 <Paperclip className="w-3.5 h-3.5" strokeWidth={1.5} />
               </button>
               {activeWorkspace && (
-                <select
-                  value={reasoningEffort}
-                  onChange={(e) => setReasoningEffort(e.target.value)}
-                  className="text-[10px] bg-[var(--bg-hover)] text-[var(--text-secondary)] px-1.5 py-0.5 rounded-full font-medium border border-[var(--border-color)] outline-none cursor-pointer"
-                  title="Reasoning Effort"
-                >
-                  {EFFORT_OPTIONS.map((opt) => (
-                    <option key={opt.value || "natural"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={effortDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsEffortDropdownOpen(!isEffortDropdownOpen)}
+                    className="text-[10px] bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-primary)] px-2 py-0.5 rounded-full font-medium border border-[var(--border-color)] hover:border-[var(--border-strong)] flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                    title="Reasoning Effort"
+                  >
+                    <span>{currentEffortLabel}</span>
+                    <ChevronDown className={cn("w-2.5 h-2.5 text-[var(--text-muted)] transition-transform duration-150", isEffortDropdownOpen && "rotate-180")} />
+                  </button>
+
+                  {isEffortDropdownOpen && (
+                    <div className="absolute bottom-full mb-1.5 left-0 w-28 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 space-y-0.5 z-50 animate-in fade-in duration-100">
+                      <div className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--border-color)] mb-0.5">
+                        Thinking
+                      </div>
+                      {EFFORT_OPTIONS.map((opt) => {
+                        const isSelected = reasoningEffort === opt.value;
+                        return (
+                          <button
+                            key={opt.value || "natural"}
+                            type="button"
+                            onClick={() => {
+                              setReasoningEffort(opt.value);
+                              setIsEffortDropdownOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-2 py-1 rounded-lg text-[10px] flex items-center justify-between cursor-pointer transition-colors",
+                              isSelected
+                                ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold"
+                                : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                            )}
+                          >
+                            <span>{opt.label}</span>
+                            {isSelected && <Check className="w-2.5 h-2.5 text-[var(--text-primary)] shrink-0 stroke-[2.5]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
