@@ -95,7 +95,7 @@ const DEFAULT_MODELS: Record<string, string[]> = {
     "deepseek-r1",
     "claude-3-5-sonnet",
   ],
-  "openai-compatible": ["cx/gpt-5.6-terra", "cx/gpt-5.5", "cx/gpt-5.4-mini"],
+  "openai-compatible": [],
 };
 
 interface ModelProviderSettingsProps {

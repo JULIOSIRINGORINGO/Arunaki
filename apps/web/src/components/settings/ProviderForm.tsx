@@ -364,8 +364,25 @@ export function ProviderForm({
         {/* Model Grid */}
         <div className="max-h-[260px] overflow-y-auto pr-1 space-y-2">
           {filteredModels.length === 0 ? (
-            <div className="p-6 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-input)] rounded-xl border border-[var(--border-color)]">
-              No models match "{modelSearch}". Try another keyword or add custom model below.
+            <div className="p-6 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-input)] rounded-xl border border-[var(--border-color)] space-y-3">
+              <p>
+                {formAvailableModels.length === 0
+                  ? "No models configured for this endpoint yet. Click 'Sync Models from API' or add your model name below."
+                  : `No models match "${modelSearch}". Try another keyword or add custom model below.`}
+              </p>
+              {!isAddingFormModel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingFormModel(true);
+                    setFormNewModelInput("");
+                  }}
+                  className="px-4 py-2 bg-[var(--bg-hover)] border border-[var(--border-strong)] text-[var(--text-primary)] hover:opacity-90 text-xs rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 font-medium shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Custom Model Name</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
