@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, MessageSquare, Clock, X, Bot } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE, apiFetch } from "../../lib/api";
-import { cn } from "../../lib/utils";
 
 interface ChatSession {
   id: string;
@@ -69,7 +68,7 @@ export function SearchSectionModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl overflow-hidden flex flex-col max-h-[60vh] transform-gpu will-change-transform"
+        className="w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl overflow-hidden flex flex-col h-[380px] min-h-[380px] max-h-[80vh] shadow-2xl transform-gpu will-change-transform"
       >
         {/* Header Search Bar */}
         <div className="p-3.5 border-b border-[var(--border-color)] flex items-center gap-3 bg-[var(--bg-panel)] shrink-0">
@@ -91,13 +90,13 @@ export function SearchSectionModal({
         </div>
 
         {/* Sessions List Area */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain custom-scrollbar transform-gpu">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain custom-scrollbar transform-gpu min-h-0">
           {isLoading ? (
-            <div className="p-8 text-center text-xs text-[var(--text-dim)]">
+            <div className="h-full flex items-center justify-center text-xs text-[var(--text-dim)] font-mono">
               Loading chat sessions...
             </div>
           ) : filteredSessions.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[var(--text-dim)]">
+            <div className="h-full flex items-center justify-center text-xs text-[var(--text-dim)] font-mono">
               No chat sessions found
             </div>
           ) : (
@@ -123,15 +122,15 @@ export function SearchSectionModal({
                   className="w-full text-left py-2.5 px-3 rounded-xl hover:bg-[var(--bg-hover)] transition-colors flex items-center justify-between group cursor-pointer border border-transparent hover:border-[var(--border-strong)]"
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-3">
-                    <div className="w-7 h-7 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center shrink-0 group-hover:bg-sky-500/20 transition-colors">
+                    <div className="w-7 h-7 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 group-hover:bg-[var(--bg-card)] transition-colors">
                       {isWorkspace ? (
-                        <Bot className="w-3.5 h-3.5 text-sky-400" />
+                        <Bot className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
                       ) : (
-                        <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)]" />
+                        <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-sky-400 transition-colors">
+                      <p className="text-xs font-semibold text-[var(--text-primary)] truncate transition-colors">
                         {displayTitle}
                       </p>
                       <p className="text-[10px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5 font-mono">
@@ -141,14 +140,7 @@ export function SearchSectionModal({
                     </div>
                   </div>
 
-                  <span
-                    className={cn(
-                      "text-[10px] px-2.5 py-0.5 rounded-full font-mono shrink-0 border transition-colors",
-                      isWorkspace
-                        ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
-                        : "bg-[var(--bg-hover)] text-[var(--text-muted)] border-[var(--border-color)]"
-                    )}
-                  >
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono shrink-0 border bg-[var(--bg-panel)] text-[var(--text-muted)] border-[var(--border-color)] group-hover:text-[var(--text-primary)] group-hover:border-[var(--border-strong)] transition-colors">
                     {isWorkspace ? "Workspace" : "Chat"}
                   </span>
                 </button>
