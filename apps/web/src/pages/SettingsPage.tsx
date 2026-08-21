@@ -397,13 +397,13 @@ export function SettingsPage() {
                       toast.success(next ? "Excel foreground launch enabled." : "Excel foreground launch disabled (headless mode).");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] items-center p-0.5 transition-colors duration-200 ease-in-out focus:outline-none",
                       autoOpenExcel ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        "pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full shadow-sm ring-0 transition-transform duration-200 ease-in-out",
                         autoOpenExcel ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
@@ -434,13 +434,13 @@ export function SettingsPage() {
                       toast.success(next ? "Automatic backup enabled." : "Automatic backup disabled.");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] items-center p-0.5 transition-colors duration-200 ease-in-out focus:outline-none",
                       autoBackup ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        "pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full shadow-sm ring-0 transition-transform duration-200 ease-in-out",
                         autoBackup ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
@@ -494,13 +494,13 @@ export function SettingsPage() {
                       toast.success(next ? "Desktop notifications enabled." : "Desktop notifications disabled.");
                     }}
                     className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] transition-colors duration-200 ease-in-out focus:outline-none",
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] items-center p-0.5 transition-colors duration-200 ease-in-out focus:outline-none",
                       desktopNotification ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
                     )}
                   >
                     <span
                       className={cn(
-                        "pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                        "pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full shadow-sm ring-0 transition-transform duration-200 ease-in-out",
                         desktopNotification ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
                       )}
                     />
