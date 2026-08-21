@@ -31,4 +31,15 @@ export class FileRepository extends PrismaBaseRepository<File> {
       where: { status },
     });
   }
+
+  async findByName(name: string): Promise<File | null> {
+    return this.model.findFirst({
+      where: {
+        OR: [
+          { name },
+          { name: { endsWith: name } },
+        ],
+      },
+    });
+  }
 }

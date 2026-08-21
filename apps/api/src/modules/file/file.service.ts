@@ -23,6 +23,10 @@ export class FileService extends BaseService<File> {
     return this.repository.findBySourceId(sourceId);
   }
 
+  async findByName(name: string): Promise<File | null> {
+    return this.repository.findByName(name);
+  }
+
   async findByWorkspaceId(workspaceId: string): Promise<File[]> {
     return this.repository.findByWorkspaceId(workspaceId);
   }

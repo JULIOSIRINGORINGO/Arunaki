@@ -6,6 +6,8 @@ import {
   Delete,
   Body,
   Param,
+  Res,
+  StreamableFile,
   HttpCode,
   HttpStatus,
   UseInterceptors,
@@ -15,6 +17,8 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import { FileService } from './file.service.js';
 import {
   successResponse,
@@ -140,6 +144,68 @@ export class FileController {
     } catch (error) {
       return errorResponse('FETCH_FAILED', error.message);
     }
+  }
+
+  @Get('raw/:filename')
+  async streamRawByName(
+    @Param('filename') filename: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const cleanName = path.basename(filename);
+    const file = await this.fileService.findByName(cleanName);
+    if (!file || !file.path) {
+      throw new BadRequestException(`File '${cleanName}' not found`);
+    }
+    if (!fs.existsSync(file.path)) {
+      throw new BadRequestException(`File '${cleanName}' does not exist on disk`);
+    }
+    const mime =
+      file.mimeType ||
+      (cleanName.endsWith('.png')
+        ? 'image/png'
+        : cleanName.endsWith('.jpg') || cleanName.endsWith('.jpeg')
+        ? 'image/jpeg'
+        : cleanName.endsWith('.webp')
+        ? 'image/webp'
+        : cleanName.endsWith('.gif')
+        ? 'image/gif'
+        : 'application/octet-stream');
+    res.set({
+      'Content-Type': mime,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    return new StreamableFile(fs.createReadStream(file.path));
+  }
+
+  @Get(':id/raw')
+  async streamRawById(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: any,
+  ) {
+    const file = await this.fileService.findById(id);
+    if (!file || !file.path) {
+      throw new BadRequestException('File not found');
+    }
+    if (!fs.existsSync(file.path)) {
+      throw new BadRequestException('File does not exist on disk');
+    }
+    const cleanName = file.name || '';
+    const mime =
+      file.mimeType ||
+      (cleanName.endsWith('.png')
+        ? 'image/png'
+        : cleanName.endsWith('.jpg') || cleanName.endsWith('.jpeg')
+        ? 'image/jpeg'
+        : cleanName.endsWith('.webp')
+        ? 'image/webp'
+        : cleanName.endsWith('.gif')
+        ? 'image/gif'
+        : 'application/octet-stream');
+    res.set({
+      'Content-Type': mime,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    return new StreamableFile(fs.createReadStream(file.path));
   }
 
   @Put(':id/content')

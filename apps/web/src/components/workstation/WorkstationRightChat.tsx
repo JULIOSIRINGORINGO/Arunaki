@@ -254,12 +254,20 @@ const ChatMessageContent = memo(function ChatMessageContent({ content }: { conte
   );
 });
 
+interface AttachedImage {
+  id: string;
+  name: string;
+  url: string;
+}
+
 const ChatMessageBubble = memo(function ChatMessageBubble({
   msg,
   isUser,
+  onPreviewImage,
 }: {
   msg: Message;
   isUser: boolean;
+  onPreviewImage?: (url: string) => void;
 }) {
   let steps = msg.executionSteps;
   let thoughtSec = msg.thoughtSec;
@@ -270,6 +278,16 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
       if (meta?.thoughtSec) thoughtSec = meta.thoughtSec;
     } catch {}
   }
+
+  const imageMentions = useMemo(() => {
+    const matches = msg.content?.match(/@([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi) || [];
+    return Array.from(new Set(matches.map((m) => m.slice(1))));
+  }, [msg.content]);
+
+  const displayContent = useMemo(() => {
+    if (imageMentions.length === 0) return msg.content;
+    return msg.content.replace(/@([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
+  }, [msg.content, imageMentions]);
 
   return (
     <div
@@ -290,7 +308,35 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
             : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
         )}
       >
-        <ChatMessageContent content={msg.content || ""} isUser={isUser} />
+        {imageMentions.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {imageMentions.map((imgName, i) => (
+              <div
+                key={i}
+                className="group relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/10 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all"
+                onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
+                title="Click to view full image"
+              >
+                <img
+                  src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
+                  alt={imgName}
+                  className="max-w-[200px] max-h-[160px] rounded-xl object-contain group-hover:scale-102 transition-transform duration-150"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = "none";
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
+                  <span className="text-[10px] text-white bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                    {imgName}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {displayContent ? (
+          <ChatMessageContent content={displayContent} isUser={isUser} />
+        ) : null}
       </div>
     </div>
   );
@@ -318,6 +364,8 @@ function WorkstationRightChatComponent({
 }: WorkstationRightChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localPrompt, setLocalPrompt] = useState("");
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -427,10 +475,14 @@ function WorkstationRightChatComponent({
   };
 
   const submitPrompt = () => {
-    const text = localPrompt.trim();
-    if (!text) return;
-    onSendMessage(text);
+    const promptTrimmed = localPrompt.trim();
+    const imageTags = attachedImages.map((img) => `@${img.name}`).join(" ");
+    const fullText = [promptTrimmed, imageTags].filter(Boolean).join(" ");
+    if (!fullText) return;
+
+    onSendMessage(fullText);
     setLocalPrompt("");
+    setAttachedImages([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -525,14 +577,14 @@ function WorkstationRightChatComponent({
       if (!file) continue;
 
       const toastId = toast.loading("Uploading pasted image...");
-      
-      const formData = new FormData();
+      const localPreviewUrl = URL.createObjectURL(file);
       const timestamp = new Date().getTime();
       const ext = file.type === 'image/png' ? 'png' : file.type === 'image/jpeg' ? 'jpg' : 'webp';
       const fileName = `pasted_image_${timestamp}.${ext}`;
       
       const renamedFile = new File([file], fileName, { type: file.type });
       
+      const formData = new FormData();
       formData.append('files', renamedFile);
       formData.append('workspaceId', activeWorkspace.id);
       formData.append('sourceName', 'Uploads');
@@ -546,9 +598,16 @@ function WorkstationRightChatComponent({
         if (res.ok) {
            const json = await res.json();
            if (json.data && json.data.length > 0) {
-             const uploadedName = json.data[0].name;
-             setLocalPrompt(localPrompt + (localPrompt && !localPrompt.endsWith(' ') ? ' ' : '') + `@${uploadedName} `);
-             toast.success(`Image uploaded as ${uploadedName}`, { id: toastId });
+             const uploadedFile = json.data[0];
+             setAttachedImages((prev) => [
+               ...prev,
+               {
+                 id: uploadedFile.id || fileName,
+                 name: uploadedFile.name,
+                 url: localPreviewUrl,
+               },
+             ]);
+             toast.success(`Image attached: ${uploadedFile.name}`, { id: toastId });
            } else {
              toast.error("Failed to parse upload response", { id: toastId });
            }
@@ -618,6 +677,7 @@ function WorkstationRightChatComponent({
                 key={msg.id || idx}
                 msg={msg}
                 isUser={isUser}
+                onPreviewImage={(url) => setLightboxUrl(url)}
               />
             );
           })
@@ -714,6 +774,38 @@ function WorkstationRightChatComponent({
             </div>
           )}
 
+          {/* Visual Attached Image Chips Preview */}
+          {attachedImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2 animate-in fade-in zoom-in-95 duration-150">
+              {attachedImages.map((img, idx) => (
+                <div
+                  key={img.id || idx}
+                  className="group relative flex items-center gap-2 bg-[var(--bg-hover)] border border-[var(--border-strong)] rounded-xl p-1.5 pr-2.5 shadow-xs"
+                >
+                  <img
+                    src={img.url}
+                    alt={img.name}
+                    className="w-10 h-10 rounded-lg object-cover border border-[var(--border-color)] bg-black/20 shrink-0 cursor-pointer"
+                    onClick={() => setLightboxUrl(img.url)}
+                    title="Click to zoom preview"
+                  />
+                  <div className="flex flex-col min-w-0 max-w-[130px]">
+                    <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">{img.name}</span>
+                    <span className="text-[9px] text-[var(--text-dim)] font-mono">Image attached</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedImages((prev) => prev.filter((_, i) => i !== idx))}
+                    className="ml-1 w-4 h-4 rounded-full bg-[var(--bg-panel)] hover:bg-red-500/20 hover:text-red-500 text-[var(--text-muted)] flex items-center justify-center transition-colors cursor-pointer"
+                    title="Remove image"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <textarea
             ref={textareaRef}
             value={localPrompt}
@@ -784,11 +876,11 @@ function WorkstationRightChatComponent({
                 </button>
               )}
 
-              {(!isStreaming || localPrompt.trim()) && (
+              {(!isStreaming || localPrompt.trim() || attachedImages.length > 0) && (
                 <button
                   type="button"
                   onClick={submitPrompt}
-                  disabled={!localPrompt.trim()}
+                  disabled={!localPrompt.trim() && attachedImages.length === 0}
                   className={cn(
                     "w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer",
                     isStreaming
@@ -808,6 +900,29 @@ function WorkstationRightChatComponent({
           </div>
         </div>
       </div>
+
+      {/* Lightbox Fullscreen Image Preview Modal */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-150"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={lightboxUrl}
+              alt="Preview"
+              className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain border border-white/20"
+            />
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-3 -right-3 w-7 h-7 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
