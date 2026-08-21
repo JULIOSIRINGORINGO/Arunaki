@@ -46,6 +46,9 @@ import { PtcExecutorService } from './services/ptc-executor.service.js';
 import { MultiDocOrchestratorService } from './services/multi-doc-orchestrator.service.js';
 import { SubAgentRunnerService } from '../chat/sub-agent-runner.service.js';
 import { ContextQuarantine } from '../ai/context/context-quarantine.service.js';
+import { PdfPagesTool } from './services/pdf-pages.tool.js';
+import { DocCompareTool } from './services/doc-compare.tool.js';
+import { DocRedactTool } from './services/doc-redact.tool.js';
 import { AiModule } from '../ai/ai.module.js';
 
 import { WorkspaceFileToolsRegistrar } from './services/registrars/workspace-file-tools.registrar.js';
@@ -111,6 +114,9 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
     PtcExecutorService,
     MultiDocOrchestratorService,
     ToolResultCacheService,
+    PdfPagesTool,
+    DocCompareTool,
+    DocRedactTool,
     WorkspaceFileToolsRegistrar,
     BusinessDomainToolsRegistrar,
     HarnessMetaToolsRegistrar,
@@ -150,6 +156,9 @@ import { StockLookupTool } from './services/stock-lookup.tool.js';
     TodoStoreService,
     PtcExecutorService,
     MultiDocOrchestratorService,
+    PdfPagesTool,
+    DocCompareTool,
+    DocRedactTool,
   ],
 })
 export class ToolsProviderModule implements OnModuleInit {
@@ -221,6 +230,9 @@ export class ToolsProviderModule implements OnModuleInit {
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
         strict: false,
       }),
+      pdfPagesTool: this.moduleRef.get(PdfPagesTool, { strict: false }),
+      docCompareTool: this.moduleRef.get(DocCompareTool, { strict: false }),
+      docRedactTool: this.moduleRef.get(DocRedactTool, { strict: false }),
     });
 
     // 3. Register Harness Meta Tools (including PTC Batch Execute)

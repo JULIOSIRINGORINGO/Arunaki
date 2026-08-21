@@ -19,6 +19,10 @@ export interface ExcelAction {
   fontSize?: number;
   bgColor?: number;
   alignment?: string;
+  // Sheet management (clone, rename, delete)
+  sourceSheet?: string;
+  newSheetName?: string;
+  clearConstants?: boolean;
 }
 
 export interface ExcelActionResult {
@@ -137,6 +141,55 @@ export class ExcelComService {
               `$results += @{ action='set_format'; success=$true; range='${rangeRef}' }`,
             );
             return `        ${parts.join('; ')}`;
+          }
+          case 'clone_sheet': {
+            const src = (act.sourceSheet || '').replace(/'/g, "''");
+            const dst = (act.newSheetName || 'Copy').replace(/'/g, "''");
+            const clearConst = act.clearConstants !== false;
+            // Clone sheet: find source, copy after last sheet, rename, optionally clear constants
+            return [
+              `        $srcWs = $null`,
+              `        foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${src}') { $srcWs = $wb.Worksheets.Item($s); break } }`,
+              `        if ($srcWs -eq $null) { $results += @{ action='clone_sheet'; success=$false; error='Source sheet not found: ${src}' } }`,
+              `        else {`,
+              `          $srcWs.Copy([System.Reflection.Missing]::Value, $wb.Worksheets.Item($wb.Worksheets.Count))`,
+              `          $newWs = $wb.Worksheets.Item($wb.Worksheets.Count)`,
+              `          $newWs.Name = '${dst}'`,
+              clearConst ? `          try { $constCells = $newWs.UsedRange.SpecialCells(2); if ($constCells -ne $null) { $constCells.ClearContents() } } catch {}` : '',
+              `          $results += @{ action='clone_sheet'; success=$true; sourceSheet='${src}'; newSheet='${dst}'; clearedConstants=${clearConst ? '$true' : '$false'} }`,
+              `        }`,
+            ].filter(Boolean).join('\n');
+          }
+          case 'rename_sheet': {
+            const oldName = (act.sourceSheet || '').replace(/'/g, "''");
+            const newName = (act.newSheetName || '').replace(/'/g, "''");
+            return [
+              `        $renWs = $null`,
+              `        foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${oldName}') { $renWs = $wb.Worksheets.Item($s); break } }`,
+              `        if ($renWs -eq $null) { $results += @{ action='rename_sheet'; success=$false; error='Sheet not found: ${oldName}' } }`,
+              `        else { $renWs.Name = '${newName}'; $results += @{ action='rename_sheet'; success=$true; oldName='${oldName}'; newName='${newName}' } }`,
+            ].join('\n');
+          }
+          case 'delete_sheet': {
+            const delName = (act.sourceSheet || act.newSheetName || '').replace(/'/g, "''");
+            return [
+              `        $delWs = $null`,
+              `        foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${delName}') { $delWs = $wb.Worksheets.Item($s); break } }`,
+              `        if ($delWs -eq $null) { $results += @{ action='delete_sheet'; success=$false; error='Sheet not found: ${delName}' } }`,
+              `        else { $delWs.Delete(); $results += @{ action='delete_sheet'; success=$true; sheet='${delName}' } }`,
+            ].join('\n');
+          }
+          case 'clear_constants': {
+            // Clear numeric/text constants in active sheet (or specified range), preserving all formulas
+            const clearRange = act.range ? `$ws.Range('${act.range}')` : '$ws.UsedRange';
+            return `        try { $constCells = ${clearRange}.SpecialCells(2); if ($constCells -ne $null) { $constCells.ClearContents() } } catch {}; $results += @{ action='clear_constants'; success=$true }`;
+          }
+          case 'list_sheets': {
+            return [
+              `        $sheetList = @()`,
+              `        foreach ($s in 1..$wb.Worksheets.Count) { $sheetList += $wb.Worksheets.Item($s).Name }`,
+              `        $results += @{ action='list_sheets'; success=$true; sheets=($sheetList -join ','); count=$wb.Worksheets.Count }`,
+            ].join('\n');
           }
           case 'save':
             return `        $wb.Save(); $results += @{ action='save'; success=$true }`;

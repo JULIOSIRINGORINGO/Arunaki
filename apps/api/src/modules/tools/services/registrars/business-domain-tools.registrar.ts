@@ -9,6 +9,9 @@ import { DataQueryTool } from '../data-query.tool.js';
 import { DraftCommunicationTool } from '../draft-communication.tool.js';
 import { UnitConverterTool } from '../unit-converter.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
+import { PdfPagesTool } from '../pdf-pages.tool.js';
+import { DocCompareTool } from '../doc-compare.tool.js';
+import { DocRedactTool } from '../doc-redact.tool.js';
 
 @Injectable()
 export class BusinessDomainToolsRegistrar {
@@ -23,6 +26,9 @@ export class BusinessDomainToolsRegistrar {
       draftCommunicationTool: DraftCommunicationTool;
       unitConverterTool: UnitConverterTool;
       workspaceToolsService: WorkspaceToolsService;
+      pdfPagesTool: PdfPagesTool;
+      docCompareTool: DocCompareTool;
+      docRedactTool: DocRedactTool;
     },
   ) {
     registry.register(
@@ -376,6 +382,252 @@ export class BusinessDomainToolsRegistrar {
           required: ['from', 'to', 'value'],
         },
         timeoutMs: 3000,
+      }),
+    );
+
+    // --- Enterprise Document Operations Suite (Phase 50) ---
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'pdf_manage_pages',
+        displayName: 'Manage PDF Pages',
+        description:
+          'Manages PDF pages: merge multiple PDFs into one, extract specific pages, or apply diagonal text watermark (DRAFT, CONFIDENTIAL, LUNAS, etc.).',
+        tags: ['pdf', 'merge', 'split', 'watermark', 'document', 'pages'],
+        mutating: true,
+        handler: async (args) => {
+          try {
+            const action = args.action || 'merge';
+
+            if (action === 'merge') {
+              const filePaths: string[] = [];
+              for (const fp of args.files || []) {
+                const safePath =
+                  await services.workspaceToolsService.resolveWithinWorkspace(
+                    args.workspaceId,
+                    fp,
+                  );
+                filePaths.push(safePath);
+              }
+              const safeOutput =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.outputPath || 'merged.pdf',
+                );
+              return services.pdfPagesTool.merge(filePaths, safeOutput);
+            }
+
+            if (action === 'extract' || action === 'split') {
+              const safeSrc =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.sourcePath || args.filePath,
+                );
+              const safeOutput =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.outputPath || 'extracted.pdf',
+                );
+              return services.pdfPagesTool.extractPages(
+                safeSrc,
+                args.pages || [],
+                safeOutput,
+              );
+            }
+
+            if (action === 'watermark') {
+              const safeSrc =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.sourcePath || args.filePath,
+                );
+              const safeOutput =
+                await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  args.outputPath || args.sourcePath || 'watermarked.pdf',
+                );
+              return services.pdfPagesTool.watermark(
+                safeSrc,
+                args.text || 'DRAFT',
+                safeOutput,
+                {
+                  opacity: args.opacity,
+                  fontSize: args.fontSize,
+                  color: args.color,
+                  pages: args.pages,
+                },
+              );
+            }
+
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `Unknown action "${action}". Use: merge, extract, watermark.`,
+              metadata: {
+                toolName: 'pdf_manage_pages',
+                displayName: 'Manage PDF Pages',
+                executionTime: 0,
+              },
+            };
+          } catch (err: any) {
+            return {
+              status: 'error' as const,
+              data: {},
+              preview: `PDF operation failed: ${err.message}`,
+              metadata: {
+                toolName: 'pdf_manage_pages',
+                displayName: 'Manage PDF Pages',
+                executionTime: 0,
+              },
+              error: { code: 'PDF_OP_FAILED', message: err.message },
+            };
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['merge', 'extract', 'split', 'watermark'],
+              description: 'Operation to perform',
+            },
+            files: {
+              type: 'array',
+              description:
+                'Array of PDF file paths to merge (for merge action)',
+            },
+            sourcePath: {
+              type: 'string',
+              description: 'Source PDF path (for extract/watermark)',
+            },
+            outputPath: {
+              type: 'string',
+              description: 'Output file path',
+            },
+            pages: {
+              type: 'array',
+              description:
+                'Page numbers to extract (1-based) or watermark',
+            },
+            text: {
+              type: 'string',
+              description:
+                'Watermark text (e.g. "DRAFT", "CONFIDENTIAL", "LUNAS")',
+            },
+            opacity: {
+              type: 'number',
+              description: 'Watermark opacity (0.0-1.0, default 0.15)',
+            },
+            fontSize: {
+              type: 'number',
+              description: 'Watermark font size (default 60)',
+            },
+          },
+          required: ['action'],
+        },
+        timeoutMs: 30000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'doc_compare_versions',
+        displayName: 'Compare Document Versions',
+        description:
+          'Compares two document texts line-by-line and produces a structured diff report with similarity percentage, added/removed counts, and Markdown redline table.',
+        tags: [
+          'compare',
+          'diff',
+          'version',
+          'document',
+          'redline',
+          'audit',
+        ],
+        handler: (args) =>
+          services.docCompareTool.compare(
+            args.sourceText || '',
+            args.targetText || '',
+            args.sourceName || 'Document A',
+            args.targetName || 'Document B',
+          ),
+        parameters: {
+          type: 'object',
+          properties: {
+            sourceText: {
+              type: 'string',
+              description: 'Full text content of the first (source) document',
+            },
+            targetText: {
+              type: 'string',
+              description:
+                'Full text content of the second (target) document',
+            },
+            sourceName: {
+              type: 'string',
+              description: 'Display name for source document',
+            },
+            targetName: {
+              type: 'string',
+              description: 'Display name for target document',
+            },
+          },
+          required: ['sourceText', 'targetText'],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'doc_redact_pii',
+        displayName: 'Redact PII Data',
+        description:
+          'Scans document text for Indonesian PII (NIK/KTP, NPWP, phone numbers, email, bank accounts, credit cards) and returns a redacted version with detection report. Use action "scan" for detection-only without modification.',
+        tags: [
+          'redact',
+          'pii',
+          'privacy',
+          'security',
+          'compliance',
+          'nik',
+          'npwp',
+        ],
+        handler: (args) => {
+          if (args.action === 'scan') {
+            return services.docRedactTool.scan(args.text || '');
+          }
+          return services.docRedactTool.redact(args.text || '', {
+            patterns: args.patterns,
+            customMask: args.customMask,
+          });
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['redact', 'scan'],
+              description:
+                'Action: "redact" masks PII in text, "scan" detects without modifying',
+            },
+            text: {
+              type: 'string',
+              description: 'Document text to scan/redact',
+            },
+            patterns: {
+              type: 'array',
+              description:
+                'Optional specific PII patterns to check: nik_ktp, npwp, email, phone_id, credit_card, bank_account',
+            },
+            customMask: {
+              type: 'string',
+              description:
+                'Optional custom replacement mask string (default: pattern-specific)',
+            },
+          },
+          required: ['text'],
+        },
+        timeoutMs: 10000,
       }),
     );
   }
