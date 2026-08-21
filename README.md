@@ -16,7 +16,7 @@
   <a href="#tool-catalog">Tool Catalog</a> •
   <a href="#security--sandboxing">Security</a> •
   <a href="#configuration">Configuration</a> •
-  <a href="#building-from-source">Developer Setup</a>
+  <a href="#license">License</a>
 </p>
 
 ---
@@ -152,51 +152,7 @@ Application settings can be configured through the **Settings Panel** in the UI 
 
 ---
 
-## 💻 Building from Source
-
-For developers contributing to Arunaki:
-
-### Prerequisites
-- Node.js v20.0.0 or higher
-- npm v10.0.0 or higher
-- Windows 10/11 (64-bit) recommended for full Office COM development
-
-### Build Instructions
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/JULIOSIRINGORINGO/Arunaki.git
-cd Arunaki
-
-# 2. Install workspace dependencies
-npm install
-
-# 3. Setup local database schema
-npx prisma generate --schema=apps/api/prisma/schema.prisma
-npx prisma db push --schema=apps/api/prisma/schema.prisma
-
-# 4. Start local development server (Backend API + Web Interface)
-npm run dev
-
-# 5. Build Desktop Windows Installer (.exe)
-npm run build -w apps/desktop
-```
-
-### Running Test Suites
-
-```bash
-# Run complete test suite (51 test files, 252 tests)
-npm test
-
-# Run the 50-Tool batched stress and concurrency hammer test
-npx vitest run apps/api/src/test-all-50-tools-batched-stress.spec.ts
-
-# Run the live document benchmark suite (Excel, Word, PPT, PDF, Rekap)
-npx vitest run apps/api/src/test-real-llm-benchmark.spec.ts
-```
-
----
-
 ## 📄 License
 
 Copyright © 2026 Arunaki. All rights reserved.
+
