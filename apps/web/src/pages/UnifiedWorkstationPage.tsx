@@ -8,7 +8,7 @@ import { WorkstationCenterPanel, CenterTab } from "../components/workstation/Wor
 import { WorkstationRightChat } from "../components/workstation/WorkstationRightChat";
 import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal";
 import { SearchSectionModal } from "../components/workstation/SearchSectionModal";
-import { LiveStatusData } from "../components/workstation/LiveExecutionBadge";
+import { LiveStatusData, StepItem } from "../components/workstation/LiveExecutionBadge";
 import { API_BASE, apiFetch } from "../lib/api";
 
 interface Message {
@@ -16,6 +16,9 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt?: string;
+  executionSteps?: StepItem[];
+  thoughtSec?: number;
+  metadata?: string | Record<string, any>;
 }
 
 interface WorkspaceFile {
@@ -497,6 +500,8 @@ export function UnifiedWorkstationPage() {
     }
 
     let accumulatedResponseText = "";
+    const streamStartTime = Date.now();
+    const accumulatedSteps: StepItem[] = [];
 
     try {
       await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
@@ -510,9 +515,30 @@ export function UnifiedWorkstationPage() {
           try {
             const event = JSON.parse(msg.data);
             if (event.type === "thinking") {
-              setLiveStatus({ type: "thinking", preview: event.data || "Analyzing request & context" });
+              const label = event.data || "Analyzing request & context";
+              setLiveStatus({ type: "thinking", preview: label });
+              if (!accumulatedSteps.some((s) => s.label === label)) {
+                accumulatedSteps.push({
+                  id: `${Date.now()}-${Math.random()}`,
+                  label,
+                  status: "completed",
+                  iconType: "thinking",
+                });
+              }
             } else if (event.type === "tool_live_status" || event.type === "tool_start") {
+              const toolName = event.data?.toolName || "desktop_action";
+              const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
+              const label = `Executing: ${toolName}${preview}`;
               setLiveStatus({ type: "tool_start", ...event.data });
+              if (!accumulatedSteps.some((s) => s.label === label)) {
+                accumulatedSteps.push({
+                  id: `${Date.now()}-${Math.random()}`,
+                  label,
+                  status: "completed",
+                  iconType: "tool",
+                  toolName,
+                });
+              }
               refetchFiles();
               reloadOpenTabsContent();
 
@@ -538,12 +564,22 @@ export function UnifiedWorkstationPage() {
                 if (!exists) {
                   return [
                     ...prev,
-                    { id: assistantMessageId, role: "assistant", content: event.data, createdAt: new Date().toISOString() },
+                    {
+                      id: assistantMessageId,
+                      role: "assistant",
+                      content: event.data,
+                      createdAt: new Date().toISOString(),
+                      executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                    },
                   ];
                 }
                 return prev.map((m) =>
                   m.id === assistantMessageId
-                    ? { ...m, content: m.content + event.data }
+                    ? {
+                        ...m,
+                        content: m.content + event.data,
+                        executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
+                      }
                     : m
                 );
               });
@@ -570,6 +606,20 @@ export function UnifiedWorkstationPage() {
             } else if (event.type === "done") {
               setIsStreaming(false);
               setLiveStatus(null);
+              const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+
+              setOptimisticMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMessageId
+                    ? {
+                        ...m,
+                        content: accumulatedResponseText || m.content,
+                        executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                        thoughtSec: elapsedSec,
+                      }
+                    : m
+                )
+              );
 
               // Dynamic Desktop Notification
               try {

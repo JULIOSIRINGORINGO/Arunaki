@@ -18,7 +18,7 @@ import {
   ChevronDown,
   Check,
 } from "lucide-react";
-import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
+import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
 import { LiveDocumentPreview } from "./LiveDocumentPreview";
 import { cn } from "../../lib/utils";
@@ -41,6 +41,9 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt?: string;
+  executionSteps?: StepItem[];
+  thoughtSec?: number;
+  metadata?: string | Record<string, any>;
 }
 
 interface Workspace {
@@ -367,6 +370,17 @@ function WorkstationRightChatComponent({
               return null;
             }
 
+            // Parse metadata if executionSteps not directly on msg
+            let steps = msg.executionSteps;
+            let thoughtSec = msg.thoughtSec;
+            if (!steps && msg.metadata) {
+              try {
+                const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
+                if (meta?.executionSteps) steps = meta.executionSteps;
+                if (meta?.thoughtSec) thoughtSec = meta.thoughtSec;
+              } catch {}
+            }
+
             return (
               <div
                 key={msg.id || idx}
@@ -375,6 +389,10 @@ function WorkstationRightChatComponent({
                   isUser ? "ml-auto items-end" : "mr-auto items-start"
                 )}
               >
+                {!isUser && (
+                  <MessageThoughtBadge steps={steps} thoughtSec={thoughtSec} />
+                )}
+
                 <div
                   className={cn(
                     "p-3 rounded-2xl text-xs leading-relaxed overflow-hidden break-words font-sans",

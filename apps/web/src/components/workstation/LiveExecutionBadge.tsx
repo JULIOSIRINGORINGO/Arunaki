@@ -11,6 +11,7 @@ import {
   Cpu,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Check,
   Database,
   FileSearch,
@@ -24,7 +25,7 @@ export interface LiveStatusData {
   timestamp?: string;
 }
 
-interface StepItem {
+export interface StepItem {
   id: string;
   label: string;
   status: 'completed' | 'running';
@@ -135,7 +136,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
     if (t.includes("word")) return <FileText size={12} className="text-blue-400 shrink-0 mt-0.5" />;
     if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-amber-500 shrink-0 mt-0.5" />;
-    if (t.includes("read") || t.includes("file")) return <FileSearch size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    if (t.includes("read") || t.includes("file") || t.includes("search")) return <FileSearch size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
     if (t.includes("browser")) return <Globe size={12} className="text-indigo-500 shrink-0 mt-0.5" />;
     if (t.includes("screenshot")) return <Camera size={12} className="text-purple-500 shrink-0 mt-0.5" />;
     if (t.includes("key")) return <Keyboard size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
@@ -143,7 +144,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   };
 
   return (
-    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] overflow-hidden animate-fade-in max-w-sm">
+    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] overflow-hidden animate-fade-in max-w-sm select-none">
       {/* Collapsible Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -188,6 +189,93 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
               {status.type === 'thinking' ? `Working... ${waitingSec}s` : 'Working...'}
             </span>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Persisted Antigravity / Cursor IDE style collapsible thought/execution badge.
+ * Rendered directly above assistant chat messages in the history.
+ */
+export function MessageThoughtBadge({
+  steps = [],
+  thoughtSec = 1,
+}: {
+  steps?: StepItem[];
+  thoughtSec?: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
+  const hasToolExecution = toolSteps.length > 0;
+
+  if (hasToolExecution) {
+    return (
+      <div className="mb-2 max-w-sm font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-1.5">
+            <Check size={12} className="text-emerald-500 shrink-0" />
+            <span className="font-semibold text-[var(--text-primary)]">
+              Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
+            </span>
+            <span className="text-[10px] text-[var(--text-dim)]">({steps.length} steps)</span>
+          </div>
+          <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </div>
+        </button>
+
+        {isExpanded && (
+          <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)]">
+            {steps.map((step, idx) => (
+              <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)]">
+                <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
+                <span className="truncate max-w-[260px] text-[var(--text-muted)]">
+                  {step.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Pure Thought Reasoning (like "Thought for 1s >" in Antigravity / Gemini)
+  return (
+    <div className="mb-2 font-sans select-none max-w-fit">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)]"
+      >
+        <span>Thought for {thoughtSec || 1}s</span>
+        {isExpanded ? (
+          <ChevronDown size={12} className="text-[var(--text-muted)]" />
+        ) : (
+          <ChevronRight size={12} className="text-[var(--text-muted)]" />
+        )}
+      </button>
+
+      {isExpanded && (
+        <div className="mt-1 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-md font-sans">
+          {steps.length > 0 ? (
+            <div className="space-y-1">
+              {steps.map((s, i) => (
+                <div key={s.id || i} className="flex items-center gap-1.5">
+                  <Check size={10} className="text-emerald-500 shrink-0" />
+                  <span>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="italic text-[var(--text-dim)]">Reasoned about the request and contextualized workspace documents.</p>
+          )}
         </div>
       )}
     </div>
