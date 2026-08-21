@@ -36,7 +36,6 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   const [nodeData, setNodeData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -153,11 +152,9 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
       });
       if (res.ok) {
         const { data } = await res.json();
-        setNodeData(data);
         onUpdate(nodeId, data);
-        setSavedSuccess(true);
-        setTimeout(() => setSavedSuccess(false), 2000);
         toast.success("Knowledge node saved successfully!");
+        onClose();
       } else {
         const err = await res.json().catch(() => ({}));
         toast.error(err.error?.message || "Failed to save node");
@@ -357,29 +354,10 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             <button
               onClick={handleSave}
               disabled={saving}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer",
-                savedSuccess
-                  ? "bg-emerald-500 text-white"
-                  : "bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 disabled:opacity-50"
-              )}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] text-xs font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
             >
-              {saving ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : savedSuccess ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Saved!</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Save</span>
-                </>
-              )}
+              <Save className="w-4 h-4" />
+              <span>{saving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
         </>
