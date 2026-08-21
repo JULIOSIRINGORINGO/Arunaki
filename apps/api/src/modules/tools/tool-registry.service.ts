@@ -159,6 +159,9 @@ export class ToolRegistryService {
     const ALIAS_MAP: Record<string, string> = {
       // File tools
       read_file: 'read',
+      read_file_lines: 'read',
+      read_lines: 'read',
+      view_file_lines: 'read',
       read_workspace_file: 'read',
       view_file: 'read',
       cat: 'read',

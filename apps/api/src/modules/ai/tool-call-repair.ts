@@ -92,14 +92,46 @@ export function repairJson(raw: string): string {
 /** Known tool names in Arunaki to help disambiguate flat objects */
 const KNOWN_ARUNAKI_TOOLS = new Set([
   'edit',
+  'edit_file',
   'read',
+  'read_file',
+  'read_file_lines',
+  'read_lines',
+  'view_file',
   'write',
+  'write_file',
   'delete',
+  'delete_file',
   'rename',
+  'rename_file',
   'list',
+  'list_files',
   'search_workspace',
+  'search_files',
+  'search',
+  'doc_redact_pii',
+  'redact',
+  'redact_pii',
+  'doc_compare_versions',
+  'diff',
+  'compare',
+  'pdf_manage_pages',
+  'pdf_stamp_image',
+  'pdf',
+  'merge_pdf',
+  'desktop_excel_edit',
+  'desktop_word_edit',
+  'desktop_ppt_edit',
+  'excel',
+  'word',
+  'ppt',
+  'desktop_open_excel',
+  'desktop_open_word',
+  'desktop_open_ppt',
+  'desktop_open_file',
   'extract_structured_data',
   'document_reader',
+  'convert_document',
   'data_query',
   'generate_export',
   'draft_communication',
@@ -397,7 +429,50 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
     }
   }
 
-  // 1d. XML-ish tags with name attributes or inner tool call
+  // 1d. <tool name="..."> <args> <arg name="p">val</arg> </args> </tool> format
+  const TOOL_TAG_RE =
+    /<tool\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/tool>/gi;
+  const ARG_TAG_RE =
+    /<arg\s+name=["']([^"']+)["'][^>]*>([\s\S]*?)<\/arg>/gi;
+
+  TOOL_TAG_RE.lastIndex = 0;
+  while ((m = TOOL_TAG_RE.exec(content)) !== null) {
+    const fnName = m[1];
+    const inner = m[2].trim();
+    const args: Record<string, any> = {};
+    let hasArgs = false;
+    let argM: RegExpExecArray | null;
+    ARG_TAG_RE.lastIndex = 0;
+    while ((argM = ARG_TAG_RE.exec(inner)) !== null) {
+      hasArgs = true;
+      const pName = argM[1];
+      const pVal = argM[2].trim();
+      try {
+        args[pName] = JSON.parse(pVal);
+      } catch {
+        args[pName] = pVal;
+      }
+    }
+
+    if (hasArgs) {
+      const call: RepairedToolCall = {
+        id: `repaired-tool-${Date.now()}-${calls.length}`,
+        type: 'function',
+        function: {
+          name: fnName,
+          arguments: JSON.stringify(args),
+        },
+      };
+      if (!seen.has(fnName + ':' + call.function.arguments)) {
+        seen.add(fnName + ':' + call.function.arguments);
+        calls.push(call);
+      }
+    } else {
+      tryPush(inner);
+    }
+  }
+
+  // 1e. XML-ish tags with name attributes or inner tool call
   XML_ISH_TAG_RE.lastIndex = 0;
   while ((m = XML_ISH_TAG_RE.exec(content)) !== null) {
     const tag = m[0];
