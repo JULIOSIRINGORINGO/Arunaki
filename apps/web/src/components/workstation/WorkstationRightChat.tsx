@@ -663,7 +663,7 @@ function WorkstationRightChatComponent({
 
         <div className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-colors">
           {showMentions && mentionResults.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
                 Select file to attach
               </div>
@@ -672,11 +672,10 @@ function WorkstationRightChatComponent({
                   <button
                     key={name}
                     type="button"
-                    onMouseEnter={() => setMentionIndex(i)}
                     onClick={() => insertMention(name)}
                     className={cn(
-                      "w-full px-3 py-1.5 text-xs flex items-center gap-2 transition-colors cursor-pointer text-left",
-                      i === mentionIndex ? "bg-[var(--bg-hover)] text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]"
+                      "w-full px-3 py-1.5 text-xs flex items-center gap-2 transition-colors cursor-pointer text-left hover:bg-[var(--bg-hover)]",
+                      i === mentionIndex ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-medium" : "text-[var(--text-secondary)]"
                     )}
                   >
                     {getFileIcon(name)}
@@ -688,7 +687,7 @@ function WorkstationRightChatComponent({
           )}
 
           {showCommands && filteredCommands.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden">
+            <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
               <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
                 Slash Commands
               </div>
@@ -700,10 +699,9 @@ function WorkstationRightChatComponent({
                       key={command.name}
                       type="button"
                       onClick={() => handleCommandSelect(command.name)}
-                      onMouseEnter={() => setSelectedCommandIndex(index)}
                       className={cn(
-                        "w-full px-3 py-2 flex items-center gap-2 transition-colors cursor-pointer",
-                        index === selectedCommandIndex ? "bg-[var(--bg-hover)]" : "hover:bg-[var(--bg-hover)]"
+                        "w-full px-3 py-2 flex items-center gap-2 transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
+                        index === selectedCommandIndex ? "bg-[var(--bg-hover)] font-medium" : ""
                       )}
                     >
                       <Icon size={14} className="text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />

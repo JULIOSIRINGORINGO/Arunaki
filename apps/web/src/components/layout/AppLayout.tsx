@@ -71,7 +71,7 @@ export function AppLayout() {
       window.removeEventListener("arunaki-workspace-change", handleWsChange);
       window.removeEventListener("storage", handleWsChange);
     };
-  }, [location.pathname]);
+  }, []);
 
   // Close dropdown menu when clicking outside
   useEffect(() => {
@@ -100,110 +100,95 @@ export function AppLayout() {
             const res = await apiFetch(`${API_BASE}/workspaces`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: folderName,
-                rootPath: folderPath,
-                businessType: "generic",
-              }),
+              body: JSON.stringify({ name: folderName, rootPath: folderPath }),
             });
-            const json = await res.json();
-            const ws = json.data;
-            if (ws?.id) {
-              localStorage.setItem("arunaki_workspace_id", ws.id);
-              localStorage.setItem("arunaki_workspace_path", ws.rootPath || folderPath);
-              setWorkspaceInfo(ws);
-              window.dispatchEvent(new Event("arunaki-workspace-change"));
-              navigate(`/?wsId=${ws.id}`);
-              return;
+            if (res.ok) {
+              const json = await res.json();
+              if (json.data?.id) {
+                localStorage.setItem("arunaki_workspace_id", json.data.id);
+                localStorage.setItem("arunaki_workspace_path", folderPath);
+                setWorkspaceInfo(json.data);
+                window.dispatchEvent(new Event("arunaki-workspace-change"));
+              }
             }
-          } catch (apiErr) {
-            console.error("Failed to register workspace:", apiErr);
-          }
-          localStorage.setItem("arunaki_workspace_path", folderPath);
-          window.dispatchEvent(new Event("arunaki-workspace-change"));
-          navigate(`/?openFolder=${encodeURIComponent(folderPath)}`);
-          return;
+          } catch {}
         }
       } catch (err) {
-        console.error("Select folder failed:", err);
+        console.error("Open folder error:", err);
       }
-    } else {
-      navigate("/");
     }
   };
 
   const toggleQuickTheme = () => {
-    setTheme(isLight ? "dark" : "light");
+    if (isLight) {
+      setTheme("dark");
+    } else {
+      setTheme("light");
+    }
   };
 
-  const handleNavigateWorkstation = useCallback(() => {
-    const savedChatId = localStorage.getItem("arunaki_active_chat_id");
-    navigate(savedChatId ? `/?chatId=${savedChatId}` : "/");
-  }, [navigate]);
-
   const navItems = [
-    { path: "/", label: "Workstation", icon: MessageSquare },
-    { path: "/knowledge", label: "Knowledge", icon: BookOpen },
-    { path: "/history", label: "History", icon: History },
-    { path: "/settings", label: "Settings", icon: Settings },
+    { label: "Workstation", path: "/", icon: MessageSquare },
+    { label: "Knowledge", path: "/knowledge", icon: BookOpen },
+    { label: "History", path: "/history", icon: History },
+    { label: "Settings", path: "/settings", icon: Settings },
   ];
 
+  const handleNavigateWorkstation = useCallback(() => {
+    const wsId = localStorage.getItem("arunaki_workspace_id");
+    const wsChatKey = wsId ? `arunaki_active_chat_${wsId}` : "arunaki_active_chat_id";
+    const savedChatId = localStorage.getItem(wsChatKey) || localStorage.getItem("arunaki_active_chat_id") || "";
+    if (savedChatId) {
+      navigate(`/?chatId=${savedChatId}`);
+    } else {
+      navigate("/");
+    }
+  }, [navigate]);
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden font-sans select-none transition-colors duration-150">
-      {/* 1. HEADER ATAS (IDE TOPBAR): Logo 'A' + Menu Bar ("File", "Edit", "View", "Help") + Quick Theme Toggle */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--bg-app)] text-[var(--text-primary)] select-none">
+      {/* 1. HEADER ATAS (Native Minimalist Mac/Win Topbar) */}
       <header
-        className="h-11 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-b border-[var(--border-color)] transition-colors duration-150"
-        style={{ WebkitAppRegion: "drag", paddingRight: "140px" } as React.CSSProperties}
+        className="h-10 bg-[var(--bg-header)] border-b border-[var(--border-color)] flex items-center justify-between px-3 shrink-0 transition-colors duration-150 select-none z-30"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
-        <div
-          className="flex items-center gap-3"
-          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-        >
-          {/* Logo 'A' di paling kiri */}
+        {/* Left side: Brand Logo + Classic File/View/Help Menus */}
+        <div className="flex items-center gap-4">
           <div
+            className="flex items-center gap-2 cursor-pointer"
             onClick={handleNavigateWorkstation}
-            className="w-6 h-6 rounded-full bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] shrink-0 cursor-pointer"
-            title="Arunaki Workstation"
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           >
-            <ArunakiLogo className="w-3.5 h-3.5" fill={isLight ? "#18181B" : "#FFFFFF"} />
+            <ArunakiLogo size={20} />
+            <span className="font-semibold text-xs tracking-tight text-[var(--text-primary)]">Arunaki</span>
           </div>
 
-          {/* Menu Header Teks Murni */}
-          <nav className="flex items-center gap-1 relative">
+          {/* Clean Dropdown Menus */}
+          <nav
+            className="flex items-center gap-1"
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+          >
             <button
               onClick={handleOpenFolder}
               className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
-              File
-            </button>
-            <button
-              onClick={handleNavigateWorkstation}
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            >
-              Edit
+              Open Folder
             </button>
 
-            {/* View / Tampilan Dropdown */}
+            {/* View / Theme Dropdown */}
             <div className="relative" ref={viewMenuRef}>
               <button
                 onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
                 className={cn(
-                  "text-xs font-semibold px-3 py-1 rounded-md transition-colors cursor-pointer",
-                  isViewMenuOpen
-                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                  "text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer flex items-center gap-1",
+                  isViewMenuOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
                 )}
               >
-                View
+                <span>Theme</span>
               </button>
 
-              {/* View Dropdown Menu Popup */}
               {isViewMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
-                  <div className="px-3 py-1 text-[10px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-                    Theme
-                  </div>
-
+                <div className="absolute top-full left-0 mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
                   <button
                     onClick={() => {
                       setTheme("light");
@@ -217,8 +202,8 @@ export function AppLayout() {
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Sun className="w-3.5 h-3.5 text-[var(--text-primary)]" />
-                      <span>Light Mode</span>
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Light</span>
                     </div>
                     {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
@@ -236,8 +221,8 @@ export function AppLayout() {
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" />
-                      <span>Dark Mode</span>
+                      <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Dark</span>
                     </div>
                     {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
@@ -256,20 +241,13 @@ export function AppLayout() {
                   >
                     <div className="flex items-center gap-2">
                       <Laptop className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>System Default</span>
+                      <span>System</span>
                     </div>
                     {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
                   </button>
                 </div>
               )}
             </div>
-
-            <button
-              onClick={() => navigate("/knowledge")}
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            >
-              Help
-            </button>
           </nav>
         </div>
 
@@ -285,9 +263,9 @@ export function AppLayout() {
             title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLight ? (
-              <Moon className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
+              <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={2.25} />
             ) : (
-              <Sun className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
+              <Sun className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={2.25} />
             )}
           </button>
 
@@ -296,14 +274,14 @@ export function AppLayout() {
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
             title="User Profile & Settings"
           >
-            <User className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
+            <User className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={2.25} />
           </button>
         </div>
       </header>
 
       {/* 2. MAIN CONTENT CONTAINER WITH ZERO-LATENCY KEEP-ALIVE */}
       <main className="flex-1 min-h-0 w-full overflow-hidden flex flex-col relative bg-[var(--bg-app)]">
-        {/* Workstation View: Kept alive in memory for instant 0ms switching & preserving tabs */}
+        {/* Workstation View: Kept alive in memory */}
         <div
           className={cn(
             "w-full h-full flex flex-col flex-1",
@@ -313,22 +291,31 @@ export function AppLayout() {
           <UnifiedWorkstationPage />
         </div>
 
-        {/* Sub-pages: Fast render with subtle micro-transition */}
-        {location.pathname === "/knowledge" && (
-          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
-            <KnowledgePage />
-          </div>
-        )}
-        {location.pathname === "/history" && (
-          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
-            <HistoryPage />
-          </div>
-        )}
-        {location.pathname === "/settings" && (
-          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
-            <SettingsPage />
-          </div>
-        )}
+        {/* Sub-pages: Fast zero-latency keep-alive render */}
+        <div
+          className={cn(
+            "w-full h-full flex flex-col flex-1",
+            location.pathname !== "/knowledge" && "hidden"
+          )}
+        >
+          <KnowledgePage />
+        </div>
+        <div
+          className={cn(
+            "w-full h-full flex flex-col flex-1",
+            location.pathname !== "/history" && "hidden"
+          )}
+        >
+          <HistoryPage />
+        </div>
+        <div
+          className={cn(
+            "w-full h-full flex flex-col flex-1",
+            location.pathname !== "/settings" && "hidden"
+          )}
+        >
+          <SettingsPage />
+        </div>
       </main>
 
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
