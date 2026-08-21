@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Panel } from '@xyflow/react';
 import { X, Save, Trash2, CheckCircle2, XCircle, ChevronDown, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
 
@@ -151,10 +152,16 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
       });
       if (res.ok) {
         const { data } = await res.json();
+        setNodeData(data);
         onUpdate(nodeId, data);
+        toast.success("Knowledge node saved successfully!");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error?.message || "Failed to save node");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error(e.message || "Failed to save node");
     } finally {
       setSaving(false);
     }
@@ -169,9 +176,13 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
       if (res.ok) {
         onDelete(nodeId);
         onClose();
+        toast.success("Knowledge node deleted");
+      } else {
+        toast.error("Failed to delete node");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error(e.message || "Failed to delete node");
     }
   };
 
@@ -184,9 +195,11 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
         const { data } = await res.json();
         setNodeData(data);
         onUpdate(nodeId, data);
+        toast.success(data.active ? "Node activated for AI" : "Node deactivated");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error(e.message || "Failed to toggle status");
     }
   };
 
@@ -195,9 +208,14 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   }
 
   return (
-    <Panel position="top-right" className="max-h-[calc(100vh-8rem)] w-80 mt-4 mr-4 bg-[var(--bg-card)] text-[var(--text-primary)] rounded-2xl border border-[var(--border-strong)] flex flex-col overflow-hidden pointer-events-auto">
+    <Panel 
+      position="top-right" 
+      onMouseDown={(e) => e.stopPropagation()} 
+      onClick={(e) => e.stopPropagation()} 
+      className="max-h-[calc(100vh-8rem)] w-80 mt-4 mr-4 bg-[var(--bg-card)] dark:bg-[#141416] text-[var(--text-primary)] rounded-2xl border border-[var(--border-strong)] dark:border-[#2e2e35] flex flex-col overflow-hidden pointer-events-auto shadow-2xl z-50"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-panel)] shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] dark:border-[#222226] bg-[var(--bg-panel)] dark:bg-[#18181b] shrink-0">
         <h3 className="font-bold text-[var(--text-primary)] text-sm">Edit Node</h3>
         <button onClick={onClose} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer">
           <X className="w-4 h-4" />

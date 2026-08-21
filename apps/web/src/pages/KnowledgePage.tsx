@@ -536,8 +536,6 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
           onSelectionChange={(params) => {
             if (params.nodes.length > 0) {
               setSelectedNodeId(params.nodes[0].id);
-            } else {
-              setSelectedNodeId(null);
             }
           }}
         >
