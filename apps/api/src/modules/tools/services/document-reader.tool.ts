@@ -66,6 +66,15 @@ export class DocumentReaderTool {
         case '.csv':
           text = await this.readCsv(resolvedPath);
           break;
+        case '.png':
+        case '.jpg':
+        case '.jpeg':
+        case '.webp':
+        case '.bmp':
+        case '.tiff':
+        case '.tif':
+          text = await this.readImageOcr(resolvedPath);
+          break;
         case '.txt':
         case '.md':
         case '.json':
@@ -273,5 +282,18 @@ export class DocumentReaderTool {
     }
 
     return lines.join('\n');
+  }
+
+  private async readImageOcr(filePath: string): Promise<string> {
+    try {
+      this.logger.log(`Performing OCR extraction on image: ${filePath}`);
+      const Tesseract = await import('tesseract.js');
+      const { data } = await Tesseract.recognize(filePath, 'eng');
+      const text = data.text.trim();
+      return text.length > 0 ? text : '[OCR Image Scan: No readable text detected in this image]';
+    } catch (err: any) {
+      this.logger.error(`OCR extraction failed on ${filePath}: ${err.message}`);
+      throw new Error(`Failed to extract text from image (OCR error): ${err.message}`);
+    }
   }
 }

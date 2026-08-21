@@ -47,6 +47,62 @@ export class HarnessMetaToolsRegistrar {
     if (services.ipGeolocationTool) {
       registry.register(services.ipGeolocationTool);
     }
+    if (services.imageOcrTool) {
+      registry.register(
+        ToolAdapter.from({
+          name: 'image_ocr',
+          displayName: 'Image OCR Parser',
+          description:
+            'Extracts text, numbers, tables, invoices, size recaps, and notes from image files (.png, .jpg, .jpeg, .webp, .bmp) using offline local OCR.',
+          tags: ['image', 'ocr', 'vision', 'extract', 'read', 'photo', 'screenshot'],
+          handler: (args) =>
+            services.imageOcrTool.recognizeText(args.filePath, args.language),
+          parameters: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description: 'Relative or absolute path to the image file (e.g. @pasted_image_...png or document screenshot)',
+              },
+              language: {
+                type: 'string',
+                description: 'OCR language model (e.g. eng, ind, or eng+ind). Defaults to eng.',
+              },
+            },
+            required: ['filePath'],
+          },
+          timeoutMs: 30000,
+        }),
+      );
+    }
+    if (services.visionAiTool) {
+      registry.register(
+        ToolAdapter.from({
+          name: 'vision_ai',
+          displayName: 'Vision AI & Image Analysis',
+          description:
+            'Analyzes image content, receipts, handwritten notes, tables, charts, or screenshots to extract structured text and numbers.',
+          tags: ['image', 'vision', 'ocr', 'analyze', 'screenshot'],
+          handler: (args) =>
+            services.visionAiTool.analyzeImage(args.imageSource, args.prompt),
+          parameters: {
+            type: 'object',
+            properties: {
+              imageSource: {
+                type: 'string',
+                description: 'File path, base64 data, or image URL to analyze',
+              },
+              prompt: {
+                type: 'string',
+                description: 'Specific extraction instructions for the image',
+              },
+            },
+            required: ['imageSource'],
+          },
+          timeoutMs: 30000,
+        }),
+      );
+    }
     registry.register(
       ToolAdapter.from({
         name: 'ask_user',
