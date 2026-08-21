@@ -99,10 +99,53 @@ export function UnifiedWorkstationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
-  const activeChatId = searchParams.get("chatId") || "";
+  const urlChatId = searchParams.get("chatId") || "";
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(() => {
     return localStorage.getItem("arunaki_workspace_id");
   });
+
+  const [activeChatId, setActiveChatId] = useState<string>(() => {
+    const wsId = localStorage.getItem("arunaki_workspace_id");
+    const wsChatKey = wsId ? `arunaki_active_chat_${wsId}` : "arunaki_active_chat_id";
+    return (
+      urlChatId ||
+      localStorage.getItem(wsChatKey) ||
+      localStorage.getItem("arunaki_active_chat_id") ||
+      ""
+    );
+  });
+
+  // Sync activeChatId with URL and localStorage
+  useEffect(() => {
+    if (urlChatId && urlChatId !== activeChatId) {
+      setActiveChatId(urlChatId);
+      localStorage.setItem("arunaki_active_chat_id", urlChatId);
+      if (selectedWorkspaceId) {
+        localStorage.setItem(`arunaki_active_chat_${selectedWorkspaceId}`, urlChatId);
+      }
+    } else if (!urlChatId && activeChatId) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("chatId", activeChatId);
+        return next;
+      }, { replace: true });
+    }
+  }, [urlChatId, activeChatId, selectedWorkspaceId, setSearchParams]);
+
+  // When workspace changes and no active chat is loaded, attempt to restore workspace's previous chat
+  useEffect(() => {
+    if (!selectedWorkspaceId) return;
+    const wsChatKey = `arunaki_active_chat_${selectedWorkspaceId}`;
+    const savedForWs = localStorage.getItem(wsChatKey);
+    if (savedForWs && savedForWs !== activeChatId) {
+      setActiveChatId(savedForWs);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("chatId", savedForWs);
+        return next;
+      }, { replace: true });
+    }
+  }, [selectedWorkspaceId, activeChatId, setSearchParams]);
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -516,6 +559,22 @@ export function UnifiedWorkstationPage() {
     });
   }, []);
 
+  const handleNewChat = useCallback(() => {
+    setActiveChatId("");
+    localStorage.removeItem("arunaki_active_chat_id");
+    if (selectedWorkspaceId) {
+      localStorage.removeItem(`arunaki_active_chat_${selectedWorkspaceId}`);
+    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("chatId");
+      return next;
+    }, { replace: true });
+    setOptimisticMessages([]);
+    setLiveStatus(null);
+    toast.info("New conversation session ready");
+  }, [selectedWorkspaceId, setSearchParams]);
+
   const handleSendMessage = async (textOverride?: string) => {
     const rawText = textOverride !== undefined ? textOverride : inputPrompt;
     if (!rawText.trim()) return;
@@ -574,7 +633,16 @@ export function UnifiedWorkstationPage() {
         });
         const createJson = await createRes.json();
         chatIdToUse = createJson.data.id;
-        setSearchParams({ chatId: chatIdToUse });
+        setActiveChatId(chatIdToUse);
+        localStorage.setItem("arunaki_active_chat_id", chatIdToUse);
+        if (selectedWorkspaceId) {
+          localStorage.setItem(`arunaki_active_chat_${selectedWorkspaceId}`, chatIdToUse);
+        }
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("chatId", chatIdToUse);
+          return next;
+        }, { replace: true });
       } catch {
         setIsStreaming(false);
         setLiveStatus(null);
@@ -870,6 +938,7 @@ export function UnifiedWorkstationPage() {
           onSearchSection={() => setShowSearchSectionModal(true)}
           reasoningEffort={reasoningEffort}
           setReasoningEffort={setReasoningEffort}
+          onNewChat={handleNewChat}
         />
       </div>
 

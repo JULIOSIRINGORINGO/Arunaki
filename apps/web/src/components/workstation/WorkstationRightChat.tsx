@@ -17,6 +17,7 @@ import {
   X,
   ChevronDown,
   Check,
+  Plus,
 } from "lucide-react";
 import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -72,6 +73,7 @@ interface WorkstationRightChatProps {
   onSearchSection?: () => void;
   reasoningEffort?: string;
   setReasoningEffort?: (val: string) => void;
+  onNewChat?: () => void;
 }
 
 const EFFORT_OPTIONS = [
@@ -278,6 +280,7 @@ function WorkstationRightChatComponent({
   onSearchSection,
   reasoningEffort = "",
   setReasoningEffort = () => {},
+  onNewChat,
 }: WorkstationRightChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -519,13 +522,24 @@ function WorkstationRightChatComponent({
           <Bot className="w-4 h-4 text-[var(--text-muted)]" />
           <span className="text-xs font-semibold text-[var(--text-primary)]">Chat</span>
         </div>
-        <button
-          onClick={onClose}
-          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-          title="Close Panel"
-        >
-          <PanelRightClose className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          {onNewChat && (
+            <button
+              onClick={onNewChat}
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              title="New Chat Session"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+            title="Close Panel"
+          >
+            <PanelRightClose className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Messages List Area */}

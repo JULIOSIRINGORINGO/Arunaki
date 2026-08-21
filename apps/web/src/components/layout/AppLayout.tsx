@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   MessageSquare,
@@ -136,6 +136,11 @@ export function AppLayout() {
     setTheme(isLight ? "dark" : "light");
   };
 
+  const handleNavigateWorkstation = useCallback(() => {
+    const savedChatId = localStorage.getItem("arunaki_active_chat_id");
+    navigate(savedChatId ? `/?chatId=${savedChatId}` : "/");
+  }, [navigate]);
+
   const navItems = [
     { path: "/", label: "Workstation", icon: MessageSquare },
     { path: "/knowledge", label: "Knowledge", icon: BookOpen },
@@ -155,7 +160,11 @@ export function AppLayout() {
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           {/* Logo 'A' di paling kiri */}
-          <div className="w-6 h-6 rounded-full bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] shrink-0">
+          <div
+            onClick={handleNavigateWorkstation}
+            className="w-6 h-6 rounded-full bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] shrink-0 cursor-pointer"
+            title="Arunaki Workstation"
+          >
             <ArunakiLogo className="w-3.5 h-3.5" fill={isLight ? "#18181B" : "#FFFFFF"} />
           </div>
 
@@ -168,7 +177,7 @@ export function AppLayout() {
               File
             </button>
             <button
-              onClick={() => navigate("/")}
+              onClick={handleNavigateWorkstation}
               className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
             >
               Edit
@@ -348,7 +357,13 @@ export function AppLayout() {
             return (
               <button
                 key={item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  if (item.path === "/") {
+                    handleNavigateWorkstation();
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
                 title={item.label}
                 className={cn(
                   "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer",
