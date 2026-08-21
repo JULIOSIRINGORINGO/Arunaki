@@ -138,57 +138,57 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           !isActive && "opacity-60 grayscale"
         )}
       >
-        {/* Distributed Multi-Pin Circuit Array (18 Connection Ports along all 4 sides - Hidden dots, active on hover & drag) */}
-        {/* Top Array */}
-        {[15, 32, 50, 68, 85].map((pos, idx) => (
+        {/* 360-Degree Continuous Connection Array (36 Dense Hidden Connection Ports around the full perimeter) */}
+        {/* Top Array (10 Ports) */}
+        {[5, 15, 25, 35, 45, 55, 65, 75, 85, 95].map((pos, idx) => (
           <div key={`top-${idx}`} style={{ position: 'absolute', left: `${pos}%`, top: 0 }}>
             <Handle
               type="target"
               position={Position.Top}
               id={`target-top-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Top}
               id={`source-top-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
             />
           </div>
         ))}
 
-        {/* Bottom Array */}
-        {[15, 32, 50, 68, 85].map((pos, idx) => (
+        {/* Bottom Array (10 Ports) */}
+        {[5, 15, 25, 35, 45, 55, 65, 75, 85, 95].map((pos, idx) => (
           <div key={`bottom-${idx}`} style={{ position: 'absolute', left: `${pos}%`, bottom: 0 }}>
             <Handle
               type="target"
               position={Position.Bottom}
               id={`target-bottom-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Bottom}
               id={`source-bottom-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
             />
           </div>
         ))}
 
-        {/* Left Array */}
-        {[18, 38, 62, 82].map((pos, idx) => (
+        {/* Left Array (8 Ports) */}
+        {[8, 20, 32, 45, 58, 70, 82, 94].map((pos, idx) => (
           <div key={`left-${idx}`} style={{ position: 'absolute', top: `${pos}%`, left: 0 }}>
             <Handle
               type="target"
               position={Position.Left}
-              id={idx === 1 ? "in-left" : `target-left-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
+              id={idx === 3 ? "in-left" : `target-left-${idx}`}
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Left}
               id={`source-left-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -207,20 +207,20 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           </div>
         </div>
 
-        {/* Right Array */}
-        {[18, 38, 62, 82].map((pos, idx) => (
+        {/* Right Array (8 Ports) */}
+        {[8, 20, 32, 45, 58, 70, 82, 94].map((pos, idx) => (
           <div key={`right-${idx}`} style={{ position: 'absolute', top: `${pos}%`, right: 0 }}>
             <Handle
               type="target"
               position={Position.Right}
               id={`target-right-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-2 cursor-crosshair z-10"
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
             />
             <Handle
               type="source"
               position={Position.Right}
-              id={idx === 1 ? "out-right" : `source-right-${idx}`}
-              className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-2 cursor-crosshair z-10"
+              id={idx === 3 ? "out-right" : `source-right-${idx}`}
+              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
             />
           </div>
         ))}
@@ -250,7 +250,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
             type="target"
             position={Position.Top}
             id="top"
-            className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-2 cursor-crosshair z-10"
+            className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
           />
 
           <div
@@ -278,7 +278,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 3. STANDARD ACTION / DOCUMENT / KNOWLEDGE CARD NODE (Single Clean Connection Port)
+  // 3. STANDARD ACTION / DOCUMENT / KNOWLEDGE CARD NODE (Seamless Omnidirectional Ports)
   // ─────────────────────────────────────────────────────────────────────────
   const colorTheme = getNodeColorTheme(data.type, data.icon);
 
@@ -293,18 +293,54 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         !isActive && "opacity-60 grayscale"
       )}
     >
-      {/* 1 Single Clean Connection Port (Hidden dot, connects seamlessly on hover/drag) */}
+      {/* 4-Directional Clean Connection Ports (Seamless & Invisible by default) */}
       <Handle
         type="target"
         position={Position.Left}
         id="in-left"
-        className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
       />
       <Handle
         type="source"
         position={Position.Left}
         id="out-left"
-        className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/20 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-2 cursor-crosshair z-10"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="in-right"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="out-right"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="in-top"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="out-top"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="in-bottom"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="out-bottom"
+        className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
       />
 
       {/* Center Icon Box */}
