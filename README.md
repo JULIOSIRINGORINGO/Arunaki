@@ -25,14 +25,14 @@
 
 ### 1. Download & Install
 
-Arunaki is distributed as a native desktop application with pre-built installers for Windows and macOS.
+Arunaki is being prepared as a native desktop application with pre-built installer packages for Windows and macOS.
 
 | Platform | Installer Package | Requirements | Status |
 | :--- | :--- | :--- | :--- |
-| **Windows** | `Arunaki-Setup-x64.exe` *(Setup Installer)*<br>`Arunaki-Portable.zip` *(Standalone)* | Windows 10 / 11 (64-bit)<br>Microsoft Office 2016+ *(for COM features)* | ✅ **Latest Release** |
-| **macOS** | `Arunaki-Universal.dmg` *(Apple Silicon / Intel)* | macOS 12.0 (Monterey) or higher | ⏳ *In Development* |
+| **Windows** | `Arunaki-Setup-x64.exe` *(Setup Installer)*<br>`Arunaki-Portable.zip` *(Standalone)* | Windows 10 / 11 (64-bit)<br>Microsoft Office 2016+ *(for COM features)* | ⏳ *In Development (Coming Soon)* |
+| **macOS** | `Arunaki-Universal.dmg` *(Apple Silicon / Intel)* | macOS 12.0 (Monterey) or higher | ⏳ *In Development (Coming Soon)* |
 
-1. Download the latest `Arunaki-Setup-x64.exe` installer.
+1. Download the `Arunaki-Setup-x64.exe` installer once released.
 2. Run the installer and follow the setup wizard.
 3. Launch **Arunaki** from your Start Menu or Desktop shortcut.
 
