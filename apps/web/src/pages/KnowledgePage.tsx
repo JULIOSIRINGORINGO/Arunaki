@@ -28,6 +28,7 @@ import { API_BASE, apiFetch } from "../lib/api";
 import { KnowledgeNode } from "../components/knowledge/KnowledgeNode";
 import { KnowledgeNodePanel } from "../components/knowledge/KnowledgeNodePanel";
 import { KnowledgeToolbar } from "../components/knowledge/KnowledgeToolbar";
+import { FloatingEdge } from "../components/knowledge/FloatingEdge";
 import { useTheme, getSystemTheme } from "../lib/theme";
 
 // ─── Interfaces ─────────────────────────────────────────────────────────
@@ -56,6 +57,12 @@ interface KnowledgeEdgeData {
 
 const nodeTypes = {
   knowledge: KnowledgeNode,
+};
+
+const edgeTypes = {
+  floating: FloatingEdge,
+  bezier: FloatingEdge,
+  default: FloatingEdge,
 };
 
 function FlowEditor() {
@@ -110,13 +117,13 @@ function FlowEditor() {
         draggable: true,
       }));
 
-      // Build edges with sleek solid bezier curves (n8n-style)
+      // Build edges with sleek floating auto-facing curves (9router hub style)
       const initialEdges: Edge[] = dbEdges.map((e: KnowledgeEdgeData) => ({
         id: e.id,
         source: e.sourceId,
         target: e.targetId,
         label: e.label,
-        type: 'bezier',
+        type: 'floating',
         style: {
           stroke: isLight ? '#94A3B8' : '#475569',
           strokeWidth: 2,
@@ -143,8 +150,20 @@ function FlowEditor() {
 
   // ─── Flow Handlers ─────────────────────────────────────────────────────
 
+  // Validation: Knowledge nodes can ONLY connect to the Agent Core node ('main-ai-node')
+  // Knowledge-to-Knowledge connections are strictly prohibited!
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
+    if (connection.source === connection.target) return false;
+    const isSourceMain = connection.source === 'main-ai-node';
+    const isTargetMain = connection.target === 'main-ai-node';
+    return isSourceMain || isTargetMain;
+  }, []);
+
   const onConnect = useCallback(
     async (params: Connection) => {
+      // Enforce connection validation rule
+      if (!isValidConnection(params)) return;
+
       // Create edge in DB
       try {
         const res = await apiFetch(`${API_BASE}/knowledge/edges`, {
@@ -163,7 +182,7 @@ function FlowEditor() {
             target: data.targetId,
             sourceHandle: params.sourceHandle,
             targetHandle: params.targetHandle,
-            type: 'bezier',
+            type: 'floating',
             style: {
               stroke: isLight ? '#94A3B8' : '#475569',
               strokeWidth: 2,
@@ -175,7 +194,7 @@ function FlowEditor() {
         console.error(e);
       }
     },
-    [setEdges, isLight],
+    [setEdges, isLight, isValidConnection],
   );
 
   const onEdgesDelete = useCallback(
@@ -277,10 +296,8 @@ function FlowEditor() {
             id: edgeData.id,
             source: edgeData.sourceId,
             target: edgeData.targetId,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#9ca3af', strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#9ca3af' },
+            type: 'floating',
+            style: { stroke: isLight ? '#94A3B8' : '#475569', strokeWidth: 2 },
           };
         }
 
@@ -451,13 +468,15 @@ function FlowEditor() {
           onEdgeContextMenu={onEdgeContextMenu}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          isValidConnection={isValidConnection}
           fitView
           fitViewOptions={{ padding: 0.9, maxZoom: 0.85, minZoom: 0.1 }}
           minZoom={0.1}
           maxZoom={2}
           className="bg-[var(--bg-app)]"
           defaultEdgeOptions={{
-            type: 'bezier',
+            type: 'floating',
             style: { stroke: isLight ? '#94A3B8' : '#475569', strokeWidth: 2 },
           }}
           // Update selected style via custom prop to our node
