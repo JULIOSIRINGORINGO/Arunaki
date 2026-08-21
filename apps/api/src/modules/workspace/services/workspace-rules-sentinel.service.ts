@@ -24,10 +24,6 @@ export interface AgentTurnEvent {
 export class WorkspaceRulesSentinelService implements OnModuleInit {
   private readonly logger = new Logger(WorkspaceRulesSentinelService.name);
 
-  // Regex intent signals indicating potential user rules, constraints, or corrections
-  private readonly INTENT_TRIGGER_REGEX =
-    /(?:jangan|mulai sekarang|salah|ganti|koreksi|aturan|harus|ingat|selalu|ubah|jangan lupa|preferensi|format|rumus|tiap kali|setiap kali|bukan|seharusnya|tambahkan ke aturan)/i;
-
   constructor(
     @Inject(forwardRef(() => WorkspaceCartographerService))
     private readonly cartographerService: WorkspaceCartographerService,
@@ -39,7 +35,7 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
 
   onModuleInit() {
     this.logger.log(
-      '🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).',
+      '🛡️ Workspace Rules Sentinel Agent initialized (Resident, Multilingual & LLM-Driven).',
     );
   }
 
@@ -70,8 +66,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
   }
 
   /**
-   * Core Sentinel engine: Compares user turn directives against current ARUNAKI.md,
-   * detects discrepancies or new rules, and autonomously patches ARUNAKI.md.
+   * Core Sentinel engine: 100% LLM-driven semantic evaluation across all languages.
+   * Compares user turn directives against current ARUNAKI.md,
+   * detects discrepancies, preferences, or new rules, and autonomously patches ARUNAKI.md.
    */
   async inspectAndEvolveRules(
     workspaceId: string,
@@ -80,12 +77,9 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     const userMessages = messages.filter((m) => m.role === 'user');
     if (userMessages.length === 0) return false;
 
-    // Fast check: Verify if any user message contains rule/correction signals
-    const hasIntentSignal = userMessages.some((m) =>
-      this.INTENT_TRIGGER_REGEX.test(m.content),
-    );
-    if (!hasIntentSignal) {
-      // No rule or correction signals -> go back to sleep immediately (0ms overhead)
+    // Filter out very short/trivial greetings or single words (< 3 chars) to avoid unnecessary LLM calls
+    const meaningfulText = userMessages.map((m) => m.content?.trim()).filter(Boolean);
+    if (meaningfulText.length === 0 || meaningfulText.every((t) => t.length < 4)) {
       return false;
     }
 
@@ -101,13 +95,14 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     );
     const combinedUserText = userMessages.map((m) => m.content).join('\n---\n');
 
-    this.logger.log(
-      `[RulesSentinel] 🛡️ Sentinel detected rule signals in turn for "${workspace.name}". Analyzing diff against ARUNAKI.md...`,
+    this.logger.debug(
+      `[RulesSentinel] 🛡️ Sentinel analyzing turn diff for "${workspace.name}" across languages...`,
     );
 
     try {
       const prompt = `You are the Arunaki Living Rules Sentinel Agent.
 Your job is to safeguard and evolve the workspace's ARUNAKI.md rulebook.
+You must understand ALL languages (Indonesian, English, regional dialects, mixed slang, etc.).
 
 USER DIRECTIVES:
 ${combinedUserText.slice(0, 1500)}
