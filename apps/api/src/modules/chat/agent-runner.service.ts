@@ -568,6 +568,7 @@ export class AgentRunnerService {
     onEvent: (event: AgentStreamEvent) => void,
   ) {
     const { chatId, chatMode = 'chat', historyMessages } = params;
+    const streamStartTime = Date.now();
 
     try {
       onEvent({
@@ -893,6 +894,30 @@ export class AgentRunnerService {
         };
       });
 
+      // ── Sanitize finalContent: strip raw tool call / tool result JSON blocks ──
+      // LLMs sometimes leak internal tool markers like [Assistant tool call]: ...
+      // or [Tool result]: {"status":"error"...} into the response text.
+      // These must NEVER reach the user's chat bubble.
+      finalContent = finalContent
+        // Strip [Assistant tool call]: toolName({...json...})  patterns
+        .replace(/\[Assistant tool call\]:\s*\w+\([^)]*\)\s*/gi, '')
+        // Strip [Tool result]: {...json...}  patterns (greedy-safe)
+        .replace(/\[Tool result\]:\s*\{[\s\S]*?\}(?:\s*\[Tool result\]:\s*\{[\s\S]*?\})*/gi, '')
+        // Strip standalone JSON error objects that look like raw API responses
+        .replace(/\{"status"\s*:\s*"error"\s*,\s*"data"\s*:\s*\{\}\s*,[\s\S]*?"error"\s*:\s*\{[^}]*\}\s*\}/gi, '')
+        // Clean up excessive whitespace left behind
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      // Build execution steps trace from tool execution history
+      const executionSteps = toolOutputs.map((to, idx) => ({
+        id: `step-${idx}-${Date.now()}`,
+        label: `${to.toolName}${to.result?.preview ? ` → ${to.result.preview.slice(0, 80)}` : ''}`,
+        status: 'completed' as const,
+        iconType: 'tool' as const,
+        toolName: to.toolName,
+      }));
+
       // Persist assistant message to DB BEFORE emitting done event to frontend
       try {
         if (this.messageService) {
@@ -902,6 +927,9 @@ export class AgentRunnerService {
             content: finalContent,
             idempotencyKey: `run:${todoRunId}:assistant`,
             provenance: InputProvenanceFactory.internalSystem(),
+            metadata: executionSteps.length > 0
+              ? { executionSteps, thoughtSec: Math.max(1, Math.round((Date.now() - streamStartTime) / 1000)) }
+              : undefined,
           });
         }
       } catch (err: any) {
@@ -913,6 +941,7 @@ export class AgentRunnerService {
         data: {
           content: finalContent,
           artifacts,
+          executionSteps: executionSteps.length > 0 ? executionSteps : undefined,
         },
       });
 
