@@ -194,7 +194,7 @@ export function ModelProviderSettings({
     setForm((f) => ({
       ...f,
       type,
-      baseUrl: pt?.defaultUrl || f.baseUrl,
+      baseUrl: type === "openai-compatible" ? "" : (pt?.defaultUrl ?? ""),
       model: defaultModel,
       name: pt?.label || f.name,
     }));

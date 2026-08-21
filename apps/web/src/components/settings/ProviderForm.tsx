@@ -225,7 +225,7 @@ export function ProviderForm({
                 type="text"
                 value={form.baseUrl}
                 onChange={(e) => setForm((f) => ({ ...f, baseUrl: e.target.value }))}
-                placeholder="https://api.kenari.id/v1"
+                placeholder="https://api.your-custom-endpoint.com/v1"
                 className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
                 required
               />
