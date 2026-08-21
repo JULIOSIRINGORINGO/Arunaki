@@ -229,8 +229,10 @@ export function UnifiedWorkstationPage() {
   }, []);
 
   useEffect(() => {
-    setOptimisticMessages([]);
-  }, [selectedWorkspaceId, activeChatId]);
+    if (!isStreaming) {
+      setOptimisticMessages([]);
+    }
+  }, [selectedWorkspaceId, activeChatId, isStreaming]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
