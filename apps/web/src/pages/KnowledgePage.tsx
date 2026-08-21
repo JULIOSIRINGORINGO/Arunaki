@@ -161,6 +161,8 @@ function FlowEditor() {
             id: data.id,
             source: data.sourceId,
             target: data.targetId,
+            sourceHandle: params.sourceHandle,
+            targetHandle: params.targetHandle,
             type: 'bezier',
             style: {
               stroke: isLight ? '#94A3B8' : '#475569',

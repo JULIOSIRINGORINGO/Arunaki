@@ -124,7 +124,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
   const isCircular = data.isCircular || ['tool', 'memory', 'model'].includes((data.type || '').toLowerCase());
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 1. MAIN ASSISTANT / AGENT CORE NODE (Large Horizontal Card)
+  // 1. MAIN ASSISTANT / AGENT CORE NODE (Hub with All-Around 4-Way Connections)
   // ─────────────────────────────────────────────────────────────────────────
   if (isMain) {
     return (
@@ -138,12 +138,46 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           !isActive && "opacity-60 grayscale"
         )}
       >
-        {/* Left Input Handle */}
+        {/* Top Handles */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="target-top"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-top-1.5"
+        />
+        <Handle
+          type="source"
+          position={Position.Top}
+          id="source-top"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-top-1.5 opacity-0"
+        />
+
+        {/* Bottom Handles */}
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="target-bottom"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-bottom-1.5"
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="source-bottom"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-bottom-1.5 opacity-0"
+        />
+
+        {/* Left Handles */}
         <Handle
           type="target"
           position={Position.Left}
-          id="in-left"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
+          id="target-left"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5"
+        />
+        <Handle
+          type="source"
+          position={Position.Left}
+          id="source-left"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5 opacity-0"
         />
 
         <div className="flex items-center gap-3">
@@ -160,19 +194,25 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           </div>
         </div>
 
-        {/* Right Output Handle */}
+        {/* Right Handles */}
+        <Handle
+          type="target"
+          position={Position.Right}
+          id="target-right"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-right-1.5"
+        />
         <Handle
           type="source"
           position={Position.Right}
-          id="out-right"
-          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
+          id="source-right"
+          className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-right-1.5 opacity-0"
         />
       </div>
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 2. CIRCULAR SUB-NODE (Tool / Memory / Model Nodes hanging at bottom)
+  // 2. CIRCULAR SUB-NODE (Tool / Memory / Model Nodes)
   // ─────────────────────────────────────────────────────────────────────────
   if (isCircular) {
     const colorTheme = getNodeColorTheme(data.type, data.icon);
@@ -221,7 +261,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 3. STANDARD N8N ACTION / DOCUMENT / WORKFLOW CARD NODE
+  // 3. STANDARD ACTION / DOCUMENT / KNOWLEDGE CARD NODE (Single Connection Port)
   // ─────────────────────────────────────────────────────────────────────────
   const colorTheme = getNodeColorTheme(data.type, data.icon);
 
@@ -236,12 +276,18 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         !isActive && "opacity-60 grayscale"
       )}
     >
-      {/* Left Input Port */}
+      {/* 1 Single Clean Connection Port (Omnidirectional Source & Target) */}
       <Handle
         type="target"
         position={Position.Left}
         id="in-left"
-        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5"
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="out-left"
+        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125 !-left-1.5 opacity-0"
       />
 
       {/* Center Icon Box */}
@@ -261,14 +307,6 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
       <p className="text-[9px] text-[var(--text-muted)] font-mono truncate max-w-[110px] mt-0.5">
         {data.type || "Document"}
       </p>
-
-      {/* Right Output Port */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="out-right"
-        className="!w-2.5 !h-2.5 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !transition-transform hover:!scale-125"
-      />
     </div>
   );
 });
