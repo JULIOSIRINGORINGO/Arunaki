@@ -57,21 +57,54 @@ export function validateToolArgs(
   return { valid: errors.length === 0, errors };
 }
 
-/**
- * Normalizes common argument aliases (path vs filePath vs filename).
- */
 export function normalizeToolArgs(
   args: Record<string, any>,
 ): Record<string, any> {
   const normalized = { ...args };
-  if (!normalized.filePath && normalized.path)
-    normalized.filePath = normalized.path;
-  if (!normalized.path && normalized.filePath)
-    normalized.path = normalized.filePath;
-  if (!normalized.filePath && normalized.filename)
-    normalized.filePath = normalized.filename;
-  if (!normalized.filename && normalized.filePath)
-    normalized.filename = normalized.filePath;
+
+  // File path mapping
+  const pathVal =
+    normalized.filePath ||
+    normalized.path ||
+    normalized.filename ||
+    normalized.file ||
+    normalized.sourcePath ||
+    normalized.pdfPath;
+  if (pathVal) {
+    if (!normalized.filePath) normalized.filePath = pathVal;
+    if (!normalized.path) normalized.path = pathVal;
+    if (!normalized.filename) normalized.filename = pathVal;
+    if (!normalized.sourcePath) normalized.sourcePath = pathVal;
+    if (!normalized.pdfPath) normalized.pdfPath = pathVal;
+  }
+
+  // Edit find/replace mapping
+  const findVal =
+    normalized.oldString ||
+    normalized.find ||
+    normalized.findText ||
+    normalized.old_str;
+  if (findVal) {
+    if (!normalized.oldString) normalized.oldString = findVal;
+    if (!normalized.findText) normalized.findText = findVal;
+  }
+
+  const replaceVal =
+    normalized.newString ||
+    normalized.replace ||
+    normalized.replaceText ||
+    normalized.new_str;
+  if (replaceVal !== undefined) {
+    if (!normalized.newString) normalized.newString = replaceVal;
+    if (!normalized.replaceText) normalized.replaceText = replaceVal;
+  }
+
+  // Diff text mapping
+  if (!normalized.sourceText && normalized.textA)
+    normalized.sourceText = normalized.textA;
+  if (!normalized.targetText && normalized.textB)
+    normalized.targetText = normalized.textB;
+
   if (!normalized.query && normalized.q) normalized.query = normalized.q;
   return normalized;
 }

@@ -11,11 +11,10 @@ import { ToolResult } from '../interfaces/tool-result.interface.js';
 @Injectable()
 export class UnitConverterTool {
   private readonly logger = new Logger(UnitConverterTool.name);
+  private readonly domainRegistry: DomainRegistryService;
 
-  constructor(@Optional() private domainRegistry?: DomainRegistryService) {
-    if (!this.domainRegistry) {
-      this.domainRegistry = new DomainRegistryService();
-    }
+  constructor(@Optional() domainRegistry?: DomainRegistryService) {
+    this.domainRegistry = domainRegistry || new DomainRegistryService();
   }
 
   async convert(params: {

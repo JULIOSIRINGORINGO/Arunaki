@@ -153,8 +153,86 @@ export class ToolRegistryService {
     );
   }
 
+  resolveToolAlias(name: string): string {
+    if (!name) return name;
+    const clean = name.toLowerCase().trim().replace(/[- ]/g, '_');
+    const ALIAS_MAP: Record<string, string> = {
+      // File tools
+      read_file: 'read',
+      read_workspace_file: 'read',
+      view_file: 'read',
+      cat: 'read',
+      write_file: 'write',
+      write_workspace_file: 'write',
+      create_file: 'write',
+      edit_file: 'edit',
+      edit_workspace_file: 'edit',
+      patch_file: 'edit',
+      modify_file: 'edit',
+      delete_file: 'delete',
+      remove_file: 'delete',
+      rename_file: 'rename',
+      move_file: 'rename',
+      list_files: 'list',
+      dir: 'list',
+      ls: 'list',
+      search_files: 'search_workspace',
+      search: 'search_workspace',
+      grep: 'search_workspace',
+      find_in_files: 'search_workspace',
+
+      // PII Redaction
+      redact: 'doc_redact_pii',
+      redact_pii: 'doc_redact_pii',
+      doc_redact: 'doc_redact_pii',
+      pii_redact: 'doc_redact_pii',
+      mask_pii: 'doc_redact_pii',
+      sensor_data: 'doc_redact_pii',
+
+      // Document diffing
+      diff: 'doc_compare_versions',
+      compare: 'doc_compare_versions',
+      compare_documents: 'doc_compare_versions',
+      compare_versions: 'doc_compare_versions',
+      doc_diff: 'doc_compare_versions',
+
+      // PDF operations
+      merge_pdf: 'pdf_manage_pages',
+      pdf_merge: 'pdf_manage_pages',
+      split_pdf: 'pdf_manage_pages',
+      watermark_pdf: 'pdf_manage_pages',
+      pdf: 'pdf_manage_pages',
+      stamp_pdf: 'pdf_stamp_image',
+      pdf_stamp: 'pdf_stamp_image',
+      stamp_image: 'pdf_stamp_image',
+      sign_pdf: 'pdf_stamp_image',
+
+      // Office Native COM
+      edit_excel: 'desktop_excel_edit',
+      excel_edit: 'desktop_excel_edit',
+      excel: 'desktop_excel_edit',
+      read_excel: 'desktop_excel_edit',
+      open_excel: 'desktop_open_excel',
+      edit_word: 'desktop_word_edit',
+      word_edit: 'desktop_word_edit',
+      word: 'desktop_word_edit',
+      open_word: 'desktop_open_word',
+      edit_ppt: 'desktop_ppt_edit',
+      ppt_edit: 'desktop_ppt_edit',
+      powerpoint: 'desktop_ppt_edit',
+      open_ppt: 'desktop_open_ppt',
+
+      // Conversion & Export
+      convert: 'convert_document',
+      export: 'generate_export',
+      export_document: 'generate_export',
+    };
+    return ALIAS_MAP[clean] || clean;
+  }
+
   isMutating(name: string): boolean {
-    const toolRecord = this.tools.get(name);
+    const resolvedName = this.resolveToolAlias(name);
+    const toolRecord = this.tools.get(resolvedName) || this.tools.get(name);
     return toolRecord ? !!toolRecord.tool.mutating : false;
   }
 
@@ -166,7 +244,9 @@ export class ToolRegistryService {
     name: string,
     args: Record<string, any>,
   ): Promise<ToolResult> {
-    const registered = this.tools.get(name);
+    const resolvedName = this.resolveToolAlias(name);
+    const registered =
+      this.tools.get(resolvedName) || this.tools.get(name);
     if (!registered) {
       return {
         status: 'error',
