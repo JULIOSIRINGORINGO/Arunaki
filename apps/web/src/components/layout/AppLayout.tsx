@@ -276,9 +276,9 @@ export function AppLayout() {
             title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {isLight ? (
-              <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
+              <Moon className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
             ) : (
-              <Sun className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={1.5} />
+              <Sun className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />
             )}
           </button>
 
