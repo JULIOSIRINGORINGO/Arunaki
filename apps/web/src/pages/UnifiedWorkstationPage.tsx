@@ -172,6 +172,7 @@ export function UnifiedWorkstationPage() {
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const startDrag = useCallback(
     (side: "left" | "right", e: React.MouseEvent) => {
@@ -575,6 +576,16 @@ export function UnifiedWorkstationPage() {
     toast.info("New conversation session ready");
   }, [selectedWorkspaceId, setSearchParams]);
 
+  const handleCancelStream = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setLiveStatus(null);
+    toast.info("Generasi dihentikan");
+  }, []);
+
   const handleSendMessage = async (textOverride?: string) => {
     const rawText = textOverride !== undefined ? textOverride : inputPrompt;
     if (!rawText.trim()) return;
@@ -655,10 +666,14 @@ export function UnifiedWorkstationPage() {
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
 
+    const abortCtrl = new AbortController();
+    abortControllerRef.current = abortCtrl;
+
     try {
       await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
         method: "POST",
         headers: streamHeaders,
+        signal: abortCtrl.signal,
         body: JSON.stringify({
           content: userText,
           reasoningEffort: reasoningEffort || undefined,
@@ -939,6 +954,7 @@ export function UnifiedWorkstationPage() {
           reasoningEffort={reasoningEffort}
           setReasoningEffort={setReasoningEffort}
           onNewChat={handleNewChat}
+          onCancelStream={handleCancelStream}
         />
       </div>
 

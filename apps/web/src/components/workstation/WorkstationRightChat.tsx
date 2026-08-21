@@ -14,6 +14,7 @@ import {
   Check,
   Plus,
   Flame,
+  Square,
 } from "lucide-react";
 import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -67,6 +68,7 @@ interface WorkstationRightChatProps {
   reasoningEffort?: string;
   setReasoningEffort?: (val: string) => void;
   onNewChat?: () => void;
+  onCancelStream?: () => void;
 }
 
 const EFFORT_OPTIONS = [
@@ -274,6 +276,7 @@ function WorkstationRightChatComponent({
   reasoningEffort = "",
   setReasoningEffort = () => {},
   onNewChat,
+  onCancelStream,
 }: WorkstationRightChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -750,18 +753,39 @@ function WorkstationRightChatComponent({
               )}
             </div>
 
-            <button
-              onClick={() => onSendMessage()}
-              disabled={!inputPrompt.trim()}
-              className="w-7 h-7 bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)] rounded-full flex items-center justify-center transition-colors cursor-pointer"
-              title={isStreaming ? "Add to queue" : "Send message"}
-            >
-              {isStreaming ? (
-                <Clock className="w-3.5 h-3.5" />
-              ) : (
-                <Send className="w-3.5 h-3.5" strokeWidth={1.5} />
+            <div className="flex items-center gap-1.5">
+              {isStreaming && (
+                <button
+                  type="button"
+                  onClick={onCancelStream}
+                  className="w-7 h-7 bg-red-500/15 hover:bg-red-500/25 active:bg-red-500/35 text-red-500 border border-red-500/30 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs animate-in fade-in zoom-in duration-150"
+                  title="Stop generating"
+                >
+                  <Square className="w-2.5 h-2.5 fill-current" />
+                </button>
               )}
-            </button>
+
+              {(!isStreaming || inputPrompt.trim()) && (
+                <button
+                  type="button"
+                  onClick={() => onSendMessage()}
+                  disabled={!inputPrompt.trim()}
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer",
+                    isStreaming
+                      ? "bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]"
+                      : "bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)]"
+                  )}
+                  title={isStreaming ? "Add to queue" : "Send message"}
+                >
+                  {isStreaming ? (
+                    <Clock className="w-3.5 h-3.5" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -246,7 +246,12 @@ export function MessageThoughtBadge({
     );
   }
 
-  // Pure Thought Reasoning (like "Thought for 1s >" in Antigravity / Gemini)
+  // If there are no tool steps, do not render an empty badge (Antigravity parity: pure chat shows clean text bubble)
+  if (steps.length === 0) {
+    return null;
+  }
+
+  // Pure Thought Reasoning (when steps exist)
   return (
     <div className="mb-2 font-sans select-none max-w-full min-w-0">
       <button
@@ -264,18 +269,14 @@ export function MessageThoughtBadge({
 
       {isExpanded && (
         <div className="mt-1 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-full min-w-0 font-sans break-words [overflow-wrap:anywhere]">
-          {steps.length > 0 ? (
-            <div className="space-y-1">
-              {steps.map((s, i) => (
-                <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
-                  <Check size={10} className="text-emerald-500 shrink-0" />
-                  <span className="truncate max-w-full">{s.label}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="italic text-[var(--text-dim)]">Reasoned about the request and contextualized workspace documents.</p>
-          )}
+          <div className="space-y-1">
+            {steps.map((s, i) => (
+              <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
+                <Check size={10} className="text-emerald-500 shrink-0" />
+                <span className="truncate max-w-full">{s.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
