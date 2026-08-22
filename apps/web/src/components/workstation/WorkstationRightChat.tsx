@@ -280,13 +280,13 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   }
 
   const imageMentions = useMemo(() => {
-    const matches = msg.content?.match(/@([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi) || [];
-    return Array.from(new Set(matches.map((m) => m.slice(1))));
+    const matches = msg.content?.match(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi) || [];
+    return Array.from(new Set(matches.map((m) => m.replace(/^@/, ''))));
   }, [msg.content]);
 
   const displayContent = useMemo(() => {
     if (imageMentions.length === 0) return msg.content;
-    return msg.content.replace(/@([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
+    return msg.content.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
   }, [msg.content, imageMentions]);
 
   return (
@@ -313,20 +313,23 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
             {imageMentions.map((imgName, i) => (
               <div
                 key={i}
-                className="group relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/10 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all"
+                className="group relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
                 onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
                 title="Click to view full image"
               >
                 <img
                   src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
                   alt={imgName}
-                  className="max-w-[200px] max-h-[160px] rounded-xl object-contain group-hover:scale-102 transition-transform duration-150"
+                  className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover:scale-102 transition-transform duration-150"
                   onError={(e) => {
-                    (e.target as HTMLElement).style.display = "none";
+                    const parent = (e.target as HTMLElement).parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
+                    }
                   }}
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
-                  <span className="text-[10px] text-white bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover:opacity-100 transition-opacity">
                     {imgName}
                   </span>
                 </div>

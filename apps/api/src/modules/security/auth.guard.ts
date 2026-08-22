@@ -14,7 +14,12 @@ export class AuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
     const url = request.url || '';
-    if (url.includes('/health') || url === '/') {
+    if (
+      url.includes('/health') ||
+      url === '/' ||
+      url.includes('/files/raw/') ||
+      url.includes('/raw')
+    ) {
       return true;
     }
 
