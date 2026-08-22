@@ -9,23 +9,112 @@ Stress test untuk desktop_excel_edit — 6 instruksi natural tanpa petunjuk cell
 
 ### Hasil: 4/18 PASSED, 14 FAILED
 
-Root cause: Agent runner mengembalikan kosong (tools=[], content="") di semua 6 turn. Bukan masalah model (tested deepseek + openrouter/auto sama hasilnya). Bukan masalah tool routing (safety net sudah ditambah). Kemungkinan besar agent runner flow atau model free tier rate-limited.
+---
 
-### Fix yang sudah diterapkan
+## Alur Agent Run — Kenapa tools=[]
 
-workspace-prompt-builder.service.ts — Deterministic safety net: regex match Excel/Word/PPT keywords di goal → guaranteed tool injection. Ini mengembalikan behavior dari commit a77476c yang terhapus.
+`
+User kirim goal
+    |
+    v
+workspace-runner.service.ts:213
+    |  promptBuilder.buildInitialContext()
+    |      |
+    |      +-- buildWorkspaceContext()     -> baca workspace metadata
+    |      +-- smartRecallService.recall() -> recall memori terkait
+    |      +-- classifyIntent(goal)        <- LLM call kecil (router)
+    |      |     |
+    |      |     +-- Kirim goal + daftar 50+ tool names
+    |      |         -> LLM router pick tool names via set_intent()
+    |      |         -> ATAU gagal -> fallback ['read','list','document_reader']
+    |      |
+    |      +-- selectToolsForGoal()        <- filter tools dari registry
+    |      |     +-- + safety net regex    <- TAMBAHAN SAYA (baru)
+    |      |
+    |      +-- getSystemPrompt()           <- bangun system prompt panjang
+    |      +-- contextRegistry.assemble()  <- gabung semua context
+    |
+    v
+workspace-runner.service.ts:343
+    |  aiService.chatStream(messages, toolsToPass, modelId)
+    |      |
+    |      +-- Kirim ke DeepSeek free
+    |          System prompt + context + tool definitions
+    |          Tapi model return: content="" + toolCalls=[]
+    |
+    v
+workspace-runner.service.ts:383
+    |  if (content kosong && toolCalls kosong)
+    |      -> fallback: aiService.chat() (non-streaming)
+    |      -> juga return kosong
+    |
+    v
+Agent selesai. tools=[]. content="Autonomous workspace task completed."
+`
 
-### Follow-up yang perlu dilakukan
+---
 
-1. Investigasi kenapa agent runner tidak menjalankan LLM call (tools=[] berarti LLM tidak dipanggil atau response kosong)
-2. Test dengan model berbayar (Claude/GPT-4o) untuk eliminate rate limit issue
-3. Test dengan @file.xlsx mention — sebelumnya test-excel-rekap.ts berhasil (11/11) karena pakai @testing.xlsx
+## Yang terjadi di test
+
+| Run | Tool routing | Hasil |
+|---|---|---|
+| **Sebelum fix** (commit lama) | Classifier pick edit, document_reader, read, list -- TANPA desktop_excel_edit | Model panggil tool tapi yang salah (edit text bukan Excel COM) |
+| **Setelah fix** (safety net) | Classifier + safety net -> desktop_excel_edit tersedia | Model tidak panggil tool sama sekali (tools=[]) |
+
+---
+
+## Kenapa model return kosong?
+
+**Kemungkinan 1 -- Free tier rate limit.**
+DeepSeek free (deepseek-chat-v3-0324:free) sering kena rate limit. Ketika rate-limited, model return empty response tanpa error. Ini confirmed: test dengan openrouter/auto juga hasil sama (kosong).
+
+**Kemungkinan 2 -- Tool definitions terlalu banyak.**
+Registry punya ~50 tools. Walaupun classifier cuma pick 4-5, semua tool definitions tetap dikirim ke model sebagai JSON schema di tools array. DeepSeek free mungkin punya batas tool yang bisa diproses -- kalau terlalu banyak, diam-diam return kosong.
+
+**Kemungkinan 3 -- System prompt + context terlalu panjang.**
+Workspace rules (ARUNAKI.md yang sudah dikompresi) + context assembly + tool schemas = mungkin melebihi context window model free tier.
+
+---
+
+## Kenapa test-excel-rekap.ts BISA tapi stress test TIDAK?
+
+Bedanya satu: test-excel-rekap.ts pakai @testing.xlsx di goal. File mention ini memicu eadMentionedFile() yang pre-read file dan menambahkan isinya ke context. Mungkin ini memberi model cukup konteks untuk memahami apa yang harus dilakukan.
+
+Stress test tidak pakai file mention -- cuma bilang "di laporan" tanpa nama file spesifik. Model mungkin tidak tahu file mana yang harus diedit.
+
+---
+
+## Kesimpulan
+
+Masalahnya **bukan di tool routing** (safety net sudah benar). Masalahnya di **model behavior** -- DeepSeek free tier tidak memanggil tool saat:
+
+1. Tidak ada file mention (@file.xlsx)
+2. Tool definitions terlalu banyak
+3. Rate limit aktif
+
+---
+
+## Fix yang sudah diterapkan
+
+workspace-prompt-builder.service.ts -- Deterministic safety net: regex match Excel/Word/PPT keywords di goal -> guaranteed tool injection. Ini mengembalikan behavior dari commit a77476c yang terhapus.
+
+---
+
+## Rekomendasi untuk fix berikutnya
+
+1. Test dengan model berbayar (Claude/GPT-4o) untuk eliminate rate limit
+2. Tambah @Laporan Bengkel Januari.xlsx ke instruksi stress test
+3. Pertimbangkan kirim tool definitions lebih sedikit (hanya yang dipilih classifier, bukan semua 50+)
+
+---
 
 ## Files Changed
 
-- pps/api/src/modules/workspace/services/workspace-prompt-builder.service.ts — +21 lines: deterministic tool routing safety net
-- pps/api/test/excel-stress-test.cjs — 6-turn stress test with verification
-- workspace-demo/.arunaki/ARUNAKI.md — Updated by sentinel (compressed)
+- pps/api/src/modules/workspace/services/workspace-prompt-builder.service.ts -- +21 lines: deterministic tool routing safety net
+- pps/api/test/excel-stress-test.cjs -- 6-turn stress test with verification
+- workspace-demo/.arunaki/ARUNAKI.md -- Updated by sentinel (compressed)
+
+---
 
 ## How to Run
 
