@@ -33,14 +33,15 @@
 10. **Default Location**: When the user asks about stock without naming a city, use the knowledge node's `Default location` if present — do not ask the user for the city. Only ask when no default location is available.
 11. **Spreadsheet Automation & Single-Pass Batch Writing (CRITICAL)**:
     - **Full Read & Write Capability**: You HAVE full capabilities to read, inspect, and write Excel spreadsheets (`.xlsx`, `.xlsm`, `.xls`, `.csv`). NEVER claim you cannot read Excel cells, column headers, or sheet layouts.
-    - **Step 1 (Read Layout Once)**: Call `desktop_excel_edit` with `{ filePath, sheetName: "AGUSTUS", action: "read_range", range: "A1:Z35" }` (or `document_reader`) to inspect the row numbers, column letters, and existing SUM formulas before writing.
+    - **Dynamic Sheet/Month Resolution**: Dynamically determine the target sheet name based on the month of the data or user request (e.g. data Agustus -> `sheetName: "AGUSTUS"`, data September -> `sheetName: "SEPTEMBER"`, Oktober -> `sheetName: "OKTOBER"`, etc.). If a new month sheet does not exist yet, clone it from the previous month/template using `clone_sheet`.
+    - **Step 1 (Read Layout Once)**: Call `desktop_excel_edit` with `{ filePath, sheetName: "<TargetMonthSheet>", action: "read_range", range: "A1:Z35" }` (or `document_reader`) to inspect the row numbers, column letters, and existing SUM formulas of that specific month before writing.
     - **Step 2 (MANDATORY SINGLE-PASS BATCH WRITE — ZERO 1-BY-1 CALLS)**:
       - **STRICTLY PROHIBITED**: NEVER call `desktop_excel_edit` 1 cell at a time across dozens of tool calls (e.g. calling tool 50 times in a loop)!
-      - **ALWAYS BATCH**: Place ALL cell updates, customer entries, amounts, bank breakdowns, and totals into **A SINGLE `actions` array in ONE SINGLE TOOL CALL**:
+      - **ALWAYS BATCH**: Place ALL cell updates, customer entries, amounts, bank breakdowns, and totals for that month into **A SINGLE `actions` array in ONE SINGLE TOOL CALL**:
         ```json
         {
           "filePath": "TABEL REKAPAN NEW2026-.xlsm",
-          "sheetName": "AGUSTUS",
+          "sheetName": "<TargetMonthSheet>",
           "actions": [
             { "action": "write_cell", "cell": "A20", "value": 19 },
             { "action": "write_cell", "cell": "B20", "value": "CK VIVI" },
