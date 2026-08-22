@@ -122,7 +122,7 @@ export class BusinessDomainToolsRegistrar {
             sheetName: {
               type: 'string',
               description:
-                'Target worksheet name (optional, e.g. "AGUSTUS"). If omitted, auto-selects current month or active sheet.',
+                'Target worksheet name (optional, e.g. "Sheet1"). If omitted, auto-selects current month or active sheet.',
             },
           },
           required: ['filePath'],

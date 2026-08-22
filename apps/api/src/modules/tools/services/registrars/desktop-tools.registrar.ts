@@ -255,7 +255,7 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
+          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet, provide sheetName.',
         tags: [
           'desktop',
           'excel',
@@ -366,12 +366,12 @@ export class DesktopToolsRegistrar {
             },
             sheetName: {
               type: 'string',
-              description: 'Target worksheet name (e.g. "AGUSTUS")',
+              description: 'Target worksheet name (e.g. "Sheet1")',
             },
             actions: {
               type: 'array',
               description:
-                'Array of actions: [{ action: "read_range", range: "A1:Z30" }, { action: "write_cell", cell: "V4", value: 1175 }, { action: "clone_sheet", sourceSheet: "TEMPLATE", newSheetName: "SEPTEMBER" }]',
+                'Array of actions: [{ action: "read_range", range: "A1:Z30" }, { action: "write_cell", cell: "A2", value: 100 }, { action: "clone_sheet", sourceSheet: "<SourceSheet>", newSheetName: "<NewSheet>" }]',
             },
             action: {
               type: 'string',
