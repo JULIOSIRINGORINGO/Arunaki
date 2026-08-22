@@ -677,6 +677,41 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
         compressedContent.length > 200 &&
         compressedContent.includes('# ARUNAKI')
       ) {
+        // Guard: LLM rewrites must never drop learned user rules — restore any that went missing
+        const learnedRules = content.match(/^- \[Auto-Learned .*$/gm) || [];
+        const lower = compressedContent.toLowerCase();
+        const missing = learnedRules.filter((rule) => {
+          const text = rule
+            .replace(/^- \[Auto-Learned \d{4}-\d{2}-\d{2}\]:\s*/i, '')
+            .trim();
+          return (
+            text.length >= 5 &&
+            !lower.includes(text.slice(0, Math.min(60, text.length)).toLowerCase())
+          );
+        });
+        if (missing.length) {
+          this.logger.log(
+            `[Cartographer] 🛡️ Compression dropped ${missing.length} learned rule(s) — restoring.`,
+          );
+          const headerMatch = compressedContent.match(
+            /^## \d*\.?\s*User Preferences & Learned Corrections.*$/im,
+          );
+          if (headerMatch && headerMatch.index !== undefined) {
+            const at = headerMatch.index + headerMatch[0].length;
+            compressedContent =
+              compressedContent.slice(0, at) +
+              '\n' +
+              missing.join('\n') +
+              compressedContent.slice(at);
+          } else {
+            compressedContent =
+              compressedContent.trimEnd() +
+              '\n\n## User Preferences & Learned Corrections\n' +
+              missing.join('\n') +
+              '\n';
+          }
+        }
+
         await fsp.writeFile(rulesPath, compressedContent, 'utf8');
         this.rulesCache.set(workspace.rootPath, {
           content: compressedContent,
