@@ -606,4 +606,92 @@ ${fileEntries || '- (No files indexed yet)'}
 - [Initial System Baseline]: Active operating rules synchronized for ${workspaceName}.
 `;
   }
+
+  /**
+   * Automatically compresses ARUNAKI.md if it gets too large by merging and pruning redundant rules using the LLM.
+   * This is the "Tukang Bersih Memori" for the workspace rulebook.
+   */
+  async compressWorkspaceRules(workspaceId: string): Promise<boolean> {
+    try {
+      const workspace = await this.prisma.workspace.findUnique({
+        where: { id: workspaceId },
+        select: { rootPath: true, name: true },
+      });
+      if (!workspace?.rootPath) return false;
+
+      const rulesPath = this.getRulesFilePath(workspace.rootPath);
+      let content = '';
+      try {
+        content = await fsp.readFile(rulesPath, 'utf8');
+      } catch {
+        return false;
+      }
+
+      // Only compress when noticeably bloated (> 3500 chars or > 60 lines)
+      if (content.length < 3500 && content.split('\n').length < 60) {
+        return false;
+      }
+
+      this.logger.log(
+        `[Cartographer] 🧹 ARUNAKI.md for ${workspace.name} is bloated (${content.length} chars). Triggering Auto-Compression...`,
+      );
+
+      const prompt = `You are the Arunaki Cartographer Agent.
+Your job is to compress and consolidate the ARUNAKI.md rulebook.
+Over time, the "User Preferences & Learned Corrections" section may accumulate redundant, outdated, or duplicate rules.
+
+CURRENT ARUNAKI.MD:
+${content}
+
+TASK:
+Rewrite the ENTIRE ARUNAKI.md file.
+- Keep the overall structure and sections intact.
+- MERGE rules that talk about the same topic.
+- REMOVE trivial or contradictory duplicates.
+- Keep the language exactly as it is (do not translate).
+Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer code fences.`;
+
+      const response = await this.aiService.chat([
+        {
+          role: 'system',
+          content:
+            'You are an expert technical editor summarizing and merging system rulebooks.',
+        },
+        { role: 'user', content: prompt },
+      ]);
+
+      let compressedContent = response?.content?.trim() || '';
+
+      if (compressedContent.startsWith('```markdown')) {
+        compressedContent = compressedContent
+          .replace(/^```markdown\n?/, '')
+          .replace(/\n?```$/, '');
+      } else if (compressedContent.startsWith('```')) {
+        compressedContent = compressedContent
+          .replace(/^```\n?/, '')
+          .replace(/\n?```$/, '');
+      }
+
+      if (
+        compressedContent &&
+        compressedContent.length > 200 &&
+        compressedContent.includes('# ARUNAKI')
+      ) {
+        await fsp.writeFile(rulesPath, compressedContent, 'utf8');
+        this.rulesCache.set(workspace.rootPath, {
+          content: compressedContent,
+          mtime: Date.now(),
+        });
+        this.logger.log(
+          `[Cartographer] ✅ ARUNAKI.md compressed successfully (${content.length} -> ${compressedContent.length} chars)`,
+        );
+        return true;
+      }
+
+      return false;
+    } catch (e: any) {
+      this.logger.warn(`[Cartographer] Compression failed: ${e.message}`);
+      return false;
+    }
+  }
 }

@@ -181,6 +181,8 @@ Output ONLY "NO_CHANGE", "REPLACE: <old> -> <new>", or "ADD: <new>".`;
         this.logger.log(
           `[RulesSentinel] 🛡️ Sentinel evolved ARUNAKI.md from ${lines.length} line(s)`,
         );
+        // Fire-and-forget: compressor self-checks the bloat threshold (>3500 chars) internally
+        void this.cartographerService.compressWorkspaceRules(workspaceId);
       }
       return patched;
     } catch (err: any) {
