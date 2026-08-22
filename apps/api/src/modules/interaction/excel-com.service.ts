@@ -125,18 +125,21 @@ export class ExcelComService {
           case 'read_range': {
             const rangeRef = act.range ? act.range.replace(/'/g, "''") : '';
             return [
-              `        $rng = if ('${rangeRef}') { $ws.Range('${rangeRef}') } else { $ws.UsedRange }`,
+              `        $rng = $null`,
+              `        if ('${rangeRef}') { $rng = $ws.Range('${rangeRef}') } else { $rng = $ws.UsedRange }`,
               `        $rowsArr = @()`,
-              `        $maxR = [Math]::Min($rng.Rows.Count, 150)`,
-              `        $maxC = [Math]::Min($rng.Columns.Count, 40)`,
-              `        for ($rIdx = 1; $rIdx -le $maxR; $rIdx++) {`,
-              `          $cVals = @()`,
-              `          for ($cIdx = 1; $cIdx -le $maxC; $cIdx++) {`,
-              `            $cVals += $rng.Cells.Item($rIdx, $cIdx).Text`,
+              `        if ($rng -ne $null) {`,
+              `          $maxR = [Math]::Min($rng.Rows.Count, 150)`,
+              `          $maxC = [Math]::Min($rng.Columns.Count, 40)`,
+              `          for ($rIdx = 1; $rIdx -le $maxR; $rIdx++) {`,
+              `            $cVals = @()`,
+              `            for ($cIdx = 1; $cIdx -le $maxC; $cIdx++) {`,
+              `              $cVals += $rng.Cells.Item($rIdx, $cIdx).Text`,
+              `            }`,
+              `            $rowsArr += ($cVals -join ' | ')`,
               `          }`,
-              `          $rowsArr += ($cVals -join ' | ')`,
               `        }`,
-              `        $results += @{ action='read_range'; success=$true; range='${rangeRef}'; rowCount=$maxR; colCount=$maxC; rows=($rowsArr -join [Environment]::NewLine) }`,
+              `        $results += @{ action='read_range'; success=$true; range='${rangeRef}'; rows=($rowsArr -join [Environment]::NewLine) }`,
             ].join('\n');
           }
           case 'insert_row':
