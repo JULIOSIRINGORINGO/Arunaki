@@ -15,6 +15,8 @@ import {
   Plus,
   Flame,
   Square,
+  Copy,
+  RotateCcw,
 } from "lucide-react";
 import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -264,11 +266,14 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
   msg,
   isUser,
   onPreviewImage,
+  onResend,
 }: {
   msg: Message;
   isUser: boolean;
   onPreviewImage?: (url: string) => void;
+  onResend?: (content: string) => void;
 }) {
+  const [copied, setCopied] = useState(false);
   let steps = msg.executionSteps;
   let thoughtSec = msg.thoughtSec;
   if (!steps && msg.metadata) {
@@ -289,10 +294,25 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     return msg.content.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
   }, [msg.content, imageMentions]);
 
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(msg.content);
+    setCopied(true);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleResend = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onResend && msg.content) {
+      onResend(msg.content);
+    }
+  };
+
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 w-full max-w-[96%] min-w-0",
+        "group relative flex flex-col gap-1 w-full max-w-[96%] min-w-0",
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
@@ -302,7 +322,7 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
 
       <div
         className={cn(
-          "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans",
+          "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
           isUser
             ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
             : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
@@ -313,14 +333,14 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
             {imageMentions.map((imgName, i) => (
               <div
                 key={i}
-                className="group relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
+                className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
                 onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
                 title="Click to view full image"
               >
                 <img
                   src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
                   alt={imgName}
-                  className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover:scale-102 transition-transform duration-150"
+                  className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
                   onError={(e) => {
                     const parent = (e.target as HTMLElement).parentElement;
                     if (parent) {
@@ -328,8 +348,8 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
                     }
                   }}
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
-                  <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
+                  <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
                     {imgName}
                   </span>
                 </div>
@@ -340,6 +360,34 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
         {displayContent ? (
           <ChatMessageContent content={displayContent} isUser={isUser} />
         ) : null}
+      </div>
+
+      {/* Antigravity-Style Hover Action Toolbar (Copy & Resend) */}
+      <div
+        className={cn(
+          "flex items-center gap-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 select-none text-[10px] text-[var(--text-muted)]",
+          isUser ? "flex-row-reverse" : "flex-row"
+        )}
+      >
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          title="Copy message"
+        >
+          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+        </button>
+
+        {isUser && onResend && (
+          <button
+            type="button"
+            onClick={handleResend}
+            className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-0.5"
+            title="Resend prompt"
+          >
+            <RotateCcw className="w-3 h-3" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -626,7 +674,7 @@ function WorkstationRightChatComponent({
 
   return (
     <aside
-      className="bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col h-full shrink-0 select-text overflow-hidden transition-colors duration-150"
+      className="relative bg-[var(--bg-panel)] border-l border-[var(--border-color)] flex flex-col h-full shrink-0 select-text overflow-hidden transition-colors duration-150"
       style={{ width: width || 320 }}
     >
       {/* Panel Header */}
@@ -681,6 +729,7 @@ function WorkstationRightChatComponent({
                 msg={msg}
                 isUser={isUser}
                 onPreviewImage={(url) => setLightboxUrl(url)}
+                onResend={(content) => onSendMessage(content)}
               />
             );
           })
@@ -904,25 +953,35 @@ function WorkstationRightChatComponent({
         </div>
       </div>
 
-      {/* Lightbox Fullscreen Image Preview Modal */}
+      {/* Scoped Chat-Only Image Preview Modal */}
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-150"
+          className="absolute inset-0 z-50 bg-[var(--bg-card)]/95 backdrop-blur-sm flex flex-col p-3 animate-in fade-in duration-150"
           onClick={() => setLightboxUrl(null)}
         >
-          <div className="relative max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={lightboxUrl}
-              alt="Preview"
-              className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain border border-white/20"
-            />
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[var(--border-color)] shrink-0 select-none">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <span className="text-xs font-semibold text-[var(--text-primary)]">Image Preview</span>
+            </div>
             <button
               type="button"
               onClick={() => setLightboxUrl(null)}
-              className="absolute -top-3 -right-3 w-7 h-7 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer"
+              className="w-6 h-6 rounded-full bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors cursor-pointer border border-[var(--border-color)]"
+              title="Close preview"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
+          </div>
+          <div
+            className="flex-1 min-h-0 flex items-center justify-center overflow-auto p-1 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxUrl}
+              alt="Preview"
+              className="max-w-full max-h-full rounded-lg object-contain shadow-sm"
+            />
           </div>
         </div>
       )}
