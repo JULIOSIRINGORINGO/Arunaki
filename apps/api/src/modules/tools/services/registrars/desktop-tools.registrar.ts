@@ -255,10 +255,11 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell edits and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
+          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet (e.g. "AGUSTUS"), provide sheetName.',
         tags: [
           'desktop',
           'excel',
+          'read',
           'edit',
           'com',
           'cells',

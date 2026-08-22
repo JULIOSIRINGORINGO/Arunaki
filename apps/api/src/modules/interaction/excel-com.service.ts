@@ -118,6 +118,27 @@ export class ExcelComService {
             }
             return `        $cell = $ws.Range('${cellCoord}'); $cell.Value2 = ${val}; $results += @{ action='write_cell'; success=$true; cell='${cellCoord}' }`;
           }
+          case 'read_cell': {
+            const cellCoord = act.cell || 'A1';
+            return `        $cell = $ws.Range('${cellCoord}'); $cellVal = $cell.Text; $results += @{ action='read_cell'; success=$true; cell='${cellCoord}'; value=$cellVal }`;
+          }
+          case 'read_range': {
+            const rangeRef = act.range ? act.range.replace(/'/g, "''") : '';
+            return [
+              `        $rng = if ('${rangeRef}') { $ws.Range('${rangeRef}') } else { $ws.UsedRange }`,
+              `        $rowsArr = @()`,
+              `        $maxR = [Math]::Min($rng.Rows.Count, 150)`,
+              `        $maxC = [Math]::Min($rng.Columns.Count, 40)`,
+              `        for ($rIdx = 1; $rIdx -le $maxR; $rIdx++) {`,
+              `          $cVals = @()`,
+              `          for ($cIdx = 1; $cIdx -le $maxC; $cIdx++) {`,
+              `            $cVals += $rng.Cells.Item($rIdx, $cIdx).Text`,
+              `          }`,
+              `          $rowsArr += ($cVals -join ' | ')`,
+              `        }`,
+              `        $results += @{ action='read_range'; success=$true; range='${rangeRef}'; rowCount=$maxR; colCount=$maxC; rows=($rowsArr -join [Environment]::NewLine) }`,
+            ].join('\n');
+          }
           case 'insert_row':
             return `        $ws.Rows(${act.row}).Insert(); $results += @{ action='insert_row'; success=$true; row=${act.row} }`;
           case 'delete_row':
