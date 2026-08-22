@@ -7,6 +7,28 @@ import * as path from 'path';
 export class ImageOcrTool {
   private readonly logger = new Logger(ImageOcrTool.name);
 
+  private resolveImagePath(imageSource: string): string | null {
+    if (!imageSource) return null;
+    const clean = imageSource.replace(/^@/, '').trim();
+    if (!clean) return null;
+
+    if (fs.existsSync(clean)) return path.resolve(clean);
+    const absPath = path.resolve(clean);
+    if (fs.existsSync(absPath)) return absPath;
+
+    const baseUploads = path.join(process.cwd(), 'workspace-data');
+    if (fs.existsSync(baseUploads)) {
+      try {
+        const wsDirs = fs.readdirSync(baseUploads);
+        for (const ws of wsDirs) {
+          const candidate = path.join(baseUploads, ws, 'uploads', path.basename(clean));
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      } catch {}
+    }
+    return null;
+  }
+
   async recognizeText(
     filePath: string,
     language?: string,
@@ -27,13 +49,13 @@ export class ImageOcrTool {
       };
     }
 
-    const resolvedPath = path.resolve(filePath);
+    const resolvedPath = this.resolveImagePath(filePath);
 
-    if (!fs.existsSync(resolvedPath)) {
+    if (!resolvedPath || !fs.existsSync(resolvedPath)) {
       return {
         status: 'error',
         data: {},
-        preview: `File not found: ${resolvedPath}`,
+        preview: `File not found: ${filePath}`,
         metadata: {
           toolName: 'image_ocr',
           displayName: 'Image OCR',
@@ -41,7 +63,7 @@ export class ImageOcrTool {
         },
         error: {
           code: 'FILE_NOT_FOUND',
-          message: `File not found: ${resolvedPath}`,
+          message: `File not found: ${filePath}`,
         },
       };
     }
