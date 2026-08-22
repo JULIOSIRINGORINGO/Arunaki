@@ -369,11 +369,13 @@ export class DesktopToolsRegistrar {
             actions: {
               type: 'array',
               description:
-                'Array of actions: [{ action: "write_cell", cell: "V4", value: 1175 }, { action: "clone_sheet", sourceSheet: "TEMPLATE", newSheetName: "SEPTEMBER" }]',
+                'Array of actions: [{ action: "read_range", range: "A1:Z30" }, { action: "write_cell", cell: "V4", value: 1175 }, { action: "clone_sheet", sourceSheet: "TEMPLATE", newSheetName: "SEPTEMBER" }]',
             },
             action: {
               type: 'string',
               enum: [
+                'read_cell',
+                'read_range',
                 'write_cell',
                 'insert_row',
                 'delete_row',
@@ -387,7 +389,7 @@ export class DesktopToolsRegistrar {
                 'list_sheets',
                 'save',
               ],
-              description: 'Single action type',
+              description: 'Single action type (use "read_range" to inspect table layout/cells, "write_cell" to write data)',
             },
             cell: {
               type: 'string',
