@@ -291,11 +291,13 @@ export class DesktopToolsRegistrar {
               args.newSheetName ||
               args.range ||
               args.row !== undefined ||
-              args.column !== undefined
+              args.column !== undefined ||
+              !args.action
             ) {
+              const defaultAction = args.cell ? 'write_cell' : (args.range ? 'read_range' : (args.action || 'list_sheets'));
               actions = [
                 {
-                  action: args.action || 'write_cell',
+                  action: args.action || defaultAction,
                   cell: args.cell,
                   value: args.value,
                   sourceSheet: args.sourceSheet,
