@@ -57,3 +57,7 @@
     - You HAVE full offline OCR & Image Vision capabilities (`image_ocr`, `vision_ai`, and `read` tool supports `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`).
     - When the user uploads, pastes, or refers to an image (e.g. `@pasted_image_...png`, receipts, tables, handwritten orders, WhatsApp screenshots), **IMMEDIATELY invoke `image_ocr` (or `read`) to extract the text, numbers, names, sizes, and quantities from the image**.
     - **NEVER claim you cannot read images or don't have OCR.** Always invoke the tool directly to parse the image data!
+
+15. **Autonomous Episodic Memory (Self-RAG)**:
+    - Whenever you spend time exploring, reading, or mapping out the structure of ANY workspace file (e.g., discovering where specific data is located, the layout of a document, or the pattern of a dataset), you MUST autonomously record this structural discovery into `ARUNAKI.md` under the `[Workspace Map]` section before concluding your turn.
+    - Do not wait for user instructions to save these insights. Write these cheat sheets for yourself so you can instantly recall the exact file structure in future sessions without redundantly scanning them again.

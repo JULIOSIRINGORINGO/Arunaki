@@ -75,11 +75,15 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     messages: Array<{ role: string; content: string }>,
   ): Promise<boolean> {
     const userMessages = messages.filter((m) => m.role === 'user');
-    if (userMessages.length === 0) return false;
+    const assistantMessages = messages.filter((m) => m.role === 'assistant');
+    if (userMessages.length === 0 && assistantMessages.length === 0) return false;
 
     // Filter out very short/trivial greetings or single words (< 3 chars) to avoid unnecessary LLM calls
-    const meaningfulText = userMessages.map((m) => m.content?.trim()).filter(Boolean);
-    if (meaningfulText.length === 0 || meaningfulText.every((t) => t.length < 4)) {
+    const meaningfulUserText = userMessages.map((m) => m.content?.trim()).filter(Boolean);
+    const hasMeaningfulUser = meaningfulUserText.length > 0 && !meaningfulUserText.every((t) => t.length < 4);
+    const hasAssistantReflection = assistantMessages.some(m => m.content?.includes('[Workspace Map]') || m.content?.toLowerCase().includes('discovery'));
+
+    if (!hasMeaningfulUser && !hasAssistantReflection) {
       return false;
     }
 
@@ -93,7 +97,10 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
     const currentRules = await this.cartographerService.getWorkspaceRules(
       workspace.rootPath,
     );
-    const combinedUserText = userMessages.map((m) => m.content).join('\n---\n');
+    const combinedText = messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
+      .join('\n---\n');
 
     this.logger.debug(
       `[RulesSentinel] 🛡️ Sentinel analyzing turn diff for "${workspace.name}" across languages...`,
@@ -104,14 +111,14 @@ export class WorkspaceRulesSentinelService implements OnModuleInit {
 Your job is to safeguard and evolve the workspace's ARUNAKI.md rulebook.
 You must understand ALL languages (Indonesian, English, regional dialects, mixed slang, etc.).
 
-USER DIRECTIVES:
-${combinedUserText.slice(0, 1500)}
+CONVERSATION LOG (User Directives & Assistant Self-Reflections):
+${combinedText.slice(-2000)}
 
 CURRENT ARUNAKI.MD RULES:
 ${currentRules.slice(0, 3000)}
 
 TASK:
-Determine if the user's message introduces a NEW rule, UPDATES/REPLACES an existing learned rule, or requires NO changes.
+Determine if the user's message introduces a NEW rule/correction, OR if the assistant made a self-reflection discovery about file structures (e.g. mapping of dates/columns).
 
 OPTIONS:
 1. If NO new rule or operational constraint was changed: output strictly "NO_CHANGE".
