@@ -16,15 +16,23 @@ export class ImageOcrTool {
     const absPath = path.resolve(clean);
     if (fs.existsSync(absPath)) return absPath;
 
-    const baseUploads = path.join(process.cwd(), 'workspace-data');
-    if (fs.existsSync(baseUploads)) {
-      try {
-        const wsDirs = fs.readdirSync(baseUploads);
-        for (const ws of wsDirs) {
-          const candidate = path.join(baseUploads, ws, 'uploads', path.basename(clean));
-          if (fs.existsSync(candidate)) return candidate;
-        }
-      } catch {}
+    const candidateBases = [
+      path.join(process.cwd(), 'workspace-data'),
+      path.join(process.cwd(), 'apps', 'api', 'workspace-data'),
+      path.join(process.cwd(), '..', 'workspace-data'),
+      path.join(process.cwd(), '..', 'apps', 'api', 'workspace-data'),
+    ];
+
+    for (const baseUploads of candidateBases) {
+      if (fs.existsSync(baseUploads)) {
+        try {
+          const wsDirs = fs.readdirSync(baseUploads);
+          for (const ws of wsDirs) {
+            const candidate = path.join(baseUploads, ws, 'uploads', path.basename(clean));
+            if (fs.existsSync(candidate)) return candidate;
+          }
+        } catch {}
+      }
     }
     return null;
   }
@@ -69,7 +77,13 @@ export class ImageOcrTool {
     }
 
     try {
-      const Tesseract = await import('tesseract.js');
+      const tesseractMod = await import('tesseract.js');
+      const Tesseract: any =
+        tesseractMod.default && typeof (tesseractMod.default as any).recognize === 'function'
+          ? tesseractMod.default
+          : (tesseractMod as any).recognize
+            ? tesseractMod
+            : (tesseractMod.default as any)?.default || tesseractMod.default || tesseractMod;
 
       const lang = language || 'eng';
 

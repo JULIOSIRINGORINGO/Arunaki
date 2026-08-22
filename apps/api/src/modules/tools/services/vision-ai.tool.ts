@@ -32,16 +32,24 @@ export class VisionAiTool {
     const absPath = path.resolve(clean);
     if (fs.existsSync(absPath)) return absPath;
 
-    // 2. Search in workspace-data/*/uploads/
-    const baseUploads = path.join(process.cwd(), 'workspace-data');
-    if (fs.existsSync(baseUploads)) {
-      try {
-        const wsDirs = fs.readdirSync(baseUploads);
-        for (const ws of wsDirs) {
-          const candidate = path.join(baseUploads, ws, 'uploads', path.basename(clean));
-          if (fs.existsSync(candidate)) return candidate;
-        }
-      } catch {}
+    // 2. Search in workspace-data/*/uploads/ and apps/api/workspace-data/*/uploads/
+    const candidateBases = [
+      path.join(process.cwd(), 'workspace-data'),
+      path.join(process.cwd(), 'apps', 'api', 'workspace-data'),
+      path.join(process.cwd(), '..', 'workspace-data'),
+      path.join(process.cwd(), '..', 'apps', 'api', 'workspace-data'),
+    ];
+
+    for (const baseUploads of candidateBases) {
+      if (fs.existsSync(baseUploads)) {
+        try {
+          const wsDirs = fs.readdirSync(baseUploads);
+          for (const ws of wsDirs) {
+            const candidate = path.join(baseUploads, ws, 'uploads', path.basename(clean));
+            if (fs.existsSync(candidate)) return candidate;
+          }
+        } catch {}
+      }
     }
 
     return null;
@@ -173,7 +181,14 @@ export class VisionAiTool {
     // 2. Local OCR Fallback (Tesseract) directly reading from file path
     try {
       this.logger.log(`Running local OCR (Tesseract) on ${resolvedPath}...`);
-      const Tesseract = await import('tesseract.js');
+      const tesseractMod = await import('tesseract.js');
+      const Tesseract: any =
+        tesseractMod.default && typeof (tesseractMod.default as any).recognize === 'function'
+          ? tesseractMod.default
+          : (tesseractMod as any).recognize
+            ? tesseractMod
+            : (tesseractMod.default as any)?.default || tesseractMod.default || tesseractMod;
+
       const { data } = await Tesseract.recognize(resolvedPath, 'eng');
       const text = data.text.trim();
 
@@ -187,7 +202,7 @@ export class VisionAiTool {
         preview: text || '[No text detected in image]',
         metadata: {
           toolName: 'vision_ai',
-          displayName: 'Local OCR Vision',
+          displayName: 'Vision AI',
           executionTime: Date.now() - startTime,
         },
       };
