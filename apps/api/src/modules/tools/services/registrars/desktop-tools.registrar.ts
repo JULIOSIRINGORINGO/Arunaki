@@ -370,12 +370,27 @@ export class DesktopToolsRegistrar {
             },
             actions: {
               type: 'array',
-              description:
-                'Array of actions: [{ action: "read_range", range: "A1:Z30" }, { action: "write_cell", cell: "A2", value: 100 }, { action: "clone_sheet", sourceSheet: "<SourceSheet>", newSheetName: "<NewSheet>" }]',
+              description: 'Array of actions for batch operations. DO NOT use this for a single action, just use the top-level properties instead.',
+              items: {
+                type: 'object',
+                properties: {
+                  action: { type: 'string', description: 'e.g., write_cell, read_range' },
+                  cell: { type: 'string', description: 'e.g., B19' },
+                  value: { description: 'Value to write (string/number)' },
+                  range: { type: 'string', description: 'e.g., B15:Z30' },
+                  sourceSheet: { type: 'string' },
+                  newSheetName: { type: 'string' },
+                  clearConstants: { type: 'boolean' },
+                  row: { type: 'number' },
+                  column: { type: 'number', description: 'Column index (1 for A, 2 for B) for append_row' },
+                  rowData: { type: 'array', items: { type: 'string' }, description: 'Array of cell values for append_row' }
+                }
+              }
             },
             action: {
               type: 'string',
               enum: [
+                'append_row',
                 'read_cell',
                 'read_range',
                 'write_cell',

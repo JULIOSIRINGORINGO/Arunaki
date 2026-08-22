@@ -140,12 +140,24 @@ export function serializeToolCallHistory(
     // Collect the tool results that belong to this assistant message (the
     // immediately following `role: 'tool'` messages) and append them inline.
     let j = i + 1;
+    let hasToolResult = false;
     while (j < messages.length && messages[j].role === 'tool') {
       lines.push(`[Tool result]: ${messages[j].content ?? ''}`);
+      hasToolResult = true;
       j++;
     }
 
     out.push({ role: 'assistant', content: lines.join('\n') });
+    
+    // If this assistant message contained tool results and is the LAST message,
+    // we MUST append a user nudge so the LLM doesn't stop generating.
+    if (hasToolResult && j === messages.length) {
+      out.push({ 
+        role: 'user', 
+        content: 'System: Tool execution completed. Please read the tool results above and provide your final response to complete the task.'
+      });
+    }
+
     i = j - 1;
   }
   return out;

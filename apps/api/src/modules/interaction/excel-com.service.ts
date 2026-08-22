@@ -23,6 +23,7 @@ export interface ExcelAction {
   sourceSheet?: string;
   newSheetName?: string;
   clearConstants?: boolean;
+  rowData?: any[];
 }
 
 export interface ExcelActionResult {
@@ -142,6 +143,36 @@ export class ExcelComService {
               `        $results += @{ action='read_range'; success=$true; range='${rangeRef}'; rows=($rowsArr -join [Environment]::NewLine) }`,
             ].join('\n');
           }
+          case 'append_row': {
+            const colIndex = act.column || 1;
+            const rowDataStr = Array.isArray(act.rowData) ? 
+              `@(${act.rowData.map(v => {
+                 if (v === null || v === undefined) return '$null';
+                 if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+                 return v;
+              }).join(', ')})` : '@()';
+            
+            return [
+              `        $lastRow = [int]($ws.Cells.Item([int]$ws.Rows.Count, [int]${colIndex}).End(-4162).Row)`,
+              `        $targetRow = $lastRow + 1`,
+              `        $arr = ${rowDataStr}`,
+              `        for ($i = 0; $i -lt $arr.Length; $i++) {`,
+              `          if ($arr[$i] -ne $null -and $arr[$i] -ne '') {`,
+              `            $val = $arr[$i]`,
+              `            $c = [int](${colIndex} + $i)`,
+              `            $r = [int]$targetRow`,
+              `            if ($val -is [int] -or $val -is [double]) {`,
+              `              $ws.Cells.Item($r, $c).Value2 = [double]$val`,
+              `            } elseif ($val -is [bool]) {`,
+              `              $ws.Cells.Item($r, $c).Value2 = [bool]$val`,
+              `            } else {`,
+              `              $ws.Cells.Item($r, $c).Value2 = [string]$val`,
+              `            }`,
+              `          }`,
+              `        }`,
+              `        $results += @{ action='append_row'; success=$true; targetRow=$targetRow; columnStart=${colIndex} }`
+            ].join('\n');
+          }
           case 'insert_row':
             return `        $ws.Rows(${act.row}).Insert(); $results += @{ action='insert_row'; success=$true; row=${act.row} }`;
           case 'delete_row':
@@ -249,7 +280,7 @@ export class ExcelComService {
       ? `foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${escapedSheet}') { $wb.Worksheets.Item($s).Activate(); break } }`
       : '';
 
-    return `
+    const scriptContent = `
 try {
   $excel = New-Object -ComObject Excel.Application
   $excel.Visible = $false
@@ -269,7 +300,9 @@ ${actionBlocks}
   try { $wb.Close($false) } catch {}
   try { $excel.Quit() } catch {}
   try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null } catch {}
-}
-`.trim();
+}`;
+    return scriptContent;
   }
+
 }
+
