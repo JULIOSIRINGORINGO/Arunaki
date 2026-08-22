@@ -133,6 +133,27 @@ export class WorkspacePromptBuilderService {
     const mandatoryTools = ['read', 'list', 'document_reader'];
     const selectedNames = new Set([...mandatoryTools, ...classification.tools]);
 
+    // Deterministic safety net: guarantee Office tools when goal mentions them
+    const goalLower = goal.toLowerCase();
+    if (/(?:excel|xlsx|xlsm|xls|spreadsheet|sheet|tabel|rekap|laporan|keuangan|pemasukan|pengeluaran|penjualan|stok|inventori)/.test(goalLower) || /@\S+\.(?:xlsx|xlsm|xls)/i.test(goal)) {
+      for (const name of ['desktop_excel_edit', 'document_reader', 'list']) {
+        const tool = allTools.find((t) => t.function.name === name);
+        if (tool) selectedNames.add(name);
+      }
+    }
+    if (/(?:word|docx|doc|document|surat|dokumen)/.test(goalLower) || /@\S+\.(?:docx|doc)/i.test(goal)) {
+      for (const name of ['desktop_word_edit', 'document_reader', 'list']) {
+        const tool = allTools.find((t) => t.function.name === name);
+        if (tool) selectedNames.add(name);
+      }
+    }
+    if (/(?:pptx|ppt|powerpoint|presentasi|slide)/.test(goalLower) || /@\S+\.(?:pptx|ppt)/i.test(goal)) {
+      for (const name of ['desktop_ppt_edit', 'document_reader', 'list']) {
+        const tool = allTools.find((t) => t.function.name === name);
+        if (tool) selectedNames.add(name);
+      }
+    }
+
     // Map names back to actual ToolDefinitions
     const tools = allTools.filter((t) => selectedNames.has(t.function.name));
 
