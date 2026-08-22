@@ -44,16 +44,12 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
   const [waitingSec, setWaitingSec] = useState(0);
 
   useEffect(() => {
-    if (!status || !active) return;
-    if (status.type !== 'thinking') {
-      setWaitingSec(0);
-      return;
-    }
+    if (!active) return;
     setWaitingSec(0);
     const start = Date.now();
-    const t = setInterval(() => setWaitingSec(Math.floor((Date.now() - start) / 1000)), 1000);
+    const t = setInterval(() => setWaitingSec(Math.max(1, Math.floor((Date.now() - start) / 1000))), 1000);
     return () => clearInterval(t);
-  }, [status?.type, status?.toolName, active]);
+  }, [active]);
 
   useEffect(() => {
     if (!status) {
@@ -118,7 +114,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     return (
       <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] animate-pulse font-sans max-w-fit select-none my-1">
         <Sparkles size={12} className="text-amber-500/80 shrink-0" />
-        <span className="text-[11px] text-[var(--text-muted)]">Thinking...</span>
+        <span className="text-[11px] text-[var(--text-muted)]">Thinking... ({waitingSec}s)</span>
       </div>
     );
   }
@@ -150,14 +146,14 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
       >
-        <div className="flex items-center gap-2">
-          <Loader2 size={12} className="animate-spin text-[var(--text-muted)]" />
-          <span className="font-semibold text-[var(--text-primary)]">{summaryHeader}</span>
-          {completedCount > 0 && (
-            <span className="text-[10px] text-[var(--text-dim)]">({completedCount} done)</span>
-          )}
+        <div className="flex items-center gap-2 min-w-0">
+          <Loader2 size={12} className="animate-spin text-[var(--text-muted)] shrink-0" />
+          <span className="font-semibold text-[var(--text-primary)] truncate">{summaryHeader}</span>
+          <span className="text-[10px] text-[var(--text-dim)] shrink-0">
+            ({completedCount > 0 ? `${completedCount} done · ` : ''}{waitingSec}s)
+          </span>
         </div>
-        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
           {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </div>
       </button>
@@ -186,7 +182,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
           })}
           <div className="pt-1 flex items-center gap-1.5 text-[var(--text-dim)] text-[10px]">
             <span className="animate-pulse">
-              {status.type === 'thinking' ? `Working... ${waitingSec}s` : 'Working...'}
+              Working... ({waitingSec}s)
             </span>
           </div>
         </div>
@@ -223,7 +219,9 @@ export function MessageThoughtBadge({
             <span className="font-semibold text-[var(--text-primary)] truncate">
               Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
             </span>
-            <span className="text-[10px] text-[var(--text-dim)] shrink-0">({steps.length} steps)</span>
+            <span className="text-[10px] text-[var(--text-dim)] shrink-0">
+              ({steps.length} step{steps.length > 1 ? 's' : ''}{thoughtSec ? ` · ${thoughtSec}s` : ''})
+            </span>
           </div>
           <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
