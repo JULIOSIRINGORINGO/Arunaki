@@ -81,7 +81,7 @@ export class ProviderCatalogService {
   getNextModelInPreset(
     preset: ProviderCatalogPreset,
     currentModelId?: string,
-  ): string {
+  ): string | null {
     const pool = preset.fallbackModels;
     if (!pool || pool.length === 0) return 'default';
 
@@ -89,6 +89,10 @@ export class ProviderCatalogService {
       (m) => m === currentModelId || currentModelId?.includes(m),
     );
 
-    return pool[(currentIndex + 1) % pool.length];
+    // Current model unknown → offer the first pool entry.
+    // Known → advance, but never wrap around: a full cycle means every
+    // candidate already failed and retrying them just re-hits dead models.
+    if (currentIndex < 0) return pool[0];
+    return currentIndex + 1 < pool.length ? pool[currentIndex + 1] : null;
   }
 }

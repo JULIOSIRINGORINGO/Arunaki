@@ -370,6 +370,16 @@ export class ProviderService extends BaseService<Provider> {
         currentProviderId,
       );
 
+      if (!nextModel) {
+        this.logger.log(`OpenRouter preset ${preset.name}: no un-tried models left`);
+        return null;
+      }
+      // M2: skip candidates already tried in this rotation
+      if (triedProviderIds.includes(`fallback-${nextModel}`)) {
+        this.logger.log(`OpenRouter candidate ${nextModel} already tried`);
+        return null;
+      }
+
       this.logger.log(
         `Rotating to OpenRouter database candidate: ${nextModel}`,
       );
@@ -393,6 +403,10 @@ export class ProviderService extends BaseService<Provider> {
         preset,
         currentProviderId,
       );
+      if (!nextModel) {
+        this.logger.log(`Preset ${preset.name}: no un-tried models left`);
+        return null;
+      }
       const targetId = `fallback-${preset.id}-${nextModel}`;
 
       if (triedProviderIds.includes(targetId)) {

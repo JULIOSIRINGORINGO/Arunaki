@@ -566,8 +566,8 @@ export class AiService {
       body,
       signal,
       makeRequest: (p, b) => makeSdkRequestStream(p, b, { signal }),
-      getNextProvider: (currentId) =>
-        this.providerService.getNextAvailable(currentId),
+      getNextProvider: (currentId, triedIds = []) =>
+        this.providerService.getNextAvailable(currentId, triedIds),
       classifyError: (statusCode, errorBody) =>
         this.providerService.classifyError(statusCode, errorBody),
       recordUsage: (id) => this.providerService.recordUsage(id),
