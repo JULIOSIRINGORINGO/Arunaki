@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
@@ -44,6 +44,84 @@ export interface ExcelActionResult {
 @Injectable()
 export class ExcelComService {
   private readonly logger = new Logger(ExcelComService.name);
+  /** Serializes COM access per workbook — two Excel instances on one file silently lose writes. */
+  private readonly fileLocks = new Map<string, Promise<unknown>>();
+
+  private async withFileLock<T>(
+    filePath: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const key = filePath.toLowerCase();
+    const prev = this.fileLocks.get(key) ?? Promise.resolve();
+    const release = (() => {
+      let releaseFn!: () => void;
+      const gate = new Promise<void>((r) => (releaseFn = r));
+      this.fileLocks.set(
+        key,
+        prev.then(() => gate),
+      );
+      return { gate, releaseFn };
+    })();
+    try {
+      await prev;
+      return await fn();
+    } finally {
+      release.releaseFn();
+      // Drop the chain entry once it's the tail to avoid unbounded growth
+      if ((this.fileLocks.get(key) ?? Promise.resolve()) === release.gate) {
+        /* still referenced by next waiter; leave cleanup opportunistic */
+      }
+    }
+  }
+
+  /**
+   * Runs the PS script, killing the whole process tree on timeout so the
+   * COM-launched EXCEL.EXE cannot survive as a zombie holding the workbook.
+   * Returns { stdout, stderr, timedOut, elapsedMs }.
+   */
+  private runPsScript(
+    scriptPath: string,
+    timeoutMs: number,
+  ): Promise<{
+    stdout: string;
+    stderr: string;
+    timedOut: boolean;
+    elapsedMs: number;
+  }> {
+    return new Promise((resolve) => {
+      const start = Date.now();
+      const child = spawn('powershell', [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        scriptPath,
+      ]);
+      let stdout = '';
+      let stderr = '';
+      let timedOut = false;
+      let settled = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        // /T kills the full tree (EXCEL.EXE included), /F forces
+        try {
+          exec(`taskkill /PID ${child.pid} /T /F`, () => {});
+        } catch {
+          /* ignore */
+        }
+      }, timeoutMs);
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ stdout, stderr, timedOut, elapsedMs: Date.now() - start });
+      };
+      child.stdout.on('data', (d) => (stdout += d.toString()));
+      child.stderr.on('data', (d) => (stderr += d.toString()));
+      child.on('close', () => finish());
+      child.on('error', () => finish());
+    });
+  }
 
   get isAvailable(): boolean {
     return process.platform === 'win32';
@@ -190,37 +268,46 @@ export class ExcelComService {
       };
     }
 
-    const scriptPath = join(tmpdir(), `arunaki-excel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`);
-    try {
-      const psScript = this.buildPowerShellScript(filePath, validActions, sheetName);
-      await writeFile(scriptPath, psScript, 'utf-8');
+    return this.withFileLock(filePath, async () => {
+      const scriptPath = join(
+        tmpdir(),
+        `arunaki-excel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`,
+      );
+      try {
+        const psScript = this.buildPowerShellScript(
+          filePath,
+          validActions,
+          sheetName,
+        );
+        // BOM is required: PowerShell 5.1 reads BOM-less files in the system
+        // ANSI codepage, corrupting any non-ASCII cell values.
+        await writeFile(scriptPath, '\uFEFF' + psScript, 'utf-8');
 
-      // Single retry: first COM attempt can hang (e.g. a stale Excel.exe from a
-      // previous run blocks Workbooks.Open) and succeed immediately afterwards.
-      let stdout = '';
-      let stderr = '';
-      let lastErr: any;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const { stdout: out, stderr: errOut } = await execAsync(
-            `powershell -NoProfile -ExecutionPolicy Bypass -File "${scriptPath}"`,
-            { timeout: 30000, maxBuffer: 1024 * 1024 },
-          );
+        // Single retry ONLY for fast startup failures (<5s — COM instantiation
+        // hiccups). Never retry slow/timeouts: the script may have partially
+        // executed and saved; rerunning would duplicate mutations.
+        let stdout = '';
+        let stderr = '';
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const { stdout: out, stderr: errOut, timedOut, elapsedMs } =
+            await this.runPsScript(scriptPath, 30000);
           stdout = out;
           stderr = errOut;
-          lastErr = null;
-          break;
-        } catch (err) {
-          lastErr = err;
+          const hasJson = stdout.includes('{') && stdout.includes('}');
+          if (hasJson) break;
+          if (timedOut || elapsedMs >= 5000 || attempt === 1) {
+            if (timedOut) {
+              throw new Error(
+                `Excel COM script timed out after ${elapsedMs}ms and was terminated`,
+              );
+            }
+            if (attempt === 1) break;
+          }
         }
-      }
-      if (lastErr) {
-        throw lastErr;
-      }
 
-      if (stderr && stderr.trim()) {
-        this.logger.warn(`PowerShell stderr: ${stderr.trim()}`);
-      }
+        if (stderr && stderr.trim()) {
+          this.logger.warn(`PowerShell stderr: ${stderr.trim()}`);
+        }
 
       const output = stdout.trim();
       // Find JSON object in output (PowerShell may add extra lines)
@@ -249,7 +336,8 @@ export class ExcelComService {
       } catch {
         /* ignore */
       }
-    }
+      }
+    });
   }
 
   private buildPowerShellScript(
@@ -457,13 +545,18 @@ ${actionBlocks}
           case 'append_row': {
             const colIndex = act.column || 1;
             // Models may send: rowData[] | comma string | single object keyed by header name
+            // (`values` is a common plural alias models emit)
+            const valueSrc =
+              (act as any).value ??
+              (act as any).values ??
+              (act as any).data;
             const isHeaderObject =
-              act.value !== null &&
-              typeof act.value === 'object' &&
-              !Array.isArray(act.value);
+              valueSrc !== null &&
+              typeof valueSrc === 'object' &&
+              !Array.isArray(valueSrc);
             let arrSource: string;
             if (isHeaderObject) {
-              const entries = Object.entries(act.value as Record<string, any>).map(([k, v]) => {
+              const entries = Object.entries(valueSrc as Record<string, any>).map(([k, v]) => {
                 const kk = k.replace(/'/g, "''");
                 if (typeof v === 'string') return `'${kk}' = '${v.replace(/'/g, "''")}'`;
                 return `'${kk}' = ${v}`;
@@ -480,8 +573,8 @@ ${actionBlocks}
               // Models sometimes send a single comma-joined string instead of rowData[]
               const effectiveRowData = Array.isArray(act.rowData)
                 ? act.rowData
-                : typeof act.value === 'string' && act.value.includes(',')
-                  ? (act.value as string).split(',').map(s => s.trim())
+                : typeof valueSrc === 'string' && valueSrc.includes(',')
+                  ? (valueSrc as string).split(',').map(s => s.trim())
                   : act.rowData;
               const rowDataStr = Array.isArray(effectiveRowData)
                 ? `@(${effectiveRowData.map(v => {
