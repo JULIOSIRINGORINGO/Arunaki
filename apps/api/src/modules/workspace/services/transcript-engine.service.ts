@@ -152,9 +152,19 @@ export class TranscriptEngineService {
     relativePath: string,
   ): string | null {
     try {
+      const resolvedRoot = path.resolve(workspaceRoot);
       const targetPath = path.isAbsolute(relativePath)
-        ? relativePath
-        : path.join(workspaceRoot, relativePath);
+        ? path.resolve(relativePath)
+        : path.resolve(resolvedRoot, relativePath);
+
+      // Workspace isolation: snapshots must never read outside the root
+      const rel = path.relative(resolvedRoot, targetPath);
+      if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        this.logger.warn(
+          `Snapshot blocked (outside workspace): ${relativePath.slice(0, 120)}`,
+        );
+        return null;
+      }
 
       if (!fs.existsSync(targetPath)) {
         return null;

@@ -49,6 +49,119 @@ export class ExcelComService {
     return process.platform === 'win32';
   }
 
+  private static readonly CELL_RE = /^\$?[A-Za-z]{1,3}\$?\d{1,7}$/;
+  private static readonly RANGE_RE =
+    /^\$?[A-Za-z]{1,3}\$?\d{0,7}(:\$?[A-Za-z]{1,3}\$?\d{1,7})?$/;
+
+  /**
+   * Validates LLM-supplied action fields that would otherwise be interpolated
+   * raw into the generated PowerShell script (injection surface).
+   */
+  private sanitizeActions(
+    actions: ExcelAction[],
+  ): { clean: ExcelAction[]; rejected: Array<{ index: number; error: string }> } {
+    const intIn = (v: any, min: number, max: number): number | null => {
+      const n = Number(v);
+      return Number.isInteger(n) && n >= min && n <= max ? n : null;
+    };
+    const clean: ExcelAction[] = [];
+    const rejected: Array<{ index: number; error: string }> = [];
+    for (let i = 0; i < actions.length; i++) {
+      const raw = actions[i];
+      let a: ExcelAction = { ...raw };
+      const fail = (msg: string) =>
+        rejected.push({
+          index: i,
+          error: `${msg} (action=${String(raw.action).slice(0, 24)})`,
+        });
+      switch (a.action) {
+        case 'write_cell':
+        case 'read_cell': {
+          if (a.matchColumn && a.matchValue !== undefined) break;
+          if (!a.cell || !ExcelComService.CELL_RE.test(a.cell.trim())) {
+            fail(
+              a.cell
+                ? `Invalid cell reference "${String(a.cell).slice(0, 24)}"`
+                : 'cell is required',
+            );
+            continue;
+          }
+          a.cell = a.cell.trim();
+          break;
+        }
+        case 'read_range':
+        case 'set_format':
+        case 'clear_constants': {
+          if (a.range && !ExcelComService.RANGE_RE.test(a.range.replace(/\s+/g, ''))) {
+            fail(`Invalid range "${String(a.range).slice(0, 32)}"`);
+            continue;
+          }
+          if (a.action === 'set_format') {
+            if (a.fontSize !== undefined) {
+              const fs = intIn(a.fontSize, 1, 409);
+              if (fs === null) {
+                fail('fontSize must be an integer between 1 and 409');
+                continue;
+              }
+              a.fontSize = fs;
+            }
+            if (a.bgColor !== undefined) {
+              const bg = intIn(a.bgColor, 0, 16777215);
+              if (bg === null) {
+                fail('bgColor must be an integer color value');
+                continue;
+              }
+              a.bgColor = bg;
+            }
+          }
+          break;
+        }
+        case 'insert_row':
+        case 'delete_row': {
+          const r = intIn(a.row, 1, 1048576);
+          if (r === null) {
+            fail('row must be an integer between 1 and 1048576');
+            continue;
+          }
+          a.row = r;
+          break;
+        }
+        case 'insert_column':
+        case 'delete_column': {
+          const c = intIn(a.column, 1, 16384);
+          if (c === null) {
+            fail('column must be an integer between 1 and 16384');
+            continue;
+          }
+          a.column = c;
+          break;
+        }
+        case 'append_row': {
+          if (a.column !== undefined) {
+            const ci = intIn(a.column, 1, 16384);
+            if (ci === null) {
+              fail('column must be an integer between 1 and 16384');
+              continue;
+            }
+            a.column = ci;
+          }
+          break;
+        }
+        case 'find_cell': {
+          const needle = String(a.matchValue ?? a.value ?? '').trim();
+          if (!needle || needle.length > 200) {
+            fail('matchValue (search text) is required, max 200 chars');
+            continue;
+          }
+          a.matchValue = needle;
+          break;
+        }
+      }
+      clean.push(a);
+    }
+    return { clean, rejected };
+  }
+
   async editExcel(
     filePath: string,
     actions: ExcelAction[],
@@ -63,9 +176,23 @@ export class ExcelComService {
       throw new Error('Excel COM automation only available on Windows');
     }
 
-    const scriptPath = join(tmpdir(), `arunaki-excel-${Date.now()}.ps1`);
+    // Security: strip actions whose fields would inject into the PS script
+    const { clean: validActions, rejected } = this.sanitizeActions(actions);
+    if (validActions.length === 0) {
+      return {
+        success: false,
+        actionsExecuted: rejected.length,
+        results: rejected.map((r) => ({
+          action: 'validation',
+          success: false,
+          error: r.error,
+        })),
+      };
+    }
+
+    const scriptPath = join(tmpdir(), `arunaki-excel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`);
     try {
-      const psScript = this.buildPowerShellScript(filePath, actions, sheetName);
+      const psScript = this.buildPowerShellScript(filePath, validActions, sheetName);
       await writeFile(scriptPath, psScript, 'utf-8');
 
       // Single retry: first COM attempt can hang (e.g. a stale Excel.exe from a
@@ -100,7 +227,17 @@ export class ExcelComService {
       const jsonStart = output.indexOf('{');
       const jsonEnd = output.lastIndexOf('}');
       if (jsonStart >= 0 && jsonEnd > jsonStart) {
-        return JSON.parse(output.substring(jsonStart, jsonEnd + 1));
+        const parsed = JSON.parse(output.substring(jsonStart, jsonEnd + 1));
+        if (rejected.length > 0 && Array.isArray(parsed.results)) {
+          const rejectionResults = rejected.map((r) => ({
+            action: 'validation',
+            success: false,
+            error: r.error,
+          }));
+          parsed.results = [...rejectionResults, ...parsed.results];
+          parsed.actionsExecuted = parsed.results.length;
+        }
+        return parsed;
       }
       throw new Error(`Unexpected output: ${output.substring(0, 200)}`);
     } catch (err: any) {
@@ -494,8 +631,12 @@ ${actionBlocks}
           }
           case 'save':
             return `        $wb.Save(); $results += @{ action='save'; success=$true }`;
-          default:
-            return `        $results += @{ action='${act.action}'; success=$false; error='Unknown action' }`;
+          default: {
+            const safeName = String(act.action || 'unknown')
+              .replace(/[^A-Za-z0-9_-]/g, '')
+              .slice(0, 40);
+            return `        $results += @{ action='${safeName}'; success=$false; error='Unknown action' }`;
+          }
     }
   }
 }
