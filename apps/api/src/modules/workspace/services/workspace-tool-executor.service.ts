@@ -239,7 +239,9 @@ export class WorkspaceToolExecutorService {
         const base = path
           .basename(String(ra.filename || ra.path || ra.filePath || ''))
           .toLowerCase();
-        return !base || touchedFiles.has(base);
+        // Empty target (e.g. `list`) is NOT a known file — never fast-cut on it,
+        // or the model's verification round gets skipped.
+        return base !== '' && touchedFiles.has(base);
       });
       if (allKnownTargets) {
         this.logger.log(

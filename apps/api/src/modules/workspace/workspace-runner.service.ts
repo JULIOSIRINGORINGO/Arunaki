@@ -150,10 +150,15 @@ export class WorkspaceRunnerService {
         if (resolveEvent) resolveEvent(null);
       })
       .catch((err) => {
-        done = true;
-        if (resolveEvent) resolveEvent(null);
         this.logger.error(`Workspace agent stream failed: ${err.message}`);
-        onEvent({ type: 'error', data: { message: err.message } });
+        // Emit the terminal error BEFORE marking done, otherwise it lands in
+        // the queue after the consumer loop has already exited.
+        if (resolveEvent) {
+          resolveEvent({ type: 'error', data: { message: err.message } });
+        } else {
+          eventQueue.push({ type: 'error', data: { message: err.message } });
+        }
+        done = true;
       });
 
     while (!done) {
