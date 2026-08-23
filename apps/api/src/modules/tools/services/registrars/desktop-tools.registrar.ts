@@ -325,6 +325,17 @@ export class DesktopToolsRegistrar {
                 'filePath is required to edit Excel spreadsheet.',
               );
             }
+
+            // Security: export_pdf writes to `range` as its output path —
+            // force containment inside the workspace before execution.
+            for (const a of actions) {
+              if (a.action === 'export_pdf' && a.range) {
+                a.range = await services.workspaceToolsService.resolveWithinWorkspace(
+                  args.workspaceId,
+                  a.range,
+                );
+              }
+            }
             if (!services.excelCom.isAvailable) {
               throw new Error(
                 'Excel COM automation not available — only available on Windows OS.',

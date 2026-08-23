@@ -55,6 +55,24 @@ export class DocumentConverterTool {
       options.outputPath ||
       path.join(path.dirname(sourcePath), `${sourceBase}.${targetFormat}`);
 
+    // Guard: never destroy the source — converting onto itself is always a bug
+    if (path.resolve(targetPath) === path.resolve(sourcePath)) {
+      return {
+        status: 'error',
+        data: {},
+        preview: 'Output path must differ from the source file',
+        metadata: {
+          toolName: 'convert_document',
+          displayName: 'Convert Document',
+          executionTime: Date.now() - startTime,
+        },
+        error: {
+          code: 'OUTPUT_SAME_AS_SOURCE',
+          message: `Refusing to overwrite the source file: ${sourcePath}`,
+        },
+      };
+    }
+
     try {
       // 1. DOCX -> PDF (Prioritize Native Word COM for 100% font/layout fidelity)
       if (sourceExt === 'docx' && targetFormat === 'pdf') {
@@ -130,9 +148,13 @@ export class DocumentConverterTool {
 </html>`;
 
         let convertedViaChromium = false;
+        let chromiumBrowser: Awaited<
+          ReturnType<typeof import('playwright')['chromium']['launch']>
+        > | null = null;
         try {
           const { chromium } = await import('playwright');
           const browser = await chromium.launch({ headless: true });
+          chromiumBrowser = browser;
           const page = await browser.newPage();
           await page.setContent(styledHtml, { waitUntil: 'load' });
           await page.pdf({
@@ -147,6 +169,7 @@ export class DocumentConverterTool {
             },
           });
           await browser.close();
+          chromiumBrowser = null;
           convertedViaChromium = true;
           this.logger.log(
             `Rendered DOCX -> PDF via Chromium Engine: ${targetPath}`,
@@ -155,6 +178,15 @@ export class DocumentConverterTool {
           this.logger.warn(
             `Chromium render unavailable (${chromiumErr.message}), falling back to vector PDF builder`,
           );
+          // Always release the browser — a leaked headless Chromium per
+          // failed conversion accumulates processes fast.
+          if (chromiumBrowser) {
+            try {
+              await chromiumBrowser.close();
+            } catch {
+              /* already dead */
+            }
+          }
           const text =
             (await mammoth.extractRawText({ path: sourcePath })).value || '';
           await this.pdfBuilder.generatePdf(

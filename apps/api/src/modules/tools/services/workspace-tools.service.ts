@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as path from 'path';
+import * as fsSync from 'fs';
 import { promises as fsp } from 'fs';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
@@ -39,14 +40,34 @@ export class WorkspaceToolsService {
 
   /**
    * Enforces that a target path is strictly contained within the workspace root.
-   * Defends against Path Traversal / LFI attacks.
+   * Defends against Path Traversal / LFI attacks, including symlink/junction
+   * escape (resolved via realpath on both root and target).
    */
   private requirePathInWorkspace(targetPath: string, rootPath: string): string {
-    const resolvedRoot = path.resolve(rootPath);
+    let resolvedRoot = path.resolve(rootPath);
     const resolvedTarget = path.isAbsolute(targetPath)
       ? path.resolve(targetPath)
       : path.resolve(resolvedRoot, targetPath);
-    const rel = path.relative(resolvedRoot, resolvedTarget);
+    // Resolve symlinks/junctions so an in-workspace link pointing outside
+    // cannot bypass the lexical check.
+    try {
+      resolvedRoot = fsSync.realpathSync(resolvedRoot);
+    } catch {
+      /* root may not exist yet — keep lexical resolution */
+    }
+    let realTarget = resolvedTarget;
+    try {
+      realTarget = fsSync.realpathSync(resolvedTarget);
+    } catch {
+      /* target may not exist yet (write/create) — verify parent instead */
+      try {
+        const parent = path.dirname(resolvedTarget);
+        realTarget = path.join(fsSync.realpathSync(parent), path.basename(resolvedTarget));
+      } catch {
+        /* fall back to lexical */
+      }
+    }
+    const rel = path.relative(resolvedRoot, realTarget);
     if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error(
         'Path Traversal detected. Target path is outside workspace root.',
@@ -189,3 +210,4 @@ export class WorkspaceToolsService {
     return this.searchTool.execute(workspaceId, query);
   }
 }
+
