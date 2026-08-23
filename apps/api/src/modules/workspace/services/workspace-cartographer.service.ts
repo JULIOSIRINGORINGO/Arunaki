@@ -678,7 +678,7 @@ Output ONLY the raw Markdown content for ARUNAKI.md without commentary or outer 
         compressedContent.includes('# ARUNAKI')
       ) {
         // Guard: LLM rewrites must never drop learned user rules — restore any that went missing
-        const learnedRules = content.match(/^- \[Auto-Learned .*$/gm) || [];
+        const learnedRules: string[] = content.match(/^- \[Auto-Learned .*$/gm) || [];
         const lower = compressedContent.toLowerCase();
         const missing = learnedRules.filter((rule) => {
           const text = rule

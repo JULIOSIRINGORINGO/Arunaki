@@ -12,6 +12,15 @@ import { extractMentionedFilenames } from '../utils/tool-call-extractor.util.js'
 import { getSystemDateTimeContext } from '../../ai/context/date-time-context.js';
 import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import * as path from 'path';
+import * as fs from 'fs/promises';
+
+/** Regex matching office-document keywords in user goals (Indonesian + English). */
+const OFFICE_EXCEL_RE =
+  /(?:excel|xlsx|xlsm|xls|spreadsheet|sheet|tabel|rekap|laporan|keuangan|pemasukan|pengeluaran|penjualan|stok|inventori)/i;
+const OFFICE_WORD_RE = /(?:word|docx|doc|document|surat|dokumen)/i;
+const OFFICE_PPT_RE = /(?:pptx|ppt|powerpoint|presentasi|slide)/i;
+const MUTATION_KEYWORDS_RE =
+  /\b(catat|update|ubah|isi|buat|tambah|edit|tulis|hapus|format|bold|export|rekap|lengkapi|siapkan|ganti|pindah|salin|copy|paste|convert|jadikan|beri|set|masukkan|input|perbarui)\b/i;
 
 @Injectable()
 export class WorkspacePromptBuilderService {
@@ -134,24 +143,29 @@ export class WorkspacePromptBuilderService {
     const selectedNames = new Set([...mandatoryTools, ...classification.tools]);
 
     // Deterministic safety net: guarantee Office tools when goal mentions them
+    // AND force hasMutationIntent=true so the nudge mechanism activates on retry.
+    let forcedMutation = false;
     const goalLower = goal.toLowerCase();
-    if (/(?:excel|xlsx|xlsm|xls|spreadsheet|sheet|tabel|rekap|laporan|keuangan|pemasukan|pengeluaran|penjualan|stok|inventori)/.test(goalLower) || /@\S+\.(?:xlsx|xlsm|xls)/i.test(goal)) {
+    if (OFFICE_EXCEL_RE.test(goalLower) || /@\S+\.(?:xlsx|xlsm|xls)/i.test(goal)) {
       for (const name of ['desktop_excel_edit', 'document_reader', 'list']) {
         const tool = allTools.find((t) => t.function.name === name);
         if (tool) selectedNames.add(name);
       }
+      if (MUTATION_KEYWORDS_RE.test(goalLower)) forcedMutation = true;
     }
-    if (/(?:word|docx|doc|document|surat|dokumen)/.test(goalLower) || /@\S+\.(?:docx|doc)/i.test(goal)) {
+    if (OFFICE_WORD_RE.test(goalLower) || /@\S+\.(?:docx|doc)/i.test(goal)) {
       for (const name of ['desktop_word_edit', 'document_reader', 'list']) {
         const tool = allTools.find((t) => t.function.name === name);
         if (tool) selectedNames.add(name);
       }
+      if (MUTATION_KEYWORDS_RE.test(goalLower)) forcedMutation = true;
     }
-    if (/(?:pptx|ppt|powerpoint|presentasi|slide)/.test(goalLower) || /@\S+\.(?:pptx|ppt)/i.test(goal)) {
+    if (OFFICE_PPT_RE.test(goalLower) || /@\S+\.(?:pptx|ppt)/i.test(goal)) {
       for (const name of ['desktop_ppt_edit', 'document_reader', 'list']) {
         const tool = allTools.find((t) => t.function.name === name);
         if (tool) selectedNames.add(name);
       }
+      if (MUTATION_KEYWORDS_RE.test(goalLower)) forcedMutation = true;
     }
 
     // Map names back to actual ToolDefinitions
@@ -159,7 +173,7 @@ export class WorkspacePromptBuilderService {
 
     return {
       tools,
-      hasMutationIntent: classification.isMutation,
+      hasMutationIntent: classification.isMutation || forcedMutation,
       wantsGui: classification.isGui,
     };
   }
@@ -227,6 +241,112 @@ export class WorkspacePromptBuilderService {
           `Failed to pre-read mentioned file "${filename}": ${err.message}`,
         );
       }
+    }
+    return contents;
+  }
+
+  /**
+   * Experiment 1: Auto-resolve the most relevant workspace file when the user
+   * did NOT use an @mention but the goal clearly refers to an office document.
+   * Returns a lightweight preview (sheet names + header row) to give the LLM
+   * enough context to call the right tool without overwhelming the context window.
+   */
+  private async autoResolveWorkspaceFiles(
+    workspaceId: string,
+    goal: string,
+    workspaceRootPath: string,
+  ): Promise<Map<string, string>> {
+    const contents = new Map<string, string>();
+    if (!workspaceRootPath) return contents;
+
+    const goalLower = goal.toLowerCase();
+    const isExcel = OFFICE_EXCEL_RE.test(goalLower);
+    const isWord = OFFICE_WORD_RE.test(goalLower);
+    const isPpt = OFFICE_PPT_RE.test(goalLower);
+    if (!isExcel && !isWord && !isPpt) return contents;
+
+    // Determine target extensions
+    const targetExts: string[] = [];
+    if (isExcel) targetExts.push('.xlsx', '.xlsm', '.xls', '.csv');
+    if (isWord) targetExts.push('.docx', '.doc');
+    if (isPpt) targetExts.push('.pptx', '.ppt');
+
+    try {
+      const entries = await fs.readdir(workspaceRootPath, {
+        withFileTypes: true,
+      });
+      const candidates = entries
+        .filter(
+          (e) =>
+            e.isFile() &&
+            !e.name.startsWith('.') &&
+            !e.name.startsWith('~$') &&
+            targetExts.some((ext) => e.name.toLowerCase().endsWith(ext)),
+        )
+        .map((e) => e.name);
+
+      if (candidates.length === 0) return contents;
+
+      // Score candidates by keyword overlap with goal
+      const goalWords = goalLower
+        .split(/[\s,.:;!?]+/)
+        .filter((w) => w.length > 2);
+      let bestFile = candidates[0];
+      let bestScore = 0;
+      for (const fname of candidates) {
+        const fnameLower = fname.toLowerCase().replace(/[_\-\.]/g, ' ');
+        let score = 0;
+        for (const w of goalWords) {
+          if (fnameLower.includes(w)) score += 3;
+        }
+        // Bonus for exact extension match
+        if (isExcel && /\.xlsx?$/i.test(fname)) score += 2;
+        if (isWord && /\.docx?$/i.test(fname)) score += 2;
+        if (isPpt && /\.pptx?$/i.test(fname)) score += 2;
+        // Bonus for recently modified
+        try {
+          const stat = await fs.stat(path.join(workspaceRootPath, fname));
+          const ageMinutes =
+            (Date.now() - stat.mtimeMs) / 60000;
+          if (ageMinutes < 60) score += 1;
+        } catch {}
+        if (score > bestScore) {
+          bestScore = score;
+          bestFile = fname;
+        }
+      }
+
+      this.logger.log(
+        `[AutoResolve] No @mention found. Auto-resolved "${bestFile}" from ${candidates.length} candidate(s) (score=${bestScore})`,
+      );
+
+      // Pre-read a lightweight preview of the resolved file
+      try {
+        const result = await this.selfHealingService.executeWithIsolation(
+          'read',
+          { workspaceId, filePath: bestFile },
+          workspaceId,
+        );
+        if (result.status === 'success') {
+          const text =
+            (result.data as Record<string, unknown>)?.content ||
+            (result.data as Record<string, unknown>)?.text;
+          // Limit to ~4000 chars to stay within free-tier context budget
+          const preview =
+            typeof text === 'string'
+              ? text.slice(0, 4000)
+              : ToolResultFormatter.formatForLlm('read', result).slice(0, 4000);
+          contents.set(bestFile, preview);
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `[AutoResolve] Failed to pre-read "${bestFile}": ${err.message}`,
+        );
+      }
+    } catch (err: any) {
+      this.logger.debug(
+        `[AutoResolve] Failed to scan workspace: ${err.message}`,
+      );
     }
     return contents;
   }
@@ -370,6 +490,18 @@ export class WorkspacePromptBuilderService {
       workspaceId,
       safeGoal,
     );
+
+    // Experiment 1: Auto-resolve file when no @mention but office keywords detected
+    if (mentionedFileContents.size === 0 && workspaceRootPath) {
+      const autoResolved = await this.autoResolveWorkspaceFiles(
+        workspaceId,
+        safeGoal,
+        workspaceRootPath,
+      );
+      for (const [filename, content] of autoResolved) {
+        mentionedFileContents.set(filename, content);
+      }
+    }
 
     let goalContent = safeGoal;
     for (const [filename, content] of mentionedFileContents) {

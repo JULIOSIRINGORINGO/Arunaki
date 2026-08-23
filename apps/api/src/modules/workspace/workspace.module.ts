@@ -33,7 +33,7 @@ import { AgentEventService } from './services/agent-event.service.js';
     PrismaModule,
     ParserModule,
     StorageModule,
-    AiModule,
+    forwardRef(() => AiModule),
     forwardRef(() => ToolsModule),
     FileModule,
     SearchModule,

@@ -501,7 +501,7 @@ export class WorkspaceRunnerService {
           if (isEarlyRoundWithoutAction && nudgeAttempts < 2) {
             nudgeAttempts++;
             this.logger.log(
-              `[Self-Correction] Round ${runState.round} produced 0 tool calls for file mutation task. Injecting action nudge (attempt ${nudgeAttempts})...`,
+              `[Self-Correction] Round ${runState.round} produced 0 tool calls for file mutation task. Injecting smart nudge (attempt ${nudgeAttempts})...`,
             );
             if (aiResponse.content) {
               messages.push({
@@ -515,12 +515,22 @@ export class WorkspaceRunnerService {
             const availableTools = tools
               .map((t) => `\`${t.function.name}\``)
               .join(', ');
+            // Build context-rich nudge with file info and original request
+            const mentionedFiles = Array.from(
+              this.stateService.getMentionedFiles(workspaceId) || [],
+            );
+            const fileHint =
+              mentionedFiles.length > 0
+                ? `\nTarget file(s): ${mentionedFiles.map((f) => `"${f}"`).join(', ')}.`
+                : '';
             messages.push({
               role: 'user',
               content:
                 `[System Action Required] You did not execute any tool to apply the requested modifications. ` +
-                `You have the following tools available: ${availableTools}. ` +
-                `Please call the appropriate tool NOW to apply the changes directly.`,
+                `Available tools: ${availableTools}.${fileHint}\n` +
+                `Original user request: "${safeGoal}"\n` +
+                `You MUST call the appropriate tool NOW with the correct filePath and parameters. ` +
+                `Start by reading the file if you haven't already, then apply the edits.`,
             });
             continue;
           }

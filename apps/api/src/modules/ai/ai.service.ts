@@ -627,10 +627,33 @@ export class AiService {
     goal: string,
     allTools: ToolDefinition[],
   ): Promise<{ tools: string[]; isMutation: boolean; isGui: boolean }> {
-    const availableToolNames = allTools.map((t) => t.function.name).join(', ');
-    const systemPrompt = `You are an Intent Router. Analyze the user's goal and select the exact tools needed from this list: [${availableToolNames}].
-Also determine if the goal requires modifying/writing files or data (isMutation) and if it requires opening a graphical user interface (isGui).
-Always call the 'set_intent' function with your classification.`;
+    // Group tools into compact categories to reduce token consumption on free-tier models.
+    // The classifier only needs to pick tool NAMES — it doesn't need full schemas.
+    const toolsByCategory = new Map<string, string[]>();
+    for (const t of allTools) {
+      const name = t.function.name;
+      let cat = 'other';
+      if (/excel|xlsm|xlsx/i.test(name)) cat = 'Excel';
+      else if (/word|docx/i.test(name)) cat = 'Word';
+      else if (/ppt|powerpoint/i.test(name)) cat = 'Presentation';
+      else if (/pdf/i.test(name)) cat = 'PDF';
+      else if (/^(read|write|edit|delete|rename|list|search)/.test(name)) cat = 'File';
+      else if (/vision|ocr|image/i.test(name)) cat = 'Vision';
+      else if (/web|knowledge|fetch/i.test(name)) cat = 'Web';
+      else if (/memory|recall/i.test(name)) cat = 'Memory';
+      else if (/convert|export|doc_compare|doc_redact|text_extractor/i.test(name)) cat = 'Document';
+      if (!toolsByCategory.has(cat)) toolsByCategory.set(cat, []);
+      toolsByCategory.get(cat)!.push(name);
+    }
+    const groupedList = Array.from(toolsByCategory.entries())
+      .map(([cat, names]) => `${cat}: ${names.join(', ')}`)
+      .join('\n');
+
+    const systemPrompt = `You are an Intent Router. Pick the exact tool names needed for the user's goal.
+Tools by category:
+${groupedList}
+Set isMutation=true if the goal requires writing/editing/creating/deleting data. Set isGui=true if it needs a GUI window.
+Always call 'set_intent' with your classification.`;
 
     const routerTools: ToolDefinition[] = [
       {
@@ -676,10 +699,12 @@ Always call the 'set_intent' function with your classification.`;
       this.logger.error(`Intent classification failed: ${e.message}`);
     }
 
-    // Fallback if LLM fails (safe read-only defaults)
+    // Fallback if LLM fails — use keyword heuristics instead of defaulting to read-only.
+    const mutRe =
+      /\b(catat|update|ubah|isi|buat|tambah|edit|tulis|hapus|format|bold|export|rekap|lengkapi|siapkan|ganti|convert|jadikan|masukkan|input|perbarui|write|create|delete|remove|modify|add|insert|append|change|set|move|copy|rename|save)\b/i;
     return {
       tools: ['read', 'list', 'document_reader'],
-      isMutation: false,
+      isMutation: mutRe.test(goal),
       isGui: false,
     };
   }
