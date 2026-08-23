@@ -498,7 +498,12 @@ export class AiService {
     messages: ChatMessage[],
     tools?: ToolDefinition[],
     options?:
-      { preferredProviderId?: string; reasoningEffort?: string } | string,
+      {
+        preferredProviderId?: string;
+        reasoningEffort?: string;
+        /** Cancels the upstream provider request when fired. */
+        signal?: AbortSignal;
+      } | string,
   ): AsyncGenerator<StreamChunk> {
     const trimmedMessages = messages;
 
@@ -506,6 +511,7 @@ export class AiService {
       typeof options === 'string' ? undefined : options?.preferredProviderId;
     const reasoningEffort =
       typeof options === 'string' ? options : options?.reasoningEffort;
+    const signal = typeof options === 'object' ? options?.signal : undefined;
 
     let provider: ProviderConfig | null = null;
     if (preferredId) {
@@ -558,7 +564,8 @@ export class AiService {
     const rawStream = streamWithFallback({
       provider,
       body,
-      makeRequest: (p, b) => makeSdkRequestStream(p, b),
+      signal,
+      makeRequest: (p, b) => makeSdkRequestStream(p, b, { signal }),
       getNextProvider: (currentId) =>
         this.providerService.getNextAvailable(currentId),
       classifyError: (statusCode, errorBody) =>

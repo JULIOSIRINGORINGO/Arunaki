@@ -283,7 +283,12 @@ export async function makeSdkRequest(
 export async function* makeSdkRequestStream(
   provider: ProviderConfig,
   body: Record<string, any>,
-  options: { firstTokenTimeoutMs?: number; totalTimeoutMs?: number } = {},
+  options: {
+    firstTokenTimeoutMs?: number;
+    totalTimeoutMs?: number;
+    /** External abort (e.g. run-level cancellation) linked into the stream. */
+    signal?: AbortSignal;
+  } = {},
 ): AsyncGenerator<StreamChunk> {
   const canUseTools = (body.tools?.length ?? 0) > 0;
   let done = false;
@@ -301,6 +306,12 @@ export async function* makeSdkRequestStream(
   );
 
   const controller = new AbortController();
+  // Link external cancellation into the internal controller
+  const onExternalAbort = () => controller.abort();
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort();
+    else options.signal.addEventListener('abort', onExternalAbort, { once: true });
+  }
   let gotFirstToken = false;
   const firstTokenTimer = setTimeout(() => {
     console.warn(
@@ -435,6 +446,14 @@ export async function* makeSdkRequestStream(
   } finally {
     clearTimeout(firstTokenTimer);
     clearTimeout(totalTimer);
+    if (options.signal) {
+      options.signal.removeEventListener('abort', onExternalAbort);
+    }
+    // Consumer exited early (generator .return) — cancel the upstream HTTP
+    // request so billed tokens and sockets are not wasted on a dead reader.
+    if (!done && !controller.signal.aborted) {
+      controller.abort();
+    }
   }
 
   if (!done && !gotFirstToken) {

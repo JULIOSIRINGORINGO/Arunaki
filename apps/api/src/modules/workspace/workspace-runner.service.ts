@@ -343,7 +343,11 @@ export class WorkspaceRunnerService {
           for await (const chunk of this.aiService.chatStream(
             messages,
             toolsToPass,
-            modelId ? { preferredProviderId: modelId } : undefined,
+            {
+              ...(modelId ? { preferredProviderId: modelId } : {}),
+              // Cancellation reaches the upstream provider request directly
+              signal: runState.abortController.signal,
+            },
           )) {
             if (chunk.type === 'content' && chunk.content) {
               streamedText += chunk.content;
@@ -472,7 +476,13 @@ export class WorkspaceRunnerService {
           }
         }
 
-        budget.consume(aiResponse.usage?.totalTokens || 0);
+        // Streaming responses often carry no usage — estimate from actual
+        // output (~4 chars/token) so runaway loops still trip the budget.
+        const streamedUsage =
+          aiResponse.usage?.totalTokens ||
+          Math.ceil((aiResponse.content || '').length / 4) +
+            Math.ceil(JSON.stringify(aiResponse.toolCalls).length / 4);
+        budget.consume(streamedUsage);
         if (budget.exceeded) {
           this.logger.warn(
             `Token budget exceeded: ${budget.used}/${budget.limit} tokens after round ${runState.round}. Stopping the run.`,

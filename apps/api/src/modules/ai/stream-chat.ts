@@ -14,6 +14,8 @@ export interface StreamChunk {
 export interface StreamFallbackOptions {
   provider: ProviderConfig;
   body: Record<string, any>;
+  /** Optional external cancellation — aborts are final, never retried. */
+  signal?: AbortSignal;
   makeRequest: (
     provider: ProviderConfig,
     body: Record<string, any>,
@@ -90,6 +92,10 @@ export async function* streamWithFallback(
         yield { type: 'done' };
         return;
       } catch (err: any) {
+        // External cancellation is final — never rotate or retry on it.
+        if (options.signal?.aborted || err?.name === 'AbortError') {
+          throw err;
+        }
         console.error(
           `[streamWithFallback ERROR] Provider ${provider.name} (${provider.model}):`,
           err?.message,
