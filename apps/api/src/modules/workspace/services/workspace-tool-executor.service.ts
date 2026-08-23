@@ -156,14 +156,33 @@ export class WorkspaceToolExecutorService {
       }
 
       if (!declaredTools.has(funcName)) {
+        // Lazy tool promotion: the model reached for a real registry tool that
+        // wasn't in this task's subset. Enable it instead of rejecting — this is
+        // language-agnostic and self-heals router misses.
+        const promoted = this.toolRegistryService
+          .getToolDefinitions()
+          .find((d) => d.function.name === funcName);
+        if (promoted) {
+          tools.push(promoted);
+          declaredTools.add(funcName);
+          this.logger.log(
+            `[Lazy Promotion] "${funcName}" was not in the active subset — enabled on demand.`,
+          );
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: `Tool "${funcName}" is now enabled for this task. Call it again with the correct arguments.`,
+          });
+          continue;
+        }
         this.logger.warn(
-          `Rejected undeclared tool call "${funcName}" (not in active tool subset).`,
+          `Rejected unknown tool call "${funcName}" (not in registry).`,
         );
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
           content:
-            `Error: tool "${funcName}" is not available for this task. ` +
+            `Error: tool "${funcName}" does not exist. ` +
             `Available tools: [${[...declaredTools].join(', ')}]. ` +
             'Use one of those tools.',
         });
