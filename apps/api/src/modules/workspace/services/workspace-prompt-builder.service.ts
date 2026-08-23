@@ -168,6 +168,23 @@ export class WorkspacePromptBuilderService {
       if (MUTATION_KEYWORDS_RE.test(goalLower)) forcedMutation = true;
     }
 
+    // Safety net for non-Office categories — the intent router on free-tier
+    // models can miss these, so keyword matches force them in.
+    const CATEGORY_SAFETY_NET: Array<[RegExp, string[]]> = [
+      [/\bpdf\b/i, ['pdf_manage_pages', 'document_reader']],
+      [/(?:ocr|scan|pindai)\b|ktp|npwp|sim\b|\bfoto\b|\bgambar\b/i, ['image_ocr', 'vision_ai']],
+      [/(?:convert|konversi|jadikan|ekspor|export)\b.*(?:pdf|word|docx|excel|xlsx)?/i, ['convert_document']],
+      [/\b(?:internet|online|berita|googling|cari di web)\b/i, ['web_search']],
+    ];
+    for (const [re, names] of CATEGORY_SAFETY_NET) {
+      if (re.test(goal)) {
+        for (const name of names) {
+          const tool = allTools.find((t) => t.function.name === name);
+          if (tool) selectedNames.add(name);
+        }
+      }
+    }
+
     // Map names back to actual ToolDefinitions
     const tools = allTools.filter((t) => selectedNames.has(t.function.name));
 
