@@ -66,3 +66,4 @@ Perbandingan_Arunaki_vs_OpenClaw_LLM.md
 **/.arunaki/sessions/
 **/.arunaki/backups/
 *.traineddata
+apps/api/start-local.ps1
