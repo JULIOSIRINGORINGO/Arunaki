@@ -28,6 +28,7 @@ export class ModelStreamNormalizerService {
     let lookaheadBuffer = '';
     let totalContentAccumulator = '';
     let hasEmittedToolFromText = false;
+    let hasNativeToolCall = false;
 
     const stripThinking = options.stripThinkingInProse ?? true;
     const suppressToolText = options.suppressLeakedToolText ?? true;
@@ -40,6 +41,9 @@ export class ModelStreamNormalizerService {
       }
 
       if (chunk.type === 'tool_call') {
+        // Native tool calls win: suppress all text-derived repairs for this
+        // stream so example invocations in prose never double-execute.
+        hasNativeToolCall = true;
         yield chunk;
         continue;
       }
@@ -149,8 +153,10 @@ export class ModelStreamNormalizerService {
       }
     }
 
-    // Secondary fallback: if no tool was emitted natively, but total accumulator has leaked tool calls
-    if (!hasEmittedToolFromText && totalContentAccumulator) {
+    // Secondary fallback: only when nothing native was emitted AND no text
+    // repair already fired — prevents phantom/duplicate execution from prose
+    // that merely *shows* an example invocation.
+    if (!hasEmittedToolFromText && !hasNativeToolCall && totalContentAccumulator) {
       const fullRepaired = repairToolCalls(totalContentAccumulator);
       if (fullRepaired.length > 0) {
         for (const tc of fullRepaired) {

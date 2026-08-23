@@ -347,15 +347,11 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         calls.push(call);
       }
     } catch {
-      const call: RepairedToolCall = {
-        id: `repaired-tool-${Date.now()}-${calls.length}`,
-        type: 'function',
-        function: { name: fnName, arguments: repairJson(rawArgs) },
-      };
-      if (!seen.has(fnName + ':' + call.function.arguments)) {
-        seen.add(fnName + ':' + call.function.arguments);
-        calls.push(call);
-      }
+      // Never emit unparseable arguments — skip instead (prevents truncated
+      // garbage from reaching executors).
+      console.warn(
+        `[tool-call-repair] dropped unparseable args for "${fnName}": ${rawArgs.slice(0, 80)}`,
+      );
     }
   }
 
@@ -379,15 +375,10 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         calls.push(call);
       }
     } catch {
-      const call: RepairedToolCall = {
-        id: `repaired-tool-${Date.now()}-${calls.length}`,
-        type: 'function',
-        function: { name: fnName, arguments: repairJson(rawArgs) },
-      };
-      if (!seen.has(fnName + ':' + call.function.arguments)) {
-        seen.add(fnName + ':' + call.function.arguments);
-        calls.push(call);
-      }
+      // Never emit unparseable arguments — skip instead.
+      console.warn(
+        `[tool-call-repair] dropped unparseable args for "${fnName}": ${rawArgs.slice(0, 80)}`,
+      );
     }
   }
 
@@ -550,16 +541,11 @@ export function repairToolCalls(content: string): RepairedToolCall[] {
         calls.push(call);
       }
     } catch {
-      // fallback raw
-      const call: RepairedToolCall = {
-        id: `repaired-tool-${Date.now()}-${calls.length}`,
-        type: 'function',
-        function: { name: fnName, arguments: repairJson(rawArgs) },
-      };
-      if (!seen.has(fnName + ':' + call.function.arguments)) {
-        seen.add(fnName + ':' + call.function.arguments);
-        calls.push(call);
-      }
+      // Do NOT emit raw/unparseable arguments — downstream JSON.parse would
+      // throw or, worse, execute with truncated garbage. Skip this candidate.
+      console.warn(
+        `[tool-call-repair] dropped unparseable args for "${fnName}": ${rawArgs.slice(0, 80)}`,
+      );
     }
   }
 
