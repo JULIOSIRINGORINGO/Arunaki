@@ -72,7 +72,9 @@ export class WorkspaceToolsService {
         `Workspace "${workspaceId}" not found or root path is missing`,
       );
     }
-    return this.requirePathInWorkspace(targetPath, workspace.rootPath);
+    // Models sometimes emit doubled/escaped separators (e.g. "e:\\dir\\file")
+    const normalized = targetPath.replace(/\\{2,}/g, '\\');
+    return this.requirePathInWorkspace(normalized, workspace.rootPath);
   }
 
   /**

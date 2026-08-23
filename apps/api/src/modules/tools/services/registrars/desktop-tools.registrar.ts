@@ -255,7 +255,7 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. To target a specific sheet, provide sheetName.',
+          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, find_cell, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. RULES: (1) For any write/format action you MUST provide sheetName — writes without sheetName are rejected on multi-sheet workbooks. (2) For write_cell, ALWAYS prefer matchColumn+matchValue+targetColumn (label-based targeting by header names) over guessing cell coordinates — read_range the sheet first to learn the column headers; use find_cell with matchValue to locate a label row (e.g. the grand-total row). (3) When a quantity changes, use delta:true and update EVERY affected column in the same call — e.g. when stock leaves the warehouse, increase the outgoing column by N AND decrease the remaining column by N (two write_cell actions with delta:true and negative value for the decrease). (4) For totals/sums/grand-totals NEVER compute the number yourself — first find_cell the total label row, then write an Excel FORMULA into that row\'s sum column AFTER inserting all data rows (e.g. value:"=SUM(E2:E8)"), so the total always reflects the final data.',
         tags: [
           'desktop',
           'excel',
@@ -300,6 +300,10 @@ export class DesktopToolsRegistrar {
                   action: args.action || defaultAction,
                   cell: args.cell,
                   value: args.value,
+                  matchColumn: args.matchColumn,
+                  matchValue: args.matchValue,
+                  targetColumn: args.targetColumn,
+                  delta: args.delta,
                   sourceSheet: args.sourceSheet,
                   newSheetName: args.newSheetName,
                   clearConstants: args.clearConstants,
@@ -377,6 +381,10 @@ export class DesktopToolsRegistrar {
                   action: { type: 'string', description: 'e.g., write_cell, read_range' },
                   cell: { type: 'string', description: 'e.g., B19' },
                   value: { description: 'Value to write (string/number)' },
+                  matchColumn: { type: 'string', description: 'For write_cell with matchValue: header text of the column to search' },
+                  matchValue: { type: 'string', description: 'For write_cell with matchColumn: cell value in that column identifying the target row' },
+                  targetColumn: { type: 'string', description: 'For write_cell with matchColumn/matchValue: header text of the column to write into' },
+                  delta: { type: 'boolean', description: 'For write_cell numeric values: if true, ADD value to the existing cell value instead of replacing (use for increments like stock out/in)' },
                   range: { type: 'string', description: 'e.g., B15:Z30' },
                   sourceSheet: { type: 'string' },
                   newSheetName: { type: 'string' },
@@ -393,6 +401,7 @@ export class DesktopToolsRegistrar {
                 'append_row',
                 'read_cell',
                 'read_range',
+                'find_cell',
                 'write_cell',
                 'insert_row',
                 'delete_row',
@@ -413,6 +422,22 @@ export class DesktopToolsRegistrar {
               description: 'Target cell coordinate (e.g. "V4")',
             },
             value: { description: 'Cell value (number, text, or boolean)' },
+            matchColumn: {
+              type: 'string',
+              description: 'For write_cell with matchValue: header text of the column to search — use this instead of guessing cell coordinates',
+            },
+            matchValue: {
+              type: 'string',
+              description: 'For write_cell with matchColumn: cell value in that column identifying the target row',
+            },
+            targetColumn: {
+              type: 'string',
+              description: 'For write_cell with matchColumn/matchValue: header text of the column to write into',
+            },
+            delta: {
+              type: 'boolean',
+              description: 'For write_cell numeric values: if true, ADD value to the existing cell value instead of replacing (use for increments like stock out/in)',
+            },
             sourceSheet: {
               type: 'string',
               description: 'Source sheet name for clone_sheet or rename_sheet',
@@ -438,7 +463,8 @@ export class DesktopToolsRegistrar {
           },
           required: ['filePath'],
         },
-        timeoutMs: 35000,
+        // Must exceed ExcelComService's internal 2x30s COM attempts
+        timeoutMs: 90000,
       }),
     );
 

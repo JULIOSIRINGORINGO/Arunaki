@@ -1,10 +1,10 @@
-﻿const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 
 const API = 'http://127.0.0.1:3000/api/v1';
 const WID = 'cmt4e7xfh0001vgoc2mx8nf7n';
-const WROOT = 'E:\\JS\\Arunika\\workspace-demo';
+const WROOT = path.join(__dirname, 'workspace-demo');
 const XFILE = 'Laporan Bengkel Januari.xlsx';
 const XPATH = path.join(WROOT, XFILE);
 const KEY = '199710338e26f2127f7012001e927b4b';
@@ -94,8 +94,8 @@ async function send(goal) {
   const res = await fetch(API + '/workspaces/' + WID + '/agent/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-API-Key': KEY },
-    body: JSON.stringify({ goal: goal, historyMessages: [], modelId: 'deepseek/deepseek-chat-v3-0324:free' }),
-    signal: AbortSignal.timeout(300000)
+    body: JSON.stringify({ goal: goal, historyMessages: [], modelId: 'mistral-large:free' }),
+    signal: AbortSignal.timeout(900000)
   });
   if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
   const reader = res.body.getReader();
@@ -111,28 +111,41 @@ async function send(goal) {
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       const ev = JSON.parse(line.slice(6));
-      if (ev.type === 'tool_start') { lastTool = ev.data.toolName; tools.push(ev.data.toolName); }
-      if (ev.type === 'tool_done') lastTool = ev.data.toolName || lastTool;
+      if (ev.type === 'tool_start') { lastTool = ev.data.toolName; tools.push(ev.data.toolName); console.log('    [tool]', ev.data.toolName, JSON.stringify(ev.data.args || {}).slice(0, 300)); }
+      if (ev.type === 'tool_done') { lastTool = ev.data.toolName || lastTool; const st = ev.data.result && ev.data.result.status; if (st && st !== 'success') console.log('    [tool-error]', JSON.stringify(ev.data.result.error || ev.data).slice(0, 300)); }
       if (ev.type === 'text_delta') full += ev.data || '';
       if (ev.type === 'done' && ev.data.content) full = ev.data.content;
       if (ev.type === 'error') errs.push(JSON.stringify(ev.data));
     }
   }
   const ms = Date.now() - t0;
-  console.log('  [' + (ms/1000).toFixed(1) + 's] tools=[' + tools.join(',') + '] err=' + errs.length);
+  console.log('  [' + (ms/1000).toFixed(1) + 's] tools=[' + tools.join(',') + '] errs=' + JSON.stringify(errs));
   return { content: full, tools: tools, errs: errs, lastTool: lastTool };
 }
+
+const { execSync } = require('child_process');
 
 async function main() {
   console.log('=== STRESS TEST: EXCEL MULTI-SHEET (NO HINTS) ===');
   console.log('No cell/column/sheet hints in instructions.\n');
 
+  // Selective turns: node excel-stress-test.cjs T1,T3  → only those turns run
+  const ONLY = process.argv.slice(2).flatMap(a => a.split(',')).filter(Boolean);
+  const want = t => ONLY.length === 0 || ONLY.includes(t);
+
+  // Reset fixture so the test is idempotent (fresh workbook, no stale files)
+  execSync(`node "${path.join(__dirname, 'create-excel.cjs')}"`, { stdio: 'inherit' });
+  for (const f of fs.readdirSync(WROOT)) {
+    if (f.toLowerCase().endsWith('.pdf')) fs.unlinkSync(path.join(WROOT, f));
+  }
+
   await sleep(1000);
 
   // ── TURN 1: Add 2 transactions ──
+  if (want('T1')) {
   console.log('--- T1: Catat penjualan hari ini ---');
   const t1 = await send(
-    'Catat penjualan hari ini di laporan: tanggal 22/01/2026, Semen 40kg terjual 15 sak harga 65000, dan Besi beton 8mm terjual 7 batang harga 98000. Jangan lupa update totalnya juga.'
+    'Catat penjualan hari ini di @Laporan Bengkel Januari.xlsx: tanggal 22/01/2026, Semen 40kg terjual 15 sak harga 65000, dan Besi beton 8mm terjual 7 batang harga 98000. Jangan lupa update totalnya juga.'
   );
   await sleep(3000);
   const g1 = grid('Penjualan Januari');
@@ -141,11 +154,13 @@ async function main() {
   check('T1: Grand total (3621000)', findNum(g1, 3621000).length > 0);
   check('T1: Original data preserved (650000)', findNum(g1, 650000).length > 0);
   check('T1: Tool used is excel-related', t1.tools.some(t => t.includes('excel')));
+  }
 
   // ── TURN 2: Update stock ──
+  if (want('T2')) {
   console.log('\n--- T2: Update stok gudang ---');
   const t2 = await send(
-    'Update stok gudang juga, semen 15 sak dan besi 7 batang tadi keluar dari gudang.'
+    'Update stok gudang juga di @Laporan Bengkel Januari.xlsx, semen 15 sak dan besi 7 batang tadi keluar dari gudang.'
   );
   await sleep(3000);
   const g2 = grid('Stok');
@@ -170,11 +185,13 @@ async function main() {
   check('T2: Stok Semen updated (keluar>30, sisa=awal+masuk-keluar)', semenOk, semenRow ? 'keluar=' + semenRow[4] + ' sisa=' + semenRow[5] : 'row not found');
   check('T2: Stok Besi updated (keluar>25, sisa=awal+masuk-keluar)', besiOk, besiRow ? 'keluar=' + besiRow[4] + ' sisa=' + besiRow[5] : 'row not found');
   check('T2: Tool used is excel-related', t2.tools.some(t => t.includes('excel')));
+  }
 
   // ── TURN 3: Complete rekap ──
+  if (want('T3')) {
   console.log('\n--- T3: Lengkapi rekap bulanan ---');
   const t3 = await send(
-    'Lengkapi rekap bulanannya: isi total penjualan keseluruhan dan jumlah transaksi yang ada di laporan penjualan.'
+    'Lengkapi rekap bulanannya di @Laporan Bengkel Januari.xlsx: isi total penjualan keseluruhan dan jumlah transaksi yang ada di laporan penjualan.'
   );
   await sleep(3000);
   const g3 = grid('Rekap');
@@ -183,11 +200,13 @@ async function main() {
   check('T3: Rekap total penjualan (3621000)', rekapTotal.length > 0);
   check('T3: Rekap jumlah transaksi (7)', rekapCount.length > 0);
   check('T3: Tool used is excel-related', t3.tools.some(t => t.includes('excel')));
+  }
 
   // ── TURN 4: Clone sheet for February ──
+  if (want('T4')) {
   console.log('\n--- T4: Siapkan laporan Februari ---');
   const t4 = await send(
-    'Bulan depan sudah Februari, buat laporan penjualan bulan baru yang strukturnya sama persis tapi kosong datanya dan judulnya ganti Februari. Data januari jangan sampai hilang.'
+    'Bulan depan sudah Februari, buat sheet penjualan bulan baru di @Laporan Bengkel Januari.xlsx yang strukturnya sama persis tapi kosong datanya dan judulnya jadi Februari. Data januari jangan sampai hilang.'
   );
   await sleep(3000);
   const sn = sheets();
@@ -204,27 +223,33 @@ async function main() {
     const febDataRows = gFeb.filter(r => r.some(v => v.trim() !== '' && /rb|sak|batang|pcs/i.test(v)));
     check('T4: Februari sheet is empty (no data rows)', febDataRows.length === 0, 'data rows found=' + febDataRows.length);
   }
+  }
 
   // ── TURN 5: Bold headers ──
+  if (want('T5')) {
   console.log('\n--- T5: Bold header semua tabel ---');
   const t5 = await send(
-    'Biar rapi, baris header atau judul di semua tabel di semua sheet di-bold ya.'
+    'Biar rapi, baris header atau judul di semua tabel di semua sheet di @Laporan Bengkel Januari.xlsx di-bold ya.'
   );
   await sleep(3000);
   // Can't read styles via community xlsx; check tool event
   const formatTools = t5.tools.filter(t => t.includes('excel'));
   check('T5: Excel tool called for formatting', formatTools.length > 0);
+  }
 
   // ── TURN 6: Export rekap to PDF ──
+  if (want('T6')) {
   console.log('\n--- T6: Export rekap ke PDF ---');
   const t6 = await send(
-    'Rekap bulanannya tolong dijadikan file PDF juga.'
+    'Rekap bulanannya di @Laporan Bengkel Januari.xlsx tolong dijadikan file PDF juga.'
   );
   await sleep(3000);
   const pdfFiles = fs.readdirSync(WROOT).filter(f => f.toLowerCase().endsWith('.pdf'));
   check('T6: PDF file created', pdfFiles.length > 0, 'files=' + pdfFiles.join(','));
+  }
 
   // ── FINAL: Workbook integrity ──
+  if (ONLY.length === 0) {
   console.log('\n--- FINAL: Workbook integrity ---');
   try {
     const wbFinal = XLSX.readFile(XPATH);
@@ -232,6 +257,7 @@ async function main() {
     check('FINAL: >= 3 sheets', wbFinal.SheetNames.length >= 3, 'sheets=' + wbFinal.SheetNames.join(','));
   } catch (e) {
     check('FINAL: Workbook opens without error', false, e.message);
+  }
   }
 
   // ── SCORE ──
@@ -241,3 +267,5 @@ async function main() {
 }
 
 main().catch(e => { console.error('FATAL:', e); process.exit(1); });
+
+
