@@ -176,12 +176,12 @@ export class ExcelComService {
           }
           if (a.action === 'set_format') {
             if (a.fontSize !== undefined) {
-              const fs = intIn(a.fontSize, 1, 409);
-              if (fs === null) {
+              const fsz = intIn(a.fontSize, 1, 409);
+              if (fsz === null) {
                 fail('fontSize must be an integer between 1 and 409');
                 continue;
               }
-              a.fontSize = fs;
+              a.fontSize = fsz;
             }
             if (a.bgColor !== undefined) {
               const bg = intIn(a.bgColor, 0, 16777215);
@@ -377,15 +377,6 @@ export class ExcelComService {
       ? `if ($wb.Worksheets.Count -gt 1) { throw ('sheetName is required for this action because the workbook has multiple sheets: ' + ((1..$wb.Worksheets.Count | ForEach-Object { $wb.Worksheets.Item($_).Name }) -join ', ')) }`
       : '';
 
-    const actionBlocks = actions
-      .map((act, i) => {
-        const block = this.buildActionBlock(act, filePath, i);
-        return [activateSheetLine(act.sheetName), block]
-          .filter(Boolean)
-          .join('\n');
-      })
-      .join('\n');
-
     const sheetActivate = escapedSheet
       ? [
           `$topFound = $false`,
@@ -393,6 +384,29 @@ export class ExcelComService {
           `if (-not $topFound) { throw ("Sheet not found: '${escapedSheet}'. Available sheets: " + ((1..$wb.Worksheets.Count | ForEach-Object { $wb.Worksheets.Item($_).Name }) -join ', ')) }`,
         ].join('\n')
       : '';
+
+    // Per-action error isolation: one failing action records a failure result
+    // instead of aborting the whole batch (previous successes still save).
+    const MUTATING = new Set([
+      'write_cell', 'append_row', 'insert_row', 'delete_row',
+      'insert_column', 'delete_column', 'set_format', 'clear_constants',
+    ]);
+    const hasMutating = actions.some((a) => MUTATING.has(a.action));
+    const wrappedBlocks = actions
+      .map((act, i) => {
+        const block = this.buildActionBlock(act, filePath, i);
+        const wrapped = [
+          `  try {`,
+          block,
+          `  } catch {`,
+          `    $results += @{ action='${act.action}'; success=$false; error=$_.Exception.Message }`,
+          `  }`,
+        ].join('\n');
+        return [activateSheetLine(act.sheetName), wrapped]
+          .filter(Boolean)
+          .join('\n');
+      })
+      .join('\n');
 
     const scriptContent = `
 try {
@@ -404,10 +418,11 @@ try {
   ${sheetActivate}
   $ws = $wb.ActiveSheet
   $results = @()
-${actionBlocks}
+${wrappedBlocks}
   $hasSave = $false
   foreach ($a in @($results)) { if ($a.action -eq 'save') { $hasSave = $true } }
-  if (-not $hasSave) { try { $wb.Save() } catch {} }
+  # Read-only batches must not rewrite the source file
+  if (-not $hasSave -and ${hasMutating ? '$true' : '$false'}) { try { $wb.Save() } catch {} }
   $sheetList = @()
   foreach ($s in 1..$wb.Worksheets.Count) { $sheetList += $wb.Worksheets.Item($s).Name }
   $hdrList = @()
@@ -448,7 +463,7 @@ ${actionBlocks}
                   `          if ($h -ieq '${tc}') { $tCol = $c }`,
                   `        }`,
                 `        if ($mCol -gt 0) { for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text -ieq '${mv}') { $tgtRow = $r; break } } }`,
-                `        if ($tgtRow -eq 0) { for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) { for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) { if ([string]$ws.Cells.Item($r, $c).Text -ieq '${mv}') { $tgtRow = $r; break } } } }`,
+                `        if ($tgtRow -eq 0) { for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) { for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) { if ([string]$ws.Cells.Item($r, $c).Text -ieq '${mv}') { $tgtRow = $r; break } } } }`,
                   `        if ($tgtRow -gt 0 -and $tCol -gt 0) { $ws.Cells.Item($tgtRow, $tCol).Formula = '${act.value.replace(/'/g, "''")}'; $results += @{ action='write_cell'; success=$true; row=$tgtRow; column=$tCol } }`,
                   `        else { $results += @{ action='write_cell'; success=$false; error='Match row or target column not found (matchColumn=${mc}, matchValue=${mv})' } }`,
                 ].join('\n');
@@ -592,7 +607,11 @@ ${actionBlocks}
               `          $ne = 0; $tx = 0`,
               `          for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
               `            $t = [string]$ws.Cells.Item($lastRow, $c).Text`,
-              `            if ($t.Trim() -ne '') { $ne++; $d = 0.0; if (-not [double]::TryParse($t, [ref]$d)) { $tx++ } }`,
+              `            if ($t.Trim() -ne '') {`,
+              `              $ne++;`,
+              `              $v = $ws.Cells.Item($lastRow, $c).Value2`,
+              `              if (-not ($v -is [double] -or $v -is [int])) { $tx++ }`,
+              `            }`,
               `          }`,
               `          if ($ne -ge 1 -and $ne -le 2 -and $tx -ge 1) { $ws.Rows($lastRow).Insert() | Out-Null; $targetRow = $lastRow; $summaryShifted = $true }`,
               `        }`,
@@ -628,6 +647,7 @@ ${actionBlocks}
               const v = act.value as Record<string, any>;
               act = {
                 ...act,
+                range: act.range ?? v.range,
                 bold: act.bold ?? v.bold,
                 italic: act.italic ?? v.italic,
                 fontSize: act.fontSize ?? v.fontSize,
@@ -644,9 +664,20 @@ ${actionBlocks}
               parts.push(
                 `${rngExpr}.Font.Italic = ${act.italic ? '$true' : '$false'}`,
               );
-            if (act.fontSize) parts.push(`${rngExpr}.Font.Size = ${act.fontSize}`);
-            if (act.bgColor)
-              parts.push(`${rngExpr}.Interior.ColorIndex = ${act.bgColor}`);
+            if (act.fontSize !== undefined)
+              parts.push(`${rngExpr}.Font.Size = ${act.fontSize}`);
+            if (act.bgColor !== undefined) {
+              // ColorIndex is a 1-56 palette; larger values are RGB → OLE COLOR (BGR)
+              const bg = act.bgColor;
+              if (bg >= 1 && bg <= 56) {
+                parts.push(`${rngExpr}.Interior.ColorIndex = ${bg}`);
+              } else {
+                const r = (bg >> 16) & 0xff;
+                const g = (bg >> 8) & 0xff;
+                const b = bg & 0xff;
+                parts.push(`${rngExpr}.Interior.Color = ${b * 65536 + g * 256 + r}`);
+              }
+            }
             if (act.alignment) {
               const hAlign =
                 act.alignment === 'center'
