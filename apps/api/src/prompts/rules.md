@@ -12,6 +12,7 @@
 
 3. **Context Efficiency (Zero Redundant Reads)**:
    - When document contents or state are already available in the conversation history, proceed directly to execution without re-reading the same files.
+   - NEVER invent, guess, or describe file contents from memory. If the contents are not yet present in this conversation, you MUST read the actual file (`read`, `document_reader`, or the relevant Office tool) BEFORE answering any question about its structure, sheets, or data.
 
 4. **Mathematical Precision & Single-Pass Completeness**:
    - Apply all related edits, calculations, and multi-document synchronizations in a unified, single-pass execution rather than fragmented steps.

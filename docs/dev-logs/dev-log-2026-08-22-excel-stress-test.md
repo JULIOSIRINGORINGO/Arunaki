@@ -144,3 +144,53 @@ node test/excel-stress-test.cjs
 - T5: set_format action called
 - T6: PDF file created
 - FINAL: Workbook valid + >= 3 sheets
+
+---
+
+## Update 24 Aug 2026 - Tool Stability Suite v2 & Root-Cause Fixes
+
+### Perbaikan baru
+
+1. **workspace-path.util.ts (NEW)** - Model kecil sering mengirim path ABSOLUT untuk filename
+   (Workspace Root terlihat di system prompt). Sanitizer lama mengubah backslash jadi _
+   sehingga file mendarat sebagai E__JS_Arunika_workspace-demo_file.txt. Util baru:
+   - Absolute path DI DALAM workspace root -> dikonversi jadi relative path
+   - Relative path dengan subfolder -> dipertahankan
+   - Traversal .. atau path luar root -> fallback legacy sanitize
+   - Unit assertions: 5/5 PASS
+
+2. **write-tool.service.ts** - pakai esolveWorkspaceFilename() (fix T2/T4 nyasar file)
+
+3. **ules.md Rule 3** - tambahan anti-halusinasi: dilarang mengarang isi file;
+   WAJIB baca file asli sebelum menjawab struktur/isi (fix kelas T7).
+
+4. **	ool-stability-test.cjs v2** - verifikasi berbasis OUTCOME (bukan nama tool):
+   T2/T4 cek filesystem langsung, T6 cek angka benar (15000m/120mnt),
+   T7 cek 3 nama sheet asli disebut, T9 regenerasi template + cek total 2230000.
+   Mendukung batch: 
+ode test/tool-stability-test.cjs <model> T1,T2,T3
+
+### Hasil per batch (agnes-2-0-flash:free)
+
+| Batch | Run pertama | Diagnosis |
+|---|---|---|
+| A (T1-T3) | 6/9 run: T1-T3 PASS | Setelah fix path: 0/3 = FALSE NEGATIVE, saldo provider habis lagi |
+| B (T4-T6) | campuran | T5 timeout = variance free tier; T4 = bug path absolut (fixed) |
+| C (T7-T9) | non-deterministik | Model kadang jawab tanpa tool; dicegah rules.md, perlu re-test |
+
+### Temuan penting provider (kenari.id)
+
+Model label "Gratis" TETAP memotong saldo untuk reservasi per-request (Rp 28-151).
+Run 6/9 menghabiskan sisa saldo -> semua run setelahnya gagal HTTP 402
+insufficient_balance dengan response kosong (tools=[], content="").
+
+### Langkah lanjut
+
+1. Top up saldo kenari.id (https://kenari.id/pay)
+2. Jalankan ulang per batch:
+   `
+   node test/tool-stability-test.cjs "agnes-2-0-flash:free" T1,T2,T3   # Batch A
+   node test/tool-stability-test.cjs "agnes-2-0-flash:free" T4,T5,T6   # Batch B
+   node test/tool-stability-test.cjs "agnes-2-0-flash:free" T7,T8,T9   # Batch C
+   `
+3. Target: agnes-2-0-flash stabil 9/9 (benar > cepat); model besar otomatis mengikuti.

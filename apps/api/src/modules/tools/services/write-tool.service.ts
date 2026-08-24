@@ -5,6 +5,7 @@ import { StorageService } from '../../storage/storage.service.js';
 import { FileService } from '../../file/file.service.js';
 import { ParserService } from '../../parser/parser.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
+import { resolveWorkspaceFilename } from './workspace-path.util.js';
 
 @Injectable()
 export class WriteToolService {
@@ -59,11 +60,10 @@ export class WriteToolService {
     const rootPath = workspace.rootPath;
     const defaultSourceId = workspace.sources[0]?.id;
 
-    const normalizedFilename = filename.replace(/^@+/, '').trim();
-    const cleanFilename = normalizedFilename.replace(/[/\\?%*:|"<>]/g, '_');
-    const finalFilename = cleanFilename.endsWith(`.${format}`)
-      ? cleanFilename
-      : `${cleanFilename}.${format}`;
+    let finalFilename = resolveWorkspaceFilename(filename, rootPath);
+    if (!/\.[A-Za-z0-9]+$/.test(finalFilename)) {
+      finalFilename = `${finalFilename}.${format}`;
+    }
     const targetPath = path.join(rootPath, finalFilename);
 
     // Enforce Document-Centric Mission: Block creating programming source files
