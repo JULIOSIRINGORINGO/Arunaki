@@ -402,6 +402,7 @@ export class ProviderService extends BaseService<Provider> {
       const nextModel = this.catalogService.getNextModelInPreset(
         preset,
         currentProviderId,
+        triedProviderIds,
       );
       if (!nextModel) {
         this.logger.log(`Preset ${preset.name}: no un-tried models left`);

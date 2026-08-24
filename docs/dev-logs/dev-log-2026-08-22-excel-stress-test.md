@@ -194,3 +194,52 @@ insufficient_balance dengan response kosong (tools=[], content="").
    node test/tool-stability-test.cjs "agnes-2-0-flash:free" T7,T8,T9   # Batch C
    `
 3. Target: agnes-2-0-flash stabil 9/9 (benar > cepat); model besar otomatis mengikuti.
+
+---
+
+## Update 24 Aug 2026 (Sesi 2) - Excel COM Semantics Hardening
+
+### Fix layanan berlapis (semua terverifikasi via debug E2E)
+
+1. **Registrar error surfacing** - desktop_excel_edit sebelumnya selalu status=success
+   walau sheet salah/aksi gagal. Sekarang memeriksa res.success + per-action flags.
+2. **Dynamic header row** - matchColumn sebelumnya hardcode header=row 1; workbook nyata
+   (title merge, header row 3) gagal semua. Kini scan 5 baris pertama.
+3. **Key-Value layout** - matchValue == label -> tulis ke sel kosong pertama kanan label
+   (pola Rekap: label | nilai).
+4. **UPSERT key-column** - matchValue tak ada di kolom kunci -> sisip baris baru di atas
+   baris ringkasan (TOTAL), isi kolom kunci agar call saudara ketemu.
+5. **Cross-keyed lookup** - matchColumn=target col tapi matchValue adalah nilai kolom kunci
+   -> tetap resolve benar (pola glm: Keluar+BRG003).
+6. **append_row row:[array]** - beberapa model taruh payload di field 'row'; kini diterima.
+7. **Delta numeric guard** - delta pada sel non-numerik fallback ke set biasa.
+8. **Atomic mutation save** - save hanya jika 0 aksi gagal (cegah double-apply delta saat
+   model retry batch parsial). Side-effect: model yang konsisten salah -> tidak tersimpan
+   apa pun (terlihat pada T9 agnes terakhir).
+
+### Rotasi provider
+
+- kenari preset fallbackModels diganti pool GRATIS: agnes-2-0/glm-4-7/step-3-7/deepseek-v4-flash:free
+- getNextModelInPreset kini pool-aware terhadap triedProviderIds (rotasi maju antar model
+  gratis, tidak lagi stuck re-propose pool[0] lalu abort).
+- Bukti tagihan: deepseek-v4-flash PAID terpakai jam 10.36 karena rotasi lama jatuh ke
+  fallbackModels berbayar + DB provider kosong.
+
+### Status T9 (stres terberat) per model mini
+
+| Model | baris masuk | total update | catatan |
+|---|---|---|---|
+| glm-4-7-flash | PASS (posisi ideal) | PASS di 1 run, miss di run lain | kadang berhenti sebelum total |
+| agnes-2-0-flash | pernah PASS penuh (repro) | idem | retry campur aksi gagal -> atomic save menahan |
+
+Kesimpulan: lapisan tool sudah toleran terhadap 5 gaya penulisan model berbeda;
+ketidakstabilan sisa berasal dari strategi multi-langkah model mini (lupa langkah total,
+mengulang batch dengan 1 aksi buruk). Bukan lagi bug service.
+
+### Next
+
+1. Eksperimen relax atomic-save: skip-save hanya jika aksi delta sukses + ada fail
+   (tulis ulang non-delta aman idempotent).
+2. Nudge runner level: jika goal memuat kata 'total/rekap' dan belum ada write ke cell
+   ringkasan -> satu round nudge.
+3. Uji 1 model berbayar murah sebagai baseline sanity (bukti suite sendiri sehat).

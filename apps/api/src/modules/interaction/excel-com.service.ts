@@ -421,13 +421,17 @@ try {
 ${wrappedBlocks}
   $hasSave = $false
   foreach ($a in @($results)) { if ($a.action -eq 'save') { $hasSave = $true } }
-  # Read-only batches must not rewrite the source file
-  if (-not $hasSave -and ${hasMutating ? '$true' : '$false'}) { try { $wb.Save() } catch {} }
+  # Read-only batches must not rewrite the source file.
+  # Atomic mutation: if ANY action failed, save NOTHING — a retried batch
+  # must never double-apply deltas on top of a half-applied state.
+  $failCount = 0
+  foreach ($a in @($results)) { if ($a.success -eq $false) { $failCount++ } }
+  if (-not $hasSave -and ${hasMutating ? '$true' : '$false'} -and $failCount -eq 0) { try { $wb.Save() } catch {} }
   $sheetList = @()
   foreach ($s in 1..$wb.Worksheets.Count) { $sheetList += $wb.Worksheets.Item($s).Name }
   $hdrList = @()
   try { for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 40); $c++) { $hdrList += [string]$ws.Cells.Item(1, $c).Text } } catch {}
-  @{ success=$true; actionsExecuted=$results.Length; results=$results; sheets=($sheetList -join ', '); activeSheet=$ws.Name; headers=($hdrList -join ' | ') } | ConvertTo-Json -Depth 5
+  @{ success=($failCount -eq 0); actionsExecuted=$results.Length; failed=$failCount; results=$results; sheets=($sheetList -join ', '); activeSheet=$ws.Name; headers=($hdrList -join ' | ') } | ConvertTo-Json -Depth 5
 } catch {
   @{ success=$false; error=$_.Exception.Message } | ConvertTo-Json
 } finally {
@@ -454,18 +458,58 @@ ${wrappedBlocks}
               const mc = (act.matchColumn || '').replace(/'/g, "''");
               const tc = (act.targetColumn || act.matchColumn).replace(/'/g, "''");
               const mv = (act.matchValue ?? '').toString().replace(/'/g, "''");
+              // Shared label-resolution preamble.
+              // Supports two real-world layouts:
+              //  A) Table: header row + data rows → find row where matchColumn == matchValue
+              //  B) Key-Value: label cell in col A, value in the next empty cell to its
+              //     right (matchValue repeats the label itself) → write beside the label
+              const resolveBlock = [
+                `        $mCol = 0; $tCol = 0; $tgtRow = 0; $hdrRow = 0; $keyCol = 0`,
+                `        for ($hr = 1; $hr -le [Math]::Min($ws.UsedRange.Rows.Count, 5); $hr++) {`,
+                `          for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
+                `            $h = [string]$ws.Cells.Item($hr, $c).Text`,
+                `            if ($h -ieq '${mc}') { $mCol = $c; $hdrRow = $hr }`,
+                `            if ($h -ieq '${tc}') { $tCol = $c }`,
+                `            if ($h.Trim() -ne '' -and $keyCol -eq 0) { $keyCol = $c }`,
+                `          }`,
+                `          if ($mCol -gt 0) { break }`,
+                `        }`,
+                `        if ($mCol -gt 0 -and '${mv}' -ieq '${mc}') {`,
+                `          $tgtRow = $hdrRow`,
+                `          if ($tCol -le $mCol) {`,
+                `            $tCol = 0`,
+                `            for ($c = $mCol + 1; $c -le [Math]::Min($mCol + 6, $ws.UsedRange.Columns.Count); $c++) { if ([string]$ws.Cells.Item($hdrRow, $c).Text -eq '') { $tCol = $c; break } }`,
+                `            if ($tCol -eq 0) { $tCol = $mCol + 1 }`,
+                `          }`,
+                `        } elseif ($mCol -gt 0) {`,
+                `          for ($r = $hdrRow + 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text -ieq '${mv}') { $tgtRow = $r; break } }`,
+                `          if ($tgtRow -eq 0 -and $keyCol -gt 0 -and $keyCol -ne $mCol) {`,
+                `            # Cross-keyed lookup: matchValue lives in the key column → write into target column of that row`,
+                `            for ($r = $hdrRow + 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $keyCol).Text -ieq '${mv}') { $tgtRow = $r; break } }`,
+                `          }`,
+                `          if ($tgtRow -eq 0 -and $mCol -eq $keyCol) {`,
+                `            # UPSERT (key column only): no matching row → append into table, above a trailing summary row when present`,
+                `            $lastRow = [int]($ws.Cells.Item([int]$ws.Rows.Count, $mCol).End(-4162).Row)`,
+                `            if ($lastRow -le $hdrRow) { $tgtRow = $hdrRow + 1 }`,
+                `            else {`,
+                `              for ($r = $hdrRow + 1; $r -le $lastRow -and $tgtRow -eq 0; $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text.Trim() -eq '') { $tgtRow = $r } }`,
+                `              if ($tgtRow -eq 0) {`,
+                `                $ne = 0; $tx = 0`,
+                `                for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) { $t = [string]$ws.Cells.Item($lastRow, $c).Text; if ($t.Trim() -ne '') { $ne++; $v2 = $ws.Cells.Item($lastRow, $c).Value2; if (-not ($v2 -is [double] -or $v2 -is [int])) { $tx++ } } }`,
+                `                if ($ne -ge 1 -and $ne -le 2 -and $tx -ge 1) { $ws.Rows($lastRow).Insert() | Out-Null; $tgtRow = $lastRow } else { $tgtRow = $lastRow + 1 }`,
+                `              }`,
+                `            }`,
+                `            $ws.Cells.Item($tgtRow, $mCol).Value2 = '${mv}'`,
+                `          }`,
+                `        }`,
+              ].join('\n');
+              const missBlock =
+                `        else { $results += @{ action='write_cell'; success=$false; error='Match row or target column not found (matchColumn=${mc}, matchValue=${mv})' } }`;
               if (typeof act.value === 'string' && act.value.startsWith('=')) {
                 return [
-                  `        $mCol = 0; $tCol = 0; $tgtRow = 0`,
-                  `        for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
-                  `          $h = [string]$ws.Cells.Item(1, $c).Text`,
-                  `          if ($h -ieq '${mc}') { $mCol = $c }`,
-                  `          if ($h -ieq '${tc}') { $tCol = $c }`,
-                  `        }`,
-                `        if ($mCol -gt 0) { for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text -ieq '${mv}') { $tgtRow = $r; break } } }`,
-                `        if ($tgtRow -eq 0) { for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) { for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) { if ([string]$ws.Cells.Item($r, $c).Text -ieq '${mv}') { $tgtRow = $r; break } } } }`,
+                  resolveBlock,
                   `        if ($tgtRow -gt 0 -and $tCol -gt 0) { $ws.Cells.Item($tgtRow, $tCol).Formula = '${act.value.replace(/'/g, "''")}'; $results += @{ action='write_cell'; success=$true; row=$tgtRow; column=$tCol } }`,
-                  `        else { $results += @{ action='write_cell'; success=$false; error='Match row or target column not found (matchColumn=${mc}, matchValue=${mv})' } }`,
+                  missBlock,
                 ].join('\n');
               }
               let mval: any;
@@ -482,19 +526,14 @@ ${wrappedBlocks}
                 mval = act.value;
               }
               return [
-                `        $mCol = 0; $tCol = 0; $tgtRow = 0`,
-                `        for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
-                `          $h = [string]$ws.Cells.Item(1, $c).Text`,
-                `          if ($h -ieq '${mc}') { $mCol = $c }`,
-                `          if ($h -ieq '${tc}') { $tCol = $c }`,
-                `        }`,
-                `        if ($mCol -gt 0) { for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text -ieq '${mv}') { $tgtRow = $r; break } } }`,
+                resolveBlock,
                 `        if ($tgtRow -gt 0 -and $tCol -gt 0) {`,
-                `          if (${act.delta ? '$true' : '$false'}) { $d${idx} = [double]$ws.Cells.Item($tgtRow, $tCol).Value2 + ${mval}; Invoke-Expression ('$ws.Cells.Item(' + $tgtRow + ',' + $tCol + ').Value2 = ' + $d${idx}) }`,
+                `          $cur${idx} = $ws.Cells.Item($tgtRow, $tCol).Value2`,
+                `          if (${act.delta ? '$true' : '$false'} -and ($cur${idx} -is [double] -or $cur${idx} -is [int])) { $d${idx} = [double]$cur${idx} + ${mval}; Invoke-Expression ('$ws.Cells.Item(' + $tgtRow + ',' + $tCol + ').Value2 = ' + $d${idx}) }`,
                 `          else { $ws.Cells.Item($tgtRow, $tCol).Value2 = ${mval} }`,
                 `          $results += @{ action='write_cell'; success=$true; row=$tgtRow; column=$tCol }`,
                 `        }`,
-                `        else { $results += @{ action='write_cell'; success=$false; error='Match row or target column not found (matchColumn=${mc}, matchValue=${mv})' } }`,
+                missBlock,
               ].join('\n');
             }
             const cellCoord = act.cell || 'A1';
@@ -564,7 +603,10 @@ ${wrappedBlocks}
             const valueSrc =
               (act as any).value ??
               (act as any).values ??
-              (act as any).data;
+              (act as any).data ??
+              // Some models put the row payload in `row` (an insert_row leftover).
+              // Accept an array there instead of silently appending nothing.
+              (Array.isArray((act as any).row) ? (act as any).row : undefined);
             const isHeaderObject =
               valueSrc !== null &&
               typeof valueSrc === 'object' &&

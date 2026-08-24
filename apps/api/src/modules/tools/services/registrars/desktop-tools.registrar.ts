@@ -347,6 +347,38 @@ export class DesktopToolsRegistrar {
               actions,
               args.sheetName,
             );
+            // Surface COM-level and per-action failures — previously a wrong
+            // sheetName or unmatched row reported status:'success' here,
+            // so the LLM never learned its call had no effect.
+            const failedActions: Array<{ error?: string }> = Array.isArray(
+              (res as any)?.results,
+            )
+              ? (res as any).results.filter(
+                  (r: any) => r && r.success === false,
+                )
+              : [];
+            if (
+              (res as any)?.success === false ||
+              failedActions.length > 0
+            ) {
+              const reason =
+                (res as any)?.error ||
+                failedActions
+                  .map((f) => f.error)
+                  .filter(Boolean)
+                  .join('; ') ||
+                'Unknown Excel COM failure';
+              return {
+                status: 'error',
+                data: res as any,
+                preview: `Excel edit failed: ${reason}`,
+                metadata: {
+                  toolName: 'desktop_excel_edit',
+                  displayName: 'Edit Excel via COM',
+                  executionTime: 0,
+                },
+              };
+            }
             return {
               status: 'success',
               data: res,

@@ -57,7 +57,15 @@ export class ProviderCatalogService {
       baseUrl: 'https://kenari.id/v1',
       keyPrefix: 'kn-',
       urlKeyword: 'kenari.id',
-      fallbackModels: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+      // Free-tier only rotation pool: Kenari bills per-request even for
+      // models labeled free once balance reserves apply, so NEVER put paid
+      // models here — rotation must never silently spend user credit.
+      fallbackModels: [
+        'agnes-2-0-flash:free',
+        'glm-4-7-flash:free',
+        'step-3-7-flash:free',
+        'deepseek-v4-flash:free',
+      ],
     },
   ];
 
@@ -81,9 +89,22 @@ export class ProviderCatalogService {
   getNextModelInPreset(
     preset: ProviderCatalogPreset,
     currentModelId?: string,
+    triedProviderIds: string[] = [],
   ): string | null {
     const pool = preset.fallbackModels;
     if (!pool || pool.length === 0) return 'default';
+
+    // Prefer the first pool entry NOT yet tried in this rotation. This keeps
+    // failover advancing through sibling free models (agnes → glm → step …)
+    // instead of re-proposing pool[0], which the caller then discards as
+    // already-tried and aborts the whole rotation.
+    const untried = pool.find(
+      (m) =>
+        !triedProviderIds.some(
+          (t) => t === m || t.includes(m) || m.includes(t),
+        ),
+    );
+    if (untried) return untried;
 
     const currentIndex = pool.findIndex(
       (m) => m === currentModelId || currentModelId?.includes(m),
