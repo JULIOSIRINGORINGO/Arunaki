@@ -74,8 +74,12 @@ async function send(goal, timeoutMs) {
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       let ev; try { ev = JSON.parse(line.slice(6)); } catch { continue; }
-      if (ev.type === 'tool_start') tools.push(ev.data?.toolName || '?');
-      else if (ev.type === 'text_delta') text += ev.data || '';
+      if (ev.type === 'tool_start') {
+        tools.push(ev.data?.toolName || '?');
+        if (process.env.TOOL_DEBUG) console.log(`\n    >> ${ev.data.toolName} ${JSON.stringify(ev.data.args).slice(0, 300)}`);
+      } else if (ev.type === 'tool_done') {
+        if (process.env.TOOL_DEBUG) console.log(`    << status=${ev.data?.result?.status} ${String(ev.data?.result?.preview || '').slice(0, 200)}`);
+      } else if (ev.type === 'text_delta') text += ev.data || '';
       else if (ev.type === 'done' && ev.data?.content && ev.data.content.length > text.length) text = ev.data.content;
     }
   }
@@ -85,33 +89,33 @@ async function send(goal, timeoutMs) {
 const norm = s => String(s).replace(/\./g, '').replace(/\s+/g, ' ').toLowerCase();
 
 const CASES = [
-  { id: 'T1-list', timeout: 120000,
+  { id: 'T1-list', timeout: 300000,
     goal: 'List semua file yang ada di workspace ini.',
     verify: r => ({ ok: r.tools.length > 0 && r.text.length > 10, why: 'perlu >=1 tool utk list nyata' }) },
-  { id: 'T2-write', timeout: 120000,
+  { id: 'T2-write', timeout: 300000,
     goal: 'Buat file catatan-tool-test.txt dengan isi persis: halo dari tool stability test',
     pre: () => { try { fs.unlinkSync(NOTE); } catch {} },
     verify: () => ({ ok: fs.existsSync(NOTE) && /halo dari tool stability test/i.test(fs.readFileSync(NOTE, 'utf8')), why: 'file harus ada & isi cocok' }) },
-  { id: 'T3-read', timeout: 120000,
+  { id: 'T3-read', timeout: 300000,
     goal: 'Baca isi file catatan-tool-test.txt lalu tuliskan isinya apa adanya.',
     verify: r => ({ ok: /halo dari tool stability test/i.test(r.text), why: 'jawaban harus berisi konten file asli' }) },
-  { id: 'T4-edit', timeout: 120000,
+  { id: 'T4-edit', timeout: 300000,
     goal: 'Ubah seluruh isi file catatan-tool-test.txt menjadi: sudah diedit oleh agent',
     verify: () => ({ ok: fs.existsSync(NOTE) && /sudah diedit oleh agent/i.test(fs.readFileSync(NOTE, 'utf8')), why: 'isi file harus berubah' }) },
-  { id: 'T5-extract', timeout: 150000,
+  { id: 'T5-extract', timeout: 300000,
     goal: 'Ekstrak data terstruktur dari teks ini: "Nama: Budi Santoso, Umur: 30, Kota: Medan, Total Belanja: Rp150.000". Tampilkan sebagai tabel.',
     verify: r => ({ ok: /budi santoso/i.test(r.text) && /150\.?000/.test(r.text) && /\b30\b/.test(r.text), why: 'nama+total+umur harus muncul' }) },
-  { id: 'T6-unitconv', timeout: 150000,
+  { id: 'T6-unitconv', timeout: 300000,
     goal: 'Konversi 15 km ke meter dan 2 jam ke menit.',
     verify: r => ({ ok: /15000/.test(norm(r.text)) && /\b120\b/.test(r.text), why: 'harus 15000 meter & 120 menit' }) },
-  { id: 'T7-docreader', timeout: 180000,
+  { id: 'T7-docreader', timeout: 360000,
     goal: 'Sebutkan daftar sheet yang ada di dalam Laporan Bengkel Januari.xlsx beserta jumlah baris datanya.',
     verify: r => { const t = r.text.toLowerCase(); return { ok: t.includes('penjualan januari') && t.includes('stok') && t.includes('rekap'), why: '3 nama sheet asli harus disebut (tak mungkin tanpa baca file)' }; } },
-  { id: 'T8-todo', timeout: 150000,
+  { id: 'T8-todo', timeout: 300000,
     goal: 'Susun rencana rekap penjualan bulanan menjadi 3 langkah kerja.',
     verify: r => ({ ok: r.text.length > 50, why: 'rencana tersusun (todo opsional dinilai dari coverage)' }),
     softExpect: ['todo_write'] },
-  { id: 'T9-excel', timeout: 300000,
+  { id: 'T9-excel', timeout: 420000,
     goal: 'Catat penjualan tanggal 23/01/2026 di Laporan Bengkel Januari.xlsx: Cat Tembok 5kg terjual 6 kaleng harga 45000 per kaleng. Hitung dan perbarui juga total keseluruhan.',
     verify: () => { const g = grid('Penjualan Januari'); return { ok: hasNum(g, 270000) && hasNum(g, 2230000), why: `baris baru 270000 & total 2230000 | total ditemukan=${hasNum(g, 2230000)}, baris=${hasNum(g, 270000)}` }; },
     softExpect: ['desktop_excel_edit'] },
@@ -144,3 +148,4 @@ async function main() {
   process.exit(P === results.length ? 0 : 1);
 }
 main().catch(e => { console.error('FATAL:', e.message); process.exit(1); });
+

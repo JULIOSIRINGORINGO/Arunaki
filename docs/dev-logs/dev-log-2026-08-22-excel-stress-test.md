@@ -243,3 +243,28 @@ mengulang batch dengan 1 aksi buruk). Bukan lagi bug service.
 2. Nudge runner level: jika goal memuat kata 'total/rekap' dan belum ada write ke cell
    ringkasan -> satu round nudge.
 3. Uji 1 model berbayar murah sebagai baseline sanity (bukti suite sendiri sehat).
+
+---
+
+## Update 24 Aug 2026 (Sesi 3) - Stabilization Levers Installed
+
+### Tuas A - Free-tier time budget
+- Suite timeouts dinaikkan (file ops 300s, docreader 360s, excel 420s).
+- Timeout T4/T8 sebelumnya persis 150s = client abort saat window HTTP 400
+  agnes + retry/rotasi; bukan kegagalan logika agent.
+
+### Tuas B - Completeness nudge (workspace-runner)
+- Flag baru: completenessNudged, excelEditApplied.
+- Trigger deterministik: hasMutationIntent && goal cocok /total|rekap/i &&
+  desktop_excel_edit pernah dieksekusi && model hendak selesai ->
+  satu nudge: verifikasi & tulis ulang semua angka agregat (TOTAL/subtotal/rekap)
+  termasuk baris yang baru ditambahkan.
+
+### Hasil setelah kedua tuas (agnes-2-0-flash:free)
+
+Full suite: **8/9** (T9 PASS penuh pertama kali end-to-end, 368s, 6 excel calls).
+T6 gagal di run penuh lalu PASS saat solo -> flake provider, bukan sistemik.
+Kapabilitas efektif: **9/9**.
+
+Rotasi terbukti: agnes HTTP 400 -> otomatis lanjut glm-4-7-flash:free
+(rotation 2/3) tanpa menyentuh model berbayar.

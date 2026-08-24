@@ -287,6 +287,8 @@ export class WorkspaceRunnerService {
       let reachedMaxRounds = true;
       let executedToolCount = 0;
       let nudgeAttempts = 0;
+      let completenessNudged = false;
+      let excelEditApplied = false;
       const runStartTime = Date.now();
       let mutationsApplied = 0;
       let noProgressRounds = 0;
@@ -345,6 +347,10 @@ export class WorkspaceRunnerService {
           let streamedText = '';
           const streamedToolCalls: any[] = [];
 
+          const sysMsg = messages.find((m) => m.role === 'system');
+          this.logger.log(
+            `[TRACE-RUNNER] round=${round} msgs=${messages.length} sysLen=${(sysMsg?.content || '').length} toolsPassed=${toolsToPass?.length ?? 0} model=${modelId || 'default'}`,
+          );
           for await (const chunk of this.aiService.chatStream(
             messages,
             toolsToPass,
@@ -550,6 +556,40 @@ export class WorkspaceRunnerService {
             continue;
           }
 
+          // Completeness nudge: goal asks for totals/rekap, Excel was mutated,
+          // but the model is about to finish without a second confirming pass.
+          const goalNeedsTotal =
+            hasMutationIntent && /total|rekap/i.test(safeGoal || '');
+          if (
+            !completenessNudged &&
+            goalNeedsTotal &&
+            excelEditApplied &&
+            nudgeAttempts < 3
+          ) {
+            completenessNudged = true;
+            nudgeAttempts++;
+            this.logger.log(
+              `[Self-Correction] Completeness nudge: goal mentions total/rekap and Excel was edited. Verifying summary figures before finish...`,
+            );
+            if (aiResponse.content) {
+              messages.push({
+                role: 'assistant',
+                content:
+                  this.streamNormalizer.cleanseAssistantMessageForHistory(
+                    aiResponse.content,
+                  ),
+              });
+            }
+            messages.push({
+              role: 'user',
+              content:
+                `[Completeness Check] Before finishing: re-read the affected sheet and verify every aggregate figure ` +
+                `(grand TOTAL, per-category subtotals, rekap values) is recalculated and written to match all rows — ` +
+                `including any row you just added. If a figure is stale or missing, update it now with desktop_excel_edit, then confirm.`,
+            });
+            continue;
+          }
+
           finalContent = this.scrubber.scrub(aiResponse.content);
           if (!isStreamed) {
             onEvent({ type: 'text_delta', data: finalContent });
@@ -635,6 +675,13 @@ export class WorkspaceRunnerService {
           onEvent,
         );
 
+        if (
+          aiResponse.toolCalls.some(
+            (tc) => tc.function?.name === 'desktop_excel_edit',
+          )
+        ) {
+          excelEditApplied = true;
+        }
         executedToolCount += toolExecResult.executedToolCount;
         mutationsApplied = toolExecResult.mutationsApplied;
         noProgressRounds = toolExecResult.noProgressRounds;
