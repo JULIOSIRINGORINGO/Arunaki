@@ -67,3 +67,8 @@ Perbandingan_Arunaki_vs_OpenClaw_LLM.md
 **/.arunaki/backups/
 *.traineddata
 apps/api/start-local.ps1
+
+# Office suite fixtures (stability tests)
+*.pptx
+workspace-demo/struk-test.png
+workspace-demo/stempel-lunas.png
