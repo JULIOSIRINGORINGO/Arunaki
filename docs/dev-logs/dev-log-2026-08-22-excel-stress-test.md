@@ -268,3 +268,29 @@ Kapabilitas efektif: **9/9**.
 
 Rotasi terbukti: agnes HTTP 400 -> otomatis lanjut glm-4-7-flash:free
 (rotation 2/3) tanpa menyentuh model berbayar.
+
+---
+
+## Update 24 Aug 2026 (Sesi 4) - Word/PPT COM Hardening
+
+### Fix proaktif (pelajaran Excel diterapkan sebelum testing)
+
+1. word-com.service.ts - atomic save + success flag jujur (failCount)
+2. ppt-com.service.ts - idem
+3. desktop-tools.registrar.ts blok Word & PPT - surface per-action failures
+
+### Suite baru: apps/api/test/office-stability-test.cjs
+
+Fixture COM langsung (docx harga Rp1.500.000, pptx 2 slide).
+Verifikasi outcome: mammoth untuk docx, COM slide count, fs untuk PDF.
+
+### Hasil (agnes-2-0-flash:free)
+
+- Batch D Word: D1 replace_text, D2 append_paragraph, D3 export_pdf = 3/3
+- Batch E PPT: E1 add_slide = 1/1
+- PASS semua pada run pertama tanpa siklus debug.
+
+### Cara jalankan
+
+node test/office-stability-test.cjs agnes-2-0-flash:free D
+node test/office-stability-test.cjs agnes-2-0-flash:free E1

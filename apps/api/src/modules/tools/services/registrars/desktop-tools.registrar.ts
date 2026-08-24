@@ -787,6 +787,36 @@ export class DesktopToolsRegistrar {
             }
 
             const res = await services.wordCom.editWord(safePath, actions);
+            // Surface COM-level and per-action failures instead of fake success
+            const failedWord: Array<{ error?: string }> = Array.isArray(
+              (res as any)?.results,
+            )
+              ? (res as any).results.filter(
+                  (r: any) => r && r.success === false,
+                )
+              : [];
+            if (
+              (res as any)?.success === false ||
+              failedWord.length > 0
+            ) {
+              const reason =
+                (res as any)?.error ||
+                failedWord
+                  .map((f) => f.error)
+                  .filter(Boolean)
+                  .join('; ') ||
+                'Unknown Word COM failure';
+              return {
+                status: 'error',
+                data: res as any,
+                preview: `Word edit failed: ${reason}`,
+                metadata: {
+                  toolName: 'desktop_word_edit',
+                  displayName: 'Edit Word via COM',
+                  executionTime: 0,
+                },
+              };
+            }
             return {
               status: 'success',
               data: res,
@@ -922,6 +952,36 @@ export class DesktopToolsRegistrar {
             }
 
             const res = await services.pptCom.editPpt(safePath, actions);
+            // Surface COM-level and per-action failures instead of fake success
+            const failedPpt: Array<{ error?: string }> = Array.isArray(
+              (res as any)?.results,
+            )
+              ? (res as any).results.filter(
+                  (r: any) => r && r.success === false,
+                )
+              : [];
+            if (
+              (res as any)?.success === false ||
+              failedPpt.length > 0
+            ) {
+              const reason =
+                (res as any)?.error ||
+                failedPpt
+                  .map((f) => f.error)
+                  .filter(Boolean)
+                  .join('; ') ||
+                'Unknown PowerPoint COM failure';
+              return {
+                status: 'error',
+                data: res as any,
+                preview: `PowerPoint edit failed: ${reason}`,
+                metadata: {
+                  toolName: 'desktop_ppt_edit',
+                  displayName: 'Edit PowerPoint via COM',
+                  executionTime: 0,
+                },
+              };
+            }
             return {
               status: 'success',
               data: res,

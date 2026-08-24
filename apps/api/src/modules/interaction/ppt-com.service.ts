@@ -156,8 +156,11 @@ try {
 ${actionBlocks}
   $hasSave = $false
   foreach ($a in @($results)) { if ($a.action -eq 'save') { $hasSave = $true } }
-  if (-not $hasSave) { try { $pres.Save() } catch {} }
-  @{ success=$true; actionsExecuted=$results.Length; results=$results } | ConvertTo-Json -Depth 5
+  # Atomic mutation: save nothing when any action failed (prevents half-applied decks)
+  $failCount = 0
+  foreach ($a in @($results)) { if ($a.success -eq $false) { $failCount++ } }
+  if (-not $hasSave -and $failCount -eq 0) { try { $pres.Save() } catch {} }
+  @{ success=($failCount -eq 0); actionsExecuted=$results.Length; failed=$failCount; results=$results } | ConvertTo-Json -Depth 5
 } catch {
   @{ success=$false; error=$_.Exception.Message } | ConvertTo-Json
 } finally {
