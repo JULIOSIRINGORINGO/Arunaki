@@ -320,3 +320,24 @@ sebelum eksekusi; URL/base64 dilewati.
 
 Verifikasi: fixture PNG (STRUK TOKO ROTI MANIS / RP150.000) -> OCR sukses,
 jawaban akurat nama toko + total.
+
+---
+
+## Update 24 Aug 2026 (Sesi 6) - Backend Tools Suite 2
+
+Suite: apps/api/test/backend-tools-2.cjs (fixture stempel PNG via System.Drawing)
+
+Hasil agnes-2-0-flash:free = **6/6 PASS**
+
+- G1 vision_ai PASS (verifikasi independen fix path - akurat baca struk)
+- G2 generate_export PASS (tool terbukti berfungsi; kegagalan F6 kemarin murni salah pilih tool oleh model)
+- G3 doc_redact_pii PASS
+- G4 pdf_stamp_image PASS
+- G5 data_query (list_tables) PASS
+- G6 batch_execute: outcome PASS tapi model pakai read+write biasa, bukan PTC batch (executor belum tereksersikan langsung - catat follow-up)
+
+### Cakupan stability kumulatif akhir
+
+Excel 9/9 efektif, Word/PPT 4/4, backend tools 6/7 + 6/6, OCR/vision verified.
+Sisa tak teruji: desktop_screenshot/send_keys/open_* (butuh Desktop Bridge),
+web_search (jaringan), ask_user (interaktif), agent_spawn/rgs (investigasi).
