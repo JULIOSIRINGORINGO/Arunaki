@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { MemoryService } from './memory.service.js';
 import { SessionSearchService } from './session-search.service.js';
 
 /**
- * SmartRecallService — prefetch relevant context before task.
+ * SmartRecallService â€” prefetch relevant context before task.
  *
  * Inspired OpenClaw's smart memory recall. Before executing a task,
  * the agent searches memory and past conversations for relevant
@@ -236,14 +236,16 @@ export class SmartRecallService {
     // Default to a safe string if workspaceId is not provided to satisfy the type.
     // The repository handles empty workspaceId safely.
     const memories = await this.memoryService.search(query, workspaceId || '');
-    this.logger.debug(
-      `[TRACE-MEMORY-SEARCH] q="${query}" ws=${workspaceId} hits=${memories.length} types=${memories.map((m) => m.type).join('|')}`,
-    );
+    if (process.env.ARUNAKI_DEBUG_TOOLS === '1') {
+      this.logger.debug(
+        `[TRACE-MEMORY-SEARCH] q="${query}" ws=${workspaceId} hits=${memories.length} types=${memories.map((m) => m.type).join('|')}`,
+      );
+    }
 
     if (memories.length === 0) return '';
 
     // Ephemeral bookkeeping types (run summaries, history dumps) are stored
-    // for analytics but are noise as "relevant memory" context — and their
+    // for analytics but are noise as "relevant memory" context â€” and their
     // volume would crowd out real user preferences/facts.
     const EPHEMERAL_TYPES = new Set(['run_summary', 'workspace_history']);
     const relevant = memories.filter((m) => !EPHEMERAL_TYPES.has(m.type));
@@ -287,3 +289,4 @@ export class SmartRecallService {
     return `## Relevant Past Conversations\n${lines.join('\n')}`;
   }
 }
+

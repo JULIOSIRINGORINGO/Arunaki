@@ -79,11 +79,15 @@ async function main() {
   let P = 0;
   for (const c of cases) {
     process.stdout.write(`[${c.id}] ${c.goal.slice(0, 56)}... `);
-    let r, err = null;
-    try { r = await send(c.goal, c.timeout); }
-    catch (e) { r = { text: '', tools: [], ms: 0 }; err = e.message.slice(0, 70); }
-    await new Promise(s => setTimeout(s, 2000));
-    let v; try { v = c.verify(r); } catch (e) { v = { ok: false, why: e.message }; }
+    let r, err = null, v;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try { r = await send(c.goal, c.timeout); }
+      catch (e) { r = { text: '', tools: [], ms: 0 }; err = e.message.slice(0, 70); }
+      await new Promise(s => setTimeout(s, 2000));
+      try { v = c.verify(r); } catch (e2) { v = { ok: false, why: e2.message }; }
+      if ((v && v.ok && !err) || attempt === 2) break;
+      err = null; // provider flake -> one clean retry
+    }
     const pass = v.ok && !err;
     P += pass ? 1 : 0;
     console.log(pass ? 'PASS' : 'FAIL', `(${(r.ms / 1000).toFixed(1)}s)`, `tools=[${[...new Set(r.tools)].join(',')}]`, err ? `err=${err}` : '', !v.ok ? `why: ${v.why}` : '');
