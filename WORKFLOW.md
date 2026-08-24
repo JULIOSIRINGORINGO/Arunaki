@@ -1,7 +1,7 @@
 # WORKFLOW.md - Development Roadmap
 
-**Version:** 1.1  
-**Last Updated:** 2026-07-25
+**Version:** 1.2  
+**Last Updated:** 2026-08-24
 
 ---
 
@@ -1858,3 +1858,58 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] Restrukturisasi total `README.md` mengikuti standar dokumentasi aplikasi desktop modern (gaya `opencode.ai/docs`).
 - [x] Penghapusan 100% kata "AI" dari `README.md` (reposisi sebagai *Desktop Document Agent & Automation Harness*).
 - [x] Pembersihan perintah build/test developer dari dokumentasi end-user.
+
+---
+
+## Phase 59: Cross-Tool Stability Hardening, Free-Tier Routing & Multilingual Gates (DONE)
+
+**Goal:** Menghapus seluruh kegagalan laten yang ditemukan lewat stress testing berbasis outcome pada model gratis terkecil (agnes-2-0-flash / glm-4-7-flash), menutup kebocoran rotasi ke model berbayar, dan membuat gerbang deterministik tahan campuran bahasa.
+
+### 59.1 Provider Failover & Free-Tier Routing
+- [x] Kenari preset fallbackModels diganti pool GRATIS saja (agnes/glm/step/deepseek:free) - menutup kebocoran tagihan deepseek-v4-flash berbayar.
+- [x] getNextModelInPreset menjadi pool-aware terhadap triedProviderIds (rotasi maju antar model gratis, tidak stuck re-propose pool[0]).
+- [x] AI_MODEL default dipindah ke agnes-2-0-flash:free.
+
+### 59.2 Excel COM Hardening (desktop_excel_edit)
+- [x] workspace-path.util.ts: path absolut dari model di-resolve relatif terhadap root workspace (+ blokir traversal) - unit 5/5.
+- [x] write-tool memakai resolver tsb; append_row menerima varian payload row:[array].
+- [x] Registrar excel: per-action failures kini status:error (menghilangkan fake success).
+- [x] Label matching: dynamic header-row detection (baris header mana pun), layout Key-Value (label|nilai), UPSERT kolom kunci + cross-keyed lookup.
+- [x] Delta guard non-numerik; atomic batch save (skip save bila ada aksi gagal).
+- [x] Completeness nudge runner utk goal total/rekap/ringkasan/balance (ID+EN).
+
+### 59.3 Word & PPT COM (proaktif, first-run pass)
+- [x] word-com & ppt-com: atomic save + success flag jujur (failCount).
+- [x] Registrar Word/PPT: surface per-action failures.
+- [x] Suite office-stability-test.cjs: D 3/3, E1 1/1.
+
+### 59.4 OCR / Vision Path Resolution
+- [x] image_ocr & vision_ai handler resolve path via resolveWithinWorkspace (sebelumnya hanya cek cwd/uploads - file workspace selalu not found).
+- [x] Verifikasi end-to-end fixture struk PNG (nama toko + nominal akurat).
+
+### 59.5 Memory & doc_search Activation
+- [x] Registrasi tool doc_search (knowledge+files+messages via DB).
+- [x] Registrasi tool memory multi-action (remember/recall/search/list).
+- [x] Pensiunkan skills_tool (tanpa konten) dari registrar + DI.
+- [x] memory.repository.search ditulis ulang: any-keyword case-insensitive; ephemeral types (run_summary/workspace_history) dikecualikan.
+- [x] Loop persistence terverifikasi E2E: store -> fresh-turn recall dijawab dari memori.
+
+### 59.6 agent_spawn Repair
+- [x] Perbaiki pemanggilan API yang salah nama (spawnSubAgents -> spawnParallel) + normalisasi bentuk task dari model; verifikasi hidup 1/1 sub-agent selesai.
+
+### 59.7 Regex Audit & Multilingual Gates
+- [x] Audit 4 kelas regex berisiko (stateful /g+.test, RegExp dinamis dari input, nested quantifier, escaping): bersih.
+- [x] OFFICE_*_RE & MUTATION_KEYWORDS_RE simetris ID+EN; false positive hanya over-provision (aman).
+- [x] smart-recall stopwords +30 kata fungsi Indonesia.
+
+### 59.8 Test Artifacts (komit)
+- [x] apps/api/test/tool-stability-test.cjs (v2, outcome-based, mode batch T1..T9).
+- [x] apps/api/test/excel-stress-test.cjs (multi-sheet no-hints).
+- [x] apps/api/test/office-stability-test.cjs (Word/PPT, fixture COM).
+- [x] apps/api/test/backend-tools-stability.cjs + backend-tools-2.cjs + backend-tools-3.cjs.
+- [x] Dev-log lengkap: docs/dev-logs/dev-log-2026-08-22-excel-stress-test.md.
+
+### Known Limitations (bukan bug, terdokumentasi)
+- agnes-2-0-flash kadang mengabaikan section meta pada prompt panjang (ask_user, Relevant Memory) - mitigasi failover otomatis ke glm+.
+- desktop_screenshot/send_keys butuh Desktop Bridge Electron aktif.
+- web_search deterministik tergantung jaringan; batch_execute PTC belum tereksekusi langsung oleh model mini.
