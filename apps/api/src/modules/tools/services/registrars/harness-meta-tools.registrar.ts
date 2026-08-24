@@ -226,11 +226,41 @@ export class HarnessMetaToolsRegistrar {
               },
             };
           }
-          return services.subAgentRunner.spawnSubAgents({
-            tasks: args.tasks,
+          // Normalize model-supplied tasks to SubAgentTask shape
+          const rawTasks = Array.isArray(args.tasks) ? args.tasks : [];
+          const normalizedTasks = rawTasks.map((t: any, i: number) => ({
+            taskId: String(t?.taskId ?? `sub-${Date.now()}-${i}`),
+            taskName: String(t?.taskName ?? t?.name ?? `Sub-task ${i + 1}`),
+            taskDescription: String(
+              t?.taskDescription ??
+                t?.description ??
+                t?.instruction ??
+                (typeof t === 'string' ? t : ''),
+            ),
+            allowedTools: Array.isArray(t?.allowedTools)
+              ? t.allowedTools
+              : undefined,
+            maxRounds: Number(t?.maxRounds) > 0 ? Number(t.maxRounds) : 5,
             workspaceId: args.workspaceId,
-            parentRunId: args.parentRunId,
-          });
+          }));
+          const results = await services.subAgentRunner.spawnParallel(
+            normalizedTasks,
+          );
+          return {
+            status:
+              Array.isArray(results) && results.every((r) => r.status === 'success')
+                ? 'success'
+                : 'error',
+            data: { results },
+            preview: Array.isArray(results)
+              ? `${results.filter((r) => r.status === 'success').length}/${results.length} sub-agents completed`
+              : 'No sub-agent results',
+            metadata: {
+              toolName: 'agent_spawn',
+              displayName: 'Spawn Sub-Agent',
+              executionTime: 0,
+            },
+          };
         },
         parameters: {
           type: 'object',

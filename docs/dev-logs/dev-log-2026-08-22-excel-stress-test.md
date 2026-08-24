@@ -373,3 +373,20 @@ kembali error bersih (bukan hang); cleanup taskkill Office di suite.
 Total ~32 kasus pada model gratis terkecil. Sisa eksklusi:
 ask_user-by-model-mini (limitasi), agent_spawn/rgs (investigasi),
 screenshot/send_keys (butuh Desktop Bridge).
+
+---
+
+## Update 24 Aug 2026 (Sesi 8) - Investigasi Tool Tersembunyi
+
+### Hasil investigasi
+
+1. **rgs = TIDAK ADA** - muncul 5x di scan awal karena regex penelitian menangkap
+   substring 'rgs' dari kata args:. Artefak alat ukur, bukan tool.
+2. **agent_spawn = BUG DIFIX** - registrar memanggil spawnSubAgents() yang tidak
+   ada; service asli spawnParallel(tasks[]). Fix: panggil spawnParallel +
+   normalisasi field tugas (taskId/taskName/taskDescription + fallback).
+   Verifikasi hidup glm-4-7-flash: 1/1 sub-agents completed, ringkasan kontrak akurat.
+3. **memory / skills / doc_search = TIDAK TERDAFTAR** - ketiganya di-inject ke
+   HarnessMetaToolsRegistrar tapi tidak pernah registry.register(). Model tidak
+   bisa memanggilnya sama sekali (invisible). Perlu keputusan produk: aktifkan
+   wiring atau hapus injection dead-code.
