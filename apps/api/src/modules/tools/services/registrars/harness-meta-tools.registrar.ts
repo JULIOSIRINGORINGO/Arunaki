@@ -55,8 +55,24 @@ export class HarnessMetaToolsRegistrar {
           description:
             'Extracts text, numbers, tables, invoices, size recaps, and notes from image files (.png, .jpg, .jpeg, .webp, .bmp) using offline local OCR.',
           tags: ['image', 'ocr', 'vision', 'extract', 'read', 'photo', 'screenshot'],
-          handler: (args) =>
-            services.imageOcrTool.recognizeText(args.filePath, args.language),
+          handler: async (args) => {
+            // Resolve workspace-relative image paths to the absolute file —
+            // OCR previously only checked cwd/uploads, never the workspace root.
+            let fp = args.filePath;
+            if (args.workspaceId && fp && !/^(https?:|data:)/i.test(fp)) {
+              try {
+                const resolved =
+                  await services.workspaceToolsService.resolveWithinWorkspace(
+                    args.workspaceId,
+                    String(fp).replace(/^@/, '').trim(),
+                  );
+                if (resolved) fp = resolved;
+              } catch {
+                /* keep original path; the tool reports a precise error */
+              }
+            }
+            return services.imageOcrTool.recognizeText(fp, args.language);
+          },
           parameters: {
             type: 'object',
             properties: {
@@ -83,8 +99,27 @@ export class HarnessMetaToolsRegistrar {
           description:
             'Analyzes image content, receipts, handwritten notes, tables, charts, or screenshots to extract structured text and numbers.',
           tags: ['image', 'vision', 'ocr', 'analyze', 'screenshot'],
-          handler: (args) =>
-            services.visionAiTool.analyzeImage(args.imageSource, args.prompt),
+          handler: async (args) => {
+            let src = args.imageSource;
+            if (
+              args.workspaceId &&
+              src &&
+              !/^(https?:|data:)/i.test(src) &&
+              !/^[A-Za-z0-9+/]{40,}={0,2}$/.test(String(src).trim())
+            ) {
+              try {
+                const resolved =
+                  await services.workspaceToolsService.resolveWithinWorkspace(
+                    args.workspaceId,
+                    String(src).replace(/^@/, '').trim(),
+                  );
+                if (resolved) src = resolved;
+              } catch {
+                /* keep original; the tool reports a precise error */
+              }
+            }
+            return services.visionAiTool.analyzeImage(src, args.prompt);
+          },
           parameters: {
             type: 'object',
             properties: {

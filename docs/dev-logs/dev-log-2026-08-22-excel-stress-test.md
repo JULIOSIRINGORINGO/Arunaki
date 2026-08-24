@@ -294,3 +294,29 @@ Verifikasi outcome: mammoth untuk docx, COM slide count, fs untuk PDF.
 
 node test/office-stability-test.cjs agnes-2-0-flash:free D
 node test/office-stability-test.cjs agnes-2-0-flash:free E1
+
+---
+
+## Update 24 Aug 2026 (Sesi 5) - Backend Tools Suite + OCR Path Fix
+
+### Backend tools suite baru: apps/api/test/backend-tools-stability.cjs
+
+Hasil (agnes-2-0-flash:free): 6/7 PASS
+- F1 search_workspace PASS, F2 rename PASS, F3 delete PASS,
+  F4 doc_compare_versions PASS, F5 pdf_manage_pages PASS,
+  F7 draft_communication PASS
+- F6 generate_export CSV: FAIL - model memilih desktop_excel_edit alih-alih
+  membuat CSV baru (pilihan tool model, bukan bug layanan)
+
+### Fix kritis: image_ocr / vision_ai path resolution
+
+Gejala: file PNG jelas ada di workspace (list terlihat 7KB), tapi OCR bilang
+File not found. Akar: resolveImagePath hanya cek cwd/absolute/folder uploads
+lama - TIDAK PERNAH mengecek rootPath workspace.
+
+Fix di registrar harness-meta: handler image_ocr & vision_ai kini resolve
+path via workspaceToolsService.resolveWithinWorkspace(workspaceId, path)
+sebelum eksekusi; URL/base64 dilewati.
+
+Verifikasi: fixture PNG (STRUK TOKO ROTI MANIS / RP150.000) -> OCR sukses,
+jawaban akurat nama toko + total.
