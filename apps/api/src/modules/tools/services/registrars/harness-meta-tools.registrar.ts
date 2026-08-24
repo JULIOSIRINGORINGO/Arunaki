@@ -230,7 +230,7 @@ export class HarnessMetaToolsRegistrar {
         name: 'ask_user',
         displayName: 'Ask User',
         description:
-          'Requests clarification or missing details directly from the user.',
+          'Requests clarification or missing details directly from the user. Call this TOOL (instead of writing your question as plain text) whenever the user asked you to confirm/ask something first, or a required parameter is genuinely missing.',
         tags: ['communication'],
         handler: async (args) => services.askUser.execute(args),
         parameters: {
@@ -367,7 +367,7 @@ export class HarnessMetaToolsRegistrar {
         name: 'batch_execute',
         displayName: 'Programmatic Batch Execute',
         description:
-          'Executes an atomic sequence of tools in one round-trip (e.g. read template + read data -> edit target file). If any step fails, all file modifications are automatically rolled back.',
+          'PREFERRED tool for any multi-step file operation (read template + read data -> edit target, copy content between files, apply several edits at once). Executes an atomic sequence of tools in ONE round-trip via operations:[{tool,args},...]. If any step fails, all file modifications roll back automatically.',
         tags: ['batch', 'ptc', 'atomic', 'programmatic'],
         handler: async (args) => {
           if (!services.ptcExecutor) {

@@ -191,6 +191,14 @@ export class WorkspacePromptBuilderService {
       }
     }
 
+    // Clarification intent: expose ask_user so the model CAN ask instead of guessing.
+    // Bare 'tanya' also matches menanyakan/bertanya/ditanyakan; ask[_ -]?user
+    // covers the literal tool name variants models echo back.
+    if (/(?:tanya|bertanya|ask[\s_-]*user|konfirmasi|clarif)/i.test(goal)) {
+      const askTool = allTools.find((t) => t.function.name === 'ask_user');
+      if (askTool) selectedNames.add('ask_user');
+    }
+
     // Map names back to actual ToolDefinitions
     const tools = allTools.filter((t) => selectedNames.has(t.function.name));
 
@@ -419,9 +427,11 @@ export class WorkspacePromptBuilderService {
         workspaceId,
         ws?.businessType || 'generic',
       );
-      this.logger.debug(
-        `[TRACE-RECALL] len=${recallContext.length} preview=${recallContext.slice(0, 150)}`,
-      );
+      if (process.env.ARUNAKI_DEBUG_TOOLS === '1') {
+        this.logger.debug(
+          `[TRACE-RECALL] len=${recallContext.length} preview=${recallContext.slice(0, 150)}`,
+        );
+      }
     } catch (err: any) {
       this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
     }
@@ -486,6 +496,16 @@ export class WorkspacePromptBuilderService {
       { role: 'system', content: systemContent },
       ...context.messages,
     ];
+
+    // Recency placement for small models: relevant memory is ALSO appended as
+    // a short note adjacent to the conversation tail. Small models attend
+    // strongly to prompt start/end and routinely skip mid-prompt sections.
+    if (recallContext && recallContext.trim()) {
+      messages.push({
+        role: 'user',
+        content: `(System note — background info, use only if relevant)\n${recallContext.trim()}`,
+      });
+    }
 
     // Prompt injection check
     const injectionResult = this.promptInjectionDetector.scan(userGoal);

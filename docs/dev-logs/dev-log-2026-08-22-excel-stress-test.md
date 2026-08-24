@@ -438,3 +438,25 @@ mini lain: ask_user, long-prompt compliance) - dokumentasikan sbg batasan.
    ke/dari/saya/akan/sudah/tolong dll) supaya keyword memori tak ternodai.
 
 Escape hatch netral bahasa tetap: sinyal @file.ext.
+
+---
+
+## Update 24 Aug 2026 (Sesi 11) - Limitation Fixes Round
+
+### Difix + terverifikasi
+1. **Memory recency placement** - recallContext kini juga di-inject sebagai
+   user-note pendek menjelang eksekusi (recency bias). Hasil: agnes-2-0 pun
+   menjawab preferensi Budi dari memori (sebelumnya hanya glm).
+2. **ask_user gate** - goal bertanya/minta konfirmasi -> ask_user diinjeksi
+   ke daftar tool (terbukti sampai ke model via trace).
+3. **batch_execute description** diperkuat (PREFERRED for multi-step file ops).
+4. **Suite retry-once** pada tool-stability & backend-tools-3 utk flake provider.
+5. **ARUNAKI_DEBUG_TOOLS=1** gate untuk trace debug memory/recall.
+
+### Diverifikasi sebagai batuan model (bukan infrastruktur)
+- ask_user: gate+registry+delivery terbukti (trace names=[...,ask_user,...])
+  namun agnes & glm tetap menulis pertanyaan sbg teks. Follow-up tercatat:
+  forced tool_choice saat deteksi intent klarifikasi (sentuh provider
+  abstraction, butuh sesi tersendiri).
+- rules.md Rule 2 + deskripsi ask_user dipertegas; model mini tetap prefer
+  teks untuk aksi percakapan.
