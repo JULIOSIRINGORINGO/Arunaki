@@ -341,3 +341,35 @@ Hasil agnes-2-0-flash:free = **6/6 PASS**
 Excel 9/9 efektif, Word/PPT 4/4, backend tools 6/7 + 6/6, OCR/vision verified.
 Sisa tak teruji: desktop_screenshot/send_keys/open_* (butuh Desktop Bridge),
 web_search (jaringan), ask_user (interaktif), agent_spawn/rgs (investigasi).
+
+---
+
+## Update 24 Aug 2026 (Sesi 7) - Suite 3: web_search, ask_user, desktop_open_*
+
+Hasil agnes-2-0-flash:free = 4/5 (H5 PASS saat solo)
+
+- H1 web_search PASS - live network, kurs USD/IDR + sumber
+- H2 ask_user FAIL konsisten - BUKAN bug: mekanisme tool sehat (echo pesan
+  sbg preview utk UI). Model mini tidak memilih meta-tool saat instruksi
+  eksplisit pun; model lebih besar mengikuti. Catatan limitasi.
+- H3 open_excel PASS - desktop_open_excel tereksekusi (bridge/timeout bersih)
+- H4 open_word PASS
+- H5 open_ppt flake lalu PASS solo
+
+desktop_open_* memakai desktopBridge.sendCommand -> tanpa Electron bridge
+kembali error bersih (bukan hang); cleanup taskkill Office di suite.
+
+### STATUS AKHIR SELURUH STABILITY TESTING
+
+| Keluarga | Skor |
+|---|---|
+| File dasar + Excel COM + utility | 9/9 efektif |
+| Word/PPT COM | 4/4 |
+| Backend tools batch 1 | 6/7 |
+| Backend tools batch 2 | 6/6 |
+| OCR/Vision | verified |
+| web_search + desktop_open_* | 4/5 |
+
+Total ~32 kasus pada model gratis terkecil. Sisa eksklusi:
+ask_user-by-model-mini (limitasi), agent_spawn/rgs (investigasi),
+screenshot/send_keys (butuh Desktop Bridge).
