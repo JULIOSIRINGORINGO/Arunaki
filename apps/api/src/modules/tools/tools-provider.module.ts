@@ -1,4 +1,4 @@
-import {
+﻿import {
   Module,
   OnModuleInit,
   Inject,
@@ -35,7 +35,6 @@ import { DeleteToolService } from './services/delete-tool.service.js';
 import { RenameToolService } from './services/rename-tool.service.js';
 import { ListToolService } from './services/list-tool.service.js';
 import { SearchToolService } from './services/search-tool.service.js';
-import { SkillsTool } from './services/skills.tool.js';
 import { MemoryTool } from './services/memory.tool.js';
 import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
 import { CronService } from '../cron/cron.service.js';
@@ -112,7 +111,6 @@ import { DomainModule } from '../domain/domain.module.js';
     RenameToolService,
     ListToolService,
     SearchToolService,
-    SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
@@ -156,7 +154,6 @@ import { DomainModule } from '../domain/domain.module.js';
     RenameToolService,
     ListToolService,
     SearchToolService,
-    SkillsTool,
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
@@ -252,7 +249,6 @@ export class ToolsProviderModule implements OnModuleInit {
       visionAiTool: this.moduleRef.get(VisionAiTool, { strict: false }),
       imageOcrTool: this.moduleRef.get(ImageOcrTool, { strict: false }),
       docSearchTool: this.moduleRef.get(DocSearchTool, { strict: false }),
-      skillsTool: this.moduleRef.get(SkillsTool, { strict: false }),
       memoryTool: this.moduleRef.get(MemoryTool, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
         strict: false,

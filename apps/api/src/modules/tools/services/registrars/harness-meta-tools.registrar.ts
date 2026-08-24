@@ -7,7 +7,6 @@ import { WebSearchTool } from '../web-search.tool.js';
 import { VisionAiTool } from '../vision-ai.tool.js';
 import { ImageOcrTool } from '../image-ocr.tool.js';
 import { DocSearchTool } from '../doc-search.tool.js';
-import { SkillsTool } from '../skills.tool.js';
 import { MemoryTool } from '../memory.tool.js';
 import { WorkspaceToolsService } from '../workspace-tools.service.js';
 import { PtcExecutorService } from '../ptc-executor.service.js';
@@ -27,7 +26,6 @@ export class HarnessMetaToolsRegistrar {
       visionAiTool: VisionAiTool;
       imageOcrTool: ImageOcrTool;
       docSearchTool: DocSearchTool;
-      skillsTool: SkillsTool;
       memoryTool: MemoryTool;
       workspaceToolsService: WorkspaceToolsService;
       browserInteractionTool?: BrowserInteractionTool;
@@ -138,6 +136,95 @@ export class HarnessMetaToolsRegistrar {
         }),
       );
     }
+    registry.register(
+      ToolAdapter.from({
+        name: 'doc_search',
+        displayName: 'Document Search (Indexed)',
+        description:
+          'Searches indexed workspace documents, knowledge entries, and chat messages in the database for a query. Complements search_workspace (disk scan).',
+        tags: ['search', 'document', 'database', 'knowledge'],
+        handler: async (args) =>
+          services.docSearchTool.searchDocuments(args.query, args.limit),
+        parameters: {
+          type: 'object',
+          properties: {
+            query: { type: 'string', description: 'Search keywords' },
+            limit: {
+              type: 'number',
+              description: 'Max results per source (default 5)',
+            },
+          },
+          required: ['query'],
+        },
+        timeoutMs: 20000,
+      }),
+    );
+
+    registry.register(
+      ToolAdapter.from({
+        name: 'memory',
+        displayName: 'Persistent Memory',
+        description:
+          'Stores and retrieves persistent business facts across sessions. Use remember to save a fact with a stable key; use recall/search to retrieve it later.',
+        tags: ['memory', 'remember', 'recall', 'persist'],
+        handler: async (args) => {
+          const workspaceId = args.workspaceId;
+          switch (args.action) {
+            case 'remember':
+              return services.memoryTool.remember({
+                type: String(args.type || 'fact'),
+                key: String(args.key || ''),
+                content: String(args.content || ''),
+                workspaceId,
+              });
+            case 'recall':
+              return services.memoryTool.recall(
+                String(args.type || ''),
+                String(args.key || ''),
+              );
+            case 'search':
+              return services.memoryTool.searchMemories(
+                String(args.query || ''),
+                workspaceId,
+              );
+            default:
+              return services.memoryTool.listMemories({
+                workspaceId,
+              });
+          }
+        },
+        parameters: {
+          type: 'object',
+          properties: {
+            action: {
+              type: 'string',
+              enum: ['remember', 'recall', 'search', 'list'],
+              description: 'Memory operation (defaults to list)',
+            },
+            type: {
+              type: 'string',
+              description: "Memory type, e.g. 'preference' or 'fact'",
+            },
+            key: {
+              type: 'string',
+              description: 'Stable unique key, e.g. pelanggan:budi',
+            },
+            content: {
+              type: 'string',
+              description: 'Fact content to store (remember only)',
+            },
+            query: {
+              type: 'string',
+              description: 'Keyword query (search only)',
+            },
+            limit: { type: 'number', description: 'Max rows returned' },
+          },
+          required: [],
+        },
+        timeoutMs: 15000,
+      }),
+    );
+
     registry.register(
       ToolAdapter.from({
         name: 'ask_user',

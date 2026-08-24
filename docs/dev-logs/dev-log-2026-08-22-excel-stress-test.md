@@ -390,3 +390,28 @@ screenshot/send_keys (butuh Desktop Bridge).
    HarnessMetaToolsRegistrar tapi tidak pernah registry.register(). Model tidak
    bisa memanggilnya sama sekali (invisible). Perlu keputusan produk: aktifkan
    wiring atau hapus injection dead-code.
+
+---
+
+## Update 24 Aug 2026 (Sesi 9) - Aktivasi doc_search + memory, pensiunan skills
+
+### Wiring
+- REGISTERED doc_search (query knowledge+files+messages via DB)
+- REGISTERED memory (actions: remember/recall/search/list)
+- REMOVED skills_tool dari registrar type, import, dan DI module
+  (fitur belum berisi; pasang lagi saat ada konten skill)
+
+### Bug recall berlapis yang ditemukan & diperbaiki
+1. memory.repository.search: frasa gabungan + contains case-sensitive SQLite
+   tidak pernah match -> kini any-keyword match, case-insensitive via JS filter
+2. run_summary/workspace_history (19+ entri noise/run) menenggelamkan memori
+   user di slice(0,5/10) -> ephemeral types dikecualikan dari query kandidat
+3. Verifikasi: hits=3 (distilled_pattern|distilled_fact|preference),
+   TRACE-RECALL len=364 ter-inject ke system prompt
+
+### E2E persistence loop
+Turn1 (glm): memory remember pelanggan:budi suka roti coklat -> tersimpan DB
+Turn2 fresh (glm): 'Apa preferensi pelanggan Budi?' -> jawab LANGSUNG dari
+memori tanpa baca file: 'Pelanggan Budi suka roti coklat' VERIFIED.
+agnes-2-0 masih sering abaikan section memori (konsisten dg limitasi model
+mini lain: ask_user, long-prompt compliance) - dokumentasikan sbg batasan.

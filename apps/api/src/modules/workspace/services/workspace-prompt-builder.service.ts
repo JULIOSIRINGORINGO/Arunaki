@@ -413,6 +413,9 @@ export class WorkspacePromptBuilderService {
         workspaceId,
         ws?.businessType || 'generic',
       );
+      this.logger.debug(
+        `[TRACE-RECALL] len=${recallContext.length} preview=${recallContext.slice(0, 150)}`,
+      );
     } catch (err: any) {
       this.logger.debug(`Smart recall failed (non-critical): ${err.message}`);
     }

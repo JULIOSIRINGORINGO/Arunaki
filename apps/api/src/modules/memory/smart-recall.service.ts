@@ -195,13 +195,24 @@ export class SmartRecallService {
     // Default to a safe string if workspaceId is not provided to satisfy the type.
     // The repository handles empty workspaceId safely.
     const memories = await this.memoryService.search(query, workspaceId || '');
+    this.logger.debug(
+      `[TRACE-MEMORY-SEARCH] q="${query}" ws=${workspaceId} hits=${memories.length} types=${memories.map((m) => m.type).join('|')}`,
+    );
 
     if (memories.length === 0) return '';
 
-    const lines = memories.slice(0, 5).map((m) => {
+    // Ephemeral bookkeeping types (run summaries, history dumps) are stored
+    // for analytics but are noise as "relevant memory" context — and their
+    // volume would crowd out real user preferences/facts.
+    const EPHEMERAL_TYPES = new Set(['run_summary', 'workspace_history']);
+    const relevant = memories.filter((m) => !EPHEMERAL_TYPES.has(m.type));
+
+    const lines = relevant.slice(0, 5).map((m) => {
       const preview = m.content.substring(0, 100);
       return `- [${m.type}] ${m.key}: ${preview}`;
     });
+
+    if (lines.length === 0) return '';
 
     return `## Relevant Memory\n${lines.join('\n')}`;
   }

@@ -133,25 +133,34 @@ export class MemoryRepository extends PrismaBaseRepository<Memory> {
   }
 
   async search(query: string, workspaceId: string): Promise<Memory[]> {
-    const lowerQuery = query.toLowerCase();
-    return this.prisma.memory.findMany({
+    // Match ANY keyword, case-insensitively. The old implementation searched
+    // the whole joined phrase as one `contains`, which never matched natural
+    // memory content, and SQLite `contains` is case-sensitive anyway.
+    const words = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+    if (words.length === 0) return [];
+
+    const candidates = await this.prisma.memory.findMany({
       where: {
         active: true,
+        // Ephemeral bookkeeping types would crowd out real user memories
+        type: { notIn: ['run_summary', 'workspace_history'] },
         OR: [
           { workspaceId: null }, // Global memories
           { workspaceId }, // Workspace-specific memories
         ],
-        AND: [
-          {
-            OR: [
-              { key: { contains: lowerQuery } },
-              { content: { contains: lowerQuery } },
-            ],
-          },
-        ],
       },
       orderBy: [{ importance: 'desc' }, { accessCount: 'desc' }],
     });
+
+    return candidates
+      .filter((m) => {
+        const haystack = `${m.key} ${m.content}`.toLowerCase();
+        return words.some((w) => haystack.includes(w));
+      })
+      .slice(0, 10);
   }
 
   async cleanup(): Promise<number> {
