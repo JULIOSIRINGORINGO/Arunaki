@@ -247,6 +247,14 @@ export async function makeSdkRequest(
       ...(body.temperature != null ? { temperature: body.temperature } : {}),
       maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
       ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
+      ...(canUseTools && body.toolChoice
+        ? {
+            toolChoice: {
+              type: 'tool' as const,
+              toolName: String(body.toolChoice),
+            },
+          }
+        : {}),
       ...(body.providerOptions
         ? { providerOptions: body.providerOptions }
         : {}),
@@ -339,6 +347,14 @@ export async function* makeSdkRequestStream(
     maxOutputTokens: body.maxOutputTokens ?? scaleMaxTokens(provider.model),
     abortSignal: controller.signal,
     ...(canUseTools ? { tools: toSdkTools(body.tools) } : {}),
+    ...(canUseTools && body.toolChoice
+      ? {
+          toolChoice: {
+            type: 'tool' as const,
+            toolName: String(body.toolChoice),
+          },
+        }
+      : {}),
     ...(body.providerOptions ? { providerOptions: body.providerOptions } : {}),
     maxRetries: 0,
   });

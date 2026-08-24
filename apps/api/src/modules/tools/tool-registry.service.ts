@@ -10,6 +10,7 @@ import {
   StreamingToolResult,
 } from './interfaces/tool-result.interface.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
+import { normalizeArgs } from './services/args-normalizer.util.js';
 import {
   validateToolArgs,
   normalizeToolArgs,
@@ -260,8 +261,11 @@ export class ToolRegistryService {
 
   async executeTool(
     name: string,
-    args: Record<string, any>,
+    rawArgs: Record<string, any>,
   ): Promise<ToolResult> {
+    // Harness guidance choke point: normalize model-supplied args once for
+    // every tool (trim/@-strip/numeric coercion/empty-drop) before validation.
+    const args = normalizeArgs(name, rawArgs);
     const resolvedName = this.resolveToolAlias(name);
     const registered =
       this.tools.get(resolvedName) || this.tools.get(name);

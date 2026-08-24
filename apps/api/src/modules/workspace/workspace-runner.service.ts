@@ -220,6 +220,7 @@ export class WorkspaceRunnerService {
         userGoal,
         historyMessages,
         modifiedFiles: this.stateService.getModifiedFiles(workspaceId),
+        modelId,
       });
 
       if (initial.injectionBlocked) {
@@ -288,7 +289,7 @@ export class WorkspaceRunnerService {
       let executedToolCount = 0;
       let nudgeAttempts = 0;
       let completenessNudged = false;
-      let excelEditApplied = false;
+      let officeMutationApplied = false;
       const runStartTime = Date.now();
       let mutationsApplied = 0;
       let noProgressRounds = 0;
@@ -347,10 +348,16 @@ export class WorkspaceRunnerService {
           let streamedText = '';
           const streamedToolCalls: any[] = [];
 
-          const sysMsg = messages.find((m) => m.role === 'system');
-          this.logger.log(
-            `[TRACE-RUNNER] round=${round} msgs=${messages.length} sysLen=${(sysMsg?.content || '').length} toolsPassed=${toolsToPass?.length ?? 0} model=${modelId || 'default'}`,
-          );
+          // Native forced tool_choice (opencode parity): when the user asked
+          // for confirmation first, round 0 MUST call ask_user — provider-side
+          // enforcement beats prompt pleading on small models.
+          const clarifyRequested =
+            round === 0 &&
+            /(?:tanya|bertanya|ask[\s_-]*user|konfirmasi|clarif)/i.test(
+              safeGoal || '',
+            ) &&
+            (toolsToPass || []).some((t) => t.function.name === 'ask_user');
+
           for await (const chunk of this.aiService.chatStream(
             messages,
             toolsToPass,
@@ -358,6 +365,7 @@ export class WorkspaceRunnerService {
               ...(modelId ? { preferredProviderId: modelId } : {}),
               // Cancellation reaches the upstream provider request directly
               signal: runState.abortController.signal,
+              ...(clarifyRequested ? { forceTool: 'ask_user' } : {}),
             },
           )) {
             if (chunk.type === 'content' && chunk.content) {
@@ -556,24 +564,20 @@ export class WorkspaceRunnerService {
             continue;
           }
 
-          // Completeness nudge: goal asks for totals/rekap, Excel was mutated,
-          // but the model is about to finish without a second confirming pass.
-          // Vocabulary: ID + EN aggregate words (users mix languages).
-          const goalNeedsTotal =
-            hasMutationIntent &&
-            /(?:total|rekap|ringkasan|recap|summary|saldo|balance|subtotal)/i.test(
-              safeGoal || '',
-            );
+          // Act -> check -> fix loop (opencode parity): after ANY Office
+          // mutation, force one confirming pass before the run may finish.
+          // Small models skip aggregate updates or misplace writes; a single
+          // mandatory re-read catches both without trusting a single shot.
           if (
             !completenessNudged &&
-            goalNeedsTotal &&
-            excelEditApplied &&
+            hasMutationIntent &&
+            officeMutationApplied &&
             nudgeAttempts < 3
           ) {
             completenessNudged = true;
             nudgeAttempts++;
             this.logger.log(
-              `[Self-Correction] Completeness nudge: goal mentions total/rekap and Excel was edited. Verifying summary figures before finish...`,
+              `[Self-Correction] Completeness nudge: Office document was mutated. Forcing verification pass before finish...`,
             );
             if (aiResponse.content) {
               messages.push({
@@ -587,9 +591,9 @@ export class WorkspaceRunnerService {
             messages.push({
               role: 'user',
               content:
-                `[Completeness Check] Before finishing: re-read the affected sheet and verify every aggregate figure ` +
-                `(grand TOTAL, per-category subtotals, rekap values) is recalculated and written to match all rows — ` +
-                `including any row you just added. If a figure is stale or missing, update it now with desktop_excel_edit, then confirm.`,
+                `[Completeness Check] Before finishing: re-read the section/document you just modified and verify it now fully matches the request — ` +
+                `every requested row/cell/paragraph present, every aggregate figure (TOTAL, subtotals, rekap values) recalculated and written, ` +
+                `and nothing pre-existing was damaged. If anything is stale, missing, or wrong, fix it now with the same edit tool, then confirm.`,
             });
             continue;
           }
@@ -680,11 +684,13 @@ export class WorkspaceRunnerService {
         );
 
         if (
-          aiResponse.toolCalls.some(
-            (tc) => tc.function?.name === 'desktop_excel_edit',
+          aiResponse.toolCalls.some((tc) =>
+            /^(?:desktop_excel_edit|desktop_word_edit|desktop_ppt_edit)$/.test(
+              tc.function?.name || '',
+            ),
           )
         ) {
-          excelEditApplied = true;
+          officeMutationApplied = true;
         }
         executedToolCount += toolExecResult.executedToolCount;
         mutationsApplied = toolExecResult.mutationsApplied;

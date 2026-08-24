@@ -10,6 +10,7 @@ import { ToolResultFormatter } from '../../tools/utils/tool-result-formatter.js'
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { extractMentionedFilenames } from '../utils/tool-call-extractor.util.js';
 import { getSystemDateTimeContext } from '../../ai/context/date-time-context.js';
+import { isCompactModel } from '../../ai/model-capability.js';
 import { WorkspaceCartographerService } from './workspace-cartographer.service.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
@@ -137,6 +138,7 @@ export class WorkspacePromptBuilderService {
   async selectToolsForGoal(
     goal: string,
     allTools: ToolDefinition[],
+    compactModel = false,
   ): Promise<{
     tools: ToolDefinition[];
     hasMutationIntent: boolean;
@@ -197,6 +199,18 @@ export class WorkspacePromptBuilderService {
     if (/(?:tanya|bertanya|ask[\s_-]*user|konfirmasi|clarif)/i.test(goal)) {
       const askTool = allTools.find((t) => t.function.name === 'ask_user');
       if (askTool) selectedNames.add('ask_user');
+    }
+
+    // Compact-model profile: heavy orchestrators confuse mini models (they
+    // call them half-heartedly or narrate instead). Hide them unless the goal
+    // names them explicitly.
+    if (compactModel) {
+      const explicit = /agent_spawn|batch_execute|multi_doc_process/i.test(goal);
+      if (!explicit) {
+        for (const name of ['agent_spawn', 'batch_execute', 'multi_doc_process']) {
+          selectedNames.delete(name);
+        }
+      }
     }
 
     // Map names back to actual ToolDefinitions
@@ -390,6 +404,7 @@ export class WorkspacePromptBuilderService {
       content: string;
     }>;
     modifiedFiles?: Array<{ filename: string }>;
+    modelId?: string;
   }): Promise<{
     systemContent: string;
     messages: ChatMessage[];
@@ -407,7 +422,9 @@ export class WorkspacePromptBuilderService {
       userGoal,
       historyMessages,
       modifiedFiles = [],
+      modelId,
     } = params;
+    const compactModel = isCompactModel(modelId);
 
     const workspaceContext = await this.buildWorkspaceContext(
       workspaceId,
@@ -438,13 +455,13 @@ export class WorkspacePromptBuilderService {
 
     const allTools = this.toolRegistryService.getToolDefinitions();
     const { tools, hasMutationIntent, wantsGui } =
-      await this.selectToolsForGoal(userGoal, allTools);
+      await this.selectToolsForGoal(userGoal, allTools, compactModel);
     const modelCtx = await this.aiService.getActiveModelContext();
 
     const systemPrompt = this.aiService.getSystemPrompt(
       'workspace',
       workspaceContext,
-      undefined,
+      modelId,
       historyMessages,
       tools,
     );
@@ -504,6 +521,23 @@ export class WorkspacePromptBuilderService {
       messages.push({
         role: 'user',
         content: `(System note — background info, use only if relevant)\n${recallContext.trim()}`,
+      });
+    }
+
+    // Forced clarification (harness-guided tool_choice): when the user asked
+    // for confirmation first, the very next action MUST be the ask_user tool.
+    // Free-tier minis narrate the question as text instead; an explicit final
+    // directive closes that gap without provider-specific tool_choice flags.
+    if (
+      /(?:tanya|bertanya|ask[\s_-]*user|konfirmasi|clarif)/i.test(userGoal) &&
+      tools.some((t) => t.function.name === 'ask_user')
+    ) {
+      messages.push({
+        role: 'user',
+        content:
+          `(Execution directive) The user explicitly requested confirmation BEFORE any work. ` +
+          `Your next and only action must be a single tool call to \`ask_user\` with one concrete question. ` +
+          `Do not read files, do not plan out loud, do not answer in text — call \`ask_user\` now, then stop.`,
       });
     }
 

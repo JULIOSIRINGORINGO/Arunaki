@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   Logger,
   Optional,
@@ -188,7 +188,7 @@ export class AiService {
    * Resolve the active provider's model and its context budget. Lets callers
    * (workspace runner, compaction) scale context/compaction thresholds to the
    * real model window (e.g. 32K for deepseek-v4-flash) instead of a fixed
-   * 128K default — the LLM is never handed a history larger than it can see.
+   * 128K default â€” the LLM is never handed a history larger than it can see.
    */
   async getActiveModelContext(): Promise<{
     model: string;
@@ -206,7 +206,7 @@ export class AiService {
 
   /**
    * Sleep with jittered exponential backoff.
-   * attempt 1 → 1-2s, attempt 2 → 2-4s, attempt 3 → 4-8s
+   * attempt 1 â†’ 1-2s, attempt 2 â†’ 2-4s, attempt 3 â†’ 4-8s
    */
   private async jitteredBackoff(attempt: number, baseMs = 1000): Promise<void> {
     const maxDelay = baseMs * Math.pow(2, attempt);
@@ -259,7 +259,7 @@ export class AiService {
    * Pre-prompt context guard (OpenClaw preemptive-compaction + aggregate
    * tool-result budget). Runs BEFORE the provider request:
    * 1. Strips `<think>` blocks from all but the latest assistant message.
-   * 2. Truncates old tool results so their total ≤ 50% of the context window.
+   * 2. Truncates old tool results so their total â‰¤ 50% of the context window.
    * 3. Estimates prompt pressure; when over the context budget minus the
    *    max_tokens reserve, chooses the cheapest route that fits:
    *    - truncate-only: old tool results alone cover the overflow (history
@@ -308,13 +308,13 @@ export class AiService {
 
     if (reducible >= truncateOnlyThresholdChars) {
       this.logger.warn(
-        `[preemptive-compaction] truncate-only route: ${reducible} reducible tool-result chars ≥ ${truncateOnlyThresholdChars} needed — pruning tool results instead of compacting (${estimated} tokens > ${budgetBeforeReserve})`,
+        `[preemptive-compaction] truncate-only route: ${reducible} reducible tool-result chars â‰¥ ${truncateOnlyThresholdChars} needed â€” pruning tool results instead of compacting (${estimated} tokens > ${budgetBeforeReserve})`,
       );
       return this.contextManager.truncateToolResultsOnly(budgeted.messages);
     }
 
     this.logger.warn(
-      `[preemptive-compaction] compact route: ${reducible} reducible tool-result chars < ${truncateOnlyThresholdChars} needed — running full compression (${estimated} tokens > ${budgetBeforeReserve})`,
+      `[preemptive-compaction] compact route: ${reducible} reducible tool-result chars < ${truncateOnlyThresholdChars} needed â€” running full compression (${estimated} tokens > ${budgetBeforeReserve})`,
     );
     return this.contextManager.compress(budgeted.messages, contextWindow);
   }
@@ -324,17 +324,23 @@ export class AiService {
    *
    * Flow:
    * 1. Get active provider
-   * 2. (Light) trim messages if needed — skip 4-phase compression for free models
+   * 2. (Light) trim messages if needed â€” skip 4-phase compression for free models
    * 3. Make request
-   * 4. On error: classify → retry (same provider) or rotate (next provider)
+   * 4. On error: classify â†’ retry (same provider) or rotate (next provider)
    * 5. Max 3 retries per provider, max 3 provider rotations
    */
   async chat(
     messages: ChatMessage[],
     tools?: ToolDefinition[],
-    options?: { preferredProviderId?: string; reasoningEffort?: string },
+    options?: {
+      preferredProviderId?: string;
+      reasoningEffort?: string;
+      /** Force a specific tool call (native tool_choice) for this request. */
+      forceTool?: string;
+    },
   ): Promise<AiResponse> {
     const trimmedMessages = messages;
+    const forceTool = options?.forceTool;
 
     // Get starting provider (optionally pinned for logical failover retries)
     let provider: ProviderConfig | null = null;
@@ -360,7 +366,7 @@ export class AiService {
 
     if (!provider.apiKey) {
       throw new Error(
-        'No API key configured. Go to Settings → AI Models to add a provider.',
+        'No API key configured. Go to Settings â†’ AI Models to add a provider.',
       );
     }
 
@@ -392,6 +398,9 @@ export class AiService {
       tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
+      if (forceTool && tools.some((t) => t.function.name === forceTool)) {
+        body.toolChoice = forceTool;
+      }
     }
 
     const result = await runWithModelFallback({
@@ -503,6 +512,8 @@ export class AiService {
         reasoningEffort?: string;
         /** Cancels the upstream provider request when fired. */
         signal?: AbortSignal;
+        /** Force a specific tool call (native tool_choice) for this request. */
+        forceTool?: string;
       } | string,
   ): AsyncGenerator<StreamChunk> {
     const trimmedMessages = messages;
@@ -512,6 +523,8 @@ export class AiService {
     const reasoningEffort =
       typeof options === 'string' ? options : options?.reasoningEffort;
     const signal = typeof options === 'object' ? options?.signal : undefined;
+    const forceTool =
+      typeof options === 'object' ? options?.forceTool : undefined;
 
     let provider: ProviderConfig | null = null;
     if (preferredId) {
@@ -530,7 +543,7 @@ export class AiService {
     }
     if (!provider.apiKey) {
       throw new Error(
-        'No API key configured. Go to Settings → AI Models to add a provider.',
+        'No API key configured. Go to Settings â†’ AI Models to add a provider.',
       );
     }
 
@@ -559,6 +572,9 @@ export class AiService {
       tools && tools.length > 0 && modelSupportsTools(provider.model);
     if (canUseTools) {
       body.tools = tools;
+      if (forceTool && tools.some((t) => t.function.name === forceTool)) {
+        body.toolChoice = forceTool;
+      }
     }
 
     const rawStream = streamWithFallback({
@@ -635,7 +651,7 @@ export class AiService {
     allTools: ToolDefinition[],
   ): Promise<{ tools: string[]; isMutation: boolean; isGui: boolean }> {
     // Group tools into compact categories to reduce token consumption on free-tier models.
-    // The classifier only needs to pick tool NAMES — it doesn't need full schemas.
+    // The classifier only needs to pick tool NAMES â€” it doesn't need full schemas.
     const toolsByCategory = new Map<string, string[]>();
     for (const t of allTools) {
       const name = t.function.name;
@@ -706,7 +722,7 @@ Always call 'set_intent' with your classification.`;
       this.logger.error(`Intent classification failed: ${e.message}`);
     }
 
-    // Fallback if LLM fails — use keyword heuristics instead of defaulting to read-only.
+    // Fallback if LLM fails â€” use keyword heuristics instead of defaulting to read-only.
     const mutRe =
       /\b(catat|update|ubah|isi|buat|tambah|edit|tulis|hapus|format|bold|export|rekap|lengkapi|siapkan|ganti|convert|jadikan|masukkan|input|perbarui|write|create|delete|remove|modify|add|insert|append|change|set|move|copy|rename|save)\b/i;
     return {
@@ -716,3 +732,4 @@ Always call 'set_intent' with your classification.`;
     };
   }
 }
+

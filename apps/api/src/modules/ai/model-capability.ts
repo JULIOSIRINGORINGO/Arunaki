@@ -295,3 +295,16 @@ export function scaleMaxTokens(modelName: string): number {
   if (ctx <= 16000) return 2048;
   return 4096;
 }
+
+/**
+ * Compact-model heuristic: free-tier / small / fast models that need the
+ * guided-harness profile (condensed rules, fewer meta-tools, recency notes).
+ * Conservative on purpose — misclassifying a big model as compact only makes
+ * its prompt shorter; misclassifying a mini as full hurts compliance.
+ */
+export function isCompactModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  return /(:free\b|mini\b|\bflash\b|nano\b|lite\b|\bsmall\b|\b8b\b|\b7b\b)/i.test(
+    modelId,
+  );
+}

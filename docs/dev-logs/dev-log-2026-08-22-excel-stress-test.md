@@ -460,3 +460,25 @@ Escape hatch netral bahasa tetap: sinyal @file.ext.
   abstraction, butuh sesi tersendiri).
 - rules.md Rule 2 + deskripsi ask_user dipertegas; model mini tetap prefer
   teks untuk aksi percakapan.
+
+---
+
+## Update 24 Aug 2026 (Sesi 12) - Phase 60 Preview: Guided Harness Layer (4 Parity Items)
+
+1. **Act->check->fix otomatis**: completeness nudge digeneralisasi - flag
+   officeMutationApplied mencakup excel+word+ppt; SATU pass verifikasi wajib
+   setelah mutasi apa pun (bukan lagi keyword total/rekap). Bukti: T9 selesai
+   benar setelah 26 tool calls self-correcting.
+2. **Args normalizer terpusat**: args-normalizer.util.ts dipasang di choke
+   point ToolRegistryService.executeTool - trim/@-strip/koersi numerik untuk
+   row-column-limit-qty/drop kosong, rekursif. Regresi: T2+T9 PASS.
+3. **Forced tool_choice native**: options.forceTool di chat/chatStream ->
+   body.toolChoice -> AI SDK streamText toolChoice. TERBUKTI SAMPAI SDK
+   (log FORCED), namun agregator Kenari menelan parameter ini - model tetap
+   teks. Plumbing disimpan utk provider transparan; mitigasi behavioral
+   (direktif final) sudah membuat kedua model mini bertanya dengan benar.
+4. **Profil tier compact**: isCompactModel() heuristik (:free/flash/mini/8b);
+   rules.md section 12(grill-me)+15(episodic) dipangkas utk compact;
+   agent_spawn/batch_execute/multi_doc_process disembunyikan kecuali
+   disebut eksplisit; identitas ditambah mode-directive.
+   Verifikasi: memory recall agnes tetap OK pasca-trim.

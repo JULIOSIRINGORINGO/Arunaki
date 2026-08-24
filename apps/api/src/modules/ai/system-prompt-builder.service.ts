@@ -11,6 +11,7 @@ import {
   hashStablePromptInput,
 } from './system-prompt-cache.js';
 import { encoding_for_model } from 'tiktoken';
+import { isCompactModel } from './model-capability.js';
 
 @Injectable()
 export class SystemPromptBuilderService {
@@ -27,6 +28,22 @@ export class SystemPromptBuilderService {
     @Inject(forwardRef(() => ContextManager))
     private readonly contextManager: ContextManager,
   ) {}
+
+  /**
+   * Remove numbered rule sections (e.g. '12.', '15.') for compact models.
+   * A section starts at a line like `12. **Title**:` and runs to the next
+   * numbered section or EOF.
+   */
+  private stripRuleSections(rules: string, sections: string[]): string {
+    let out = rules;
+    for (const sec of sections) {
+      const re = new RegExp(
+        `\\n?${sec}\\.\\s*\\*\\*[\\s\\S]*?(?=\\n\\d{1,2}\\.\\s*\\*\\*|$)`,
+      );
+      out = out.replace(re, '\n');
+    }
+    return out;
+  }
 
   loadPrompt(filename: string): string {
     try {
@@ -88,10 +105,18 @@ export class SystemPromptBuilderService {
     const toolList = this.buildToolListSummary(tools);
 
     if (mode === 'workspace' && workspaceContext) {
-      const identity = this.loadPrompt('identity.md');
-      const rules = this.loadPrompt('rules.md');
+      let identity = this.loadPrompt('identity.md');
+      let rules = this.loadPrompt('rules.md');
       const verification = this.loadPrompt('verification.md');
       const memoryContext = this.loadPrompt('memory-context.md');
+
+      // Compact-model profile: drop the longest, lowest-yield sections so the
+      // remaining rules actually get followed by small models. Big models get
+      // the full rulebook.
+      if (isCompactModel(currentModel || fallbackModel)) {
+        rules = this.stripRuleSections(rules, ['12', '15']);
+        identity = `${identity}\n\n(Compact model mode: act directly with tools; keep prose minimal; obey Relevant Memory notes literally.)`;
+      }
 
       const safeWorkspaceContext = this.contextManager.limitInjection(
         workspaceContext,
