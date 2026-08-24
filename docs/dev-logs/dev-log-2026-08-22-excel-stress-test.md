@@ -415,3 +415,26 @@ Turn2 fresh (glm): 'Apa preferensi pelanggan Budi?' -> jawab LANGSUNG dari
 memori tanpa baca file: 'Pelanggan Budi suka roti coklat' VERIFIED.
 agnes-2-0 masih sering abaikan section memori (konsisten dg limitasi model
 mini lain: ask_user, long-prompt compliance) - dokumentasikan sbg batasan.
+
+---
+
+## Update 24 Aug 2026 (Sesi 10) - Regex Audit + Multilingual Gates
+
+### Audit 4 kelas regex berisiko (hasil: bersih)
+- /g + .test() stateful: tidak ada di jalur hidup (semua exec lokal/clone)
+- new RegExp dinamis: hanya dari vocab internal (posture) + PII patterns
+  yang sudah di-clone benar
+- Catastrophic backtracking: nihil
+- Kesimpulan: 'rgs' kemarin satu-satunya insiden regex, dan itu artefak
+  alat ukur sendiri
+
+### Fix multilingual gates (ID+EN simetris)
+1. OFFICE_EXCEL_RE/WORD_RE/PPT_RE + MUTATION_KEYWORDS_RE: tambah sinonim EN
+   (report/sales/revenue/stock/inventory/letter/memo/contract/create/add/
+   replace/remove/prepare/record dll). False positive = over-provision tool
+   (aman); false negative = routing mati (bahaya).
+2. Completeness nudge: + ringkasan/recap/summary/saldo/balance/subtotal.
+3. smart-recall extractKeywords: +30 stopword fungsi Indonesia (apa/bagaimana/
+   ke/dari/saya/akan/sudah/tolong dll) supaya keyword memori tak ternodai.
+
+Escape hatch netral bahasa tetap: sinyal @file.ext.

@@ -14,13 +14,19 @@ import { WorkspaceCartographerService } from './workspace-cartographer.service.j
 import * as path from 'path';
 import * as fs from 'fs/promises';
 
-/** Regex matching office-document keywords in user goals (Indonesian + English). */
+/**
+ * Regex matching office-document keywords in user goals (Indonesian + English).
+ * Users mix languages freely — keep synonym sets symmetric across both.
+ * Language-neutral @file-extension signals are checked separately and always win.
+ */
 const OFFICE_EXCEL_RE =
-  /(?:excel|xlsx|xlsm|xls|spreadsheet|sheet|tabel|rekap|laporan|keuangan|pemasukan|pengeluaran|penjualan|stok|inventori)/i;
-const OFFICE_WORD_RE = /(?:word|docx|doc|document|surat|dokumen)/i;
-const OFFICE_PPT_RE = /(?:pptx|ppt|powerpoint|presentasi|slide)/i;
+  /(?:excel|xlsx|xlsm|xls|spreadsheet|sheet|tabel|rekap|laporan|keuangan|pemasukan|pengeluaran|penjualan|stok|inventori|report|sales|revenue|expense|income|stock|inventory|finance|ledger)/i;
+const OFFICE_WORD_RE =
+  /(?:word|docx|document|surat|dokumen|letter|memo|contract|kontrak|proposal)/i;
+const OFFICE_PPT_RE =
+  /(?:pptx|ppt|powerpoint|presentasi|slide|presentation|deck)/i;
 const MUTATION_KEYWORDS_RE =
-  /\b(catat|update|ubah|isi|buat|tambah|edit|tulis|hapus|format|bold|export|rekap|lengkapi|siapkan|ganti|pindah|salin|copy|paste|convert|jadikan|beri|set|masukkan|input|perbarui)\b/i;
+  /\b(catat|update|ubah|isi|buat|tambah|edit|tulis|hapus|format|bold|export|rekap|lengkapi|siapkan|ganti|pindah|salin|copy|paste|convert|jadikan|beri|set|masukkan|input|perbarui|create|add|write|change|replace|remove|delete|fill|prepare|rename|move|insert|apply|record|enter)\b/i;
 
 @Injectable()
 export class WorkspacePromptBuilderService {

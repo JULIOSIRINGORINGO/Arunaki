@@ -558,8 +558,12 @@ export class WorkspaceRunnerService {
 
           // Completeness nudge: goal asks for totals/rekap, Excel was mutated,
           // but the model is about to finish without a second confirming pass.
+          // Vocabulary: ID + EN aggregate words (users mix languages).
           const goalNeedsTotal =
-            hasMutationIntent && /total|rekap/i.test(safeGoal || '');
+            hasMutationIntent &&
+            /(?:total|rekap|ringkasan|recap|summary|saldo|balance|subtotal)/i.test(
+              safeGoal || '',
+            );
           if (
             !completenessNudged &&
             goalNeedsTotal &&
