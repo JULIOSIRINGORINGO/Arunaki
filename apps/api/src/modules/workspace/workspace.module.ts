@@ -27,7 +27,8 @@ import { TimeTravelService } from './services/time-travel.service.js';
 import { WorkspaceRunStateService } from './services/workspace-run-state.service.js';
 import { WorkspaceToolExecutorService } from './services/workspace-tool-executor.service.js';
 import { AgentEventService } from './services/agent-event.service.js';
-
+import { RecapFillPipelineService } from './services/recap-fill-pipeline.service.js';
+import { WorkspacePostRunService } from './services/workspace-post-run.service.js';
 @Module({
   imports: [
     PrismaModule,
@@ -59,6 +60,8 @@ import { AgentEventService } from './services/agent-event.service.js';
     TranscriptEngineService,
     TimeTravelService,
     AgentEventService,
+    RecapFillPipelineService,
+    WorkspacePostRunService,
   ],
   exports: [
     WorkspaceService,
@@ -72,6 +75,8 @@ import { AgentEventService } from './services/agent-event.service.js';
     TranscriptEngineService,
     TimeTravelService,
     AgentEventService,
+    RecapFillPipelineService,
+    WorkspacePostRunService,
   ],
 })
 export class WorkspaceModule {}

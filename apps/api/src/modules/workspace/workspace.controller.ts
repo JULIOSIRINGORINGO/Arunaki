@@ -14,6 +14,7 @@ import type { Response } from 'express';
 import { WorkspaceService } from './workspace.service.js';
 import { WorkspaceInitService } from './workspace-init.service.js';
 import { WorkspaceRunnerService } from './workspace-runner.service.js';
+import { WorkspaceRunStateService } from './services/workspace-run-state.service.js';
 import { FileService } from '../file/file.service.js';
 import {
   CreateWorkspaceDto,
@@ -33,6 +34,7 @@ export class WorkspaceController {
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceInitService: WorkspaceInitService,
     private readonly workspaceRunnerService: WorkspaceRunnerService,
+    private readonly workspaceRunStateService: WorkspaceRunStateService,
     private readonly fileService: FileService,
     private readonly timeTravelService: TimeTravelService,
     private readonly transcriptEngineService: TranscriptEngineService,
@@ -162,7 +164,7 @@ export class WorkspaceController {
     // client leaves the workspace permanently locked.
     const onClose = () => {
       try {
-        this.workspaceRunnerService.abortRun(id, 'client disconnected');
+        this.workspaceRunStateService.abortRun(id, 'client disconnected');
       } catch (e) {
         /* ignore */
       }
@@ -257,7 +259,7 @@ export class WorkspaceController {
   @Post(':id/agent/abort')
   async abortAgent(@Param('id') id: string) {
     try {
-      const aborted = this.workspaceRunnerService.abortRun(
+      const aborted = this.workspaceRunStateService.abortRun(
         id,
         'User cancelled',
       );
@@ -275,7 +277,7 @@ export class WorkspaceController {
   @Post(':id/agent/steer')
   async steerAgent(@Param('id') id: string, @Body() body: { message: string }) {
     try {
-      const queued = this.workspaceRunnerService.addSteeringInput(
+      const queued = this.workspaceRunStateService.addSteeringInput(
         id,
         body.message,
       );
@@ -296,7 +298,7 @@ export class WorkspaceController {
     @Body() body: { approved: boolean },
   ) {
     try {
-      const resolved = this.workspaceRunnerService.resolveApproval(
+      const resolved = this.workspaceRunStateService.resolveApproval(
         id,
         body.approved,
       );
@@ -316,9 +318,9 @@ export class WorkspaceController {
   @Get(':id/agent/state')
   async getAgentState(@Param('id') id: string) {
     try {
-      const state = this.workspaceRunnerService.getRunState(id);
+      const state = this.workspaceRunStateService.getRunState(id);
       return successResponse({
-        isRunning: this.workspaceRunnerService.isRunning(id),
+        isRunning: this.workspaceRunStateService.isRunning(id),
         state: state
           ? {
               state: state.state,
