@@ -70,7 +70,7 @@ export class TextExtractorTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal memproses data: ${e.message}`,
+        preview: `Failed to process data: ${e.message}`,
         metadata: {
           toolName: 'extract_structured_data',
           displayName: 'Ekstraksi Data',

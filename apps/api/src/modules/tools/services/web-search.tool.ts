@@ -196,7 +196,7 @@ export class WebSearchTool {
       return {
         status: 'error',
         data: {},
-        preview: `Pencarian gagal: ${error.message}`,
+        preview: `Search failed: ${error.message}`,
         metadata: {
           toolName: 'web_search',
           displayName: 'Search Web',

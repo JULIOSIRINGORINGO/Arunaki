@@ -153,7 +153,7 @@ export class DocumentGeneratorTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal generate PPTX: ${e.message}`,
+        preview: `Failed to generate PPTX: ${e.message}`,
         metadata: {
           toolName: 'generate_export',
           displayName: 'Dokumen Export',

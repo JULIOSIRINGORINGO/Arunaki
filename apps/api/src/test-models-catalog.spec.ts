@@ -89,12 +89,12 @@ describe('Test Models Catalog', () => {
         });
 
         const duration = ((Date.now() - start) / 1000).toFixed(1);
-        logger.log(`\n✅ [BERHASIL - ${duration}s] RESPONS LLM:`);
+        logger.log(`\n✅ [SUCCESS - s] LLM RESPONSE:`);
         logger.log(`------------------------------------------------------`);
         console.log(result.content.trim());
         logger.log(`------------------------------------------------------`);
       } catch (error: any) {
-        logger.error(`\n❌ [GAGAL] ${error.message}`);
+        logger.error(`\n❌ [FAILED] `);
       }
     }
 

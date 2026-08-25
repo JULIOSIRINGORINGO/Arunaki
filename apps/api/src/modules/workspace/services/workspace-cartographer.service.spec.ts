@@ -238,11 +238,11 @@ describe('WorkspaceCartographerService', () => {
     // Step 1: ADD Rule 1 (date)
     await service.patchWorkspaceRules(
       'ws-1',
-      'ADD: Tanggal judul harus selalu hari ini',
+      'ADD: Date header must always be today',
     );
     let rules = await service.getWorkspaceRules(tempDir);
     expect(rules).toContain('## 8. User Preferences');
-    expect(rules).toContain('Tanggal judul harus selalu hari ini');
+    expect(rules).toContain('Date header must always be today');
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(1);
 
     // Step 2: ADD Rule 2 (format — different rule)
@@ -259,11 +259,11 @@ describe('WorkspaceCartographerService', () => {
     // Step 3: REPLACE Rule 1 (edit date rule)
     await service.patchWorkspaceRules(
       'ws-1',
-      'REPLACE: Tanggal judul harus selalu hari ini -> Format tanggal harus DD/MM/YYYY',
+      'REPLACE: Date header must always be today -> Date format must be DD/MM/YYYY',
     );
     rules = await service.getWorkspaceRules(tempDir);
-    expect(rules).toContain('Format tanggal harus DD/MM/YYYY');
-    expect(rules).not.toContain('Tanggal judul harus selalu hari ini');
+    expect(rules).toContain('Date format must be DD/MM/YYYY');
+    expect(rules).not.toContain('Date header must always be today');
     expect(rules).toContain('Format angka harus pakai titik');
     // Still 2 rules, still ## 8
     expect((rules.match(/- \[Auto-Learned/g) || []).length).toBe(2);

@@ -123,7 +123,7 @@ export class DataQueryTool {
       return {
         status: 'error',
         data: {},
-        preview: `Query gagal: ${e.message}`,
+        preview: `Query failed: ${e.message}`,
         metadata: {
           toolName: 'data_query',
           displayName: 'Query Database',
@@ -161,7 +161,7 @@ export class DataQueryTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal list tables: ${e.message}`,
+        preview: `Failed to list tables: ${e.message}`,
         metadata: {
           toolName: 'data_query',
           displayName: 'Query Database',
@@ -209,7 +209,7 @@ export class DataQueryTool {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal describe table: ${e.message}`,
+        preview: `Failed to describe table: ${e.message}`,
         metadata: {
           toolName: 'data_query',
           displayName: 'Query Database',

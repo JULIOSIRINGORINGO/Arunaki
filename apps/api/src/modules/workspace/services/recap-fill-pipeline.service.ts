@@ -16,7 +16,7 @@ export class RecapFillPipelineService {
   /** Recap-fill goal: fill/catat/update + explicit date or "today" + a sheet/file target. */
   isRecapFillGoal(goal: string): boolean {
     return (
-      /(?:isi|catat|input|update|rekap|fill)/i.test(goal || '') &&
+      /(?:isi|catat|input|update|rekap|fill|record)/i.test(goal || '') &&
       /(?:\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b|hari ini|today)/i.test(goal || '') &&
       /(?:\.xlsm|\.xlsx|sheet|laporan|rekap|excel)/i.test(goal || '')
     );
@@ -225,12 +225,12 @@ export class RecapFillPipelineService {
       (r: any) => r.success && r.item === 'row',
     );
     const summary =
-      `Kolom ${targetDate} di ${targetFile} (${skeleton.activeSheet}) terisi: ` +
+      `Column ${targetDate} in ${targetFile} (${skeleton.activeSheet}) filled: ` +
       `${okRows.length}/${extraction.rows.length} label rows, ` +
       `${(res.results || []).filter((r: any) => r.success && r.item === 'detail').length} detail lines. ` +
       (res.itemsFailed > 0
-        ? `Gagal: ${(res.results || []).filter((r: any) => !r.success).map((r: any) => r.label || r.error).join(', ')}.`
-        : 'Semua posisi terverifikasi oleh harness.') +
+        ? `Failed: ${(res.results || []).filter((r: any) => !r.success).map((r: any) => r.label || r.error).join(', ')}.`
+        : 'All positions verified by harness.') +
       ` [pipeline: 1 LLM call]`;
     onEvent({ type: 'thinking', data: summary });
     return summary;

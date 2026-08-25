@@ -70,7 +70,7 @@ export class ExcelReportBuilder {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal generate Excel: ${e.message}`,
+        preview: `Failed to generate Excel: ${e.message}`,
         metadata: {
           toolName: 'generate_export',
           displayName: 'Dokumen Export',
@@ -135,7 +135,7 @@ export class ExcelReportBuilder {
       return {
         status: 'error',
         data: {},
-        preview: `Gagal generate CSV: ${e.message}`,
+        preview: `Failed to generate CSV: ${e.message}`,
         metadata: {
           toolName: 'generate_export',
           displayName: 'Dokumen Export',

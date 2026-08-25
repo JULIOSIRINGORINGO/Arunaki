@@ -25,12 +25,12 @@ export class SkillSeedService {
   private async seedGarmentSkills(): Promise<void> {
     await this.skillService.seedStarterSkills('garment', [
       {
-        name: 'rekap-penjualan-kain',
-        displayName: 'Rekap Penjualan Kain',
+        name: 'daily-sales-fabric',
+        displayName: 'Daily Sales Fabric',
         description:
           'Merangkum data penjualan kain per periode dengan format standar',
         category: 'reporting',
-        content: `# Rekap Penjualan Kain
+        content: `# Daily Sales Fabric
 
 ## Format Output
 Ringkasan penjualan kain harus mencakup:
@@ -40,7 +40,7 @@ Ringkasan penjualan kain harus mencakup:
 - Total revenue
 - Top 5 kain terlaris
 
-## Kolom Tabel
+## Table Columns
 | Jenis Kain | Warna | Yard/Meter | Harga/meter | Total | % Kontribusi |
 
 ## Aturan
@@ -106,11 +106,11 @@ Untuk setiap jenis kain, tampilkan:
   private async seedRestaurantSkills(): Promise<void> {
     await this.skillService.seedStarterSkills('restaurant', [
       {
-        name: 'rekap-penjualan-menu',
-        displayName: 'Rekap Penjualan Menu',
+        name: 'daily-sales-menu',
+        displayName: 'Daily Sales Menu',
         description: 'Merangkum penjualan menu restoran per periode',
         category: 'reporting',
-        content: `# Rekap Penjualan Menu
+        content: `# Daily Sales Menu
 
 ## Format Output
 - Periode (harian/mingguan/bulanan)
@@ -119,7 +119,7 @@ Untuk setiap jenis kain, tampilkan:
 - Top 5 menu terlaris
 - Menu paling sedikit terjual
 
-## Kolom Tabel
+## Table Columns
 | Menu | Kategori | Porsi Terjual | Harga | Revenue | % |
 
 ## Aturan
@@ -159,11 +159,11 @@ HPP/porsi = Total Biaya / Total Porsi
   private async seedRetailSkills(): Promise<void> {
     await this.skillService.seedStarterSkills('retail', [
       {
-        name: 'rekap-penjualan-produk',
-        displayName: 'Rekap Penjualan Produk',
+        name: 'daily-sales-product',
+        displayName: 'Daily Sales Product',
         description: 'Merangkum penjualan produk retail per periode',
         category: 'reporting',
-        content: `# Rekap Penjualan Produk
+        content: `# Daily Sales Product
 
 ## Format Output
 - Periode
@@ -172,7 +172,7 @@ HPP/porsi = Total Biaya / Total Porsi
 - Top 10 produk terlaris
 - Produk zero-sale (tidak laku)
 
-## Kolom Tabel
+## Table Columns
 | SKU | Produk | Unit Terjual | Harga | Revenue | Profit | % |
 
 ## Aturan
@@ -206,11 +206,11 @@ HPP/porsi = Total Biaya / Total Porsi
   private async seedGenericSkills(): Promise<void> {
     await this.skillService.seedStarterSkills('generic', [
       {
-        name: 'rekap-data-umum',
-        displayName: 'Rekap Data Umum',
+        name: 'general-data-summary',
+        displayName: 'General Data Summary',
         description: 'Merangkum data tabular dalam format ringkas',
         category: 'reporting',
-        content: `# Rekap Data Umum
+        content: `# General Data Summary
 
 ## Format Output
 - Ringkasan statistik: total, rata-rata, min, max
