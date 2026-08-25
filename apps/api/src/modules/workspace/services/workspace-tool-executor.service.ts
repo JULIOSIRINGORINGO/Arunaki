@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+﻿import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ToolRegistryService } from '../../tools/tool-registry.service.js';
 import { SelfHealingService } from '../../ai/self-healing.service.js';
 import { ArtifactService } from '../../artifact/artifact.service.js';
@@ -157,7 +157,7 @@ export class WorkspaceToolExecutorService {
 
       if (!declaredTools.has(funcName)) {
         // Lazy tool promotion: the model reached for a real registry tool that
-        // wasn't in this task's subset. Enable it instead of rejecting — this is
+        // wasn't in this task's subset. Enable it instead of rejecting â€” this is
         // language-agnostic and self-heals router misses.
         const promoted = this.toolRegistryService
           .getToolDefinitions()
@@ -166,7 +166,7 @@ export class WorkspaceToolExecutorService {
           tools.push(promoted);
           declaredTools.add(funcName);
           this.logger.log(
-            `[Lazy Promotion] "${funcName}" was not in the active subset — enabled on demand.`,
+            `[Lazy Promotion] "${funcName}" was not in the active subset â€” enabled on demand.`,
           );
           messages.push({
             role: 'tool',
@@ -190,7 +190,7 @@ export class WorkspaceToolExecutorService {
       }
 
       if (
-        this.toolRegistryService.isMutating(funcName) &&
+        this.toolRegistryService.isMutating(funcName, args) &&
         Object.keys(args).length === 0
       ) {
         if (
@@ -221,7 +221,7 @@ export class WorkspaceToolExecutorService {
         continue;
       }
 
-      if (this.toolRegistryService.isMutating(funcName)) {
+      if (this.toolRegistryService.isMutating(funcName, args)) {
         executedToolCount++;
         mutatingCalls.push({ toolCall, args });
       } else {
@@ -239,13 +239,13 @@ export class WorkspaceToolExecutorService {
         const base = path
           .basename(String(ra.filename || ra.path || ra.filePath || ''))
           .toLowerCase();
-        // Empty target (e.g. `list`) is NOT a known file — never fast-cut on it,
+        // Empty target (e.g. `list`) is NOT a known file â€” never fast-cut on it,
         // or the model's verification round gets skipped.
         return base !== '' && touchedFiles.has(base);
       });
       if (allKnownTargets) {
         this.logger.log(
-          `[Fast Cut-Off] Round ${runState.round} only re-reads already-touched file(s) after ${mutationsApplied} successful mutation(s) — concluding run instantly.`,
+          `[Fast Cut-Off] Round ${runState.round} only re-reads already-touched file(s) after ${mutationsApplied} successful mutation(s) â€” concluding run instantly.`,
         );
         return {
           executedToolCount,
@@ -536,3 +536,4 @@ export class WorkspaceToolExecutorService {
     };
   }
 }
+

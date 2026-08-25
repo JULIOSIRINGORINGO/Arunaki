@@ -290,6 +290,7 @@ export class WorkspaceRunnerService {
       let nudgeAttempts = 0;
       let completenessNudged = false;
       let officeMutationApplied = false;
+      let officeMutationTool = '';
       const runStartTime = Date.now();
       let mutationsApplied = 0;
       let noProgressRounds = 0;
@@ -568,16 +569,26 @@ export class WorkspaceRunnerService {
           // mutation, force one confirming pass before the run may finish.
           // Small models skip aggregate updates or misplace writes; a single
           // mandatory re-read catches both without trusting a single shot.
+          //
+          // Companion guard: on a mutation goal, a run that only READ (or did
+          // nothing) and then tries to finish is NOT done — force the write.
+          const officeReadButNotWritten =
+            hasMutationIntent &&
+            executedToolCount > 0 &&
+            !officeMutationApplied;
           if (
             !completenessNudged &&
             hasMutationIntent &&
-            officeMutationApplied &&
+            (officeMutationApplied || officeReadButNotWritten) &&
             nudgeAttempts < 3
           ) {
             completenessNudged = true;
             nudgeAttempts++;
+            const mode = officeMutationApplied
+              ? 'mutation done — verify & complete aggregates'
+              : 'only read so far — APPLY the requested writes now';
             this.logger.log(
-              `[Self-Correction] Completeness nudge: Office document was mutated. Forcing verification pass before finish...`,
+              `[Self-Correction] Completeness nudge (${mode})...`,
             );
             if (aiResponse.content) {
               messages.push({
@@ -590,10 +601,28 @@ export class WorkspaceRunnerService {
             }
             messages.push({
               role: 'user',
-              content:
-                `[Completeness Check] Before finishing: re-read the section/document you just modified and verify it now fully matches the request — ` +
-                `every requested row/cell/paragraph present, every aggregate figure (TOTAL, subtotals, rekap values) recalculated and written, ` +
-                `and nothing pre-existing was damaged. If anything is stale, missing, or wrong, fix it now with the same edit tool, then confirm.`,
+              content: officeMutationApplied
+                ? officeMutationTool === 'desktop_excel_edit'
+                  ? `[Completeness Check] Before finishing: re-read the sheet you just modified and verify it fully matches the request — ` +
+                    `every requested row/cell present, every aggregate figure (grand total, subtotals) recalculated and written, ` +
+                    `and nothing pre-existing was damaged. If anything is stale, missing, or wrong, fix it now with desktop_excel_edit, then confirm.`
+                  : officeMutationTool === 'desktop_word_edit'
+                    ? `[Completeness Check] Before finishing: re-read the document you just modified and verify it fully matches the request — ` +
+                      `every requested replacement, paragraph, or table present in the right place, and the rest of the document untouched. ` +
+                      `If anything is missing or wrong, fix it now with desktop_word_edit, then confirm.`
+                    : `[Completeness Check] Before finishing: re-read the presentation you just modified and verify every requested slide/` +
+                      `text change is in place and the rest of the deck is untouched. If anything is missing, fix it now with desktop_ppt_edit, then confirm.`
+                : `[Action Required] You only inspected the file — the requested changes are NOT written yet. ` +
+                  `Using what you just read, call the same edit tool NOW and write every value the user asked for. ` +
+                  `FULL-WIDTH RULE: your earlier read may have covered only a narrow range — FIRST re-read the full width ` +
+                  `of the target table (all used columns, including the header/date row) so target cells come from real data, not memory. ` +
+                  `TARGET COLUMN RULE (critical): from that full read, state which column letter matches the requested date/value — ` +
+                  `then write ONLY in that column. ` +
+                  `ROW ALIGNMENT RULES (critical, apply to any template): put each value on the row whose own label matches it — ` +
+                  `a section's total belongs on that section's label row; each item/category amount belongs on its own labeled row; ` +
+                  `free-text details belong on the empty rows directly below the section label. ` +
+                  `Mirror row-for-row how an already-filled column of the same table is laid out, and never overwrite the header or date row. ` +
+                  `Then confirm what you wrote.`,
             });
             continue;
           }
@@ -683,17 +712,21 @@ export class WorkspaceRunnerService {
           onEvent,
         );
 
-        if (
-          aiResponse.toolCalls.some((tc) =>
-            /^(?:desktop_excel_edit|desktop_word_edit|desktop_ppt_edit)$/.test(
-              tc.function?.name || '',
-            ),
-          )
-        ) {
-          officeMutationApplied = true;
+        const officeToolUsed = aiResponse.toolCalls.find((tc) =>
+          /^(?:desktop_excel_edit|desktop_word_edit|desktop_ppt_edit)$/.test(
+            tc.function?.name || '',
+          ),
+        );
+        if (officeToolUsed) {
+          officeMutationTool = officeToolUsed.function?.name || officeMutationTool;
         }
         executedToolCount += toolExecResult.executedToolCount;
         mutationsApplied = toolExecResult.mutationsApplied;
+        // Accurate mutation signal: executor now counts read-only Office
+        // inspections as non-mutations, so mutationsApplied is trustworthy.
+        if (toolExecResult.mutationsApplied > 0) {
+          officeMutationApplied = true;
+        }
         noProgressRounds = toolExecResult.noProgressRounds;
 
         if (toolExecResult.concludeRun) {

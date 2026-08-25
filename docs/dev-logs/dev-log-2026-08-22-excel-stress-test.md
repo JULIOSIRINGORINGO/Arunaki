@@ -482,3 +482,42 @@ Escape hatch netral bahasa tetap: sinyal @file.ext.
    agent_spawn/batch_execute/multi_doc_process disembunyikan kecuali
    disebut eksplisit; identitas ditambah mode-directive.
    Verifikasi: memory recall agnes tetap OK pasca-trim.
+
+---
+
+## REAL TEST: TABEL REKAPAN NEW2026-.xlsm (laporan-test) - ITERASI LOG
+
+**Target:** Isi kolom 24/08/2026 (Z, sheet AGUSTUS) dari REKAPAN TERBARU2.txt.
+**Syarat user:** data masuk benar posisi, makro aman, tampilan aman, tanpa contekan (label file user dilarang masuk harness).
+**Model:** agnes-2-0-flash / glm-4-7-flash (free). Workspace: cmt467zpa0006vg8glbkv1vtz. Backup wajib tiap iterasi.
+
+### Iterasi 1 (agnes) - GAGAL total
+- 1 tool call = read_range saja, lalu berhenti sah.
+- Akar: nudge hanya menyala SETELAH mutasi; read-only-then-stop pada goal mutasi tidak tertangkap.
+- Template: AMAN (hash vba/styles/workbook identik, kolom 19/08 utuh).
+
+### Iterasi 2 (agnes, + nudge read-only) - GAGAL parsial
+- 5 detail channel + beberapa total TERTULIS tapi SEMUA GESER -1 BARIS (detail masuk baris label PEMASUKAN; BCA 2.771 nyasar ke baris BNI; GALON/BENSIN tertukar) + header tanggal Z4 tertimpa.
+- Template: AMAN. Kolom 19/08: utuh.
+
+### Iterasi 3 (agnes, 15 menit deadline, 38 calls) - GAGAL
+- NOL sel tersimpan. Atomic-save menahan semua batch (masing2 ada 1 aksi gagal).
+- Template: AMAN.
+
+### Iterasi 4-5 (glm) - GAGAL cepat
+- 1 call read-only lalu selesai. Dua akar baru ditemukan:
+  1. Fast Cut-Off executor menghitung desktop_excel_edit read-only sbg "mutasi" (flag mutating: true buta aksi) -> run ditutup instan.
+  2. Bentuk panggilan single-action (args.action tanpa array actions) lolos dari guard.
+- Fix: isMutating(name,args) action-aware (read_range/read_cell/find_cell/list_sheets = bukan mutasi, dukung 2 bentuk panggilan); runner flag memakai mutationsApplied (akurat).
+
+### Iterasi 6 (glm, pasca-fix) - GAGAL parsial (pola sama dgn iterasi 2)
+- 31 calls, nudge loop JALAN (cut-off tidak memotong lagi). Detail 5 channel benar format; total bank & kategori pengeluaran tetap off-by-one; ada tulisan nyasar Z14/Z45/Z46.
+- Akar generik: model membaca range sempit (A1:F10) - header tanggal U-AA & nomor baris tidak pernah terlihat; menulis dari bayangan.
+
+### Perbaikan berjalan (belum diuji)
+- Nudge read-only + FULL-WIDTH RULE: wajib re-read full width (semua kolom s.d. header tanggal) sebelum menentukan sel target.
+
+### Yang SUDAH terbukti aman sepanjang iterasi
+- vbaProject.bin / styles.xml / workbook.xml hash identik; kolom 19/08 & sheet lain nol perubahan; backup+restore bekerja tiap iterasi.
+
+### Status: BELUM LULUS - lanjut iterasi 7 (glm + full-width rule). TIDAK DI-PUSH sampai lulus.

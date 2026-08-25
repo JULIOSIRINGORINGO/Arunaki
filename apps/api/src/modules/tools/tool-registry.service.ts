@@ -249,10 +249,39 @@ export class ToolRegistryService {
     return ALIAS_MAP[clean] || clean;
   }
 
-  isMutating(name: string): boolean {
+  isMutating(name: string, args?: Record<string, any>): boolean {
     const resolvedName = this.resolveToolAlias(name);
     const toolRecord = this.tools.get(resolvedName) || this.tools.get(name);
-    return toolRecord ? !!toolRecord.tool.mutating : false;
+    if (!toolRecord) return false;
+    if (!toolRecord.tool.mutating) return false;
+    // Office COM editors are registered mutating, but a call whose actions are
+    // ALL read-only is inspection, not mutation — miscounting it breaks the
+    // Fast Cut-Off and post-mutation verification logic downstream.
+    if (
+      (name === 'desktop_excel_edit' ||
+        name === 'desktop_word_edit' ||
+        name === 'desktop_ppt_edit')
+    ) {
+      // Models send EITHER actions:[...] OR a flat single action:{action:...}.
+      const effectiveActions: any[] = Array.isArray(args?.actions)
+        ? args.actions
+        : args?.action
+          ? [{ action: args.action }]
+          : [];
+      if (effectiveActions.length > 0) {
+        const READ_ONLY = new Set([
+          'read_range',
+          'read_cell',
+          'find_cell',
+          'list_sheets',
+        ]);
+        const allReadonly = effectiveActions.every(
+          (a: any) => a && READ_ONLY.has(a.action),
+        );
+        if (allReadonly) return false;
+      }
+    }
+    return true;
   }
 
   validateArgs(args: Record<string, any>, parameters: Record<string, any>) {
