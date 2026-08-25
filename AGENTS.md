@@ -89,7 +89,6 @@ These rules from ARCHITECTURE.md and INTELLIGENCE.md are non-negotiable and appl
 - **Module boundaries** — respect the responsibility table in ARCHITECTURE.md Section 3. Do not put business logic in the Frontend, and do not let AI Engine access Storage or the Database directly — always go through the appropriate Service.
 - **Repository Pattern** — never call Prisma Client directly from business logic; always go through a Repository interface.
 - **Provider Abstraction** — introduce new technologies (search engines, AI providers, storage backends) only behind an existing or new abstraction layer, never hardcoded.
-- **Approval Gate** — any action that creates, modifies, or deletes user data, or is otherwise irreversible, must go through an explicit approval step before execution. Read-only analysis does not require approval.
 - **Workspace Isolation** — never allow one Workspace to read another Workspace's files, metadata, or artifacts.
 - **Transparency** — for any multi-step or long-running task, make the steps being taken visible (progress status, logs, or equivalent), not just the final result.
 
@@ -121,7 +120,6 @@ If a requested task appears to require violating any of the above, treat it as a
 - Avoid duplicate code and duplicate abstractions.
 - Do not introduce new dependencies without explicit approval. If a new dependency seems necessary, stop and propose it (name, purpose, alternatives considered) instead of adding it directly.
 - Keep changes within the requested scope. If you notice unrelated issues, report them separately instead of fixing them inline.
-- Never delete or overwrite existing data-affecting code paths without the Approval Gate step above.
 - Do not skip phases in WORKFLOW.md. Complete current phase before moving to next.
 - **Machine-Specific / Local-Only Files Isolation (CRITICAL)** — Jangan pernah mem-push modifikasi yang bersifat khusus untuk lingkungan/mesin lokal atau OS tertentu (misalnya penyesuaian timeout startup pada `scripts/dev-app.cjs`, tuning path compiler lokal, atau file scratch/debug) ke repository GitHub. Gunakan `git update-index --skip-worktree <file>` pada file-file konfigurasi lokal tersebut agar tetap aktif di mesin saat ini tanpa mengotori commit atau menimpa lingkungan kerja komputer lain saat pull/push.
 - **Source Control Hygiene (WAJIB di akhir setiap sesi/task)** — Sebelum menutup pekerjaan: (1) pastikan `git status --porcelain` kosong — commit, pindahkan ke `.gitignore`, atau hapus artefak runtime/fixture uji; (2) kalau test/stress suite menghasilkan file sampingan, tambahkan polanya ke `.gitignore` pada commit yang sama (jangan andalkan hapus manual); (3) jangan pernah commit log debug, fixture regenerable, atau output tool; (4) push hanya setelah status bersih.
