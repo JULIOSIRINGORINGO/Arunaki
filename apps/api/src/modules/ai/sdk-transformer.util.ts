@@ -304,10 +304,12 @@ export async function* makeSdkRequestStream(
   // Adaptive Time to first token (TTFB) timeout:
   // - Fast / standard models: 45s failover
   // - Large reasoning models (120b, o1, deepseek-r1): 75s failover
-  const isHeavyReasoning = /120b|deepseek-r1|o1|o3/i.test(provider.model);
+  const isHeavyReasoning = /120b|deepseek|o1|o3|r1/i.test(provider.model);
   const defaultTtfb = isHeavyReasoning ? 75000 : 45000;
   const firstTokenTimeoutMs = options.firstTokenTimeoutMs ?? defaultTtfb;
-  const totalTimeoutMs = options.totalTimeoutMs ?? 180000;
+  // Heavy models routinely exceed 3 min before first token on long document
+  // prompts — give them a 5-minute ceiling instead of killing them at 3.
+  const totalTimeoutMs = options.totalTimeoutMs ?? (isHeavyReasoning ? 300000 : 180000);
 
   console.log(
     `[makeSdkRequestStream] Starting stream to ${provider.name} (${provider.model}), messages: ${body.messages?.length}, tools: ${body.tools?.length}`,

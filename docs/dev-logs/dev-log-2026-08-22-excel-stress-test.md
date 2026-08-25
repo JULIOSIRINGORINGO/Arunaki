@@ -538,3 +538,21 @@ Escape hatch netral bahasa tetap: sinyal @file.ext.
 - SEMUA bug harness teratasi (stop-after-read, cut-off, atomic-save, wrong-sheet, kolom target terverifikasi Z).
 - YANG TERTINGGAL = batuan kemampuan model mini gratis: aritmetika posisi absolut (tanggal->kolom, label->baris) dan skala angka. Setiap perbaikan prompt hanya memindahkan lokasi error.
 - Prompt-guidance mencapai plafon. Lanjut = butuh penegakan deterministik level lain atau model lebih besar.
+
+### PROOF RUN berbayar (deepseek-v4-flash) - GAGAL, hipotesis dibalik
+- Setelah timeout dinaikkan (300s heavy) + client raw-http: deepseek mendapat 3 calls,
+  menulis detail+totals dengan OFF-BY-ONE IDENTIK dgn model mini
+  (BRI<-BNI, BNI<-BCA, GALON<-BENSIN, detail mulai di baris label, SHOOPE 90k, Z66/Z69 stray).
+- Dengan read beranotasi koordinat (Row N + COLUMNS header) pun tetap salah, dan model
+  sendiri mengakui "may have written to wrong rows" di penutup.
+- KESIMPULAN KOREKSI: bukan batasan model mini. Ini kegagalan loop verifikasi harness:
+  satu nudge tidak cukup; model butuh siklus BACA-BALIK TERSTRUKTUR -> DAFTAR KOREKSI
+  sampai bersih (act-check-fix dgn gigi), plus nudgeAttempts utk office dinaikkan.
+- Template tetap AMAN sepanjang semua iterasi (hash identik).
+
+### Rencana Verify-and-Correct v2 (menunggu persetujuan user)
+1. Pasca-mutasi office: harness auto read-back region target (full width).
+2. Kirim ke model: state terkini + instruksi terstruktur "list SETIAP mismatch
+   vs request sebagai action write_cell (rowLabel/cell) - jangan narasi".
+3. Ulangi hingga model report clean / tidak ada perubahan baru (max 5 putaran).
+4. nudgeAttempts office: 3 -> 5.
