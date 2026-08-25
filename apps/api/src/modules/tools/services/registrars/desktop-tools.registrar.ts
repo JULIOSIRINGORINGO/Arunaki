@@ -255,7 +255,7 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, find_cell, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. RULES: (1) For any write/format action you MUST provide sheetName — writes without sheetName are rejected on multi-sheet workbooks. (2) For write_cell, ALWAYS prefer matchColumn+matchValue+targetColumn (label-based targeting by header names) over guessing cell coordinates — read_range the sheet first to learn the column headers; use find_cell with matchValue to locate a label row (e.g. the grand-total row). (3) When a quantity changes, use delta:true and update EVERY affected column in the same call — e.g. when stock leaves the warehouse, increase the outgoing column by N AND decrease the remaining column by N (two write_cell actions with delta:true and negative value for the decrease). (4) For totals/sums/grand-totals NEVER compute the number yourself — first find_cell the total label row, then write an Excel FORMULA into that row\'s sum column AFTER inserting all data rows (e.g. value:"=SUM(E2:E8)"), so the total always reflects the final data.',
+          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, find_cell, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. RULES: (1) For any write/format action you MUST provide sheetName — writes without sheetName are rejected on multi-sheet workbooks. (2) For write_cell, ALWAYS prefer label-based targeting over guessing cell coordinates: (a) matchColumn+matchValue+targetColumn when the table has a header row of column names, or (b) rowLabel+columnDate/columnLetter when rows are labeled in the first columns and values sit under date columns — the harness resolves the exact row/column deterministically. (3) When a quantity changes, use delta:true and update EVERY affected column in the same call — e.g. when stock leaves the warehouse, increase the outgoing column by N AND decrease the remaining column by N (two write_cell actions with delta:true and negative value for the decrease). (4) For totals/sums/grand-totals NEVER compute the number yourself — first find_cell the total label row, then write an Excel FORMULA into that row\'s sum column AFTER inserting all data rows (e.g. value:"=SUM(E2:E8)"), so the total always reflects the final data.',
         tags: [
           'desktop',
           'excel',
@@ -303,6 +303,9 @@ export class DesktopToolsRegistrar {
                   matchColumn: args.matchColumn,
                   matchValue: args.matchValue,
                   targetColumn: args.targetColumn,
+                  rowLabel: args.rowLabel,
+                  columnLetter: args.columnLetter,
+                  columnDate: args.columnDate,
                   delta: args.delta,
                   sourceSheet: args.sourceSheet,
                   newSheetName: args.newSheetName,
@@ -427,6 +430,9 @@ export class DesktopToolsRegistrar {
                   matchColumn: { type: 'string', description: 'For write_cell with matchValue: header text of the column to search' },
                   matchValue: { type: 'string', description: 'For write_cell with matchColumn: cell value in that column identifying the target row' },
                   targetColumn: { type: 'string', description: 'For write_cell with matchColumn/matchValue: header text of the column to write into' },
+                  rowLabel: { type: 'string', description: 'For write_cell label-row targeting: exact text of the row label (searched in the first 3 columns), e.g. a total row label or category name' },
+                  columnLetter: { type: 'string', description: 'For write_cell with rowLabel: target column letter, e.g. "Z"' },
+                  columnDate: { type: 'string', description: 'For write_cell with rowLabel: target column identified by its date header text, exactly as displayed in the header row (any date format)' },
                   delta: { type: 'boolean', description: 'For write_cell numeric values: if true, ADD value to the existing cell value instead of replacing (use for increments like stock out/in)' },
                   range: { type: 'string', description: 'e.g., B15:Z30' },
                   sourceSheet: { type: 'string' },

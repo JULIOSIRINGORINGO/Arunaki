@@ -19,6 +19,12 @@ export interface ExcelAction {
   row?: number;
   column?: number;
   range?: string;
+  /** Label-based targeting: text of the row label (searched in the first 3 columns). */
+  rowLabel?: string;
+  /** Target column letter when using rowLabel (e.g. "Z"). */
+  columnLetter?: string;
+  /** Target column by date header text (e.g. "24/08/2026") when using rowLabel. */
+  columnDate?: string;
   bold?: boolean;
   italic?: boolean;
   fontSize?: number;
@@ -452,6 +458,79 @@ ${wrappedBlocks}
   ): string {
     switch (act.action) {
           case 'write_cell': {
+            // Row-label targeting: "write VALUE on the row labeled X, column Y".
+            // Fully deterministic — the model never computes coordinates.
+            if (act.rowLabel) {
+              const rl = (act.rowLabel || '').replace(/'/g, "''");
+              const colLetter = (act.columnLetter || '')
+                .replace(/[^A-Za-z]/g, '')
+                .toUpperCase();
+              const cdate = (act.columnDate || '').trim();
+              let mval: any;
+              if (typeof act.value === 'string') {
+                mval = `'${act.value.replace(/'/g, "''")}'`;
+              } else if (typeof act.value === 'number') {
+                mval = `[double]${act.value}`;
+              } else if (act.value === null || act.value === undefined) {
+                mval = '$null';
+              } else {
+                mval = act.value;
+              }
+              const colPart = colLetter
+                ? `        $tCol = $ws.Range('${colLetter}1').Column`
+                : cdate
+                  ? [
+                      `        $tCol = 0; $hdrRow = 0`,
+                      `        # Component-based date compare: tolerant of ANY display format`,
+                      `        $digits = ([regex]::Matches('${cdate}', '\\d+') | ForEach-Object { [int]$_.Value })`,
+                      `        if ($digits.Count -ge 3) {`,
+                      `          $cands = @(`,
+                      `            @{ y = $digits[2]; m = $digits[1]; d = $digits[0] },`,
+                      `            @{ y = $digits[2]; m = $digits[0]; d = $digits[1] }`,
+                      `          )`,
+                      `          for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 30); $r++) {`,
+                      `            for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
+                      `              $v = $ws.Cells.Item($r, $c).Value2`,
+                      `              if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) {`,
+                      `                $dt = [DateTime]::FromOADate($v)`,
+                      `                foreach ($cd in $cands) {`,
+                      `                  if ($dt.Year -eq $cd.y -and $dt.Month -eq $cd.m -and $dt.Day -eq $cd.d) { $tCol = $c; $hdrRow = $r; break }`,
+                      `                }`,
+                      `                if ($tCol -gt 0) { break }`,
+                      `              }`,
+                      `            }`,
+                      `            if ($tCol -gt 0) { break }`,
+                      `          }`,
+                      `        }`,
+                    ].join('\n')
+                  : `        $tCol = 0`;
+              return [
+                `        $tRow = 0; $tCol = 0`,
+                colPart,
+                `        if ($tCol -gt 0) {`,
+                `          for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) {`,
+                `            for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 4); $c++) {`,
+                `              if ([string]$ws.Cells.Item($r, $c).Text.Trim() -ieq '${rl}') { $tRow = $r; break }`,
+                `            }`,
+                `            if ($tRow -gt 0) { break }`,
+                `          }`,
+                `        }`,
+                `        if ($tRow -gt 0 -and $tCol -gt 0) {`,
+                `          $existing = $ws.Cells.Item($tRow, $tCol)`,
+                `          $isDateCell = $false`,
+                `          try { $nf = [string]$existing.NumberFormat; if ($nf -match 'yy' -and $existing.Value2 -is [double] -and $existing.Value2 -gt 20000) { $isDateCell = $true } } catch {}`,
+                `          if ($isDateCell) {`,
+                `            $results += @{ action='write_cell'; success=$false; error='Refusing to overwrite date header cell ${colLetter || cdate} row ${rl}' }`,
+                `          } else {`,
+                `            if (${act.delta ? '$true' : '$false'}) { $d${idx} = [double]$existing.Value2 + ${mval}; Invoke-Expression ('$ws.Cells.Item(' + $tRow + ',' + $tCol + ').Value2 = ' + $d${idx}) }`,
+                `            else { $existing.Value2 = ${mval} }`,
+                `            $results += @{ action='write_cell'; success=$true; row=$tRow; column=$tCol }`,
+                `          }`,
+                `        } else {`,
+                `          $results += @{ action='write_cell'; success=$false; error='Row label or target column not found (rowLabel=${rl}, col=${colLetter || cdate})' }`,
+                `        }`,
+              ].join('\n');
+            }
             // Label-based write: resolve row by matching a column's header + value,
             // so the LLM never has to guess coordinates.
             if (act.matchColumn && act.matchValue !== undefined) {

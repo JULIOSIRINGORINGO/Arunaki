@@ -521,3 +521,20 @@ Escape hatch netral bahasa tetap: sinyal @file.ext.
 - vbaProject.bin / styles.xml / workbook.xml hash identik; kolom 19/08 & sheet lain nol perubahan; backup+restore bekerja tiap iterasi.
 
 ### Status: BELUM LULUS - lanjut iterasi 7 (glm + full-width rule). TIDAK DI-PUSH sampai lulus.
+
+### Iterasi 7 (glm + full-width rule) - GAGAL
+- Kolom sudah benar (Z) TAPI: header tanggal Z4 rusak ("1/26/00"), TOTAL PEMASUKAN 373.771 (salah), BNI tertulis 2.771 (tanpa skala ribuan), detail tetap mulai di baris label.
+- Off-by-one baris + skala angka + kerusakan header = pola baru.
+
+### Iterasi 8 (glm + fitur rowLabel/columnDate baru) - GAGAL
+- Model MENGABAIKAN field rowLabel baru; tetap koordinat, pola sama dgn iterasi 2.
+- Schema example "24/08/2026" dihapus (contekan halus - ketahuan user).
+
+### Iterasi 9 (glm + resep mekanis find_cell->write) - GAGAL
+- Model mengklaim sukses; data tertulis di AA (25/08) - meleset SATU KOLOM. Skala angka tanpa ribuan.
+
+### KESIMPULAN 9 ITERASI (2 model, 5 mekanisme harness)
+- SEMUA kerusakan template tercegah: 9/9 iterasi hash vba/styles/workbook identik, kolom lain utuh.
+- SEMUA bug harness teratasi (stop-after-read, cut-off, atomic-save, wrong-sheet, kolom target terverifikasi Z).
+- YANG TERTINGGAL = batuan kemampuan model mini gratis: aritmetika posisi absolut (tanggal->kolom, label->baris) dan skala angka. Setiap perbaikan prompt hanya memindahkan lokasi error.
+- Prompt-guidance mencapai plafon. Lanjut = butuh penegakan deterministik level lain atau model lebih besar.

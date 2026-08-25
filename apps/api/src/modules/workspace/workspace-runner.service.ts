@@ -614,14 +614,11 @@ export class WorkspaceRunnerService {
                       `text change is in place and the rest of the deck is untouched. If anything is missing, fix it now with desktop_ppt_edit, then confirm.`
                 : `[Action Required] You only inspected the file — the requested changes are NOT written yet. ` +
                   `Using what you just read, call the same edit tool NOW and write every value the user asked for. ` +
-                  `FULL-WIDTH RULE: your earlier read may have covered only a narrow range — FIRST re-read the full width ` +
-                  `of the target table (all used columns, including the header/date row) so target cells come from real data, not memory. ` +
-                  `TARGET COLUMN RULE (critical): from that full read, state which column letter matches the requested date/value — ` +
-                  `then write ONLY in that column. ` +
-                  `ROW ALIGNMENT RULES (critical, apply to any template): put each value on the row whose own label matches it — ` +
-                  `a section's total belongs on that section's label row; each item/category amount belongs on its own labeled row; ` +
-                  `free-text details belong on the empty rows directly below the section label. ` +
-                  `Mirror row-for-row how an already-filled column of the same table is laid out, and never overwrite the header or date row. ` +
+                  `MECHANICAL RECIPE (follow exactly, no coordinate guessing): ` +
+                  `STEP 1 — for EACH value, call find_cell with matchValue set to that row's label text (e.g. the label of the total row, ` +
+                  `or the category name) to get its exact row number; also read the table's header/date row full-width once to fix the target column letter. ` +
+                  `STEP 2 — write each value with write_cell cell="<targetColumnLetter><rowFromFindCell>" using the row number find_cell returned. ` +
+                  `Never compute row numbers yourself; always take them from find_cell results. ` +
                   `Then confirm what you wrote.`,
             });
             continue;
