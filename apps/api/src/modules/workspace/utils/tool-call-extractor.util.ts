@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Utility functions for parsing and extracting tool calls, arguments, and file mentions from LLM text output.
  */
 
@@ -24,6 +24,16 @@ export function hasExplicitDeleteIntent(
 
 export function extractLooseArguments(raw: string): Record<string, any> {
   const result: Record<string, any> = {};
+  // GLM/Qwen-style tagged args: <arg_key>k</arg_key><arg_value>v</arg_value>
+  const argKeyRe = /<arg_key>\s*([^<]+?)\s*<\/arg_key>\s*<arg_value>\s*([\s\S]*?)\s*<\/arg_value>/g;
+  let argMatch: RegExpExecArray | null;
+  while ((argMatch = argKeyRe.exec(raw)) !== null) {
+    const k = argMatch[1].trim();
+    let v: any = argMatch[2].trim();
+    if (/^-?\d+(\.\d+)?$/.test(v)) v = Number(v);
+    else if (/^(true|false)$/i.test(v)) v = v.toLowerCase() === 'true';
+    if (k) result[k] = v;
+  }
   if (!raw || typeof raw !== 'string') return result;
 
   try {

@@ -16,6 +16,7 @@ export class DesktopToolsRegistrar {
     services: {
       desktopBridge: DesktopBridgeService;
       excelCom: ExcelComService;
+      fillTableColumnTool?: any;
       wordCom: WordComService;
       pptCom: PptComService;
       workspaceToolsService: WorkspaceToolsService;
@@ -77,6 +78,53 @@ export class DesktopToolsRegistrar {
         timeoutMs: 15000,
       }),
     );
+
+    // 1b. fill_table_column — deterministic date-column filler (PREFERRED for
+    // date-per-column recap templates; model sends semantic data only).
+    if (services.fillTableColumnTool) {
+      registry.register(
+        ToolAdapter.from({
+          name: 'fill_table_column',
+          displayName: 'Fill Table Column (date-matrix)',
+          description:
+            'PREFERRED tool for date-per-column recap templates (a header row of dates + labeled rows). Fills the column for ONE date deterministically: send {filePath, sheetName, date:"<header date text>", rows:[{label:"<exact row label>", value:<number>}], details:["<free text>", ...]}. The harness resolves every row/column from labels and the date — NEVER send cell coordinates. Values accept plain numbers (281000) or Indonesian units ("281 RB", "2.771 RB", "1,5 JT").',
+          tags: ['excel', 'fill', 'recap', 'date', 'table', 'template'],
+          handler: (args) =>
+            services.fillTableColumnTool.execute({
+              workspaceId: args.workspaceId,
+              filePath: args.filePath,
+              sheetName: args.sheetName,
+              date: args.date,
+              rows: args.rows,
+              details: args.details,
+            }),
+          parameters: {
+            type: 'object',
+            properties: {
+              workspaceId: { type: 'string' },
+              filePath: { type: 'string', description: 'Excel file inside the workspace (.xlsx/.xlsm)' },
+              sheetName: { type: 'string', description: 'Sheet name, e.g. AGUSTUS' },
+              date: { type: 'string', description: 'Header date text of the target column, exactly as displayed (any format)' },
+              rows: {
+                type: 'array',
+                description: 'Label→value pairs; each value lands on its labeled row in the date column',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string', description: 'Exact row label text' },
+                    value: { description: 'Number (full rupiah) or Indonesian unit string like "281 RB"' },
+                  },
+                  required: ['label', 'value'],
+                },
+              },
+              details: { type: 'array', items: { type: 'string' }, description: 'Optional free-text detail lines for the empty section rows' },
+            },
+            required: ['filePath', 'sheetName', 'date', 'rows'],
+          },
+          timeoutMs: 120000,
+        }),
+      );
+    }
 
     // 2. desktop_open_excel
     registry.register(
@@ -255,7 +303,7 @@ export class DesktopToolsRegistrar {
         name: 'desktop_excel_edit',
         displayName: 'Edit Excel Spreadsheet',
         description:
-          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, find_cell, write_cell, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. RULES: (1) For any write/format action you MUST provide sheetName — writes without sheetName are rejected on multi-sheet workbooks. (2) For write_cell, ALWAYS prefer label-based targeting over guessing cell coordinates: (a) matchColumn+matchValue+targetColumn when the table has a header row of column names, or (b) rowLabel+columnDate/columnLetter when rows are labeled in the first columns and values sit under date columns — the harness resolves the exact row/column deterministically. (3) When a quantity changes, use delta:true and update EVERY affected column in the same call — e.g. when stock leaves the warehouse, increase the outgoing column by N AND decrease the remaining column by N (two write_cell actions with delta:true and negative value for the decrease). (4) For totals/sums/grand-totals NEVER compute the number yourself — first find_cell the total label row, then write an Excel FORMULA into that row\'s sum column AFTER inserting all data rows (e.g. value:"=SUM(E2:E8)"), so the total always reflects the final data.',
+          'Performs precise cell reads, edits, and worksheet modifications on Excel (.xlsx / .xlsm / .xls) files via Native COM automation. Supports: read_cell, read_range, find_cell, write_cell, fill_table_column, insert_row, delete_row, set_format, clone_sheet, clear_constants, rename_sheet, delete_sheet, list_sheets, and save. RULES: (1) For any write/format action you MUST provide sheetName — writes without sheetName are rejected on multi-sheet workbooks. (2) PREFERRED for date-per-column templates (a header row of dates + labeled rows): fill_table_column with {date, rows:[{label,value}], details:[...]} — the harness resolves every row/column deterministically from labels and the date; send semantic data only, never coordinates. Otherwise use label-based write_cell: matchColumn+matchValue+targetColumn by header names, or rowLabel+columnDate/columnLetter. (3) When a quantity changes, use delta:true and update EVERY affected column in the same call. (4) For totals/sums NEVER compute the number yourself — write an Excel FORMULA (e.g. value:"=SUM(E2:E8)") after all data rows are in place.',
         tags: [
           'desktop',
           'excel',
@@ -300,6 +348,9 @@ export class DesktopToolsRegistrar {
                   action: args.action || defaultAction,
                   cell: args.cell,
                   value: args.value,
+                  date: args.date,
+                  rows: args.rows,
+                  details: args.details,
                   matchColumn: args.matchColumn,
                   matchValue: args.matchValue,
                   targetColumn: args.targetColumn,
@@ -438,6 +489,9 @@ export class DesktopToolsRegistrar {
                   rowLabel: { type: 'string', description: 'For write_cell label-row targeting: exact text of the row label (searched in the first 3 columns), e.g. a total row label or category name' },
                   columnLetter: { type: 'string', description: 'For write_cell with rowLabel: target column letter, e.g. "Z"' },
                   columnDate: { type: 'string', description: 'For write_cell with rowLabel: target column identified by its date header text, exactly as displayed in the header row (any date format)' },
+                  date: { type: 'string', description: 'For fill_table_column: the date identifying the target column, e.g. the header text of that day' },
+                  rows: { type: 'array', description: 'For fill_table_column: [{label, value}] pairs — each value is written on the row whose label matches', items: { type: 'object', properties: { label: { type: 'string' }, value: {} } } },
+                  details: { type: 'array', items: { type: 'string' }, description: 'For fill_table_column: free-text detail lines placed into the empty rows of the section below the date row' },
                   delta: { type: 'boolean', description: 'For write_cell numeric values: if true, ADD value to the existing cell value instead of replacing (use for increments like stock out/in)' },
                   range: { type: 'string', description: 'e.g., B15:Z30' },
                   sourceSheet: { type: 'string' },

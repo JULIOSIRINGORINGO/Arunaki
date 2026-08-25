@@ -32,7 +32,7 @@ Tugas:    Isi kolom 24/08/2026 (kolom Z) dengan data dari sumber
 2. Workspace terdaftar: `cmt467zpa0006vg8glbkv1vtz` → `E:\JS\laporan-test`
 3. MS Excel terinstall (COM automation)
 4. File backup ada: `TABEL REKAPAN NEW2026-.backup-pre-arunaki.xlsm`
-5. Model: `glm-4-7-flash:free` (atau model lain yang mendukung JSON output)
+5. Model: `gemini-1.5-flash` (atau `deepseek-v4-flash`, dikarenakan model agnes & glm sering timeout)
 
 ### Langkah
 
@@ -127,9 +127,13 @@ powershell scripts/_zh.ps1  # hash makro + styles (bandingkan dengan backup)
 2. **Backup WAJIB dibuat** sebelum setiap run. Jika hasil salah, restore dari backup
    dan ulangi.
 
-3. **Model gratis** (agnes/glm) kadang mengalami empty response atau refusal dari
-   provider. Pipeline sudah punya retry + rotasi model (gratis → gratis → paid).
-   Jika semua gagal, tunggu beberapa menit dan coba lagi.
+3. **Model gratis** (agnes/glm) pada API Kenari sering mengalami timeout atau error 503.
+   Oleh karena itu, pipeline `workspace-runner.service.ts` telah diubah untuk merotasi ke `gemini-1.5-flash`
+   terlebih dahulu (sebagai model andalan), baru kemudian `deepseek-v4-flash`. Timeout juga dilonggarkan menjadi 300 detik.
 
 4. **Jangan buka file di Excel** saat pipeline berjalan — file akan terkunci dan
    COM automation tidak bisa save.
+
+5. **Bug pada _post.cjs & Typo Model (Fix 25 Agustus 2026)**:
+   - Skrip `_post.cjs` sebelumnya gagal mendeteksi nilai BENSIN dan BUS karena mengecek teks string di kolom nilai angka. Ini telah diperbaiki.
+   - Instruksi system message telah disederhanakan ("do not correct spelling... verbatim") untuk mencegah AI melakukan autocorrect ejaan, sehingga akurasi nama klien (seperti FIRDA) tidak lagi dirusak oleh model.

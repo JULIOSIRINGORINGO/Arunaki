@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+﻿import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { AiService, ChatMessage, ToolDefinition } from '../../ai/ai.service.js';
 import { ContextRegistry } from '../../ai/context/context-registry.service.js';
 import { ToolRegistryService } from '../../tools/tool-registry.service.js';
@@ -17,7 +17,7 @@ import * as fs from 'fs/promises';
 
 /**
  * Regex matching office-document keywords in user goals (Indonesian + English).
- * Users mix languages freely — keep synonym sets symmetric across both.
+ * Users mix languages freely â€” keep synonym sets symmetric across both.
  * Language-neutral @file-extension signals are checked separately and always win.
  */
 const OFFICE_EXCEL_RE =
@@ -155,7 +155,7 @@ export class WorkspacePromptBuilderService {
     let forcedMutation = false;
     const goalLower = goal.toLowerCase();
     if (OFFICE_EXCEL_RE.test(goalLower) || /@\S+\.(?:xlsx|xlsm|xls)/i.test(goal)) {
-      for (const name of ['desktop_excel_edit', 'document_reader', 'list']) {
+      for (const name of ['desktop_excel_edit', 'fill_table_column', 'document_reader', 'list']) {
         const tool = allTools.find((t) => t.function.name === name);
         if (tool) selectedNames.add(name);
       }
@@ -176,7 +176,7 @@ export class WorkspacePromptBuilderService {
       if (MUTATION_KEYWORDS_RE.test(goalLower)) forcedMutation = true;
     }
 
-    // Safety net for non-Office categories — the intent router on free-tier
+    // Safety net for non-Office categories â€” the intent router on free-tier
     // models can miss these, so keyword matches force them in.
     const CATEGORY_SAFETY_NET: Array<[RegExp, string[]]> = [
       [/\bpdf\b/i, ['pdf_manage_pages', 'document_reader']],
@@ -501,7 +501,7 @@ export class WorkspacePromptBuilderService {
       : systemPrompt;
 
     if (workspaceRules && workspaceRules.trim()) {
-      systemContent += `\n\n# 📜 LOCAL WORKSPACE OPERATING RULES (AUTONOMOUSLY COMPILED ARUNAKI.MD)\n${workspaceRules.trim()}`;
+      systemContent += `\n\n# ðŸ“œ LOCAL WORKSPACE OPERATING RULES (AUTONOMOUSLY COMPILED ARUNAKI.MD)\n${workspaceRules.trim()}`;
     }
 
     const dtContext = getSystemDateTimeContext();
@@ -520,7 +520,7 @@ export class WorkspacePromptBuilderService {
     if (recallContext && recallContext.trim()) {
       messages.push({
         role: 'user',
-        content: `(System note — background info, use only if relevant)\n${recallContext.trim()}`,
+        content: `(System note â€” background info, use only if relevant)\n${recallContext.trim()}`,
       });
     }
 
@@ -537,7 +537,7 @@ export class WorkspacePromptBuilderService {
         content:
           `(Execution directive) The user explicitly requested confirmation BEFORE any work. ` +
           `Your next and only action must be a single tool call to \`ask_user\` with one concrete question. ` +
-          `Do not read files, do not plan out loud, do not answer in text — call \`ask_user\` now, then stop.`,
+          `Do not read files, do not plan out loud, do not answer in text â€” call \`ask_user\` now, then stop.`,
       });
     }
 
@@ -612,3 +612,4 @@ export class WorkspacePromptBuilderService {
     };
   }
 }
+

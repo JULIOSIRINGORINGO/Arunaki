@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+﻿import { Injectable, Logger } from '@nestjs/common';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink } from 'fs/promises';
@@ -25,6 +25,12 @@ export interface ExcelAction {
   columnLetter?: string;
   /** Target column by date header text (e.g. "24/08/2026") when using rowLabel. */
   columnDate?: string;
+  /** fill_table_column: the date identifying the target column. */
+  date?: string;
+  /** fill_table_column: labelâ†’value pairs written onto their labeled rows. */
+  rows?: Array<{ label: string; value: any }>;
+  /** fill_table_column: free-text detail lines appended into the section's empty rows. */
+  details?: string[];
   bold?: boolean;
   italic?: boolean;
   fontSize?: number;
@@ -50,7 +56,7 @@ export interface ExcelActionResult {
 @Injectable()
 export class ExcelComService {
   private readonly logger = new Logger(ExcelComService.name);
-  /** Serializes COM access per workbook — two Excel instances on one file silently lose writes. */
+  /** Serializes COM access per workbook â€” two Excel instances on one file silently lose writes. */
   private readonly fileLocks = new Map<string, Promise<unknown>>();
 
   private async withFileLock<T>(
@@ -163,7 +169,7 @@ export class ExcelComService {
         case 'read_cell': {
           if (a.matchColumn && a.matchValue !== undefined) break;
           // Label-row targeting: rowLabel + (columnDate | columnLetter) is a
-          // complete, coordinate-free specification — no cell required.
+          // complete, coordinate-free specification â€” no cell required.
           if (
             a.action === 'write_cell' &&
             a.rowLabel &&
@@ -178,7 +184,7 @@ export class ExcelComService {
             !a.columnLetter
           ) {
             fail(
-              'rowLabel targeting also needs columnDate (date header text) or columnLetter — e.g. the date column matching the target day',
+              'rowLabel targeting also needs columnDate (date header text) or columnLetter â€” e.g. the date column matching the target day',
             );
             continue;
           }
@@ -188,7 +194,7 @@ export class ExcelComService {
                 ? `Invalid cell reference "${String(a.cell).slice(0, 24)}"`
                 : a.rowLabel
                   ? 'rowLabel targeting needs columnDate or columnLetter'
-                  : 'cell is required — or better: use rowLabel + columnDate targeting on labeled templates',
+                  : 'cell is required â€” or better: use rowLabel + columnDate targeting on labeled templates',
             );
             continue;
           }
@@ -311,7 +317,7 @@ export class ExcelComService {
         // ANSI codepage, corrupting any non-ASCII cell values.
         await writeFile(scriptPath, '\uFEFF' + psScript, 'utf-8');
 
-        // Single retry ONLY for fast startup failures (<5s — COM instantiation
+        // Single retry ONLY for fast startup failures (<5s â€” COM instantiation
         // hiccups). Never retry slow/timeouts: the script may have partially
         // executed and saved; rerunning would duplicate mutations.
         let stdout = '';
@@ -368,6 +374,239 @@ export class ExcelComService {
     });
   }
 
+  /**
+   * fill_table_column â€” domain-level, position-deterministic fill for
+   * date-per-column recap templates. The model sends ONLY semantic data
+   * (date + labelâ†’value rows + optional detail texts); this method resolves
+   * the date column and every label row, writes atomically, and reports
+   * per-item results.
+   */
+  async fillTableColumn(
+    filePath: string,
+    sheetName: string | undefined,
+    date: string,
+    rows: Array<{ label: string; value: any }>,
+    details: string[] = [],
+  ): Promise<{
+    success: boolean;
+    itemsTotal: number;
+    itemsFailed: number;
+    results: ExcelActionResult[];
+  }> {
+    if (!this.isAvailable) {
+      throw new Error('Excel COM automation only available on Windows');
+    }
+    return this.withFileLock(filePath, async () => {
+      const scriptPath = join(
+        tmpdir(),
+        `arunaki-fillcol-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`,
+      );
+      const esc = (s: string) => String(s).replace(/'/g, "''");
+      const marshal = (raw: any): string => {
+        if (typeof raw === 'number') return `[double]${raw}`;
+        if (typeof raw !== 'string') return `'${String(raw).replace(/'/g, "''")}'`;
+        const idm = raw.trim().match(/^([\d.,\s]+?)\s*(RB|JT)?$/i);
+        if (idm && /\d/.test(idm[1])) {
+          const mult =
+            idm[2]?.toUpperCase() === 'JT' ? 1000000 : idm[2]?.toUpperCase() === 'RB' ? 1000 : 1;
+          const n = Number(idm[1].replace(/[.\s]/g, '').replace(',', '.'));
+          if (!Number.isNaN(n)) return `[double]${n * mult}`;
+        }
+        return `'${raw.replace(/'/g, "''")}'`;
+      };
+
+      const rowBlocks = (rows || []).map((rw, i) => {
+        const lbl = esc(String(rw?.label ?? `row${i}`));
+        const v = marshal(rw?.value);
+        return [
+          `  $lbl = '${lbl}'`,
+          `  $tR = 0`,
+          `  for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) {`,
+          `    for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 4); $c++) {`,
+          `      if ([string]$ws.Cells.Item($r, $c).Text.Trim() -ieq $lbl) { $tR = $r; break }`,
+          `    }`,
+          `    if ($tR -gt 0) { break }`,
+          `  }`,
+          `  if ($tR -gt 0 -and $tCol -gt 0) {`,
+          `    $ws.Cells.Item($tR, $tCol).Value2 = ${v}`,
+          `    $results += @{ item='row'; label=$lbl; success=$true; row=$tR; column=$tCol }`,
+          `  } else {`,
+          `    $results += @{ item='row'; label=$lbl; success=$false; error='Row label not found' }`,
+          `  }`,
+        ].join('\n');
+      });
+
+      const detStrings = (details || []).map((d) => `'${esc(String(d))}'`);
+      const detBlock = detStrings.length
+        ? [
+            `  # Detail band: below the date row until the first label starting with TOTAL`,
+            `  $detStart = $hdrRow + 1; $detEnd = 0`,
+            `  for ($r = $detStart; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) {`,
+            `    $lt = ([string]$ws.Cells.Item($r, 1).Text + [string]$ws.Cells.Item($r, 2).Text)`,
+            `    if ($lt -match '^\\s*TOTAL') { $detEnd = $r - 1; break }`,
+            `  }`,
+            `  if ($detEnd -eq 0) { $detEnd = [Math]::Min($detStart + 20, $ws.UsedRange.Rows.Count) }`,
+            `  $dr = $detStart`,
+            `  foreach ($dtx in @(${detStrings.join(', ')})) {`,
+            `    while ($dr -le $detEnd -and ($ws.Cells.Item($dr, $tCol).Value2 -ne $null)) { $dr++ }`,
+            `    if ($dr -gt $detEnd) { break }`,
+            `    $ws.Cells.Item($dr, $tCol).Value2 = $dtx`,
+            `    $results += @{ item='detail'; success=$true; row=$dr }`,
+            `    $dr++`,
+            `  }`,
+          ].join('\n')
+        : '';
+
+      const psScript = `
+$ErrorActionPreference = 'Stop'
+try {
+  $excel = New-Object -ComObject Excel.Application
+  $excel.Visible = $false
+  $excel.DisplayAlerts = $false
+  $wb = $excel.Workbooks.Open('${esc(filePath)}')
+  ${sheetName ? this.buildSheetActivate(esc(sheetName)) : ''}
+  $ws = $wb.ActiveSheet
+  $results = @()
+  $tCol = 0; $hdrRow = 0
+  $dg = [regex]::Matches('${esc(date)}', '\\d+') | ForEach-Object { [int]$_.Value }
+  if ($dg.Count -ge 3) {
+    for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 30) -and $tCol -eq 0; $r++) {
+      for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {
+        $v = $ws.Cells.Item($r, $c).Value2
+        if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) {
+          $dt = [DateTime]::FromOADate($v)
+          $dd = $dt.Day; $mm = $dt.Month; $yy = $dt.Year
+          if (($yy -eq $dg[2] -and $mm -eq $dg[1] -and $dd -eq $dg[0]) -or ($yy -eq $dg[2] -and $mm -eq $dg[0] -and $dd -eq $dg[1])) { $tCol = $c; $hdrRow = $r; break }
+        }
+      }
+    }
+  }
+        $results += @{ item='debug'; success=$true; tCol=$tCol; hdrRow=$hdrRow; sheet=$ws.Name }
+        if ($tCol -eq 0) {
+          $results += @{ item='column'; success=$false; error='Date column not found: ${esc(date)}' }
+  } else {
+${rowBlocks}
+${detBlock}
+  }
+  $failCount = 0
+  foreach ($a in @($results)) { if ($a.success -eq $false) { $failCount++ } }
+  if ($failCount -eq 0) { try { $wb.Save() } catch {} }
+  @{ success=($failCount -eq 0); itemsTotal=$results.Length; itemsFailed=$failCount; results=$results } | ConvertTo-Json -Depth 5
+} catch {
+  @{ success=$false; error=$_.Exception.Message } | ConvertTo-Json -Depth 5
+} finally {
+  try { $wb.Close($false) } catch {}
+  try { $excel.Quit() } catch {}
+  try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null } catch {}
+  try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null } catch {}
+  try { [GC]::Collect(); [GC]::WaitForPendingFinalizers() } catch {}
+}`;
+      await writeFile(scriptPath, '\uFEFF' + psScript, 'utf-8');
+      const { stdout } = await this.runPsScript(scriptPath, 120000);
+      const output = stdout.trim();
+      const jsonMatch = output.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return {
+          success: false,
+          itemsTotal: 1,
+          itemsFailed: 1,
+          results: [
+            {
+              action: 'fill_table_column',
+              success: false,
+              error: `Unexpected fill output: ${output.slice(0, 200)}`,
+            },
+          ],
+        } as any;
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        success: !!parsed.success,
+        itemsTotal: parsed.itemsTotal ?? 0,
+        itemsFailed: parsed.itemsFailed ?? 0,
+        results: parsed.results ?? [],
+      } as any;
+    });
+  }
+
+  /** Sheet activation snippet shared by fill script (falls back to active sheet). */
+  /**
+   * Read the structural skeleton of a sheet for the recap-fill pipeline:
+   * date headers (column letter + text) and row labels. One COM round-trip.
+   */
+  async readTableSkeleton(
+    filePath: string,
+    sheetName?: string,
+  ): Promise<{
+    sheets: string[];
+    activeSheet: string;
+    dates: string[];
+    labels: string[];
+  }> {
+    if (!this.isAvailable) {
+      throw new Error('Excel COM automation only available on Windows');
+    }
+    return this.withFileLock(filePath, async () => {
+      const scriptPath = join(
+        tmpdir(),
+        `arunaki-skel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.ps1`,
+      );
+      const sheetLine = sheetName
+        ? `if ($wb.Worksheets.Item($s).Name -ieq '${sheetName.replace(/'/g, "''")}') { $ws = $wb.Worksheets.Item($s) }`
+        : `$ws = $wb.ActiveSheet`;
+      const ps = `
+$ErrorActionPreference = 'Stop'
+try {
+  $excel = New-Object -ComObject Excel.Application
+  $excel.Visible = $false
+  $excel.DisplayAlerts = $false
+  $wb = $excel.Workbooks.Open('${filePath.replace(/'/g, "''")}')
+  $sheetNames = (1..$wb.Worksheets.Count | ForEach-Object { $wb.Worksheets.Item($_).Name }) -join ','
+  $ws = $null
+  foreach ($s in 1..$wb.Worksheets.Count) { ${sheetLine} }
+  if (-not $ws) { $ws = $wb.ActiveSheet }
+  function ColLetter([int]$n) { $s2=''; while ($n -gt 0) { $m = ($n - 1) % 26; $s2 = [char](65 + $m) + $s2; $n = [int](($n - $m - 1) / 26) }; return $s2 }
+  $dates = @(); $labels = @()
+  $maxR = [Math]::Min($ws.UsedRange.Rows.Count, 120)
+  $maxC = [Math]::Min($ws.UsedRange.Columns.Count, 60)
+  for ($r = 1; $r -le 10; $r++) {
+    for ($c = 1; $c -le $maxC; $c++) {
+      $v = $ws.Cells.Item($r, $c).Value2
+      if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) { $dates += ((ColLetter $c) + '=' + $ws.Cells.Item($r, $c).Text) }
+    }
+  }
+  for ($r = 1; $r -le $maxR; $r++) {
+    for ($c = 1; $c -le [Math]::Min($maxC, 4); $c++) {
+      $t = [string]$ws.Cells.Item($r, $c).Text
+      if ($t.Trim() -ne '') { $labels += ('R' + $r + ': ' + $t.Trim()); break }
+    }
+  }
+  @{ sheets=$sheetNames; activeSheet=$ws.Name; dates=$dates; labels=$labels } | ConvertTo-Json -Depth 4
+} catch {
+  @{ error=$_.Exception.Message } | ConvertTo-Json -Depth 4
+} finally {
+  try { $wb.Close($false) } catch {}
+  try { $excel.Quit() } catch {}
+  try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($wb) | Out-Null } catch {}
+  try { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null } catch {}
+  try { [GC]::Collect(); [GC]::WaitForPendingFinalizers() } catch {}
+}`;
+      await writeFile(scriptPath, '\uFEFF' + ps, 'utf-8');
+      const { stdout } = await this.runPsScript(scriptPath, 60000);
+      const m = stdout.trim().match(/\{[\s\S]*\}/);
+      if (!m) throw new Error(`Skeleton read failed: ${stdout.slice(0, 200)}`);
+      return JSON.parse(m[0]);
+    });
+  }
+
+  private buildSheetActivate(escapedSheet: string): string {
+    return [
+      `  $sheetFound = $false`,
+      `  foreach ($s in 1..$wb.Worksheets.Count) { if ($wb.Worksheets.Item($s).Name -ieq '${escapedSheet}') { $wb.Worksheets.Item($s).Activate(); $wb.Worksheets.Item($s).Select() | Out-Null; $sheetFound = $true; break } }`,
+      `  if (-not $sheetFound) { throw ("Sheet not found: '${escapedSheet}'. Available: " + ((1..$wb.Worksheets.Count | ForEach-Object { $wb.Worksheets.Item($_).Name }) -join ', ')) }`,
+    ].join('\n');
+  }
+
   private buildPowerShellScript(
     filePath: string,
     actions: ExcelAction[],
@@ -376,7 +615,7 @@ export class ExcelComService {
     const escapedPath = filePath.replace(/'/g, "''");
     const escapedSheet = sheetName ? sheetName.replace(/'/g, "''") : '';
 
-    // Guard: refuse untargeted mutations on multi-sheet workbooks — writing to
+    // Guard: refuse untargeted mutations on multi-sheet workbooks â€” writing to
     // "whatever sheet is active" silently corrupts the wrong sheet.
     const MUTATING_ACTIONS = [
       'write_cell', 'append_row', 'insert_row', 'delete_row',
@@ -389,7 +628,7 @@ export class ExcelComService {
       !actions.some((a) => a.action === 'clone_sheet' || a.action === 'delete_sheet');
 
     // Per-action sheet activation: an action may carry its own sheetName.
-    // Unknown sheet names MUST fail loudly — falling back to the active sheet
+    // Unknown sheet names MUST fail loudly â€” falling back to the active sheet
     // silently writes data into the wrong sheet.
     const activateSheetLine = (name?: string): string => {
       if (!name) return '';
@@ -468,7 +707,7 @@ ${wrappedBlocks}
   $hasSave = $false
   foreach ($a in @($results)) { if ($a.action -eq 'save') { $hasSave = $true } }
   # Read-only batches must not rewrite the source file.
-  # Atomic mutation: if ANY action failed, save NOTHING — a retried batch
+  # Atomic mutation: if ANY action failed, save NOTHING â€” a retried batch
   # must never double-apply deltas on top of a half-applied state.
   $failCount = 0
   foreach ($a in @($results)) { if ($a.success -eq $false) { $failCount++ } }
@@ -497,9 +736,100 @@ ${wrappedBlocks}
     idx: number,
   ): string {
     switch (act.action) {
-          case 'write_cell': {
+          case 'fill_table_column': {
+          // Domain-level action for date-per-column templates: the model sends
+          // semantic data (date + labelâ†’value rows + optional detail texts);
+          // the harness resolves EVERY position deterministically.
+          const dtv = (act.date || '').replace(/'/g, "''");
+          if (!dtv) {
+            return `        $results += @{ action='fill_table_column'; success=$false; error='date is required' }`;
+          }
+          const marshalV = (raw: any): string => {
+            if (typeof raw === 'number') return `[double]${raw}`;
+            if (typeof raw !== 'string') return `${JSON.stringify(raw) ?? "''"}`;
+            const idm = raw.trim().match(/^([\d.,\s]+?)\s*(RB|JT)?$/i);
+            if (idm && /\d/.test(idm[1])) {
+              const mult = idm[2]?.toUpperCase() === 'JT' ? 1000000 : idm[2]?.toUpperCase() === 'RB' ? 1000 : 1;
+              const n = Number(idm[1].replace(/[.\s]/g, '').replace(',', '.'));
+              if (!Number.isNaN(n)) return `[double]${n * mult}`;
+            }
+            return `'${raw.replace(/'/g, "''")}'`;
+          };
+          const rowBlocks = (act.rows || [])
+            .map((rw: any, i: number) => {
+              const lbl = String(rw?.label ?? '').replace(/'/g, "''");
+              const v = marshalV(rw?.value);
+              return [
+                `  $lbl${i} = '${lbl}'`,
+                `  $tR${i} = 0`,
+                `  if ($tCol -gt 0) {`,
+                `    for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) {`,
+                `      for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 4); $c++) {`,
+                `        if ([string]$ws.Cells.Item($r, $c).Text.Trim() -ieq $lbl${i}) { $tR${i} = $r; break }`,
+                `      }`,
+                `      if ($tR${i} -gt 0) { break }`,
+                `    }`,
+                `  }`,
+                `  if ($tR${i} -gt 0 -and $tCol -gt 0) {`,
+                `    $ws.Cells.Item($tR${i}, $tCol).Value2 = ${v}`,
+                `    $results += @{ action='fill_table_column'; success=$true; label=$lbl${i}; row=$tR${i} }`,
+                `  } else {`,
+                `    $results += @{ action='fill_table_column'; success=$false; label=$lbl${i}; error='Row label not found' }`,
+                `  }`,
+              ].join('\n');
+            })
+            .join('\n');
+          const detStrings = (act.details || []).map(
+            (d: string) => `'${String(d).replace(/'/g, "''")}'`,
+          );
+          const detBlock = detStrings.length
+            ? [
+                `  # Detail band: rows below the date row until the first TOTAL label`,
+                `  $detStart = $hdrRow + 1; $detEnd = 0`,
+                `  for ($r = $detStart; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) {`,
+                `    $lt = ([string]$ws.Cells.Item($r, 1).Text + [string]$ws.Cells.Item($r, 2).Text)`,
+                `    if ($lt -match '^\\s*TOTAL') { $detEnd = $r - 1; break }`,
+                `  }`,
+                `  if ($detEnd -eq 0) { $detEnd = [Math]::Min($detStart + 20, $ws.UsedRange.Rows.Count) }`,
+                `  $dr = $detStart`,
+                `  foreach ($dtx in @(${detStrings.join(', ')})) {`,
+                `    while ($dr -le $detEnd -and $ws.Cells.Item($dr, $tCol).Value2 -ne $null) { $dr++ }`,
+                `    if ($dr -gt $detEnd) { break }`,
+                `    $ws.Cells.Item($dr, $tCol).Value2 = $dtx`,
+                `    $results += @{ action='fill_table_column'; success=$true; detail=$dtx; row=$dr }`,
+                `    $dr++`,
+                `  }`,
+              ].join('\n')
+            : '';
+          return [
+            `        # fill_table_column: resolve the date column deterministically`,
+            `        $tCol = 0; $hdrRow = 0`,
+            `        $dgF = [regex]::Matches('${dtv}', '\\d+') | ForEach-Object { [int]$_.Value }`,
+            `        if ($dgF.Count -ge 3) {`,
+            `          for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 30) -and $tCol -eq 0; $r++) {`,
+            `            for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
+            `              $v = $ws.Cells.Item($r, $c).Value2`,
+            `              if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) {`,
+            `                $dt = [DateTime]::FromOADate($v)`,
+            `                $dd = $dt.Day; $mm = $dt.Month; $yy = $dt.Year`,
+            `                if (($yy -eq $dgF[2] -and $mm -eq $dgF[1] -and $dd -eq $dgF[0]) -or ($yy -eq $dgF[2] -and $mm -eq $dgF[0] -and $dd -eq $dgF[1])) { $tCol = $c; $hdrRow = $r; break }`,
+            `              }`,
+            `            }`,
+            `          }`,
+            `        }`,
+            `        if ($tCol -eq 0) {`,
+            `          $results += @{ action='fill_table_column'; success=$false; error='Date column not found: ${dtv}' }`,
+            `        } else {`,
+            rowBlocks,
+            detBlock,
+            `        }`,
+          ]
+            .filter(Boolean)
+            .join('\n');
+        }
+        case 'write_cell': {
             // Row-label targeting: "write VALUE on the row labeled X, column Y".
-            // Fully deterministic — the model never computes coordinates.
+            // Fully deterministic â€” the model never computes coordinates.
             if (act.rowLabel) {
               const rl = (act.rowLabel || '').replace(/'/g, "''");
               const colLetter = (act.columnLetter || '')
@@ -592,9 +922,9 @@ ${wrappedBlocks}
               const mv = (act.matchValue ?? '').toString().replace(/'/g, "''");
               // Shared label-resolution preamble.
               // Supports two real-world layouts:
-              //  A) Table: header row + data rows → find row where matchColumn == matchValue
+              //  A) Table: header row + data rows â†’ find row where matchColumn == matchValue
               //  B) Key-Value: label cell in col A, value in the next empty cell to its
-              //     right (matchValue repeats the label itself) → write beside the label
+              //     right (matchValue repeats the label itself) â†’ write beside the label
               const resolveBlock = [
                 `        $mCol = 0; $tCol = 0; $tgtRow = 0; $hdrRow = 0; $keyCol = 0`,
                 `        for ($hr = 1; $hr -le [Math]::Min($ws.UsedRange.Rows.Count, 5); $hr++) {`,
@@ -645,7 +975,7 @@ ${wrappedBlocks}
                 `          }`,
                 `          if ($tgtRow -eq 0 -and $mCol -eq 0 -and $tCol -gt 0 -and '${mv}' -ne '') {`,
                 `            # Section-append: matchColumn named a SECTION (not a header) and the`,
-                `            # detail is new — place it in the first empty cell of the target column`,
+                `            # detail is new â€” place it in the first empty cell of the target column`,
                 `            # below the header region (fresh date column fill).`,
                 `            for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) {`,
                 `              if ([string]$ws.Cells.Item($r, $tCol).Text.Trim() -eq '') { $tgtRow = $r }`,
@@ -653,11 +983,11 @@ ${wrappedBlocks}
                 `            if ($tgtRow -eq 0) { $tgtRow = $ws.UsedRange.Rows.Count + 1 }`,
                 `          }`,
                 `          if ($tgtRow -eq 0 -and $keyCol -gt 0 -and $keyCol -ne $mCol) {`,
-                `            # Cross-keyed lookup: matchValue lives in the key column → write into target column of that row`,
+                `            # Cross-keyed lookup: matchValue lives in the key column â†’ write into target column of that row`,
                 `            for ($r = $hdrRow + 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $keyCol).Text -ieq '${mv}') { $tgtRow = $r; break } }`,
                 `          }`,
                 `          if ($tgtRow -eq 0 -and $mCol -eq $keyCol) {`,
-                `            # UPSERT (key column only): no matching row → append into table, above a trailing summary row when present`,
+                `            # UPSERT (key column only): no matching row â†’ append into table, above a trailing summary row when present`,
                 `            $lastRow = [int]($ws.Cells.Item([int]$ws.Rows.Count, $mCol).End(-4162).Row)`,
                 `            if ($lastRow -le $hdrRow) { $tgtRow = $hdrRow + 1 }`,
                 `            else {`,
@@ -737,7 +1067,7 @@ ${wrappedBlocks}
             }
             return [
               `        if ($labeledTemplate) {`,
-              `          $results += @{ action='write_cell'; success=$false; error='Coordinate writes are disabled on labeled templates (date header + label column detected) — this protects row alignment. Use write_cell with rowLabel + columnDate (or columnLetter) targeting instead.' }`,
+              `          $results += @{ action='write_cell'; success=$false; error='Coordinate writes are disabled on labeled templates (date header + label column detected) â€” this protects row alignment. Use write_cell with rowLabel + columnDate (or columnLetter) targeting instead.' }`,
               `        } else {`,
               `          if (${act.delta ? '$true' : '$false'}) { $d${idx} = [double]$ws.Range('${cellCoord}').Value2 + ${val}; Invoke-Expression ('$ws.Range(''${cellCoord}'').Value2 = ' + $d${idx}) }`,
               `          else { $ws.Range('${cellCoord}').Value2 = ${val} }`,
@@ -875,7 +1205,7 @@ ${wrappedBlocks}
           case 'delete_column':
             return `        $ws.Columns(${act.column}).Delete(); $results += @{ action='delete_column'; success=$true; column=${act.column} }`;
           case 'set_format': {
-            // Models sometimes nest format props inside value:{} — merge them
+            // Models sometimes nest format props inside value:{} â€” merge them
             if (act.value && typeof act.value === 'object' && !Array.isArray(act.value)) {
               const v = act.value as Record<string, any>;
               act = {
@@ -900,7 +1230,7 @@ ${wrappedBlocks}
             if (act.fontSize !== undefined)
               parts.push(`${rngExpr}.Font.Size = ${act.fontSize}`);
             if (act.bgColor !== undefined) {
-              // ColorIndex is a 1-56 palette; larger values are RGB → OLE COLOR (BGR)
+              // ColorIndex is a 1-56 palette; larger values are RGB â†’ OLE COLOR (BGR)
               const bg = act.bgColor;
               if (bg >= 1 && bg <= 56) {
                 parts.push(`${rngExpr}.Interior.ColorIndex = ${bg}`);
@@ -997,4 +1327,5 @@ ${wrappedBlocks}
     }
   }
 }
+
 

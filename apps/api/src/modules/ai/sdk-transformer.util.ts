@@ -239,6 +239,11 @@ export async function makeSdkRequest(
     ? body.messages
     : serializeToolCallHistory(body.messages);
   const { system, messages } = extractSystemAndMessages(requestMessages);
+  if (process.env.ARUNAKI_DEBUG_TOOLS === '1') {
+    console.log(
+      `[KENARI-PROBE] model=${provider.model} temp=${body.temperature} maxTok=${body.maxOutputTokens} providerOptions=${JSON.stringify(body.providerOptions ?? null)} sysLen=${(system || '').length} msgs=${messages.length} tools=${canUseTools}`,
+    );
+  }
   try {
     const data = await generateText({
       model: getSdkModel(provider),

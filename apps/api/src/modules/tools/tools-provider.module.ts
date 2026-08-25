@@ -57,6 +57,7 @@ import { HarnessMetaToolsRegistrar } from './services/registrars/harness-meta-to
 import { DesktopToolsRegistrar } from './services/registrars/desktop-tools.registrar.js';
 import { DesktopBridgeService } from '../interaction/desktop-bridge.service.js';
 import { ExcelComService } from '../interaction/excel-com.service.js';
+import { FillTableColumnTool } from './services/fill-table-column.tool.js';
 import { WordComService } from '../interaction/word-com.service.js';
 import { PptComService } from '../interaction/ppt-com.service.js';
 import { ToolResultCacheService } from './services/tool-result-cache.service.js';
@@ -115,6 +116,7 @@ import { DomainModule } from '../domain/domain.module.js';
     DocumentReconciliationService,
     ProgrammaticVerifierService,
     TodoStoreService,
+    FillTableColumnTool,
     PtcExecutorService,
     MultiDocOrchestratorService,
     ToolResultCacheService,
@@ -158,6 +160,7 @@ import { DomainModule } from '../domain/domain.module.js';
     DocumentReconciliationService,
     ProgrammaticVerifierService,
     TodoStoreService,
+    FillTableColumnTool,
     PtcExecutorService,
     MultiDocOrchestratorService,
     PdfPagesTool,
@@ -273,6 +276,7 @@ export class ToolsProviderModule implements OnModuleInit {
         strict: false,
       }),
       excelCom: this.moduleRef.get(ExcelComService, { strict: false }),
+      fillTableColumnTool: this.moduleRef.get(FillTableColumnTool, { strict: false }),
       wordCom: this.moduleRef.get(WordComService, { strict: false }),
       pptCom: this.moduleRef.get(PptComService, { strict: false }),
       workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
@@ -311,3 +315,4 @@ export class ToolsProviderModule implements OnModuleInit {
     }
   }
 }
+

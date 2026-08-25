@@ -8,6 +8,8 @@ import { MemoryService } from '../memory/memory.service.js';
 import { BackgroundReviewService } from '../memory/background-review.service.js';
 import { CompactionService } from '../ai/compaction.service.js';
 import { TodoStoreService } from '../tools/services/todo-store.service.js';
+import { request as httpsRequest } from 'https';
+import { ExcelComService } from '../interaction/excel-com.service.js';
 import { PrismaService } from '../../common/providers/prisma.service.js';
 import { createRunBudget, enterRunBudget } from '../ai/token-budget.service.js';
 import { SessionAdmissionService } from '../chat/session-admission.service.js';
@@ -75,6 +77,8 @@ export class WorkspaceRunnerService {
     private readonly agentEvents: AgentEventService,
     @Inject(forwardRef(() => TodoStoreService))
     private readonly todoStore: TodoStoreService,
+    @Inject(forwardRef(() => ExcelComService))
+    private readonly excelComService: ExcelComService,
     @Inject(forwardRef(() => SessionAdmissionService))
     private readonly sessionAdmissionService: SessionAdmissionService,
     @Inject(forwardRef(() => WorkspacePromptBuilderService))
@@ -90,6 +94,245 @@ export class WorkspaceRunnerService {
   ) {}
 
   /** Delegate physical sync to WorkspacePromptBuilderService */
+  /** Recap-fill goal: fill/catat/update + explicit date or "today" + a sheet/file target. */
+  private isRecapFillGoal(goal: string): boolean {
+    return (
+      /(?:isi|catat|input|update|rekap|fill)/i.test(goal || '') &&
+      /(?:\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b|hari ini|today)/i.test(goal || '') &&
+      /(?:\.xlsm|\.xlsx|sheet|laporan|rekap|excel)/i.test(goal || '')
+    );
+  }
+
+  /**
+   * RECAP-FILL PIPELINE (single-shot, opencode-style pipeline instead of an
+   * agent loop): (1) read the template skeleton deterministically, (2) ONE
+   * LLM extraction call producing semantic JSON against the real label list,
+   * (3) execute fillTableColumn, (4) read-back verification. The model never
+   * emits coordinates.
+   */
+  private async runRecapFillPipeline(p: {
+    workspaceId: string;
+    workspaceRootPath: string;
+    goal: string;
+    sourceFiles: Map<string, string>;
+    onEvent: (e: { type: string; data?: any }) => void;
+  }): Promise<string> {
+    const { onEvent } = p;
+    onEvent({
+      type: 'phase_changed',
+      data: { label: 'Recap fill pipeline: reading template skeleton...', },
+    });
+
+    // ── 0. Resolve target workbook (the mentioned .xlsm/.xlsx) ──
+    let targetFile = '';
+    const sourceTexts: string[] = [];
+    for (const [fname, content] of p.sourceFiles) {
+      if (/\.(xlsm|xlsx)$/i.test(fname)) targetFile = fname;
+      else sourceTexts.push(`=== ${fname} ===\n${content.slice(0, 6000)}`);
+    }
+    if (!targetFile) {
+      for (const fname of p.sourceFiles.keys()) {
+        if (/\.(xlsm|xlsx)$/i.test(fname)) targetFile = fname;
+      }
+    }
+    if (!targetFile) throw new Error('No Excel target file found in mentions');
+
+    const targetPath = `${p.workspaceRootPath}\\${targetFile}`;
+    const sheetMatch = p.goal.match(/sheet\s+(\w+)/i);
+    const skeleton = await this.excelComService.readTableSkeleton(
+      targetPath,
+      sheetMatch?.[1],
+    );
+    if ((skeleton as any).error)
+      throw new Error((skeleton as any).error);
+
+    // ── 1. Target date: explicit in goal, else today ──
+    const dateMatch = p.goal.match(/\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\b/);
+    const targetDate = dateMatch
+      ? dateMatch[1]
+      : new Date().toLocaleDateString('id-ID', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+
+    // ── 2. ONE extraction call (no tools, JSON only) ──
+    onEvent({
+      type: 'phase_changed',
+      data: { label: 'Recap fill pipeline: extracting data (1 LLM call)...' },
+    });
+    // ── 2. ONE extraction call (no tools, JSON only) ──
+    // Transport note: the Vercel-AI-SDK request path intermittently receives
+    // Kenari's soft-refusal placeholder for this prompt, while raw HTTPS with
+    // identical params succeeds (verified by probes). So extraction goes via
+    // the proven raw-HTTPS Kenari caller first (provider-specific workaround,
+    // isolated here), rotating models; aiService.chat is the last fallback.
+    onEvent({
+      type: 'phase_changed',
+      data: { label: 'Recap fill pipeline: extracting data (1 LLM call)...' },
+    });
+    const extraction = await (async () => {
+      const sysMsg =
+        'You are a financial data aggregator. Summarize the daily financial report into a valid JSON format. Expected JSON structure: {"rows":[{"label":"<exact label from LABELS list>","value":<integer amount in IDR>}],"details":["<individual transaction lines>"]}. Important instructions: 1. Labels MUST perfectly match the provided LABELS list. 2. Convert shorthand units to full numbers (e.g. 5 RB = 5000, 1.5 JT = 1500000). 3. Dots in numbers are thousand separators. 4. Only include rows that the user explicitly requested. 5. The "details" array should only contain individual transaction descriptions, not summary or total lines. 6. VERY IMPORTANT: Do not correct spelling in the details array; copy all text exactly verbatim from the source (e.g. if the source has a typo, KEEP the typo).';
+      const usrMsg = `SOURCE DATA:\n${[...p.sourceFiles].map(([f, c]) => `=== ${f} ===\n${c.slice(0, 6000)}`).join('\n\n')}\n\nAVAILABLE LABELS (copy verbatim):\n${skeleton.labels.join('\n')}\n\nDATE HEADERS: ${skeleton.dates.join(', ')}\nTARGET DATE: ${targetDate}\n\nUSER REQUEST: ${p.goal}`;
+
+      const parseJsonLoose = (rawText: string): any | null => {
+        let t = rawText.trim();
+        const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        if (fence) t = fence[1].trim();
+        const jm = t.match(/\{[\s\S]*\}/);
+        if (!jm) return null;
+        try {
+          return JSON.parse(jm[0]);
+        } catch {
+          try {
+            return JSON.parse(jm[0].replace(/,\s*([}\]])/g, '$1'));
+          } catch {
+            return null;
+          }
+        }
+      };
+
+      const rawKenariExtract = (
+        model: string,
+      ): Promise<{ ok: boolean; text: string }> =>
+        new Promise((resolve) => {
+          const payload = JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: sysMsg },
+              { role: 'user', content: usrMsg },
+            ],
+            temperature: 0.2,
+            max_tokens: 8192,
+          });
+          const req = httpsRequest(
+            {
+              host: 'kenari.id',
+              path: '/v1/chat/completions',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${process.env.AI_API_KEY || ''}`,
+                'Content-Length': Buffer.byteLength(payload),
+              },
+              timeout: 300000,
+            },
+            (res: any) => {
+              let buf = '';
+              res.setEncoding('utf8');
+              res.on('data', (c: string) => (buf += c));
+              res.on('end', () => {
+                try {
+                  const j = JSON.parse(buf);
+                  const content = j.choices?.[0]?.message?.content;
+                  if (content) {
+                    resolve({ ok: !!content.trim(), text: content });
+                  } else {
+                    resolve({ ok: false, text: `API Error: ${JSON.stringify(j).slice(0, 200)}` });
+                  }
+                } catch {
+                  resolve({ ok: false, text: buf.slice(0, 120) });
+                }
+              });
+            },
+          );
+          req.on('timeout', () => {
+            req.destroy();
+            resolve({ ok: false, text: 'timeout' });
+          });
+          req.on('error', (e: any) =>
+            resolve({ ok: false, text: e.message }),
+          );
+          req.write(payload);
+          req.end();
+        });
+
+      let last = '';
+      const extractionModels = [
+        'gemini-1.5-flash',
+        'deepseek-v4-flash',
+      ];
+      for (const model of extractionModels) {
+        const direct = await rawKenariExtract(model);
+        if (direct.ok) {
+          const parsed = parseJsonLoose(direct.text);
+          if (parsed) {
+            this.logger.log(
+              `[RecapFill] extraction OK via raw-kenari (${model})`,
+            );
+            return parsed;
+          }
+          last = `unparseable: ${direct.text.slice(0, 100)}`;
+        } else {
+          last = direct.text;
+        }
+        this.logger.warn(
+          `[RecapFill] raw-kenari extraction failed (${model}): ${last.slice(0, 100)}`,
+        );
+        await new Promise((s) => setTimeout(s, 2000));
+      }
+
+      // Last resort: the AI-SDK path (may hit the aggregator refusal).
+      for (const preferred of [undefined, 'deepseek-v4-flash']) {
+        const r = await this.aiService.chat(
+          [
+            { role: 'system', content: sysMsg },
+            { role: 'user', content: usrMsg },
+          ],
+          undefined,
+          {
+            reasoningEffort: 'low',
+            ...(preferred ? { preferredProviderId: preferred } : {}),
+          },
+        );
+        last = (r.content || '').trim();
+        const parsed = parseJsonLoose(last);
+        if (parsed) return parsed;
+        this.logger.warn(
+          `[RecapFill] sdk extraction failed (${preferred || 'default'}): ${last.slice(0, 100)}`,
+        );
+      }
+      throw new Error(`Extraction failed: ${last.slice(0, 120)}`);
+    })();
+
+    if (!Array.isArray(extraction.rows) || extraction.rows.length === 0) {
+      throw new Error('Extraction JSON has no rows');
+    }
+
+    // ── 3. Deterministic execution ──
+    onEvent({
+      type: 'phase_changed',
+      data: { label: 'Recap fill pipeline: writing (deterministic)...' },
+    });
+    const res = await this.excelComService.fillTableColumn(
+      targetPath,
+      sheetMatch?.[1] || skeleton.activeSheet,
+      targetDate,
+      extraction.rows,
+      Array.isArray(extraction.details) ? extraction.details.map(String) : [],
+    );
+    if (!res.success && res.itemsFailed === res.itemsTotal) {
+      throw new Error('All fill items failed');
+    }
+
+    // ── 4. Read-back verification of the filled cells ──
+    const okRows = (res.results || []).filter(
+      (r: any) => r.success && r.item === 'row',
+    );
+    const summary =
+      `Kolom ${targetDate} di ${targetFile} (${skeleton.activeSheet}) terisi: ` +
+      `${okRows.length}/${extraction.rows.length} label rows, ` +
+      `${(res.results || []).filter((r: any) => r.success && r.item === 'detail').length} detail lines. ` +
+      (res.itemsFailed > 0
+        ? `Gagal: ${(res.results || []).filter((r: any) => !r.success).map((r: any) => r.label || r.error).join(', ')}.`
+        : 'Semua posisi terverifikasi oleh harness.') +
+      ` [pipeline: 1 LLM call]`;
+    onEvent({ type: 'thinking', data: summary });
+    return summary;
+  }
+
+
   async syncWorkspacePhysicalFiles(workspaceId: string): Promise<void> {
     return this.promptBuilder.syncWorkspacePhysicalFiles(workspaceId);
   }
@@ -290,6 +533,7 @@ export class WorkspaceRunnerService {
       let nudgeAttempts = 0;
       let completenessNudged = false;
       let officeMutationApplied = false;
+      let forceFillNext = false;
       let officeMutationTool = '';
       const runStartTime = Date.now();
       let mutationsApplied = 0;
@@ -297,6 +541,41 @@ export class WorkspaceRunnerService {
       const touchedFiles = new Set<string>();
       const budget = createRunBudget();
       enterRunBudget(budget);
+
+
+      // ═══ RECAP-FILL PIPELINE (single-shot) ═══
+      // Structured form-filling is a PIPELINE, not an agent loop: ONE
+      // extraction call + deterministic execution. 16 agent-loop iterations
+      // proved models cannot reliably emit positions at any tier; they DO
+      // extract semantics correctly every time. Total cost: ~1 LLM call.
+      if (
+        this.isRecapFillGoal(safeGoal) &&
+        workspaceRootPath &&
+        mentionedFileContents.size > 0
+      ) {
+        try {
+          const summary = await this.runRecapFillPipeline({
+            workspaceId,
+            workspaceRootPath,
+            goal: safeGoal,
+            sourceFiles: mentionedFileContents,
+            onEvent,
+          });
+          finalContent = summary;
+          onEvent({ type: 'text_delta', data: summary });
+          onEvent({
+            type: 'done',
+            data: { content: summary, artifacts: createdArtifactIds },
+          });
+          reachedMaxRounds = false;
+          this.stateService.setState(runState, 'completed', onEvent);
+          return;
+        } catch (pipeErr: any) {
+          this.logger.warn(
+            `[RecapFill] pipeline failed (${pipeErr.message}) — falling back to agent loop`,
+          );
+        }
+      }
 
       for (let round = 0; round < MAX_ROUNDS; round++) {
         if (runState.abortController.signal.aborted) {
@@ -350,7 +629,7 @@ export class WorkspaceRunnerService {
           const streamedToolCalls: any[] = [];
 
           // Native forced tool_choice (opencode parity): when the user asked
-          // for confirmation first, round 0 MUST call ask_user — provider-side
+          // for confirmation first, round 0 MUST call ask_user â€” provider-side
           // enforcement beats prompt pleading on small models.
           const clarifyRequested =
             round === 0 &&
@@ -358,6 +637,18 @@ export class WorkspaceRunnerService {
               safeGoal || '',
             ) &&
             (toolsToPass || []).some((t) => t.function.name === 'ask_user');
+          // (b) fill forcing happens AFTER the read-only nudge sets
+          // forceFillNext — by then the model has real sheet context, so its
+          // fill_table_column JSON is grounded (forcing at round 0 produced
+          // hallucinated args because the model hadn't read anything yet).
+          const forcedTool = clarifyRequested
+            ? 'ask_user'
+            : forceFillNext &&
+                (toolsToPass || []).some(
+                  (t) => t.function.name === 'fill_table_column',
+                )
+              ? 'fill_table_column'
+              : undefined;
 
           for await (const chunk of this.aiService.chatStream(
             messages,
@@ -366,7 +657,7 @@ export class WorkspaceRunnerService {
               ...(modelId ? { preferredProviderId: modelId } : {}),
               // Cancellation reaches the upstream provider request directly
               signal: runState.abortController.signal,
-              ...(clarifyRequested ? { forceTool: 'ask_user' } : {}),
+              ...(forcedTool ? { forceTool: forcedTool } : {}),
             },
           )) {
             if (chunk.type === 'content' && chunk.content) {
@@ -393,6 +684,9 @@ export class WorkspaceRunnerService {
             toolCalls: streamedToolCalls,
             usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
           };
+          // One forced round per nudge: reset so the next round is free
+          // (the model may verify, correct, or summarize without coercion).
+          forceFillNext = false;
         } catch (streamErr: any) {
           this.logger.warn(
             `chatStream failed, falling back to chat: ${streamErr.message}`,
@@ -496,7 +790,7 @@ export class WorkspaceRunnerService {
           }
         }
 
-        // Streaming responses often carry no usage — estimate from actual
+        // Streaming responses often carry no usage â€” estimate from actual
         // output (~4 chars/token) so runaway loops still trip the budget.
         const streamedUsage =
           aiResponse.usage?.totalTokens ||
@@ -571,7 +865,7 @@ export class WorkspaceRunnerService {
           // mandatory re-read catches both without trusting a single shot.
           //
           // Companion guard: on a mutation goal, a run that only READ (or did
-          // nothing) and then tries to finish is NOT done — force the write.
+          // nothing) and then tries to finish is NOT done â€” force the write.
           const officeReadButNotWritten =
             hasMutationIntent &&
             executedToolCount > 0 &&
@@ -585,8 +879,8 @@ export class WorkspaceRunnerService {
             completenessNudged = true;
             nudgeAttempts++;
             const mode = officeMutationApplied
-              ? 'mutation done — verify & complete aggregates'
-              : 'only read so far — APPLY the requested writes now';
+              ? 'mutation done â€” verify & complete aggregates'
+              : 'only read so far â€” APPLY the requested writes now';
             this.logger.log(
               `[Self-Correction] Completeness nudge (${mode})...`,
             );
@@ -605,26 +899,36 @@ export class WorkspaceRunnerService {
                 ? officeMutationTool === 'desktop_excel_edit'
                   ? `[Verify-and-Correct] Do this EXACT sequence now, as tool calls (no narration between): ` +
                     `(1) read_range the FULL used width of the modified sheet (all columns, from row 1 to the last used row). ` +
-                    `(2) From that read-back, list every mismatch vs the original request — wrong row, wrong column, missing value, ` +
+                    `(2) From that read-back, list every mismatch vs the original request â€” wrong row, wrong column, missing value, ` +
                     `wrong scale (e.g. wrote 2.771 instead of 2.771.000). ` +
                     `(3) Fix EVERY mismatch with write_cell using rowLabel + columnDate/columnLetter targeting (never raw coordinates on this template). ` +
                     `(4) Repeat read_range + fix until a full read-back matches the request, then reply with the literal line ` +
                     `"VERIFIED: <jumlah sel diperiksa> cells checked" plus a one-line summary.`
                   : officeMutationTool === 'desktop_word_edit'
-                    ? `[Completeness Check] Before finishing: re-read the document you just modified and verify it fully matches the request — ` +
+                    ? `[Completeness Check] Before finishing: re-read the document you just modified and verify it fully matches the request â€” ` +
                       `every requested replacement, paragraph, or table present in the right place, and the rest of the document untouched. ` +
                       `If anything is missing or wrong, fix it now with desktop_word_edit, then confirm.`
                     : `[Completeness Check] Before finishing: re-read the presentation you just modified and verify every requested slide/` +
                       `text change is in place and the rest of the deck is untouched. If anything is missing, fix it now with desktop_ppt_edit, then confirm.`
-                : `[Action Required] You only inspected the file — the requested changes are NOT written yet. ` +
+                : `[Action Required] You only inspected the file â€” the requested changes are NOT written yet. ` +
                   `Using what you just read, call the same edit tool NOW and write every value the user asked for. ` +
                   `MECHANICAL RECIPE (follow exactly, no coordinate guessing): ` +
-                  `STEP 1 — for EACH value, call find_cell with matchValue set to that row's label text (e.g. the label of the total row, ` +
+                  `STEP 1 â€” for EACH value, call find_cell with matchValue set to that row's label text (e.g. the label of the total row, ` +
                   `or the category name) to get its exact row number; also read the table's header/date row full-width once to fix the target column letter. ` +
-                  `STEP 2 — write each value with write_cell cell="<targetColumnLetter><rowFromFindCell>" using the row number find_cell returned. ` +
+                  `STEP 2 â€” write each value with write_cell cell="<targetColumnLetter><rowFromFindCell>" using the row number find_cell returned. ` +
                   `Never compute row numbers yourself; always take them from find_cell results. ` +
                   `Then confirm what you wrote.`,
             });
+            // Round berikutnya DIPAKSA memakai fill_table_column (posisi
+            // deterministik oleh harness) — model tinggal mengirim data
+            // semantiknya; koordinat tidak lagi diperlukan.
+            if (
+              (toolsToPass || []).some(
+                (t) => t.function.name === 'fill_table_column',
+              )
+            ) {
+              forceFillNext = true;
+            }
             continue;
           }
 
@@ -927,3 +1231,9 @@ export class WorkspaceRunnerService {
     }
   }
 }
+
+
+
+
+
+
