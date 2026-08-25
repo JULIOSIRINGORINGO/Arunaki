@@ -586,3 +586,25 @@ Harness resolve 100% posisi (kolom by date, baris by label - logika sudah ada),
 atomik, laporan per-label. Model mini TERBUKTI mampu mengirim JSON semantik
 benar di semua iterasi. Bukan contekan: tanpa label user di kode; bekerja utk
 template tanggal siapa pun.
+
+### Iterasi 16 (glm, single clean run) - GAGAL
+- Model mengumumkan target "kolom AG" (meleset +9!), menulis detail AG5-8,
+  "Rp90 RB" sbg teks di AG22, angka di AG24/25/66/69. Z kosong.
+- 19/08, makro, styles: AMAN (restore dilakukan).
+
+### REKAP BUKTI 16 ITERASI / 3 MODEL (agnes, glm, deepseek-v4-flash berbayar)
+Salah kolom yang pernah terjadi: V(-4), AA(+1), AG(+9), Z(berhasil 2x lalu
+berubah lagi). Salah baris: -1 sistematis. Skala angka: RB/JT bocor sbg teks.
+=> TIDAK ADA model (sampai deepseek berbayar) yang andal memetakan
+   tanggal->kolom & label->baris via koordinat, di bawah guidance apa pun.
+=> fill_table_column (action) tersedia tapi tidak dipilih model dgn konsisten.
+
+### ENDGAME (usulan final, butuh persetujuan)
+1. Pisahkan fill_table_column menjadi TOOL tersendiri (bukan action di dalam
+   desktop_excel_edit) -> schema bersih, mudah dipaksa.
+2. Saat goal mengandung tanggal + template berlabel terdeteksi: runner paksa
+   tool_choice:"fill_table_column" (plumbing forceTool SUDAH ADA) -> model
+   HANYA mengisi JSON semantik {date, rows[{label,value}], details}.
+3. Harness mengeksekusi: resolve kolom by date, baris by label (logika
+   teruji), atomik, laporan per-label.
+Model tidak pernah lagi menyentuh koordinat pada template berlabel.
