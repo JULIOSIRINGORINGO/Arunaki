@@ -556,3 +556,33 @@ Escape hatch netral bahasa tetap: sinyal @file.ext.
    vs request sebagai action write_cell (rowLabel/cell) - jangan narasi".
 3. Ulangi hingga model report clean / tidak ada perubahan baru (max 5 putaran).
 4. nudgeAttempts office: 3 -> 5.
+
+### Iterasi 10-14 (glm) - GAGAL, satu bahkan MENYENTUH kolom 19/08 (ter-restore)
+- 10: labeled-template guard menolak koordinat -> model bingung, deadline, nol tulis.
+- 11 (instrumen): model pakai matchColumn=TANGGAL/matchValue=tanggal/targetColumn=LABEL
+  -> sumbu TRANSPOSED, maksudnya benar (kolom=tanggal x baris=label) tapi matcher
+  kita mencari KOLOM bernama TANGGAL. Ditambah: transpose fallback + koersi
+  angka ID (RB/JT/titik-ribuan) + targetColumn huruf + section-append.
+- 12: guard pra-validasi menolak write_cell tanpa cell (rowLabel belum dikenal)
+  -> dibuka; pesan error dibuat mengajar.
+- 13: jalan di file terkunci zombie-Excel (restore gagal diam-diam) - pelajaran:
+  kill EXCEL + restore wajib sebelum run.
+- 14: section-append fallback menulis ke first-empty kolom yang SALAH (U) ->
+  14 sel kolom 19/08 berubah -> RESTORED dari backup.
+
+### KESIMPULAN FINAL 14 ITERASI
+- Nilai, label, dan data semantik: SELALU BENAR dari model (semua iterasi).
+- Pemetaan posisi pada template matriks-tanggal lebar: GAGAL di SEMUA bentuk
+  pendekatan (koordinat, matchColumn transpose, rowLabel, section-append) -
+  tiap jalur baru memunculkan mode salah baru; sekali menyentuh kolom lain.
+- Plafon bukan pada model saja, tapi pada pendekatan "model menyebut posisi
+  dalam bentuk apa pun".
+
+### KEPUTUSAN ARSITEKTUR (rekomendasi): tool domain first-class
+`fill_table_column` (analog fill_template milik Word):
+  { file, sheet, date:"24/08/2026",
+    rows:[{label,value},...], details:[teks,...] optional }
+Harness resolve 100% posisi (kolom by date, baris by label - logika sudah ada),
+atomik, laporan per-label. Model mini TERBUKTI mampu mengirim JSON semantik
+benar di semua iterasi. Bukan contekan: tanpa label user di kode; bekerja utk
+template tanggal siapa pun.

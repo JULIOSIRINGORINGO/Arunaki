@@ -350,9 +350,9 @@ export class DesktopToolsRegistrar {
               actions,
               args.sheetName,
             );
-            // Surface COM-level and per-action failures — previously a wrong
-            // sheetName or unmatched row reported status:'success' here,
-            // so the LLM never learned its call had no effect.
+            console.log(
+              `[EXCEL-DEBUG] actions=${JSON.stringify(actions).slice(0, 500)}`,
+            );
             const failedActions: Array<{ error?: string }> = Array.isArray(
               (res as any)?.results,
             )
@@ -360,6 +360,11 @@ export class DesktopToolsRegistrar {
                   (r: any) => r && r.success === false,
                 )
               : [];
+            if (failedActions.length > 0) {
+              console.log(
+                `[EXCEL-DEBUG] FAILED: ${failedActions.map((f) => f.error).join(' ; ').slice(0, 400)}`,
+              );
+            }
             if (
               (res as any)?.success === false ||
               failedActions.length > 0

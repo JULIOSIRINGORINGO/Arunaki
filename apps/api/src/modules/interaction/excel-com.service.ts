@@ -162,11 +162,33 @@ export class ExcelComService {
         case 'write_cell':
         case 'read_cell': {
           if (a.matchColumn && a.matchValue !== undefined) break;
+          // Label-row targeting: rowLabel + (columnDate | columnLetter) is a
+          // complete, coordinate-free specification — no cell required.
+          if (
+            a.action === 'write_cell' &&
+            a.rowLabel &&
+            (a.columnDate || a.columnLetter)
+          ) {
+            break;
+          }
+          if (
+            a.action === 'write_cell' &&
+            a.rowLabel &&
+            !a.columnDate &&
+            !a.columnLetter
+          ) {
+            fail(
+              'rowLabel targeting also needs columnDate (date header text) or columnLetter — e.g. the date column matching the target day',
+            );
+            continue;
+          }
           if (!a.cell || !ExcelComService.CELL_RE.test(a.cell.trim())) {
             fail(
               a.cell
                 ? `Invalid cell reference "${String(a.cell).slice(0, 24)}"`
-                : 'cell is required',
+                : a.rowLabel
+                  ? 'rowLabel targeting needs columnDate or columnLetter'
+                  : 'cell is required — or better: use rowLabel + columnDate targeting on labeled templates',
             );
             continue;
           }
@@ -423,6 +445,24 @@ try {
   ${sheetGuardBlock}
   ${sheetActivate}
   $ws = $wb.ActiveSheet
+  # Labeled-template detection (generic structure, content-agnostic):
+  # a date header row (>=3 date cells in the top region) + a label column
+  # (>=5 non-empty rows in the first column) => coordinate writes are unsafe.
+  $labeledTemplate = $false
+  $dateCells = 0; $labelRows = 0
+  $maxDetR = [Math]::Min($ws.UsedRange.Rows.Count, 30)
+  $maxDetC = [Math]::Min($ws.UsedRange.Columns.Count, 60)
+  for ($r = 1; $r -le $maxDetR; $r++) {
+    for ($c = 1; $c -le $maxDetC; $c++) {
+      $v = $ws.Cells.Item($r, $c).Value2
+      if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) { $dateCells++ }
+    }
+  }
+  for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 80); $r++) {
+    $t = [string]$ws.Cells.Item($r, 1).Text
+    if ($t.Trim() -ne '') { $labelRows++ }
+  }
+  if ($dateCells -ge 3 -and $labelRows -ge 5) { $labeledTemplate = $true }
   $results = @()
 ${wrappedBlocks}
   $hasSave = $false
@@ -468,7 +508,20 @@ ${wrappedBlocks}
               const cdate = (act.columnDate || '').trim();
               let mval: any;
               if (typeof act.value === 'string') {
-                mval = `'${act.value.replace(/'/g, "''")}'`;
+                const idm = act.value
+                  .trim()
+                  .match(/^([\d.,\s]+?)\s*(RB|JT)?$/i);
+                if (idm && /\d/.test(idm[1])) {
+                  const mult = idm[2]?.toUpperCase() === 'JT' ? 1000000 : idm[2]?.toUpperCase() === 'RB' ? 1000 : 1;
+                  const n = Number(idm[1].replace(/[.\s]/g, '').replace(',', '.'));
+                  if (!Number.isNaN(n)) {
+                    mval = `[double]${n * mult}`;
+                  } else {
+                    mval = `'${act.value.replace(/'/g, "''")}'`;
+                  }
+                } else {
+                  mval = `'${act.value.replace(/'/g, "''")}'`;
+                }
               } else if (typeof act.value === 'number') {
                 mval = `[double]${act.value}`;
               } else if (act.value === null || act.value === undefined) {
@@ -562,6 +615,43 @@ ${wrappedBlocks}
                 `          }`,
                 `        } elseif ($mCol -gt 0) {`,
                 `          for ($r = $hdrRow + 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $mCol).Text -ieq '${mv}') { $tgtRow = $r; break } }`,
+                `          if ($tgtRow -eq 0) {`,
+                `            # Date-matrix TRANSPOSE: matchValue is a DATE (column header) and`,
+                `            # targetColumn is a ROW LABEL - resolve their intersection.`,
+                `            $dg${idx} = [regex]::Matches('${mv}', '\\d+') | ForEach-Object { [int]$_.Value }`,
+                `            if ($dg${idx}.Count -ge 3) {`,
+                `              for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 30) -and $tCol -eq 0; $r++) {`,
+                `                for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 100); $c++) {`,
+                `                  $v = $ws.Cells.Item($r, $c).Value2`,
+                `                  if ($v -is [double] -and $v -gt 20000 -and $v -lt 80000) {`,
+                `                    $dt = [DateTime]::FromOADate($v)`,
+                `                    $dd = $dt.Day; $mm = $dt.Month; $yy = $dt.Year`,
+                `                    if (($yy -eq $dg${idx}[2] -and $mm -eq $dg${idx}[1] -and $dd -eq $dg${idx}[0]) -or ($yy -eq $dg${idx}[2] -and $mm -eq $dg${idx}[0] -and $dd -eq $dg${idx}[1])) { $tCol = $c; break }`,
+                `                  }`,
+                `                }`,
+                `              }`,
+                `              if ($tCol -gt 0) {`,
+                `                for ($r = 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) {`,
+                `                  for ($c = 1; $c -le [Math]::Min($ws.UsedRange.Columns.Count, 4); $c++) {`,
+                `                    if ([string]$ws.Cells.Item($r, $c).Text.Trim() -ieq '${tc}') { $tgtRow = $r; break }`,
+                `                  }`,
+                `                }`,
+                `              }`,
+                `            }`,
+                `          }`,
+                `          if ($tgtRow -eq 0 -and $tCol -eq 0 -and '${tc}' -match '^[A-Za-z]{1,3}$') {`,
+                `            # targetColumn given as a COLUMN LETTER (e.g. "Z")`,
+                `            $tCol = $ws.Range('${tc}1').Column`,
+                `          }`,
+                `          if ($tgtRow -eq 0 -and $mCol -eq 0 -and $tCol -gt 0 -and '${mv}' -ne '') {`,
+                `            # Section-append: matchColumn named a SECTION (not a header) and the`,
+                `            # detail is new — place it in the first empty cell of the target column`,
+                `            # below the header region (fresh date column fill).`,
+                `            for ($r = 2; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500) -and $tgtRow -eq 0; $r++) {`,
+                `              if ([string]$ws.Cells.Item($r, $tCol).Text.Trim() -eq '') { $tgtRow = $r }`,
+                `            }`,
+                `            if ($tgtRow -eq 0) { $tgtRow = $ws.UsedRange.Rows.Count + 1 }`,
+                `          }`,
                 `          if ($tgtRow -eq 0 -and $keyCol -gt 0 -and $keyCol -ne $mCol) {`,
                 `            # Cross-keyed lookup: matchValue lives in the key column → write into target column of that row`,
                 `            for ($r = $hdrRow + 1; $r -le [Math]::Min($ws.UsedRange.Rows.Count, 500); $r++) { if ([string]$ws.Cells.Item($r, $keyCol).Text -ieq '${mv}') { $tgtRow = $r; break } }`,
@@ -593,7 +683,20 @@ ${wrappedBlocks}
               }
               let mval: any;
               if (typeof act.value === 'string') {
-                mval = `'${act.value.replace(/'/g, "''")}'`;
+                // Indonesian business units: "281 RB" -> 281000, "2.771 RB" ->
+                // 2771000, "1,5 JT" -> 1500000, "3.052" (dot-grouped) -> 3052.
+                const idm = act.value
+                  .trim()
+                  .match(/^([\d.,\s]+?)\s*(RB|JT)?$/i);
+                if (idm && /[\d]/.test(idm[1])) {
+                  const mult = idm[2]?.toUpperCase() === 'JT' ? 1000000 : idm[2]?.toUpperCase() === 'RB' ? 1000 : 1;
+                  const digits = idm[1].replace(/[.\s]/g, '').replace(',', '.');
+                  const n = Number(digits);
+                  if (!Number.isNaN(n)) mval = `[double]${n * mult}`;
+                  else mval = `'${act.value.replace(/'/g, "''")}'`;
+                } else {
+                  mval = `'${act.value.replace(/'/g, "''")}'`;
+                }
               } else if (typeof act.value === 'boolean') {
                 mval = act.value ? '$true' : '$false';
               } else if (act.value === null || act.value === undefined) {
@@ -633,9 +736,13 @@ ${wrappedBlocks}
               val = act.value;
             }
             return [
-              `        if (${act.delta ? '$true' : '$false'}) { $d${idx} = [double]$ws.Range('${cellCoord}').Value2 + ${val}; Invoke-Expression ('$ws.Range(''${cellCoord}'').Value2 = ' + $d${idx}) }`,
-              `        else { $ws.Range('${cellCoord}').Value2 = ${val} }`,
-              `        $results += @{ action='write_cell'; success=$true; cell='${cellCoord}' }`,
+              `        if ($labeledTemplate) {`,
+              `          $results += @{ action='write_cell'; success=$false; error='Coordinate writes are disabled on labeled templates (date header + label column detected) — this protects row alignment. Use write_cell with rowLabel + columnDate (or columnLetter) targeting instead.' }`,
+              `        } else {`,
+              `          if (${act.delta ? '$true' : '$false'}) { $d${idx} = [double]$ws.Range('${cellCoord}').Value2 + ${val}; Invoke-Expression ('$ws.Range(''${cellCoord}'').Value2 = ' + $d${idx}) }`,
+              `          else { $ws.Range('${cellCoord}').Value2 = ${val} }`,
+              `          $results += @{ action='write_cell'; success=$true; cell='${cellCoord}' }`,
+              `        }`,
             ].join('\n');
           }
           case 'find_cell': {
@@ -662,15 +769,20 @@ ${wrappedBlocks}
             const rangeRef = act.range ? act.range.replace(/'/g, "''") : '';
             const rngExpr = rangeRef ? `$ws.Range('${rangeRef}')` : `$ws.UsedRange`;
             return [
+              `        function ColLetter([int]$n) { $s=''; while ($n -gt 0) { $m = ($n - 1) % 26; $s = [char](65 + $m) + $s; $n = [int](($n - $m - 1) / 26) }; return $s }`,
               `        $rowsArr${idx} = @()`,
+              `        $baseRow = ${rngExpr}.Row`,
+              `        $baseCol = ${rngExpr}.Column`,
               `        $maxR = [Math]::Min(${rngExpr}.Rows.Count, 150)`,
               `        $maxC = [Math]::Min(${rngExpr}.Columns.Count, 40)`,
+              `        $colHeader = (1..$maxC | ForEach-Object { ColLetter ($baseCol + $_ - 1) }) -join ' '`,
+              `        $rowsArr${idx} += ('COLUMNS: ' + $colHeader)`,
               `        for ($rIdx = 1; $rIdx -le $maxR; $rIdx++) {`,
               `          $cVals${idx} = @()`,
               `          for ($cIdx = 1; $cIdx -le $maxC; $cIdx++) {`,
               `            $cVals${idx} += ${rngExpr}.Cells.Item($rIdx, $cIdx).Text`,
               `          }`,
-              `          $rowsArr${idx} += ($cVals${idx} -join ' | ')`,
+              `          $rowsArr${idx} += ('Row ' + ($baseRow + $rIdx - 1) + ': ' + ($cVals${idx} -join ' | '))`,
               `        }`,
               `        $results += @{ action='read_range'; success=$true; range='${rangeRef}'; rows=($rowsArr${idx} -join [Environment]::NewLine) }`,
             ].join('\n');

@@ -580,7 +580,7 @@ export class WorkspaceRunnerService {
             !completenessNudged &&
             hasMutationIntent &&
             (officeMutationApplied || officeReadButNotWritten) &&
-            nudgeAttempts < 3
+            nudgeAttempts < 5
           ) {
             completenessNudged = true;
             nudgeAttempts++;
@@ -603,9 +603,13 @@ export class WorkspaceRunnerService {
               role: 'user',
               content: officeMutationApplied
                 ? officeMutationTool === 'desktop_excel_edit'
-                  ? `[Completeness Check] Before finishing: re-read the sheet you just modified and verify it fully matches the request — ` +
-                    `every requested row/cell present, every aggregate figure (grand total, subtotals) recalculated and written, ` +
-                    `and nothing pre-existing was damaged. If anything is stale, missing, or wrong, fix it now with desktop_excel_edit, then confirm.`
+                  ? `[Verify-and-Correct] Do this EXACT sequence now, as tool calls (no narration between): ` +
+                    `(1) read_range the FULL used width of the modified sheet (all columns, from row 1 to the last used row). ` +
+                    `(2) From that read-back, list every mismatch vs the original request — wrong row, wrong column, missing value, ` +
+                    `wrong scale (e.g. wrote 2.771 instead of 2.771.000). ` +
+                    `(3) Fix EVERY mismatch with write_cell using rowLabel + columnDate/columnLetter targeting (never raw coordinates on this template). ` +
+                    `(4) Repeat read_range + fix until a full read-back matches the request, then reply with the literal line ` +
+                    `"VERIFIED: <jumlah sel diperiksa> cells checked" plus a one-line summary.`
                   : officeMutationTool === 'desktop_word_edit'
                     ? `[Completeness Check] Before finishing: re-read the document you just modified and verify it fully matches the request — ` +
                       `every requested replacement, paragraph, or table present in the right place, and the rest of the document untouched. ` +
