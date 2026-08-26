@@ -190,9 +190,11 @@ export class RecapFillPipelineService {
         value: r.value,
       };
     });
-    // 3.5. Post-process mappedRows to filter out past/undated Piutang/Belum Bayar (R58, R82)
+    // 3.5. Post-process mappedRows to filter out past/undated Piutang/Belum Bayar (R58, R82, R45, etc.)
     const filteredMappedRows = mappedRows.map((r: any) => {
-      if (r.row === 58 || r.row === 82) {
+      const isPiutang = r.row === 58 || r.row === 82 || r.row === 45 || 
+        (r.label && (r.label.toLowerCase().includes('belum bayar') || r.label.toLowerCase().includes('piutang')));
+      if (isPiutang) {
         if (!r.value || r.value === 0) return r;
         
         const valShort = Math.floor(r.value / 1000).toString(); // e.g. 572

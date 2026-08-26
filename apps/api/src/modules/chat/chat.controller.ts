@@ -25,6 +25,7 @@ import {
   SessionStateEventsService,
   SessionEventType,
 } from './session-state-events.service.js';
+import { PrismaService } from '../../common/providers/prisma.service.js';
 import {
   successResponse,
   errorResponse,
@@ -42,7 +43,19 @@ export class ChatController {
     private readonly injectionDetector: PromptInjectionDetector,
     private readonly transcriptService: UserTurnTranscriptService,
     private readonly sessionEvents: SessionStateEventsService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  private async resolveWorkspaceRoot(
+    workspaceId: string | null | undefined,
+  ): Promise<string | null> {
+    if (!workspaceId) return null;
+    const ws = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+    return ws?.rootPath ?? null;
+  }
 
   @Post()
   async createChat(
@@ -302,11 +315,13 @@ export class ChatController {
 
       // Run agent with same runId for idempotency
       const history = await this.messageService.findByChatHistoryId(id);
+      const workspaceRoot = await this.resolveWorkspaceRoot(chat.workspaceId);
       const agentResult = await this.agentRunnerService.runAgentSync({
         chatId: id,
         userContent: userContent,
         chatMode: chat.mode as 'chat' | 'workspace',
         workspaceId: chat.workspaceId,
+        workspaceRoot,
         historyMessages: history.map((m) => ({
           role: m.role as 'user' | 'assistant' | 'system',
           content: m.content,
@@ -427,12 +442,14 @@ export class ChatController {
       }
 
       const history = await this.messageService.findByChatHistoryId(id);
+      const workspaceRoot = await this.resolveWorkspaceRoot(chat.workspaceId);
       const finalContent = await this.agentRunnerService.runAgentStream(
         {
           chatId: id,
           userContent: userContent,
           chatMode: chat.mode as 'chat' | 'workspace',
           workspaceId: chat.workspaceId,
+          workspaceRoot,
           historyMessages: history.map((m) => ({
             role: m.role as 'user' | 'assistant' | 'system',
             content: m.content,

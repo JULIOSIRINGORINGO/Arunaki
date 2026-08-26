@@ -271,7 +271,7 @@ export class WorkspaceToolExecutorService {
 
       const healedResults = await Promise.all(
         readOnlyCalls.map(async ({ toolCall, args }) => {
-          const enrichedArgs = { ...args, workspaceId };
+          const enrichedArgs = { ...args, workspaceRoot: workspaceRootPath };
           const result = await this.selfHealingService.executeWithIsolation(
             toolCall.function.name,
             enrichedArgs,
@@ -393,8 +393,7 @@ export class WorkspaceToolExecutorService {
         }
         const enrichedArgs: Record<string, any> = {
           ...args,
-          workspaceId,
-          rootPath: workspaceRootPath,
+          workspaceRoot: workspaceRootPath,
         };
         if (
           !enrichedArgs.filePath &&

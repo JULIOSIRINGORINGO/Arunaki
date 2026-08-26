@@ -1,100 +1,51 @@
 import { Tool } from '../interfaces/tool.interface.js';
-import { ToolResult } from '../interfaces/tool-result.interface.js';
 
 /**
- * ToolConfig — configuration for creating a ToolAdapter.
- */
-export interface ToolConfig {
-  name: string;
-  displayName: string;
-  description: string;
-  tags: string[];
-  handler: (args: Record<string, any>) => Promise<ToolResult> | ToolResult;
-  parameters: Record<string, any>;
-  outputType?:
-    'text' | 'spreadsheet' | 'document' | 'calculation' | 'presentation';
-  estimatedLatency?: 'fast' | 'medium' | 'slow';
-  timeoutMs?: number;
-
-  /** Read-only/idempotent result may be cached per-run (default false). */
-  cacheable?: boolean;
-  /** True if the tool modifies workspace state (requires safety checks) */
-  mutating?: boolean;
-}
-
-/**
- * ToolAdapter — wraps existing tool services into the Tool interface.
+ * ToolAdapter — compatibility shim for registrars that still use the old pattern.
  *
- * Allows gradual migration from monolithic registration to
- * self-registering pattern without rewriting all tool services.
+ * The new file tools (read/write/edit/glob/grep/list/delete/rename) use
+ * Tool.define() + registerFromDef() directly — no adapter needed.
+ *
+ * This adapter exists ONLY for non-file registrars (business-domain, desktop,
+ * harness-meta) that will be migrated later.
  */
-export class ToolAdapter implements Tool {
-  readonly name: string;
-  readonly displayName: string;
-  readonly description: string;
-  readonly definition: Tool['definition'];
-  readonly capability: Tool['capability'];
-  readonly timeoutMs: number;
-
-  private readonly handler: (
-    args: Record<string, any>,
-  ) => Promise<ToolResult> | ToolResult;
-
-  readonly cacheable: boolean;
-  readonly mutating?: boolean;
-
-  private constructor(config: ToolConfig) {
-    this.name = config.name;
-    this.displayName = config.displayName;
-    this.description = config.description;
-    this.handler = config.handler;
-    this.timeoutMs = config.timeoutMs ?? 10000;
-
-    this.cacheable = config.cacheable ?? false;
-    this.mutating = config.mutating;
-
-    this.definition = {
-      type: 'function',
-      function: {
-        name: config.name,
-        description: config.description,
-        parameters: config.parameters,
+export class ToolAdapter {
+  static from(def: {
+    name: string;
+    displayName: string;
+    description: string;
+    tags?: string[];
+    mutating?: boolean;
+    cacheable?: boolean;
+    timeoutMs?: number;
+    parameters: Record<string, any>;
+    handler: (args: Record<string, any>) => Promise<any> | any;
+  }): Tool {
+    return {
+      name: def.name,
+      displayName: def.displayName,
+      description: def.description,
+      definition: {
+        type: 'function',
+        function: {
+          name: def.name,
+          description: def.description,
+          parameters: def.parameters,
+        },
       },
+      capability: {
+        name: def.name,
+        displayName: def.displayName,
+        description: def.description,
+        tags: def.tags || [],
+        inputSchema: {},
+        outputType: 'ToolResult',
+        estimatedLatency: 'fast',
+      },
+      timeoutMs: def.timeoutMs ?? 10000,
+      mutating: def.mutating,
+      cacheable: def.cacheable,
+      execute: def.handler,
     };
-
-    this.capability = {
-      name: config.name,
-      displayName: config.displayName,
-      description: config.description,
-      tags: config.tags,
-      inputSchema: this.extractInputSchema(config.parameters),
-      outputType: config.outputType ?? 'text',
-      estimatedLatency: config.estimatedLatency ?? 'fast',
-    };
-  }
-
-  execute(args: Record<string, any>): Promise<ToolResult> | ToolResult {
-    return this.handler(args);
-  }
-
-  /**
-   * Create a ToolAdapter from a config object.
-   */
-  static from(config: ToolConfig): ToolAdapter {
-    return new ToolAdapter(config);
-  }
-
-  /**
-   * Extract input schema from parameters for capability display.
-   */
-  private extractInputSchema(
-    parameters: Record<string, any>,
-  ): Record<string, string> {
-    const schema: Record<string, string> = {};
-    const properties = parameters.properties || {};
-    for (const [key, value] of Object.entries(properties)) {
-      schema[key] = (value as any).type || 'string';
-    }
-    return schema;
   }
 }

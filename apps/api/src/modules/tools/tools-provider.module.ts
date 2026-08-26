@@ -28,13 +28,6 @@ import { VisionAiTool } from './services/vision-ai.tool.js';
 import { UnitConverterTool } from './services/unit-converter.tool.js';
 import { DraftCommunicationTool } from './services/draft-communication.tool.js';
 import { WorkspaceToolsService } from './services/workspace-tools.service.js';
-import { EditToolService } from './services/edit-tool.service.js';
-import { WriteToolService } from './services/write-tool.service.js';
-import { ReadToolService } from './services/read-tool.service.js';
-import { DeleteToolService } from './services/delete-tool.service.js';
-import { RenameToolService } from './services/rename-tool.service.js';
-import { ListToolService } from './services/list-tool.service.js';
-import { SearchToolService } from './services/search-tool.service.js';
 import { MemoryTool } from './services/memory.tool.js';
 import { DocumentReconciliationService } from '../document/doc-reconciliation.service.js';
 import { CronService } from '../cron/cron.service.js';
@@ -105,13 +98,6 @@ import { DomainModule } from '../domain/domain.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
-    EditToolService,
-    WriteToolService,
-    ReadToolService,
-    DeleteToolService,
-    RenameToolService,
-    ListToolService,
-    SearchToolService,
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
@@ -149,13 +135,6 @@ import { DomainModule } from '../domain/domain.module.js';
     UnitConverterTool,
     DraftCommunicationTool,
     WorkspaceToolsService,
-    EditToolService,
-    WriteToolService,
-    ReadToolService,
-    DeleteToolService,
-    RenameToolService,
-    ListToolService,
-    SearchToolService,
     MemoryTool,
     DocumentReconciliationService,
     ProgrammaticVerifierService,
@@ -194,25 +173,8 @@ export class ToolsProviderModule implements OnModuleInit {
   }
 
   private registerTools() {
-    // 1. Register Workspace File Tools
-    this.workspaceFileToolsRegistrar.register(this.registry, {
-      workspaceToolsService: this.moduleRef.get(WorkspaceToolsService, {
-        strict: false,
-      }),
-      readToolService: this.moduleRef.get(ReadToolService, { strict: false }),
-      writeToolService: this.moduleRef.get(WriteToolService, { strict: false }),
-      editToolService: this.moduleRef.get(EditToolService, { strict: false }),
-      deleteToolService: this.moduleRef.get(DeleteToolService, {
-        strict: false,
-      }),
-      renameToolService: this.moduleRef.get(RenameToolService, {
-        strict: false,
-      }),
-      listToolService: this.moduleRef.get(ListToolService, { strict: false }),
-      searchToolService: this.moduleRef.get(SearchToolService, {
-        strict: false,
-      }),
-    });
+    // 1. Register Workspace File Tools (standalone, no NestJS DI)
+    this.workspaceFileToolsRegistrar.register(this.registry);
 
     // 2. Register Business Domain Tools
     this.businessDomainToolsRegistrar.register(this.registry, {

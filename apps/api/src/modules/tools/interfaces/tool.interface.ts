@@ -50,7 +50,7 @@ export interface Tool {
   readonly cacheable?: boolean;
 
   /** Execute the tool with given arguments */
-  execute(args: Record<string, any>): Promise<ToolResult> | ToolResult;
+  execute(args: Record<string, any>, ctx?: any): Promise<ToolResult> | ToolResult;
 
   /** Optional: Execute the tool with streaming results for progress reporting */
   executeStreaming?(args: Record<string, any>): AsyncGenerator<ToolResultChunk>;

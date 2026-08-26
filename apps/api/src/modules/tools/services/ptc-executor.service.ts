@@ -93,7 +93,7 @@ export class PtcExecutorService {
       for (let i = 0; i < operations.length; i++) {
         const op = operations[i];
         const stepNum = i + 1;
-        const enrichedArgs = { ...op.args, workspaceId };
+        const enrichedArgs = { ...op.args, workspaceRoot };
 
         this.logger.log(
           `[PTC] ▶️ Step ${stepNum}/${operations.length}: Executing "${op.tool}"`,

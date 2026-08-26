@@ -4,6 +4,7 @@ import {
   ToolDefinition,
   ToolCapability,
 } from './interfaces/tool.interface.js';
+import { ToolDef } from './tool.js';
 import {
   ToolResult,
   ToolResultChunk,
@@ -59,6 +60,37 @@ export class ToolRegistryService {
     const timeoutMs = tool.timeoutMs ?? 10000;
     this.tools.set(tool.name, { tool, timeoutMs });
     this.logger.log(`Tool registered: ${tool.name} (timeout: ${timeoutMs}ms)`);
+  }
+
+  /**
+   * Register a tool from a ToolDef (new pattern, no adapter needed).
+   * Matches OpenCode's explicit registration pattern.
+   */
+  registerFromDef(def: ToolDef): void {
+    const adapted: Tool = {
+      name: def.id,
+      displayName: def.id,
+      description: def.description,
+      definition: {
+        type: 'function',
+        function: {
+          name: def.id,
+          description: def.description,
+          parameters: def.parameters,
+        },
+      },
+      capability: {
+        name: def.id,
+        displayName: def.id,
+        description: def.description,
+        tags: [],
+        inputSchema: {},
+        outputType: 'ToolResult',
+        estimatedLatency: 'fast',
+      },
+      execute: def.execute,
+    };
+    this.register(adapted);
   }
 
   getToolDefinitions(): ToolDefinition[] {
@@ -291,6 +323,7 @@ export class ToolRegistryService {
   async executeTool(
     name: string,
     rawArgs: Record<string, any>,
+    options?: { workspaceRoot?: string },
   ): Promise<ToolResult> {
     // Harness guidance choke point: normalize model-supplied args once for
     // every tool (trim/@-strip/numeric coercion/empty-drop) before validation.
@@ -342,6 +375,10 @@ export class ToolRegistryService {
     this.logger.log(`Executing tool "${name}" (timeout: ${timeoutMs}ms)`);
 
     const scope = this.scopeOf(args);
+    // Inject workspaceRoot from options into args for tools that need it
+    const toolArgs = options?.workspaceRoot
+      ? { ...args, workspaceRoot: options.workspaceRoot }
+      : args;
     if (tool.cacheable && this.cacheService) {
       if (this.isMutating(name)) this.invalidateCache(scope);
       const cached = this.cacheService.get(scope, name, args);
@@ -352,7 +389,7 @@ export class ToolRegistryService {
       const startTime = Date.now();
       try {
         const result = await this.executeWithTimeout(
-          () => Promise.resolve(tool.execute(args)),
+          () => Promise.resolve(tool.execute(toolArgs)),
           timeoutMs,
         );
         result.metadata.executionTime = Date.now() - startTime;
@@ -387,7 +424,7 @@ export class ToolRegistryService {
 
     try {
       const result = await this.executeWithTimeout(
-        () => Promise.resolve(tool.execute(args)),
+        () => Promise.resolve(tool.execute(toolArgs)),
         timeoutMs,
       );
       result.metadata.executionTime = Date.now() - startTime;
@@ -460,6 +497,7 @@ export class ToolRegistryService {
   executeToolStreaming(
     name: string,
     args: Record<string, any>,
+    options?: { workspaceRoot?: string },
   ): StreamingToolResult {
     const registered = this.tools.get(name);
     if (!registered) {
@@ -525,7 +563,7 @@ export class ToolRegistryService {
       };
     }
 
-    const stream = this.createToolStream(tool, name, args, timeoutMs);
+    const stream = this.createToolStream(tool, name, options?.workspaceRoot ? { ...args, workspaceRoot: options.workspaceRoot } : args, timeoutMs);
     const finalResult = this.collectStreamResult(
       stream,
       name,

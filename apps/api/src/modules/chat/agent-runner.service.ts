@@ -32,6 +32,7 @@ export interface AgentRunParams {
   userContent: string;
   chatMode?: 'chat' | 'workspace';
   workspaceId?: string | null;
+  workspaceRoot?: string | null;
   historyMessages: Array<{
     role: 'user' | 'assistant' | 'system';
     content: string;
@@ -353,9 +354,11 @@ export class AgentRunnerService {
         try {
           const canonicalName =
             this.toolRegistryService.resolveToolAlias(funcName);
-          const safeArgs = params.workspaceId
-            ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
-            : { ...args, runId: todoRunId };
+          const safeArgs = params.workspaceRoot
+            ? { ...args, workspaceRoot: params.workspaceRoot, runId: todoRunId }
+            : params.workspaceId
+              ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+              : { ...args, runId: todoRunId };
           if (params.workspaceId) {
             await this.selfHealingService.validateToolPaths(
               canonicalName,
@@ -809,9 +812,11 @@ export class AgentRunnerService {
               args = {};
             }
 
-            const safeArgs = params.workspaceId
-              ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
-              : { ...args, runId: todoRunId };
+            const safeArgs = params.workspaceRoot
+              ? { ...args, workspaceRoot: params.workspaceRoot, runId: todoRunId }
+              : params.workspaceId
+                ? { ...args, workspaceId: params.workspaceId, runId: todoRunId }
+                : { ...args, runId: todoRunId };
 
             const result = await this.selfHealingService.executeWithIsolation(
               toolCall.function.name,

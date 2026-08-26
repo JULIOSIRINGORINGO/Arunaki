@@ -1,16 +1,16 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as path from 'path';
 import * as fsSync from 'fs';
 import { promises as fsp } from 'fs';
 import { PrismaService } from '../../../common/providers/prisma.service.js';
 import { ToolResult } from '../interfaces/tool-result.interface.js';
-import { EditToolService } from './edit-tool.service.js';
-import { WriteToolService } from './write-tool.service.js';
-import { ReadToolService } from './read-tool.service.js';
-import { DeleteToolService } from './delete-tool.service.js';
-import { RenameToolService } from './rename-tool.service.js';
-import { ListToolService } from './list-tool.service.js';
-import { SearchToolService } from './search-tool.service.js';
+import { ReadTool } from '../file/read.js';
+import { WriteTool } from '../file/write.js';
+import { EditTool } from '../file/edit.js';
+import { DeleteTool } from '../file/delete.js';
+import { RenameTool } from '../file/rename.js';
+import { ListTool } from '../file/list.js';
+import { GrepTool } from '../file/grep.js';
 
 const BACKUP_DIR = '.arunaki_backups';
 const MAX_BACKUPS = 5;
@@ -20,46 +20,26 @@ export class WorkspaceToolsService {
   private readonly logger = new Logger(WorkspaceToolsService.name);
 
   constructor(
-    @Inject(forwardRef(() => EditToolService))
-    private readonly editTool: EditToolService,
-    @Inject(forwardRef(() => WriteToolService))
-    private readonly writeTool: WriteToolService,
-    @Inject(forwardRef(() => ReadToolService))
-    private readonly readTool: ReadToolService,
-    @Inject(forwardRef(() => DeleteToolService))
-    private readonly deleteTool: DeleteToolService,
-    @Inject(forwardRef(() => RenameToolService))
-    private readonly renameTool: RenameToolService,
-    @Inject(forwardRef(() => ListToolService))
-    private readonly listTool: ListToolService,
-    @Inject(forwardRef(() => SearchToolService))
-    private readonly searchTool: SearchToolService,
-    @Inject(forwardRef(() => PrismaService))
     private readonly prisma: PrismaService,
   ) {}
 
   /**
    * Enforces that a target path is strictly contained within the workspace root.
-   * Defends against Path Traversal / LFI attacks, including symlink/junction
-   * escape (resolved via realpath on both root and target).
    */
   private requirePathInWorkspace(targetPath: string, rootPath: string): string {
     let resolvedRoot = path.resolve(rootPath);
     const resolvedTarget = path.isAbsolute(targetPath)
       ? path.resolve(targetPath)
       : path.resolve(resolvedRoot, targetPath);
-    // Resolve symlinks/junctions so an in-workspace link pointing outside
-    // cannot bypass the lexical check.
     try {
       resolvedRoot = fsSync.realpathSync(resolvedRoot);
     } catch {
-      /* root may not exist yet — keep lexical resolution */
+      /* root may not exist yet */
     }
     let realTarget = resolvedTarget;
     try {
       realTarget = fsSync.realpathSync(resolvedTarget);
     } catch {
-      /* target may not exist yet (write/create) — verify parent instead */
       try {
         const parent = path.dirname(resolvedTarget);
         realTarget = path.join(fsSync.realpathSync(parent), path.basename(resolvedTarget));
@@ -93,7 +73,6 @@ export class WorkspaceToolsService {
         `Workspace "${workspaceId}" not found or root path is missing`,
       );
     }
-    // Models sometimes emit doubled/escaped separators (e.g. "e:\\dir\\file")
     const normalized = targetPath.replace(/\\{2,}/g, '\\');
     return this.requirePathInWorkspace(normalized, workspace.rootPath);
   }
@@ -157,12 +136,28 @@ export class WorkspaceToolsService {
     return backupPath;
   }
 
+  /**
+   * Resolve workspace root from workspaceId (for backward compatibility).
+   * New tools should use workspaceRoot directly from context.
+   */
+  async getWorkspaceRoot(workspaceId: string): Promise<string> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { rootPath: true },
+    });
+    if (!workspace?.rootPath) {
+      throw new Error(`Workspace "${workspaceId}" not found`);
+    }
+    return workspace.rootPath;
+  }
+
   async readWorkspaceFile(
     filePath: string,
     workspaceId: string,
     opts?: { offset?: number; limit?: number },
   ): Promise<ToolResult> {
-    return this.readTool.execute({ filePath, workspaceId, ...opts });
+    const rootPath = await this.getWorkspaceRoot(workspaceId);
+    return ReadTool.execute({ filePath, ...opts }, { workspaceRoot: rootPath });
   }
 
   async writeWorkspaceFile(params: {
@@ -173,7 +168,8 @@ export class WorkspaceToolsService {
     rows?: Record<string, any>[];
     title?: string;
   }): Promise<ToolResult> {
-    return this.writeTool.execute(params);
+    const rootPath = await this.getWorkspaceRoot(params.workspaceId);
+    return WriteTool.execute({ filePath: params.filename, content: params.content || '' }, { workspaceRoot: rootPath });
   }
 
   async editWorkspaceFile(params: {
@@ -181,14 +177,16 @@ export class WorkspaceToolsService {
     path: string;
     patchText: string;
   }): Promise<ToolResult> {
-    return this.editTool.execute(params);
+    const rootPath = await this.getWorkspaceRoot(params.workspaceId);
+    return EditTool.execute({ filePath: params.path, oldString: '', newString: params.patchText }, { workspaceRoot: rootPath });
   }
 
   async deleteWorkspaceFile(params: {
     workspaceId: string;
     filename: string;
   }): Promise<ToolResult> {
-    return this.deleteTool.execute(params);
+    const rootPath = await this.getWorkspaceRoot(params.workspaceId);
+    return DeleteTool.execute({ filePath: params.filename }, { workspaceRoot: rootPath });
   }
 
   async renameWorkspaceFile(params: {
@@ -196,18 +194,20 @@ export class WorkspaceToolsService {
     filename: string;
     newFilename: string;
   }): Promise<ToolResult> {
-    return this.renameTool.execute(params);
+    const rootPath = await this.getWorkspaceRoot(params.workspaceId);
+    return RenameTool.execute({ oldPath: params.filename, newPath: params.newFilename }, { workspaceRoot: rootPath });
   }
 
   async listWorkspaceFiles(workspaceId: string): Promise<ToolResult> {
-    return this.listTool.execute(workspaceId);
+    const rootPath = await this.getWorkspaceRoot(workspaceId);
+    return ListTool.execute({}, { workspaceRoot: rootPath });
   }
 
   async searchWorkspace(
     workspaceId: string,
     query: string,
   ): Promise<ToolResult> {
-    return this.searchTool.execute(workspaceId, query);
+    const rootPath = await this.getWorkspaceRoot(workspaceId);
+    return GrepTool.execute({ pattern: query }, { workspaceRoot: rootPath });
   }
 }
-
