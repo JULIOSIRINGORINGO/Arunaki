@@ -1,4 +1,4 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, unlink } from 'fs/promises';
@@ -415,9 +415,23 @@ export class ExcelComService {
         return `'${raw.replace(/'/g, "''")}'`;
       };
 
-      const rowBlocks = (rows || []).map((rw, i) => {
+      const rowBlocks = (rows || []).map((rw: any, i) => {
         const lbl = esc(String(rw?.label ?? `row${i}`));
         const v = marshal(rw?.value);
+        const rowVal = rw?.row ? Number(rw.row) : 0;
+
+        if (rowVal > 0) {
+          return [
+            `  $tR = ${rowVal}`,
+            `  if ($tCol -gt 0) {`,
+            `    $ws.Cells.Item($tR, $tCol).Value2 = ${v}`,
+            `    $results += @{ item='row'; label='${lbl}'; success=$true; row=$tR; column=$tCol }`,
+            `  } else {`,
+            `    $results += @{ item='row'; label='${lbl}'; success=$false; error='Target column not found' }`,
+            `  }`,
+          ].join('\n');
+        }
+
         return [
           `  $lbl = '${lbl}'`,
           `  $tR = 0`,
@@ -477,6 +491,13 @@ try {
           $dt = [DateTime]::FromOADate($v)
           $dd = $dt.Day; $mm = $dt.Month; $yy = $dt.Year
           if (($yy -eq $dg[2] -and $mm -eq $dg[1] -and $dd -eq $dg[0]) -or ($yy -eq $dg[2] -and $mm -eq $dg[0] -and $dd -eq $dg[1])) { $tCol = $c; $hdrRow = $r; break }
+        }
+        # Fallback: match text-formatted dates (e.g. "24/08/2026")
+        if ($v -is [string] -and $v.Trim() -ne '') {
+          $tdg = [regex]::Matches($v, '\\d+') | ForEach-Object { [int]$_.Value }
+          if ($tdg.Count -ge 3) {
+            if (($tdg[2] -eq $dg[2] -and $tdg[1] -eq $dg[1] -and $tdg[0] -eq $dg[0]) -or ($tdg[2] -eq $dg[2] -and $tdg[0] -eq $dg[1] -and $tdg[1] -eq $dg[0])) { $tCol = $c; $hdrRow = $r; break }
+          }
         }
       }
     }

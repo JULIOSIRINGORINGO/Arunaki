@@ -39,3 +39,9 @@ CSV with header row. One row per SKU.
 ## User Preferences & Learned Corrections
 - [Auto-Learned 2026-08-24]: ### 2.7 `Laporan Bengkel Januari.xlsx` — Workshop Sales Reconciliation
 - [Auto-Learned 2026-08-24]: Workflow Rule: Before executing any task, use `ask_user` to ask for the report format (PDF or Excel) and wait for the user's confirmation before creating any files.
+- [Auto-Learned]: "Sisa Pembayaran" ALWAYS maps to the label "PIUTANG".
+- [Auto-Learned]: For "DTF (CM)" and "BAJU (PCS)", MUST extract the QUANTITY if explicitly specified (e.g. "23 [PCS]" or "10 (CM)"). If no quantity is specified (like "DTF = 66 RB"), fall back to the number in the price (e.g. extract "66" from "66 RB"). Ignore monetary numbers (like "830 RB") ONLY if an explicit quantity (like "23 [PCS]") is present on the same line.
+- [Auto-Learned]: Map sub-items under "BELANJA KE MEDAN" to "DTF (CM)" and "BAJU (PCS)" (with spaces). Map "BELANJA KE LABURA" to "DTF(CM)" and "BAJU(PCS)" (without spaces).
+- [Auto-Learned 2026-08-26]: Piutang / Hutang / Belum Bayar MUST ONLY be extracted for the CURRENT target date. Do NOT extract historical entries with past dates. Do NOT extract the overall "SISA PEMBAYARAN" running total. If no piutang happened on the target date, do not extract it.
+- [Auto-Learned 2026-08-26]: "BELANJA KE BENDONG" ALWAYS maps to the label "BELANJA KE BEN" (R75).
+

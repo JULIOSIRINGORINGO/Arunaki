@@ -82,121 +82,88 @@ export class RecapFillPipelineService {
     
     const extraction = await (async () => {
       const sysMsg =
-        'You are a financial data aggregator. Summarize the daily financial report into a valid JSON format. \n' +
-        'Expected JSON structure: {"rows":[{"label":"<exact label from LABELS list>","value":<integer amount in IDR>}],"details":["<individual transaction lines>"]}. Important instructions: 1. Labels MUST perfectly match the provided LABELS list. 2. Convert shorthand units to full numbers (e.g. 5 RB = 5000, 1.5 JT = 1500000). 3. Dots in numbers are thousand separators. 4. Only include rows that the user explicitly requested. 5. The "details" array should only contain individual transaction descriptions, not summary or total lines. 6. VERY IMPORTANT: Do not correct spelling in the details array; copy all text exactly verbatim from the source (e.g. if the source has a typo, KEEP the typo).';
-      const usrMsg = `SOURCE DATA:\n${[...p.sourceFiles].map(([f, c]) => `=== ${f} ===\n${c.slice(0, 6000)}`).join('\n\n')}\n\nAVAILABLE LABELS (copy verbatim):\n${skeleton.labels.join('\n')}\n\nDATE HEADERS: ${skeleton.dates.join(', ')}\nTARGET DATE: ${targetDate}\n\nUSER REQUEST: ${p.goal}`;
+        'You are an intelligent data extraction engine. Extract and summarize the provided source data into a valid JSON format. \n' +
+        'Expected JSON structure: {"rows":[{"label":"<exact label from LABELS list, including the prefix like R10: TARGET_LABEL>","value":<integer amount or number>}],"details":["<individual data/log lines>"]}. Important instructions: \n' +
+        '1. Labels MUST perfectly match the provided LABELS list. Keep the "Rxxx:" prefix (e.g. "R10: TARGET_LABEL" or "R5: HEADER_LABEL"). Do NOT strip it.\n' +
+        '2. Convert shorthand units to full numbers (e.g. 5 RB = 5000, 1.5 JT = 1500000) if applicable to the domain. \n' +
+        '3. Dots in numbers are thousand separators. \n' +
+        '4. Only include rows that the user explicitly requested or are relevant to the source data. \n' +
+        '5. The "details" array should contain individual logs, notes, or descriptions, not summary lines. \n' +
+        '6. VERY IMPORTANT: Do not correct spelling in the details array; copy verbatim. \n' +
+        '7. CRITICAL MAPPING: If a section in the source text contains a total and several sub-items, you must map the section total to its matching parent label in the LABELS list, and map its sub-items to their specific sub-labels. \n' +
+        '8. Observe any WORKSPACE RULES (ARUNAKI.md) provided in the prompt to resolve ambiguities, determine whether to extract quantities vs amounts, and apply format preferences specific to this workspace. \n' +
+        '9. STRICT FORMATTING: You must output ONLY valid JSON. Do NOT include any markdown blocks (```), do NOT include any explanations, do NOT output reasoning, and keep your output as short as possible to avoid truncation.\n' +
+        '10. TARGET DATE FILTERING: For accounts, outstanding bills, or receivables (like PIUTANG or BELUM BAYAR), you MUST only extract items whose dates in the source text explicitly match the TARGET DATE (e.g. 24/08/2026). If an item has a past date (e.g. "10-02-2024"), or has no date specified at all (e.g. "CK HENNY = 549RB"), you MUST ignore it and do NOT extract it as a row.\n' +
+        '11. DUPLICATE LABELS RESOLUTION: If a text label appears multiple times in the LABELS list with different row numbers (e.g. "TARGET_LABEL" at R37 and R75), check the surrounding section headers and context in the source text, as well as the ARUNAKI.md rules, to choose the correct row prefix (e.g. mapping "SECTION B -> TARGET_LABEL" to R75 instead of R37).';
+
+      let workspaceRules = '';
+      try {
+        const arunakiPath = require('path').join(p.workspaceRootPath, '.arunaki', 'ARUNAKI.md');
+        if (require('fs').existsSync(arunakiPath)) {
+          workspaceRules = require('fs').readFileSync(arunakiPath, 'utf8');
+        }
+      } catch (e) {
+        // Ignore errors if ARUNAKI.md doesn't exist
+      }
+
+      const rulesSection = workspaceRules ? `\n\nWORKSPACE RULES (ARUNAKI.md):\n${workspaceRules}` : '';
+      const usrMsg = `SOURCE DATA:\n${[...p.sourceFiles].map(([f, c]) => `=== ${f} ===\n${c.slice(0, 6000)}`).join('\n\n')}\n\nAVAILABLE LABELS (copy verbatim):\n${skeleton.labels.join('\n')}\n\nDATE HEADERS: ${skeleton.dates.join(', ')}\nTARGET DATE: ${targetDate}\n\nUSER REQUEST: ${p.goal}${rulesSection}`;
 
       const parseJsonLoose = (rawText: string): any | null => {
         let t = rawText.trim();
-        const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        const fence = t.match(/```(?:json)?\s*([\s\S]*?)(```|$)/i);
         if (fence) t = fence[1].trim();
-        const jm = t.match(/\{[\s\S]*\}/);
+        
+        const tryParse = (str: string) => {
+          try { return JSON.parse(str); } catch { return null; }
+        };
+        
+        const jm = t.match(/\{[\s\S]*/);
         if (!jm) return null;
+        let s = jm[0];
+        
+        let p = tryParse(s);
+        if (p) return p;
+        p = tryParse(s + '}');
+        if (p) return p;
+        p = tryParse(s + ']}');
+        if (p) return p;
+        p = tryParse(s + '}]}');
+        if (p) return p;
+        p = tryParse(s + '"}]}');
+        if (p) return p;
+        
         try {
-          return JSON.parse(jm[0]);
+          return JSON.parse(s.replace(/,\s*([}\]])/g, '$1'));
         } catch {
-          try {
-            return JSON.parse(jm[0].replace(/,\s*([}\]])/g, '$1'));
-          } catch {
-            return null;
-          }
+          return null;
         }
       };
 
-      const rawKenariExtract = (
-        model: string,
-      ): Promise<{ ok: boolean; text: string }> =>
-        new Promise((resolve) => {
-          const payload = JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: sysMsg },
-              { role: 'user', content: usrMsg },
-            ],
-            temperature: 0.2,
-            max_tokens: 8192,
-          });
-          const req = httpsRequest(
-            {
-              host: 'kenari.id',
-              path: '/v1/chat/completions',
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.AI_API_KEY || ''}`,
-                'Content-Length': Buffer.byteLength(payload),
-              },
-              timeout: 300000,
-            },
-            (res: any) => {
-              let buf = '';
-              res.setEncoding('utf8');
-              res.on('data', (c: string) => (buf += c));
-              res.on('end', () => {
-                try {
-                  const j = JSON.parse(buf);
-                  const content = j.choices?.[0]?.message?.content;
-                  if (content) {
-                    resolve({ ok: !!content.trim(), text: content });
-                  } else {
-                    resolve({ ok: false, text: `API Error: ${JSON.stringify(j).slice(0, 200)}` });
-                  }
-                } catch {
-                  resolve({ ok: false, text: buf.slice(0, 120) });
-                }
-              });
-            },
-          );
-          req.on('timeout', () => {
-            req.destroy();
-            resolve({ ok: false, text: 'timeout' });
-          });
-          req.on('error', (e: any) =>
-            resolve({ ok: false, text: e.message }),
-          );
-          req.write(payload);
-          req.end();
-        });
-
       let last = '';
-      const extractionModels = [
-        'gemini-1.5-flash',
-        'deepseek-v4-flash',
-      ];
-      for (const model of extractionModels) {
-        const direct = await rawKenariExtract(model);
-        if (direct.ok) {
-          const parsed = parseJsonLoose(direct.text);
-          if (parsed) {
-            this.logger.log(`[RecapFill] extraction OK via raw-kenari (${model})`);
-            return parsed;
-          }
-          last = `unparseable: ${direct.text.slice(0, 100)}`;
-        } else {
-          last = direct.text;
-        }
-        this.logger.warn(`[RecapFill] raw-kenari extraction failed (${model}): ${last.slice(0, 100)}`);
-        await new Promise((s) => setTimeout(s, 2000));
+      this.logger.log('--- USER MSG ---');
+      this.logger.log(usrMsg);
+      this.logger.log('----------------');
+
+      const r = await this.aiService.chat(
+        [
+          { role: 'system', content: sysMsg },
+          { role: 'user', content: usrMsg },
+        ],
+        undefined,
+        {
+          reasoningEffort: 'low',
+        },
+      );
+
+      last = (r.content || '').trim();
+      const parsed = parseJsonLoose(last);
+      if (parsed) {
+        this.logger.log(`[RecapFill] Extracted JSON: ${JSON.stringify(parsed)}`);
+        return parsed;
       }
 
-      // Last resort: the AI-SDK path
-      for (const preferred of [undefined, 'deepseek-v4-flash']) {
-        const r = await this.aiService.chat(
-          [
-            { role: 'system', content: sysMsg },
-            { role: 'user', content: usrMsg },
-          ],
-          undefined,
-          {
-            reasoningEffort: 'low',
-            ...(preferred ? { preferredProviderId: preferred } : {}),
-          },
-        );
-        last = (r.content || '').trim();
-        const parsed = parseJsonLoose(last);
-        if (parsed) return parsed;
-        this.logger.warn(`[RecapFill] sdk extraction failed (${preferred || 'default'}): ${last.slice(0, 100)}`);
-      }
+      this.logger.warn(`[RecapFill] SDK extraction failed: ${last.slice(0, 100)}`);
       throw new Error(`Extraction failed: ${last.slice(0, 120)}`);
     })();
 
@@ -204,7 +171,95 @@ export class RecapFillPipelineService {
       throw new Error('Extraction JSON has no rows');
     }
 
-    // 3. Deterministic execution
+    // 3. Map extracted 'Rxxx' labels back to actual text and row numbers from the skeleton
+    const mappedRows = extraction.rows.map((r: any) => {
+      const rawLabel = skeleton.labels.find((l: string) => {
+        const lNum = l.match(/^R(\d+):/)?.[1];
+        const rNum = r.label.match(/^R(\d+)/)?.[1];
+        if (lNum && rNum) {
+          return lNum === rNum;
+        }
+        const lText = l.replace(/^R\d+:\s*/, '').trim().toLowerCase();
+        const rText = r.label.replace(/^R\d+:\s*/, '').trim().toLowerCase();
+        return lText === rText;
+      });
+      const rowNum = rawLabel ? parseInt(rawLabel.match(/^R(\d+):/)?.[1] || '0', 10) : undefined;
+      return {
+        label: rawLabel ? rawLabel.replace(/^R\d+:\s*/, '') : r.label,
+        row: rowNum,
+        value: r.value,
+      };
+    });
+    // 3.5. Post-process mappedRows to filter out past/undated Piutang/Belum Bayar (R58, R82)
+    const filteredMappedRows = mappedRows.map((r: any) => {
+      if (r.row === 58 || r.row === 82) {
+        if (!r.value || r.value === 0) return r;
+        
+        const valShort = Math.floor(r.value / 1000).toString(); // e.g. 572
+        const valFull = r.value.toString(); // e.g. 572000
+        
+        let hasTargetDate = false;
+        let foundLine = false;
+        
+        for (const [file, content] of p.sourceFiles) {
+          const lines = content.split('\n');
+          for (const line of lines) {
+            const cleanLine = line.toLowerCase();
+            if (cleanLine.includes(valShort) || cleanLine.includes(valFull)) {
+              foundLine = true;
+              
+              const parts = targetDate.split('/'); // ["24", "08", "2026"]
+              if (parts.length === 3) {
+                const day = parts[0];
+                const dayInt = parseInt(day, 10).toString();
+                const month = parts[1];
+                const monthInt = parseInt(month, 10).toString();
+                const year = parts[2];
+                const yearShort = year.slice(-2);
+                
+                const formats = [
+                  `${day}-${month}-${year}`,
+                  `${dayInt}-${monthInt}-${year}`,
+                  `${dayInt}-${monthInt}-${yearShort}`,
+                  `${day}-${month}-${yearShort}`,
+                  `${day}/${month}/${year}`,
+                  `${dayInt}/${monthInt}/${year}`,
+                  `${dayInt}/${monthInt}/${yearShort}`,
+                  `${day}/${month}/${yearShort}`
+                ];
+                
+                for (const fmt of formats) {
+                  if (cleanLine.includes(fmt)) {
+                    hasTargetDate = true;
+                    break;
+                  }
+                }
+                
+                const monthsIndo = [
+                  'januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                  'juli', 'agustus', 'september', 'oktober', 'november', 'desember'
+                ];
+                const mIndo = monthsIndo[parseInt(month, 10) - 1];
+                if (mIndo && cleanLine.includes(mIndo) && (cleanLine.includes(dayInt) || cleanLine.includes(day))) {
+                  hasTargetDate = true;
+                }
+              }
+            }
+          }
+        }
+        
+        if (foundLine && !hasTargetDate) {
+          this.logger.log(`[RecapFill] Filtering out row ${r.row} (${r.label}) with value ${r.value} because no matching target date line was found.`);
+          return { ...r, value: 0 };
+        }
+      }
+      return r;
+    });
+
+    this.logger.log(`[RecapFill] Mapped rows (${filteredMappedRows.length}): ${JSON.stringify(filteredMappedRows.slice(0, 5))}...`);
+    this.logger.log(`[RecapFill] Target: file=${targetPath}, sheet=${sheetMatch?.[1] || skeleton.activeSheet}, date=${targetDate}`);
+
+    // 4. Deterministic execution
     onEvent({
       type: 'phase_changed',
       data: { label: 'Recap fill pipeline: writing (deterministic)...' },
@@ -213,9 +268,11 @@ export class RecapFillPipelineService {
       targetPath,
       sheetMatch?.[1] || skeleton.activeSheet,
       targetDate,
-      extraction.rows,
+      filteredMappedRows,
       Array.isArray(extraction.details) ? extraction.details.map(String) : [],
     );
+    this.logger.log(`[RecapFill] Fill result: success=${res.success}, total=${res.itemsTotal}, failed=${res.itemsFailed}`);
+    this.logger.log(`[RecapFill] Fill details: ${JSON.stringify(res.results?.slice(0, 10))}`);
     if (!res.success && res.itemsFailed === res.itemsTotal) {
       throw new Error('All fill items failed');
     }
