@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { toast } from "sonner";
 import { WorkstationLeftExplorer } from "../components/workstation/WorkstationLeftExplorer";
 import { WorkstationCenterPanel, CenterTab } from "../components/workstation/WorkstationCenterPanel";
@@ -10,6 +9,12 @@ import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal
 import { SearchSectionModal } from "../components/workstation/SearchSectionModal";
 import { LiveStatusData, StepItem } from "../components/workstation/LiveExecutionBadge";
 import { API_BASE, apiFetch } from "../lib/api";
+import {
+  createSession,
+  sendPrompt,
+  subscribeEvents,
+  mapEngineEvent,
+} from "../lib/engine";
 
 interface Message {
   id: string;
@@ -617,25 +622,13 @@ export function UnifiedWorkstationPage() {
     setIsStreaming(true);
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
-    const apiKey = import.meta.env.VITE_ARUNAKI_API_KEY || "arunaki-dev-key";
-    const streamHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (apiKey) {
-      streamHeaders["x-api-key"] = apiKey;
-    }
-
     let chatIdToUse = activeChatId;
     if (!chatIdToUse) {
       try {
-        const createRes = await apiFetch(`${API_BASE}/chat`, {
-          method: "POST",
-          body: JSON.stringify({
-            mode: selectedWorkspaceId ? "workspace" : "chat",
-            workspaceId: selectedWorkspaceId || undefined,
-            title: userText.slice(0, 30),
-          }),
+        const session = await createSession({
+          directory: selectedWorkspaceId || undefined,
         });
-        const createJson = await createRes.json();
-        chatIdToUse = createJson.data.id;
+        chatIdToUse = session.id;
         setActiveChatId(chatIdToUse);
         localStorage.setItem("arunaki_active_chat_id", chatIdToUse);
         if (selectedWorkspaceId) {
@@ -662,18 +655,14 @@ export function UnifiedWorkstationPage() {
     abortControllerRef.current = abortCtrl;
 
     try {
-      await fetchEventSource(`${API_BASE}/chat/${chatIdToUse}/stream`, {
-        method: "POST",
-        headers: streamHeaders,
-        signal: abortCtrl.signal,
-        body: JSON.stringify({
-          content: userText,
-          reasoningEffort: reasoningEffort || undefined,
-        }),
-        onmessage(msg) {
-          try {
-            const event = JSON.parse(msg.data);
-            if (event.type === "thinking") {
+      // Send prompt to engine
+      await sendPrompt(chatIdToUse, userText);
+
+      // Subscribe to engine events
+      subscribeEvents((rawEvent) => {
+        const event = mapEngineEvent(rawEvent, chatIdToUse);
+        if (!event) return;
+        if (event.type === "thinking") {
               const label = event.data || "Analyzing request & context";
               setLiveStatus({ type: "thinking", preview: label });
               if (!accumulatedSteps.some((s) => s.label === label)) {
@@ -868,21 +857,7 @@ export function UnifiedWorkstationPage() {
               }
               processNextQueuedPrompt();
             }
-          } catch {}
-        },
-        openWhenHidden: true,
-        onclose() {
-          setIsStreaming(false);
-          setLiveStatus(null);
-          processNextQueuedPrompt();
-        },
-        onerror(err) {
-          setIsStreaming(false);
-          setLiveStatus(null);
-          processNextQueuedPrompt();
-          throw err;
-        },
-      });
+        }, abortCtrl.signal);
     } catch {
       setIsStreaming(false);
       processNextQueuedPrompt();
