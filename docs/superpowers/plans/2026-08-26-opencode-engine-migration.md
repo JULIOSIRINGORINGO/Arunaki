@@ -58,7 +58,7 @@ ARUNAKI/
 
 ### Task 1.1: Clone OpenCode Packages
 
-- [ ] **Step 1:** Clone OpenCode to temp, copy needed packages
+- [x] **Step 1:** Clone OpenCode to temp, copy needed packages
 
 ```bash
 git clone --depth 1 https://github.com/anomalyco/opencode.git /tmp/opencode-source
@@ -234,7 +234,7 @@ git commit -m "chore: install engine dependencies"
 }
 ```
 
-- [ ] **Step 2:** Create `packages/engine/arunaki/src/server.ts`
+- [x] **Step 2:** Create*server.ts`
 
 ```typescript
 import { Server } from "@arunaki/server"
@@ -299,7 +299,7 @@ git commit -m "chore: default Arunaki engine config"
 
 ### Task 3.1: Create Tools Package
 
-- [ ] **Step 1:** Create `packages/arunaki-tools/package.json`
+- [x] **Step 1:** Create*arunaki-tools/package.json`
 
 ```json
 {
@@ -324,7 +324,7 @@ git commit -m "chore: create arunaki-tools package"
 
 ### Task 3.2: Port Excel COM Tool
 
-- [ ] **Step 1:** Create `packages/arunaki-tools/src/excel-com/types.ts`
+- [x] **Step 1:** Create*arunaki-tools/src/excel-com/types.ts`
 
 Port `ExcelAction` from `apps/api-legacy/src/modules/interaction/excel-com.service.ts` using Effect Schema.
 
@@ -388,7 +388,7 @@ git commit -m "feat: Recap-fill pipeline in OpenCode tool system"
 
 ### Task 3.6: Register Tools in Engine
 
-- [ ] **Step 1:** Create barrel export `packages/arunaki-tools/src/index.ts`
+- [x] **Step 1:** Create*arunaki-tools/src/index.ts`
 
 ```typescript
 export { ExcelComTool } from "./excel-com/tool"

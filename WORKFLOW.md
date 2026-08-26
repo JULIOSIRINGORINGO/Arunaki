@@ -1913,3 +1913,41 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - agnes-2-0-flash kadang mengabaikan section meta pada prompt panjang (ask_user, Relevant Memory) - mitigasi failover otomatis ke glm+.
 - desktop_screenshot/send_keys butuh Desktop Bridge Electron aktif.
 - web_search deterministik tergantung jaringan; batch_execute PTC belum tereksekusi langsung oleh model mini.
+
+---
+
+## Phase 60: OpenCode Engine Migration ✅ DONE
+
+**Goal:** Replace custom NestJS engine with rebranded OpenCode fork. React frontend + Electron desktop stay.
+
+### 60.1 Fork & Rebrand
+- [x] Clone OpenCode engine (10 packages) into `packages/engine/`
+- [x] Rename `apps/api/` → `apps/api-legacy/` (reference only, not built)
+- [x] Rebrand all `@opencode-ai/*` → `@arunaki/*` (704 files)
+- [x] Strip TUI, SolidJS, CLI packages
+- [x] Install dependencies (601 packages) with bun catalog
+
+### 60.2 Entry Point
+- [x] `@arunaki/engine` package (formerly opencode) — main CLI + server entry
+- [x] SDK moved from `sdk/js/` to `sdk/` for proper workspace resolution
+
+### 60.3 Document Tools (COM)
+- [x] `@arunaki/tools` package with Excel COM tool
+- [x] Word COM and PowerPoint COM tools
+- [x] Registered in engine tool registry (`packages/engine/opencode/src/tool/registry.ts`)
+
+### 60.4 Frontend Connection
+- [x] Engine adapter (`apps/web/src/lib/engine.ts`) — maps old API to engine endpoints
+- [x] Session creation: `POST /api/session`
+- [x] Prompt: `POST /api/session/:id/prompt`
+- [x] Event streaming: `GET /api/event` with event mapping
+- [x] Removed `@microsoft/fetch-event-source` dependency
+
+### 60.5 Database
+- [x] Drizzle ORM (follow OpenCode), Prisma dropped
+- [x] SQLite via `@arunaki/effect-drizzle-sqlite`
+
+### Known Limitations
+- Workspace/knowledge endpoints not yet mapped (deferred)
+- Electron desktop process launcher not yet connected (deferred)
+- Guided harness, post-run, todo memory deferred
