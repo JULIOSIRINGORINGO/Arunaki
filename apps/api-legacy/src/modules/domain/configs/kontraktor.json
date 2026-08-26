@@ -1,0 +1,44 @@
+{
+  "id": "kontraktor",
+  "name": "Kontraktor / Konstruksi",
+  "description": "Rencana Biaya Bangunan (RAB), bahan bangunan (semen, pasir, besi), dan termin pembayaran",
+  "units": {
+    "length": [
+      { "name": "m2", "toBase": 1, "label": "Meter Persegi (m²)" },
+      { "name": "m3", "toBase": 1, "label": "Meter Kubik (m³)" },
+      { "name": "meter", "toBase": 1, "label": "Meter" },
+      { "name": "cm", "toBase": 0.01, "label": "Centimeter" }
+    ],
+    "count": [
+      { "name": "sak", "toBase": 1, "label": "Sak Semen (50kg)" },
+      { "name": "batang", "toBase": 1, "label": "Batang Besi (12m)" },
+      { "name": "rit", "toBase": 1, "label": "Rit Truk Pasir" },
+      { "name": "pcs", "toBase": 1, "label": "Pcs Batako / Briket" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Rencana Biaya Bangunan (RAB)",
+      "columns": ["Uraian Pekerjaan", "Volume", "Satuan", "Harga Satuan", "Total Biaya"],
+      "example": ["Pemasangan Dinding Bata Merah", "120", "m2", "Rp 115.000", "Rp 13.800.000"]
+    }
+  ],
+  "terminology": {
+    "rab": "Rencana Biaya Bangunan & Proyek",
+    "termin": "Tahapan Pembayaran Pembelian/Pekerjaan",
+    "opname": "Pemeriksaan Progress Lapangan Proyek"
+  },
+  "communication": {
+    "greetingTemplate": "Yth. Bapak/Ibu {name} 🏗️,\n\nUpdate Progress/RAB *{topic}*:\n{points}\n\nTerima kasih.",
+    "formality": "formal",
+    "phrases": {
+      "confirm_order": "Konfirmasi penawaran RAB & SPK Proyek",
+      "price_quote": "Rincian RAB Proyek:",
+      "delivery": "Jadwal Termin / Opname Proyek:"
+    }
+  },
+  "promptExamples": "- Contoh kontraktor: Buatkan struktur RAB pemasangan dinding bata merah 120m2"
+}

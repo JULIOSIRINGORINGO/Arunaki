@@ -1,0 +1,43 @@
+{
+  "id": "petshop",
+  "name": "Petshop / Grooming Hewan",
+  "description": "Makanan hewan (pouch/repack), grooming, penitipan hewan (hotel pet), dan aksesoris",
+  "units": {
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces / Aksesoris" },
+      { "name": "pouch", "toBase": 1, "label": "Pouch Wet Food" },
+      { "name": "kaleng", "toBase": 1, "label": "Kaleng Makanan" },
+      { "name": "hari", "toBase": 1, "label": "Hari Penitipan" }
+    ],
+    "mass": [
+      { "name": "kg", "toBase": 1, "label": "Kilogram Dry Food" },
+      { "name": "repack", "toBase": 0.5, "label": "Pack 500g Repack" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Layanan Grooming & Penitipan",
+      "columns": ["Layanan", "Kategori Hewan", "Berat", "Harga", "Fasilitas"],
+      "example": ["Grooming Sehat", "Kucing", "< 4kg", "Rp 65.000", "Mandi + Potong Kuku + Pembersihan Telinga"]
+    }
+  ],
+  "terminology": {
+    "grooming": "Perawatan mandi & kebersihan anabul",
+    "dry_food": "Makanan kering",
+    "wet_food": "Makanan basah pouch/kaleng",
+    "anabul": "Anak bulu (Kucing/Anjing)"
+  },
+  "communication": {
+    "greetingTemplate": "Halo Pawrent {name} 🐾,\n\nInformasi Grooming/Produk *{topic}*:\n{points}\n\nTerima kasih sudah memanjakan anabul bersama kami!",
+    "formality": "casual",
+    "phrases": {
+      "confirm_order": "Konfirmasi booking jadwal grooming / penitipan",
+      "price_quote": "Rincian nota petshop:",
+      "delivery": "Penjemputan / Pengantaran anabul:"
+    }
+  },
+  "promptExamples": "- Contoh petshop: Booking grooming kucing 3kg + dry food Royal Canin 1kg repack"
+}

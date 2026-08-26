@@ -1,0 +1,71 @@
+{
+  "id": "restaurant",
+  "name": "Restaurant / F&B",
+  "description": "Restaurant, cafe, and food & beverage business",
+  "units": {
+    "length": [
+      { "name": "ml", "toBase": 0.001, "label": "Mililiter" },
+      { "name": "liter", "toBase": 1, "label": "Liter" },
+      { "name": "oz", "toBase": 0.0295735, "label": "Fluid Ounce" },
+      { "name": "cup", "toBase": 0.236588, "label": "Cup" }
+    ],
+    "mass": [
+      { "name": "kg", "toBase": 1, "label": "Kilogram" },
+      { "name": "g", "toBase": 0.001, "label": "Gram" },
+      { "name": "lbs", "toBase": 0.453592, "label": "Pound" },
+      { "name": "ons", "toBase": 0.1, "label": "Ons" }
+    ],
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces" },
+      { "name": "porsi", "toBase": 1, "label": "Porsi" },
+      { "name": "paket", "toBase": 1, "label": "Paket" }
+    ],
+    "currency": [
+      { "name": "usd", "toBase": 16200, "label": "US Dollar" },
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Menu Makanan",
+      "columns": ["Nama Menu", "Kategori", "Harga", "Deskripsi", "Status"],
+      "example": ["Nasi Goreng Spesial", "Makanan", "Rp 35.000", "Nasi goreng dengan ayam dan telur", "Tersedia"]
+    },
+    {
+      "name": "Menu Minuman",
+      "columns": ["Nama Minuman", "Kategori", "Harga", "Ukuran", "Status"],
+      "example": ["Teh Manis", "Minuman", "Rp 8.000", "Medium", "Tersedia"]
+    },
+    {
+      "name": "Bahan Baku",
+      "columns": ["Bahan", "Satuan", "Harga Beli", "Stok Minimum", "Supplier"],
+      "example": ["Beras Premium", "kg", "Rp 12.000", "50 kg", "Toko Beras Makmur"]
+    }
+  ],
+  "terminology": {
+    "porsi": "Serving size for one person",
+    "recipe": "Ingredient list and preparation steps",
+    "food_cost": "Cost of ingredients per dish",
+    "margin": "Profit margin percentage",
+    "ticket_average": "Average order value per customer"
+  },
+  "catalogMatch": {
+    "skuPatterns": ["[A-Z]{3}-[0-9]{3}", "MENU-[0-9]+"],
+    "nameAliases": {
+      "nasi goreng": ["fried rice", "nasgor"],
+      "mie ayam": ["chicken noodle", "mie ayam bakso"],
+      "es teh": ["iced tea", "teh es", "teh dingin"]
+    },
+    "threshold": 0.7
+  },
+  "communication": {
+    "greetingTemplate": "Halo Kak {name} 👋,\n\nMengenai *{topic}*:\n{points}\n\nJika ada pertanyaan, silakan hubungi kami. Terima kasih! 🙏",
+    "formality": "casual",
+    "phrases": {
+      "confirm_order": "Apakah pesanan sudah lengkap?",
+      "ready_for_pickup": "Pesanan Anda sudah siap!",
+      "out_of_stock": "Maaf, menu ini sedang tidak tersedia."
+    }
+  },
+  "promptExamples": "- Example for restaurant: menu items (name, category, price, portions), ingredients list, food cost per dish, supplier info, stock levels"
+}

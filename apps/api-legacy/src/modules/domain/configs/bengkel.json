@@ -1,0 +1,42 @@
+{
+  "id": "bengkel",
+  "name": "Bengkel / Otomotif",
+  "description": "Servis kendaraan, sparepart, oli, biaya jasa mekanik, dan work order",
+  "units": {
+    "count": [
+      { "name": "pcs", "toBase": 1, "label": "Pieces / Sparepart" },
+      { "name": "set", "toBase": 1, "label": "Set" },
+      { "name": "botol", "toBase": 1, "label": "Botol Oli" },
+      { "name": "jasa", "toBase": 1, "label": "Jasa Servis" }
+    ],
+    "volume": [
+      { "name": "liter", "toBase": 1, "label": "Liter Oli" },
+      { "name": "ml", "toBase": 0.001, "label": "Milliliter" }
+    ],
+    "currency": [
+      { "name": "idr", "toBase": 1, "label": "Rupiah Indonesia" }
+    ]
+  },
+  "templateCategories": [
+    {
+      "name": "Daftar Jasa & Sparepart",
+      "columns": ["Kode", "Nama Jasa / Part", "Kategori", "Harga", "Stok"],
+      "example": ["SP-OLI-01", "Oli Shell Helix 1L", "Sparepart", "Rp 95.000", "24 botol"]
+    }
+  ],
+  "terminology": {
+    "wo": "Work Order (Surat Perintah Kerja Bengkel)",
+    "jasa_servis": "Biaya Pemeliharaan & Perbaikan Mekanik",
+    "km": "Kilometer Tempuh Kendaraan"
+  },
+  "communication": {
+    "greetingTemplate": "Halo Pak/Bu {name} 🚗,\n\nEstimasi/Rincian Servis *{topic}*:\n{points}\n\nTerima kasih telah mempercayai bengkel kami!",
+    "formality": "polite",
+    "phrases": {
+      "confirm_order": "Konfirmasi estimasi pergantian sparepart & servis",
+      "price_quote": "Rincian estimasi biaya servis:",
+      "delivery": "Estimasi kendaraan selesai diservis:"
+    }
+  },
+  "promptExamples": "- Contoh bengkel: Rincian estimasi ganti oli + kampas rem, nota WO servis motor/mobil"
+}

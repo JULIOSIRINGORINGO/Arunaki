@@ -1,0 +1,428 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Workspace - Ruang kerja terisolasi
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      String   @default("pending") // pending, processing, ready, failed
+  businessType String  @default("generic") // garment, restaurant, retail, generic
+  rootPath    String?   // Absolute path to the workspace folder on disk
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Cached AI analysis result (persisted across sessions)
+  analysisResult String?   // Last analysis output from agent
+  analyzedAt     DateTime? // When analysis was last completed
+
+  // Relations
+  sources     Source[]
+  chatHistory ChatHistory[]
+  artifacts   Artifact[]
+  activityLog ActivityLog[]
+  profile     WorkspaceProfile?
+
+  @@map("workspaces")
+}
+
+// Workspace Profile - Summary & metadata workspace
+model WorkspaceProfile {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // File Statistics
+  totalFiles      Int      @default(0)
+  totalSizeMb     Float    @default(0)
+  fileTypes       String   @default("{}") // JSON string of file type counts
+  oldestFile      String?
+  newestFile      String?
+
+  // Content Analysis
+  primaryLanguage   String?
+  secondaryLanguages String @default("[]") // JSON array
+  topics            String @default("[]") // JSON array
+  documentTypes     String @default("[]") // JSON array
+
+  // Key Entities
+  departments   String @default("[]") // JSON array
+  timeRange     String?
+  dataSources   String @default("[]") // JSON array
+
+  // Relationships
+  fileLinks       Int @default(0)
+  crossReferences Int @default(0)
+  dataDependencies Int @default(0)
+
+  // Recommendations
+  recommendations String @default("[]") // JSON array
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workspace_profiles")
+}
+
+// Source - Sumber data yang terhubung ke workspace
+model Source {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        String   // folder, file, upload, gdrive, onedrive
+  path        String?
+  status      String   @default("pending") // pending, scanning, indexing, ready, failed
+  fileCount   Int      @default(0)
+  metadata    String   @default("{}") // JSON string
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  files File[]
+
+  @@map("sources")
+}
+
+// File - File individual dalam workspace
+model File {
+  id        String   @id @default(cuid())
+  sourceId  String
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  name      String
+  path      String
+  type      String   // pdf, docx, xlsx, csv, txt, md, etc.
+  size      Int      // bytes
+  mimeType  String?
+  status    String   @default("pending") // pending, parsing, indexed, failed
+
+  // Metadata
+  metadata  String   @default("{}") // JSON string - extracted metadata
+
+  // Content for search
+  content   String?  // Extracted text content
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  fileMetadata FileMetadata?
+
+  @@map("files")
+}
+
+// File Metadata - Metadata terekstrak dari file
+model FileMetadata {
+  id       String @id @default(cuid())
+  fileId   String @unique
+  file     File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Document-specific metadata
+  title       String?
+  author      String?
+  subject     String?
+  keywords    String?  // Comma-separated
+  language    String?
+  pageCount   Int?
+  wordCount   Int?
+  charCount   Int?
+
+  // Excel-specific
+  sheetCount  Int?
+  sheetNames  String?  // JSON array
+
+  // Image-specific
+  width       Int?
+  height      Int?
+  exifData    String?  // JSON
+
+  // Processing info
+  parsedAt    DateTime?
+  indexedAt   DateTime?
+  parseErrors String?  // JSON array of errors
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("file_metadata")
+}
+
+// Chat History - Riwayat percakapan
+model ChatHistory {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  title       String?
+  mode        String   @default("chat") // chat, workspace
+  status      String   @default("active") // active, archived
+  pinned      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  messages Message[]
+
+  @@map("chat_histories")
+}
+
+// Message - Pesan dalam percakapan
+model Message {
+  id           String      @id @default(cuid())
+  chatHistoryId String
+  chatHistory  ChatHistory @relation(fields: [chatHistoryId], references: [id], onDelete: Cascade)
+
+  role         String     // user, assistant, system
+  content      String
+  metadata     String     @default("{}") // JSON - tool calls, artifacts, etc.
+
+  // Idempotency key for retry safety (run:runId, turn:chatId:timestamp)
+  idempotencyKey String?   @unique
+
+  // Input provenance tracking for security
+  provenance   Json?      // { kind: "external_user" | "inter_session" | "internal_system", sourceSessionId?, sourceTool?, isUser? }
+
+  createdAt    DateTime   @default(now())
+
+  @@map("messages")
+}
+
+// Knowledge - Domain knowledge perusahaan (aturan, harga, data, SOP)
+model Knowledge {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   // isi knowledge (markdown/text)
+  urls      String   @default("[]") // JSON array of linked URLs (catalog/site/product links)
+  city      String   @default("") // default location for stock lookups from this node
+  type      String   @default("custom") // custom, pricing, rules, sop, data, catalog, template
+  active    Boolean  @default(true)
+
+  // Canvas position (for visual node editor)
+  positionX Float    @default(0)
+  positionY Float    @default(0)
+
+  // Node visual metadata
+  nodeColor String   @default("#3B82F6") // hex color for node
+  icon      String   @default("file-text") // lucide icon name
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  edgesFrom KnowledgeEdge[] @relation("EdgeSource")
+  edgesTo   KnowledgeEdge[] @relation("EdgeTarget")
+
+  @@map("knowledge")
+}
+
+// KnowledgeEdge - Koneksi antar knowledge nodes (visual graph)
+model KnowledgeEdge {
+  id        String   @id @default(cuid())
+  sourceId  String
+  targetId  String
+  source    Knowledge @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    Knowledge @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  label     String?  // Edge label ("depends on", "references", "uses", etc.)
+  createdAt DateTime @default(now())
+
+  @@unique([sourceId, targetId])
+  @@map("knowledge_edges")
+}
+
+// Artifact - Output hasil kerja agent
+model Artifact {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name        String
+  type        String   // report, dashboard, summary, sop, presentation, export, timeline, diagram, comparison, visualization
+  format      String   // md, pdf, html, xlsx, csv, json, pptx
+  path        String?  // Storage path
+  size        Int?     // bytes
+
+  // Metadata
+  metadata    String   @default("{}") // JSON - generation info, source files, etc.
+  preview     String?  // Text preview or base64 thumbnail
+
+  // Source tracking
+  sourceFiles String   @default("[]") // JSON array of file IDs used
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("artifacts")
+}
+
+// Activity Log - Log aktivitas workspace
+model ActivityLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  action      String   // created, scanned, parsed, indexed, generated, deleted, etc.
+  description String?
+  metadata    String   @default("{}") // JSON - additional info
+  status      String   @default("success") // success, failed, pending
+
+  createdAt   DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+// Skill - Workflow template yang dipelajari agent
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique // lowercase-hyphenated (e.g. "rekap-penjualan")
+  displayName String   // Human-readable name (e.g. "Rekap Penjualan Harian")
+  description String   // One-line description (max 120 chars)
+  category    String   @default("general") // general, data-processing, reporting, integration
+  domain      String   @default("generic") // garment, restaurant, retail, generic (links to DomainConfig)
+  workspaceId String?  // null = global skill, set = workspace-scoped
+
+  // Skill content (markdown instructions)
+  content     String   // Full skill instructions in markdown
+
+  // Metadata
+  tags        String   @default("[]") // JSON array of tags
+  version     String   @default("1.0.0")
+  usageCount  Int      @default(0) // How many times this skill was used
+  successRate Float    @default(1.0) // 0.0 - 1.0
+
+  // Source tracking
+  sourceType  String   @default("auto") // auto (created by agent), manual (created by user), starter (bundled)
+  sourceInfo  String?  // JSON - what workspace/task created this skill
+
+  // Status
+  active      Boolean  @default(true)
+  pinned      Boolean  @default(false) // Pinned skills are never auto-archived
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("skills")
+}
+
+// Memory - Persistensi lintas sesi
+model Memory {
+  id        String   @id @default(cuid())
+  type      String   @default("preference") // preference, context, interaction, workspace_history, business_fact, correction
+  key       String   // Unique identifier (e.g. "user_name", "workspace_abc_last_task")
+  content   String   // The actual memory content
+  source    String   @default("auto") // auto (learned), manual (user-set), system
+  domain    String   @default("generic") // garment, restaurant, retail, generic (links to DomainConfig)
+
+  // Relevance scoring
+  importance Int     @default(5) // 1-10, higher = more important
+  accessCount Int    @default(0) // How many times accessed
+  lastAccessed DateTime? // When last accessed
+
+  // Scope
+  workspaceId String? // If tied to specific workspace (null = global)
+  sessionId  String?  // If tied to specific session
+
+  // Status
+  active     Boolean  @default(true)
+  expiresAt  DateTime? // Optional TTL
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([type, key])
+  @@map("memories")
+}
+
+// Provider - AI provider configuration (OpenRouter, OpenAI, local, etc.)
+model Provider {
+  id        String   @id @default(cuid())
+  name      String   // Display name (e.g. "OpenRouter", "My OpenAI")
+  type      String   // openrouter, openai, openai-compatible, ollama
+  baseUrl   String   // API base URL (e.g. "https://openrouter.ai/api/v1")
+  apiKey    String   // API key (encrypted in future)
+  model     String   // Default model (e.g. "nvidia/nemotron-3-ultra-550b-a55b:free")
+
+  // Optional settings
+  headerPrefix String? // Custom header prefix (e.g. "HTTP-Referer" for OpenRouter)
+  headerTitle  String? // Custom X-Title header
+
+  // Status
+  active    Boolean  @default(false) // Only one provider active at a time
+  priority  Int      @default(0) // For future credential pool: higher = tried first
+  cooldownUntil DateTime? // When this provider can be retried (null = available)
+
+  // Metadata
+  lastUsedAt  DateTime?
+  lastErrorAt DateTime?
+  lastError   String?   // Last error message
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("providers")
+}
+
+// DomainConfig - Dynamic industry domain configuration (units, terminology, formulas, reports, skills)
+model DomainConfig {
+  id           String   @id @default(cuid())
+  key          String   @unique // e.g. "garment", "restaurant", "retail", "manufaktur"
+  name         String
+  category     String   // e.g. "manufacturing", "culinary", "retail", "services"
+  description  String?
+  units        String   // JSON stringified: { weight: ["kg", "gram"], currency: "IDR" }
+  terminology  String   // JSON stringified: { product: "Baju", bom: "PolaPotong" }
+  formulas     String   // JSON stringified: { hpp: "bahan_baku + tenaga_kerja + overhead" }
+  reports      String   // JSON stringified: { templates: ["laba_rugi", "rug", "neraca"] }
+  skills       String   // JSON stringified: array of skill IDs
+  isSystem     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("domain_configs")
+}
+
+// ScheduledReport - Proactive cron job for automated business reports
+// SessionEvent - Durable event log untuk audit trail session
+model SessionEvent {
+  id          String   @id @default(cuid())
+  type        String   // session_created, human_direct_message, agent_started, agent_completed, session_terminated
+  sessionKey  String   // chat session ID
+  agentId     String   // agent identifier
+  payload     String   @default("{}") // JSON stringified
+  sequence    Int      @default(0) // per-session monotonic sequence
+
+  createdAt   DateTime @default(now())
+
+  @@index([sessionKey, sequence])
+  @@index([sessionKey, createdAt])
+  @@map("session_events")
+}
+
+model ScheduledReport {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String   // e.g. "Laporan Laba Rugi Mingguan"
+  reportType  String   // laba_rugi, rug, neraca, stok, agent_run
+  cronExpr    String   // e.g. "0 17 * * 5" (every Friday at 5 PM)
+  format      String   @default("excel") // excel, pdf, csv
+  active      Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  goal        String?  // For agent_run: the goal to execute
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("scheduled_reports")
+}
