@@ -2,9 +2,9 @@ import fs from "fs/promises"
 import path from "path"
 import { describe, expect, test } from "bun:test"
 import { Effect, Option } from "effect"
-import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
-import { Global } from "@opencode-ai/core/global"
-import { Npm } from "@opencode-ai/core/npm"
+import { AppNodeBuilder } from "@arunaki/core/effect/app-node-builder"
+import { Global } from "@arunaki/core/global"
+import { Npm } from "@arunaki/core/npm"
 import { tmpdir } from "./fixture/tmpdir"
 
 const win = process.platform === "win32"
@@ -23,14 +23,14 @@ const npmLayer = (cache: string) =>
 
 describe("Npm.sanitize", () => {
   test("keeps normal scoped package specs unchanged", () => {
-    expect(Npm.sanitize("@opencode/acme")).toBe("@opencode/acme")
-    expect(Npm.sanitize("@opencode/acme@1.0.0")).toBe("@opencode/acme@1.0.0")
+    expect(Npm.sanitize("@arunaki/acme")).toBe("@arunaki/acme")
+    expect(Npm.sanitize("@arunaki/acme@1.0.0")).toBe("@arunaki/acme@1.0.0")
     expect(Npm.sanitize("prettier")).toBe("prettier")
   })
 
   test("handles git https specs", () => {
-    const spec = "acme@git+https://github.com/opencode/acme.git"
-    const expected = win ? "acme@git+https_//github.com/opencode/acme.git" : spec
+    const spec = "acme@git+https://github.com/Arunaki/acme.git"
+    const expected = win ? "acme@git+https_//github.com/Arunaki/acme.git" : spec
     expect(Npm.sanitize(spec)).toBe(expected)
   })
 })

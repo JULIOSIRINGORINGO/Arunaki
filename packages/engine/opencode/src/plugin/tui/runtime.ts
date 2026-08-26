@@ -10,13 +10,13 @@ import {
   type TuiPluginStatus,
   type TuiSlotPlugin,
   type TuiTheme,
-} from "@opencode-ai/plugin/tui"
+} from "@arunaki/plugin/tui"
 import path from "path"
 import { fileURLToPath } from "url"
 import { TuiConfig } from "@/config/tui"
-import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
-import { errorData, errorMessage } from "@opencode-ai/tui/util/error"
-import { isRecord } from "@opencode-ai/tui/util/record"
+import { AppNodeBuilder } from "@arunaki/core/effect/app-node-builder"
+import { errorData, errorMessage } from "@Arunaki-ai/tui/util/error"
+import { isRecord } from "@Arunaki-ai/tui/util/record"
 import { resolveHostAttentionSoundPaths } from "@/config/tui-host-attention"
 import {
   readPackageThemes,
@@ -29,20 +29,20 @@ import {
 import { PluginLoader } from "@/plugin/loader"
 import { PluginMeta } from "@/plugin/meta"
 import { installPlugin as installModulePlugin, patchPluginConfig, readPluginManifest } from "@/plugin/install"
-import { hasTheme, upsertTheme } from "@opencode-ai/tui/context/theme"
-import { Global } from "@opencode-ai/core/global"
+import { hasTheme, upsertTheme } from "@Arunaki-ai/tui/context/theme"
+import { Global } from "@arunaki/core/global"
 import { Filesystem } from "@/util/filesystem"
 import { Process } from "@/util/process"
-import { Flock } from "@opencode-ai/core/util/flock"
-import { Flag } from "@opencode-ai/core/flag/flag"
+import { Flock } from "@arunaki/core/util/flock"
+import { Flag } from "@arunaki/core/flag/flag"
 import { internalTuiPlugins, type InternalTuiPlugin } from "./internal"
-import type { HostPluginApi, HostSlots } from "@opencode-ai/tui/plugin/slots"
+import type { HostPluginApi, HostSlots } from "@Arunaki-ai/tui/plugin/slots"
 import { ConfigPlugin } from "@/config/plugin"
-import { ConfigPluginV1 } from "@opencode-ai/core/v1/config/plugin"
-import { createCommandShim } from "@opencode-ai/tui/plugin/command-shim"
+import { ConfigPluginV1 } from "@arunaki/core/v1/config/plugin"
+import { createCommandShim } from "@Arunaki-ai/tui/plugin/command-shim"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Effect } from "effect"
-import { createPluginRuntime, type PluginRuntime, type TuiPluginHost } from "@opencode-ai/tui/plugin/runtime"
+import { createPluginRuntime, type PluginRuntime, type TuiPluginHost } from "@Arunaki-ai/tui/plugin/runtime"
 
 ensureRuntimePluginSupport({ additional: keymapRuntimeModules })
 
@@ -253,9 +253,9 @@ function createThemeInstaller(
     const name = path.basename(src, path.extname(src))
     const source_dir = path.dirname(meta.source)
     const local_dir =
-      path.basename(source_dir) === ".opencode"
+      path.basename(source_dir) === ".Arunaki"
         ? path.join(source_dir, "themes")
-        : path.join(source_dir, ".opencode", "themes")
+        : path.join(source_dir, ".Arunaki", "themes")
     const dest_dir = meta.scope === "local" ? local_dir : path.join(Global.Path.config, "themes")
     const dest = path.join(dest_dir, `${name}.json`)
     const stat = await Filesystem.statAsync(src)
@@ -814,7 +814,7 @@ function defaultPluginOrigin(state: RuntimeState, spec: string): ConfigPlugin.Or
   return {
     spec,
     scope: "local",
-    source: state.api.state.path.config || path.join(state.directory, ".opencode", "tui.json"),
+    source: state.api.state.path.config || path.join(state.directory, ".Arunaki", "tui.json"),
   }
 }
 
@@ -1086,8 +1086,8 @@ async function load(input: {
       }).pipe(Effect.provide(AppNodeBuilder.build(RuntimeFlags.node))),
     )
     const pluginOrigins = config.plugin_origins ?? (await TuiConfig.pluginOrigins())
-    const records = Flag.OPENCODE_PURE ? [] : pluginOrigins
-    if (Flag.OPENCODE_PURE && pluginOrigins.length) {
+    const records = Flag.Arunaki_PURE ? [] : pluginOrigins
+    if (Flag.Arunaki_PURE && pluginOrigins.length) {
     }
 
     for (const item of internalTuiPlugins(flags)) {

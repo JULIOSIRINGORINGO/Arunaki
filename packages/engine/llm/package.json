@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.18.23",
-  "name": "@opencode-ai/llm",
+  "name": "@arunaki/llm",
   "type": "module",
   "license": "MIT",
   "private": true,
@@ -45,7 +45,7 @@
   "dependencies": {
     "@smithy/eventstream-codec": "4.2.14",
     "@smithy/util-utf8": "4.2.2",
-    "@opencode-ai/schema": "workspace:*",
+    "@arunaki/schema": "workspace:*",
     "aws4fetch": "1.0.20",
     "effect": "catalog:"
   }

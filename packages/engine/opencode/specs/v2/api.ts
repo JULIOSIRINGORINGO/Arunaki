@@ -1,13 +1,13 @@
 // @ts-nocheck
 
-import { OpenCode } from "@opencode-ai/core"
-import { ReadTool } from "@opencode-ai/core/tools"
+import { Arunaki } from "@arunaki/core"
+import { ReadTool } from "@arunaki/core/tools"
 
-const opencode = OpenCode.make({})
+const Arunaki = Arunaki.make({})
 
-opencode.tool.add(ReadTool)
+Arunaki.tool.add(ReadTool)
 
-opencode.tool.add({
+Arunaki.tool.add({
   name: "bash",
   schema: {
     type: "object",
@@ -22,13 +22,13 @@ opencode.tool.add({
   execute(input, ctx) {},
 })
 
-opencode.auth.add({
+Arunaki.auth.add({
   provider: "openai",
   type: "api",
   value: process.env.OPENAI_API_KEY,
 })
 
-opencode.agent.add({
+Arunaki.agent.add({
   name: "build",
   permissions: [],
   model: {
@@ -38,20 +38,20 @@ opencode.agent.add({
   },
 })
 
-const sessionID = await opencode.session.create({
+const sessionID = await Arunaki.session.create({
   agent: "build",
 })
 
-opencode.subscribe((event) => {
+Arunaki.subscribe((event) => {
   console.log(event)
 })
 
-await opencode.session.prompt({
+await Arunaki.session.prompt({
   sessionID,
   text: "hey what is up",
 })
 
-await opencode.session.prompt({
+await Arunaki.session.prompt({
   sessionID,
   text: "what is up with this",
   files: [
@@ -62,6 +62,6 @@ await opencode.session.prompt({
   ],
 })
 
-await opencode.session.wait()
+await Arunaki.session.wait()
 
-console.log(await opencode.session.messages(sessionID))
+console.log(await Arunaki.session.messages(sessionID))

@@ -5,8 +5,8 @@ import type {
   RequestPermissionResponse,
   SessionUpdate,
 } from "@agentclientprotocol/sdk"
-import type { Event, OpencodeClient } from "@opencode-ai/sdk/v2"
-import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import type { Event, ArunakiClient } from "@arunaki/sdk/v2"
+import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { createTwoFilesPatch } from "diff"
 import { Effect, ManagedRuntime } from "effect"
 import { mkdtemp, rm } from "node:fs/promises"
@@ -16,7 +16,7 @@ import { ACPEvent } from "@/acp/event"
 import { ACPSession } from "@/acp/session"
 
 type PermissionEvent = Extract<Event, { type: "permission.asked" }>
-type PermissionReplyParams = Parameters<OpencodeClient["permission"]["reply"]>[0]
+type PermissionReplyParams = Parameters<ArunakiClient["permission"]["reply"]>[0]
 type SessionUpdateParams = Parameters<AgentSideConnection["sessionUpdate"]>[0]
 const cleanupDirs: string[] = []
 
@@ -61,7 +61,7 @@ function createHarness(
     session: {
       message: () => Promise.resolve({ data: undefined }),
     },
-  } as unknown as OpencodeClient
+  } as unknown as ArunakiClient
   const connection = {
     requestPermission: (params: RequestPermissionRequest) => {
       requests.push(params)
@@ -148,7 +148,7 @@ function textFromUpdates(updates: SessionUpdateParams[], sessionId: string) {
 }
 
 async function tempFile(name: string, content: string) {
-  const dir = await mkdtemp(path.join(tmpdir(), "opencode-acp-permission-"))
+  const dir = await mkdtemp(path.join(tmpdir(), "Arunaki-acp-permission-"))
   cleanupDirs.push(dir)
   const file = path.join(dir, name)
   await Bun.write(file, content)

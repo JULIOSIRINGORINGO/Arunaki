@@ -7,53 +7,53 @@ const positiveInteger = (name: string) =>
     Config.map((value) => (Number.isInteger(value) && value > 0 ? value : undefined)),
     Config.orElse(() => Config.succeed(undefined)),
   )
-const experimental = bool("OPENCODE_EXPERIMENTAL")
+const experimental = bool("Arunaki_EXPERIMENTAL")
 const enabledByExperimental = (name: string) =>
   Config.all({ experimental, enabled: Config.boolean(name).pipe(Config.option) }).pipe(
     Config.map((flags) => Option.getOrElse(flags.enabled, () => flags.experimental)),
   )
 
-export class Service extends ConfigService.Service<Service>()("@opencode/RuntimeFlags", {
-  autoShare: bool("OPENCODE_AUTO_SHARE"),
-  pure: bool("OPENCODE_PURE"),
-  disableDefaultPlugins: bool("OPENCODE_DISABLE_DEFAULT_PLUGINS"),
-  disableEmbeddedWebUi: bool("OPENCODE_DISABLE_EMBEDDED_WEB_UI"),
-  disableExternalSkills: bool("OPENCODE_DISABLE_EXTERNAL_SKILLS"),
-  disableLspDownload: bool("OPENCODE_DISABLE_LSP_DOWNLOAD"),
+export class Service extends ConfigService.Service<Service>()("@arunaki/RuntimeFlags", {
+  autoShare: bool("Arunaki_AUTO_SHARE"),
+  pure: bool("Arunaki_PURE"),
+  disableDefaultPlugins: bool("Arunaki_DISABLE_DEFAULT_PLUGINS"),
+  disableEmbeddedWebUi: bool("Arunaki_DISABLE_EMBEDDED_WEB_UI"),
+  disableExternalSkills: bool("Arunaki_DISABLE_EXTERNAL_SKILLS"),
+  disableLspDownload: bool("Arunaki_DISABLE_LSP_DOWNLOAD"),
   disableClaudeCodePrompt: Config.all({
-    broad: bool("OPENCODE_DISABLE_CLAUDE_CODE"),
-    direct: bool("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT"),
+    broad: bool("Arunaki_DISABLE_CLAUDE_CODE"),
+    direct: bool("Arunaki_DISABLE_CLAUDE_CODE_PROMPT"),
   }).pipe(Config.map((flags) => flags.broad || flags.direct)),
   disableClaudeCodeSkills: Config.all({
-    broad: bool("OPENCODE_DISABLE_CLAUDE_CODE"),
-    direct: bool("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS"),
+    broad: bool("Arunaki_DISABLE_CLAUDE_CODE"),
+    direct: bool("Arunaki_DISABLE_CLAUDE_CODE_SKILLS"),
   }).pipe(Config.map((flags) => flags.broad || flags.direct)),
   enableExa: Config.all({
     experimental,
-    enabled: bool("OPENCODE_ENABLE_EXA"),
-    legacy: bool("OPENCODE_EXPERIMENTAL_EXA"),
+    enabled: bool("Arunaki_ENABLE_EXA"),
+    legacy: bool("Arunaki_EXPERIMENTAL_EXA"),
   }).pipe(Config.map((flags) => flags.experimental || flags.enabled || flags.legacy)),
   enableParallel: Config.all({
-    enabled: bool("OPENCODE_ENABLE_PARALLEL"),
-    legacy: bool("OPENCODE_EXPERIMENTAL_PARALLEL"),
+    enabled: bool("Arunaki_ENABLE_PARALLEL"),
+    legacy: bool("Arunaki_EXPERIMENTAL_PARALLEL"),
   }).pipe(Config.map((flags) => flags.enabled || flags.legacy)),
-  enableExperimentalModels: bool("OPENCODE_ENABLE_EXPERIMENTAL_MODELS"),
-  enableQuestionTool: bool("OPENCODE_ENABLE_QUESTION_TOOL"),
-  experimentalReferences: enabledByExperimental("OPENCODE_EXPERIMENTAL_REFERENCES"),
-  experimentalBackgroundSubagents: enabledByExperimental("OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS"),
-  experimentalLspTy: bool("OPENCODE_EXPERIMENTAL_LSP_TY"),
-  experimentalLspTool: enabledByExperimental("OPENCODE_EXPERIMENTAL_LSP_TOOL"),
-  experimentalOxfmt: enabledByExperimental("OPENCODE_EXPERIMENTAL_OXFMT"),
-  experimentalPlanMode: enabledByExperimental("OPENCODE_EXPERIMENTAL_PLAN_MODE"),
-  experimentalCodeMode: enabledByExperimental("OPENCODE_EXPERIMENTAL_CODE_MODE"),
-  experimentalEventSystem: enabledByExperimental("OPENCODE_EXPERIMENTAL_EVENT_SYSTEM"),
-  experimentalWorkspaces: enabledByExperimental("OPENCODE_EXPERIMENTAL_WORKSPACES"),
-  experimentalIconDiscovery: enabledByExperimental("OPENCODE_EXPERIMENTAL_ICON_DISCOVERY"),
-  outputTokenMax: positiveInteger("OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX"),
-  bashDefaultTimeoutMs: positiveInteger("OPENCODE_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
-  experimentalNativeLlm: bool("OPENCODE_EXPERIMENTAL_NATIVE_LLM"),
-  experimentalWebSockets: bool("OPENCODE_EXPERIMENTAL_WEBSOCKETS"),
-  client: Config.string("OPENCODE_CLIENT").pipe(Config.withDefault("cli")),
+  enableExperimentalModels: bool("Arunaki_ENABLE_EXPERIMENTAL_MODELS"),
+  enableQuestionTool: bool("Arunaki_ENABLE_QUESTION_TOOL"),
+  experimentalReferences: enabledByExperimental("Arunaki_EXPERIMENTAL_REFERENCES"),
+  experimentalBackgroundSubagents: enabledByExperimental("Arunaki_EXPERIMENTAL_BACKGROUND_SUBAGENTS"),
+  experimentalLspTy: bool("Arunaki_EXPERIMENTAL_LSP_TY"),
+  experimentalLspTool: enabledByExperimental("Arunaki_EXPERIMENTAL_LSP_TOOL"),
+  experimentalOxfmt: enabledByExperimental("Arunaki_EXPERIMENTAL_OXFMT"),
+  experimentalPlanMode: enabledByExperimental("Arunaki_EXPERIMENTAL_PLAN_MODE"),
+  experimentalCodeMode: enabledByExperimental("Arunaki_EXPERIMENTAL_CODE_MODE"),
+  experimentalEventSystem: enabledByExperimental("Arunaki_EXPERIMENTAL_EVENT_SYSTEM"),
+  experimentalWorkspaces: enabledByExperimental("Arunaki_EXPERIMENTAL_WORKSPACES"),
+  experimentalIconDiscovery: enabledByExperimental("Arunaki_EXPERIMENTAL_ICON_DISCOVERY"),
+  outputTokenMax: positiveInteger("Arunaki_EXPERIMENTAL_OUTPUT_TOKEN_MAX"),
+  bashDefaultTimeoutMs: positiveInteger("Arunaki_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
+  experimentalNativeLlm: bool("Arunaki_EXPERIMENTAL_NATIVE_LLM"),
+  experimentalWebSockets: bool("Arunaki_EXPERIMENTAL_WEBSOCKETS"),
+  client: Config.string("Arunaki_CLIENT").pipe(Config.withDefault("cli")),
 }) {}
 
 export type Info = Context.Service.Shape<typeof Service>
@@ -75,4 +75,4 @@ export const layer = (overrides: Partial<Info> = {}) =>
 export const node = LayerNode.make({ service: Service, layer: Service.layer.pipe(Layer.orDie), deps: [] })
 
 export * as RuntimeFlags from "./runtime-flags"
-import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { LayerNode } from "@arunaki/core/effect/layer-node"

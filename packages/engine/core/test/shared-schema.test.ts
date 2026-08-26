@@ -1,35 +1,35 @@
 import { expect, test } from "bun:test"
 import { Schema } from "effect"
-import { AgentV2 } from "@opencode-ai/core/agent"
-import { ModelV2 } from "@opencode-ai/core/model"
-import { SessionV2 } from "@opencode-ai/core/session"
-import { Agent } from "@opencode-ai/schema/agent"
-import { Location } from "@opencode-ai/schema/location"
-import { Model } from "@opencode-ai/schema/model"
-import { AgentAttachment, FileAttachment, Prompt, Source } from "@opencode-ai/schema/prompt"
-import { Provider } from "@opencode-ai/schema/provider"
-import { Project } from "@opencode-ai/schema/project"
-import { ProjectDirectories } from "@opencode-ai/schema/project-directories"
-import { PermissionV1 } from "@opencode-ai/schema/permission-v1"
-import { Session } from "@opencode-ai/schema/session"
-import { SessionInput } from "@opencode-ai/schema/session-input"
-import { SessionMessage } from "@opencode-ai/schema/session-message"
-import { Workspace } from "@opencode-ai/schema/workspace"
-import { Command } from "@opencode-ai/schema/command"
-import { Connection } from "@opencode-ai/schema/connection"
-import { Credential } from "@opencode-ai/schema/credential"
-import { FileSystem } from "@opencode-ai/schema/filesystem"
-import { Integration } from "@opencode-ai/schema/integration"
-import { LLM } from "@opencode-ai/schema/llm"
-import { Permission } from "@opencode-ai/schema/permission"
-import { Plugin } from "@opencode-ai/schema/plugin"
-import { Pty } from "@opencode-ai/schema/pty"
-import { Reference } from "@opencode-ai/schema/reference"
-import { SessionTodo } from "@opencode-ai/schema/session-todo"
-import { Skill } from "@opencode-ai/schema/skill"
-import { AbsolutePath, DateTimeUtcFromMillis, optional, statics } from "@opencode-ai/schema/schema"
-import { ProviderV2 } from "@opencode-ai/core/provider"
-import { PluginV2 } from "@opencode-ai/core/plugin"
+import { AgentV2 } from "@arunaki/core/agent"
+import { ModelV2 } from "@arunaki/core/model"
+import { SessionV2 } from "@arunaki/core/session"
+import { Agent } from "@arunaki/schema/agent"
+import { Location } from "@arunaki/schema/location"
+import { Model } from "@arunaki/schema/model"
+import { AgentAttachment, FileAttachment, Prompt, Source } from "@arunaki/schema/prompt"
+import { Provider } from "@arunaki/schema/provider"
+import { Project } from "@arunaki/schema/project"
+import { ProjectDirectories } from "@arunaki/schema/project-directories"
+import { PermissionV1 } from "@arunaki/schema/permission-v1"
+import { Session } from "@arunaki/schema/session"
+import { SessionInput } from "@arunaki/schema/session-input"
+import { SessionMessage } from "@arunaki/schema/session-message"
+import { Workspace } from "@arunaki/schema/workspace"
+import { Command } from "@arunaki/schema/command"
+import { Connection } from "@arunaki/schema/connection"
+import { Credential } from "@arunaki/schema/credential"
+import { FileSystem } from "@arunaki/schema/filesystem"
+import { Integration } from "@arunaki/schema/integration"
+import { LLM } from "@arunaki/schema/llm"
+import { Permission } from "@arunaki/schema/permission"
+import { Plugin } from "@arunaki/schema/plugin"
+import { Pty } from "@arunaki/schema/pty"
+import { Reference } from "@arunaki/schema/reference"
+import { SessionTodo } from "@arunaki/schema/session-todo"
+import { Skill } from "@arunaki/schema/skill"
+import { AbsolutePath, DateTimeUtcFromMillis, optional, statics } from "@arunaki/schema/schema"
+import { ProviderV2 } from "@arunaki/core/provider"
+import { PluginV2 } from "@arunaki/core/plugin"
 
 test("Core reuses the canonical shared schemas", async () => {
   const [
@@ -55,27 +55,27 @@ test("Core reuses the canonical shared schemas", async () => {
     coreSchema,
     coreWorkspace,
   ] = await Promise.all([
-    import("@opencode-ai/core/command"),
-    import("@opencode-ai/core/integration/connection"),
-    import("@opencode-ai/core/credential"),
-    import("@opencode-ai/core/filesystem"),
-    import("@opencode-ai/core/integration"),
-    import("@opencode-ai/core/location"),
-    import("@opencode-ai/llm"),
-    import("@opencode-ai/core/permission"),
-    import("@opencode-ai/core/v1/permission"),
-    import("@opencode-ai/core/project/copy"),
-    import("@opencode-ai/core/pty"),
-    import("@opencode-ai/core/project/schema"),
-    import("@opencode-ai/core/reference"),
-    import("@opencode-ai/core/session/input"),
-    import("@opencode-ai/core/session/message"),
-    import("@opencode-ai/core/session/todo"),
-    import("@opencode-ai/core/session/prompt"),
-    import("@opencode-ai/core/skill"),
-    import("@opencode-ai/core/v2-schema"),
-    import("@opencode-ai/core/schema"),
-    import("@opencode-ai/core/workspace"),
+    import("@arunaki/core/command"),
+    import("@arunaki/core/integration/connection"),
+    import("@arunaki/core/credential"),
+    import("@arunaki/core/filesystem"),
+    import("@arunaki/core/integration"),
+    import("@arunaki/core/location"),
+    import("@arunaki/llm"),
+    import("@arunaki/core/permission"),
+    import("@arunaki/core/v1/permission"),
+    import("@arunaki/core/project/copy"),
+    import("@arunaki/core/pty"),
+    import("@arunaki/core/project/schema"),
+    import("@arunaki/core/reference"),
+    import("@arunaki/core/session/input"),
+    import("@arunaki/core/session/message"),
+    import("@arunaki/core/session/todo"),
+    import("@arunaki/core/session/prompt"),
+    import("@arunaki/core/skill"),
+    import("@arunaki/core/v2-schema"),
+    import("@arunaki/core/schema"),
+    import("@arunaki/core/workspace"),
   ])
 
   const schemas = [

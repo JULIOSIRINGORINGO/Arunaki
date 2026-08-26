@@ -1,15 +1,15 @@
-// Opencode publish boundary for core events. Attach routed instance location
+// Arunaki publish boundary for core events. Attach routed instance location
 // so direct EventV2 consumers can isolate directory/workspace streams.
-import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { GlobalBus } from "@/bus/global"
-import { EventV2 } from "@opencode-ai/core/event"
-import { Location } from "@opencode-ai/core/location"
-import { Project } from "@opencode-ai/core/project"
-import { AbsolutePath } from "@opencode-ai/core/schema"
+import { EventV2 } from "@arunaki/core/event"
+import { Location } from "@arunaki/core/location"
+import { Project } from "@arunaki/core/project"
+import { AbsolutePath } from "@arunaki/core/schema"
 import { Context, Effect, Layer } from "effect"
 
-export class Service extends Context.Service<Service, EventV2.Interface>()("@opencode/EventV2Bridge") {}
+export class Service extends Context.Service<Service, EventV2.Interface>()("@arunaki/EventV2Bridge") {}
 
 const layer = Layer.effect(
   Service,

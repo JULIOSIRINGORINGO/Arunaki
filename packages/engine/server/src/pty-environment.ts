@@ -1,13 +1,13 @@
 export * as PtyEnvironment from "./pty-environment"
 
 import { Context, Effect, Layer } from "effect"
-import { makeGlobalNode } from "@opencode-ai/core/effect/app-node"
+import { makeGlobalNode } from "@arunaki/core/effect/app-node"
 
 export interface Interface {
   readonly get: (input: { directory: string; cwd: string }) => Effect.Effect<Record<string, string>>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/ServerPtyEnvironment") {}
+export class Service extends Context.Service<Service, Interface>()("@arunaki/ServerPtyEnvironment") {}
 
 export const layer = Layer.succeed(
   Service,

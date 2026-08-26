@@ -1,9 +1,9 @@
 import { EOL } from "os"
 import { Effect } from "effect"
-import { ModelsDev } from "@opencode-ai/core/models-dev"
+import { ModelsDev } from "@arunaki/core/models-dev"
 import { effectCmd, fail } from "../effect-cmd"
 import { UI } from "../ui"
-import { ProviderV2 } from "@opencode-ai/core/provider"
+import { ProviderV2 } from "@arunaki/core/provider"
 
 export const ModelsCommand = effectCmd({
   command: "models [provider]",
@@ -54,10 +54,10 @@ export const ModelsCommand = effectCmd({
     }
 
     const ids = Object.keys(providers).sort((a, b) => {
-      const aIsOpencode = a.startsWith("opencode")
-      const bIsOpencode = b.startsWith("opencode")
-      if (aIsOpencode && !bIsOpencode) return -1
-      if (!aIsOpencode && bIsOpencode) return 1
+      const aIsArunaki = a.startsWith("arunaki")
+      const bIsArunaki = b.startsWith("arunaki")
+      if (aIsArunaki && !bIsArunaki) return -1
+      if (!aIsArunaki && bIsArunaki) return 1
       return a.localeCompare(b)
     })
 

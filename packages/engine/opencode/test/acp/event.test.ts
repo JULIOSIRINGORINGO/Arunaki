@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { AgentSideConnection } from "@agentclientprotocol/sdk"
-import { LayerNode } from "@opencode-ai/core/effect/layer-node"
-import type { Event, Message, OpencodeClient, Part, SessionMessageResponse, ToolPart } from "@opencode-ai/sdk/v2"
+import { LayerNode } from "@arunaki/core/effect/layer-node"
+import type { Event, Message, ArunakiClient, Part, SessionMessageResponse, ToolPart } from "@arunaki/sdk/v2"
 import { Effect, ManagedRuntime } from "effect"
 import { ACPEvent } from "@/acp/event"
 import * as ACPService from "@/acp/service"
@@ -100,7 +100,7 @@ function createHarness(messages: Record<string, SessionMessageResponse> = {}) {
       get: () => Promise.resolve({ data: { id: "ses_loaded" } }),
       messages: () => Promise.resolve({ data: [] }),
     },
-  } as unknown as OpencodeClient
+  } as unknown as ArunakiClient
   const connection = {
     sessionUpdate: (params: SessionUpdateParams) => {
       updates.push(params)
@@ -461,7 +461,7 @@ describe("acp event routing", () => {
               ],
             }),
         },
-      } as unknown as OpencodeClient,
+      } as unknown as ArunakiClient,
       connection,
       directory: {
         get: () =>

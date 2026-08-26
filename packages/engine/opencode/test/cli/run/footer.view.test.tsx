@@ -4,8 +4,8 @@ import { BoxRenderable, RGBA, type RootRenderable } from "@opentui/core"
 import { testRender, useRenderer } from "@opentui/solid"
 import { createSignal } from "solid-js"
 import { createDefaultOpenTuiKeymap } from "@opentui/keymap/opentui"
-import type { QuestionRequest } from "@opencode-ai/sdk/v2"
-import { OpencodeKeymapProvider, registerOpencodeKeymap } from "@opencode-ai/tui/keymap"
+import type { QuestionRequest } from "@arunaki/sdk/v2"
+import { ArunakiKeymapProvider, registerArunakiKeymap } from "@Arunaki-ai/tui/keymap"
 import {
   RUN_COMMAND_PANEL_ROWS,
   RUN_SUBAGENT_PANEL_ROWS,
@@ -56,10 +56,10 @@ function model(input: {
 }) {
   return {
     id: input.id,
-    providerID: "opencode",
+    providerID: "arunaki",
     api: {
-      id: "opencode",
-      url: "https://opencode.ai",
+      id: "arunaki",
+      url: "https://Arunaki.ai",
       npm: "@ai-sdk/openai-compatible",
     },
     name: input.name,
@@ -106,8 +106,8 @@ function model(input: {
 
 function provider() {
   return {
-    id: "opencode",
-    name: "opencode",
+    id: "arunaki",
+    name: "arunaki",
     source: "api",
     env: [],
     options: {},
@@ -179,10 +179,10 @@ async function renderFooter(
   function Harness() {
     const renderer = useRenderer()
     const keymap = createDefaultOpenTuiKeymap(renderer)
-    offKeymap = registerOpencodeKeymap(keymap, renderer, config)
+    offKeymap = registerArunakiKeymap(keymap, renderer, config)
 
     return (
-      <OpencodeKeymapProvider keymap={keymap}>
+      <ArunakiKeymapProvider keymap={keymap}>
         <RunFooterView
           directory="/tmp"
           findFiles={async () => []}
@@ -199,7 +199,7 @@ async function renderFooter(
           theme={input.theme ?? (() => RUN_THEME_FALLBACK)}
           tuiConfig={config}
           backgroundSubagents={input.backgroundSubagents ?? true}
-          agent="opencode"
+          agent="arunaki"
           onSubmit={input.onSubmit ?? (() => true)}
           onPermissionReply={() => {}}
           onQuestionReply={() => {}}
@@ -216,7 +216,7 @@ async function renderFooter(
           onStatus={() => {}}
           onQueuedRemove={async () => true}
         />
-      </OpencodeKeymapProvider>
+      </ArunakiKeymapProvider>
     )
   }
 
@@ -962,10 +962,10 @@ test("direct footer shows editable prompts and additional queued work while runn
   function Harness() {
     const renderer = useRenderer()
     const keymap = createDefaultOpenTuiKeymap(renderer)
-    offKeymap = registerOpencodeKeymap(keymap, renderer, tuiConfig)
+    offKeymap = registerArunakiKeymap(keymap, renderer, tuiConfig)
 
     return (
-      <OpencodeKeymapProvider keymap={keymap}>
+      <ArunakiKeymapProvider keymap={keymap}>
         <RunFooterView
           directory="/tmp"
           findFiles={async () => []}
@@ -974,7 +974,7 @@ test("direct footer shows editable prompts and additional queued work while runn
           commands={() => []}
           providers={() => undefined}
           currentModel={() => ({
-            providerID: "opencode",
+            providerID: "arunaki",
             modelID: "a-model-name-long-enough-to-force-responsive-truncation",
           })}
           variants={() => []}
@@ -988,7 +988,7 @@ test("direct footer shows editable prompts and additional queued work while runn
           theme={() => RUN_THEME_FALLBACK}
           tuiConfig={tuiConfig}
           backgroundSubagents={true}
-          agent="opencode"
+          agent="arunaki"
           onSubmit={() => true}
           onPermissionReply={() => {}}
           onQuestionReply={() => {}}
@@ -1005,7 +1005,7 @@ test("direct footer shows editable prompts and additional queued work while runn
           onStatus={() => {}}
           onQueuedRemove={async () => true}
         />
-      </OpencodeKeymapProvider>
+      </ArunakiKeymapProvider>
     )
   }
 
@@ -1063,7 +1063,7 @@ test("direct footer shows editable prompts and additional queued work while runn
 test("direct footer separates a lone context hint from model and command hint", async () => {
   const app = await renderFooter({
     providers: [provider()],
-    currentModel: { providerID: "opencode", modelID: "gpt-5" },
+    currentModel: { providerID: "arunaki", modelID: "gpt-5" },
     currentVariant: "xhigh",
     subagents: {
       tabs: [subagent({ sessionID: "s-1", label: "Explore", description: "Inspect auth flow" })],
@@ -1091,7 +1091,7 @@ test("direct footer separates a lone context hint from model and command hint", 
 test("direct footer hides the subagent hint when only completed subagents remain", async () => {
   const app = await renderFooter({
     providers: [provider()],
-    currentModel: { providerID: "opencode", modelID: "gpt-5" },
+    currentModel: { providerID: "arunaki", modelID: "gpt-5" },
     currentVariant: "xhigh",
     subagents: {
       tabs: [subagent({ sessionID: "s-1", label: "Explore", description: "Inspect auth flow", status: "completed" })],
@@ -1232,10 +1232,10 @@ test.skip("direct custom answer submits through keymap return binding", async ()
   function Harness() {
     const renderer = useRenderer()
     const keymap = createDefaultOpenTuiKeymap(renderer)
-    off = registerOpencodeKeymap(keymap, renderer, tuiConfig)
+    off = registerArunakiKeymap(keymap, renderer, tuiConfig)
 
     return (
-      <OpencodeKeymapProvider keymap={keymap}>
+      <ArunakiKeymapProvider keymap={keymap}>
         <RunQuestionBody
           request={question}
           theme={RUN_THEME_FALLBACK.footer}
@@ -1244,7 +1244,7 @@ test.skip("direct custom answer submits through keymap return binding", async ()
           }}
           onReject={() => {}}
         />
-      </OpencodeKeymapProvider>
+      </ArunakiKeymapProvider>
     )
   }
 
@@ -1282,10 +1282,10 @@ test("direct permission rejection submits through keymap return binding", async 
   function Harness() {
     const renderer = useRenderer()
     const keymap = createDefaultOpenTuiKeymap(renderer)
-    off = registerOpencodeKeymap(keymap, renderer, tuiConfig)
+    off = registerArunakiKeymap(keymap, renderer, tuiConfig)
 
     return (
-      <OpencodeKeymapProvider keymap={keymap}>
+      <ArunakiKeymapProvider keymap={keymap}>
         <RejectField
           theme={RUN_THEME_FALLBACK.footer}
           text=""
@@ -1298,7 +1298,7 @@ test("direct permission rejection submits through keymap return binding", async 
           }}
           onCancel={() => {}}
         />
-      </OpencodeKeymapProvider>
+      </ArunakiKeymapProvider>
     )
   }
 
@@ -1329,7 +1329,7 @@ test("direct permission rejection submits through keymap return binding", async 
 
 test("direct model panel renders current model selector", async () => {
   const [providers] = createSignal<RunProvider[] | undefined>([provider()])
-  const [current] = createSignal<RunInput["model"]>({ providerID: "opencode", modelID: "gpt-5" })
+  const [current] = createSignal<RunInput["model"]>({ providerID: "arunaki", modelID: "gpt-5" })
 
   const app = await testRender(
     () => (
@@ -1356,7 +1356,7 @@ test("direct model panel renders current model selector", async () => {
 
     expect(frame).toContain("Select model")
     expect(frame).toContain("Search")
-    expect(frame).toContain("opencode")
+    expect(frame).toContain("arunaki")
     expect(frame).toContain("GPT-5")
     expect(frame).toContain("current")
     expect(frame).toContain("GPT Free")

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@opencode-ai/sdk",
+  "name": "@arunaki/sdk",
   "version": "1.18.23",
   "type": "module",
   "license": "MIT",
