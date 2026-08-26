@@ -29,6 +29,9 @@ import { WebSearchTool } from "./websearch"
 import { LspTool } from "./lsp"
 import * as Truncate from "./truncate"
 import { ApplyPatchTool } from "./apply_patch"
+import { ExcelComTool } from "@arunaki/tools/excel-com"
+import { WordComTool } from "@arunaki/tools/word-com"
+import { PptComTool } from "@arunaki/tools/ppt-com"
 import { Glob } from "@arunaki/core/util/glob"
 import path from "path"
 import { pathToFileURL } from "url"
@@ -223,6 +226,9 @@ const layer = Layer.effect(
           question: Tool.init(question),
           lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
+          excelCom: Tool.init(ExcelComTool),
+          wordCom: Tool.init(WordComTool),
+          pptCom: Tool.init(PptComTool),
           ...(codeModeTool ? { execute: Tool.init(codeModeTool) } : {}),
         })
 
@@ -243,6 +249,9 @@ const layer = Layer.effect(
             tool.search,
             tool.skill,
             tool.patch,
+            tool.excelCom,
+            tool.wordCom,
+            tool.pptCom,
             ...(tool.execute ? [tool.execute] : []),
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),

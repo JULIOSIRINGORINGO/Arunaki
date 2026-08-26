@@ -1,0 +1,19 @@
+{
+  "name": "@arunaki/tools",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./excel-com": "./src/tools/excel-com.ts",
+    "./word-com": "./src/tools/word-com.ts",
+    "./ppt-com": "./src/tools/ppt-com.ts"
+  },
+  "dependencies": {
+    "@arunaki/engine": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
