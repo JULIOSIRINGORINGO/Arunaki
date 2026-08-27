@@ -240,7 +240,7 @@ describe("SessionStatus.Info", () => {
         title: "Free limit reached",
         message: "Subscribe to Arunaki Go.",
         label: "subscribe",
-        link: "https://Arunaki.ai/go",
+        link: "https://arunaki.ai/go",
       },
       next: 500,
     }

@@ -7,9 +7,8 @@ export const ServeCommand = effectCmd({
   command: "serve",
   builder: (yargs) => withNetworkOptions(yargs),
   describe: "starts a headless Arunaki server",
-  // Server loads instances per-request via x-Arunaki-directory header — no
-  // need for an ambient project InstanceContext at startup.
-  instance: false,
+  // Server needs instance for plugin/provider initialization
+  instance: true,
   handler: Effect.fn("Cli.serve")(function* (args) {
     const { Server } = yield* Effect.promise(() => import("../../server/server"))
     if (!Flag.Arunaki_SERVER_PASSWORD) {

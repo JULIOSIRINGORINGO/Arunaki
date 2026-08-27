@@ -200,7 +200,7 @@ describe("v2 pty HttpApi", () => {
         )
         yield* Effect.promise(() =>
           Bun.write(
-            path.join(dir, "Arunaki.json"),
+            path.join(dir, "arunaki.json"),
             JSON.stringify({ plugin: [pathToFileURL(plugin).href], formatter: false, lsp: false }),
           ),
         )

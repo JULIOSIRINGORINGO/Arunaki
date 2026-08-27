@@ -1280,7 +1280,7 @@ it.instance(
   Effect.gen(function* () {
     const providers = yield* list
     expect(providers[ProviderV2.ID.make("nvidia")].options.headers).toEqual({
-      "HTTP-Referer": "https://Arunaki.ai/",
+      "HTTP-Referer": "https://arunaki.ai/",
       "X-Title": "arunaki",
       "X-BILLING-INVOKE-ORIGIN": "arunaki",
     })
@@ -1293,7 +1293,7 @@ it.instance(
   Effect.gen(function* () {
     const providers = yield* list
     expect(providers[ProviderV2.ID.make("nvidia")].options.headers).toEqual({
-      "HTTP-Referer": "https://Arunaki.ai/",
+      "HTTP-Referer": "https://arunaki.ai/",
       "X-Title": "arunaki",
       "X-BILLING-INVOKE-ORIGIN": "arunaki",
     })

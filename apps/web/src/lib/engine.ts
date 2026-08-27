@@ -1,7 +1,6 @@
-// Engine API adapter — maps old /api/v1/* calls to new engine /api/* endpoints
-// The engine runs on a configurable port (default 4096)
+// Engine API adapter — all requests go through Vite proxy /api → engine :4096
 
-const ENGINE_BASE = import.meta.env.VITE_ARUNAKI_ENGINE_URL || "http://127.0.0.1:4096";
+const ENGINE_BASE = "";
 
 export async function engineFetch(path: string, init?: RequestInit) {
   const url = `${ENGINE_BASE}${path}`;

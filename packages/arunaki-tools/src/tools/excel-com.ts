@@ -89,7 +89,7 @@ function buildExcelScript(params: Schema.Schema.Type<typeof ExcelActionSchema>):
       actions.push(`  for ($c = 1; $c -le $cols; $c++) {`)
       actions.push(`    $line += $rng.Cells($r,$c).Text`)
       actions.push(`  }`)
-      actions.push(`  Write-Output ($line -join "`t")`)
+      actions.push(`  Write-Output ($line -join "\`t")`)
       actions.push(`}`)
       break
     case "fill_table_column": {

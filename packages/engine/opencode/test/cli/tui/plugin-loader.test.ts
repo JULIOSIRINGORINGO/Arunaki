@@ -832,7 +832,7 @@ test("does not bootstrap server plugins while initializing tui plugins", async (
           "",
         ].join("\n"),
       )
-      await Bun.write(path.join(dir, "Arunaki.json"), JSON.stringify({ plugin: [pathToFileURL(plugin).href] }))
+      await Bun.write(path.join(dir, "arunaki.json"), JSON.stringify({ plugin: [pathToFileURL(plugin).href] }))
       return { marker }
     },
   })

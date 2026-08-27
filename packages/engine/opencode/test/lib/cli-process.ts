@@ -8,7 +8,7 @@
 // Configuration flows through Arunaki's built-in test affordances:
 //   - Arunaki_CONFIG_CONTENT      : provider config inline, no files to find
 //   - Arunaki_TEST_HOME           : pins os.homedir() → tmpdir
-//   - Arunaki_DISABLE_PROJECT_CONFIG : skip walking up for Arunaki.json
+//   - Arunaki_DISABLE_PROJECT_CONFIG : skip walking up for arunaki.json
 //   - Arunaki_PURE                : skip external plugin discovery + install
 //   - Arunaki_DISABLE_AUTOUPDATE / AUTOCOMPACT / MODELS_FETCH : no background work
 // Plus HOME / XDG_* pointing at the tmpdir for belt-and-suspenders isolation.

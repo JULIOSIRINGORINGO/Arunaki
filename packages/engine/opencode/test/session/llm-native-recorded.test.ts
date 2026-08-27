@@ -28,7 +28,7 @@ import { LayerNodePlatform } from "@arunaki/core/effect/app-node-platform"
 
 const FIXTURES_DIR = path.join(import.meta.dir, "../fixtures/recordings")
 
-const zenURL = (connection: string) => `https://console.Arunaki.ai/proxy/connections/${connection}/v1`
+const zenURL = (connection: string) => `https://console.arunaki.ai/proxy/connections/${connection}/v1`
 
 const replayOpenAIOAuth = {
   type: "oauth",
@@ -290,8 +290,8 @@ function recordedNativeLLMLayer(scenario: RecordedScenario) {
 const writeConfig = (directory: string, scenario: RecordedScenario, model: ModelsDev.Provider["models"][string]) =>
   Effect.promise(() =>
     Bun.write(
-      path.join(directory, "Arunaki.json"),
-      JSON.stringify({ $schema: "https://Arunaki.ai/config.json", ...scenario.config(model) }),
+      path.join(directory, "arunaki.json"),
+      JSON.stringify({ $schema: "https://arunaki.ai/config.json", ...scenario.config(model) }),
     ),
   )
 

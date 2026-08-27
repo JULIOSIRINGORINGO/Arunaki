@@ -36,7 +36,7 @@ import {
   SummarizePayload,
   UpdatePayload,
 } from "../groups/session"
-import { PermissionNotFoundError } from "../errors"
+import { ApiNotFoundError, PermissionNotFoundError, SessionBusyError, UnknownError } from "../errors"
 import * as SessionError from "./session-errors"
 
 const tryParseJson = (text: string) =>
@@ -302,10 +302,19 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
           ...ctx.payload,
           sessionID: ctx.params.sessionID,
         })
-        .pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
-      return HttpServerResponse.stream(Stream.make(JSON.stringify(message)).pipe(Stream.encodeText), {
-        contentType: "application/json",
-      })
+        .pipe(
+          Effect.mapError(() => new HttpApiError.BadRequest({})),
+          Effect.catchDefect((defect: unknown) =>
+            Effect.fail(
+              new UnknownError({
+                message: typeof defect === "object" && defect && "message" in defect ? String(defect.message) : String(defect),
+              })
+            )
+          )
+        )
+      
+      yield* Effect.logInfo("Message returned from promptSvc", { message: JSON.stringify(message).substring(0, 500) })
+      return message
     })
 
     const promptAsync = Effect.fn("SessionHttpApi.promptAsync")(function* (ctx: {

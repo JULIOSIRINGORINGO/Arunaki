@@ -381,7 +381,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
           }
 
           // Region resolution precedence (highest to lowest):
-          // 1. options.region from Arunaki.json provider config
+          // 1. options.region from arunaki.json provider config
           // 2. defaultRegion from AWS_REGION environment variable
           // 3. Default "us-east-1" (baked into defaultRegion)
           const region = options?.region ?? defaultRegion
@@ -464,7 +464,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://Arunaki.ai/",
+            "HTTP-Referer": "https://arunaki.ai/",
             "X-Title": "arunaki",
             "X-Source": "arunaki",
           },
@@ -475,7 +475,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://Arunaki.ai/",
+            "HTTP-Referer": "https://arunaki.ai/",
             "X-Title": "arunaki",
           },
         },
@@ -485,7 +485,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: provider.source === "config",
         options: {
           headers: {
-            "HTTP-Referer": "https://Arunaki.ai/",
+            "HTTP-Referer": "https://arunaki.ai/",
             "X-Title": "arunaki",
             "X-BILLING-INVOKE-ORIGIN": "arunaki",
           },
@@ -496,7 +496,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://Arunaki.ai/",
+            "http-referer": "https://arunaki.ai/",
             "x-title": "arunaki",
           },
         },
@@ -601,7 +601,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://Arunaki.ai/",
+            "HTTP-Referer": "https://arunaki.ai/",
             "X-Title": "arunaki",
           },
         },
@@ -891,7 +891,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://Arunaki.ai/",
+            "HTTP-Referer": "https://arunaki.ai/",
             "X-Title": "arunaki",
           },
         },

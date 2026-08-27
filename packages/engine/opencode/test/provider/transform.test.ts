@@ -2744,7 +2744,7 @@ describe("ProviderTransform.message - strip openai metadata when store=false", (
       providerID: "arunaki",
       api: {
         id: "Arunaki-test",
-        url: "https://api.Arunaki.ai",
+        url: "https://api.arunaki.ai",
         npm: "@ai-sdk/openai-compatible",
       },
     }
@@ -2778,7 +2778,7 @@ describe("ProviderTransform.message - strip openai metadata when store=false", (
       providerID: "arunaki",
       api: {
         id: "Arunaki-test",
-        url: "https://api.Arunaki.ai",
+        url: "https://api.arunaki.ai",
         npm: "@ai-sdk/openai-compatible",
       },
     }

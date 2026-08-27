@@ -108,7 +108,7 @@ describe("ArunakiPlugin", () => {
         methodID: Integration.MethodID.make("device"),
         inputs: {},
       })
-      expect(attempt.url).toBe("https://Arunaki.ai/console/device?user_code=user&client_id=Arunaki-cli")
+      expect(attempt.url).toBe("https://arunaki.ai/console/device?user_code=user&client_id=Arunaki-cli")
     }),
   )
 

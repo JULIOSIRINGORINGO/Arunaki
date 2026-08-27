@@ -25,13 +25,13 @@ const Arunaki_SKILL_PATTERN = "{skill,skills}/**/SKILL.md"
 const SKILL_PATTERN = "**/SKILL.md"
 
 // Built-in skill that ships with Arunaki. The model's intuition for what an
-// Arunaki.json should look like is often wrong, and Arunaki hard-fails on
+// arunaki.json should look like is often wrong, and Arunaki hard-fails on
 // invalid config, so users hit cryptic startup errors. Loading this skill
 // when the model is asked to touch Arunaki's own config files gives it the
 // actual schemas instead of guesses.
 const CUSTOMIZE_Arunaki_SKILL_NAME = "customize-Arunaki"
 const CUSTOMIZE_Arunaki_SKILL_DESCRIPTION =
-  "Use ONLY when the user is editing or creating Arunaki's own configuration: Arunaki.json, Arunaki.jsonc, files under .Arunaki/, or files under ~/.config/Arunaki/. Also use when creating or fixing Arunaki agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring Arunaki itself."
+  "Use ONLY when the user is editing or creating Arunaki's own configuration: arunaki.json, arunaki.jsonc, files under .Arunaki/, or files under ~/.config/Arunaki/. Also use when creating or fixing Arunaki agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring Arunaki itself."
 const CUSTOMIZE_Arunaki_SKILL_BODY = SkillPlugin.CustomizeArunakiContent
 
 export const Info = Schema.Struct({

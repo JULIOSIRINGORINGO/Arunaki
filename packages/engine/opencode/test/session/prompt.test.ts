@@ -310,8 +310,8 @@ const writeText = Effect.fn("test.writeText")(function* (file: string, text: str
 
 const writeConfig = Effect.fn("test.writeConfig")(function* (dir: string, config: Partial<ConfigV1.Info>) {
   yield* writeText(
-    path.join(dir, "Arunaki.json"),
-    JSON.stringify({ $schema: "https://Arunaki.ai/config.json", ...config }),
+    path.join(dir, "arunaki.json"),
+    JSON.stringify({ $schema: "https://arunaki.ai/config.json", ...config }),
   )
 })
 

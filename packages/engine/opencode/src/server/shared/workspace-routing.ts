@@ -4,8 +4,8 @@ type Rule = { method?: string; path: string; exact?: boolean; action: "local" | 
 
 const RULES: Array<Rule> = [
   { path: "/experimental/workspace", action: "local" },
-  { path: "/session/status", action: "forward" },
-  { method: "GET", path: "/session", action: "local" },
+  { path: "/session", action: "local" },
+  { path: "/api/session", action: "local" },
 ]
 
 export function isLocalWorkspaceRoute(method: string, path: string) {
@@ -18,10 +18,11 @@ export function isLocalWorkspaceRoute(method: string, path: string) {
 }
 
 export function getWorkspaceRouteSessionID(url: URL) {
-  if (url.pathname === "/session/status") return null
+  if (url.pathname === "/session/status" || url.pathname === "/api/session/status") return null
 
   const id =
     url.pathname.match(/^\/session\/([^/]+)(?:\/|$)/)?.[1] ??
+    url.pathname.match(/^\/api\/session\/([^/]+)(?:\/|$)/)?.[1] ??
     url.pathname.match(/^\/experimental\/session\/([^/]+)\/background$/)?.[1]
   if (!id) return null
 

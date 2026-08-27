@@ -19,7 +19,8 @@
     "@arunaki/engine": "./bin/opencode"
   },
   "exports": {
-    "./*": "./src/*.ts"
+    "./*": "./src/*.ts",
+    "./tool": "./src/tool/tool.ts"
   },
   "imports": {
     "#db": {

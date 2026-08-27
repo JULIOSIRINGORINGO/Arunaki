@@ -71,10 +71,10 @@ describe("plugin.workspace", () => {
 
       yield* Effect.promise(() =>
         Bun.write(
-          path.join(dir, "Arunaki.json"),
+          path.join(dir, "arunaki.json"),
           JSON.stringify(
             {
-              $schema: "https://Arunaki.ai/config.json",
+              $schema: "https://arunaki.ai/config.json",
               plugin: [pathToFileURL(file).href],
             },
             null,

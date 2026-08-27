@@ -15,7 +15,7 @@ export const LLMGatewayPlugin = define({
           if (item.provider.api.url !== "https://api.llmgateway.io/v1") continue
           if (!(yield* integrations.get(Integration.ID.make(item.provider.id)))) continue
           evt.provider.update(item.provider.id, (provider) => {
-            provider.request.headers["HTTP-Referer"] = "https://Arunaki.ai/"
+            provider.request.headers["HTTP-Referer"] = "https://arunaki.ai/"
             provider.request.headers["X-Title"] = "arunaki"
             provider.request.headers["X-Source"] = "arunaki"
           })

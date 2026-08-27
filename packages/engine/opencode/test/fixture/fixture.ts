@@ -94,9 +94,9 @@ export async function tmpdir<T>(options?: TmpDirOptions<T>) {
   }
   if (options?.config) {
     await Bun.write(
-      path.join(dirpath, "Arunaki.json"),
+      path.join(dirpath, "arunaki.json"),
       JSON.stringify({
-        $schema: "https://Arunaki.ai/config.json",
+        $schema: "https://arunaki.ai/config.json",
         ...options.config,
       }),
     )
@@ -153,8 +153,8 @@ export function tmpdirScoped<E = never, R = never>(options?: {
       const resolved = typeof options.config === "function" ? options.config() : options.config
       yield* Effect.promise(() =>
         fs.writeFile(
-          path.join(dir, "Arunaki.json"),
-          JSON.stringify({ $schema: "https://Arunaki.ai/config.json", ...resolved }),
+          path.join(dir, "arunaki.json"),
+          JSON.stringify({ $schema: "https://arunaki.ai/config.json", ...resolved }),
         ),
       )
     }

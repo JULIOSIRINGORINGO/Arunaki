@@ -38,10 +38,10 @@ function withProject<A, E, R>(source: string, self: Effect.Effect<A, E, R>) {
         Effect.promise(() => Bun.write(file, source)),
         Effect.promise(() =>
           Bun.write(
-            path.join(test.directory, "Arunaki.json"),
+            path.join(test.directory, "arunaki.json"),
             JSON.stringify(
               {
-                $schema: "https://Arunaki.ai/config.json",
+                $schema: "https://arunaki.ai/config.json",
                 plugin: [pathToFileURL(file).href],
               },
               null,

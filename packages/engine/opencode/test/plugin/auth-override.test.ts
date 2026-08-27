@@ -26,7 +26,7 @@ function providerAuthLayer(directory: string, plugins: string[]) {
             plugin: plugins,
             plugin_origins: plugins.map((plugin) => ({
               spec: plugin,
-              source: path.join(directory, "Arunaki.json"),
+              source: path.join(directory, "arunaki.json"),
               scope: "local" as const,
             })),
           }),

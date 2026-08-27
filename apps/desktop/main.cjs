@@ -11,10 +11,10 @@ app.commandLine.appendSwitch('disable-gpu-compositing');
 
 // Load .env manually since dotenv might not be installed
 try {
-  // Try apps/desktop/.env first, then apps/api/.env (where the backend .env lives)
+  // Try apps/desktop/.env first, then root .env
   const candidatePaths = [
     path.join(__dirname, '.env'),
-    path.join(__dirname, '..', 'api', '.env'),
+    path.join(__dirname, '..', '..', '.env'),
   ];
   for (const envPath of candidatePaths) {
     try {

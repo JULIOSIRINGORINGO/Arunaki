@@ -39,7 +39,7 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
         Existing: "value",
-        "HTTP-Referer": "https://Arunaki.ai/",
+        "HTTP-Referer": "https://arunaki.ai/",
         "X-Title": "arunaki",
         "X-BILLING-INVOKE-ORIGIN": "arunaki",
       })
@@ -62,7 +62,7 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
 
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
-        "HTTP-Referer": "https://Arunaki.ai/",
+        "HTTP-Referer": "https://arunaki.ai/",
         "X-Title": "arunaki",
         "X-BILLING-INVOKE-ORIGIN": "arunaki",
       })
@@ -88,7 +88,7 @@ describe("NvidiaPlugin", () => {
       yield* addPlugin()
 
       expect((yield* catalog.provider.get(ProviderV2.ID.make("nvidia")))?.request.headers).toEqual({
-        "HTTP-Referer": "https://Arunaki.ai/",
+        "HTTP-Referer": "https://arunaki.ai/",
         "X-Title": "arunaki",
         "X-BILLING-INVOKE-ORIGIN": "CustomOrigin",
       })

@@ -171,11 +171,11 @@ describe("Config", () => {
           yield* Effect.promise(() =>
             Promise.all([
               fs.writeFile(
-                path.join(tmp.path, "Arunaki.json"),
+                path.join(tmp.path, "arunaki.json"),
                 JSON.stringify({ $schema: "base", providers: { base: provider } }),
               ),
               fs.writeFile(
-                path.join(tmp.path, "Arunaki.jsonc"),
+                path.join(tmp.path, "arunaki.jsonc"),
                 `{
                   // Later global files override scalar fields while retaining providers.
                   "$schema": "last",
@@ -192,11 +192,11 @@ describe("Config", () => {
             expect(documents.map((document) => document.type)).toEqual(["document", "document"])
             expect(documents.map((document) => document.info.$schema)).toEqual(["base", "last"])
             expect(documents[0]).toBeInstanceOf(Config.Document)
-            expect(documents[0]?.path).toBe(path.join(tmp.path, "Arunaki.json"))
+            expect(documents[0]?.path).toBe(path.join(tmp.path, "arunaki.json"))
             expect(documents[1]?.info.providers?.last).toBeInstanceOf(ConfigProvider.Info)
 
             yield* Effect.promise(() =>
-              fs.writeFile(path.join(tmp.path, "Arunaki.jsonc"), JSON.stringify({ $schema: "changed" })),
+              fs.writeFile(path.join(tmp.path, "arunaki.jsonc"), JSON.stringify({ $schema: "changed" })),
             )
             expect(
               (yield* config.entries())
@@ -238,7 +238,7 @@ describe("Config", () => {
     ).pipe(
       Effect.flatMap((tmp) =>
         Effect.gen(function* () {
-          const file = path.join(tmp.path, "Arunaki.json")
+          const file = path.join(tmp.path, "arunaki.json")
           const contents = JSON.stringify({
             shell: "/bin/zsh",
             experimental: { policies: [{ effect: "deny", action: "provider.use", resource: "openai" }] },
@@ -273,7 +273,7 @@ describe("Config", () => {
         Effect.gen(function* () {
           yield* Effect.promise(() =>
             fs.writeFile(
-              path.join(tmp.path, "Arunaki.json"),
+              path.join(tmp.path, "arunaki.json"),
               JSON.stringify({
                 shell: "/bin/bash",
                 model: "anthropic/claude",
@@ -461,7 +461,7 @@ describe("Config", () => {
         Effect.gen(function* () {
           yield* Effect.promise(() =>
             fs.writeFile(
-              path.join(tmp.path, "Arunaki.json"),
+              path.join(tmp.path, "arunaki.json"),
               JSON.stringify({
                 reference: {
                   local: { path: "../library" },
@@ -497,7 +497,7 @@ describe("Config", () => {
         Effect.gen(function* () {
           yield* Effect.promise(() =>
             fs.writeFile(
-              path.join(tmp.path, "Arunaki.json"),
+              path.join(tmp.path, "arunaki.json"),
               JSON.stringify({
                 shell: "/bin/zsh",
                 default_agent: "reviewer",
@@ -675,8 +675,8 @@ describe("Config", () => {
         Effect.gen(function* () {
           yield* Effect.promise(() =>
             Promise.all([
-              fs.writeFile(path.join(tmp.path, "Arunaki.json"), JSON.stringify({ $schema: "base" })),
-              fs.writeFile(path.join(tmp.path, "Arunaki.jsonc"), "{ invalid"),
+              fs.writeFile(path.join(tmp.path, "arunaki.json"), JSON.stringify({ $schema: "base" })),
+              fs.writeFile(path.join(tmp.path, "arunaki.jsonc"), "{ invalid"),
             ]),
           )
           return yield* Effect.gen(function* () {
@@ -701,13 +701,13 @@ describe("Config", () => {
           yield* Effect.promise(async () => {
             await fs.mkdir(global, { recursive: true })
             await fs.writeFile(
-              path.join(global, "Arunaki.json"),
+              path.join(global, "arunaki.json"),
               JSON.stringify({
                 experimental: { policies: [{ effect: "deny", action: "provider.use", resource: "openai" }] },
               }),
             )
             await fs.writeFile(
-              path.join(tmp.path, "Arunaki.json"),
+              path.join(tmp.path, "arunaki.json"),
               JSON.stringify({
                 experimental: { policies: [{ effect: "allow", action: "provider.use", resource: "openai" }] },
               }),
@@ -741,14 +741,14 @@ describe("Config", () => {
             await fs.mkdir(path.join(root, ".Arunaki"), { recursive: true })
             await fs.mkdir(path.join(directory, ".Arunaki"), { recursive: true })
             await Promise.all([
-              fs.writeFile(path.join(tmp.path, "Arunaki.json"), JSON.stringify({ $schema: "outside" })),
-              fs.writeFile(path.join(global, "Arunaki.json"), JSON.stringify({ $schema: "global" })),
-              fs.writeFile(path.join(root, "Arunaki.json"), JSON.stringify({ $schema: "root" })),
-              fs.writeFile(path.join(parent, "Arunaki.jsonc"), JSON.stringify({ $schema: "parent" })),
-              fs.writeFile(path.join(directory, "Arunaki.json"), JSON.stringify({ $schema: "directory" })),
-              fs.writeFile(path.join(root, ".Arunaki", "Arunaki.json"), JSON.stringify({ $schema: "root-dot" })),
+              fs.writeFile(path.join(tmp.path, "arunaki.json"), JSON.stringify({ $schema: "outside" })),
+              fs.writeFile(path.join(global, "arunaki.json"), JSON.stringify({ $schema: "global" })),
+              fs.writeFile(path.join(root, "arunaki.json"), JSON.stringify({ $schema: "root" })),
+              fs.writeFile(path.join(parent, "arunaki.jsonc"), JSON.stringify({ $schema: "parent" })),
+              fs.writeFile(path.join(directory, "arunaki.json"), JSON.stringify({ $schema: "directory" })),
+              fs.writeFile(path.join(root, ".Arunaki", "arunaki.json"), JSON.stringify({ $schema: "root-dot" })),
               fs.writeFile(
-                path.join(directory, ".Arunaki", "Arunaki.jsonc"),
+                path.join(directory, ".Arunaki", "arunaki.jsonc"),
                 JSON.stringify({ $schema: "directory-dot" }),
               ),
             ])

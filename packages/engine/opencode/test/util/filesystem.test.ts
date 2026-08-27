@@ -154,20 +154,20 @@ describe("filesystem", () => {
       const nested = path.join(project, "nested")
       await fs.mkdir(nested, { recursive: true })
 
-      await fs.writeFile(path.join(tmp.path, "Arunaki.json"), "{}", "utf-8")
-      await fs.writeFile(path.join(tmp.path, "Arunaki.jsonc"), "{}", "utf-8")
-      await fs.writeFile(path.join(project, "Arunaki.json"), "{}", "utf-8")
-      await fs.writeFile(path.join(project, "Arunaki.jsonc"), "{}", "utf-8")
+      await fs.writeFile(path.join(tmp.path, "arunaki.json"), "{}", "utf-8")
+      await fs.writeFile(path.join(tmp.path, "arunaki.jsonc"), "{}", "utf-8")
+      await fs.writeFile(path.join(project, "arunaki.json"), "{}", "utf-8")
+      await fs.writeFile(path.join(project, "arunaki.jsonc"), "{}", "utf-8")
 
-      const result = await Filesystem.findUp(["Arunaki.json", "Arunaki.jsonc"], nested, tmp.path, {
+      const result = await Filesystem.findUp(["arunaki.json", "arunaki.jsonc"], nested, tmp.path, {
         rootFirst: true,
       })
 
       expect(result).toEqual([
-        path.join(tmp.path, "Arunaki.json"),
-        path.join(tmp.path, "Arunaki.jsonc"),
-        path.join(project, "Arunaki.json"),
-        path.join(project, "Arunaki.jsonc"),
+        path.join(tmp.path, "arunaki.json"),
+        path.join(tmp.path, "arunaki.jsonc"),
+        path.join(project, "arunaki.json"),
+        path.join(project, "arunaki.jsonc"),
       ])
     })
   })

@@ -137,7 +137,7 @@ export class Service extends Context.Service<Service, Interface>()("@arunaki/Con
 export const use = serviceUse(Service)
 
 function globalConfigFile() {
-  const candidates = ["Arunaki.jsonc", "Arunaki.json", "config.json"].map((file) =>
+  const candidates = ["arunaki.jsonc", "arunaki.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -229,8 +229,8 @@ const layer = Layer.effect(
 
       yield* Effect.promise(() => resolveLoadedPlugins(data, options.path))
       if (!data.$schema) {
-        data.$schema = "https://Arunaki.ai/config.json"
-        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://Arunaki.ai/config.json",')
+        data.$schema = "https://arunaki.ai/config.json"
+        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://arunaki.ai/config.json",')
         yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
       }
       return data
@@ -251,13 +251,13 @@ const layer = Layer.effect(
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs
-            .writeWithDirs(file, JSON.stringify({ $schema: "https://Arunaki.ai/config.json" }, null, 2))
+            .writeWithDirs(file, JSON.stringify({ $schema: "https://arunaki.ai/config.json" }, null, 2))
             .pipe(Effect.catch(() => Effect.void))
         }
       }
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json"), env))
-      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "Arunaki.json"), env))
-      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "Arunaki.jsonc"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "arunaki.json"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "arunaki.jsonc"), env))
 
       const legacy = path.join(Global.Path.config, "config")
       if (existsSync(legacy)) {
@@ -266,7 +266,7 @@ const layer = Layer.effect(
             .then(async (mod) => {
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
-              result["$schema"] = "https://Arunaki.ai/config.json"
+              result["$schema"] = "https://arunaki.ai/config.json"
               result = mergeConfig(result, rest)
               await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
@@ -380,7 +380,7 @@ const layer = Layer.effect(
                 })
               : {}
             const remoteConfig = mergeConfig(isRecord(wellknown.config) ? wellknown.config : {}, fetchedConfig)
-            if (!remoteConfig.$schema) remoteConfig.$schema = "https://Arunaki.ai/config.json"
+            if (!remoteConfig.$schema) remoteConfig.$schema = "https://arunaki.ai/config.json"
             const source = wellknownURL
             const next = yield* loadConfig(
               JSON.stringify(remoteConfig),
@@ -423,7 +423,7 @@ const layer = Layer.effect(
 
         for (const dir of directories) {
           if (dir.endsWith(".Arunaki") || dir === Flag.Arunaki_CONFIG_DIR) {
-            for (const file of ["Arunaki.json", "Arunaki.jsonc"]) {
+            for (const file of ["arunaki.json", "arunaki.jsonc"]) {
               const source = path.join(dir, file)
               yield* Effect.logDebug(`loading config from ${source}`)
               yield* merge(source, yield* loadFile(source, authEnv))
@@ -515,7 +515,7 @@ const layer = Layer.effect(
 
         const managedDir = ConfigManaged.managedConfigDir()
         if (existsSync(managedDir)) {
-          for (const file of ["Arunaki.json", "Arunaki.jsonc"]) {
+          for (const file of ["arunaki.json", "arunaki.jsonc"]) {
             const source = path.join(managedDir, file)
             yield* merge(source, yield* loadFile(source), "global")
           }

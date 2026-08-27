@@ -59,7 +59,7 @@ function model(input: {
     providerID: "arunaki",
     api: {
       id: "arunaki",
-      url: "https://Arunaki.ai",
+      url: "https://arunaki.ai",
       npm: "@ai-sdk/openai-compatible",
     },
     name: input.name,

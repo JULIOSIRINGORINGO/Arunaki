@@ -1209,7 +1209,7 @@ export type Config = {
     diff_style?: "auto" | "stacked"
   }
   /**
-   * Command configuration, see https://Arunaki.ai/docs/commands
+   * Command configuration, see https://arunaki.ai/docs/commands
    */
   command?: {
     [key: string]: {
@@ -1266,7 +1266,7 @@ export type Config = {
     [key: string]: AgentConfig | undefined
   }
   /**
-   * Agent configuration, see https://Arunaki.ai/docs/agent
+   * Agent configuration, see https://arunaki.ai/docs/agent
    */
   agent?: {
     plan?: AgentConfig

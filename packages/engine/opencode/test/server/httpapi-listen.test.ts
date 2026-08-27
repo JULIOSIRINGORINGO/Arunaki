@@ -323,7 +323,7 @@ describe("HttpApi Server.listen", () => {
           ].join("\n"),
         )
         await Bun.write(
-          path.join(directory, "Arunaki.json"),
+          path.join(directory, "arunaki.json"),
           JSON.stringify({ formatter: false, lsp: false, plugin: [pathToFileURL(plugin).href] }),
         )
         return { initialized, completed }

@@ -187,7 +187,7 @@ export const McpAuthCommand = effectCmd({
 
     if (servers.length === 0) {
       prompts.log.warn("No OAuth-capable MCP servers configured")
-      prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in Arunaki.json:")
+      prompts.log.info("Remote MCP servers support OAuth by default. Add a remote server in arunaki.json:")
       prompts.log.info(`
   "mcp": {
     "my-server": {
@@ -393,10 +393,10 @@ export const McpLogoutCommand = effectCmd({
 
 async function resolveConfigPath(baseDir: string, global = false) {
   // Check for existing config files (prefer .jsonc over .json, check .Arunaki/ subdirectory too)
-  const candidates = [path.join(baseDir, "Arunaki.json"), path.join(baseDir, "Arunaki.jsonc")]
+  const candidates = [path.join(baseDir, "arunaki.json"), path.join(baseDir, "arunaki.jsonc")]
 
   if (!global) {
-    candidates.push(path.join(baseDir, ".Arunaki", "Arunaki.json"), path.join(baseDir, ".Arunaki", "Arunaki.jsonc"))
+    candidates.push(path.join(baseDir, ".Arunaki", "arunaki.json"), path.join(baseDir, ".Arunaki", "arunaki.jsonc"))
   }
 
   for (const candidate of candidates) {
@@ -405,7 +405,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
     }
   }
 
-  // Default to Arunaki.json if none exist
+  // Default to arunaki.json if none exist
   return candidates[0]
 }
 
