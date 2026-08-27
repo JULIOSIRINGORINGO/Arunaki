@@ -1,5 +1,4 @@
 import yargs from "yargs"
-import { TuiThreadCommand } from "./cli/cmd/tui"
 import { InstallationVersion } from "@arunaki/core/installation/version"
 import { hideBin } from "yargs/helpers"
 const cli = yargs(hideBin(process.argv))
@@ -27,5 +26,4 @@ const cli = yargs(hideBin(process.argv))
     if (opts.printLogs) process.env.Arunaki_PRINT_LOGS = "1"
     if (opts.logLevel) process.env.Arunaki_LOG_LEVEL = opts.logLevel
   })
-  .command(TuiThreadCommand)
   .parse()

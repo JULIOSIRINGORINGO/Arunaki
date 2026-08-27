@@ -41,3 +41,10 @@ TABEL REKAPAN*.xlsm
 testing.xlsx
 testing.csv
 test_excel.csv
+
+# Engine dev-server runtime artifacts
+scripts/engine-serve.out.log
+scripts/engine-serve.err.log
+scripts/engine-serve.log.err
+scripts/engine-serve.pid
+*.pid
