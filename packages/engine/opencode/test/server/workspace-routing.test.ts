@@ -16,6 +16,10 @@ describe("isLocalWorkspaceRoute", () => {
     expect(isLocalWorkspaceRoute("POST", "/session/status")).toBe(true)
     expect(isLocalWorkspaceRoute("GET", "/config")).toBe(false)
     expect(isLocalWorkspaceRoute("POST", "/session/ses_abc/message")).toBe(true)
+    expect(isLocalWorkspaceRoute("GET", "/api/provider")).toBe(true)
+    expect(isLocalWorkspaceRoute("GET", "/api/model")).toBe(true)
+    expect(isLocalWorkspaceRoute("GET", "/api/event")).toBe(true)
+    expect(isLocalWorkspaceRoute("GET", "/console")).toBe(true)
   })
 })
 

@@ -15,7 +15,6 @@ import {
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 import { useTheme } from "../../lib/theme";
-import { API_BASE, apiFetch } from "../../lib/api";
 import { UnifiedWorkstationPage } from "../../pages/UnifiedWorkstationPage";
 import { KnowledgePage } from "../../pages/KnowledgePage";
 import { HistoryPage } from "../../pages/HistoryPage";
@@ -26,50 +25,22 @@ export function AppLayout() {
   const location = useLocation();
   const { theme, setTheme, isLight } = useTheme();
 
-  const [workspaceInfo, setWorkspaceInfo] = useState<{ id: string; name: string; rootPath: string | null } | null>(null);
+  const [activeFolder, setActiveFolder] = useState<string>(() => {
+    return localStorage.getItem("arunaki_active_folder") || "";
+  });
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const viewMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadActiveWs() {
-      const activeWsId = localStorage.getItem("arunaki_workspace_id");
-      const cachedPath = localStorage.getItem("arunaki_workspace_path");
-
-      try {
-        const res = await apiFetch(`${API_BASE}/workspaces`);
-        if (res.ok) {
-          const json = await res.json();
-          const list = json.data || [];
-          if (list.length === 0) {
-            setWorkspaceInfo(null);
-            localStorage.removeItem("arunaki_workspace_id");
-            localStorage.removeItem("arunaki_workspace_path");
-            return;
-          }
-          const current =
-            list.find((w: any) => w.id === activeWsId) ||
-            list.find((w: any) => cachedPath && w.rootPath && w.rootPath.toLowerCase() === cachedPath.toLowerCase()) ||
-            list[0];
-          if (current) {
-            setWorkspaceInfo(current);
-            localStorage.setItem("arunaki_workspace_id", current.id);
-            if (current.rootPath) {
-              localStorage.setItem("arunaki_workspace_path", current.rootPath);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load workspace in footer:", err);
-      }
+    function loadActiveFolder() {
+      setActiveFolder(localStorage.getItem("arunaki_active_folder") || "");
     }
-    loadActiveWs();
 
-    const handleWsChange = () => loadActiveWs();
-    window.addEventListener("arunaki-workspace-change", handleWsChange);
-    window.addEventListener("storage", handleWsChange);
+    window.addEventListener("arunaki-folder-change", loadActiveFolder);
+    window.addEventListener("storage", loadActiveFolder);
     return () => {
-      window.removeEventListener("arunaki-workspace-change", handleWsChange);
-      window.removeEventListener("storage", handleWsChange);
+      window.removeEventListener("arunaki-folder-change", loadActiveFolder);
+      window.removeEventListener("storage", loadActiveFolder);
     };
   }, []);
 
@@ -94,24 +65,9 @@ export function AppLayout() {
       try {
         const result = await desktop.pickFolder();
         if (result?.path) {
-          const folderPath = result.path;
-          const folderName = folderPath.split(/[\\/]/).filter(Boolean).pop() || "workspace";
-          try {
-            const res = await apiFetch(`${API_BASE}/workspaces`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: folderName, rootPath: folderPath }),
-            });
-            if (res.ok) {
-              const json = await res.json();
-              if (json.data?.id) {
-                localStorage.setItem("arunaki_workspace_id", json.data.id);
-                localStorage.setItem("arunaki_workspace_path", folderPath);
-                setWorkspaceInfo(json.data);
-                window.dispatchEvent(new Event("arunaki-workspace-change"));
-              }
-            }
-          } catch {}
+          localStorage.setItem("arunaki_active_folder", result.path);
+          setActiveFolder(result.path);
+          window.dispatchEvent(new Event("arunaki-folder-change"));
         }
       } catch (err) {
         console.error("Open folder error:", err);
@@ -135,9 +91,7 @@ export function AppLayout() {
   ];
 
   const handleNavigateWorkstation = useCallback(() => {
-    const wsId = localStorage.getItem("arunaki_workspace_id");
-    const wsChatKey = wsId ? `arunaki_active_chat_${wsId}` : "arunaki_active_chat_id";
-    const savedChatId = localStorage.getItem(wsChatKey) || localStorage.getItem("arunaki_active_chat_id") || "";
+    const savedChatId = localStorage.getItem("arunaki_active_chat_id") || "";
     if (savedChatId) {
       navigate(`/?chatId=${savedChatId}`);
     } else {
@@ -320,15 +274,15 @@ export function AppLayout() {
 
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}
       <footer className="h-12 bg-[var(--bg-header)] px-4 flex items-center justify-between shrink-0 border-t border-[var(--border-color)] transition-colors duration-150 text-xs">
-        {/* Left: Active Workspace Path Display (Read-Only Info) */}
+        {/* Left: Active Folder Display (Read-Only Info) */}
         <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[380px]">
           <div
-            title={workspaceInfo?.rootPath ? `Folder Kerja Aktif: ${workspaceInfo.rootPath}` : "Tidak ada folder aktif"}
+            title={activeFolder ? `Folder Kerja Aktif: ${activeFolder}` : "Belum ada folder aktif"}
             className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
             <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
             <span className="text-[11px] truncate text-[var(--text-primary)]">
-              {workspaceInfo?.name || (workspaceInfo?.rootPath ? workspaceInfo.rootPath.split(/[\\/]/).pop() : "Belum ada folder aktif")}
+              {activeFolder ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder : "Belum ada folder aktif"}
             </span>
           </div>
         </div>

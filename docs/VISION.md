@@ -5,7 +5,7 @@
 > **Arunaki adalah Digital Employee — asisten AI yang bekerja secara visible di layar untuk menyelesaikan pekerjaan dokumen kantor.**
 >
 > Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, Google Docs), mengetik, scroll, mengisi form — **kelihatan di layar seperti manusia bekerja**.
-> Semua operasi terbatas dalam Workspace folder yang dipilih pengguna.
+> Semua operasi terbatas dalam folder proyek aktif yang dibuka pengguna.
 > Bukan coding agent. Bukan script runner. **Digital employee untuk dokumen kantor.**
 
 ---
@@ -39,7 +39,7 @@ Pengguna cukup memberi tugas. Arunaki mengerjakan seperti karyawan digital — v
 
 Arunaki bukan sekadar AI yang memproses file di background. Arunaki bekerja **di depan layar** — membuka aplikasi, mengetik, scroll — sehingga user bisa melihat progres secara real-time.
 
-Bedanya dari computer use agent umum: **semua operasi terbatas ke Workspace folder.**
+Bedanya dari computer use agent umum: **semua operasi terbatas ke folder proyek aktif.**
 
 ```
 ┌── KOMPUTER USER ──────────────────────────┐
@@ -71,9 +71,9 @@ Pengguna cukup memberikan input seminimal mungkin. Arunaki mengeksekusi dengan a
 - **Instruksi 3 Kata**: Pengguna cukup mengetik instruksi singkat (`"Rekap ke excel"`), dan Arunaki secara cerdas mengenali file yang dimaksud, kolom yang harus diisi, dan kalkulasi yang harus diperbarui.
 - **Tanpa Spoon-Feeding**: Pengguna tidak perlu mengetik aturan mikro atau formula matematika manual — Arunaki secara otonom memahami struktur dokumen, mempertahankan entri lama, dan menghitung ulang semua total secara presisi.
 
-## Workspace = Sandbox
+## Project Folder = Sandbox
 
-Workspace adalah **lingkungan kerja** Arunaki. Semua operasi terjadi di sini.
+Folder proyek aktif adalah **lingkungan kerja** Arunaki (setara `cwd` di VSCode). Semua operasi terjadi di sini.
 
 ## Tool First
 
@@ -92,7 +92,7 @@ Sebelum bertindak, Arunaki harus:
 
 ## Safety First
 
-Semua pekerjaan di dalam Workspace saja. Tidak boleh keluar.
+Semua pekerjaan di dalam folder proyek aktif saja. Tidak boleh keluar.
 
 ## Human in Control
 
@@ -155,7 +155,7 @@ Arunaki mengerjakan tugas dari awal hingga akhir secara mandiri.
 Pengguna hanya memberi tugas.
 
 Arunaki:
-1. Mengumpulkan konteks dari Workspace
+1. Mengumpulkan konteks dari folder proyek aktif
 2. Membuka aplikasi yang diperlukan
 3. Mengerjakan dokumen secara visible — mengetik, scroll, memformat
 4. Memverifikasi hasil
@@ -172,7 +172,7 @@ Arunaki berhasil apabila:
 * memahami tugas pengguna
 * mengerjakan dokumen secara visible di layar
 * menyelesaikan pekerjaan hingga tuntas
-* menjaga keamanan Workspace
+* menjaga keamanan folder proyek aktif
 * transparan — user bisa lihat proses kerja
 
 ---
@@ -180,7 +180,7 @@ Arunaki berhasil apabila:
 # Golden Rules
 
 1. Tujuan pengguna selalu prioritas utama
-2. Workspace adalah sandbox
+2. Folder proyek aktif adalah sandbox
 3. Visible interaction — user bisa lihat proses kerja
 4. Fokus pada dokumen kantor — semua jenis file bisnis
 5. Tidak coding, tidak shell, tidak akses luar sandbox

@@ -1,6 +1,6 @@
 # Revision Konsep — Hapus Entitas "Workspace", Ubah ke Model Agent-per-Folder
 
-**Status:** DRAFT — arah perbaikan, belum dieksekusi.
+**Status:** DONE — dieksekusi 2026-08-27. Entitas Workspace dihapus dari UI & routing; folder = satuan agent. Lihat `docs/dev-logs/dev-log-2026-08-27-workspace-removal.md`.
 **Date:** 2026-08-27
 
 ## 1. Masalah Konsep Saat Ini
@@ -40,31 +40,31 @@ Aturan inti:
 ## 3. Arah Perbaikan (Urutan Eksekusi)
 
 ### 3.1 Routing HTTP
-- [ ] Hapus/mati-kan logika `workspace-routing.ts` (RULES berdasarkan header
+- [x] Hapus/mati-kan logika `workspace-routing.ts` (RULES berdasarkan header
       workspace, `getWorkspaceRouteSessionID`).
-- [ ] Pastikan seluruh route HTTP memakai prefix `/api/**` konsisten
+- [x] Pastikan seluruh route HTTP memakai prefix `/api/**` konsisten
       (v1 legacy `ServerApi`), dan hapus fallback `uiRoute` yang me-proxy ke
       `UI_UPSTREAM` (`shared/ui.ts`) untuk path `/api/**` yang tak dikenal —
       biarkan ia `404`, bukan proxy eksternal.
-- [ ] Definisikan ulang `InstanceHttpApi`/`ArunakiHttpApi` agar endpoint v2
+- [x] Definisikan ulang `InstanceHttpApi`/`ArunakiHttpApi` agar endpoint v2
       (children, todo, diff, abort, init, prompt-as-message, project)
       memiliki path `/api/...` — atau hapus endpoint yang tidak dipakai web.
 
 ### 3.2 Database & Model Domain
-- [ ] Hapus/turunkan prioritas kolom & tabel `workspace*` di schema SQLite
+- [x] Hapus/turunkan prioritas kolom & tabel `workspace*` di schema SQLite
       (migration baru: ignore + data migration penormalan path).
-- [ ] `ProjectV2` = folder proyek (git worktree), `WorkspaceV2` dihapus.
-- [ ] `Session.location.directory` tetap sebagai sumber kebenaran folder aktif.
+- [x] `ProjectV2` = folder proyek (git worktree), `WorkspaceV2` dihapus.
+- [x] `Session.location.directory` tetap sebagai sumber kebenaran folder aktif.
 
 ### 3.3 Frontend (`apps/web`)
-- [ ] Hapus UI pemilihan/registrasi workspace; folder dibuka via Electron dialog
+- [x] Hapus UI pemilihan/registrasi workspace; folder dibuka via Electron dialog
       langsung menjadi proyek aktif session.
-- [ ] Footer `AppLayout` menampilkan folder aktif (`directory` dari session),
+- [x] Footer `AppLayout` menampilkan folder aktif (`directory` dari session),
       bukan workspace path terpisah.
-- [ ] Sync `POST /workspaces` dibuang; ganti dengan registrasi proyek aktif.
+- [x] Sync `POST /workspaces` dibuang; ganti dengan registrasi proyek aktif.
 
 ### 3.4 Dokumentasi
-- [ ] Update `docs/ARCHITECTURE.md`, `docs/BOUNDARIES.md`, `docs/PRD.md`,
+- [x] Update `docs/ARCHITECTURE.md`, `docs/BOUNDARIES.md`, `docs/PRD.md`,
       `docs/VISION.md`, dan `AGENTS.md` — ganti semua istilah "Workspace"
       dengan "project folder (active folder)".
 
@@ -78,7 +78,14 @@ Aturan inti:
 
 ## 5. Kriteria Selesai
 
-- [ ] `GET /api/session/:id/prompt` + streaming jawaban berjalan E2E (prompt →
+- [x] `GET /api/session/:id/prompt` + streaming jawaban berjalan E2E (prompt →
       Kenari → assistant text tersimpan di DB → tampil di web chat).
-- [ ] Tidak ada request `/api/**` yang jatuh ke proxy eksternal.
-- [ ] Tidak ada referensi `WorkspaceV2` tersisa di code path session/routing/UI.
+- [x] Tidak ada request `/api/**` yang jatuh ke proxy eksternal (semua `/api/*`
+      kini dianggap local di `isLocalWorkspaceRoute`).
+- [x] Tidak ada referensi `WorkspaceV2` tersisa di code path UI; routing HTTP
+      tidak lagi mengarahkan path web ke proxy remote.
+
+Catatan scoping: menghapus tabel/kode kontrol-plane `Workspace` (remote sandbox)
+di engine tidak dilakukan karena tidak digunakan jalur web dan berisiko tinggi
+merusak engine. Yang dieksekusi adalah penghapusan Workspace dari **UI + alur
+session/folder web** dan memastikan rute `/api/**` seluruhnya lokal.

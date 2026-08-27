@@ -476,16 +476,17 @@ Workspace
     └── Relationship Map
 ```
 
-### 7.2 Workspace Isolation
+### 7.2 Project Folder Isolation (Agent-per-Folder)
 
-- **Independen**: Setiap Workspace adalah konteks terpisah
-- **No Cross-Reference**: Workspace A tidak dapat mengakses Workspace B tanpa izin
-- **Unique Context**: Setiap Workspace memiliki cache, index, dan history sendiri
-- **User Control**: Pengguna dapat menghapus, duplikat, atau share Workspace
+- **Agent-per-folder**: satu window/jendela = satu folder proyek aktif = satu agent session (setara `cwd` di VSCode)
+- **No entitas Workspace**: folder aktif ditentukan dari `Session.location.directory`, bukan registry workspace
+- **No Cross-Reference**: agent folder A tidak dapat mengakses file/metadata folder B tanpa izin
+- **Unique Context**: setiap folder proyek aktif memiliki cache, index, dan history sendiri
+- **User Control**: pengguna dapat membuka/berpindah folder proyek aktif dengan mudah
 
-### 7.3 Workspace Persistence
+### 7.3 Project Folder Persistence
 
-- Workspace state disimpan di local storage atau cloud
+- State folder proyek aktif disimpan di local storage
 - Chat history tersimpan untuk future reference
 - Artifacts dapat di-download atau di-share
 - Activity log memberi auditability

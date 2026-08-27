@@ -1948,6 +1948,34 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] SQLite via `@arunaki/effect-drizzle-sqlite`
 
 ### Known Limitations
-- Workspace/knowledge endpoints not yet mapped (deferred)
+- Knowledge endpoints not yet mapped (deferred)
 - Electron desktop process launcher not yet connected (deferred)
 - Guided harness, post-run, todo memory deferred
+
+---
+
+## Phase 61: Workspace Entity Removal → Agent-per-Folder (DONE)
+
+**Goal:** Hapus entitas `Workspace` dari UI + alur session/folder, ganti dengan model agent-per-folder (folder aktif = `cwd` VSCode). Semua rute `/api/**` lokal, tidak ada proxy eksternal.
+
+### 61.1 Routing HTTP
+- [x] `isLocalWorkspaceRoute` di `shared/workspace-routing.ts` kini memperlakukan semua `/api/*`, `/session/*`, `/console` sebagai rute lokal (bukan forward ke remote)
+- [x] Update unit test `test/server/workspace-routing.test.ts`
+- [x] Perbaiki `bunfig.toml` yang masih mereferensikan `@opentui/solid/preload` (paket TUI yang sudah dihapus)
+
+### 61.2 Frontend (`apps/web`) — hapus Workspace
+- [x] `UnifiedWorkstationPage` → konsep `activeFolder` (path nyata) menggantikan daftar `Workspace`; `createSession({ directory: activeFolder })` memakai path folder sebenarnya
+- [x] File tree & konten dibaca via engine `/api/file?path=` & `/api/file/content?path=`
+- [x] Chat history dibaca via engine `getMessages()` (`/api/session/:id/message`)
+- [x] `ConnectFolderModal` → pemilih folder (Electron dialog / path), tanpa daftar workspace
+- [x] `SearchSectionModal` & `HistoryPage` → `listSessions()` dari engine
+- [x] `AppLayout` footer menampilkan `arunaki_active_folder` (path), bukan workspace; `Open Folder` mengatur folder aktif tanpa `POST /workspaces`
+- [x] Hapus route `/workspace/:id` di `App.tsx`
+- [x] `WorkstationRightChat` paste-image tidak lagi memanggil legacy `/api/files/upload`
+
+### 61.3 Dokumentasi
+- [x] Update `AGENTS.md`, `docs/VISION.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/BOUNDARIES.md`
+- [x] `docs/REVISION-WORKSPACE-REMOVAL.md` ditandai DONE
+
+### Catatan Scoping
+- Tabel & kontrol-plane `Workspace` di engine (remote sandbox) TIDAK dihapus karena tidak dipakai jalur web dan berisiko tinggi; fokus pada penghapusan dari UI + routing + alur session.

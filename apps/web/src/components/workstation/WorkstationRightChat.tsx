@@ -23,7 +23,7 @@ import { LiveMirrorCard } from "./LiveMirrorCard";
 import { LiveDocumentPreview } from "./LiveDocumentPreview";
 import { cn } from "../../lib/utils";
 import { getFileIcon } from "../workspace/tree-utils";
-import { apiFetch, API_BASE } from "../../lib/api";
+import { API_BASE } from "../../lib/api";
 import { toast } from "sonner";
 
 const COMMANDS = [
@@ -616,59 +616,28 @@ function WorkstationRightChatComponent({
   };
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    if (!activeWorkspace) return;
-    
     const items = e.clipboardData.items;
     const imageItems = Array.from(items).filter(item => item.type.indexOf('image/') === 0);
-    
+
     if (imageItems.length === 0) return;
 
     for (const item of imageItems) {
       const file = item.getAsFile();
       if (!file) continue;
 
-      const toastId = toast.loading("Uploading pasted image...");
       const localPreviewUrl = URL.createObjectURL(file);
       const timestamp = new Date().getTime();
       const ext = file.type === 'image/png' ? 'png' : file.type === 'image/jpeg' ? 'jpg' : 'webp';
       const fileName = `pasted_image_${timestamp}.${ext}`;
-      
-      const renamedFile = new File([file], fileName, { type: file.type });
-      
-      const formData = new FormData();
-      formData.append('files', renamedFile);
-      formData.append('workspaceId', activeWorkspace.id);
-      formData.append('sourceName', 'Uploads');
 
-      try {
-        const res = await apiFetch(`${API_BASE}/files/upload`, {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (res.ok) {
-           const json = await res.json();
-           if (json.data && json.data.length > 0) {
-             const uploadedFile = json.data[0];
-             setAttachedImages((prev) => [
-               ...prev,
-               {
-                 id: uploadedFile.id || fileName,
-                 name: uploadedFile.name,
-                 url: localPreviewUrl,
-               },
-             ]);
-             toast.success(`Image attached: ${uploadedFile.name}`, { id: toastId });
-           } else {
-             toast.error("Failed to parse upload response", { id: toastId });
-           }
-        } else {
-           toast.error("Failed to upload image", { id: toastId });
-        }
-      } catch (err) {
-        console.error('Paste upload failed', err);
-        toast.error("Failed to upload image", { id: toastId });
-      }
+      setAttachedImages((prev) => [
+        ...prev,
+        {
+          id: fileName,
+          name: fileName,
+          url: localPreviewUrl,
+        },
+      ]);
     }
   };
 

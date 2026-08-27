@@ -39,7 +39,6 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<UnifiedWorkstationPage />} />
             <Route path="/workspace" element={<Navigate to="/" replace />} />
-            <Route path="/workspace/:id" element={<UnifiedWorkstationPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />

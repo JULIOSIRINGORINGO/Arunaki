@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, Search, MessageSquare, Loader2, Sparkles } from "lucide-react";
-import { API_BASE, apiFetch } from "../lib/api";
+import { listSessions } from "../lib/engine";
 
 interface ChatSession {
   id: string;
   title: string;
-  mode?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -20,11 +19,15 @@ export function HistoryPage() {
   useEffect(() => {
     async function fetchSessions() {
       try {
-        const res = await apiFetch(`${API_BASE}/chat`);
-        if (res.ok) {
-          const json = await res.json();
-          setSessions(json.data || []);
-        }
+        const raw = await listSessions({ limit: 50 });
+        setSessions(
+          (raw || []).map((s: any) => ({
+            id: s.id,
+            title: s.title || "",
+            createdAt: s.createdAt || "",
+            updatedAt: s.createdAt || "",
+          }))
+        );
       } catch (err) {
         console.error("Failed to fetch chat history:", err);
       } finally {
@@ -76,7 +79,7 @@ export function HistoryPage() {
             Chat History
           </h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            View and resume previous conversations and workspace sessions
+            View and resume previous conversations and sessions
           </p>
         </div>
 
@@ -110,7 +113,7 @@ export function HistoryPage() {
             </div>
             <p className="text-xs font-medium text-[var(--text-primary)] mb-1">No Chat History Yet</p>
             <p className="text-[11px] text-[var(--text-muted)] max-w-[260px]">
-              Your conversations and workspace interactions will appear here automatically.
+              Your conversations and project folder sessions will appear here automatically.
             </p>
           </div>
         ) : (

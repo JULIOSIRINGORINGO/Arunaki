@@ -4,7 +4,6 @@ import FileTree from "../workspace/FileTree";
 import { NativeNode } from "../workspace/tree-utils";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
-import { API_BASE, apiFetch } from "../../lib/api";
 
 const flattenFileNames = (nodes: NativeNode[]): string[] => {
   const out: string[] = [];
@@ -208,17 +207,7 @@ function WorkstationLeftExplorerComponent({
           toast.error(`Create file failed: ${err.message}`);
         }
       } else {
-        try {
-          const res = await apiFetch(`${API_BASE}/workspaces/${activeWorkspace.id}/files`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: cleanName, content: "" }),
-          });
-          if (res.ok) {
-            toast.success(`Created file "${cleanName}"`);
-            handleRefresh();
-          }
-        } catch {}
+        toast.info("File creation requires the desktop app");
       }
     },
     [activeWorkspace, handleRefresh, onOpenFileTab]

@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, MessageSquare, Clock, X, Bot } from "lucide-react";
+import { Search, MessageSquare, Clock, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { API_BASE, apiFetch } from "../../lib/api";
+import { listSessions } from "../../lib/engine";
 
 interface ChatSession {
   id: string;
   title: string | null;
-  mode: string;
-  workspaceId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -16,14 +14,12 @@ interface SearchSectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSession: (chatId: string) => void;
-  workspaceId?: string | null;
 }
 
 export function SearchSectionModal({
   isOpen,
   onClose,
   onSelectSession,
-  workspaceId,
 }: SearchSectionModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -38,14 +34,19 @@ export function SearchSectionModal({
   }, [isOpen, onClose]);
 
   const { data: sessions = [], isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["chat-sessions-search-section", workspaceId],
+    queryKey: ["chat-sessions-search-section"],
     queryFn: async () => {
-      const url = workspaceId
-        ? `${API_BASE}/chat/workspace/${workspaceId}`
-        : `${API_BASE}/chat`;
-      const response = await apiFetch(url);
-      const json = await response.json();
-      return json.data || [];
+      try {
+        const data = await listSessions({ limit: 50 });
+        return (data || []).map((s: any) => ({
+          id: s.id,
+          title: s.title || "",
+          createdAt: s.createdAt || "",
+          updatedAt: s.createdAt || s.updatedAt || "",
+        }));
+      } catch {
+        return [];
+      }
     },
     enabled: isOpen,
   });
@@ -102,7 +103,6 @@ export function SearchSectionModal({
           ) : (
             filteredSessions.map((session) => {
               const displayTitle = session.title || "New Conversation";
-              const isWorkspace = session.mode === "workspace";
               const dateStr = session.updatedAt
                 ? new Date(session.updatedAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -123,11 +123,7 @@ export function SearchSectionModal({
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-3">
                     <div className="w-7 h-7 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 group-hover:bg-[var(--bg-card)] transition-colors">
-                      {isWorkspace ? (
-                        <Bot className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
-                      ) : (
-                        <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
-                      )}
+                      <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[var(--text-primary)] truncate transition-colors">
@@ -139,10 +135,6 @@ export function SearchSectionModal({
                       </p>
                     </div>
                   </div>
-
-                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono shrink-0 border bg-[var(--bg-panel)] text-[var(--text-muted)] border-[var(--border-color)] group-hover:text-[var(--text-primary)] group-hover:border-[var(--border-strong)] transition-colors">
-                    {isWorkspace ? "Workspace" : "Chat"}
-                  </span>
                 </button>
               );
             })

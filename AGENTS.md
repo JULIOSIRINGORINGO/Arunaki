@@ -22,14 +22,17 @@ When reverse-engineering or borrowing ideas from other projects (OpenClaw, etc.)
 - Pengguna cukup mengetik instruksi 3 kata (contoh: `"Rekap ke excel"`), dan Arunaki secara cerdas memahami file mana yang harus dibuka, kolom mana yang harus diisi, dan total mana yang harus dihitung ulang.
 - Jangan pernah memaksa pengguna mengetik instruksi panjang, aturan layout buatan, atau formula matematika manual — biarkan LLM Arunaki mengolahnya secara otonom.
 
-## Workspace Isolation (CRITICAL)
+## Project Folder Isolation (CRITICAL)
 
-**Agent only accesses the workspace folder. NOT the entire computer.**
+**Agent only accesses the active project folder. NOT the entire computer.**
 
-- Workspace = a dedicated folder the user selects for their business files
-- Agent CANNOT read files outside the workspace (no OS files, no user documents, no source code)
+Tidak ada entitas `Workspace`. Modelnya adalah **agent-per-folder** (setara `cwd` di VSCode):
+satu window/jendela = satu folder proyek aktif = satu agent session.
+
+- Folder aktif ditentukan dari path session/request (`Session.location.directory`), bukan registry workspace.
+- Agent CANNOT read files outside the active folder (no OS files, no user documents, no source code)
 - Agent CANNOT execute system commands or install software
-- Agent CANNOT modify original files in the workspace
+- Agent CANNOT modify original files in the folder
 - See `docs/BOUNDARIES.md` for complete scope definition
 
 ---
@@ -89,7 +92,7 @@ These rules from ARCHITECTURE.md and INTELLIGENCE.md are non-negotiable and appl
 - **Module boundaries** — respect the responsibility table in ARCHITECTURE.md Section 3. Do not put business logic in the Frontend, and do not let AI Engine access Storage or the Database directly — always go through the appropriate Service.
 - **Repository Pattern** — never call Prisma Client directly from business logic; always go through a Repository interface.
 - **Provider Abstraction** — introduce new technologies (search engines, AI providers, storage backends) only behind an existing or new abstraction layer, never hardcoded.
-- **Workspace Isolation** — never allow one Workspace to read another Workspace's files, metadata, or artifacts.
+- **Project Folder Isolation** — an agent only ever reads the one active project folder it is bound to (`Session.location.directory`); never allow an agent to read another project's files, metadata, or artifacts.
 - **Transparency** — for any multi-step or long-running task, make the steps being taken visible (progress status, logs, or equivalent), not just the final result.
 
 If a requested task appears to require violating any of the above, treat it as a conflict (see previous section) — do not proceed and reinterpret the request to make it "technically compliant."

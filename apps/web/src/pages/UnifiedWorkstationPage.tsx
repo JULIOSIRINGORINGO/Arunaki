@@ -8,12 +8,13 @@ import { WorkstationRightChat } from "../components/workstation/WorkstationRight
 import { ConnectFolderModal } from "../components/workstation/ConnectFolderModal";
 import { SearchSectionModal } from "../components/workstation/SearchSectionModal";
 import { LiveStatusData, StepItem } from "../components/workstation/LiveExecutionBadge";
-import { API_BASE, apiFetch } from "../lib/api";
 import {
   createSession,
   sendPrompt,
   subscribeEvents,
   mapEngineEvent,
+  engineFetch,
+  getMessages,
 } from "../lib/engine";
 
 interface Message {
@@ -32,13 +33,6 @@ interface WorkspaceFile {
   path: string;
   type: string;
   size: number;
-}
-
-interface Workspace {
-  id: string;
-  name: string;
-  rootPath: string | null;
-  status: string;
 }
 
 export interface CanvasItem {
@@ -100,34 +94,77 @@ function extractCanvasContent(llmText: string): string {
   return "";
 }
 
+// Map engine session messages (/api/session/:id/message) into the chat Message shape.
+function mapEngineMessages(raw: any[]): Message[] {
+  return raw.map((msg, idx) => {
+    const role: "user" | "assistant" = msg.role === "user" ? "user" : "assistant";
+    let content = "";
+    if (typeof msg.content === "string") {
+      content = msg.content;
+    } else if (Array.isArray(msg.parts)) {
+      content = msg.parts
+        .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))
+        .join("");
+    }
+    return {
+      id: msg.id || `${role}-${idx}-${Date.now()}`,
+      role,
+      content,
+      createdAt: msg.createdAt || msg.time?.created || undefined,
+    };
+  });
+}
+
 export function UnifiedWorkstationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const urlChatId = searchParams.get("chatId") || "";
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(() => {
-    return localStorage.getItem("arunaki_workspace_id");
+
+  // Active folder: the single project folder the agent operates in (like cwd in VSCode).
+  // No Workspace entity — the folder path IS the unit.
+  const [activeFolder, setActiveFolder] = useState<string>(() => {
+    return (
+      searchParams.get("folder") ||
+      localStorage.getItem("arunaki_active_folder") ||
+      ""
+    );
   });
 
+  const activeFolderName = useMemo(() => {
+    if (!activeFolder) return "";
+    return activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder;
+  }, [activeFolder]);
+
+  // Components still expect an "activeWorkspace" shape; map the active folder onto it.
+  const activeWorkspace = useMemo(
+    () =>
+      activeFolder
+        ? { id: "active-folder", name: activeFolderName, rootPath: activeFolder, status: "ready" }
+        : null,
+    [activeFolder, activeFolderName]
+  );
+
   const [activeChatId, setActiveChatId] = useState<string>(() => {
-    const wsId = localStorage.getItem("arunaki_workspace_id");
-    const wsChatKey = wsId ? `arunaki_active_chat_${wsId}` : "arunaki_active_chat_id";
     return (
       urlChatId ||
-      localStorage.getItem(wsChatKey) ||
       localStorage.getItem("arunaki_active_chat_id") ||
       ""
     );
   });
+
+  // Persist active folder whenever it changes
+  useEffect(() => {
+    if (activeFolder) {
+      localStorage.setItem("arunaki_active_folder", activeFolder);
+    }
+  }, [activeFolder]);
 
   // Sync activeChatId with URL and localStorage
   useEffect(() => {
     if (urlChatId && urlChatId !== activeChatId) {
       setActiveChatId(urlChatId);
       localStorage.setItem("arunaki_active_chat_id", urlChatId);
-      if (selectedWorkspaceId) {
-        localStorage.setItem(`arunaki_active_chat_${selectedWorkspaceId}`, urlChatId);
-      }
     } else if (!urlChatId && activeChatId) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -135,22 +172,7 @@ export function UnifiedWorkstationPage() {
         return next;
       }, { replace: true });
     }
-  }, [urlChatId, activeChatId, selectedWorkspaceId, setSearchParams]);
-
-  // When workspace changes and no active chat is loaded, attempt to restore workspace's previous chat
-  useEffect(() => {
-    if (!selectedWorkspaceId) return;
-    const wsChatKey = `arunaki_active_chat_${selectedWorkspaceId}`;
-    const savedForWs = localStorage.getItem(wsChatKey);
-    if (savedForWs && savedForWs !== activeChatId) {
-      setActiveChatId(savedForWs);
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("chatId", savedForWs);
-        return next;
-      }, { replace: true });
-    }
-  }, [selectedWorkspaceId, activeChatId, setSearchParams]);
+  }, [urlChatId, activeChatId, setSearchParams]);
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -217,122 +239,49 @@ export function UnifiedWorkstationPage() {
     []
   );
 
-  // 1. Fetch Workspaces
-  const { data: workspaces = [], refetch: refetchWorkspaces } = useQuery<Workspace[]>({
-    queryKey: ["workspaces"],
-    queryFn: async () => {
-      const response = await apiFetch(`${API_BASE}/workspaces`);
-      const json = await response.json();
-      return json.data || [];
-    },
-  });
-
-  const activeWorkspace = useMemo(() => {
-    const match = workspaces.find((w) => w.id === selectedWorkspaceId);
-    if (match) return match;
-    const cachedPath = localStorage.getItem("arunaki_workspace_path");
-    if (cachedPath) {
-      const cachedName = cachedPath.split(/[\\/]/).filter(Boolean).pop() || "Workspace";
-      return {
-        id: selectedWorkspaceId || "current-ws",
-        name: cachedName,
-        rootPath: cachedPath,
-        status: "ready",
-      };
-    }
-    return workspaces[0] || null;
-  }, [workspaces, selectedWorkspaceId]);
-
   const openFolderParam = searchParams.get("openFolder");
-  const wsIdParam = searchParams.get("wsId");
+
+  // Open a folder (from Electron dialog or URL param) → becomes the active project folder.
+  const openFolder = useCallback((folderPath: string) => {
+    setActiveFolder(folderPath);
+    setActiveChatId("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("folder", folderPath);
+      return next;
+    }, { replace: true });
+    window.dispatchEvent(new Event("arunaki-folder-change"));
+  }, [setActiveFolder, setSearchParams]);
 
   useEffect(() => {
-    const handleWorkspaceChange = () => {
-      const currentWsId = localStorage.getItem("arunaki_workspace_id");
-      if (currentWsId && currentWsId !== selectedWorkspaceId) {
-        setSelectedWorkspaceId(currentWsId);
-      }
-      refetchWorkspaces();
-    };
-
-    window.addEventListener("arunaki-workspace-change", handleWorkspaceChange);
-    return () => {
-      window.removeEventListener("arunaki-workspace-change", handleWorkspaceChange);
-    };
-  }, [selectedWorkspaceId, refetchWorkspaces]);
-
-  useEffect(() => {
-    if (wsIdParam && wsIdParam !== selectedWorkspaceId) {
-      setSelectedWorkspaceId(wsIdParam);
-      localStorage.setItem("arunaki_workspace_id", wsIdParam);
-      refetchWorkspaces();
+    if (openFolderParam && openFolderParam !== activeFolder) {
+      openFolder(openFolderParam);
     }
-  }, [wsIdParam, selectedWorkspaceId, refetchWorkspaces]);
+  }, [openFolderParam, activeFolder, openFolder]);
 
-  useEffect(() => {
-    async function syncOpenFolder() {
-      if (openFolderParam) {
-        const folderName = openFolderParam.split(/[\\/]/).filter(Boolean).pop() || "workspace";
-        try {
-          const res = await apiFetch(`${API_BASE}/workspaces`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: folderName,
-              rootPath: openFolderParam,
-              businessType: "generic",
-            }),
-          });
-          const json = await res.json();
-          if (json.data?.id) {
-            setSelectedWorkspaceId(json.data.id);
-            localStorage.setItem("arunaki_workspace_id", json.data.id);
-            localStorage.setItem("arunaki_workspace_path", openFolderParam);
-            refetchWorkspaces();
-          }
-        } catch (err) {
-          console.error("Failed to connect folder from param:", err);
-        }
-      }
-    }
-    syncOpenFolder();
-  }, [openFolderParam, refetchWorkspaces]);
-
-  useEffect(() => {
-    if (workspaces.length > 0) {
-      const match = workspaces.find((w) => w.id === selectedWorkspaceId);
-      if (!match) {
-        const first = workspaces[0];
-        setSelectedWorkspaceId(first.id);
-        localStorage.setItem("arunaki_workspace_id", first.id);
-        if (first.rootPath) {
-          localStorage.setItem("arunaki_workspace_path", first.rootPath);
-        }
-      } else if (match.rootPath) {
-        localStorage.setItem("arunaki_workspace_path", match.rootPath);
-      }
-    }
-  }, [workspaces, selectedWorkspaceId]);
-
-  // 2. Fetch Workspace Files
+  // 1. List files of the active folder via engine /api/file
   const { data: workspaceFiles = [], refetch: refetchFiles } = useQuery<WorkspaceFile[]>({
-    queryKey: ["workspace-files", selectedWorkspaceId],
+    queryKey: ["folder-files", activeFolder],
     queryFn: async () => {
-      if (!selectedWorkspaceId) return [];
+      if (!activeFolder) return [];
       try {
-        const response = await apiFetch(`${API_BASE}/files/workspace/${selectedWorkspaceId}`);
-        const json = await response.json();
-        if (Array.isArray(json.data) && json.data.length > 0) return json.data;
-      } catch {}
-      try {
-        const response = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
-        const json = await response.json();
-        return json.data || [];
+        const res = await engineFetch(`/api/file?directory=${encodeURIComponent(activeFolder)}&path=${encodeURIComponent(activeFolder)}`);
+        const json = await res.json();
+        const entries: Array<{ name: string; path: string; type: string }> = json.data || json || [];
+        return entries
+          .filter((e) => e && e.type !== "directory")
+          .map((e) => ({
+            id: e.path,
+            name: e.name,
+            path: e.path,
+            type: "file",
+            size: 0,
+          }));
       } catch {
         return [];
       }
     },
-    enabled: !!selectedWorkspaceId,
+    enabled: !!activeFolder,
   });
 
   const mentionFiles = useMemo(
@@ -343,14 +292,17 @@ export function UnifiedWorkstationPage() {
     [workspaceFiles, nativeFileNames]
   );
 
-  // 3. Fetch Chat Messages
+  // 3. Fetch Chat Messages from engine
   const { data: chatMessages = [] } = useQuery<Message[]>({
     queryKey: ["chat-messages", activeChatId],
     queryFn: async () => {
       if (!activeChatId) return [];
-      const response = await apiFetch(`${API_BASE}/chat/${activeChatId}/messages`);
-      const json = await response.json();
-      return json.data || [];
+      try {
+        const raw = await getMessages(activeChatId);
+        return mapEngineMessages(raw || []);
+      } catch {
+        return [];
+      }
     },
     enabled: !!activeChatId,
   });
@@ -413,22 +365,11 @@ export function UnifiedWorkstationPage() {
     setActiveTabId(canvasTabId);
   }, []);
 
-  const handleSelectWorkspace = useCallback((wsId: string | null) => {
-    setSelectedWorkspaceId(wsId);
-    if (wsId) {
-      localStorage.setItem("arunaki_workspace_id", wsId);
-    } else {
-      localStorage.removeItem("arunaki_workspace_id");
-      localStorage.removeItem("arunaki_workspace_path");
-    }
-    window.dispatchEvent(new Event("arunaki-workspace-change"));
-  }, []);
-
   useEffect(() => {
     if (!isStreaming) {
       setOptimisticMessages([]);
     }
-  }, [selectedWorkspaceId, activeChatId, isStreaming]);
+  }, [activeFolder, activeChatId, isStreaming]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -448,12 +389,11 @@ export function UnifiedWorkstationPage() {
       try {
         let fileContent = content || "";
         if (!fileContent) {
-          const targetFile = workspaceFiles.find((f) => f.name === fileName || f.path === filePath);
-          if (targetFile?.id) {
-            const response = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
-            const json = await response.json();
-            fileContent = json.data?.content || json.data || "A few lines of document content...";
-          }
+          const res = await engineFetch(`/api/file/content?directory=${encodeURIComponent(activeFolder || "")}&path=${encodeURIComponent(filePath)}`);
+          const json = await res.json();
+          fileContent =
+            json.data?.content ||
+            (typeof json.data === "string" ? json.data : "");
         }
 
         const newTab: CenterTab = {
@@ -471,7 +411,7 @@ export function UnifiedWorkstationPage() {
         toast.error(`Failed to read file ${fileName}`);
       }
     },
-    [tabs, workspaceFiles]
+    [tabs, activeFolder]
   );
 
   const handleCloseTab = useCallback(
@@ -488,31 +428,20 @@ export function UnifiedWorkstationPage() {
   );
 
   const reloadOpenTabsContent = useCallback(async () => {
-    if (!selectedWorkspaceId) return;
+    if (!activeFolder) return;
     try {
-      let latestFiles: WorkspaceFile[] = [];
-      try {
-        const res = await apiFetch(`${API_BASE}/files/workspace/${selectedWorkspaceId}`);
-        const json = await res.json();
-        latestFiles = json.data || [];
-      } catch {
-        const res = await apiFetch(`${API_BASE}/workspaces/${selectedWorkspaceId}/files`);
-        const json = await res.json();
-        latestFiles = json.data || [];
-      }
-
       setTabs((currentTabs) => {
         const fileTabs = currentTabs.filter((t) => t.type === "file");
         if (fileTabs.length === 0) return currentTabs;
 
         Promise.all(
           fileTabs.map(async (tab) => {
-            const targetFile = latestFiles.find(
-              (f) => f.name === tab.title || f.path === tab.path || tab.id.includes(f.name)
-            );
-            if (!targetFile?.id) return null;
+            if (!tab.path && !tab.title) return null;
+            const filePath = tab.path || tab.title;
             try {
-              const contentRes = await apiFetch(`${API_BASE}/files/${targetFile.id}/content`);
+              const contentRes = await engineFetch(
+                `/api/file/content?directory=${encodeURIComponent(activeFolder)}&path=${encodeURIComponent(filePath)}`
+              );
               const contentJson = await contentRes.json();
               const freshContent =
                 typeof contentJson.data?.content === "string"
@@ -541,7 +470,7 @@ export function UnifiedWorkstationPage() {
         return currentTabs;
       });
     } catch {}
-  }, [selectedWorkspaceId]);
+  }, [activeFolder]);
 
   // Real-time live file polling while streaming SSE is active (REMOVED: we now rely strictly on SSE events to trigger re-fetches to avoid DDOSing our own backend)
 
@@ -567,9 +496,6 @@ export function UnifiedWorkstationPage() {
   const handleNewChat = useCallback(() => {
     setActiveChatId("");
     localStorage.removeItem("arunaki_active_chat_id");
-    if (selectedWorkspaceId) {
-      localStorage.removeItem(`arunaki_active_chat_${selectedWorkspaceId}`);
-    }
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete("chatId");
@@ -578,7 +504,7 @@ export function UnifiedWorkstationPage() {
     setOptimisticMessages([]);
     setLiveStatus(null);
     toast.info("New conversation session ready");
-  }, [selectedWorkspaceId, setSearchParams]);
+  }, [setSearchParams]);
 
   const handleCancelStream = useCallback(() => {
     if (abortControllerRef.current) {
@@ -626,13 +552,13 @@ export function UnifiedWorkstationPage() {
     if (!chatIdToUse) {
       try {
         const session = await createSession({
-          directory: selectedWorkspaceId || undefined,
+          directory: activeFolder || undefined,
         });
         chatIdToUse = session.id;
         setActiveChatId(chatIdToUse);
         localStorage.setItem("arunaki_active_chat_id", chatIdToUse);
-        if (selectedWorkspaceId) {
-          localStorage.setItem(`arunaki_active_chat_${selectedWorkspaceId}`, chatIdToUse);
+        if (activeFolder) {
+          localStorage.setItem("arunaki_active_folder", activeFolder);
         }
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
@@ -926,16 +852,13 @@ export function UnifiedWorkstationPage() {
       <ConnectFolderModal
         isOpen={showFolderModal}
         onClose={() => setShowFolderModal(false)}
-        workspaces={workspaces}
-        onSelectWorkspace={handleSelectWorkspace}
-        onRefreshWorkspaces={refetchWorkspaces}
+        onOpenFolder={openFolder}
       />
 
       <SearchSectionModal
         isOpen={showSearchSectionModal}
         onClose={() => setShowSearchSectionModal(false)}
         onSelectSession={(chatId) => setSearchParams({ chatId })}
-        workspaceId={selectedWorkspaceId}
       />
     </div>
   );

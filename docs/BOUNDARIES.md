@@ -99,7 +99,7 @@ Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, 
 
 ---
 
-## 4. Workspace Isolation — SANDBOX
+## 4. Project Folder Isolation — SANDBOX
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -109,7 +109,7 @@ Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, 
 │  C:\Windows\...          ← DILARANG           │
 │  Registry, Services      ← DILARANG           │
 │                                               │
-│  ┌── WORKSPACE (SANDBOX) ─────────────────┐  │
+│  ┌── PROJECT FOLDER (ACTIVE FOLDER) ──────┐  │
 │  │                                         │  │
 │  │  🌐 Visible Interaction:               │  │
 │  │     ├ Buka Excel/Word/PPT (desktop)    │  │
@@ -136,7 +136,7 @@ Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, 
 
 ## 5. Alasan Batasan Ini
 
-1. **Keamanan** — Tidak boleh akses data sensitif di luar workspace
+1. **Keamanan** — Tidak boleh akses data sensitif di luar folder proyek aktif
 2. **Fokus** — Arunaki = digital employee untuk DOKUMEN, bukan general-purpose
 3. **Transparansi** — User bisa lihat langsung proses kerja
 4. **Trust** — User percaya karena tahu batasannya jelas
@@ -149,10 +149,10 @@ Seperti karyawan tambahan, Arunaki bisa membuka aplikasi (Excel, Word, browser, 
 Sebelum mengimplementasi fitur baru, tanyakan:
 
 - [ ] Apakah fitur ini berhubungan dengan dokumen kantor?
-- [ ] Apakah fitur ini hanya beroperasi di dalam workspace folder?
+- [ ] Apakah fitur ini hanya beroperasi di dalam folder proyek aktif?
 - [ ] Apakah fitur ini visible/transparan ke user?
 - [ ] Apakah fitur ini bisa diakses dari Web UI?
-- [ ] Apakah fitur ini TIDAK mengakses file di luar workspace?
+- [ ] Apakah fitur ini TIDAK mengakses file di luar folder proyek aktif?
 - [ ] Apakah fitur ini TIDAK menulis kode program?
 - [ ] Apakah fitur ini memiliki approval gate untuk aksi berisiko?
 

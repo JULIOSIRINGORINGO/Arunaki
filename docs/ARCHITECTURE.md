@@ -249,8 +249,8 @@ Karena Backend berbentuk Modular Monolith dengan NestJS, endpoint tetap harus me
 
 Karena V1 bersifat Local First (bukan multi-tenant cloud), prioritas keamanan berbeda dari arsitektur cloud biasa, tapi tetap wajib ada:
 
-- **Workspace Isolation** — satu Workspace tidak boleh membaca file/metadata Workspace lain, walau berjalan di mesin yang sama.
-- **Path Traversal Protection** — Storage Service wajib memvalidasi path agar tidak bisa keluar dari folder Workspace/Source yang diizinkan.
+- **Project Folder Isolation** — satu agent hanya membaca folder proyek aktifnya (`Session.location.directory`); tidak boleh membaca file/metadata folder proyek lain, walau berjalan di mesin yang sama.
+- **Path Traversal Protection** — Storage Service wajib memvalidasi path agar tidak bisa keluar dari folder proyek aktif yang diizinkan.
 - **Local Access Control** — jika suatu saat backend diakses lebih dari satu proses/user di satu mesin, tetap perlu autentikasi dasar (mis. token lokal), jangan asumsikan "local = aman".
 - **AI Provider Key Handling** — API key untuk OpenAI-compatible provider tidak boleh dikirim ke Frontend dalam bentuk apa pun; hanya Backend yang menyimpan dan memakainya.
 - **Audit Trail Minimal** — setiap aksi yang mengubah/menghapus data pengguna (Section 11) dicatat: aksi apa, kapan, oleh siapa (kalaupun user tunggal, tetap berguna untuk undo/debug).
