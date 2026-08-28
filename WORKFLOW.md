@@ -2037,3 +2037,13 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 ### Ajaran
 - Bentuk engine yang TEPAT untuk pesan: `{type:"user"|"assistant", content:[{type:"text",text}]}` — dokumentasikan di sini karena tersebar asumsi lama di UI.
 - Mapping SSE `mapEngineEvents` memakai nama `session.next.*` yang masih valid di schema engine.
+
+## Phase 61.9: MASTER PROMPT — Single Harness Consolidation Plan (DONE - dokumen)
+
+**Goal:** Penuhi deliverable MASTER PROMPT Modul 1-3 (mapping jalur/modul, target structure & data flow, step-by-step plan). Fokus 100% konsolidasi harness; .exe di-defer.
+
+- [x] **Deliverable 1 - Mapping** \u2014 topologi saat ini (Electron \u2192 Vite :5173 \u2192 HTTP :4096 \u2192 engine \u2192 LLM), modul + boundary, dan daftar bridge yang diputus: (1) local HTTP :4096 runtime UI\u2194Engine, (2) Vite proxy, (3) WS ws://127.0.0.1:31524 dead (apps/api dihapus), (4) serve-only.ts (transisi dev).
+- [x] **Deliverable 2 - Target Structure** \u2014 single harness satu-proses; UI dist dibangun; engine diakses in-process via \Server.Default().app\/webHandler (server.ts:56, httpapi/server.ts:317) tanpa port TCP; native OS bridge (COM office via arunakiDesktop) = satu-satunya jembatan keluar yang sah.
+- [x] **Deliverable 3 - Step-by-Step** \u2014 6 langkah: buang WS dead, putuskan transport in-process (ADR), embed UI apps/web ke engine bundle, rakit modul Electron engine in-process, matikan jalur dev lama + verifikasi, .exe di-defer.
+- [x] **Temuan kunci** \u2014 \script/build.ts:27-30\ (\createEmbeddedWebUIBundle\) membangun \packages/engine/app\ (web asli OpenCode), BUKAN \pps/web\ \u2192 perlu perbaikan saat embedding UI produk.
+- [ ] **Keputusan tim dibutuhkan** \u2014 (1) definisi "hilangkan local HTTP": zero-TCP vs loopback transisi; (2) UI resmi = apps/web; (3) native COM bridge tetap sah. Lihat docs/MASTER-HARNESS-PLAN.md.
