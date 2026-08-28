@@ -19,7 +19,6 @@ import { Plugin } from "../plugin"
 import { MAX_STEPS_PROMPT } from "@arunaki/core/session/runner/max-steps"
 import { ToolRegistry } from "@/tool/registry"
 import { MCP } from "../mcp"
-import { LSP } from "@/lsp/lsp"
 import { ulid } from "ulid"
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 import { CrossSpawnSpawner } from "@arunaki/core/cross-spawn-spawner"
@@ -125,7 +124,6 @@ const layer = Layer.effect(
     const permission = yield* Permission.Service
     const fsys = yield* FSUtil.Service
     const mcp = yield* MCP.Service
-    const lsp = yield* LSP.Service
     const registry = yield* ToolRegistry.Service
     const truncate = yield* Truncate.Service
     const image = yield* Image.Service
@@ -832,22 +830,8 @@ const layer = Layer.effect(
                 let limit: number | undefined
                 const range = { start: url.searchParams.get("start"), end: url.searchParams.get("end") }
                 if (range.start != null) {
-                  const filePathURI = part.url.split("?")[0]
                   let start = parseInt(range.start)
                   let end = range.end ? parseInt(range.end) : undefined
-                  if (start === end) {
-                    const symbols = yield* lsp.documentSymbol(filePathURI).pipe(Effect.catch(() => Effect.succeed([])))
-                    for (const symbol of symbols) {
-                      let r: LSP.Range | undefined
-                      if ("range" in symbol) r = symbol.range
-                      else if ("location" in symbol) r = symbol.location.range
-                      if (r?.start?.line && r?.start?.line === start) {
-                        start = r.start.line
-                        end = r?.end?.line ?? start
-                        break
-                      }
-                    }
-                  }
                   offset = Math.max(start, 1)
                   if (end) limit = end - (offset - 1)
                 }
@@ -1611,7 +1595,6 @@ export const node = LayerNode.make({
     Permission.node,
     FSUtil.node,
     MCP.node,
-    LSP.node,
     ToolRegistry.node,
     Truncate.node,
     Image.node,

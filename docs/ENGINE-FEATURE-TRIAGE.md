@@ -37,7 +37,7 @@
 | `truncate` / `truncation-dir` | `truncate.ts` | ✅ KEEP | Manajemen konteks |
 | `external-directory` | `external-directory.ts` | ✅ KEEP | Batas keamanan: hanya operasi dalam sandbox |
 | `invalid`, `json-schema`, `schema` | `invalid.ts`, dll. | ✅ KEEP | Infrastruktur tool |
-| `lsp` | `lsp.ts` | 🗑️ REMOVE | Fitur IDE (go-to-def, symbol) — non-coding |
+| `lsp` | `lsp.ts` | ✅ REMOVE 2026-08-28 | Fitur IDE (go-to-def, symbol) — non-coding. **SELESAI:** `src/tool/lsp.ts` + endpoint `/lsp`, `/find/symbol`, flags `disableLspDownload`/`experimentalLspTy`/`experimentalLspTool`, perm `lsp` dihapus; test ikut terhapus |
 | `code-mode` | `code-mode.ts` | ❓ DECIDE | Eksekusi script terportal + MCP; serupa scripting — kemungkinan REMOVE (rekomendasi) |
 | `plan` / `plan_exit` | `plan.ts` | ❓ DECIDE | Mode rencana ala coding assistant; Arunaki punya "Think Before Act" — apakah reuse atau REMOVE? (rekomendasi KEEP) |
 | `mcp-websearch` | `mcp-websearch.ts` | ❓ DECIDE | Websearch via MCP server eksternal — butuh MCP aktif |
@@ -66,10 +66,10 @@
 | `skill` | `skill/` | ✅ KEEP | Skills/ARUNAKI system prompt (Phase 49) |
 | `background` | `background/` | ❓ DECIDE | Background jobs (auto-annotate dll) — GERAKAN penyedot sumber daya; cek pemakaian |
 | `image`, `format`, `share`, `sync` | — | ❓ DECIDE |
-| `lsp` | `lsp/` | 🗑️ REMOVE | Bagian dari fitur IDE — hapus bersama tool lsp |
-| `ide` | `ide/` | 🗑️ REMOVE | Integrasi VSCode — bukan IDE |
+| `lsp` | `lsp/` | ✅ REMOVE 2026-08-28 | Bagian dari fitur IDE — hapus bersama tool lsp. **SELESAI:** seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server) dihapus; `toolFiletype` di-inline ke `run/tool.ts` |
+| `ide` | `ide/` | ✅ REMOVE 2026-08-28 | Integrasi VSCode — bukan IDE. **SELESAI:** `src/ide/` + `test/ide/` dihapus, ikut CLI `acp`/`attach`/`github`/`pr` |
 | `worktree` | `worktree/` | 🗑️ REMOVE | Git worktree (coding) |
-| `acp` | `acp/` | 🗑️ REMOVE | Agent Client Protocol — client eksternal |
+| `acp` | `acp/` | ✅ REMOVE 2026-08-28 | Agent Client Protocol — client eksternal. **SELESAI:** `src/acp/`, `src/cli/cmd/acp.ts`, `test/acp/`, `test/cli/acp/` dihapus |
 | `control-plane` | `control-plane/` | 🗑️ REMOVE | Remote sandbox — tidak dipakai jalur web (Phase 60) |
 | `share` | `share/` | 🗑️ REMOVE | Berbagi sesi ke cloud |
 | `sync` | `sync/` | 🗑️ REMOVE | Sinkronisasi cloud — lokal zone |
@@ -87,9 +87,9 @@
 | `generate` | ✅ KEEP | Regen `openapi.json` + SDK types |
 | `run` | ⏸️ DEFER | Run non-interaktif — sesuai .exe |
 | `tui` | ❓ DECIDE | TUI terminal — platform bukan terminal; mungkin REMOVE |
-| `attach` | 🗑️ REMOVE | Attach sesi eksternal |
-| `acp` | 🗑️ REMOVE | Client ACP eksternal |
-| `github` / `pr` | 🗑️ REMOVE | Auth GitHub + PR — non-coding |
+| `attach` | ✅ REMOVE 2026-08-28 | Attach sesi eksternal. **SELESAI:** `src/cli/cmd/attach.ts` dihapus |
+| `acp` | ✅ REMOVE 2026-08-28 | Client ACP eksternal. **SELESAI:** `src/cli/cmd/acp.ts` + `test/cli/acp/` dihapus |
+| `github` / `pr` | ✅ REMOVE 2026-08-28 | Auth GitHub + PR — non-coding. **SELESAI:** `github.ts`, `github.handler.ts`, `github.shared.ts`, `pr.ts` + test dihapus |
 | `mcp`, `plug`, `cmd`, `db`, `export`, `import`, `models`, `providers`, `session`, `stats`, `account` | ❓ DECIDE | Utilitas CLI — bangun hanya yang dipakai UI/.exe |
 | `upgrade`, `uninstall`, `debug` | ⏸️ DEFER | Distribusi compiled-CLI (.exe deferred) |
 

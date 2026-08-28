@@ -5,7 +5,6 @@ import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { Cause, Deferred, Effect, Exit, Fiber, Layer } from "effect"
 import { EditTool } from "../../src/tool/edit"
 import { disposeAllInstances, TestInstance } from "../fixture/fixture"
-import { LSP } from "@/lsp/lsp"
 import { FSUtil } from "@arunaki/core/fs-util"
 import { Format } from "../../src/format"
 import { Agent } from "../../src/agent/agent"
@@ -32,7 +31,7 @@ afterEach(async () => {
 })
 
 const layer = LayerNode.compile(
-  LayerNode.group([LSP.node, FSUtil.node, Format.node, EventV2Bridge.node, Truncate.node, Agent.node]),
+  LayerNode.group([FSUtil.node, Format.node, EventV2Bridge.node, Truncate.node, Agent.node]),
 )
 
 const it = testEffect(layer)

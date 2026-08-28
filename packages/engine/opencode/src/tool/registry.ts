@@ -26,7 +26,6 @@ import { Plugin } from "../plugin"
 import { Provider } from "@/provider/provider"
 
 import { WebSearchTool } from "./websearch"
-import { LspTool } from "./lsp"
 import * as Truncate from "./truncate"
 import { ApplyPatchTool } from "./apply_patch"
 import { ExcelComTool } from "@arunaki/tools/excel-com"
@@ -46,7 +45,6 @@ import { InstanceState } from "@/effect/instance-state"
 import { EffectBridge } from "@/effect/bridge"
 import { Question } from "../question"
 import { Todo } from "../session/todo"
-import { LSP } from "@/lsp/lsp"
 import { Instruction } from "../session/instruction"
 import { FSUtil } from "@arunaki/core/fs-util"
 import { EventV2Bridge } from "@/event-v2-bridge"
@@ -109,7 +107,6 @@ const layer = Layer.effect(
     const read = yield* ReadTool
     const question = yield* QuestionTool
     const todo = yield* TodoWriteTool
-    const lsptool = yield* LspTool
     const plan = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
@@ -227,7 +224,6 @@ const layer = Layer.effect(
           skill: Tool.init(skilltool),
           patch: Tool.init(patchtool),
           question: Tool.init(question),
-          lsp: Tool.init(lsptool),
           plan: Tool.init(plan),
           excelCom: Tool.init(ExcelComTool),
           wordCom: Tool.init(WordComTool),
@@ -262,7 +258,6 @@ const layer = Layer.effect(
             tool.wordRead,
             tool.pptRead,
             ...(tool.execute ? [tool.execute] : []),
-            ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
           ],
           task: tool.task,
@@ -455,7 +450,6 @@ export const node = LayerNode.make({
     Session.node,
     BackgroundJob.node,
     Provider.node,
-    LSP.node,
     Instruction.node,
     FSUtil.node,
     EventV2Bridge.node,

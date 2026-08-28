@@ -2094,3 +2094,16 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] `@arunaki/tools`: export `docmap`, deps `jszip`/`xlsx` (sudah di root node_modules).
 - [x] `docs/DOCUMENT-MAP.md` — skema + alur parse→map→act + tabel tool.
 - [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/opencode` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
+
+## Phase 62.5: Eksekusi REMOVE Engine — LSP/IDE/ACP/CLI GitHub (DONE)
+
+**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/opencode/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
+
+- [x] **LSP tool + service dihapus:** `src/tool/lsp.ts`, seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server), `src/cli/cmd/debug/lsp.ts`. `toolFiletype` di-inline ke `src/cli/cmd/run/tool.ts` (2 pemakai: `footer.permission.tsx`, `scrollback.writer.tsx`).
+- [x] **Registri:** `src/tool/registry.ts` (hapus `lsp: Tool.init` + `LSP.node` + `flags.experimentalLspTool`), `src/cli/cmd/run/tool.ts` (hapus `lspTitle`/`runLsp`/`scrollLspStart`/`permLsp`/TOOL_RULES `lsp`), `src/cli/cmd/agent.ts` (hapus `lsp` dari AVAILABLE_PERMISSIONS).
+- [x] **HTTP API:** `groups/file.ts` (hapus `findSymbol`/`/find/symbol`), `groups/instance.ts` + `handlers/instance.ts` (hapus `lsp`/`/lsp` + `getLsp`), `handlers/file.ts` (hapus stub findSymbol), `server.ts` (hapus `LSP.node`; Workspace/Worktree/ShareNext/SessionShare DIKEMBALIKAN karena modulnya belum dihapus — tidak dicabut prematur).
+- [x] **Flags:** `runtime-flags.ts` hapus `disableLspDownload`, `experimentalLspTy`, `experimentalLspTool` (pertahankan `autoShare` utk step share).
+- [x] **IDE + ACP + CLI dihapus:** `src/ide/`, `src/acp/`, `src/cli/cmd/{acp,attach,github,github.handler,github.shared,pr,debug/lsp}.ts` + unregistration di `src/index.ts`/`debug/index.ts`.
+- [x] **Test dihapus/diupdate:** hapus `test/acp/`, `test/lsp/`, `test/ide/`, `test/cli/acp/`, `test/cli/github-*.test.ts`, `test/tool/lsp.test.ts`; strip `@/lsp/lsp` dari `test/session/{prompt,snapshot-tool-race}.test.ts` + 4 test tool (write/edit/read/apply_patch); update `test/effect/runtime-flags.test.ts` (3 flag hilang), `test/tool/parameters.test.ts` (blok lsp), `test/server/httpapi-file.test.ts` (hapus test findSymbol).
+- [x] **Verifikasi:** tsgo 775 → **745** error (0 file error baru; 6 file test/cli/acp keluar dari error set); test yang disentuh pass; 3 kegagalan tersisa (`httpapi-file` timeout ×2, `read.test.ts` Windows path) terbukti pre-existing via snapshot baseline.
+- [ ] Eksekusi REMOVE berikutnya: `worktree` → `share` → `control-plane` (ganti `WorkspaceContext`), lalu `sync`, `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.

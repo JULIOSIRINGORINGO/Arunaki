@@ -19,7 +19,6 @@ export class Service extends ConfigService.Service<Service>()("@arunaki/RuntimeF
   disableDefaultPlugins: bool("Arunaki_DISABLE_DEFAULT_PLUGINS"),
   disableEmbeddedWebUi: bool("Arunaki_DISABLE_EMBEDDED_WEB_UI"),
   disableExternalSkills: bool("Arunaki_DISABLE_EXTERNAL_SKILLS"),
-  disableLspDownload: bool("Arunaki_DISABLE_LSP_DOWNLOAD"),
   disableClaudeCodePrompt: Config.all({
     broad: bool("Arunaki_DISABLE_CLAUDE_CODE"),
     direct: bool("Arunaki_DISABLE_CLAUDE_CODE_PROMPT"),
@@ -41,8 +40,6 @@ export class Service extends ConfigService.Service<Service>()("@arunaki/RuntimeF
   enableQuestionTool: bool("Arunaki_ENABLE_QUESTION_TOOL"),
   experimentalReferences: enabledByExperimental("Arunaki_EXPERIMENTAL_REFERENCES"),
   experimentalBackgroundSubagents: enabledByExperimental("Arunaki_EXPERIMENTAL_BACKGROUND_SUBAGENTS"),
-  experimentalLspTy: bool("Arunaki_EXPERIMENTAL_LSP_TY"),
-  experimentalLspTool: enabledByExperimental("Arunaki_EXPERIMENTAL_LSP_TOOL"),
   experimentalOxfmt: enabledByExperimental("Arunaki_EXPERIMENTAL_OXFMT"),
   experimentalPlanMode: enabledByExperimental("Arunaki_EXPERIMENTAL_PLAN_MODE"),
   experimentalCodeMode: enabledByExperimental("Arunaki_EXPERIMENTAL_CODE_MODE"),
