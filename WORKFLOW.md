@@ -536,19 +536,22 @@ Create Workspace → Scan Files → Parse Documents → Extract Metadata → Ind
 
 ---
 
-## Phase 32: Desktop Bridge Service ✅ DONE
+## Phase 32: Desktop Bridge Service ✅ DONE (WS bridge REMOVED 2026-08-28)
 
 **Goal:** Desktop COM Automation — Excel/Word/PowerPoint via Electron bridge + WebSocket.
 
+> **Catatan (2026-08-28):** Mekanisme WebSocket `ws://127.0.0.1:31524` + seluruh handler RPC-nya (`openExcel/openWord/openPpt/screenshot` dll.) telah **dihapus** dari `apps/desktop/main.cjs` sebagai bagian konsolidasi single-harness (docs/MASTER-HARNESS-PLAN.md Langkah 1). Semua akses native sekarang murni via IPC `ipcRenderer.invoke` (`window.arunakiDesktop.*`) + `ipcMain.handle`. Depedensi `ws` dihapus dari `apps/desktop/package.json`. Dependensi `winax` (COM Excel) tetap dipakai oleh `excel:openNative`.
+
 ### 32.1 Backend — DesktopBridgeService
-- [x] `DesktopBridgeService` — WebSocket server (`ws://127.0.0.1:31524`) with request/response pattern
-- [x] `sendCommand(method, args, timeout)` — Promise-based with timeout, auto-reject on disconnect/shutdown
+- [x] ~~`DesktopBridgeService` — WebSocket server (`ws://127.0.0.1:31524`)~~ **REMOVED** (apps/api dihapus)
+- [x] ~~`sendCommand(method, args, timeout)` — Promise-based with timeout~~ **REMOVED**
 - [x] `@Global()` `InteractionModule` provides both `BrowserInteractionService` + `DesktopBridgeService`
 - [x] `@types/ws` installed for TypeScript types
 
 ### 32.2 Desktop Electron Client
-- [x] `main.cjs` — WebSocket client with auto-reconnect (5s interval)
-- [x] Command handlers: `openFile` (shell.openPath), `openExcel`/`openWord`/`openPpt` (COM via winax), `screenshot` (desktopCapturer)
+- [x] ~~`main.cjs` — WebSocket client with auto-reconnect~~ **REMOVED** (Langkah 1 MASTER-HARNESS-PLAN)
+- [x] ~~Command handlers: `openFile` (shell.openPath), `openExcel`/`openWord`/`openPpt` (COM via winax), `screenshot` (desktopCapturer)~~ **REMOVED** — diganti IPC native:
+  `dialog:pickFolder`, `fs:getFolderTree/readFile/writeFile/createFolder/deletePath/renamePath/parseExcel/writeExcel/readBinaryFile`, `excel:openNative` (winax COM), `app:openPath/notify`, `theme:set`
 - [x] Cleanup on `window-all-closed`
 
 ### 32.3 Desktop Interaction Tools (5 tools)
@@ -2003,17 +2006,17 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 
 ## Phase 61.7: Restore Engine Boot Path for Electron (DONE)
 
-**Goal:** Perbaiki jalur boot engine yang patah � `scripts/dev-app.cjs` merujuk `packages/engine/opencode/src/serve-only.ts` yang tidak ada, sehingga `npm run dev:app` gagal di langkah 1 (engine tidak pernah hidup di :4096 dan UI Electron tidak bisa berinteraksi dengan API/LLM).
+**Goal:** Perbaiki jalur boot engine yang patah � `scripts/dev-app.cjs` merujuk `packages/engine/opencode/src/serve-only.ts` yang tidak ada, sehingga `npm run dev:app` gagal di langkah 1 (engine tidak pernah hidup di :4096 dan UI Electron tidak bisa berinteraksi dengan API/LLM).
 
 ### Hasil Diagnosa (rantai koneksi VS Code-like)
 - **Electron ? Web UI** ? terhubung: `main.cjs` memuat `WEB_URL` (:5173) / fallback `dist`; semua channel IPC (folder tree, fs read/write, Excel/Word/Ppt native via winax, parse/write Excel) cocok dengan `preload.cjs`.
 - **Web UI ? Engine** ? route & proxy benar: Vite proxy `/api` ? `:4096`; endpoint `/api/session`, `/api/event` (SSE), `/api/provider`, `/api/agent`, `/api/model`, `/api/health` semua ADA di `packages/engine/protocol/src/groups/*`.
-- **Auth** ? default aman: engine pakai Basic (`Arunaki_SERVER_PASSWORD`) + `auth_token`; web kirim `x-api-key` � tanpa `.env` tidak ada password, `ServerAuth.required` false ? request lolos (tanpa auth mismatch).
-- **WS :31524 (DesktopBridgeService)** ? legacy dead code � backend `apps/api` sudah dihapus, koneksi reconnect 3s selamanya tanpa listener.
+- **Auth** ? default aman: engine pakai Basic (`Arunaki_SERVER_PASSWORD`) + `auth_token`; web kirim `x-api-key` � tanpa `.env` tidak ada password, `ServerAuth.required` false ? request lolos (tanpa auth mismatch).
+- **WS :31524 (DesktopBridgeService)** ? legacy dead code � backend `apps/api` sudah dihapus, koneksi reconnect 3s selamanya tanpa listener.
 
 ### Perubahan
-- [x] **Buat `packages/engine/opencode/src/serve-only.ts`** � entrypoint minimal meniru `index.ts` tapi hanya mendaftarkan `ServeCommand` (headless server, `--port` via `withNetworkOptions`); environment setup (Arunaki_PID, Heap.start, dll) sama dengan CLI utama.
-- [x] **Boot verified** � `bun run --conditions=browser ./src/serve-only.ts serve --port 4096` ? `Arunaki server listening on http://127.0.0.1:4096`; `GET /api/health` ? `200 {"healthy":true}`.
+- [x] **Buat `packages/engine/opencode/src/serve-only.ts`** � entrypoint minimal meniru `index.ts` tapi hanya mendaftarkan `ServeCommand` (headless server, `--port` via `withNetworkOptions`); environment setup (Arunaki_PID, Heap.start, dll) sama dengan CLI utama.
+- [x] **Boot verified** � `bun run --conditions=browser ./src/serve-only.ts serve --port 4096` ? `Arunaki server listening on http://127.0.0.1:4096`; `GET /api/health` ? `200 {"healthy":true}`.
 - [x] Typecheck engine bersih untuk file baru (sisa error pre-existing `@opentui/*`, `@Arunaki-ai/http-recorder` tidak terkait).
 
 ### Diputuskan
@@ -2035,10 +2038,10 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] `npm run build -w apps/web` ? 0 error.
 
 ### Ajaran
-- Bentuk engine yang TEPAT untuk pesan: `{type:"user"|"assistant", content:[{type:"text",text}]}` � dokumentasikan di sini karena tersebar asumsi lama di UI.
+- Bentuk engine yang TEPAT untuk pesan: `{type:"user"|"assistant", content:[{type:"text",text}]}` � dokumentasikan di sini karena tersebar asumsi lama di UI.
 - Mapping SSE `mapEngineEvents` memakai nama `session.next.*` yang masih valid di schema engine.
 
-## Phase 61.9: MASTER PROMPT � Single Harness Consolidation Plan (DONE - dokumen)
+## Phase 61.9: MASTER PROMPT � Single Harness Consolidation Plan (DONE - dokumen)
 
 **Goal:** Penuhi deliverable MASTER PROMPT Modul 1-3 (mapping jalur/modul, target structure & data flow, step-by-step plan). Fokus 100% konsolidasi harness; .exe di-defer.
 
@@ -2047,3 +2050,17 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] **Deliverable 3 - Step-by-Step** \u2014 6 langkah: buang WS dead, putuskan transport in-process (ADR), embed UI apps/web ke engine bundle, rakit modul Electron engine in-process, matikan jalur dev lama + verifikasi, .exe di-defer.
 - [x] **Temuan kunci** \u2014 \script/build.ts:27-30\ (\createEmbeddedWebUIBundle\) membangun \packages/engine/app\ (web asli OpenCode), BUKAN \pps/web\ \u2192 perlu perbaikan saat embedding UI produk.
 - [ ] **Keputusan tim dibutuhkan** \u2014 (1) definisi "hilangkan local HTTP": zero-TCP vs loopback transisi; (2) UI resmi = apps/web; (3) native COM bridge tetap sah. Lihat docs/MASTER-HARNESS-PLAN.md.
+
+## Phase 62.1: Remove Dead WebSocket Bridge (MASTER-HARNESS-PLAN Langkah 1) ✅ DONE
+
+**Goal:** Buang bridge WebSocket legacy `ws://127.0.0.1:31524` + seluruh handler RPC-nya dari Electron main — langkah pertama konsolidasi single-harness.
+
+- [x] `apps/desktop/main.cjs` — dihapus blok `Backend Bridge (WebSocket client)`: `require('ws')`, koneksi + auto-reconnect loop 3s, semua command handler WS (`openFile`, `openExcel`, `openWord`, `openPpt`, `sendKeys`, `clickCoordinate`, `excelWriteCell`, `excelSetFormat`, `excelEdit`, `wordType`, `wordFormat`, `screenshot`, `ping`).
+- [x] Dibuang `desktopCapturer` dari require Electron (hanya dipakai screenshot via WS).
+- [x] `apps/desktop/package.json` — dependensi `ws` dihapus.
+- [x] Semua akses native kini murni IPC: `window.arunakiDesktop.*` (preload) → `ipcMain.handle` (`dialog:pickFolder`, `fs:*`, `excel:openNative` via winax COM, `app:*`, `theme:set`).
+- [x] Verifikasi: `node --check apps/desktop/main.cjs` ✅; tidak ada lagi referensi `31524`/`connectToBackend` di `apps/*` (sisa hanya di dokumen catatan historis).
+- [x] WORKFLOW Phase 32 ditandai REMOVED dengan catatan migrasi.
+- [~] Serial test Electron masih menunggu run manual (tanpa `npm run dev` desktop memberatkan CI).
+
+**Ajaran:** Preload sudah 100% memakai `ipcRenderer.invoke`; blok WS adalah dead code yang bertahan dari era `apps/api` (NestJS). Pembuangannya aman & tidak menyentuh jalur aktif.
