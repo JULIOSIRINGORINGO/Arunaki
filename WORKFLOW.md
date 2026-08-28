@@ -2080,3 +2080,17 @@ per-item (KEEP/REMOVE/DEFER/DECIDE) untuk dieksekusi 1/1 saat konsolidasi.
 - [x] REMOVE awal tanpa eksekusi: `lsp` tool+service, `ide`, `worktree`, `acp`, `control-plane`, `share`, `sync`, `attach`, `github`/`pr`, `tui`.
 - [x] DEFER: distribusi compiled-CLI (.exe) — `Dockerfile`, `bin/opencode`, `postinstall.mjs`, `core bin`, `models-dev.ts` feed, `build.ts` embed-UI.
 - [ ] Eksekusi REMOVE ditunda ke langkah konsolidasi MASTER-HARNESS-PLAN (jangan spontan), dan putusan 1/1 lainnya (`code-mode`, `plan`, `mcp`, `command`, `background`, CLI utils, `image`/`format`/`share`/`sync`) masih terbuka untuk tim.
+
+## Phase 62.4: Document Map — Baca via Parser, Edit via COM (DONE)
+
+**Goal:** Implementasi pola parse→map→act untuk dokumen: baca TIDAK lewat COM
+lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
+"mapping meleset" (fuzzy label di COM) hilang dari jalur umum.
+
+- [x] `packages/arunaki-tools/src/docmap.ts` BARU — schema Effect `DocMap` (`ExcelMap`|`WordMap`|`PptMap`), sub-schema (cell/sheet/mergeparagraph/table/shape/slide), target edit `ExcelWriteCell`/`WordTarget`.
+- [x] READ tools BARU (parser-based, tanpa COM): `excel-read.ts` (xlsx `cellFormula:true`+`cellNF`), `word-read.ts` (jszip + regex urutan `<w:p>`/`<w:tbl>`, paragraf dalam tabel difilter), `ppt-read.ts` (jszip slideN.xml, ekstrak `cNvPr`/`a:t`).
+- [x] COM tools diubah jadi edit-only (target ref dari peta): `excel-com.ts` (write_cell/write_range/format_cell/clone_sheet/delete_sheet; aksi baca dihapus), `word-com.ts`, `ppt-com.ts` (set_shape_text pakai shapeId/shapeName).
+- [x] Registrasi engine (`src/tool/registry.ts`) — tambah `excelRead`/`wordRead`/`pptRead`; `excelCom`/`wordCom`/`pptCom` tetap.
+- [x] `@arunaki/tools`: export `docmap`, deps `jszip`/`xlsx` (sudah di root node_modules).
+- [x] `docs/DOCUMENT-MAP.md` — skema + alur parse→map→act + tabel tool.
+- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/opencode` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.

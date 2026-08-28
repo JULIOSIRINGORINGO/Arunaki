@@ -32,6 +32,9 @@ import { ApplyPatchTool } from "./apply_patch"
 import { ExcelComTool } from "@arunaki/tools/excel-com"
 import { WordComTool } from "@arunaki/tools/word-com"
 import { PptComTool } from "@arunaki/tools/ppt-com"
+import { ExcelReadTool } from "@arunaki/tools/excel-read"
+import { WordReadTool } from "@arunaki/tools/word-read"
+import { PptReadTool } from "@arunaki/tools/ppt-read"
 import { Glob } from "@arunaki/core/util/glob"
 import path from "path"
 import { pathToFileURL } from "url"
@@ -229,6 +232,9 @@ const layer = Layer.effect(
           excelCom: Tool.init(ExcelComTool),
           wordCom: Tool.init(WordComTool),
           pptCom: Tool.init(PptComTool),
+          excelRead: Tool.init(ExcelReadTool),
+          wordRead: Tool.init(WordReadTool),
+          pptRead: Tool.init(PptReadTool),
           ...(codeModeTool ? { execute: Tool.init(codeModeTool) } : {}),
         })
 
@@ -252,6 +258,9 @@ const layer = Layer.effect(
             tool.excelCom,
             tool.wordCom,
             tool.pptCom,
+            tool.excelRead,
+            tool.wordRead,
+            tool.pptRead,
             ...(tool.execute ? [tool.execute] : []),
             ...(flags.experimentalLspTool ? [tool.lsp] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),

@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+﻿import { Effect, Schema } from "effect"
 import * as Tool from "@arunaki/engine/tool"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -12,15 +12,10 @@ const ExcelActionSchema = Schema.Struct({
   value: Schema.optional(Schema.Unknown),
   sheetName: Schema.optional(Schema.String),
   range: Schema.optional(Schema.String),
-  rowLabel: Schema.optional(Schema.String),
-  columnLetter: Schema.optional(Schema.String),
-  columnDate: Schema.optional(Schema.String),
-  date: Schema.optional(Schema.String),
-  rows: Schema.optional(Schema.Array(Schema.Struct({
-    label: Schema.String,
+  cells: Schema.optional(Schema.Array(Schema.Struct({
+    ref: Schema.String,
     value: Schema.Unknown,
   }))),
-  details: Schema.optional(Schema.Array(Schema.String)),
   bold: Schema.optional(Schema.Boolean),
   italic: Schema.optional(Schema.Boolean),
   fontSize: Schema.optional(Schema.Number),
@@ -28,10 +23,6 @@ const ExcelActionSchema = Schema.Struct({
   alignment: Schema.optional(Schema.String),
   sourceSheet: Schema.optional(Schema.String),
   newSheetName: Schema.optional(Schema.String),
-  matchColumn: Schema.optional(Schema.String),
-  matchValue: Schema.optional(Schema.String),
-  targetColumn: Schema.optional(Schema.String),
-  delta: Schema.optional(Schema.Boolean),
 })
 
 type Metadata = Record<string, unknown>
@@ -72,55 +63,16 @@ function buildExcelScript(params: Schema.Schema.Type<typeof ExcelActionSchema>):
   }
 
   switch (p.action) {
-    case "read_cell":
-      actions.push(`$val = $ws.Range('${p.cell}').Value2`)
-      actions.push(`Write-Output ("CELL:" + $val)`)
-      break
     case "write_cell":
-      actions.push(`$ws.Range('${p.cell}').Value2 = '${String(p.value).replace(/'/g, "''")}'`)
+      actions.push(`$ws.Range('${p.cell}').Value2 = '${String(p.value ?? "").replace(/'/g, "''")}'`)
       actions.push(`Write-Output "OK:write_cell:${p.cell}"`)
       break
-    case "read_range":
-      actions.push(`$rng = $ws.Range('${p.range}')`)
-      actions.push(`$rows = $rng.Rows.Count`)
-      actions.push(`$cols = $rng.Columns.Count`)
-      actions.push(`for ($r = 1; $r -le $rows; $r++) {`)
-      actions.push(`  $line = @()`)
-      actions.push(`  for ($c = 1; $c -le $cols; $c++) {`)
-      actions.push(`    $line += $rng.Cells($r,$c).Text`)
-      actions.push(`  }`)
-      actions.push(`  Write-Output ($line -join "\`t")`)
-      actions.push(`}`)
-      break
-    case "fill_table_column": {
-      if (p.rowLabel && p.columnDate) {
-        actions.push(`$found = $false`)
-        actions.push(`$searchRange = $ws.Range("A1:Z50")`)
-        actions.push(`foreach ($cell In $searchRange.Cells) {`)
-        actions.push(`  if ($cell.Text -match [regex]::Escape('${p.rowLabel.replace(/'/g, "''")}')) {`)
-        actions.push(`    $targetCol = $ws.Range('${p.columnDate}1').Column`)
-        actions.push(`    $ws.Cells($cell.Row, $targetCol).Value2 = '${String(p.value ?? "").replace(/'/g, "''")}'`)
-        actions.push(`    Write-Output ("OK:fill:" + $cell.Address() + "->col" + $targetCol)`)
-        actions.push(`    $found = $true`)
-        actions.push(`    break`)
-        actions.push(`  }`)
-        actions.push(`}`)
-        actions.push(`if (-not $found) { Write-Output "ERROR:label '${p.rowLabel}' not found" }`)
-      } else if (p.rows) {
-        actions.push(`foreach ($item in @(${p.rows.map((r: any) => `@{label='${r.label.replace(/'/g, "''")}';value='${String(r.value).replace(/'/g, "''")}'}` ).join(", ")})) {`)
-        actions.push(`  $searchRange = $ws.Range("A1:Z100")`)
-        actions.push(`  foreach ($cell In $searchRange.Cells) {`)
-        actions.push(`    if ($cell.Text -match [regex]::Escape($item.label)) {`)
-        actions.push(`      $col = $ws.Range('${p.columnDate ?? "A"}1').Column`)
-        actions.push(`      $ws.Cells($cell.Row, $col).Value2 = $item.value`)
-        actions.push(`      break`)
-        actions.push(`    }`)
-        actions.push(`  }`)
-        actions.push(`}`)
-        actions.push(`Write-Output "OK:fill_table_column:${p.rows.length} rows"`)
+    case "write_range":
+      for (const c of p.cells ?? []) {
+        actions.push(`$ws.Range('${c.ref}').Value2 = '${String(c.value ?? "").replace(/'/g, "''")}'`)
       }
+      actions.push(`Write-Output "OK:write_range:${(p.cells ?? []).length} cells"`)
       break
-    }
     case "format_cell":
       if (p.bold) actions.push(`$ws.Range('${p.cell}').Font.Bold = $true`)
       if (p.italic) actions.push(`$ws.Range('${p.cell}').Font.Italic = $true`)
@@ -140,9 +92,6 @@ function buildExcelScript(params: Schema.Schema.Type<typeof ExcelActionSchema>):
       actions.push(`$wb.Sheets.Item('${p.sheetName?.replace(/'/g, "''")}').Delete()`)
       actions.push(`Write-Output "OK:delete_sheet:${p.sheetName}"`)
       break
-    case "read_sheet_names":
-      actions.push(`foreach ($s in $wb.Sheets) { Write-Output $s.Name }`)
-      break
     default:
       actions.push(`Write-Output "ERROR:unknown action '${p.action}'"`)
   }
@@ -157,12 +106,12 @@ function buildExcelScript(params: Schema.Schema.Type<typeof ExcelActionSchema>):
   return actions.join("\n")
 }
 
-export const ExcelComTool = Tool.define<typeof ExcelActionSchema, Metadata>(
+export const ExcelComTool = Tool.define(
   "excel_com",
   Effect.succeed({
-    description: `Excel COM automation tool. Actions: read_cell, write_cell, read_range, fill_table_column, format_cell, clone_sheet, delete_sheet, read_sheet_names. Uses Windows COM to control Excel directly.`,
+    description: `Excel COM edit tool. Execute visible edits in Excel with targets taken from an excel_read map -- never guess cell addresses. Actions: write_cell (cell:ref, value), write_range (cells:[{ref,value}]), format_cell (cell, bold/italic/fontSize/bgColor/alignment), clone_sheet (sourceSheet, newSheetName), delete_sheet (sheetName). The ref must come from the map returned by excel_read; write_range is for a full column of a report table.`,
     parameters: ExcelActionSchema,
-    execute: (params, ctx) =>
+    execute: (params: Schema.Schema.Type<typeof ExcelActionSchema>, ctx: Tool.Context) =>
       Effect.gen(function* () {
         yield* ctx.ask({
           permission: "excel_com",
@@ -182,6 +131,6 @@ export const ExcelComTool = Tool.define<typeof ExcelActionSchema, Metadata>(
           output,
           metadata: {},
         }
-      }),
+      }).pipe(Effect.orDie),
   }),
 )

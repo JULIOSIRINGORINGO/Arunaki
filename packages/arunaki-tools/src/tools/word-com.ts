@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect"
+﻿import { Effect, Schema } from "effect"
 import * as Tool from "@arunaki/engine/tool"
 import { exec } from "child_process"
 import { promisify } from "util"
@@ -9,8 +9,8 @@ const WordActionSchema = Schema.Struct({
   action: Schema.String,
   filePath: Schema.optional(Schema.String),
   text: Schema.optional(Schema.String),
+  paragraphIndex: Schema.optional(Schema.Number),
   cell: Schema.optional(Schema.String),
-  range: Schema.optional(Schema.String),
   findText: Schema.optional(Schema.String),
   replaceText: Schema.optional(Schema.String),
   bold: Schema.optional(Schema.Boolean),
@@ -49,13 +49,17 @@ function buildWordScript(params: Schema.Schema.Type<typeof WordActionSchema>): s
   }
 
   switch (p.action) {
-    case "read_text":
-      actions.push(`Write-Output $doc.Content.Text`)
-      break
     case "write_text":
       actions.push(`$doc.Content.InsertAfter('${p.text?.replace(/'/g, "''") ?? ""}')`)
       actions.push(`Write-Output "OK:write_text"`)
       break
+    case "write_at_paragraph": {
+      const idx = p.paragraphIndex ?? 1
+      actions.push(`$target = $doc.Paragraphs.Item(${idx})`)
+      actions.push(`$target.Range.InsertAfter('${(p.text ?? "").replace(/'/g, "''")}')`)
+      actions.push(`Write-Output "OK:write_at_paragraph:${idx}"`)
+      break
+    }
     case "find_replace":
       actions.push(`$doc.Content.Find.Text = '${p.findText?.replace(/'/g, "''") ?? ""}'`)
       actions.push(`$doc.Content.Find.Replacement.Text = '${p.replaceText?.replace(/'/g, "''") ?? ""}'`)
@@ -67,14 +71,6 @@ function buildWordScript(params: Schema.Schema.Type<typeof WordActionSchema>): s
       if (p.fontSize) actions.push(`$doc.Content.Font.Size = ${p.fontSize}`)
       if (p.alignment) actions.push(`$doc.Content.ParagraphFormat.Alignment = ${p.alignment === "center" ? 1 : p.alignment === "right" ? 2 : 0}`)
       actions.push(`Write-Output "OK:format"`)
-      break
-    case "read_tables":
-      actions.push(`$count = $doc.Tables.Count`)
-      actions.push(`Write-Output "TABLES:$count"`)
-      actions.push(`for ($i = 1; $i -le $count; $i++) {`)
-      actions.push(`  $t = $doc.Tables.Item($i)`)
-      actions.push(`  Write-Output ("TABLE" + $i + ":" + $t.Rows.Count + "x" + $t.Columns.Count)`)
-      actions.push(`}`)
       break
     default:
       actions.push(`Write-Output "ERROR:unknown action '${p.action}'"`)
@@ -90,12 +86,12 @@ function buildWordScript(params: Schema.Schema.Type<typeof WordActionSchema>): s
   return actions.join("\n")
 }
 
-export const WordComTool = Tool.define<typeof WordActionSchema, Metadata>(
+export const WordComTool = Tool.define(
   "word_com",
   Effect.succeed({
-    description: `Word COM automation tool. Actions: read_text, write_text, find_replace, format, read_tables. Uses Windows COM to control Word directly.`,
+    description: `Word COM edit tool. Execute visible edits in Word with targets taken from a word_read map â€” never guess paragraph numbers. Actions: write_text (append at end), write_at_paragraph (paragraphIndex from map, text), find_replace (findText, replaceText), format (bold/fontSize/alignment).`,
     parameters: WordActionSchema,
-    execute: (params, ctx) =>
+    execute: (params: Schema.Schema.Type<typeof WordActionSchema>, ctx: Tool.Context) =>
       Effect.gen(function* () {
         yield* ctx.ask({
           permission: "word_com",
@@ -115,6 +111,6 @@ export const WordComTool = Tool.define<typeof WordActionSchema, Metadata>(
           output,
           metadata: {},
         }
-      }),
+      }).pipe(Effect.orDie),
   }),
 )
