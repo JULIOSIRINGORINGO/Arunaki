@@ -203,6 +203,19 @@ Implikasi:
 - **Yang bisa dikerjakan SEKARANG tanpa dependensi harness:** selesai
   (Langkah 1 WS bridge dibuang). Sisanya menunggu keputusan tim + fokus .exe.
 
+## Catatan Khusus: Tool `shell` (KEPUTUSAN 2026-08-28)
+
+Meski VISION mencatat "bukan shell executor", tool `shell` engine **diputuskan
+PERTAHANAKAN** sebagai fallback resmi pembacaan file binary saat mapping COM
+(Excel/Word/PPT) tidak sesuai. Karena:
+- Akses eksekusi tetap dilewati gate `Permission` (approval/deny) — bukan shell bebas.
+- Konteks eksekusi dbatasi ke sandbox folder aktif + helper (`od`/`xxd`/`python3`).
+- Upgrade path: status diturunkan jika `read`/`parseExcel` COM dinilai memadai.
+
+Detail & tabel putusan 1/1: lihat `docs/ENGINE-FEATURE-TRIAGE.md`.
+
+---
+
 ## Deliverable 3 — Step-by-Step Action Plan (563 urutan kerja)
 
 > Semua item ditulis untuk dipindah ke WORKFLOW.md. Item `.exe`/bundling binary tetap di-defer.

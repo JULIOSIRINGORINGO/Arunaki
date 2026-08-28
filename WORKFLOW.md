@@ -2069,3 +2069,14 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] Ditelusuri: "in-process via `Server.Default()`" hanya bisa di binary `Bun.build` (deps `@ff-labs/fff-bun`, `@parcel/watcher`, `@opentui` tidak bisa di-load di proses Electron/Node CJS).
 - [x] Kesimpulan dicatat di `docs/MASTER-HARNESS-PLAN.md` — Langkah 2-4 bergantung pada harness .exe yang di-defer; dev flow `serve-only.ts` + Vite proxy :4096 tetap jalur transisi yang sah.
 - [ ] Keputusan tim masih terbuka: (1) kapan .exe masuk backlog aktif; (2) definisi "hilangkan local HTTP": zero-TCP vs loopback; (3) UI resmi = apps/web (rekomendasi).
+
+## Phase 62.3: Engine Feature Triage — Dokumen Putusan 1/1 (DONE)
+
+**Goal:** Buat dokumen triage fitur engine opencode → Arunaki, menandai status
+per-item (KEEP/REMOVE/DEFER/DECIDE) untuk dieksekusi 1/1 saat konsolidasi.
+
+- [x] `docs/ENGINE-FEATURE-TRIAGE.md` — tabel: built-in tools, service dir (`src/`), CLI commands, distribusi/build; + daftar 9 putusan 1/1 yang terbuka dengan rekomendasi awal.
+- [x] **Tool `shell` diputuskan KEEP (2026-08-28)** — fallback resmi baca file binary saat mapping COM meleset; tetap lewat gate `Permission`, bukan shell bebas. Di-catat juga di `docs/MASTER-HARNESS-PLAN.md`.
+- [x] REMOVE awal tanpa eksekusi: `lsp` tool+service, `ide`, `worktree`, `acp`, `control-plane`, `share`, `sync`, `attach`, `github`/`pr`, `tui`.
+- [x] DEFER: distribusi compiled-CLI (.exe) — `Dockerfile`, `bin/opencode`, `postinstall.mjs`, `core bin`, `models-dev.ts` feed, `build.ts` embed-UI.
+- [ ] Eksekusi REMOVE ditunda ke langkah konsolidasi MASTER-HARNESS-PLAN (jangan spontan), dan putusan 1/1 lainnya (`code-mode`, `plan`, `mcp`, `command`, `background`, CLI utils, `image`/`format`/`share`/`sync`) masih terbuka untuk tim.
