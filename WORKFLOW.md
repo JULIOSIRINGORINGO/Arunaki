@@ -1979,3 +1979,11 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 
 ### Catatan Scoping
 - Tabel & kontrol-plane `Workspace` di engine (remote sandbox) TIDAK dihapus karena tidak dipakai jalur web dan berisiko tinggi; fokus pada penghapusan dari UI + routing + alur session.
+
+## Phase 61.5: Chat E2E Fix + Vendor Auth Packages (DONE)
+
+**Goal:** Verifikasi alur chat end-to-end (prompt → turn LLM → message persist) setelah Phase 61, dan perbaiki package auth hasil vendoring dari fase sebelumnya.
+
+- [x] **Blocker start server** — `@arunaki/gitlab-auth` & `@arunaki/poe-auth` hasil commit `a30cbbe` hanya berisi `package.json` kosong (tanpa source), sehingga `plugin/index.ts` gagal resolve dan server tidak bisa start. Diisi ulang dari source npm asli (`opencode-gitlab-auth@2.1.0`, `opencode-poe-auth@0.0.1`); `.d.ts` di-rewire ke `@arunaki/plugin`. Konvensi: tambah `.gitignore` `!dist/` per-package karena `dist/` global di-ignore.
+- [x] **E2E chat verified** — prompt sukses via `POST /api/session/:id/prompt` (payload SDK `{prompt:{type:"text",text}}`), turn LLM jalan, assistant message tersimpan & terbaca penuh di `GET /api/session/:id/message` (`parts/content` terisi). Route `POST /api/session/:id/message` (v2, `{parts:...}`) berbeda dan bukan jalur web.
+- [x] `npm run build -w apps/web` — 0 error
