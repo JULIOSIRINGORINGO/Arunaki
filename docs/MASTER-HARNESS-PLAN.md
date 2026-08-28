@@ -183,11 +183,31 @@ User mengetik "Rekap ke excel" di chat UI
 
 ---
 
+## Temuan Kunci — Keterkaitan "in-process" dengan runtime bun (2026-08-28)
+
+Engine fork (OpenCode) **tidak bisa di-load sebagai module di dalam proses
+Electron** (yang berjalan di atas Node CJS) karena deps native bun:
+`@ff-labs/fff-bun`, `@parcel/watcher`, `@opentui` (ROOT). Jalur yang
+direkomendasikan MASTER PROMPT ("Electron meng-host engine in-process via
+`Server.Default()`") hanya realistis di **binary hasil `Bun.build` compile**
+— persis jalur `.exe` yang **di-defer**.
+
+Implikasi:
+- **Langkah 2-4** (transport in-process + Electron meng-host engine) secara
+  teknis **tergantung pada harness bun-compiled yang ditunda**. Sebelum itu,
+  dev flow tetap sah memakai `serve-only.ts` + Vite proxy :4096 sebagai
+  transisi.
+- **Langkah 3** (embed `apps/web` ke `Arunaki-web-ui.gen.ts`) bersifat
+  persiapan murni untuk harness tersebut — `script/build.ts:28` harus dialihkan
+  dari `packages/engine/app` (tidak ada) ke `apps/web` saat harness dikerjakan.
+- **Yang bisa dikerjakan SEKARANG tanpa dependensi harness:** selesai
+  (Langkah 1 WS bridge dibuang). Sisanya menunggu keputusan tim + fokus .exe.
+
 ## Deliverable 3 — Step-by-Step Action Plan (563 urutan kerja)
 
 > Semua item ditulis untuk dipindah ke WORKFLOW.md. Item `.exe`/bundling binary tetap di-defer.
 
-### Langkah 1 — Buang dead WS bridge (kecil, aman)
+### Langkah 1 — Buang dead WS bridge (kecil, aman) ✅ DONE (commit 0f3545e)
 1. Hapus `WebSocket` client + `connectToBackend()` + handler WS RPC (`openFile`, `openExcel`, ... , `screenshot`, `ping`) dari `apps/desktop/main.cjs` (sekitar baris 447-813).
 2. Hapus dependensi `ws` dari `apps/desktop/package.json` (jika tak dipakai lagi).
 3. Verifikasi tak ada renderer web yang memanggil channel WS lama (sudah pakai `window.arunakiDesktop`).
@@ -196,6 +216,7 @@ User mengetik "Rekap ke excel" di chat UI
 ### Langkah 2 — Tentukan transport in-process UI↔Engine (keputusan)
 1. Dokumentasikan pilihan A (protocol handler / session.webRequest, zero-port) vs pilihan B (listener loopback transisi).
 2. Tulis ADR singkat di `docs/` dan minta keputusan tim (blocker: MEMUTUSKAN searah dengan MASTER PROMPT).
+3. **BLOKIR sementara oleh temuan bun-runtime** — lihat "Temuan Kunci" di atas: in-process hanya via binary bun-compiled (defer). Keputusan ini perlu dipandang ulang setelah .exe masuk backlog aktif.
 
 ### Langkah 3 — Embed Web UI ke dalam engine bundle
 1. Ubah `script/build.ts:27-30` (`createEmbeddedWebUIBundle`) agar membangun **`apps/web`** (bukan `packages/engine/app`), serta env `Arunaki_CHANNEL`.

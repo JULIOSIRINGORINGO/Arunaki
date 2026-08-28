@@ -2064,3 +2064,8 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [~] Serial test Electron masih menunggu run manual (tanpa `npm run dev` desktop memberatkan CI).
 
 **Ajaran:** Preload sudah 100% memakai `ipcRenderer.invoke`; blok WS adalah dead code yang bertahan dari era `apps/api` (NestJS). Pembuangannya aman & tidak menyentuh jalur aktif.
+
+### 62.2 Follow-up — Temuan runtime bun menghambat Langkah 2-4
+- [x] Ditelusuri: "in-process via `Server.Default()`" hanya bisa di binary `Bun.build` (deps `@ff-labs/fff-bun`, `@parcel/watcher`, `@opentui` tidak bisa di-load di proses Electron/Node CJS).
+- [x] Kesimpulan dicatat di `docs/MASTER-HARNESS-PLAN.md` — Langkah 2-4 bergantung pada harness .exe yang di-defer; dev flow `serve-only.ts` + Vite proxy :4096 tetap jalur transisi yang sah.
+- [ ] Keputusan tim masih terbuka: (1) kapan .exe masuk backlog aktif; (2) definisi "hilangkan local HTTP": zero-TCP vs loopback; (3) UI resmi = apps/web (rekomendasi).
