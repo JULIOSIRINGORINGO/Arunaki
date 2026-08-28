@@ -2000,3 +2000,21 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] **Bersihkan scratch** â€” hapus `core/src/effect/dfdf` (file sampah).
 - [x] `npm run build -w apps/web` â€” 0 error; typecheck engine bersih untuk perubahan (sisa error pre-existing `@Arunaki-ai/http-recorder`); test provider `provider-arunaki.test.ts` â€” 12 pass.
 - [ ] **Sengaja dipertahankan (flag)** â€” `models-dev.ts:160-163` default `https://models.opencode.ai` (feed data live, overridable `Arunaki_MODELS_URL`); `opencode/bin/opencode` + `postinstall.mjs` + `Dockerfile` + `core/package.json` `bin` (`@arunaki/engine` â†’ `./bin/opencode`, file belum ada) = mekanisme distribusi compiled-CLI masa depan, tidak dipakai jalur web/desktop run-from-source. Referensi di file docs/specs/fixtures/vendor adalah provenance. Di-skip karena menunggu keputusan MASTER PROMPT (single-harness .exe).
+
+## Phase 61.7: Restore Engine Boot Path for Electron (DONE)
+
+**Goal:** Perbaiki jalur boot engine yang patah — `scripts/dev-app.cjs` merujuk `packages/engine/opencode/src/serve-only.ts` yang tidak ada, sehingga `npm run dev:app` gagal di langkah 1 (engine tidak pernah hidup di :4096 dan UI Electron tidak bisa berinteraksi dengan API/LLM).
+
+### Hasil Diagnosa (rantai koneksi VS Code-like)
+- **Electron ? Web UI** ? terhubung: `main.cjs` memuat `WEB_URL` (:5173) / fallback `dist`; semua channel IPC (folder tree, fs read/write, Excel/Word/Ppt native via winax, parse/write Excel) cocok dengan `preload.cjs`.
+- **Web UI ? Engine** ? route & proxy benar: Vite proxy `/api` ? `:4096`; endpoint `/api/session`, `/api/event` (SSE), `/api/provider`, `/api/agent`, `/api/model`, `/api/health` semua ADA di `packages/engine/protocol/src/groups/*`.
+- **Auth** ? default aman: engine pakai Basic (`Arunaki_SERVER_PASSWORD`) + `auth_token`; web kirim `x-api-key` — tanpa `.env` tidak ada password, `ServerAuth.required` false ? request lolos (tanpa auth mismatch).
+- **WS :31524 (DesktopBridgeService)** ? legacy dead code — backend `apps/api` sudah dihapus, koneksi reconnect 3s selamanya tanpa listener.
+
+### Perubahan
+- [x] **Buat `packages/engine/opencode/src/serve-only.ts`** — entrypoint minimal meniru `index.ts` tapi hanya mendaftarkan `ServeCommand` (headless server, `--port` via `withNetworkOptions`); environment setup (Arunaki_PID, Heap.start, dll) sama dengan CLI utama.
+- [x] **Boot verified** — `bun run --conditions=browser ./src/serve-only.ts serve --port 4096` ? `Arunaki server listening on http://127.0.0.1:4096`; `GET /api/health` ? `200 {"healthy":true}`.
+- [x] Typecheck engine bersih untuk file baru (sisa error pre-existing `@opentui/*`, `@Arunaki-ai/http-recorder` tidak terkait).
+
+### Diputuskan
+- Jalur boot dev `dev-app.cjs` kini ter-recovers; Electron dapat memuat web UI dan berinteraksi dengan engine API. WS legacy :31524 sengaja dibiarkan dulu (jangan melebar), akan dibersihkan saat finalisasi MASTER PROMPT single-harness.
