@@ -9,7 +9,7 @@ import path from "path"
 
 import { createClient } from "@hey-api/openapi-ts"
 
-const Arunaki = path.resolve(dir, "../../Arunaki")
+const Arunaki = path.resolve(dir, "..", "..", "engine", "opencode")
 
 await $`bun dev generate > ${dir}/openapi.json`.cwd(Arunaki)
 

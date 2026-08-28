@@ -7,7 +7,7 @@ import { Database } from "@arunaki/core/database/database"
 
 import { Session } from "@/session/session"
 import { SessionPaths } from "../../src/server/routes/instance/httpapi/groups/session"
-import { SyncPaths } from "../../src/server/routes/instance/httpapi/groups/sync"
+import { ExperimentalPaths } from "../../src/server/routes/instance/httpapi/groups/experimental"
 import { MessageID, PartID } from "../../src/session/schema"
 import { PartTable } from "@arunaki/core/session/sql"
 import { resetDatabase } from "../fixture/db"
@@ -72,7 +72,7 @@ describe("schema-rejection wire shape", () => {
     () =>
       Effect.gen(function* () {
         const test = yield* TestInstance
-        const res = yield* requestInDirectory(SyncPaths.history, test.directory, {
+        const res = yield* requestInDirectory(ExperimentalPaths.consoleSwitch, test.directory, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ aggregate: -1 }),
@@ -130,7 +130,7 @@ describe("schema-rejection wire shape", () => {
       Effect.gen(function* () {
         const test = yield* TestInstance
         const huge = "X".repeat(50_000)
-        const res = yield* requestInDirectory(SyncPaths.history, test.directory, {
+        const res = yield* requestInDirectory(ExperimentalPaths.consoleSwitch, test.directory, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ aggregate: huge }),

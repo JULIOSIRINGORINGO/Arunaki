@@ -531,7 +531,6 @@ describe("HttpApi SDK", () => {
         const tools = yield* capture(() => sdk.tool.ids())
         const vcs = yield* capture(() => sdk.vcs.get())
         const formatter = yield* capture(() => sdk.formatter.status())
-        const lsp = yield* capture(() => sdk.lsp.status())
 
         return {
           statuses: statuses({
@@ -550,7 +549,6 @@ describe("HttpApi SDK", () => {
             tools,
             vcs,
             formatter,
-            lsp,
           }),
           project: { worktreeSelected: record(project.data).worktree === directory },
           paths: { directorySelected: record(paths.data).directory === directory },

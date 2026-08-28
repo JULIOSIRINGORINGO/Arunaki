@@ -3,7 +3,6 @@ import type {
   ArunakiClient,
   Event,
   FilePart,
-  LspStatus,
   McpStatus,
   Todo,
   Message,
@@ -442,7 +441,7 @@ export type TuiSidebarMcpItem = {
   error?: string
 }
 
-export type TuiSidebarLspItem = Pick<LspStatus, "id" | "root" | "status">
+export type TuiSidebarLspItem = { id: string; root: string; status: string }
 
 export type TuiSidebarTodoItem = Pick<Todo, "content" | "status">
 

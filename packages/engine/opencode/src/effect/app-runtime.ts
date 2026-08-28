@@ -40,7 +40,6 @@ import { Format } from "@/format"
 import { InstanceStore } from "@/project/instance-store"
 import { Project } from "@/project/project"
 import { Vcs } from "@/project/vcs"
-import { Workspace } from "@/control-plane/workspace"
 import { Installation } from "@/installation"
 import { Npm } from "@arunaki/core/npm"
 import { memoMap } from "@arunaki/core/effect/memo-map"
@@ -95,7 +94,6 @@ export const AppLayer = AppNodeBuilderV1.build(
     InstanceStore.node,
     Project.node,
     Vcs.node,
-    Workspace.node,
     Installation.node,
   ]),
 ).pipe(Layer.provideMerge(AppNodeBuilderV1.build(Ripgrep.node)), Layer.provideMerge(Observability.layer))

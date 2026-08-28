@@ -1,11 +1,5 @@
 import { LayerNode } from "@arunaki/core/effect/layer-node"
-import type {
-  Hooks,
-  PluginInput,
-  Plugin as PluginInstance,
-  PluginModule,
-  WorkspaceAdapter as PluginWorkspaceAdapter,
-} from "@arunaki/plugin"
+import type { Hooks, PluginInput, Plugin as PluginInstance, PluginModule } from "@arunaki/plugin"
 import { Config } from "@/config/config"
 import { createArunakiClient } from "@arunaki/sdk"
 import { ServerAuth } from "@/server/auth"
@@ -28,8 +22,6 @@ import { InstanceState } from "@/effect/instance-state"
 import { errorMessage } from "@/util/error"
 import { PluginLoader } from "./loader"
 import { parsePluginSpecifier, readPluginId, readV1Plugin, resolvePluginId } from "./shared"
-import { registerAdapter } from "@/control-plane/adapters"
-import type { WorkspaceAdapter } from "@/control-plane/types"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstallationChannel } from "@arunaki/core/installation/version"
@@ -155,11 +147,6 @@ const layer = Layer.effect(
           project: ctx.project,
           worktree: ctx.worktree,
           directory: ctx.directory,
-          experimental_workspace: {
-            register(type: string, adapter: PluginWorkspaceAdapter) {
-              registerAdapter(ctx.project.id, type, adapter as WorkspaceAdapter)
-            },
-          },
           get serverUrl(): URL {
             return Server.url ?? new URL("http://localhost:4096")
           },

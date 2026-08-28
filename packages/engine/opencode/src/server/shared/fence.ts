@@ -1,8 +1,6 @@
 import { Database } from "@arunaki/core/database/database"
 import { inArray } from "drizzle-orm"
 import { EventSequenceTable } from "@arunaki/core/event/sql"
-import { Workspace } from "@/control-plane/workspace"
-import type { WorkspaceV2 } from "@arunaki/core/workspace"
 import { Effect } from "effect"
 
 export const HEADER = "x-Arunaki-sync"
@@ -49,12 +47,4 @@ export function parse(headers: Headers): State | undefined {
       return typeof entry[0] === "string" && Number.isInteger(entry[1])
     }),
   )
-}
-
-export function wait(workspaceID: WorkspaceV2.ID, state: State, signal?: AbortSignal) {
-  return Effect.gen(function* () {
-    yield* Effect.logInfo("waiting for state", { workspaceID, state })
-    yield* Workspace.Service.use((workspace) => workspace.waitForSync(workspaceID, state, signal))
-    yield* Effect.logInfo("state fully synced", { workspaceID, state })
-  })
 }

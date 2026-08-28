@@ -9,7 +9,6 @@ import { InstanceDisposed } from "@/server/event"
 import { Question } from "@/question"
 import { ConfigApi } from "./groups/config"
 import { ControlApi } from "./groups/control"
-import { ControlPlaneApi } from "./groups/control-plane"
 import { EventApi } from "./groups/event"
 import { ExperimentalApi } from "./groups/experimental"
 import { FileApi } from "./groups/file"
@@ -22,9 +21,7 @@ import { ProviderApi } from "./groups/provider"
 import { PtyApi, PtyConnectApi } from "./groups/pty"
 import { QuestionApi } from "./groups/question"
 import { SessionApi } from "./groups/session"
-import { SyncApi } from "./groups/sync"
 import { TuiApi } from "./groups/tui"
-import { WorkspaceApi } from "./groups/workspace"
 import { makeApi } from "@arunaki/protocol/api"
 import { LocationMiddleware } from "@arunaki/server/location"
 import { SessionLocationMiddleware } from "@arunaki/server/middleware/session-location"
@@ -53,7 +50,6 @@ export const ServerApi = makeApi({
 
 export const RootHttpApi = HttpApi.make("Arunaki-root")
   .addHttpApi(ControlApi)
-  .addHttpApi(ControlPlaneApi)
   .addHttpApi(GlobalApi)
   .middleware(SchemaErrorMiddleware)
   .middleware(Authorization)
@@ -71,9 +67,7 @@ export const InstanceHttpApi = HttpApi.make("Arunaki-instance")
   .addHttpApi(PermissionApi)
   .addHttpApi(ProviderApi)
   .addHttpApi(SessionApi)
-  .addHttpApi(SyncApi)
   .addHttpApi(TuiApi)
-  .addHttpApi(WorkspaceApi)
   .middleware(SchemaErrorMiddleware)
 
 export const ArunakiHttpApi = HttpApi.make("arunaki")

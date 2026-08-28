@@ -12,12 +12,8 @@ import { describe, expect } from "bun:test"
 import { Deferred, Effect, Layer, Schema, Scope } from "effect"
 import * as Stream from "effect/Stream"
 import { HttpClient, HttpRouter, HttpServerResponse } from "effect/unstable/http"
-import * as Socket from "effect/unstable/socket/Socket"
 import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
-import { mkdir } from "node:fs/promises"
-import { registerAdapter } from "../../src/control-plane/adapters"
-import type { WorkspaceAdapter } from "../../src/control-plane/types"
-import { Workspace } from "../../src/control-plane/workspace"
+import { WorkspaceV2 } from "@arunaki/core/workspace"
 import { InstanceRef, WorkspaceRef } from "../../src/effect/instance-ref"
 import { Project } from "../../src/project/project"
 import { Session } from "../../src/session/session"
@@ -51,32 +47,14 @@ const workspaceLayer = workspaceLayerWithRuntimeFlags({ experimentalWorkspaces: 
 
 const it = testEffect(Layer.mergeAll(testStateLayer, NodeHttpServer.layerTest, NodeServices.layer, workspaceLayer))
 
-const instanceContextTestLayer = Layer.mergeAll(
-  instanceContextLayer,
-  workspaceRoutingLayer.pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal)),
-)
+const instanceContextTestLayer = Layer.mergeAll(instanceContextLayer, workspaceRoutingLayer)
 
-const localAdapter = (directory: string): WorkspaceAdapter => ({
-  name: "Local Test",
-  description: "Create a local test workspace",
-  configure: (info) => ({ ...info, name: "local-test", directory }),
-  create: async () => {
-    await mkdir(directory, { recursive: true })
-  },
-  async remove() {},
-  target: () => ({ type: "local" as const, directory }),
-})
-
-const setupWorkspace = (kind: string) =>
+const setupWorkspace = () =>
   Effect.gen(function* () {
     const dir = yield* tmpdirScoped({ git: true })
     yield* Project.use.fromDirectory(dir)
-    const projectID = yield* Project.Service.use((svc) => svc.fromDirectory(dir).pipe(Effect.map((p) => p.project.id)))
-    registerAdapter(projectID, kind, localAdapter(dir))
-    const workspace = yield* Workspace.Service.use((svc) =>
-      svc.create({ type: kind, branch: null, extra: null, projectID }),
-    )
-    return { dir, workspace }
+    const workspaceID = WorkspaceV2.ID.ascending()
+    return { dir, workspaceID }
   })
 
 type Capture = { directory?: string; workspaceID?: string }
@@ -133,7 +111,7 @@ describe("HttpApi handler context inheritance", () => {
   // by InstanceContextMiddleware — without any explicit re-provide.
   it.live("Effect.forkIn preserves InstanceRef/WorkspaceRef across the fork", () =>
     Effect.gen(function* () {
-      const { dir, workspace } = yield* setupWorkspace("local-fork")
+      const { dir, workspaceID } = yield* setupWorkspace()
       const capture = yield* Deferred.make<Capture>()
 
       yield* serveProbes({
@@ -147,13 +125,13 @@ describe("HttpApi handler context inheritance", () => {
       })
 
       const response = yield* HttpClient.post(
-        `/fork-probe?directory=${encodeURIComponent(dir)}&workspace=${encodeURIComponent(workspace.id)}`,
+        `/fork-probe?directory=${encodeURIComponent(dir)}&workspace=${encodeURIComponent(workspaceID)}`,
       )
       expect(response.status).toBe(200)
 
       const observed = yield* Deferred.await(capture).pipe(Effect.timeout("2 seconds"))
       expect(observed.directory).toBe(dir)
-      expect(observed.workspaceID).toBe(workspace.id)
+      expect(observed.workspaceID).toBe(workspaceID)
     }),
   )
 
@@ -163,7 +141,7 @@ describe("HttpApi handler context inheritance", () => {
   // provides are required: without them the stream body sees undefined.
   it.live("Stream.fromEffect body needs explicit provides — inheritance does not carry through", () =>
     Effect.gen(function* () {
-      const { dir, workspace } = yield* setupWorkspace("local-stream")
+      const { dir, workspaceID } = yield* setupWorkspace()
       const withoutCapture = yield* Deferred.make<Capture>()
       const withCapture = yield* Deferred.make<Capture>()
 
@@ -194,7 +172,7 @@ describe("HttpApi handler context inheritance", () => {
         }),
       })
 
-      const queryString = `directory=${encodeURIComponent(dir)}&workspace=${encodeURIComponent(workspace.id)}`
+      const queryString = `directory=${encodeURIComponent(dir)}&workspace=${encodeURIComponent(workspaceID)}`
       const responseWithout = yield* HttpClient.post(`/stream-probe-without?${queryString}`)
       yield* responseWithout.text
       const responseWith = yield* HttpClient.post(`/stream-probe-with?${queryString}`)
@@ -206,7 +184,7 @@ describe("HttpApi handler context inheritance", () => {
 
       const withProvide = yield* Deferred.await(withCapture).pipe(Effect.timeout("2 seconds"))
       expect(withProvide.directory).toBe(dir)
-      expect(withProvide.workspaceID).toBe(workspace.id)
+      expect(withProvide.workspaceID).toBe(workspaceID)
     }),
   )
 })

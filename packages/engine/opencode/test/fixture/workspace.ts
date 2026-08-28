@@ -3,7 +3,6 @@ import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { Database } from "@arunaki/core/database/database"
 import { FSUtil } from "@arunaki/core/fs-util"
 import { Auth } from "../../src/auth"
-import { Workspace } from "../../src/control-plane/workspace"
 import { RuntimeFlags } from "../../src/effect/runtime-flags"
 import { InstanceBootstrap } from "../../src/project/bootstrap"
 import { InstanceStore } from "../../src/project/instance-store"
@@ -16,7 +15,6 @@ import { EventV2Bridge } from "../../src/event-v2-bridge"
 export const workspaceLayerWithRuntimeFlags = (overrides: Partial<RuntimeFlags.Info>) =>
   AppNodeBuilder.build(
     LayerNode.group([
-      Workspace.node,
       Auth.node,
       Session.node,
       SessionPrompt.node,

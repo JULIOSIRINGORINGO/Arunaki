@@ -12,9 +12,7 @@ import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { CrossSpawnSpawner } from "@arunaki/core/cross-spawn-spawner"
 import { Flag } from "@arunaki/core/flag/flag"
 import { Ripgrep } from "@arunaki/core/ripgrep"
-import { registerAdapter } from "../../src/control-plane/adapters"
-import type { WorkspaceAdapter } from "../../src/control-plane/types"
-import { Workspace } from "../../src/control-plane/workspace"
+import { WorkspaceV2 } from "@arunaki/core/workspace"
 
 import { InstanceBootstrap as InstanceBootstrapService } from "../../src/project/bootstrap-service"
 import { InstanceStore } from "../../src/project/instance-store"
@@ -44,7 +42,7 @@ const noopBootstrapLayer = Layer.succeed(
   InstanceBootstrapService.Service.of({ run: Effect.void }),
 )
 const appLayer = AppNodeBuilder.build(
-  LayerNode.group([InstanceStore.node, Project.node, Session.node, Workspace.node, Database.node, Ripgrep.node]),
+  LayerNode.group([InstanceStore.node, Project.node, Session.node, Database.node, Ripgrep.node]),
   [[InstanceStore.bootstrapNode, noopBootstrapLayer]],
 )
 const servedRoutes: Layer.Layer<never, Config.ConfigError, HttpServer.HttpServer> = HttpRouter.serve(
@@ -90,33 +88,6 @@ function createTextMessage(sessionID: SessionIDType, text: string) {
     return { info, part }
   })
 }
-
-const localAdapter = (directory: string): WorkspaceAdapter => ({
-  name: "Local Test",
-  description: "Create a local test workspace",
-  configure: (info) => ({ ...info, name: "local-test", directory }),
-  create: async () => {
-    await mkdir(directory, { recursive: true })
-  },
-  async remove() {},
-  target: () => ({ type: "local" as const, directory }),
-})
-
-const createLocalWorkspace = (input: { projectID: Project.Info["id"]; type: string; directory: string }) =>
-  Effect.acquireRelease(
-    Effect.gen(function* () {
-      registerAdapter(input.projectID, input.type, localAdapter(input.directory))
-      return yield* Workspace.Service.use((svc) =>
-        svc.create({
-          type: input.type,
-          branch: null,
-          extra: null,
-          projectID: input.projectID,
-        }),
-      )
-    }),
-    (info) => Workspace.use.remove(info.id).pipe(Effect.ignore),
-  )
 
 const insertLegacyAssistantMessage = (sessionID: SessionIDType, seq = 1, time = seq) =>
   Effect.gen(function* () {
@@ -798,28 +769,24 @@ describe("session HttpApi", () => {
       Effect.gen(function* () {
         const test = yield* TestInstance
         Flag.Arunaki_EXPERIMENTAL_WORKSPACES = true
-        const project = yield* Project.use.fromDirectory(test.directory)
-        const workspace = yield* createLocalWorkspace({
-          projectID: project.project.id,
-          type: "session-create-workspace",
-          directory: path.join(test.directory, ".workspace-local"),
-        })
+        yield* Project.use.fromDirectory(test.directory)
+        const workspaceID = WorkspaceV2.ID.ascending()
 
-        const created = yield* requestJson<Session.Info>(`${SessionPaths.create}?workspace=${workspace.id}`, {
+        const created = yield* requestJson<Session.Info>(`${SessionPaths.create}?workspace=${workspaceID}`, {
           method: "POST",
           headers: { "x-Arunaki-directory": test.directory, "content-type": "application/json" },
           body: JSON.stringify({ title: "workspace session" }),
         })
         const messages = yield* request(
-          `${pathFor(SessionPaths.messages, { sessionID: created.id })}?workspace=${workspace.id}`,
+          `${pathFor(SessionPaths.messages, { sessionID: created.id })}?workspace=${workspaceID}`,
           {
             headers: { "x-Arunaki-directory": test.directory },
           },
         )
 
-        expect(created).toMatchObject({ id: created.id, workspaceID: workspace.id })
+        expect(created).toMatchObject({ id: created.id, workspaceID })
         expect(messages.status).toBe(200)
-        expect(yield* getWorkspaceID(created.id)).toEqual({ workspaceID: workspace.id })
+        expect(yield* getWorkspaceID(created.id)).toEqual({ workspaceID })
       }),
     { git: true, config: { formatter: false, lsp: false, share: "disabled" } },
   )
