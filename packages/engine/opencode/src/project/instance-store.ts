@@ -2,8 +2,7 @@ import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { makeGlobalNode, Node } from "@arunaki/core/effect/app-node"
 import { GlobalBus } from "@/bus/global"
 import { serviceUse } from "@arunaki/core/effect/service-use"
-import { WorkspaceContext } from "@/control-plane/workspace-context"
-import { InstanceRef } from "@/effect/instance-ref"
+import { InstanceRef, WorkspaceRef } from "@/effect/instance-ref"
 import { disposeInstance as runDisposers } from "@/effect/instance-registry"
 import { FSUtil } from "@arunaki/core/fs-util"
 import { Context, Deferred, Duration, Effect, Exit, Layer, Scope } from "effect"
@@ -76,12 +75,13 @@ const layer: Layer.Layer<Service, never, Project.Service | InstanceBootstrap.Ser
         yield* Deferred.done(entry.deferred, exit).pipe(Effect.asVoid)
       })
 
-    const emitDisposed = (input: { directory: string; project?: string }) =>
-      Effect.sync(() =>
+    const emitDisposed = Effect.fn("InstanceStore.emitDisposed")(function* (input: { directory: string; project?: string }) {
+      const workspace = yield* WorkspaceRef
+      yield* Effect.sync(() =>
         GlobalBus.emit("event", {
           directory: input.directory,
           project: input.project,
-          workspace: WorkspaceContext.workspaceID,
+          workspace,
           payload: {
             type: "server.instance.disposed",
             properties: {
@@ -90,6 +90,7 @@ const layer: Layer.Layer<Service, never, Project.Service | InstanceBootstrap.Ser
           },
         }),
       )
+    })
 
     const disposeContext = Effect.fn("InstanceStore.disposeContext")(function* (ctx: InstanceContext) {
       yield* Effect.logInfo("disposing instance", { directory: ctx.directory })

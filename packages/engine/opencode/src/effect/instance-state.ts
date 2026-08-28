@@ -2,7 +2,6 @@ import { Effect, ScopedCache, Scope } from "effect"
 import type { InstanceContext } from "@/project/instance-context"
 import { InstanceRef, WorkspaceRef } from "./instance-ref"
 import { registerDisposer } from "./instance-registry"
-import { WorkspaceContext } from "@/control-plane/workspace-context"
 
 const TypeId = "~Arunaki/InstanceState"
 
@@ -18,7 +17,7 @@ export const context = Effect.gen(function* () {
 })
 
 export const workspaceID = Effect.gen(function* () {
-  return (yield* WorkspaceRef) ?? WorkspaceContext.workspaceID
+  return yield* WorkspaceRef
 })
 
 export const directory = Effect.map(context, (ctx) => ctx.directory)
