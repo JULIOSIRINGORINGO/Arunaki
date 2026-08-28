@@ -92,11 +92,12 @@ export function logo(pad?: string) {
     }
     return parts.join("")
   }
-  glyphs.left.forEach((row, index) => {
+  const g = glyphs()
+  g.left.forEach((row: string, index: number) => {
     if (pad) result.push(pad)
     result.push(draw(row, left.fg, left.shadow, left.bg))
     result.push(gap)
-    const other = glyphs.right[index] ?? ""
+    const other = g.right[index] ?? ""
     result.push(draw(other, right.fg, right.shadow, right.bg))
     result.push(EOL)
   })

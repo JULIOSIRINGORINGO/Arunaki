@@ -1,7 +1,11 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
 import pkg from "../package.json"
-import { Script } from "@Arunaki-ai/script"
+const Script = {
+  channel: "stable",
+  version: pkg.version,
+  preview: process.env.PREVIEW === "true"
+}
 import { fileURLToPath } from "url"
 
 const dir = fileURLToPath(new URL("..", import.meta.url))

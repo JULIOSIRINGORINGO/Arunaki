@@ -8,7 +8,6 @@ export type Runtime = {
   Session: (typeof import("../../../src/session/session"))["Session"]
   Todo: (typeof import("../../../src/session/todo"))["Todo"]
   Project: (typeof import("../../../src/project/project"))["Project"]
-  Tui: typeof import("../../../src/server/shared/tui-control")
   disposeAllInstances: (typeof import("../../fixture/fixture"))["disposeAllInstances"]
   tmpdir: (typeof import("../../fixture/fixture"))["tmpdir"]
   resetDatabase: (typeof import("../../fixture/db"))["resetDatabase"]
@@ -27,7 +26,6 @@ export function runtime() {
     const session = await import("../../../src/session/session")
     const todo = await import("../../../src/session/todo")
     const project = await import("../../../src/project/project")
-    const tui = await import("../../../src/server/shared/tui-control")
     const fixture = await import("../../fixture/fixture")
     const db = await import("../../fixture/db")
     return {
@@ -40,7 +38,6 @@ export function runtime() {
       Session: session.Session,
       Todo: todo.Todo,
       Project: project.Project,
-      Tui: tui,
       disposeAllInstances: fixture.disposeAllInstances,
       tmpdir: fixture.tmpdir,
       resetDatabase: db.resetDatabase,

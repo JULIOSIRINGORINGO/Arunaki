@@ -11,7 +11,7 @@ import { FSUtil } from "@arunaki/core/fs-util"
 import { CrossSpawnSpawner } from "@arunaki/core/cross-spawn-spawner"
 import { Flag } from "@arunaki/core/flag/flag"
 import { createArunakiClient } from "@arunaki/sdk/v2"
-import { validateSession } from "../../src/cli/tui/validate-session"
+
 import { InstanceBootstrap } from "../../src/project/bootstrap"
 import { InstanceStore } from "../../src/project/instance-store"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
@@ -469,24 +469,7 @@ describe("HttpApi SDK", () => {
     ),
   )
 
-  serverPathParity("formats missing session validation errors for -s", (serverPath) =>
-    withStandardProject(serverPath, ({ directory }) =>
-      Effect.gen(function* () {
-        const sessionID = "ses_206f84f18ffeZ6hhD7pFYAiW5T"
-        const fetch = yield* serverFetch(serverPath)
-        const thrown = yield* captureThrown(() =>
-          validateSession({
-            url: "http://localhost",
-            directory,
-            sessionID,
-            fetch,
-          }),
-        )
-        expect(errorMessage(thrown)).toBe(`Session not found: ${sessionID}`)
-        return errorMessage(thrown)
-      }),
-    ),
-  )
+
 
   httpapiInstance(
     "uses generated SDK basic auth behavior",

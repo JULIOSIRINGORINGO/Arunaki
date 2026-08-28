@@ -1,6 +1,5 @@
 import yargs from "yargs"
 import { hideBin } from "yargs/helpers"
-import { RunCommand } from "./cli/cmd/run"
 import { GenerateCommand } from "./cli/cmd/generate"
 import { ConsoleCommand } from "./cli/cmd/account"
 import { ProvidersCommand } from "./cli/cmd/providers"
@@ -74,7 +73,6 @@ const cli = yargs(args)
   .usage("")
   .completion("completion", "generate shell completion script")
   .command(McpCommand)
-  .command(RunCommand)
   .command(GenerateCommand)
   .command(DebugCommand)
   .command(ConsoleCommand)

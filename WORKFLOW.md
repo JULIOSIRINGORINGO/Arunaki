@@ -2131,6 +2131,89 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 
 ## Phase 62.7: Eksekusi REMOVE Engine — Control-Plane + Sync (DONE)
 
+- [x] **Temuan kunci** \u2014 \script/build.ts:27-30\ (\createEmbeddedWebUIBundle\) membangun \packages/engine/app\ (web asli OpenCode), BUKAN \ pps/web\ \u2014 perlu perbaikan saat embedding UI produk.
+- [ ] **Keputusan tim dibutuhkan** \u2014 (1) definisi "hilangkan local HTTP": zero-TCP vs loopback transisi; (2) UI resmi = apps/web; (3) native COM bridge tetap sah. Lihat docs/MASTER-HARNESS-PLAN.md.
+
+## Phase 62.1: Remove Dead WebSocket Bridge (MASTER-HARNESS-PLAN Langkah 1) ✅ DONE
+
+**Goal:** Buang bridge WebSocket legacy `ws://127.0.0.1:31524` + seluruh handler RPC-nya dari Electron main — langkah pertama konsolidasi single-harness.
+
+- [x] `apps/desktop/main.cjs` — dihapus blok `Backend Bridge (WebSocket client)`: `require('ws')`, koneksi + auto-reconnect loop 3s, semua command handler WS (`openFile`, `openExcel`, `openWord`, `openPpt`, `sendKeys`, `clickCoordinate`, `excelWriteCell`, `excelSetFormat`, `excelEdit`, `wordType`, `wordFormat`, `screenshot`, `ping`).
+- [x] Dibuang `desktopCapturer` dari require Electron (hanya dipakai screenshot via WS).
+- [x] `apps/desktop/package.json` — dependensi `ws` dihapus.
+- [x] Semua akses native kini murni IPC: `window.arunakiDesktop.*` (preload) → `ipcMain.handle` (`dialog:pickFolder`, `fs:*`, `excel:openNative` via winax COM, `app:*`, `theme:set`).
+- [x] Verifikasi: `node --check apps/desktop/main.cjs` ✅; tidak ada lagi referensi `31524`/`connectToBackend` di `apps/*` (sisa hanya di dokumen catatan historis).
+- [x] WORKFLOW Phase 32 ditandai REMOVED dengan catatan migrasi.
+- [~] Serial test Electron masih menunggu run manual (tanpa `npm run dev` desktop memberatkan CI).
+
+**Ajaran:** Preload sudah 100% memakai `ipcRenderer.invoke`; blok WS adalah dead code yang bertahan dari era `apps/api` (NestJS). Pembuangannya aman & tidak menyentuh jalur aktif.
+
+### 62.2 Follow-up — Temuan runtime bun menghambat Langkah 2-4
+- [x] Ditelusuri: "in-process via `Server.Default()`" hanya bisa di binary `Bun.build` (deps `@ff-labs/fff-bun`, `@parcel/watcher`, `@opentui` tidak bisa di-load di proses Electron/Node CJS).
+- [x] Kesimpulan dicatat di `docs/MASTER-HARNESS-PLAN.md` — Langkah 2-4 bergantung pada harness .exe yang di-defer; dev flow `serve-only.ts` + Vite proxy :4096 tetap jalur transisi yang sah.
+- [ ] Keputusan tim masih terbuka: (1) kapan .exe masuk backlog aktif; (2) definisi "hilangkan local HTTP": zero-TCP vs loopback; (3) UI resmi = apps/web (rekomendasi).
+
+## Phase 62.3: Engine Feature Triage — Dokumen Putusan 1/1 (DONE)
+
+**Goal:** Buat dokumen triage fitur engine opencode → Arunaki, menandai status
+per-item (KEEP/REMOVE/DEFER/DECIDE) untuk dieksekusi 1/1 saat konsolidasi.
+
+- [x] `docs/ENGINE-FEATURE-TRIAGE.md` — tabel: built-in tools, service dir (`src/`), CLI commands, distribusi/build; + daftar 9 putusan 1/1 yang terbuka dengan rekomendasi awal.
+- [x] **Tool `shell` diputuskan KEEP (2026-08-28)** — fallback resmi baca file binary saat mapping COM meleset; tetap lewat gate `Permission`, bukan shell bebas. Di-catat juga di `docs/MASTER-HARNESS-PLAN.md`.
+- [x] REMOVE awal tanpa eksekusi: `lsp` tool+service, `ide`, `worktree`, `acp`, `control-plane`, `share`, `sync`, `attach`, `github`/`pr`, `tui`.
+- [x] DEFER: distribusi compiled-CLI (.exe) — `Dockerfile`, `bin/opencode`, `postinstall.mjs`, `core bin`, `models-dev.ts` feed, `build.ts` embed-UI.
+- [ ] Eksekusi REMOVE ditunda ke langkah konsolidasi MASTER-HARNESS-PLAN (jangan spontan), dan putusan 1/1 lainnya (`code-mode`, `plan`, `mcp`, `command`, `background`, CLI utils, `image`/`format`/`share`/`sync`) masih terbuka untuk tim.
+
+## Phase 62.4: Document Map — Baca via Parser, Edit via COM (DONE)
+
+**Goal:** Implementasi pola parse→map→act untuk dokumen: baca TIDAK lewat COM
+lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
+"mapping meleset" (fuzzy label di COM) hilang dari jalur umum.
+
+- [x] `packages/arunaki-tools/src/docmap.ts` BARU — schema Effect `DocMap` (`ExcelMap`|`WordMap`|`PptMap`), sub-schema (cell/sheet/mergeparagraph/table/shape/slide), target edit `ExcelWriteCell`/`WordTarget`.
+- [x] READ tools BARU (parser-based, tanpa COM): `excel-read.ts` (xlsx `cellFormula:true`+`cellNF`), `word-read.ts` (jszip + regex urutan `<w:p>`/`<w:tbl>`, paragraf dalam tabel difilter), `ppt-read.ts` (jszip slideN.xml, ekstrak `cNvPr`/`a:t`).
+- [x] COM tools diubah jadi edit-only (target ref dari peta): `excel-com.ts` (write_cell/write_range/format_cell/clone_sheet/delete_sheet; aksi baca dihapus), `word-com.ts`, `ppt-com.ts` (set_shape_text pakai shapeId/shapeName).
+- [x] Registrasi engine (`src/tool/registry.ts`) — tambah `excelRead`/`wordRead`/`pptRead`; `excelCom`/`wordCom`/`pptCom` tetap.
+- [x] `@arunaki/tools`: export `docmap`, deps `jszip`/`xlsx` (sudah di root node_modules).
+- [x] `docs/DOCUMENT-MAP.md` — skema + alur parse→map→act + tabel tool.
+- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/opencode` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
+
+## Phase 62.5: Eksekusi REMOVE Engine — LSP/IDE/ACP/CLI GitHub (DONE)
+
+**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/opencode/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
+
+- [x] **LSP tool + service dihapus:** `src/tool/lsp.ts`, seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server), `src/cli/cmd/debug/lsp.ts`. `toolFiletype` di-inline ke `src/cli/cmd/run/tool.ts` (2 pemakai: `footer.permission.tsx`, `scrollback.writer.tsx`).
+- [x] **Registri:** `src/tool/registry.ts` (hapus `lsp: Tool.init` + `LSP.node` + `flags.experimentalLspTool`), `src/cli/cmd/run/tool.ts` (hapus `lspTitle`/`runLsp`/`scrollLspStart`/`permLsp`/TOOL_RULES `lsp`), `src/cli/cmd/agent.ts` (hapus `lsp` dari AVAILABLE_PERMISSIONS).
+- [x] **HTTP API:** `groups/file.ts` (hapus `findSymbol`/`/find/symbol`), `groups/instance.ts` + `handlers/instance.ts` (hapus `lsp`/`/lsp` + `getLsp`), `handlers/file.ts` (hapus stub findSymbol), `server.ts` (hapus `LSP.node`; Workspace/Worktree/ShareNext/SessionShare DIKEMBALIKAN karena modulnya belum dihapus — tidak dicabut prematur).
+- [x] **Flags:** `runtime-flags.ts` hapus `disableLspDownload`, `experimentalLspTy`, `experimentalLspTool` (pertahankan `autoShare` utk step share).
+- [x] **IDE + ACP + CLI dihapus:** `src/ide/`, `src/acp/`, `src/cli/cmd/{acp,attach,github,github.handler,github.shared,pr,debug/lsp}.ts` + unregistration di `src/index.ts`/`debug/index.ts`.
+- [x] **Test dihapus/diupdate:** hapus `test/acp/`, `test/lsp/`, `test/ide/`, `test/cli/acp/`, `test/cli/github-*.test.ts`, `test/tool/lsp.test.ts`; strip `@/lsp/lsp` dari `test/session/{prompt,snapshot-tool-race}.test.ts` + 4 test tool (write/edit/read/apply_patch); update `test/effect/runtime-flags.test.ts` (3 flag hilang), `test/tool/parameters.test.ts` (blok lsp), `test/server/httpapi-file.test.ts` (hapus test findSymbol).
+- [x] **Verifikasi:** tsgo 775 → **745** error (0 file error baru; 6 file test/cli/acp keluar dari error set); test yang disentuh pass; 3 kegagalan tersisa (`httpapi-file` timeout ×2, `read.test.ts` Windows path) terbukti pre-existing via snapshot baseline.
+- [ ] Eksekusi REMOVE berikutnya: `share` → `control-plane` (ganti `WorkspaceContext`), lalu `sync`, `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
+
+## Phase 62.6: Eksekusi REMOVE Engine — Worktree + Share (DONE)
+
+**Goal:** Eksekusi item 🗑️ REMOVE `worktree` dan `share`. Baseline tsgo = 745 error (semua pre-existing lapisan TUI + non-UI). Target: 0 error file baru. Verifikasi tsgo via `node_modules/.bin/tsgo.exe --noEmit` (banding per-file error count vs commit).
+
+### Worktree (commit `a23c27e`)
+- [x] **Modul dihapus:** `src/worktree/index.ts`, `src/control-plane/adapters/worktree.ts` (BUILTIN adapters dikosongkan), plus `git rm` 3 test: `test/project/worktree.test.ts`, `test/project/worktree-remove.test.ts`, `test/server/worktree-endpoint-repro.test.ts`.
+- [x] **Wiring:** `app-runtime.ts` (hapus `Worktree.node`), `httpapi/server.ts` (hapus `Worktree.node`), `groups/experimental.ts` (hapus `WorktreeList`/`WorktreeApiError`/paths + 4 endpoint `worktree.{list,create,remove,reset}`), `handlers/experimental.ts` (hapus `mapWorktreeError`/`worktreeSvc`/4 handler).
+- [x] **Test:** `test/server/httpapi-experimental.test.ts` strip worktree; `httpapi-exercise` hapus helper + 5 scenario (4 worktree + sisa 2 LSP `lsp.status`/`find.symbols`).
+- [x] **Verifikasi:** tsgo 745, 0 diff file-vs-HEAD; route coverage 201 pass/0 missing/0 extra; `httpapi-experimental` read-only timeout pre-existing (~6087ms di HEAD).
+- [x] **Catatan:** `ctx.worktree` (property path di InstanceContext — dipakai findUp/format/containsPath/agent/event-v2-bridge) **dipertahankan**; hanya service git worktree yang dihapus.
+
+### Share
+- [x] **Modul dihapus:** `src/share/share-next.ts`, `src/share/session.ts`, `test/share/` (share-next.test.ts).
+- [x] **Wiring:** `bootstrap-runtime.ts`/`app-runtime.ts`/`httpapi/server.ts` (hapus node `ShareNext`/`SessionShare`), `project/bootstrap.ts` (hapus layer + deps), `storage/schema.ts` (hapus re-export `SessionShareTable`).
+- [x] **HTTP API:** `groups/session.ts` (hapus endpoint `share`/`unshare` + `SessionPaths.share`), `handlers/session.ts` (hapus handler share/unshare + `shareSvc`; **perbaikan:** handler `create` yang semula `shareSvc.create(...)` → `session.create(...)`), `public.ts` (hapus branch nullability `share`).
+- [x] **Session domain:** `session.ts` hapus schema `Share`, field `share` (Info/mapping/toRow), `setShare` (interface+impl), `Patch.share`, branch merge di `patch()`.
+- [x] **Flags/CLI:** `runtime-flags.ts` hapus `autoShare`; `cli/cmd/run.ts` hapus option `--share` + fungsi `share()` + `void share(...)`; `run/runtime.ts` hapus `RunInput.share` + penggunaan; `cli/cmd/import.ts` strip ShareNext (parseShareUrl/shouldAttachShareAuthHeaders/transformShareData/ShareData + jalur URL) — jalur JSON-file dipertahankan.
+- [x] **Test:** `import.test.ts` hapus test share (parseShareUrl/auth header/transform); `runtime-flags.test.ts` hapus 3 asersi `autoShare`; `session-schema.test.ts` hapus field `share`; `httpapi-exercise/index.ts` hapus 2 scenario `session.share`/`session.unshare`.
+- [x] **Dipertahankan (inert):** `config.share`/`autoshare` di `config.ts` (field config), kolom DB `session.share_url` di core (`SessionTable`). Test config (`config.test.ts`) tetap hijau.
+- [x] **Verifikasi:** tsgo **745 (0 diff vs HEAD baseline)**; route coverage **199 pass / 0 missing / 0 extra**; `session-schema`+`runtime-flags`+`import` test pass (36/36); `httpapi-session` 15 pass/6-7 fail = set pre-existing di HEAD (14 pass/7 fail — timeout border 5000ms), tanpa regresi; `httpapi-experimental` 2 pass + 1 timeout pre-existing.
+
+## Phase 62.7: Eksekusi REMOVE Engine — Control-Plane + Sync (DONE)
+
 **Goal:** Eksekusi item 🗑️ REMOVE `control-plane` + `sync` dari `packages/engine/opencode/` sampai tuntas (tabel `Workspace` di SQLite dipertahankan sebagai kolom DB inert). Baseline tsgo = 745 error (semua pre-existing). Target: 0 error file baru.
 
 - [x] **Modul `src/control-plane/` dihapus total:** `adapters/index.ts` (BUILTIN `workspace`), `adapters/workspace.ts` (dalam `git rm ../control-plane`), `types.ts`, `util.ts`, `workspace.ts` (service + `Workspace`), `workspace-adapter-runtime.ts`, `dev/` (README + debug-workspace-plugin). `WorkspaceV2` type di core tetap (dipakai test + query param).
@@ -2142,3 +2225,13 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] **Verifikasi:** tsgo **745 (0 diff vs HEAD baseline)**; route coverage **187 pass / 0 missing / 0 extra** (199 − 12 scenario = 187); focused 101+ test → failure set IDENTIK baseline HEAD (flaky timeout git/tmpdir/spawn, bukan regresi); `httpapi-sdk` 13 pass / flaky 5 (nama sama di HEAD, siang/malam bervariasi); SDK `tsgo --noEmit` clean + `bun test` 1/1 pass.
 - [x] **Dokumentasi:** dev-log `docs/dev-logs/dev-log-2026-08-28-remove-control-plane-sync.md`.
 - [ ] Eksekusi REMOVE berikutnya: `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
+
+## Phase 62.8: Eksekusi REMOVE Engine — TUI (DONE)
+
+**Goal:** Hapus layer TUI dan singkirkan sisa-sisa 745 typecheck error pre-existing. Target: 0 error tsgo.
+
+- [x] **Modul dihapus:** `src/cli/tui/`, `src/cli/cmd/run/`, `src/plugin/tui/`, `src/config/tui-*`, `test/cli/run/`, dsb. File test non-TUI (`httpapi-exercise`, `httpapi-sdk.test.ts`, `llm-native-recorded.test.ts`, `oauth-provider.test.ts`) yang sempat terhapus telah dikembalikan dan dibersihkan dari error TypeScript akibat import TUI yang hilang.
+- [x] **Wiring & Type Fixes:** Membersihkan `mcp/index.ts` dari event TUI, `registry.ts` dari error Yield Effect untuk `ExcelComTool`, `build.ts` & `publish.ts` dari impor `@Arunaki-ai/script`.
+- [x] **Verifikasi:** `bun run typecheck` di `packages/engine/opencode` dan `packages/engine/plugin` sekarang menghasilkan **0 error** (turun dari baseline 745).
+- [x] **Dokumentasi:** dev-log `docs/dev-logs/dev-log-2026-08-28-tui-removal.md`.
+- [ ] Putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.

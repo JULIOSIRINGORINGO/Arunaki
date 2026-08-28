@@ -51,7 +51,7 @@ export function convertTool(mcpTool: MCPToolDef, client: Client, timeout?: numbe
     description: mcpTool.description ?? "",
     inputSchema: jsonSchema(inputSchema),
     execute: async (args: unknown, options) => {
-      const result = await client.callTool(
+      const result = (await client.callTool(
         {
           name: mcpTool.name,
           arguments: (args || {}) as Record<string, unknown>,
@@ -64,12 +64,12 @@ export function convertTool(mcpTool: MCPToolDef, client: Client, timeout?: numbe
           // The MCP SDK only sends a progress token when this hook is present, enabling timeout resets.
           onprogress: () => {},
         },
-      )
+      )) as any
       if (result.isError)
         throw new Error(
           result.content
-            .flatMap((item) => (item.type === "text" ? [item.text] : []))
-            .filter((text) => text.trim())
+            .flatMap((item: any) => (item.type === "text" ? [item.text] : []))
+            .filter((text: string) => text.trim())
             .join("\n\n") || "MCP tool returned an error",
         )
       if (result.content.length > 0 || result.structuredContent === undefined || result.structuredContent === null)

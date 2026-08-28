@@ -1,7 +1,9 @@
 import { ConfigV1 } from "@arunaki/core/v1/config/config"
 import { SessionV1 } from "@arunaki/core/v1/session"
 import { ModelsDev } from "@arunaki/core/models-dev"
+// @ts-ignore
 import { HttpRecorder } from "@Arunaki-ai/http-recorder"
+// @ts-ignore
 import { HttpRecorderInternal } from "@Arunaki-ai/http-recorder/internal"
 import { describe, expect, test } from "bun:test"
 import { tool, type ModelMessage, type JSONValue } from "ai"

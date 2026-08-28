@@ -89,7 +89,6 @@ import { providerHandlers } from "./handlers/provider"
 import { ptyConnectHandlers, ptyHandlers } from "./handlers/pty"
 import { questionHandlers } from "./handlers/question"
 import { sessionHandlers } from "./handlers/session"
-import { tuiHandlers } from "./handlers/tui"
 import { handlers } from "@arunaki/server/handlers"
 import { buildLocationServiceMap, LocationServiceMap } from "@arunaki/core/location-services"
 import { layer as locationLayer } from "@arunaki/server/location"
@@ -154,7 +153,6 @@ const instanceApiRoutes = HttpApiBuilder.layer(InstanceHttpApi).pipe(
     permissionHandlers,
     providerHandlers,
     sessionHandlers,
-    tuiHandlers,
   ]),
 )
 

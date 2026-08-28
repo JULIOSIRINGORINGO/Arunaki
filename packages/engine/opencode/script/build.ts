@@ -3,7 +3,7 @@
 import { $ } from "bun"
 import path from "path"
 import { fileURLToPath } from "url"
-import { createSolidTransformPlugin } from "@opentui/solid/bun-plugin"
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -13,14 +13,18 @@ process.chdir(dir)
 
 const generated = await import("./generate.ts")
 
-import { Script } from "@Arunaki-ai/script"
 import pkg from "../package.json"
+const Script = {
+  channel: "stable",
+  version: pkg.version,
+  release: process.env.GH_RELEASE === "true"
+}
 
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
 const sourcemapsFlag = process.argv.includes("--sourcemaps")
-const plugin = createSolidTransformPlugin()
+
 const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
 
 const createEmbeddedWebUIBundle = async () => {
@@ -48,7 +52,7 @@ const createEmbeddedWebUIBundle = async () => {
 }
 
 const embeddedFileMap = skipEmbedWebUi ? null : await createEmbeddedWebUIBundle()
-const treeSitterWorker = await Bun.file(fileURLToPath(import.meta.resolve("@opentui/core/parser.worker"))).text()
+
 
 const allTargets: {
   os: string
@@ -138,7 +142,7 @@ await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
-  await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
+
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
   await $`bun install --os="*" --cpu="*" @ff-labs/fff-bun@${pkg.dependencies["@ff-labs/fff-bun"]}`
 }
@@ -156,14 +160,12 @@ for (const item of targets) {
   console.log(`building ${name}`)
   await $`mkdir -p dist/${name}/bin`
 
-  const workerPath = "./src/cli/tui/worker.ts"
-  const treeSitterWorkerPath = "opentui-tree-sitter-worker.js"
-  const bunfsRoot = item.os === "win32" ? "B:/~BUN/root/" : "/$bunfs/root/"
+
 
   await Bun.build({
     conditions: ["bun", "node"],
     tsconfig: "./tsconfig.json",
-    plugins: [plugin],
+    plugins: [],
     external: ["node-gyp"],
     format: "esm",
     minify: true,
@@ -180,21 +182,17 @@ for (const item of targets) {
       windows: {},
     },
     files: {
-      [treeSitterWorkerPath]: treeSitterWorker,
       ...(embeddedFileMap ? { "Arunaki-web-ui.gen.ts": embeddedFileMap } : {}),
     },
     entrypoints: [
       "./src/index.ts",
-      workerPath,
-      treeSitterWorkerPath,
       ...(embeddedFileMap ? ["Arunaki-web-ui.gen.ts"] : []),
     ],
     define: {
       FFF_LIBC: JSON.stringify(item.abi === "musl" ? "musl" : "gnu"),
       Arunaki_VERSION: `'${Script.version}'`,
       Arunaki_MODELS_DEV: generated.modelsData,
-      OTUI_TREE_SITTER_WORKER_PATH: bunfsRoot + treeSitterWorkerPath,
-      Arunaki_WORKER_PATH: workerPath,
+
       Arunaki_CHANNEL: `'${Script.channel}'`,
       Arunaki_LIBC: item.os === "linux" ? `'${item.abi ?? "glibc"}'` : "",
       ...(item.os === "linux" ? { "process.env.OPENTUI_LIBC": JSON.stringify(item.abi ?? "glibc") } : {}),

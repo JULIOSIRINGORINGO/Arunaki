@@ -21,7 +21,7 @@ import { ProviderApi } from "./groups/provider"
 import { PtyApi, PtyConnectApi } from "./groups/pty"
 import { QuestionApi } from "./groups/question"
 import { SessionApi } from "./groups/session"
-import { TuiApi } from "./groups/tui"
+
 import { makeApi } from "@arunaki/protocol/api"
 import { LocationMiddleware } from "@arunaki/server/location"
 import { SessionLocationMiddleware } from "@arunaki/server/middleware/session-location"
@@ -67,7 +67,7 @@ export const InstanceHttpApi = HttpApi.make("Arunaki-instance")
   .addHttpApi(PermissionApi)
   .addHttpApi(ProviderApi)
   .addHttpApi(SessionApi)
-  .addHttpApi(TuiApi)
+
   .middleware(SchemaErrorMiddleware)
 
 export const ArunakiHttpApi = HttpApi.make("arunaki")

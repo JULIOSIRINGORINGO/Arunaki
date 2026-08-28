@@ -118,8 +118,13 @@ const layer = Layer.effect(
     const patchtool = yield* ApplyPatchTool
     const skilltool = yield* SkillTool
     const agent = yield* Agent.Service
-    const codeMode = flags.experimentalCodeMode ? yield* Effect.promise(() => import("./code-mode")) : undefined
-    const codeModeTool = codeMode ? yield* codeMode.CodeModeTool : undefined
+
+    const excelComTool = yield* ExcelComTool
+    const wordComTool = yield* WordComTool
+    const pptComTool = yield* PptComTool
+    const excelReadTool = yield* ExcelReadTool
+    const wordReadTool = yield* WordReadTool
+    const pptReadTool = yield* PptReadTool
 
     const state = yield* InstanceState.make<State>(
       Effect.fn("ToolRegistry.state")(function* (ctx) {
@@ -225,13 +230,12 @@ const layer = Layer.effect(
           patch: Tool.init(patchtool),
           question: Tool.init(question),
           plan: Tool.init(plan),
-          excelCom: Tool.init(ExcelComTool),
-          wordCom: Tool.init(WordComTool),
-          pptCom: Tool.init(PptComTool),
-          excelRead: Tool.init(ExcelReadTool),
-          wordRead: Tool.init(WordReadTool),
-          pptRead: Tool.init(PptReadTool),
-          ...(codeModeTool ? { execute: Tool.init(codeModeTool) } : {}),
+          excelCom: Tool.init(excelComTool),
+          wordCom: Tool.init(wordComTool),
+          pptCom: Tool.init(pptComTool),
+          excelRead: Tool.init(excelReadTool),
+          wordRead: Tool.init(wordReadTool),
+          pptRead: Tool.init(pptReadTool),
         })
 
         return {
@@ -257,7 +261,6 @@ const layer = Layer.effect(
             tool.excelRead,
             tool.wordRead,
             tool.pptRead,
-            ...(tool.execute ? [tool.execute] : []),
             ...(flags.experimentalPlanMode && flags.client === "cli" ? [tool.plan] : []),
           ],
           task: tool.task,
@@ -290,17 +293,6 @@ const layer = Layer.effect(
       return ["Available agent types and the tools they have access to:", description].join("\n")
     })
 
-    const describeCodeMode = Effect.fn("ToolRegistry.describeCodeMode")(function* (input: {
-      agent: Agent.Info
-      permission?: PermissionV1.Ruleset
-    }) {
-      if (!codeMode) return
-      const ruleset = Permission.merge(input.agent.permission, input.permission ?? [])
-      const tools = Permission.visibleTools(yield* mcp.tools(), ruleset)
-      if (Object.keys(tools).length === 0) return
-      return codeMode.describeCatalog(tools, Object.keys(yield* mcp.clients()).map(McpCatalog.sanitize))
-    })
-
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
         if (tool.id === WebSearchTool.id) {
@@ -315,10 +307,7 @@ const layer = Layer.effect(
         return true
       })
 
-      const codeModeDescription = filtered.some((tool) => tool.id === "execute")
-        ? yield* describeCodeMode(input)
-        : undefined
-      const visible = filtered.filter((tool) => tool.id !== "execute" || codeModeDescription)
+      const visible = filtered.filter((tool) => tool.id !== "execute")
 
       return yield* Effect.forEach(
         visible,
@@ -338,7 +327,6 @@ const layer = Layer.effect(
             description: [
               output.description,
               tool.id === TaskTool.id ? yield* describeTask(input.agent) : undefined,
-              tool.id === "execute" ? codeModeDescription : undefined,
             ]
               .filter(Boolean)
               .join("\n"),

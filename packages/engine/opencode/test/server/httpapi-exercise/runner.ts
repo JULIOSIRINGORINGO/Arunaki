@@ -179,7 +179,6 @@ function withContext<A, E>(
           todos: (sessionID, todos) => run(modules.Todo.Service.use((svc) => svc.update({ sessionID, todos }))),
           llmText: (value) => Effect.suspend(() => llm().text(value)),
           llmWait: (count) => Effect.suspend(() => llm().wait(count)),
-          tuiRequest: (request) => Effect.sync(() => modules.Tui.submitTuiRequest(request)),
         }
         yield* trace(options, scenario, `${label} seed start`)
         const state = yield* scenario.seed(base)
