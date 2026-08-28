@@ -97,10 +97,16 @@ function extractCanvasContent(llmText: string): string {
 // Map engine session messages (/api/session/:id/message) into the chat Message shape.
 function mapEngineMessages(raw: any[]): Message[] {
   return raw.map((msg, idx) => {
-    const role: "user" | "assistant" = msg.role === "user" ? "user" : "assistant";
+    const role: "user" | "assistant" = msg.type === "user" || msg.role === "user" ? "user" : "assistant";
     let content = "";
     if (typeof msg.content === "string") {
       content = msg.content;
+    } else if (typeof msg.text === "string") {
+      content = msg.text;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content
+        .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))
+        .join("");
     } else if (Array.isArray(msg.parts)) {
       content = msg.parts
         .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))

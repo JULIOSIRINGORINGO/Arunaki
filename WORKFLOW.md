@@ -2018,3 +2018,22 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 
 ### Diputuskan
 - Jalur boot dev `dev-app.cjs` kini ter-recovers; Electron dapat memuat web UI dan berinteraksi dengan engine API. WS legacy :31524 sengaja dibiarkan dulu (jangan melebar), akan dibersihkan saat finalisasi MASTER PROMPT single-harness.
+
+## Phase 61.8: E2E Chat Verified in Electron Chain + Frontend Mapping Fix (DONE)
+
+**Goal:** Buktikan rantai Electron ? engine :4096 ? LLM benar-benar berfungsi end-to-end, dan perbaiki tampilan history chat yang tidak cocok dengan bentuk data engine.
+
+### E2E Verified (via serve-only.ts)
+- [x] `/api/health` ? `200 {"healthy":true}`
+- [x] `POST /api/session` (`location:{type:"directory",directory}`) ? 200, `id: ses_*`
+- [x] `POST /api/session/:id/prompt` (`{prompt:{type:"text",text}}`) ? 200, `admittedSeq:1`
+- [x] Turn LLM (Mistral via `.Arunaki/config.json` kenari.id) ? `finish=stop`, teks asisten persist
+- [x] `GET /api/session/:id/message` ? `type:"user"|"assistant"`, assistant berisi `content:[{type:"text",text}]`
+
+### Perbaikan Frontend
+- [x] `mapEngineMessages` (`UnifiedWorkstationPage.tsx`) kini membaca bentuk engine yang sebenarnya: role dari `msg.type` (kompatibel `msg.role`), konten dari `msg.text` (user) atau array `msg.content` (assistant), tetap kompatibel dengan bentuk lama `msg.parts`.
+- [x] `npm run build -w apps/web` ? 0 error.
+
+### Ajaran
+- Bentuk engine yang TEPAT untuk pesan: `{type:"user"|"assistant", content:[{type:"text",text}]}` — dokumentasikan di sini karena tersebar asumsi lama di UI.
+- Mapping SSE `mapEngineEvents` memakai nama `session.next.*` yang masih valid di schema engine.
