@@ -142,7 +142,6 @@ const scenarios: Scenario[] = [
   http.protected.get("/command", "command.list").json(200, array, "status"),
   http.protected.get("/agent", "app.agents").json(200, array, "status"),
   http.protected.get("/skill", "app.skills").json(200, array, "status"),
-  http.protected.get("/lsp", "lsp.status").json(200, array),
   http.protected.get("/formatter", "formatter.status").json(200, array),
   http.protected.get("/config", "config.get").json(200, undefined, "status"),
   http.protected
@@ -355,11 +354,6 @@ const scenarios: Scenario[] = [
     }))
     .json(200, array),
   http.protected
-    .get("/find/symbol", "find.symbols")
-    .seeded((ctx) => ctx.file("hello.ts", "export const hello = 1\n"))
-    .at((ctx) => ({ path: `/find/symbol?${new URLSearchParams({ query: "hello" })}`, headers: ctx.headers() }))
-    .json(200, array),
-  http.protected
     .get("/event", "event.stream")
     .stream()
     .status(
@@ -532,48 +526,6 @@ const scenarios: Scenario[] = [
     }))
     .json(200, array, "status"),
   http.protected.get("/experimental/tool/ids", "tool.ids").json(200, array),
-  http.protected.get("/experimental/worktree", "worktree.list").json(200, array),
-  http.protected
-    .post("/experimental/worktree", "worktree.create")
-    .mutating()
-    .at((ctx) => ({ path: "/experimental/worktree", headers: ctx.headers(), body: { name: "api-dsl" } }))
-    .jsonEffect(
-      200,
-      (body, ctx) =>
-        Effect.gen(function* () {
-          object(body)
-          check(typeof body.directory === "string", "created worktree should include directory")
-          yield* ctx.worktreeRemove(body.directory)
-        }),
-      "status",
-    ),
-  http.protected
-    .post("/experimental/worktree", "worktree.create.invalid")
-    .at((ctx) => ({ path: "/experimental/worktree", headers: ctx.headers(), body: { name: 1 } }))
-    .status(400),
-  http.protected
-    .delete("/experimental/worktree", "worktree.remove")
-    .mutating()
-    .seeded((ctx) => ctx.worktree({ name: "api-remove" }))
-    .at((ctx) => ({ path: "/experimental/worktree", headers: ctx.headers(), body: { directory: ctx.state.directory } }))
-    .json(200, (body) => {
-      check(body === true, "worktree remove should return true")
-    }),
-  http.protected
-    .post("/experimental/worktree/reset", "worktree.reset")
-    .mutating()
-    .seeded((ctx) => ctx.worktree({ name: "api-reset" }))
-    .at((ctx) => ({
-      path: "/experimental/worktree/reset",
-      headers: ctx.headers(),
-      body: { directory: ctx.state.directory },
-    }))
-    .jsonEffect(200, (body, ctx) =>
-      Effect.gen(function* () {
-        check(body === true, "worktree reset should return true")
-        yield* ctx.worktreeRemove(ctx.state.directory)
-      }),
-    ),
   http.protected
     .get("/experimental/session", "experimental.session.list")
     .at((ctx) => ({ path: "/experimental/session?roots=false&archived=false", headers: ctx.headers() }))

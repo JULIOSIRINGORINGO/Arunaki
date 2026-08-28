@@ -46,7 +46,6 @@ import { Snapshot } from "@/snapshot"
 import { Storage } from "@/storage/storage"
 import { ToolRegistry } from "@/tool/registry"
 import { Truncate } from "@/tool/truncate"
-import { Worktree } from "@/worktree"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 import { MoveSession } from "@arunaki/core/control-plane/move-session"
 import { Database } from "@arunaki/core/database/database"
@@ -254,7 +253,6 @@ const app = LayerNode.group([
   Project.node,
   Vcs.node,
   Workspace.node,
-  Worktree.node,
   Installation.node,
   ShareNext.node,
   SessionShare.node,
