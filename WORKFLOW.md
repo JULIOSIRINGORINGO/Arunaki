@@ -1987,3 +1987,16 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - [x] **Blocker start server** — `@arunaki/gitlab-auth` & `@arunaki/poe-auth` hasil commit `a30cbbe` hanya berisi `package.json` kosong (tanpa source), sehingga `plugin/index.ts` gagal resolve dan server tidak bisa start. Diisi ulang dari source npm asli (`opencode-gitlab-auth@2.1.0`, `opencode-poe-auth@0.0.1`); `.d.ts` di-rewire ke `@arunaki/plugin`. Konvensi: tambah `.gitignore` `!dist/` per-package karena `dist/` global di-ignore.
 - [x] **E2E chat verified** — prompt sukses via `POST /api/session/:id/prompt` (payload SDK `{prompt:{type:"text",text}}`), turn LLM jalan, assistant message tersimpan & terbaca penuh di `GET /api/session/:id/message` (`parts/content` terisi). Route `POST /api/session/:id/message` (v2, `{parts:...}`) berbeda dan bukan jalur web.
 - [x] `npm run build -w apps/web` — 0 error
+
+## Phase 61.6: Rebrand Sisa — OpenAPI Spec, LLM Prompts, Provider, Skill Docs (DONE)
+
+**Goal:** Tuntaskan rebranding 1-to-1: tidak ada lagi jejak identitas "opencode" yang bocor ke runtime/identitas, setelah previously hanya package names yang direbrand (Phase 60.1).
+
+- [x] **`sdk/openapi.json` regenerated** — spec committed sebelumnya stale (601× "opencode", title "opencode", `createOpencodeClient`); source (`public.ts`, `generate.ts`) sudah bersih. `bun dev generate` dari `packages/opencode` → 0 "opencode", `title:"arunaki"`, `description:"Arunaki api"`, 188 operations, paths identik.
+- [x] **LLM system prompts** — `opencode/src/session/prompt/*.txt` (default, beast, codex, copilot-gpt-5, gemini, gpt, kimi, meta, trinity, anthropic) rebrand ke "Arunaki"; URL → repo `JULIOSIRINGORINGO/Arunaki` & `arunaki.ai`.
+- [x] **Tool/command templates** — `tool/lsp.txt`, `command/template/initialize.txt`, `core/src/plugin/command/initialize.txt` rebrand; konfigurasi `opencode.json` → `arunaki.json`.
+- [x] **Provider rename** — `core/src/plugin/provider/opencode.ts` → `arunaki.ts` (+ import di `provider.ts:24`, test file → `provider-arunaki.test.ts`). Isi file sudah Arunaki sejak awal.
+- [x] **Skill docs konsisten fakta** — `customize-arunaki.md` disamakan dengan loader nyata: project dir `.Arunaki/` (kapital, sesuai `config/paths.ts:29,35`), global `~/.config/arunaki/` (sesuai `core/global.ts:13`), `@arunaki/plugin`, `arunaki.ai/config.json`. Duplikat `customize-opencode.md` dihapus.
+- [x] **Bersihkan scratch** — hapus `core/src/effect/dfdf` (file sampah).
+- [x] `npm run build -w apps/web` — 0 error; typecheck engine bersih untuk perubahan (sisa error pre-existing `@Arunaki-ai/http-recorder`); test provider `provider-arunaki.test.ts` — 12 pass.
+- [ ] **Sengaja dipertahankan (flag)** — `models-dev.ts:160-163` default `https://models.opencode.ai` (feed data live, overridable `Arunaki_MODELS_URL`); `opencode/bin/opencode` + `postinstall.mjs` + `Dockerfile` + `core/package.json` `bin` (`@arunaki/engine` → `./bin/opencode`, file belum ada) = mekanisme distribusi compiled-CLI masa depan, tidak dipakai jalur web/desktop run-from-source. Referensi di file docs/specs/fixtures/vendor adalah provenance. Di-skip karena menunggu keputusan MASTER PROMPT (single-harness .exe).
