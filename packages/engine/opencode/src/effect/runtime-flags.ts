@@ -14,7 +14,6 @@ const enabledByExperimental = (name: string) =>
   )
 
 export class Service extends ConfigService.Service<Service>()("@arunaki/RuntimeFlags", {
-  autoShare: bool("Arunaki_AUTO_SHARE"),
   pure: bool("Arunaki_PURE"),
   disableDefaultPlugins: bool("Arunaki_DISABLE_DEFAULT_PLUGINS"),
   disableEmbeddedWebUi: bool("Arunaki_DISABLE_EMBEDDED_WEB_UI"),

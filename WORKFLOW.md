@@ -2106,4 +2106,27 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] **IDE + ACP + CLI dihapus:** `src/ide/`, `src/acp/`, `src/cli/cmd/{acp,attach,github,github.handler,github.shared,pr,debug/lsp}.ts` + unregistration di `src/index.ts`/`debug/index.ts`.
 - [x] **Test dihapus/diupdate:** hapus `test/acp/`, `test/lsp/`, `test/ide/`, `test/cli/acp/`, `test/cli/github-*.test.ts`, `test/tool/lsp.test.ts`; strip `@/lsp/lsp` dari `test/session/{prompt,snapshot-tool-race}.test.ts` + 4 test tool (write/edit/read/apply_patch); update `test/effect/runtime-flags.test.ts` (3 flag hilang), `test/tool/parameters.test.ts` (blok lsp), `test/server/httpapi-file.test.ts` (hapus test findSymbol).
 - [x] **Verifikasi:** tsgo 775 → **745** error (0 file error baru; 6 file test/cli/acp keluar dari error set); test yang disentuh pass; 3 kegagalan tersisa (`httpapi-file` timeout ×2, `read.test.ts` Windows path) terbukti pre-existing via snapshot baseline.
-- [ ] Eksekusi REMOVE berikutnya: `worktree` → `share` → `control-plane` (ganti `WorkspaceContext`), lalu `sync`, `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
+- [ ] Eksekusi REMOVE berikutnya: `share` → `control-plane` (ganti `WorkspaceContext`), lalu `sync`, `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
+
+## Phase 62.6: Eksekusi REMOVE Engine — Worktree + Share (DONE)
+
+**Goal:** Eksekusi item 🗑️ REMOVE `worktree` dan `share`. Baseline tsgo = 745 error (semua pre-existing lapisan TUI + non-UI). Target: 0 error file baru. Verifikasi tsgo via `node_modules/.bin/tsgo.exe --noEmit` (banding per-file error count vs commit).
+
+### Worktree (commit `a23c27e`)
+- [x] **Modul dihapus:** `src/worktree/index.ts`, `src/control-plane/adapters/worktree.ts` (BUILTIN adapters dikosongkan), plus `git rm` 3 test: `test/project/worktree.test.ts`, `test/project/worktree-remove.test.ts`, `test/server/worktree-endpoint-repro.test.ts`.
+- [x] **Wiring:** `app-runtime.ts` (hapus `Worktree.node`), `httpapi/server.ts` (hapus `Worktree.node`), `groups/experimental.ts` (hapus `WorktreeList`/`WorktreeApiError`/paths + 4 endpoint `worktree.{list,create,remove,reset}`), `handlers/experimental.ts` (hapus `mapWorktreeError`/`worktreeSvc`/4 handler).
+- [x] **Test:** `test/server/httpapi-experimental.test.ts` strip worktree; `httpapi-exercise` hapus helper + 5 scenario (4 worktree + sisa 2 LSP `lsp.status`/`find.symbols`).
+- [x] **Verifikasi:** tsgo 745, 0 diff file-vs-HEAD; route coverage 201 pass/0 missing/0 extra; `httpapi-experimental` read-only timeout pre-existing (~6087ms di HEAD).
+- [x] **Catatan:** `ctx.worktree` (property path di InstanceContext — dipakai findUp/format/containsPath/agent/event-v2-bridge) **dipertahankan**; hanya service git worktree yang dihapus.
+
+### Share
+- [x] **Modul dihapus:** `src/share/share-next.ts`, `src/share/session.ts`, `test/share/` (share-next.test.ts).
+- [x] **Wiring:** `bootstrap-runtime.ts`/`app-runtime.ts`/`httpapi/server.ts` (hapus node `ShareNext`/`SessionShare`), `project/bootstrap.ts` (hapus layer + deps), `storage/schema.ts` (hapus re-export `SessionShareTable`).
+- [x] **HTTP API:** `groups/session.ts` (hapus endpoint `share`/`unshare` + `SessionPaths.share`), `handlers/session.ts` (hapus handler share/unshare + `shareSvc`; **perbaikan:** handler `create` yang semula `shareSvc.create(...)` → `session.create(...)`), `public.ts` (hapus branch nullability `share`).
+- [x] **Session domain:** `session.ts` hapus schema `Share`, field `share` (Info/mapping/toRow), `setShare` (interface+impl), `Patch.share`, branch merge di `patch()`.
+- [x] **Flags/CLI:** `runtime-flags.ts` hapus `autoShare`; `cli/cmd/run.ts` hapus option `--share` + fungsi `share()` + `void share(...)`; `run/runtime.ts` hapus `RunInput.share` + penggunaan; `cli/cmd/import.ts` strip ShareNext (parseShareUrl/shouldAttachShareAuthHeaders/transformShareData/ShareData + jalur URL) — jalur JSON-file dipertahankan.
+- [x] **Test:** `import.test.ts` hapus test share (parseShareUrl/auth header/transform); `runtime-flags.test.ts` hapus 3 asersi `autoShare`; `session-schema.test.ts` hapus field `share`; `httpapi-exercise/index.ts` hapus 2 scenario `session.share`/`session.unshare`.
+- [x] **Dipertahankan (inert):** `config.share`/`autoshare` di `config.ts` (field config), kolom DB `session.share_url` di core (`SessionTable`). Test config (`config.test.ts`) tetap hijau.
+- [x] **Verifikasi:** tsgo **745 (0 diff vs HEAD baseline)**; route coverage **199 pass / 0 missing / 0 extra**; `session-schema`+`runtime-flags`+`import` test pass (36/36); `httpapi-session` 15 pass/6-7 fail = set pre-existing di HEAD (14 pass/7 fail — timeout border 5000ms), tanpa regresi; `httpapi-experimental` 2 pass + 1 timeout pre-existing.
+
+- [ ] Eksekusi REMOVE berikutnya: `control-plane` (ganti `WorkspaceContext`) → lalu `sync`, `tui`; putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.

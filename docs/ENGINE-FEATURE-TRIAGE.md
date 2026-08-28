@@ -65,13 +65,13 @@
 | `command` | `command/` | ❓ DECIDE | Slash command chat (/model /mcp dll) — reuse atau REMOVE? |
 | `skill` | `skill/` | ✅ KEEP | Skills/ARUNAKI system prompt (Phase 49) |
 | `background` | `background/` | ❓ DECIDE | Background jobs (auto-annotate dll) — GERAKAN penyedot sumber daya; cek pemakaian |
-| `image`, `format`, `share`, `sync` | — | ❓ DECIDE |
+| `image`, `format`, `sync` | — | ❓ DECIDE |
 | `lsp` | `lsp/` | ✅ REMOVE 2026-08-28 | Bagian dari fitur IDE — hapus bersama tool lsp. **SELESAI:** seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server) dihapus; `toolFiletype` di-inline ke `run/tool.ts` |
 | `ide` | `ide/` | ✅ REMOVE 2026-08-28 | Integrasi VSCode — bukan IDE. **SELESAI:** `src/ide/` + `test/ide/` dihapus, ikut CLI `acp`/`attach`/`github`/`pr` |
-| `worktree` | `worktree/` | 🗑️ REMOVE | Git worktree (coding) |
+| `worktree` | `worktree/` | ✅ REMOVE 2026-08-28 | Git worktree (coding). **SELESAI:** `src/worktree/` + `control-plane/adapters/worktree.ts` + test dihapus; 4 endpoint `worktree.*` dilepas. `.Node` tetap di wiring sampai core — `ctx.worktree` (path) dipertahankan |
 | `acp` | `acp/` | ✅ REMOVE 2026-08-28 | Agent Client Protocol — client eksternal. **SELESAI:** `src/acp/`, `src/cli/cmd/acp.ts`, `test/acp/`, `test/cli/acp/` dihapus |
 | `control-plane` | `control-plane/` | 🗑️ REMOVE | Remote sandbox — tidak dipakai jalur web (Phase 60) |
-| `share` | `share/` | 🗑️ REMOVE | Berbagi sesi ke cloud |
+| `share` | `share/` | ✅ REMOVE 2026-08-28 | Berbagi sesi ke cloud. **SELESAI:** `src/share/` (share-next, session) + `test/share/` dihapus; endpoint `session.share`/`session.unshare` + handler + flag `Arunaki_AUTO_SHARE` dilepas; `Session.share` schema/field hanya interface+storage (core `share_url` dipertahankan); `config.share` dipertahankan sebagai field config inert; CLI `--share` + URL share di `import` dilepas |
 | `sync` | `sync/` | 🗑️ REMOVE | Sinkronisasi cloud — lokal zone |
 | `installation`, `account` | — | ❓ DECIDE | Auth/instalasi — lihat status defer (.exe) |
 | `audio.d.ts`, `markdown.d.ts`, `sql.d.ts` | — | ✅ KEEP | Deklarasi types/loader |
