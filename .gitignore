@@ -48,3 +48,8 @@ scripts/engine-serve.err.log
 scripts/engine-serve.log.err
 scripts/engine-serve.pid
 *.pid
+
+# Vendored plugin dist sourcemaps
+packages/arunaki-gitlab-auth/dist/*.map
+packages/arunaki-poe-auth/dist/*.map
+
