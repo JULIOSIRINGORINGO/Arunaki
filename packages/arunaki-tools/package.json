@@ -5,12 +5,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./docmap": "./src/docmap.ts",
-    "./excel-com": "./src/tools/excel-com.ts",
-    "./word-com": "./src/tools/word-com.ts",
-    "./ppt-com": "./src/tools/ppt-com.ts",
-    "./excel-read": "./src/tools/excel-read.ts",
-    "./word-read": "./src/tools/word-read.ts",
-    "./ppt-read": "./src/tools/ppt-read.ts"
+    "./excel-com": "./src/excel-com.ts",
+    "./word-com": "./src/word-com.ts",
+    "./ppt-com": "./src/ppt-com.ts",
+    "./excel-read": "./src/excel-read.ts",
+    "./word-read": "./src/word-read.ts",
+    "./ppt-read": "./src/ppt-read.ts"
   },
   "dependencies": {
     "@arunaki/engine": "workspace:*",

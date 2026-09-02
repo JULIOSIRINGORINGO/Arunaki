@@ -2335,3 +2335,15 @@ Sekarang dua-duanya melakukan aksi nyata di desktop shell.
 - [x] **Verifikasi:** `npm run build -w apps/web` ✅; `node --check` main.cjs & preload.cjs ✅.
   (Tidak menyentuh engine — tidak ada test engine baru, psikologis: perubahan murni
   web + desktop shell.)
+
+## Phase 65: Konsolidasi @arunaki/tools layout (DONE)
+
+Audit "kok ada folder tool 3×": ternyata tiga lapisan berbeda (bukan duplikasi):
+`@arunaki/tools` (tool dokumen), `@arunaki/core/src/tool` (kerangka tool generic),
+`@arunaki/engine/src/tool` (registry engine). Yang redundan hanya nesting
+`arunaki-tools/src/tools/` → 6 file diratakan ke `src/`; subpath export
+`@arunaki/tools/*` tidak berubah. ✅ tsgo 0 error + test hijau.
+- [ ] CATATAN: `@arunaki/tools ↔ @arunaki/engine` circular dep (tools import
+  `@arunaki/engine/tool`); fix ideal: pindah kontrak `Tool` ke `@arunaki/core`.
+- [ ] Folder `opencode/` di `packages/engine` tetap (lineage fork) — rename menjadi
+  pekerjaan kosmetik murni, ditunda sampai keputusan distribusi .exe (WORKFLOW:2005).

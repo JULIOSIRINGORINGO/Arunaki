@@ -1,9 +1,9 @@
-﻿import { Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import * as Tool from "@arunaki/engine/tool"
 import * as XLSX from "xlsx"
 import * as fs from "fs"
 import * as path from "path"
-import { ExcelMap } from "../docmap"
+import { ExcelMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
   filePath: Schema.String,
@@ -65,7 +65,7 @@ export function buildExcelMap(filePath: string): typeof ExcelMap.Type {
 export const ExcelReadTool = Tool.define(
   "excel_read",
   Effect.succeed({
-    description: `Parse an Excel workbook (.xlsx/.xls) with the xlsx parser and return a deterministic Document Map (JSON): every sheet with its range, dimension, populated cells ({ref, value, text, type, formula}) and merged ranges. Use this INSTEAD of COM for reading â€” never guess cell addresses. Pipe the returned map to the LLM so subsequent excel_com edits can target exact refs.`,
+    description: `Parse an Excel workbook (.xlsx/.xls) with the xlsx parser and return a deterministic Document Map (JSON): every sheet with its range, dimension, populated cells ({ref, value, text, type, formula}) and merged ranges. Use this INSTEAD of COM for reading — never guess cell addresses. Pipe the returned map to the LLM so subsequent excel_com edits can target exact refs.`,
     parameters: Parameters,
     execute: (params: Schema.Schema.Type<typeof Parameters>) =>
       Effect.gen(function* () {

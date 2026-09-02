@@ -1,9 +1,9 @@
-﻿import { Effect, Schema } from "effect"
+import { Effect, Schema } from "effect"
 import * as Tool from "@arunaki/engine/tool"
 import * as fs from "fs"
 import * as path from "path"
 import JSZip from "jszip"
-import { WordMap } from "../docmap"
+import { WordMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
   filePath: Schema.String,
