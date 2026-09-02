@@ -43,6 +43,13 @@ export interface CanvasItem {
   timeStr?: string;
 }
 
+const DOCUMENT_EXTENSIONS = new Set(["xlsx", "xls", "xlsm", "docx", "doc", "pptx", "ppt", "csv", "pdf"]);
+
+function isDocumentPath(p: string): boolean {
+  const ext = (p.split(".").pop() || "").toLowerCase();
+  return DOCUMENT_EXTENSIONS.has(ext);
+}
+
 function extractCanvasTitle(content: string): string {
   const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return "Document Canvas";
@@ -205,6 +212,7 @@ export function UnifiedWorkstationPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const producedFilesRef = useRef<string[]>([]);
 
   const startDrag = useCallback(
     (side: "left" | "right", e: React.MouseEvent) => {
@@ -552,6 +560,7 @@ export function UnifiedWorkstationPage() {
 
     setOptimisticMessages((prev) => [...prev, newUserMsg, newAssistantMsg]);
     setIsStreaming(true);
+    producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
     let chatIdToUse = activeChatId;
@@ -634,6 +643,9 @@ export function UnifiedWorkstationPage() {
                 const fileName = targetPath.split(/[/\\]/).pop();
                 if (fileName) {
                   handleOpenFileTab(targetPath, fileName);
+                }
+                if (isDocumentPath(targetPath) && !producedFilesRef.current.includes(targetPath)) {
+                  producedFilesRef.current.push(targetPath);
                 }
               }
             } else if (event.type === "text_delta" && event.data) {
@@ -720,9 +732,43 @@ export function UnifiedWorkstationPage() {
                     body: notifBody,
                   });
                 }
-              } catch {
-                // Ignore desktop notification error
-              }
+} catch {
+                  // Ignore desktop notification error
+                }
+
+                // Auto-backup + auto-open produced documents (Desktop Automation & Behavior)
+                const autoOpenExcel = localStorage.getItem("arunaki_pref_auto_open_excel") === "true";
+                const autoBackup = localStorage.getItem("arunaki_pref_auto_backup") !== "false";
+                const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+                const toolsCount = event.data?.toolOutputs?.length || 0;
+                const produced = producedFilesRef.current.filter(isDocumentPath);
+                if (autoBackup && toolsCount > 0) {
+                  if (desktop?.backupFolder) {
+                    desktop.backupFolder().then((r: any) => {
+                      if (r?.success) toast.success("Workspace backed up automatically");
+                      else if (r?.error) toast.error(`Auto-backup failed: ${r.error}`);
+                    }).catch(() => {});
+                  } else if (!desktop) {
+                    toast.info("Auto-backup requires the desktop app");
+                  }
+                }
+                if (autoOpenExcel && produced.length > 0) {
+                  if (desktop?.openPath) {
+                    for (const doc of produced) {
+                      try {
+                        if ((/\.(xlsx|xls|xlsm)$/i).test(doc) && desktop.openExcelNative) {
+                          desktop.openExcelNative(doc);
+                        } else {
+                          desktop.openPath(doc);
+                        }
+                      } catch {
+                        // Ignore per-file open failure
+                      }
+                    }
+                  } else if (!desktop) {
+                    toast.info("Auto-open documents requires the desktop app");
+                  }
+                }
 
               const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
               if (canvasText) {

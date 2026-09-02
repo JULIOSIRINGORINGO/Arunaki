@@ -2304,6 +2304,34 @@ email/password lama tetap localStorage (kosmetik, bukan delete).
 - [x] **Verifikasi:** `bunx tsgo --noEmit` 0 error; `httpapi-oauth` 3/3 pass;
   suite gabungan 102 pass / 2 fail proven pre-existing (MSYS2 timeout + env token);
   `npm run build -w apps/web` ✅.
-- [ ] Menu 3/3 Desktop Automation & Behavior masih localStorage-only (todo:
-  preferensi globals bisa disimpan di engine config global — `ConfigPaths.files`,
-  lalu baca lewat `/api/global/config`).
+- [x] Menu 3/3 **Desktop Automation & Behavior** — auto-open + auto-backup nyata (Phase 64).
+
+## Phase 64: Settings Menu 3/3 — Desktop Automation & Behavior (DONE)
+
+**Goal:** tiga toggle di menu "Desktop Automation & Behavior" tadinya localStorage-only;
+dua di antaranya (`auto_open_excel`, `auto_backup`) adalah dead toggle tanpa consumer.
+Sekarang dua-duanya melakukan aksi nyata di desktop shell.
+
+- [x] **Audit awal:** `arunaki_pref_desktop_notification` SUDAH punya consumer
+  (`UnifiedWorkstationPage.tsx` notification), `auto_open_excel` & `auto_backup` TIDAK punya.
+  Usulan awal "simpan ke `/api/global/config`" dibatalkan sendiri — `configUpdate`
+  memanggil `disposeAllInstancesAndEmitGlobalDisposed()` pada SETIAP perubahan (bunuh
+  semua session hidup), dan global config adalah lapisan config LLM/agent, bukan prefs
+  runtime shell.
+- [x] **Auto-open Excel:** saat streaming, path target tool (`TargetFile`/`path`) yang
+  berekstensi dokumen (xlsx/xls/xlsm/docx/doc/pptx/ppt/csv/pdf) dikumpulkan di
+  `producedFilesRef`. Di event `done` (hanya jika ada tool output), jika
+  `arunaki_pref_auto_open_excel === "true"` → buka file lewat bridge:
+  `.xlsx/.xls/.xlsm` pakai `openExcelNative` (COM Excel), lainnya `openPath` (OS default).
+- [x] **Auto-backup:** IPC baru `fs:backupFolder` (main.cjs) + `backupFolder()` (preload.cjs):
+  copy native `workspaceRoot` → `{workspace}/.arunaki-backups/{ISO-timestamp}/`
+  via `fs.cp` recursive, exclude `.arunaki-backups`, `.git`, `node_modules` (tetap
+  dalam batas folder sesuai Project Folder Isolation). Dipicu di event `done` saat ada
+  tool output dan `arunaki_pref_auto_backup !== "false"` (default ON). Toast sukses/gagal.
+- [x] **Degradasi browser:** jika bukan Electron (`!window.arunakiDesktop`), toast info
+  "requires the desktop app" (sekali per run, bukan error).
+- [x] **Aturan UI dihormati:** auto-open/backup hanya aktif saat ada tool nyata
+  (`toolsCount > 0`), tidak untuk percakapan Q&A biasa.
+- [x] **Verifikasi:** `npm run build -w apps/web` ✅; `node --check` main.cjs & preload.cjs ✅.
+  (Tidak menyentuh engine — tidak ada test engine baru, psikologis: perubahan murni
+  web + desktop shell.)

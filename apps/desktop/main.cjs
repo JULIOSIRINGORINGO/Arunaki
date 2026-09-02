@@ -321,6 +321,29 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('fs:backupFolder', async () => {
+    try {
+      if (!workspaceRoot) return { error: 'No folder is open' };
+      const backupRoot = path.join(workspaceRoot, '.arunaki-backups');
+      await fs.mkdir(backupRoot, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const dest = path.join(backupRoot, stamp);
+      await fs.cp(workspaceRoot, dest, {
+        recursive: true,
+        force: true,
+        filter: (src) => {
+          const rel = path.relative(workspaceRoot, src);
+          if (!rel) return true;
+          const first = rel.split(path.sep)[0];
+          return first !== '.arunaki-backups' && first !== '.git' && first !== 'node_modules';
+        },
+      });
+      return { success: true, path: dest };
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+
   ipcMain.handle('fs:deletePath', async (_event, targetPath) => {
     try {
       const safePath = resolveInsideWorkspace(targetPath);
