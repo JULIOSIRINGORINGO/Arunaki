@@ -3,13 +3,22 @@ import { Config } from "@/config/config"
 import { ModelsDev } from "@arunaki/core/models-dev"
 import { Provider } from "@/provider/provider"
 import { Auth } from "@/auth"
+import { ConfigProviderV1 } from "@arunaki/core/v1/config/provider"
+import * as InstanceState from "@/effect/instance-state"
+import { markInstanceForDisposal } from "../lifecycle"
 
 import { mapValues } from "remeda"
-import { Effect, Schema } from "effect"
-import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
+import { Duration, Effect, Exit, Schema } from "effect"
+import { HttpClient, HttpClientRequest, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
-import { ProviderAuthApiError } from "../groups/provider"
+import {
+  ProviderAuthApiError,
+  ProviderFetchModelsInput,
+  ProviderStateInput,
+  ProviderTestInput,
+  ProviderUpsert,
+} from "../groups/provider"
 import { ProviderV2 } from "@arunaki/core/provider"
 
 function mapProviderAuthError<A, R>(self: Effect.Effect<A, ProviderAuth.Error, R>) {
@@ -112,5 +121,247 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
       .handle("auth", auth)
       .handleRaw("authorize", authorizeRaw)
       .handle("callback", callback)
+  }),
+)
+
+function providerUIItem(
+  providerID: string,
+  info: ConfigProviderV1.Info,
+  active: boolean,
+  priority: number,
+) {
+  const options = info.options as { headerPrefix?: string; headerTitle?: string; priority?: number } | undefined
+  return {
+    id: providerID,
+    name: info.name ?? providerID,
+    type: providerID,
+    baseUrl: info.options?.baseURL ?? "",
+    apiKey: info.options?.apiKey ?? "",
+    model: Object.keys(info.models ?? {}).join(", "),
+    headerPrefix: options?.headerPrefix,
+    headerTitle: options?.headerTitle,
+    active,
+    priority,
+  }
+}
+
+export const providerSettingsHandlers = HttpApiBuilder.group(InstanceHttpApi, "providers", (handlers) =>
+  Effect.gen(function* () {
+    const cfg = yield* Config.Service
+    const http = yield* HttpClient.HttpClient
+
+    const upsert = Effect.fn("ProviderSettings.upsert")(
+      function* (providerID: string, payload: Schema.Schema.Type<typeof ProviderUpsert>) {
+        const modelList = (payload.model ?? "")
+          .split(",")
+          .map((model) => model.trim())
+          .filter(Boolean)
+        const models = Object.fromEntries(modelList.map((model) => [model, { id: model, name: model }]))
+        const config = yield* cfg.get()
+        const disabled = new Set(config.disabled_providers ?? [])
+        const existing = config.provider?.[providerID]
+        const priority =
+          (existing?.options as { priority?: number } | undefined)?.priority ?? 0
+        const provider: ConfigProviderV1.Info = {
+          id: providerID,
+          name: payload.name || providerID,
+          env: [],
+          npm: "@ai-sdk/openai-compatible",
+          options: {
+            apiKey: payload.apiKey || undefined,
+            baseURL: payload.baseUrl,
+            headerPrefix: payload.headerPrefix || undefined,
+            headerTitle: payload.headerTitle || undefined,
+            ...(priority ? { priority } : {}),
+          },
+          models,
+        }
+        yield* cfg.update({ provider: { [providerID]: provider } })
+        yield* markInstanceForDisposal(yield* InstanceState.context)
+        return { data: providerUIItem(providerID, provider, !disabled.has(providerID), priority) }
+      },
+    )
+
+    const list = Effect.fn("ProviderSettings.list")(function* () {
+      const config = yield* cfg.get()
+      const disabled = new Set(config.disabled_providers ?? [])
+      const entries = Object.entries(config.provider ?? {}).sort((a, b) => {
+        const pa = (a[1].options as { priority?: number } | undefined)?.priority ?? 0
+        const pb = (b[1].options as { priority?: number } | undefined)?.priority ?? 0
+        return pa - pb
+      })
+      return {
+        data: entries.map(([providerID, info]) =>
+          providerUIItem(
+            providerID,
+            info,
+            !disabled.has(providerID),
+            (info.options as { priority?: number } | undefined)?.priority ?? 0,
+          ),
+        ),
+      }
+    })
+
+    const create = Effect.fn("ProviderSettings.create")(function* (ctx: { payload: Schema.Schema.Type<typeof ProviderUpsert> }) {
+      return yield* upsert(ctx.payload.type, ctx.payload)
+    })
+
+    const update = Effect.fn("ProviderSettings.update")(function* (ctx: {
+      params: { providerID: string }
+      payload: Schema.Schema.Type<typeof ProviderUpsert>
+    }) {
+      return yield* upsert(ctx.params.providerID, ctx.payload)
+    })
+
+    const setState = Effect.fn("ProviderSettings.setState")(function* (ctx: {
+      params: { providerID: string }
+      payload: Schema.Schema.Type<typeof ProviderStateInput>
+    }) {
+      const providerID = ctx.params.providerID
+      const config = yield* cfg.get()
+      const disabled = new Set(config.disabled_providers ?? [])
+      if (ctx.payload.active === false) disabled.add(providerID)
+      if (ctx.payload.active === true) disabled.delete(providerID)
+      const existing = config.provider?.[providerID]
+      let priority = (existing?.options as { priority?: number } | undefined)?.priority ?? 0
+      if (ctx.payload.active !== undefined || ctx.payload.priority !== undefined) {
+        const patch: Partial<typeof config> = {}
+        if (ctx.payload.active !== undefined) patch.disabled_providers = [...disabled]
+        if (ctx.payload.priority !== undefined) {
+          priority = ctx.payload.priority
+          patch.provider = {
+            [providerID]: {
+              ...existing,
+              id: providerID,
+              options: { ...(existing?.options ?? {}), priority },
+            },
+          }
+        }
+        yield* cfg.update(patch)
+        yield* markInstanceForDisposal(yield* InstanceState.context)
+      }
+      return {
+        data: providerUIItem(
+          providerID,
+          existing ?? { id: providerID },
+          ctx.payload.active === undefined ? !disabled.has(providerID) : ctx.payload.active,
+          priority,
+        ),
+      }
+    })
+
+    const remove = Effect.fn("ProviderSettings.remove")(function* (ctx: { params: { providerID: string } }) {
+      yield* cfg.deleteProvider(ctx.params.providerID)
+      yield* markInstanceForDisposal(yield* InstanceState.context)
+      return { data: { id: ctx.params.providerID } }
+    })
+
+    const testRequest = Effect.fn("ProviderSettings.testRequest")(
+      function* (baseURL: string, apiKey: string, model: string | undefined) {
+        const prompt = "Hello, connection test."
+        const base = baseURL.replace(/\/+$/, "").replace(/\/chat\/completions$/, "")
+        const request = yield* HttpClientRequest.post(`${base}/chat/completions`).pipe(
+          HttpClientRequest.setHeaders({
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+          }),
+          HttpClientRequest.bodyJson({
+            model: model ?? "gpt-4o-mini",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 8,
+            stream: false,
+          }),
+          Effect.orDie,
+        )
+        const res = yield* http.execute(request).pipe(Effect.timeout(Duration.seconds(8)), Effect.exit)
+        if (Exit.isFailure(res)) {
+          return {
+            data: {
+              success: false,
+              status: 0,
+              error: `Request failed: ${String(res.cause)}`,
+              prompt,
+              model,
+            },
+          }
+        }
+        const response = res.value
+        const status = response.status
+        if (status < 200 || status >= 300) {
+          const body = yield* response.text.pipe(Effect.exit)
+          return {
+            data: {
+              success: false,
+              status,
+              error:
+                (Exit.isSuccess(body) ? body.value.slice(0, 200) : "") || `HTTP ${status}`,
+              prompt,
+              model,
+            },
+          }
+        }
+        const json = yield* response.json.pipe(Effect.exit)
+        const content = (() => {
+          if (Exit.isFailure(json)) return undefined
+          const data = json.value as { choices?: Array<{ message?: { content?: unknown } }> }
+          const value = data.choices?.[0]?.message?.content
+          return typeof value === "string" ? value : undefined
+        })()
+        return { data: { success: true, status, reply: content, prompt, model } }
+      },
+    )
+
+    const testConnection = Effect.fn("ProviderSettings.testConnection")(
+      function* (ctx: { payload: Schema.Schema.Type<typeof ProviderTestInput> }) {
+        return yield* testRequest(ctx.payload.baseUrl, ctx.payload.apiKey ?? "", ctx.payload.model)
+      },
+    )
+
+    const testProvider = Effect.fn("ProviderSettings.testProvider")(
+      function* (ctx: { params: { providerID: string } }) {
+        const config = yield* cfg.get()
+        const info = config.provider?.[ctx.params.providerID]
+        if (!info) {
+          return {
+            data: { success: false, status: 404, error: `Provider not found: ${ctx.params.providerID}` },
+          }
+        }
+        const model = Object.keys(info.models ?? {})[0]
+        return yield* testRequest(info.options?.baseURL ?? "", info.options?.apiKey ?? "", model)
+      },
+    )
+
+    const fetchModels = Effect.fn("ProviderSettings.fetchModels")(
+      function* (ctx: { payload: Schema.Schema.Type<typeof ProviderFetchModelsInput> }) {
+        const base = ctx.payload.baseUrl.replace(/\/+$/, "")
+        const url = base.endsWith("/models") ? base : `${base}/models`
+        const request = HttpClientRequest.get(url).pipe(
+          HttpClientRequest.setHeaders({ authorization: `Bearer ${ctx.payload.apiKey ?? ""}` }),
+        )
+        const res = yield* http.execute(request).pipe(Effect.timeout(Duration.seconds(8)), Effect.exit)
+        if (Exit.isFailure(res)) return { data: { models: [] } }
+        const response = res.value
+        if (response.status < 200 || response.status >= 300) return { data: { models: [] } }
+        const json = yield* response.json.pipe(Effect.exit)
+        const models = (() => {
+          if (Exit.isFailure(json)) return [] as string[]
+          const data = json.value as { data?: Array<{ id?: unknown }> }
+          return (data.data ?? [])
+            .map((model) => (typeof model?.id === "string" ? model.id : ""))
+            .filter(Boolean)
+        })()
+        return { data: { models } }
+      },
+    )
+
+    return handlers
+      .handle("listUi", list)
+      .handle("upsert", create)
+      .handle("update", update)
+      .handle("updateState", setState)
+      .handle("remove", remove)
+      .handle("testConnection", testConnection)
+      .handle("testProvider", testProvider)
+      .handle("fetchModels", fetchModels)
   }),
 )

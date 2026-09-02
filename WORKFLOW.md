@@ -2235,3 +2235,38 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] **Verifikasi:** `bun run typecheck` di `packages/engine/opencode` dan `packages/engine/plugin` sekarang menghasilkan **0 error** (turun dari baseline 745).
 - [x] **Dokumentasi:** dev-log `docs/dev-logs/dev-log-2026-08-28-tui-removal.md`.
 - [ ] Putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
+
+## Phase 62.9: Settings → Engine Wiring — Menu 1/3 Model Routing & Providers (DONE)
+
+**Goal:** Menu Settings → "Model Routing & Providers" di web UI benar-benar
+terhubung ke engine (sebelumnya seluruhnya `localStorage`/dead `fetch`).
+
+- [x] **Audit root-cause:** UI memanggil `/api/providers` → 404; instance router
+  hanya reachable via header/query `directory`; proxy Vite hanya forward `/api` → :4096.
+- [x] **Engine door baru `providers` (instance HttpApi):** `GET/POST /api/providers`,
+  `PUT /api/providers/:id` (update full-form), `PUT /api/providers/:id/state`
+  (active/priority), `DELETE /api/providers/:id`, `POST /api/providers/test`,
+  `POST /api/providers/:id/test`, `POST /api/providers/fetch-models` — di
+  `groups/provider.ts` (schemas + endpoint) & `handlers/provider.ts`
+  (`providerSettingsHandlers`), didaftarkan di `httpapi/server.ts`.
+- [x] **Bug fix config write-target (root cause penting):** `Config.update()` &
+  `Config.deleteProvider()` (baru) awalnya menulis `dir/config.json` padahal
+  pembaca instance hanya membaca `arunaki.{json,jsonc}` → semua update tak pernah
+  terlihat setelah reload. Kini menulis `arunaki.json`; test config/httpapi-config
+  diubah ke `arunaki.json`. `deleteProvider` ditambahkan ke `Config.Service`.
+- [x] **Bug fix routing:** `workspace-routing.ts` membaca header `x-Arunaki-directory`;
+  key header di-lowercase oleh harness effect → lookup diperbaiki ke
+  `x-arunaki-directory` (quirk pre-existing; catatan sama di Phase 62.7).
+- [x] **Frontend wire:** `lib/api.ts` tambah `directoryQuery()` (baca
+  `arunaki_active_folder`); `SettingsPage.fetchProviders` + `ModelProviderSettings`
+  (CREATE/UPDATE/DELETE/TOGGLE/PRIORITY/TEST/fetch-models) semua pakai `?directory=`;
+  toggle & priority pindah ke endpoint `/providers/:id/state`.
+- [x] **Test engine baru:** `test/server/httpapi-providers.test.ts` (3 test live):
+  add→persist→list, deactivate (`disabled_providers`)→delete, test/fetch-models
+  graceful-fail — semua lulus (30s timeout per test karena multi-cycle instance
+  disposal + bun default 5s).
+- [x] **Verifikasi:** `bunx tsgo --noEmit` 0 error; `httpapi-providers` 3/3 pass,
+  `httpapi-config` + `config.test` 96 pass / 2 fail proven pre-existing via stash;
+  `npm run build -w apps/web` ✅.
+- [ ] Menu 2/3 Account & License dan 3/3 Desktop Automation masih localStorage-only
+  (belum terhubung engine) — rollout 1-menu-per-commit selanjutnya.

@@ -2,7 +2,7 @@ import { ProviderAuth } from "@/provider/auth"
 import { Provider } from "@/provider/provider"
 
 import { Schema } from "effect"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "../middleware/authorization"
 import { InstanceContextMiddleware } from "../middleware/instance-context"
 import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery } from "../middleware/workspace-routing"
@@ -30,6 +30,62 @@ export class ProviderAuthApiError extends Schema.ErrorClass<ProviderAuthApiError
   },
   { httpApiStatus: 400 },
 ) {}
+
+const uiRoot = "/api/providers"
+
+export const ProviderUI = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  type: Schema.String,
+  baseUrl: Schema.String,
+  apiKey: Schema.String,
+  model: Schema.String,
+  headerPrefix: Schema.optional(Schema.String),
+  headerTitle: Schema.optional(Schema.String),
+  active: Schema.Boolean,
+  priority: Schema.Number,
+})
+
+export const ProviderUpsert = Schema.Struct({
+  name: Schema.String,
+  type: Schema.String,
+  baseUrl: Schema.String,
+  apiKey: Schema.optional(Schema.String),
+  model: Schema.optional(Schema.String),
+  headerPrefix: Schema.optional(Schema.String),
+  headerTitle: Schema.optional(Schema.String),
+})
+
+export const ProviderTestInput = Schema.Struct({
+  baseUrl: Schema.String,
+  apiKey: Schema.optional(Schema.String),
+  model: Schema.optional(Schema.String),
+})
+
+export const ProviderFetchModelsInput = Schema.Struct({
+  baseUrl: Schema.String,
+  apiKey: Schema.optional(Schema.String),
+})
+
+export const ProviderStateInput = Schema.Struct({
+  active: Schema.optional(Schema.Boolean),
+  priority: Schema.optional(Schema.Number),
+})
+
+export const ProviderTestResult = Schema.Struct({
+  success: Schema.Boolean,
+  status: Schema.Number,
+  error: Schema.optional(Schema.String),
+  reply: Schema.optional(Schema.String),
+  prompt: Schema.optional(Schema.String),
+  model: Schema.optional(Schema.String),
+})
+
+export const ProviderListResult = Schema.Struct({ data: Schema.Array(ProviderUI) })
+export const ProviderWriteResult = Schema.Struct({ data: ProviderUI })
+export const ProviderDeleteResult = Schema.Struct({ data: Schema.Struct({ id: Schema.String }) })
+export const ProviderModelsResult = Schema.Struct({ data: Schema.Struct({ models: Schema.Array(Schema.String) }) })
+export const ProviderTestEnvelope = Schema.Struct({ data: ProviderTestResult })
 
 export const ProviderApi = HttpApi.make("provider")
   .add(
@@ -86,6 +142,114 @@ export const ProviderApi = HttpApi.make("provider")
         OpenApi.annotations({
           title: "provider",
           description: "Experimental HttpApi provider routes.",
+        }),
+      )
+      .middleware(InstanceContextMiddleware)
+      .middleware(WorkspaceRoutingMiddleware)
+      .middleware(Authorization),
+    HttpApiGroup.make("providers")
+      .add(
+        HttpApiEndpoint.get("listUi", uiRoot, {
+          query: WorkspaceRoutingQuery,
+          success: described(ProviderListResult, "List configured providers"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.list",
+            summary: "List configured providers",
+            description: "List providers saved in the workspace config, for the settings UI.",
+          }),
+        ),
+        HttpApiEndpoint.post("upsert", uiRoot, {
+          query: WorkspaceRoutingQuery,
+          payload: ProviderUpsert,
+          success: described(ProviderWriteResult, "Provider added"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.add",
+            summary: "Add provider",
+            description: "Add a new OpenAI-compatible provider to the workspace config.",
+          }),
+        ),
+        HttpApiEndpoint.put("update", `${uiRoot}/:providerID`, {
+          params: { providerID: Schema.String },
+          query: WorkspaceRoutingQuery,
+          payload: ProviderUpsert,
+          success: described(ProviderWriteResult, "Provider updated"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.update",
+            summary: "Update provider",
+            description: "Update a configured provider's credentials and models.",
+          }),
+        ),
+        HttpApiEndpoint.put("updateState", `${uiRoot}/:providerID/state`, {
+          params: { providerID: Schema.String },
+          query: WorkspaceRoutingQuery,
+          payload: ProviderStateInput,
+          success: described(ProviderWriteResult, "Provider state updated"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.updateState",
+            summary: "Update provider state",
+            description: "Toggle a provider active/inactive or change its routing priority.",
+          }),
+        ),
+        HttpApiEndpoint.delete("remove", `${uiRoot}/:providerID`, {
+          params: { providerID: Schema.String },
+          query: WorkspaceRoutingQuery,
+          success: described(ProviderDeleteResult, "Provider deleted"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.delete",
+            summary: "Delete provider",
+            description: "Remove a configured provider from the workspace config.",
+          }),
+        ),
+        HttpApiEndpoint.post("testConnection", `${uiRoot}/test`, {
+          query: WorkspaceRoutingQuery,
+          payload: ProviderTestInput,
+          success: described(ProviderTestEnvelope, "Connection test result"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.test",
+            summary: "Test provider connection",
+            description: "Send a probe request to an OpenAI-compatible endpoint.",
+          }),
+        ),
+        HttpApiEndpoint.post("testProvider", `${uiRoot}/:providerID/test`, {
+          params: { providerID: Schema.String },
+          query: WorkspaceRoutingQuery,
+          success: described(ProviderTestEnvelope, "Connection test result"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.testProvider",
+            summary: "Test saved provider connection",
+            description: "Send a probe request to a saved provider's endpoint.",
+          }),
+        ),
+        HttpApiEndpoint.post("fetchModels", `${uiRoot}/fetch-models`, {
+          query: WorkspaceRoutingQuery,
+          payload: ProviderFetchModelsInput,
+          success: described(ProviderModelsResult, "Discovered models"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "providers.fetchModels",
+            summary: "Fetch models from endpoint",
+            description: "List model IDs exposed by an OpenAI-compatible endpoint.",
+          }),
+        ),
+      )
+      .annotateMerge(
+        OpenApi.annotations({
+          title: "providers",
+          description: "Provider management routes for the settings UI.",
         }),
       )
       .middleware(InstanceContextMiddleware)

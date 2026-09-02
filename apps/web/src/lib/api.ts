@@ -14,3 +14,8 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   }
   return fetch(input, { ...init, headers });
 }
+
+export function directoryQuery(): string {
+  const folder = localStorage.getItem('arunaki_active_folder');
+  return folder ? `?directory=${encodeURIComponent(folder)}` : '';
+}

@@ -127,6 +127,7 @@ export interface Interface {
   readonly getConsoleState: () => Effect.Effect<ConsoleState>
   readonly update: (config: Info) => Effect.Effect<void>
   readonly updateGlobal: (config: Info) => Effect.Effect<{ info: Info; changed: boolean }>
+  readonly deleteProvider: (providerID: string) => Effect.Effect<boolean>
   readonly invalidate: () => Effect.Effect<void>
   readonly directories: () => Effect.Effect<string[]>
   readonly waitForDependencies: () => Effect.Effect<void>
@@ -623,11 +624,22 @@ const layer = Layer.effect(
 
     const update = Effect.fn("Config.update")(function* (config: Info) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "config.json")
+      const file = path.join(dir, "arunaki.json")
       const existing = yield* loadFile(file)
       yield* fs
         .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
         .pipe(Effect.orDie)
+    })
+
+    const deleteProvider = Effect.fn("Config.deleteProvider")(function* (providerID: string) {
+      const dir = yield* InstanceState.directory
+      const file = path.join(dir, "arunaki.json")
+      const before = (yield* readConfigFile(file)) ?? "{}"
+      const existing = ConfigParse.schema(ConfigV1.Info, ConfigParse.jsonc(before, file), file)
+      if (!existing.provider || !(providerID in existing.provider)) return false
+      delete existing.provider[providerID as keyof NonNullable<typeof existing.provider>]
+      yield* fs.writeFileString(file, JSON.stringify(existing, null, 2)).pipe(Effect.orDie)
+      return true
     })
 
     const invalidate = Effect.fn("Config.invalidate")(function* () {
@@ -665,6 +677,7 @@ const layer = Layer.effect(
       getConsoleState,
       update,
       updateGlobal,
+      deleteProvider,
       invalidate,
       directories,
       waitForDependencies,

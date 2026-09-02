@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Cpu, User, Sliders, Monitor, FileSpreadsheet, LogIn, LogOut, ShieldCheck, Mail, Camera, Bell, Check, Key } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../lib/utils";
-import { API_BASE, apiFetch } from "../lib/api";
+import { API_BASE, apiFetch, directoryQuery } from "../lib/api";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
 
 const tabs = [
@@ -32,7 +32,7 @@ export function SettingsPage() {
 
   const fetchProviders = async () => {
     try {
-      const res = await apiFetch(`${API_BASE}/providers`);
+      const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
       if (!res.ok) throw new Error("Fetch failed");
       const data = await res.json();
       setProviders(data.data || []);

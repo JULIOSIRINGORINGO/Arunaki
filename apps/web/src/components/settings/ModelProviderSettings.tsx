@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Loader2, Cpu, Info } from "lucide-react";
-import { API_BASE, apiFetch } from "../../lib/api";
+import { API_BASE, apiFetch, directoryQuery } from "../../lib/api";
 import { toast } from "sonner";
 import { ProviderCard } from "./ProviderCard";
 import { ProviderForm, type ProviderFormData, type FormTestResult } from "./ProviderForm";
@@ -230,13 +230,13 @@ export function ModelProviderSettings({
     try {
       let providerId = editingId;
       if (editingId) {
-        await apiFetch(`${API_BASE}/providers/${editingId}`, {
+        await apiFetch(`${API_BASE}/providers/${editingId}${directoryQuery()}`, {
           method: "PUT",
           body: JSON.stringify(form),
         });
         toast.success("Provider connection updated successfully.");
       } else {
-        const res = await apiFetch(`${API_BASE}/providers`, {
+        const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`, {
           method: "POST",
           body: JSON.stringify(form),
         });
@@ -262,7 +262,7 @@ export function ModelProviderSettings({
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this provider configuration?")) return;
     try {
-      await apiFetch(`${API_BASE}/providers/${id}`, { method: "DELETE" });
+      await apiFetch(`${API_BASE}/providers/${id}${directoryQuery()}`, { method: "DELETE" });
       toast.success("Provider deleted successfully.");
       onRefresh();
     } catch {
@@ -272,7 +272,7 @@ export function ModelProviderSettings({
 
   const handleToggleActive = async (provider: Provider) => {
     try {
-      await apiFetch(`${API_BASE}/providers/${provider.id}`, {
+      await apiFetch(`${API_BASE}/providers/${provider.id}/state${directoryQuery()}`, {
         method: "PUT",
         body: JSON.stringify({ active: !provider.active }),
       });
@@ -294,11 +294,11 @@ export function ModelProviderSettings({
     try {
       // Swap priorities
       await Promise.all([
-        apiFetch(`${API_BASE}/providers/${currentP.id}`, {
+        apiFetch(`${API_BASE}/providers/${currentP.id}/state${directoryQuery()}`, {
           method: "PUT",
           body: JSON.stringify({ priority: targetP.priority ?? targetIdx }),
         }),
-        apiFetch(`${API_BASE}/providers/${targetP.id}`, {
+        apiFetch(`${API_BASE}/providers/${targetP.id}/state${directoryQuery()}`, {
           method: "PUT",
           body: JSON.stringify({ priority: currentP.priority ?? index }),
         }),
@@ -317,7 +317,7 @@ export function ModelProviderSettings({
     }
     setIsFetchingFormModels(true);
     try {
-      const res = await apiFetch(`${API_BASE}/providers/fetch-models`, {
+      const res = await apiFetch(`${API_BASE}/providers/fetch-models${directoryQuery()}`, {
         method: "POST",
         body: JSON.stringify({
           baseUrl: form.baseUrl,
@@ -359,7 +359,7 @@ export function ModelProviderSettings({
     setTestingId(id);
     const startMs = Date.now();
     try {
-      const res = await apiFetch(`${API_BASE}/providers/${id}/test`, { method: "POST" });
+      const res = await apiFetch(`${API_BASE}/providers/${id}/test${directoryQuery()}`, { method: "POST" });
       const data = await res.json();
       const elapsed = Date.now() - startMs;
       const isOk = data.data?.success;
@@ -398,7 +398,7 @@ export function ModelProviderSettings({
     setIsTestingForm(true);
     const startMs = Date.now();
     try {
-      const res = await apiFetch(`${API_BASE}/providers/test`, {
+      const res = await apiFetch(`${API_BASE}/providers/test${directoryQuery()}`, {
         method: "POST",
         body: JSON.stringify({
           baseUrl: form.baseUrl,
