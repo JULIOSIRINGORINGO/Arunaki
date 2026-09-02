@@ -65,6 +65,7 @@ const layer: Layer.Layer<
       "AGENTS.md",
       ...(!flags.disableClaudeCodePrompt ? ["CLAUDE.md"] : []),
       "CONTEXT.md", // deprecated
+      ".arunaki/ARUNAKI.md", // living workspace operating rules (cartographer)
     ]
 
     const state = yield* InstanceState.make(

@@ -1515,6 +1515,21 @@ apps/web/src/
 - [x] Verified resident daemon initialization: `[WorkspaceRulesSentinelService] 🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).`
 - [x] End-to-end autonomous rekap benchmark passed with surgical `edit` and background completion handling.
 
+> **Note (2026-09-02):** Implementasi NestJS asli (`apps/api`) sudah dihapus. Phase 49-50
+> **direimplementasi di engine** (Effect stack) per prioritas dokumentasi (ARCHITECTURE.md):
+> - `engine/src/arunaki/memory.ts` — `Memory.Service`: Workspace Cartographer (scan workspace
+>   → synthesise `.arunaki/ARUNAKI.md` dengan Domain Profile / File Catalog / Strict Syntax
+>   Invariants / User Preferences) + sentinel resident event-driven (subscribe
+>   `SessionEvent.Step.Ended`, rate-limited refresh via `BackgroundJob`); dual-sync ke
+>   Knowledge graph (`.arunaki/knowledge.json`, node `arunaki-rulebook`); scoped per aktif
+>   folder lewat `InstanceState`.
+> - `engine/src/session/instruction.ts:64-68` — `.arunaki/ARUNAKI.md` ditambahkan ke
+>   `instructionFiles` agar ter-injeksi ke system prompt (direktor di-resolve via `findUp`).
+> - Dependensi: `FSUtil`, `EventV2`, `BackgroundJob`; terdaftar di app layer group
+>   (`server.ts`), `Memory.node`.
+> - Ke deprecation: masih deterministic synthesizer (tanpa LLM sub-agent) — lihat komentar
+>   `ponytail:` di `memory.ts`; sub-agent `TaskTool` adalah upgrade path.
+
 ---
 
 ## Phase 51: Programmatic & Multi-Tool Batch Execution (PTC Engine) ✅ DONE
@@ -1708,6 +1723,21 @@ apps/web/src/
 - [x] Build check: `npx nest build` passed with 0 errors.
 - [x] Verified resident daemon initialization: `[WorkspaceRulesSentinelService] 🛡️ Workspace Rules Sentinel Agent initialized (Resident & Event-Driven).`
 - [x] End-to-end autonomous rekap benchmark passed with surgical `edit` and background completion handling.
+
+> **Note (2026-09-02):** Implementasi NestJS asli (`apps/api`) sudah dihapus. Phase 49-50
+> **direimplementasi di engine** (Effect stack) per prioritas dokumentasi (ARCHITECTURE.md):
+> - `engine/src/arunaki/memory.ts` — `Memory.Service`: Workspace Cartographer (scan workspace
+>   → synthesise `.arunaki/ARUNAKI.md` dengan Domain Profile / File Catalog / Strict Syntax
+>   Invariants / User Preferences) + sentinel resident event-driven (subscribe
+>   `SessionEvent.Step.Ended`, rate-limited refresh via `BackgroundJob`); dual-sync ke
+>   Knowledge graph (`.arunaki/knowledge.json`, node `arunaki-rulebook`); scoped per aktif
+>   folder lewat `InstanceState`.
+> - `engine/src/session/instruction.ts:64-68` — `.arunaki/ARUNAKI.md` ditambahkan ke
+>   `instructionFiles` agar ter-injeksi ke system prompt (direktor di-resolve via `findUp`).
+> - Dependensi: `FSUtil`, `EventV2`, `BackgroundJob`; terdaftar di app layer group
+>   (`server.ts`), `Memory.node`.
+> - Ke deprecation: masih deterministic synthesizer (tanpa LLM sub-agent) — lihat komentar
+>   `ponytail:` di `memory.ts`; sub-agent `TaskTool` adalah upgrade path.
 
 ---
 

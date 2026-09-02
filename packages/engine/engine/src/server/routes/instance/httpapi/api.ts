@@ -13,6 +13,7 @@ import { EventApi } from "./groups/event"
 import { ExperimentalApi } from "./groups/experimental"
 import { FileApi } from "./groups/file"
 import { InstanceApi } from "./groups/instance"
+import { KnowledgeApi } from "./groups/knowledge"
 import { McpApi } from "./groups/mcp"
 import { OAuthApi } from "./groups/oauth"
 import { PermissionApi } from "./groups/permission"
@@ -60,6 +61,7 @@ export const InstanceHttpApi = HttpApi.make("Arunaki-instance")
   .addHttpApi(ExperimentalApi)
   .addHttpApi(FileApi)
   .addHttpApi(InstanceApi)
+  .addHttpApi(KnowledgeApi)
   .addHttpApi(McpApi)
   .addHttpApi(OAuthApi)
   .addHttpApi(ProjectApi)

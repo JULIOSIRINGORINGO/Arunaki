@@ -27,6 +27,7 @@ import { Provider } from "@/provider/provider"
 import { Question } from "@/question"
 import { SessionCompaction } from "@/session/compaction"
 import { Instruction } from "@/session/instruction"
+import { Memory } from "@/arunaki/memory"
 import { LLM } from "@/session/llm"
 import { SessionProcessor } from "@/session/processor"
 import { SessionPrompt } from "@/session/prompt"
@@ -81,6 +82,7 @@ import { experimentalHandlers } from "./handlers/experimental"
 import { fileHandlers } from "./handlers/file"
 import { globalHandlers } from "./handlers/global"
 import { instanceHandlers } from "./handlers/instance"
+import { knowledgeHandlers } from "./handlers/knowledge"
 import { mcpHandlers } from "./handlers/mcp"
 import { oauthHandlers } from "./handlers/oauth"
 import { permissionHandlers } from "./handlers/permission"
@@ -146,6 +148,7 @@ const instanceApiRoutes = HttpApiBuilder.layer(InstanceHttpApi).pipe(
     experimentalHandlers,
     fileHandlers,
     instanceHandlers,
+    knowledgeHandlers,
     mcpHandlers,
     oauthHandlers,
     projectHandlers,
@@ -233,6 +236,7 @@ const app = LayerNode.group([
   SessionSummary.node,
   SessionPrompt.node,
   Instruction.node,
+  Memory.node,
   LLM.node,
   MCP.node,
   McpAuth.node,
