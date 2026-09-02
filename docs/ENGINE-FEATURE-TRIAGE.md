@@ -2,7 +2,7 @@
 
 **Status:** Draft untuk putusan 1/1
 **Tanggal:** 2026-08-28
-**Sumber:** VISION.md, WORKFLOW.md Phase 60, source engine (`packages/engine/opencode/`)
+**Sumber:** VISION.md, WORKFLOW.md Phase 60, source engine (`packages/engine/engine/`)
 
 ## Label Status
 

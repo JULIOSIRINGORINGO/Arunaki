@@ -185,7 +185,7 @@ dipenuhi `*_read`.
 
 ## 5. Registrasi di Engine
 
-`packages/engine/opencode/src/tool/registry.ts`:
+`packages/engine/engine/src/tool/registry.ts`:
 - Builtin + `excel_read`, `word_read`, `ppt_read` (baru, parser).
 - `excel_com`/`word_com`/`ppt_com` tetap terdaftar (edit-only).
 

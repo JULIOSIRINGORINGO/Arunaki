@@ -50,7 +50,7 @@ Arunaki adalah satu binary/harness mandiri. Saat dijalankan:
                 │ HTTP :4096
                 ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ packages/engine/opencode (Engine = fork OpenCode)                  │
+│ packages/engine/engine (Engine = fork OpenCode)                  │
 │  ├─ src/index.ts          CLI yargs (scriptName "arunaki")          │
 │  ├─ src/serve-only.ts     [BARU, Phase 61.7] entrypoint headless    │
 │  ├─ src/server/server.ts  Server.listen(:4096) / Server.Default()   │
@@ -86,7 +86,7 @@ Arunaki adalah satu binary/harness mandiri. Saat dijalankan:
 |---|---|---|
 | `apps/web` | Frontend React/Vite — chat, folder, workstation | UI only; tidak berisi business logic |
 | `apps/desktop` (main.cjs, preload.cjs) | Shell Electron — window, IPC native fs/Office | OS integration only |
-| `packages/engine/opencode` | Engine = fork OpenCode (CLI + server + LLM + session) | AI Engine; tidak akses Storage langsung |
+| `packages/engine/engine` | Engine = fork OpenCode (CLI + server + LLM + session) | AI Engine; tidak akses Storage langsung |
 | `packages/engine/{core,server,protocol,schema,sdk,effect-*}` | Library engine | via Service/Repository |
 | `packages/arunaki-tools` | Tool dokumen: `ExcelComTool`, `WordComTool`, `PptComTool` | via `Tool.define()` di engine |
 | `packages/arunaki-gitlab-auth`, `arunaki-poe-auth` | Auth provider | Vendor, di-rewire ke `@arunaki/plugin` |
@@ -151,7 +151,7 @@ Satu proses aktif yang menyatukan:
 
 Engine sudah menyediakan primitif yang tepat:
 
-- `Server.Default()` di `packages/engine/opencode/src/server/server.ts:56`:
+- `Server.Default()` di `packages/engine/engine/src/server/server.ts:56`:
   ```ts
   export const Default = lazy(() => {
     const handler = HttpApiApp.webHandler().handler

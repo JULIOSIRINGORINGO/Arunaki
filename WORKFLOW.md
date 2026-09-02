@@ -1937,7 +1937,7 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 ### 60.3 Document Tools (COM)
 - [x] `@arunaki/tools` package with Excel COM tool
 - [x] Word COM and PowerPoint COM tools
-- [x] Registered in engine tool registry (`packages/engine/opencode/src/tool/registry.ts`)
+- [x] Registered in engine tool registry (`packages/engine/engine/src/tool/registry.ts`)
 
 ### 60.4 Frontend Connection
 - [x] Engine adapter (`apps/web/src/lib/engine.ts`) — maps old API to engine endpoints
@@ -2006,7 +2006,7 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 
 ## Phase 61.7: Restore Engine Boot Path for Electron (DONE)
 
-**Goal:** Perbaiki jalur boot engine yang patah � `scripts/dev-app.cjs` merujuk `packages/engine/opencode/src/serve-only.ts` yang tidak ada, sehingga `npm run dev:app` gagal di langkah 1 (engine tidak pernah hidup di :4096 dan UI Electron tidak bisa berinteraksi dengan API/LLM).
+**Goal:** Perbaiki jalur boot engine yang patah � `scripts/dev-app.cjs` merujuk `packages/engine/engine/src/serve-only.ts` yang tidak ada, sehingga `npm run dev:app` gagal di langkah 1 (engine tidak pernah hidup di :4096 dan UI Electron tidak bisa berinteraksi dengan API/LLM).
 
 ### Hasil Diagnosa (rantai koneksi VS Code-like)
 - **Electron ? Web UI** ? terhubung: `main.cjs` memuat `WEB_URL` (:5173) / fallback `dist`; semua channel IPC (folder tree, fs read/write, Excel/Word/Ppt native via winax, parse/write Excel) cocok dengan `preload.cjs`.
@@ -2015,7 +2015,7 @@ ead-tool.service.ts dan write-tool.service.ts agar menolak operasi baca/tulis di
 - **WS :31524 (DesktopBridgeService)** ? legacy dead code � backend `apps/api` sudah dihapus, koneksi reconnect 3s selamanya tanpa listener.
 
 ### Perubahan
-- [x] **Buat `packages/engine/opencode/src/serve-only.ts`** � entrypoint minimal meniru `index.ts` tapi hanya mendaftarkan `ServeCommand` (headless server, `--port` via `withNetworkOptions`); environment setup (Arunaki_PID, Heap.start, dll) sama dengan CLI utama.
+- [x] **Buat `packages/engine/engine/src/serve-only.ts`** � entrypoint minimal meniru `index.ts` tapi hanya mendaftarkan `ServeCommand` (headless server, `--port` via `withNetworkOptions`); environment setup (Arunaki_PID, Heap.start, dll) sama dengan CLI utama.
 - [x] **Boot verified** � `bun run --conditions=browser ./src/serve-only.ts serve --port 4096` ? `Arunaki server listening on http://127.0.0.1:4096`; `GET /api/health` ? `200 {"healthy":true}`.
 - [x] Typecheck engine bersih untuk file baru (sisa error pre-existing `@opentui/*`, `@Arunaki-ai/http-recorder` tidak terkait).
 
@@ -2093,11 +2093,11 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] Registrasi engine (`src/tool/registry.ts`) — tambah `excelRead`/`wordRead`/`pptRead`; `excelCom`/`wordCom`/`pptCom` tetap.
 - [x] `@arunaki/tools`: export `docmap`, deps `jszip`/`xlsx` (sudah di root node_modules).
 - [x] `docs/DOCUMENT-MAP.md` — skema + alur parse→map→act + tabel tool.
-- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/opencode` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
+- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/engine` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
 
 ## Phase 62.5: Eksekusi REMOVE Engine — LSP/IDE/ACP/CLI GitHub (DONE)
 
-**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/opencode/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
+**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/engine/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
 
 - [x] **LSP tool + service dihapus:** `src/tool/lsp.ts`, seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server), `src/cli/cmd/debug/lsp.ts`. `toolFiletype` di-inline ke `src/cli/cmd/run/tool.ts` (2 pemakai: `footer.permission.tsx`, `scrollback.writer.tsx`).
 - [x] **Registri:** `src/tool/registry.ts` (hapus `lsp: Tool.init` + `LSP.node` + `flags.experimentalLspTool`), `src/cli/cmd/run/tool.ts` (hapus `lspTitle`/`runLsp`/`scrollLspStart`/`permLsp`/TOOL_RULES `lsp`), `src/cli/cmd/agent.ts` (hapus `lsp` dari AVAILABLE_PERMISSIONS).
@@ -2176,11 +2176,11 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 - [x] Registrasi engine (`src/tool/registry.ts`) — tambah `excelRead`/`wordRead`/`pptRead`; `excelCom`/`wordCom`/`pptCom` tetap.
 - [x] `@arunaki/tools`: export `docmap`, deps `jszip`/`xlsx` (sudah di root node_modules).
 - [x] `docs/DOCUMENT-MAP.md` — skema + alur parse→map→act + tabel tool.
-- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/opencode` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
+- [~] Validasi: `npm run build -w apps/web` ✅; `tsc --noEmit -p packages/engine/engine` arunaki-tools 0 error (baseline engine 775 error pre-existing `@opentui`/`@Arunaki-ai/tui`); parser diuji via bun dengan fixture sintetis (xlsx merges/formula, docx paragraf+tabel, pptx 2 slide). COM edit perlu run manual di Windows dengan Excel/Word/PowerPoint terpasang.
 
 ## Phase 62.5: Eksekusi REMOVE Engine — LSP/IDE/ACP/CLI GitHub (DONE)
 
-**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/opencode/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
+**Goal:** Eksekusi item 🗑️ REMOVE konsolidasi engine `packages/engine/engine/` dimulai dari fitur IDE (LSP/ide/acp + CLI), memakai baseline typecheck tsgo = 775 error (semua pre-existing lapisan TUI `@opentui`/`@Arunaki-ai/tui`). Target: 0 error file baru.
 
 - [x] **LSP tool + service dihapus:** `src/tool/lsp.ts`, seluruh `src/lsp/` (client, diagnostic, language, launch, lsp, server), `src/cli/cmd/debug/lsp.ts`. `toolFiletype` di-inline ke `src/cli/cmd/run/tool.ts` (2 pemakai: `footer.permission.tsx`, `scrollback.writer.tsx`).
 - [x] **Registri:** `src/tool/registry.ts` (hapus `lsp: Tool.init` + `LSP.node` + `flags.experimentalLspTool`), `src/cli/cmd/run/tool.ts` (hapus `lspTitle`/`runLsp`/`scrollLspStart`/`permLsp`/TOOL_RULES `lsp`), `src/cli/cmd/agent.ts` (hapus `lsp` dari AVAILABLE_PERMISSIONS).
@@ -2214,7 +2214,7 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 
 ## Phase 62.7: Eksekusi REMOVE Engine — Control-Plane + Sync (DONE)
 
-**Goal:** Eksekusi item 🗑️ REMOVE `control-plane` + `sync` dari `packages/engine/opencode/` sampai tuntas (tabel `Workspace` di SQLite dipertahankan sebagai kolom DB inert). Baseline tsgo = 745 error (semua pre-existing). Target: 0 error file baru.
+**Goal:** Eksekusi item 🗑️ REMOVE `control-plane` + `sync` dari `packages/engine/engine/` sampai tuntas (tabel `Workspace` di SQLite dipertahankan sebagai kolom DB inert). Baseline tsgo = 745 error (semua pre-existing). Target: 0 error file baru.
 
 - [x] **Modul `src/control-plane/` dihapus total:** `adapters/index.ts` (BUILTIN `workspace`), `adapters/workspace.ts` (dalam `git rm ../control-plane`), `types.ts`, `util.ts`, `workspace.ts` (service + `Workspace`), `workspace-adapter-runtime.ts`, `dev/` (README + debug-workspace-plugin). `WorkspaceV2` type di core tetap (dipakai test + query param).
 - [x] **HTTP API:** `groups/{workspace,control-plane,sync}.ts` + `handlers/{workspace,control-plane,sync}.ts` dihapus; `httpapi/api.ts` lepas `SyncApi`/`WorkspaceApi`/`ControlPlaneApi` dari `RootHttpApi`+`addHttpApi`; `httpapi/server.ts` lepas `controlPlaneHandlers`/`syncHandlers`/`workspaceHandlers` + import `Workspace`/`MoveSession`/`Socket`; `workspaceRoutingLive`→`workspaceRoutingLayer` (Socket layer jadi tidak relevan).
@@ -2232,7 +2232,7 @@ lagi (deterministik, efisien), edit via COM memakai koordinat dari peta sehingga
 
 - [x] **Modul dihapus:** `src/cli/tui/`, `src/cli/cmd/run/`, `src/plugin/tui/`, `src/config/tui-*`, `test/cli/run/`, dsb. File test non-TUI (`httpapi-exercise`, `httpapi-sdk.test.ts`, `llm-native-recorded.test.ts`, `oauth-provider.test.ts`) yang sempat terhapus telah dikembalikan dan dibersihkan dari error TypeScript akibat import TUI yang hilang.
 - [x] **Wiring & Type Fixes:** Membersihkan `mcp/index.ts` dari event TUI, `registry.ts` dari error Yield Effect untuk `ExcelComTool`, `build.ts` & `publish.ts` dari impor `@Arunaki-ai/script`.
-- [x] **Verifikasi:** `bun run typecheck` di `packages/engine/opencode` dan `packages/engine/plugin` sekarang menghasilkan **0 error** (turun dari baseline 745).
+- [x] **Verifikasi:** `bun run typecheck` di `packages/engine/engine` dan `packages/engine/plugin` sekarang menghasilkan **0 error** (turun dari baseline 745).
 - [x] **Dokumentasi:** dev-log `docs/dev-logs/dev-log-2026-08-28-tui-removal.md`.
 - [ ] Putusan 1/1 (code-mode/plan/mcp/command/background/CLI utils/image/format/sync) masih terbuka.
 
@@ -2345,5 +2345,8 @@ Audit "kok ada folder tool 3×": ternyata tiga lapisan berbeda (bukan duplikasi)
 `@arunaki/tools/*` tidak berubah. ✅ tsgo 0 error + test hijau.
 - [ ] CATATAN: `@arunaki/tools ↔ @arunaki/engine` circular dep (tools import
   `@arunaki/engine/tool`); fix ideal: pindah kontrak `Tool` ke `@arunaki/core`.
-- [ ] Folder `opencode/` di `packages/engine` tetap (lineage fork) — rename menjadi
-  pekerjaan kosmetik murni, ditunda sampai keputusan distribusi .exe (WORKFLOW:2005).
+- [x] Folder engine di-rename `packages/engine/opencode` → `packages/engine/engine`
+  (Phase 66) — konsisten `core`/`llm`/`sdk`/`server`. Paket `@arunaki/engine` tidak
+  berubah; `bun install` regenerate symlink workspace. Sisa "opencode": `bin/opencode`
+  + `postinstall.mjs` + Dockerfile (mekanisme distribusi .exe, defer),
+  `models.opencode.ai` (feed upstream), fixtures/recordings (provenance).
