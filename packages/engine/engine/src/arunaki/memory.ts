@@ -163,14 +163,33 @@ function syncKnowledge(fs: FSUtil.Service, directory: string, doc: string): Effe
     const raw = yield* fs
       .readFileStringSafe(path.join(directory, KNOWLEDGE_FILE))
       .pipe(Effect.orDie)
-    if (!raw) return
     let store: KnowledgeStore
-    try {
-      store = JSON.parse(raw) as KnowledgeStore
-    } catch {
-      return
+    if (raw) {
+      try {
+        store = JSON.parse(raw) as KnowledgeStore
+      } catch {
+        store = { nodes: [], edges: [], nextId: 1 }
+      }
+    } else {
+      store = { nodes: [], edges: [], nextId: 1 }
     }
     const nodes = Array.isArray(store.nodes) ? store.nodes : []
+    if (!nodes.some((n) => n.id === "main-ai-node")) {
+      nodes.unshift({
+        id: "main-ai-node",
+        title: "Agent Core",
+        content: "Arunaki agent core node.",
+        type: "agent",
+        active: true,
+        positionX: 60,
+        positionY: 60,
+        nodeColor: "#6366F1",
+        icon: "bot",
+        city: "",
+        urls: "[]",
+        createdAt: new Date().toISOString(),
+      })
+    }
     const existing = nodes.find((n) => n.id === "arunaki-rulebook")
     const node: KnowledgeNode = {
       id: "arunaki-rulebook",
@@ -188,10 +207,11 @@ function syncKnowledge(fs: FSUtil.Service, directory: string, doc: string): Effe
     }
     if (existing) Object.assign(existing, node)
     else nodes.push(node)
+    const edges = Array.isArray(store.edges) ? store.edges : []
     yield* fs
-      .writeJson(path.join(directory, KNOWLEDGE_FILE), { nodes, edges: [], nextId: nodes.length + 2 }, 0o600)
+      .writeJson(path.join(directory, KNOWLEDGE_FILE), { nodes, edges, nextId: nodes.length + 2 }, 0o600)
       .pipe(Effect.orDie)
-  }).pipe(Effect.catchAll(() => Effect.void))
+  }).pipe(Effect.catch(() => Effect.void))
 }
 
 const layer = Layer.effect(
@@ -205,7 +225,7 @@ const layer = Layer.effect(
     const agents = yield* Agent.Service
     const provider = yield* Provider.Service
 
-    const state = yield* InstanceState.make(
+    const state = yield* InstanceState.make(() =>
       Effect.gen(function* () {
         const directory = (yield* InstanceState.context).directory
 
@@ -230,15 +250,18 @@ const layer = Layer.effect(
             .pipe(Effect.map((raw) => raw ?? ""))
 
         const appendCorrectionLog = (sessionID: string, userText: string) =>
-          fs.ensureDir(path.join(directory, ".arunaki")).pipe(
-            Effect.zipRight(
-              fs.appendFile(
+          Effect.gen(function* () {
+            yield* fs.ensureDir(path.join(directory, ".arunaki")).pipe(Effect.orDie)
+            const existing = yield* fs
+              .readFileStringSafe(path.join(directory, CORRECTIONS_FILE))
+              .pipe(Effect.orDie)
+            yield* fs
+              .writeFileString(
                 path.join(directory, CORRECTIONS_FILE),
-                JSON.stringify({ at: new Date().toISOString(), sessionID, user: userText }) + "\n",
-              ),
-            ),
-            Effect.orDie,
-          )
+                (existing ?? "") + JSON.stringify({ at: new Date().toISOString(), sessionID, user: userText }) + "\n",
+              )
+              .pipe(Effect.orDie)
+          })
 
         /** Deterministic helpers only (never requires a provider). */
         const learnCorrection = Effect.fn("Memory.learnCorrection")(function* (sessionID: string) {
@@ -336,9 +359,9 @@ const layer = Layer.effect(
               metadata: { sessionID },
               // Token-gated: cartography refresh + correction learning, both
               // fully failure-tolerant so a missing provider = sleep, not crash.
-              run: learnCorrection(sessionID).pipe(Effect.catchAll(() => Effect.void)),
+              run: learnCorrection(sessionID).pipe(Effect.catch(() => Effect.void)),
             })
-            .pipe(Effect.as(void 0), Effect.catchAll(() => Effect.void))
+            .pipe(Effect.as(void 0), Effect.catch(() => Effect.void))
         })
 
         const unsubscribe = yield* events.project(SessionEvent.Step.Ended, (event) =>
