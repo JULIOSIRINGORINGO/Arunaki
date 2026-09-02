@@ -53,3 +53,5 @@ scripts/engine-serve.pid
 packages/arunaki-gitlab-auth/dist/*.map
 packages/arunaki-poe-auth/dist/*.map
 
+
+arunaki.json
