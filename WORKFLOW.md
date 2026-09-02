@@ -1529,6 +1529,21 @@ apps/web/src/
 >   (`server.ts`), `Memory.node`.
 > - Ke deprecation: masih deterministic synthesizer (tanpa LLM sub-agent) — lihat komentar
 >   `ponytail:` di `memory.ts`; sub-agent `TaskTool` adalah upgrade path.
+>
+> **Update (2026-09-02, lanjutan):** sentinel kini punya **full LLM self-correction**:
+> - `Memory.learnCorrection(sessionID)` pipeline: (1) filter murah deterministic
+>   (`mightBeCorrection`) pada pesan user terakhir — turn netral (`rekap ke excel`,
+>   `halo`) **tidur, 0 token, tanpa panggil LLM**; (2) bila lolos, baca ARUNAKI.md +
+>   muat provider/model dari session (`provider.getModel`), gagal ⇒ tidur silent;
+>   (3) 1-shot `LLM.Service.stream` merapikan koreksi user menjadi satu aturan
+>   imperative Bahasa Indonesia; (4) `applyCorrections` menulis/menggabungkan section
+>   "User Preferences & Learned Corrections" di ARUNAKI.md (tanpa duplikasi, akumulatif)
+>   + append `user-corrections.jsonl` + dual-sync knowledge. Seluruhnya
+>   `.orElseSucceed`/`.catchAll`-guarded ⇒ provider tak terkonfigurasi = tidur, bukan crash.
+> - Dependensi `Memory.node` bertambah: `Session.node`, `LLM.node`, `Agent.node`,
+>   `Provider.node`.
+> - Test: `test/arunaki/memory.test.ts` (5 pass: filter + applyCorrections),
+>   `test/server/httpapi-knowledge.test.ts` (2 pass — bukti server boots dengan deps baru).
 
 ---
 
@@ -1738,6 +1753,21 @@ apps/web/src/
 >   (`server.ts`), `Memory.node`.
 > - Ke deprecation: masih deterministic synthesizer (tanpa LLM sub-agent) — lihat komentar
 >   `ponytail:` di `memory.ts`; sub-agent `TaskTool` adalah upgrade path.
+>
+> **Update (2026-09-02, lanjutan):** sentinel kini punya **full LLM self-correction**:
+> - `Memory.learnCorrection(sessionID)` pipeline: (1) filter murah deterministic
+>   (`mightBeCorrection`) pada pesan user terakhir — turn netral (`rekap ke excel`,
+>   `halo`) **tidur, 0 token, tanpa panggil LLM**; (2) bila lolos, baca ARUNAKI.md +
+>   muat provider/model dari session (`provider.getModel`), gagal ⇒ tidur silent;
+>   (3) 1-shot `LLM.Service.stream` merapikan koreksi user menjadi satu aturan
+>   imperative Bahasa Indonesia; (4) `applyCorrections` menulis/menggabungkan section
+>   "User Preferences & Learned Corrections" di ARUNAKI.md (tanpa duplikasi, akumulatif)
+>   + append `user-corrections.jsonl` + dual-sync knowledge. Seluruhnya
+>   `.orElseSucceed`/`.catchAll`-guarded ⇒ provider tak terkonfigurasi = tidur, bukan crash.
+> - Dependensi `Memory.node` bertambah: `Session.node`, `LLM.node`, `Agent.node`,
+>   `Provider.node`.
+> - Test: `test/arunaki/memory.test.ts` (5 pass: filter + applyCorrections),
+>   `test/server/httpapi-knowledge.test.ts` (2 pass — bukti server boots dengan deps baru).
 
 ---
 
