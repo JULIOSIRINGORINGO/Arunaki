@@ -2,6 +2,9 @@
 import * as Tool from "@arunaki/engine/tool"
 import { exec } from "child_process"
 import { promisify } from "util"
+import * as fs from "fs"
+import * as os from "os"
+import * as path from "path"
 
 const execAsync = promisify(exec)
 
@@ -19,12 +22,18 @@ const PptActionSchema = Schema.Struct({
 type Metadata = Record<string, unknown>
 
 async function runPowerShell(script: string): Promise<string> {
-  const { stdout, stderr } = await execAsync(
-    `powershell -NoProfile -NonInteractive -Command "${script.replace(/"/g, '\\"')}"`,
-    { maxBuffer: 10 * 1024 * 1024, timeout: 60000 }
-  )
-  if (stderr && !stdout) throw new Error(stderr)
-  return stdout.trim()
+  const tmpFile = path.join(os.tmpdir(), `arunaki-ppt-${Date.now()}-${Math.random().toString(36).slice(2)}.ps1`)
+  await fs.promises.writeFile(tmpFile, script, "utf8")
+  try {
+    const { stdout, stderr } = await execAsync(`powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${tmpFile}"`, {
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 60000,
+    })
+    if (stderr && !stdout) throw new Error(stderr)
+    return stdout.trim()
+  } finally {
+    fs.promises.rm(tmpFile, { force: true }).catch(() => undefined)
+  }
 }
 
 function buildPptScript(params: Schema.Schema.Type<typeof PptActionSchema>): string {
