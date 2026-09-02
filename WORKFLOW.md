@@ -2351,6 +2351,13 @@ Audit "kok ada folder tool 3×": ternyata tiga lapisan berbeda (bukan duplikasi)
   + `postinstall.mjs` + Dockerfile (mekanisme distribusi .exe, defer),
   `models.opencode.ai` (feed upstream), fixtures/recordings (provenance).
 
+## Phase 66: Rename packages/engine/opencode → packages/engine/engine (DONE)
+
+- [x] `git mv packages/engine/opencode packages/engine/engine`; `bun install` regenerate
+  symlink workspace. Referensi runtime `scripts/dev-app.cjs:84` + dokumen live diupdate.
+  Engine typecheck ✅, web build ✅, httpapi-oauth+providers ✅. Commit `f5b89f5` (push
+  `e0ff343..f5b89f5`). Lihat `docs/dev-logs/dev-log-2026-09-02-rename-engine-folder.md`.
+
 ## Phase 67: Reasoning effort dropdown → native model variants (DONE)
 
 Wire pilihan reasoning di chat area ke mekanisme bawaan engine (OpenCode variant).
