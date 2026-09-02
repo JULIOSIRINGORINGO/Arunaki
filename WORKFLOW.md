@@ -2350,3 +2350,21 @@ Audit "kok ada folder tool 3×": ternyata tiga lapisan berbeda (bukan duplikasi)
   berubah; `bun install` regenerate symlink workspace. Sisa "opencode": `bin/opencode`
   + `postinstall.mjs` + Dockerfile (mekanisme distribusi .exe, defer),
   `models.opencode.ai` (feed upstream), fixtures/recordings (provenance).
+
+## Phase 67: Reasoning effort dropdown → native model variants (DONE)
+
+Wire pilihan reasoning di chat area ke mekanisme bawaan engine (OpenCode variant).
+Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/prompt.ts`
+`createUserMessage`, dipersist ke model sesi via `setAgentModel`, dan dipetakan ke
+`reasoning_effort` di `session/llm/request.ts`) — hanya HTTP payload yang belum ekspos.
+
+- [x] `protocol/src/groups/session.ts` — payload `session.prompt` (dan `promptAsync`)
+  tambah field optional `variant: Model.VariantID`; handler sudah spread `...ctx.payload`
+  ke `promptSvc.prompt`, jadi langsung tembus tanpa edit handler.
+- [x] `apps/web/src/lib/engine.ts` — `sendPrompt(sessionID, content, { variant? })`.
+- [x] `apps/web/src/pages/UnifiedWorkstationPage.tsx` — kirim `reasoningEffort` ("" →
+  omit) sebagai `variant` saat prompt.
+- [x] Nilai dropdown `low`/`medium`/`high` = id variant engine; jika model tidak punya
+  tier itu → no-op (default), aman.
+- Verifikasi: engine tsgo ✅; web build ✅; `httpapi-session` 3 fail = baseline
+  lingkungan (MSYS2/path) — tidak ada regresi.

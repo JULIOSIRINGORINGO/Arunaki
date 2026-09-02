@@ -596,8 +596,8 @@ export function UnifiedWorkstationPage() {
     abortControllerRef.current = abortCtrl;
 
     try {
-      // Send prompt to engine
-      await sendPrompt(chatIdToUse, userText);
+      // Send prompt to engine, carrying the reasoning variant when set
+      await sendPrompt(chatIdToUse, userText, { variant: reasoningEffort || undefined });
 
       // Subscribe to engine events
       subscribeEvents((rawEvent) => {

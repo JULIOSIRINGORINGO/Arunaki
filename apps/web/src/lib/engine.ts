@@ -57,11 +57,12 @@ export async function getMessages(sessionID: string, opts?: { limit?: number }) 
 
 // --- Prompt (send message) ---
 
-export async function sendPrompt(sessionID: string, content: string) {
+export async function sendPrompt(sessionID: string, content: string, opts?: { variant?: string }) {
   const res = await engineFetch(`/api/session/${sessionID}/prompt`, {
     method: "POST",
     body: JSON.stringify({
       prompt: { type: "text", text: content },
+      ...(opts?.variant ? { variant: opts.variant } : {}),
     }),
   });
   if (!res.ok) throw new Error(`sendPrompt failed: ${res.status}`);
