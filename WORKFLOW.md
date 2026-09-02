@@ -2268,5 +2268,42 @@ terhubung ke engine (sebelumnya seluruhnya `localStorage`/dead `fetch`).
 - [x] **Verifikasi:** `bunx tsgo --noEmit` 0 error; `httpapi-providers` 3/3 pass,
   `httpapi-config` + `config.test` 96 pass / 2 fail proven pre-existing via stash;
   `npm run build -w apps/web` ✅.
-- [ ] Menu 2/3 Account & License dan 3/3 Desktop Automation masih localStorage-only
-  (belum terhubung engine) — rollout 1-menu-per-commit selanjutnya.
+- [x] Menu 2/3 **Account & License — OAuth Google/GitHub login** (Phase 63).
+
+## Phase 63: Settings Menu 2/3 — Account & License OAuth (DONE)
+
+**Goal:** "Continue with Google"/"Continue with GitHub" di menu Account & License
+benar-benar login (sebelumnya `toast` "will be available in the upcoming release"),
+email/password lama tetap localStorage (kosmetik, bukan delete).
+
+- [x] **Audit:** engine TIDAK punya license/plan/billing (tidak ada yang bisa diwire);
+  yang real adalah OAuth account (Console device-code) tapi bukan Google/GitHub.
+- [x] **Engine door baru `oauth` (instance HttpApi):** `GET /api/oauth/:provider/start`
+  (validasi kredensial + return authorize URL), `GET /api/oauth/:provider/callback`
+  (raw HTML branded page, re-usable `OauthCallbackPage` dari core; exchange
+  code→token, fetch profile Google `oauth2.googleapis.com/token`+`v3/userinfo`,
+  GitHub `github.com/login/oauth/access_token`+`api.github.com/user(/emails)`),
+  `GET /api/oauth/:provider/result` (poll profil) — di
+  `groups/oauth.ts` (schema + `OAuthApiError`) & `handlers/oauth.ts`
+  (`oauthHandlers`), daftar di `api.ts` + `server.ts`.
+- [x] **Keamanan:** `state` random (uuid) dengan TTL 10 menit, divalidasi di
+  callback (CSRF); error branch CEK SEBELUM validasi state (pola MCP) supaya
+  `denied` tidak termask sebagai invalid state; grup TANPA `Authorization`
+  middleware supaya popup redirect tidak kena Basic-auth.
+- [x] **Kredensial via env:** `ARUNAKI_GOOGLE_CLIENT_ID/SECRET`,
+  `ARUNAKI_GITHUB_CLIENT_ID/SECRET`, redirect base `ARUNAKI_OAUTH_REDIRECT_BASE`
+  (default `http://127.0.0.1:4096` = port engine dev; register URI ini di console
+  OAuth app). Tanpa kredensial → 400 jelas + tombol UI toast pesan konfigurasi.
+- [x] **Frontend:** `SettingsPage` `handleOAuthLogin(provider)` → popup window →
+  `pollOAuthResult` (poll `/result`, 1.5s×3mnt) → simpan `arunaki_user_email/_name/_avatar`
+  localStorage + set state logged-in; dua tombol wired (bukan toast fake).
+- [x] **Test engine baru:** `test/server/httpapi-oauth.test.ts` (3 test live,
+  offline): unconfigured start → 400 + pesan; configured start → URL benar
+  (host/client_id/session state) + result pending; callback invalid/denied/no-code
+  → branded HTML error page ber-200. Semua pass.
+- [x] **Verifikasi:** `bunx tsgo --noEmit` 0 error; `httpapi-oauth` 3/3 pass;
+  suite gabungan 102 pass / 2 fail proven pre-existing (MSYS2 timeout + env token);
+  `npm run build -w apps/web` ✅.
+- [ ] Menu 3/3 Desktop Automation & Behavior masih localStorage-only (todo:
+  preferensi globals bisa disimpan di engine config global — `ConfigPaths.files`,
+  lalu baca lewat `/api/global/config`).

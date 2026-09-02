@@ -68,6 +68,46 @@ export function SettingsPage() {
     toast.info("Signed out. Local offline mode is active.");
   };
 
+  const pollOAuthResult = async (provider: "google" | "github", state: string) => {
+    const deadline = Date.now() + 180_000;
+    while (Date.now() < deadline) {
+      const res = await apiFetch(`${API_BASE}/oauth/${provider}/result?state=${encodeURIComponent(state)}`);
+      if (!res.ok) return null;
+      const data = (await res.json()) as { pending: boolean; email: string; name: string; avatar: string };
+      if (!data.pending && data.email) return data;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    return null;
+  };
+
+  const handleOAuthLogin = async (provider: "google" | "github") => {
+    try {
+      const res = await apiFetch(`${API_BASE}/oauth/${provider}/start`);
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string; data?: { message?: string } } | null;
+        toast.error(body?.message || body?.data?.message || `${provider} sign-in is not configured.`);
+        return;
+      }
+      const { url, state } = (await res.json()) as { url: string; state: string };
+      window.open(url, "arunaki-oauth", "popup=yes,width=520,height=680");
+      const profile = await pollOAuthResult(provider, state);
+      if (!profile) {
+        toast.error("Sign-in timed out or was cancelled.");
+        return;
+      }
+      localStorage.setItem("arunaki_user_email", profile.email);
+      if (profile.name) localStorage.setItem("arunaki_user_name", profile.name);
+      if (profile.avatar) localStorage.setItem("arunaki_user_avatar", profile.avatar);
+      setUserEmail(profile.email);
+      if (profile.name) setUserName(profile.name);
+      if (profile.avatar) setUserAvatar(profile.avatar);
+      setIsLoggedIn(true);
+      toast.success(`Signed in as ${profile.email}`);
+    } catch {
+      toast.error("Sign-in failed. Make sure the engine is reachable.");
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-y-auto select-none p-6 transition-colors duration-150">
       <div className="max-w-5xl w-full mx-auto flex-1 flex flex-col min-h-0">
@@ -274,7 +314,7 @@ export function SettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                     <button
                       type="button"
-                      onClick={() => toast.info("Google Sign-In will be available in the upcoming release.")}
+                      onClick={() => handleOAuthLogin("google")}
                       className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
                     >
                       <Key className="w-4 h-4 text-[var(--text-muted)]" />
@@ -283,7 +323,7 @@ export function SettingsPage() {
 
                     <button
                       type="button"
-                      onClick={() => toast.info("GitHub Sign-In will be available in the upcoming release.")}
+                      onClick={() => handleOAuthLogin("github")}
                       className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
                     >
                       <svg className="w-4 h-4 fill-current text-[var(--text-primary)]" viewBox="0 0 24 24">
