@@ -1544,6 +1544,28 @@ apps/web/src/
 >   `Provider.node`.
 > - Test: `test/arunaki/memory.test.ts` (5 pass: filter + applyCorrections),
 >   `test/server/httpapi-knowledge.test.ts` (2 pass — bukti server boots dengan deps baru).
+>
+> **Update (2026-09-03):** **Fix kain di jalur produksi httpapi** — sentinel
+> (`Memory`) tidak pernah menerima `SessionEvent.Step.Ended` karena engine
+> prompt loop **tidak mem-publish** event tersebut (hanya core runner yang
+> publish). Perbaikan (Opsi 1, tanpa mengubah fungsi existing — hanya menambah):
+> - `engine/src/session/prompt.ts` — publish `SessionEvent.Step.Ended` di titik
+>   turn-completion prompt loop, `timestamp: yield* DateTime.now` (harus
+>   `DateTime.Utc`, bukan `Date.now()` number — EventV2 memvalidasi data saat
+>   publish; millis ⇒ error `Expected DateTime.Utc`), **blocking** (bukan
+>   `Effect.forkIn(scope)` yang mati saat scope prompt menutup). Payload dari
+>   `lastAssistant.info` (`assistantMessageID`,`finish`,`cost`,`tokens`).
+> - `engine/src/arunaki/memory.ts` — tambah `Memory.ensureActive()` (materialize
+>   instance state per-folder supaya subscription `SessionEvent.Step.Ended`
+>   ter-attach tanpa rewrite ARUNAKI.md).
+> - `engine/src/project/bootstrap.ts` — panggil `memory.ensureActive()` di
+>   instance bootstrap (failure-tolerant via `catchCause`); tambah `Memory.node`.
+>
+> **Bukti E2E (report-folder `laporan-test` via httpapi, model mimo-v2):**
+> kirim koreksi user ke `/session/{id}/message` ⇒ prompt 200; `.arunaki/ARUNAKI.md`
+> berakhir `### Learned by the Sentinel` berisi aturan persis = pesan koreksi
+> user, dan `user-corrections.jsonl` ter-append. Build web
+> (`npm run build -w apps/web`) 0 error. Instrumentasi sementara sudah dihapus.
 
 ---
 
@@ -1768,6 +1790,28 @@ apps/web/src/
 >   `Provider.node`.
 > - Test: `test/arunaki/memory.test.ts` (5 pass: filter + applyCorrections),
 >   `test/server/httpapi-knowledge.test.ts` (2 pass — bukti server boots dengan deps baru).
+>
+> **Update (2026-09-03):** **Fix kain di jalur produksi httpapi** — sentinel
+> (`Memory`) tidak pernah menerima `SessionEvent.Step.Ended` karena engine
+> prompt loop **tidak mem-publish** event tersebut (hanya core runner yang
+> publish). Perbaikan (Opsi 1, tanpa mengubah fungsi existing — hanya menambah):
+> - `engine/src/session/prompt.ts` — publish `SessionEvent.Step.Ended` di titik
+>   turn-completion prompt loop, `timestamp: yield* DateTime.now` (harus
+>   `DateTime.Utc`, bukan `Date.now()` number — EventV2 memvalidasi data saat
+>   publish; millis ⇒ error `Expected DateTime.Utc`), **blocking** (bukan
+>   `Effect.forkIn(scope)` yang mati saat scope prompt menutup). Payload dari
+>   `lastAssistant.info` (`assistantMessageID`,`finish`,`cost`,`tokens`).
+> - `engine/src/arunaki/memory.ts` — tambah `Memory.ensureActive()` (materialize
+>   instance state per-folder supaya subscription `SessionEvent.Step.Ended`
+>   ter-attach tanpa rewrite ARUNAKI.md).
+> - `engine/src/project/bootstrap.ts` — panggil `memory.ensureActive()` di
+>   instance bootstrap (failure-tolerant via `catchCause`); tambah `Memory.node`.
+>
+> **Bukti E2E (report-folder `laporan-test` via httpapi, model mimo-v2):**
+> kirim koreksi user ke `/session/{id}/message` ⇒ prompt 200; `.arunaki/ARUNAKI.md`
+> berakhir `### Learned by the Sentinel` berisi aturan persis = pesan koreksi
+> user, dan `user-corrections.jsonl` ter-append. Build web
+> (`npm run build -w apps/web`) 0 error. Instrumentasi sementara sudah dihapus.
 
 ---
 

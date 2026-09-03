@@ -4,6 +4,7 @@ import { Format } from "../format"
 import { Snapshot } from "../snapshot"
 import * as Project from "./project"
 import * as Vcs from "./vcs"
+import { Memory } from "../arunaki/memory"
 import { InstanceState } from "@/effect/instance-state"
 import { Effect, Layer } from "effect"
 import { Config } from "@/config/config"
@@ -24,6 +25,7 @@ const layer = Layer.effect(
     const project = yield* Project.Service
     const snapshot = yield* Snapshot.Service
     const vcs = yield* Vcs.Service
+    const memory = yield* Memory.Service
 
     const run = Effect.gen(function* () {
       const ctx = yield* InstanceState.context
@@ -39,6 +41,9 @@ const layer = Layer.effect(
         (s) => s.init().pipe(Effect.catchCause((cause) => Effect.logWarning("init failed", { cause }))),
         { concurrency: "unbounded", discard: true },
       ).pipe(Effect.withSpan("InstanceBootstrap.init"))
+      // Activate the per-folder memory sentinel (subscribe Step.Ended for
+      // auto-learn). Failure-tolerant; never blocks or rewrites ARUNAKI.md.
+      yield* memory.ensureActive().pipe(Effect.catchCause((cause) => Effect.logWarning("memory active failed", { cause })))
     }).pipe(Effect.withSpan("InstanceBootstrap"))
 
     return Service.of({ run })
@@ -48,7 +53,7 @@ const layer = Layer.effect(
 export const node = makeGlobalNode({
   service: Service,
   layer: layer,
-  deps: [Config.node, Format.node, Plugin.node, Project.node, Snapshot.node, Vcs.node],
+  deps: [Config.node, Format.node, Plugin.node, Project.node, Snapshot.node, Vcs.node, Memory.node],
 })
 
 export * as InstanceBootstrap from "./bootstrap"

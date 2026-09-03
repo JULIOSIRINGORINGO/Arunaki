@@ -42,6 +42,8 @@ export interface Interface {
   onTurnCompleted(sessionID: string): Effect.Effect<void>
   /** Run the correction-learning pipeline for a single turn (cheap filter + LLM). */
   learnCorrection(sessionID: string): Effect.Effect<void>
+  /** Activate the per-folder sentinel (subscribe Step.Ended) without rewriting ARUNAKI.md. */
+  ensureActive(): Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@arunaki/Memory") {}
@@ -249,6 +251,14 @@ const layer = Layer.effect(
             .readFileStringSafe(path.join(directory, ARUNAKI_REL))
             .pipe(Effect.map((raw) => raw ?? ""))
 
+        const ensureActive = Effect.fn("Memory.ensureActive")(function* () {
+          // Merely materialize the per-folder instance state so the
+          // Step.Ended subscription inside `make` is attached. No rulebook
+          // rewrite (cartograph) runs here, so a hand-authored ARUNAKI.md is
+          // preserved while the sentinel comes alive.
+          yield* Effect.void
+        })
+
         const appendCorrectionLog = (sessionID: string, userText: string) =>
           Effect.gen(function* () {
             yield* fs.ensureDir(path.join(directory, ".arunaki")).pipe(Effect.orDie)
@@ -373,6 +383,7 @@ const layer = Layer.effect(
           cartograph: cartographImpl,
           onTurnCompleted,
           learnCorrection,
+          ensureActive,
         })
       }),
     )
@@ -381,6 +392,7 @@ const layer = Layer.effect(
       cartograph: () => InstanceState.useEffect(state, (s) => s.cartograph()),
       onTurnCompleted: (sessionID) => InstanceState.useEffect(state, (s) => s.onTurnCompleted(sessionID)),
       learnCorrection: (sessionID) => InstanceState.useEffect(state, (s) => s.learnCorrection(sessionID)),
+      ensureActive: () => InstanceState.useEffect(state, (s) => s.ensureActive()),
     })
   }),
 )

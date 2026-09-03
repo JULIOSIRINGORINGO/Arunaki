@@ -41,7 +41,7 @@ import { Truncate } from "@/tool/truncate"
 import { Image } from "@/image/image"
 import { decodeDataUrl } from "@/util/data-url"
 import { Process } from "@/util/process"
-import { Cause, Effect, Exit, Latch, Layer, Option, Scope, Context, Schema, Types } from "effect"
+import { Cause, DateTime, Effect, Exit, Latch, Layer, Option, Scope, Context, Schema, Types } from "effect"
 import { InstanceState } from "@/effect/instance-state"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
@@ -55,6 +55,7 @@ import { SessionTable } from "@arunaki/core/session/sql"
 import { SessionReminders } from "./reminders"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@arunaki/llm"
+import { SessionEvent } from "@arunaki/schema/session-event"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -1320,7 +1321,20 @@ const layer = Layer.effect(
         }
 
         yield* compaction.prune({ sessionID }).pipe(Effect.ignore, Effect.forkIn(scope))
-        return yield* lastAssistant(sessionID)
+        const finalAssistant = yield* lastAssistant(sessionID)
+        if (finalAssistant) {
+          const info = finalAssistant.info
+          const t = info.tokens ?? { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }
+          yield* events.publish(SessionEvent.Step.Ended, {
+            sessionID,
+            timestamp: yield* DateTime.now,
+            assistantMessageID: info.id,
+            finish: info.finish ?? "stop",
+            cost: info.cost ?? 0,
+            tokens: t,
+          }).pipe(Effect.ignore)
+        }
+        return finalAssistant
       },
     )
 
