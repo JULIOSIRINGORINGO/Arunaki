@@ -46,8 +46,9 @@ export async function getSession(sessionID: string) {
   return json.data;
 }
 
-export async function getMessages(sessionID: string, opts?: { limit?: number }) {
+export async function getMessages(sessionID: string, opts?: { limit?: number; order?: "asc" | "desc" }) {
   const params = new URLSearchParams();
+  params.set("order", opts?.order ?? "asc");
   if (opts?.limit) params.set("limit", String(opts.limit));
   const res = await engineFetch(`/api/session/${sessionID}/message?${params}`);
   if (!res.ok) throw new Error(`getMessages failed: ${res.status}`);
@@ -65,7 +66,10 @@ export async function sendPrompt(sessionID: string, content: string, opts?: { va
       ...(opts?.variant ? { variant: opts.variant } : {}),
     }),
   });
-  if (!res.ok) throw new Error(`sendPrompt failed: ${res.status}`);
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => "");
+    throw new Error(`sendPrompt failed: ${res.status} ${errorBody}`);
+  }
   const json = await res.json();
   return json.data;
 }
@@ -121,36 +125,45 @@ export function mapEngineEvent(
   event: { type: string; data?: any; sessionID?: string; [key: string]: any },
   currentSessionID: string,
 ): { type: string; data?: any } | null {
-  if (event.sessionID && event.sessionID !== currentSessionID) return null;
+  const payload = event.data || event;
+  const sessionID = payload.sessionID || event.sessionID;
+  if (sessionID && sessionID !== currentSessionID) return null;
 
   switch (event.type) {
     case "session.next.text.delta":
-      return { type: "text_delta", data: event.delta };
+      return { type: "text_delta", data: payload.delta || event.delta };
     case "session.next.text.ended":
       return { type: "done" };
     case "session.next.reasoning.delta":
-      return { type: "thinking", data: event.delta };
+      return { type: "thinking", data: payload.delta || event.delta };
     case "session.next.tool.called":
       return {
         type: "tool_start",
-        data: { toolName: event.tool, args: event.input },
+        data: { toolName: payload.tool || event.tool, args: payload.input || event.input },
       };
     case "session.next.tool.success":
       return {
         type: "tool_live_status",
-        data: { toolName: event.tool, status: "completed" },
+        data: { toolName: payload.tool || event.tool, status: "completed" },
       };
     case "session.next.tool.failed":
       return {
         type: "tool_live_status",
-        data: { toolName: event.tool, status: "failed" },
+        data: { toolName: payload.tool || event.tool, status: "failed" },
       };
     case "session.next.step.started":
       return { type: "thinking", data: "Processing..." };
     case "session.next.step.ended":
       return null;
+    case "session.next.step.failed":
+      return {
+        type: "error",
+        data: {
+          message: payload.error?.message || event.error?.message || "An error occurred while processing your request.",
+        },
+      };
     case "session.next.tool.input.started":
-      return { type: "thinking", data: `Preparing ${event.name || "tool"}...` };
+      return { type: "thinking", data: `Preparing ${payload.name || event.name || "tool"}...` };
     default:
       return null;
   }

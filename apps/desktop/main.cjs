@@ -45,7 +45,7 @@ const WAIT_INTERVAL_MS = 500;
 let workspaceRoot = null;
 
 function resolveInsideWorkspace(p) {
-  const resolved = path.resolve(p);
+  const resolved = workspaceRoot && !path.isAbsolute(p) ? path.resolve(workspaceRoot, p) : path.resolve(p);
   if (!workspaceRoot) return resolved; // no workspace selected yet (dev/offline) — allow
   const rel = path.relative(workspaceRoot, resolved);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {

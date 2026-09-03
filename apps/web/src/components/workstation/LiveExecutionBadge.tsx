@@ -40,7 +40,15 @@ interface LiveExecutionBadgeProps {
 
 export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadgeProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [steps, setSteps] = useState<StepItem[]>([]);
+  const [steps, setSteps] = useState<StepItem[]>(() => {
+    if (!status) return [];
+    return [{
+      id: `step-init-${Date.now()}`,
+      label: status.preview || "Analyzing request...",
+      status: "completed",
+      iconType: status.type === "tool_start" ? "tool" : "thinking",
+    }];
+  });
   const [waitingSec, setWaitingSec] = useState(0);
 
   useEffect(() => {
@@ -99,7 +107,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     });
   }, [status?.type, status?.toolName, status?.preview]);
 
-  if (!status || !active || steps.length === 0) return null;
+  if (!status || !active) return null;
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const toolSteps = steps.filter((s) => s.iconType === 'tool');
@@ -198,11 +206,20 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 export function MessageThoughtBadge({
   steps = [],
   thoughtSec = 1,
+  reasoning,
+  defaultExpanded = false,
 }: {
   steps?: StepItem[];
   thoughtSec?: number;
+  reasoning?: string;
+  defaultExpanded?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    setIsExpanded(defaultExpanded);
+  }, [defaultExpanded]);
+
   const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
 
@@ -244,19 +261,19 @@ export function MessageThoughtBadge({
     );
   }
 
-  // If there are no tool steps, do not render an empty badge (Antigravity parity: pure chat shows clean text bubble)
-  if (steps.length === 0) {
+  // Pure Thought Reasoning (when reasoning text or steps exist)
+  if (!reasoning && steps.length === 0) {
     return null;
   }
 
-  // Pure Thought Reasoning (when steps exist)
   return (
     <div className="mb-2 font-sans select-none max-w-full min-w-0">
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)]"
+        className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)] font-mono"
       >
+        <Sparkles size={11} className="text-amber-500/80 shrink-0" />
         <span>Thought for {thoughtSec || 1}s</span>
         {isExpanded ? (
           <ChevronDown size={12} className="text-[var(--text-muted)]" />
@@ -266,15 +283,19 @@ export function MessageThoughtBadge({
       </button>
 
       {isExpanded && (
-        <div className="mt-1 p-2.5 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-full min-w-0 font-sans break-words [overflow-wrap:anywhere]">
-          <div className="space-y-1">
-            {steps.map((s, i) => (
-              <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
-                <Check size={10} className="text-emerald-500 shrink-0" />
-                <span className="truncate max-w-full">{s.label}</span>
-              </div>
-            ))}
-          </div>
+        <div className="mt-1.5 p-3 rounded-xl bg-[var(--bg-panel)]/80 border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-full min-w-0 font-mono italic break-words [overflow-wrap:anywhere] max-h-72 overflow-y-auto whitespace-pre-wrap select-text">
+          {reasoning ? (
+            reasoning
+          ) : (
+            <div className="space-y-1 not-italic font-sans">
+              {steps.map((s, i) => (
+                <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
+                  <Check size={10} className="text-emerald-500 shrink-0" />
+                  <span className="truncate max-w-full">{s.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,9 +1,13 @@
-import { memo, useState, useEffect, useCallback } from "react";
+import { memo, useState, useEffect, useCallback, useRef } from "react";
 import {
   X,
   Copy,
-  CopyCheck,
+  Check,
   Download,
+  Save,
+  ChevronRight,
+  GitBranch,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { getFileIcon } from "../workspace/tree-utils";
@@ -20,25 +24,14 @@ export interface CenterTab {
   timeStr?: string;
 }
 
-function formatCanvasTitle(title: string): string {
-  if (!title) return "Document Canvas";
-  const clean = title.replace(/^#+\s*/, "").replace(/[`*|_]/g, "").trim();
-  if (clean === clean.toUpperCase() && clean.length > 2) {
-    return clean
-      .toLowerCase()
-      .split(" ")
-      .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
-      .join(" ");
-  }
-  return clean;
-}
-
-interface WorkstationCenterPanelProps {
+export interface WorkstationCenterPanelProps {
   tabs: CenterTab[];
   activeTabId: string | null;
+  activeFolder?: string;
   onSelectTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onUpdateTabContent?: (tabId: string, newContent: string) => void;
+  onSaveTabContent?: (tabId: string, content: string) => Promise<void> | void;
 }
 
 export interface DiffLine {
@@ -49,7 +42,7 @@ export interface DiffLine {
 }
 
 /**
- * Line-by-line diff algorithm (LCS-based) for Cursor/Antigravity style live diff highlights
+ * Line-by-line diff algorithm (LCS-based) for VSCode-style gutter change indicators
  */
 function computeLineDiff(oldText: string, newText: string): DiffLine[] {
   const oldLines = oldText ? oldText.split("\n") : [];
@@ -107,16 +100,20 @@ function computeLineDiff(oldText: string, newText: string): DiffLine[] {
 function WorkstationCenterPanelComponent({
   tabs,
   activeTabId,
+  activeFolder,
   onSelectTab,
   onCloseTab,
   onUpdateTabContent,
+  onSaveTabContent,
 }: WorkstationCenterPanelProps) {
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   // Per-tab local edited content state to allow live editing
   const [editedContents, setEditedContents] = useState<Record<string, string>>({});
-  // Track previous content per tab to compute live diffs when AI updates files
+  // Track previous content per tab to compute diffs when AI updates files
   const [previousContents, setPreviousContents] = useState<Record<string, string>>({});
+  // Track unsaved status per tab
+  const [unsavedTabs, setUnsavedTabs] = useState<Record<string, boolean>>({});
   // State to hold active diff highlighting per tab
   const [activeDiffs, setActiveDiffs] = useState<Record<string, {
     diffLines: DiffLine[];
@@ -124,7 +121,11 @@ function WorkstationCenterPanelComponent({
     deletedCount: number;
   } | null>>({});
 
-  const [copiedCanvas, setCopiedCanvas] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
 
   // Sync tab content when parent updates tab.content
   useEffect(() => {
@@ -152,12 +153,14 @@ function WorkstationCenterPanelComponent({
             },
           }));
 
+          // Automatically clear highlights after 10 seconds, or user can dismiss manually
           const timer = setTimeout(() => {
             setActiveDiffs((prev) => ({ ...prev, [activeTab.id]: null }));
-          }, 3500);
+          }, 10000);
 
           setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
           setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
+          setUnsavedTabs((prev) => ({ ...prev, [activeTab.id]: false }));
 
           return () => clearTimeout(timer);
         }
@@ -170,21 +173,67 @@ function WorkstationCenterPanelComponent({
 
   const currentContent = activeTab ? (editedContents[activeTab.id] ?? activeTab.content ?? "") : "";
   const activeDiff = activeTab ? activeDiffs[activeTab.id] : null;
-  const isDiffActive = !!activeDiff;
+  const isUnsaved = activeTab ? !!unsavedTabs[activeTab.id] : false;
+
+  const updateCursorPos = () => {
+    if (!textareaRef.current) return;
+    const pos = textareaRef.current.selectionStart || 0;
+    const val = textareaRef.current.value || "";
+    const linesUpToPos = val.substring(0, pos).split("\n");
+    const line = linesUpToPos.length;
+    const col = linesUpToPos[linesUpToPos.length - 1].length + 1;
+    setCursorPos({ line, col });
+  };
 
   const handleTextChange = useCallback((newText: string) => {
     if (!activeTab?.id) return;
     setEditedContents((prev) => ({ ...prev, [activeTab.id]: newText }));
+    setUnsavedTabs((prev) => ({ ...prev, [activeTab.id]: true }));
     if (onUpdateTabContent) {
       onUpdateTabContent(activeTab.id, newText);
     }
   }, [activeTab?.id, onUpdateTabContent]);
 
-  const handleCopyCanvas = () => {
+  const handleSave = useCallback(async () => {
+    if (!activeTab?.id) return;
+    if (onSaveTabContent) {
+      await onSaveTabContent(activeTab.id, currentContent);
+    }
+    setUnsavedTabs((prev) => ({ ...prev, [activeTab.id]: false }));
+    setPreviousContents((prev) => ({ ...prev, [activeTab.id]: currentContent }));
+  }, [activeTab?.id, currentContent, onSaveTabContent]);
+
+  const handleScroll = () => {
+    if (textareaRef.current && gutterRef.current) {
+      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      handleSave();
+    }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const target = e.currentTarget;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const val = target.value;
+      const nextVal = val.substring(0, start) + "    " + val.substring(end);
+      handleTextChange(nextVal);
+      requestAnimationFrame(() => {
+        target.selectionStart = target.selectionEnd = start + 4;
+        updateCursorPos();
+      });
+    }
+  };
+
+  const handleCopyContent = () => {
     if (!currentContent) return;
     navigator.clipboard.writeText(currentContent);
-    setCopiedCanvas(true);
-    setTimeout(() => setCopiedCanvas(false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadTxt = () => {
@@ -192,170 +241,237 @@ function WorkstationCenterPanelComponent({
     const element = document.createElement("a");
     const file = new Blob([currentContent], { type: "text/plain" });
     element.href = URL.createObjectURL(file);
-    element.download = `canvas-${Date.now()}.txt`;
+    element.download = `${activeTab?.title || "document"}-${Date.now()}.txt`;
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
     setTimeout(() => URL.revokeObjectURL(element.href), 1000);
   };
 
+  // Build line gutter metadata
+  const lines = currentContent.split("\n");
+  const addedLineNums = new Set<number>();
+  if (activeDiff?.diffLines) {
+    for (const dl of activeDiff.diffLines) {
+      if (dl.type === "added" && dl.newLineNumber) {
+        addedLineNums.add(dl.newLineNumber);
+      }
+    }
+  }
+
+  // Detect language mode for VSCode status bar
+  const langMode = activeTab
+    ? activeTab.title.endsWith(".txt")
+      ? "Plain Text"
+      : activeTab.title.endsWith(".md")
+      ? "Markdown"
+      : activeTab.title.endsWith(".json")
+      ? "JSON"
+      : activeTab.title.endsWith(".csv")
+      ? "CSV"
+      : activeTab.title.endsWith(".xlsx") || activeTab.title.endsWith(".xls")
+      ? "Excel"
+      : activeTab.title.split(".").pop()?.toUpperCase() || "Plain Text"
+    : "Plain Text";
+
+  const folderName = activeFolder
+    ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || "workspace"
+    : "workspace";
+
   return (
-    <main className="flex-1 flex flex-col min-w-0 bg-[var(--bg-app)] overflow-hidden select-none border-r border-[var(--border-color)] transition-colors duration-150">
-      {/* Top Tabs Bar (Antigravity Style) */}
+    <main className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] overflow-hidden select-none border-r border-[#252526] transition-colors duration-150">
+      {/* 1. VSCODE TOP TABS BAR */}
       {tabs.length > 0 && (
-        <div className="h-9 bg-[var(--bg-panel)] border-b border-[var(--border-color)] flex items-center px-2 gap-1 overflow-x-auto select-none no-scrollbar shrink-0 transition-colors duration-150">
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTabId;
-            return (
-              <div
-                key={tab.id}
-                onClick={() => onSelectTab(tab.id)}
-                onAuxClick={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
-                  }
-                }}
-                onMouseDown={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                  }
-                }}
-                className={cn(
-                  "group flex items-center gap-2 px-3 py-1 rounded text-xs font-sans cursor-pointer transition-all duration-150 border select-none shrink-0",
-                  isActive
-                    ? "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)]"
-                    : "bg-transparent text-[var(--text-muted)] border-transparent hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-                )}
-              >
-                {getFileIcon(tab.title)}
-                <span className="truncate max-w-[150px] font-medium">{tab.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
+        <div className="h-[35px] bg-[#252526] border-b border-[#1e1e1e] flex items-center justify-between px-0 gap-0 select-none shrink-0 overflow-hidden">
+          {/* Left: VSCode Rectangular Flush Tabs */}
+          <div className="flex items-center h-full overflow-x-auto no-scrollbar min-w-0">
+            {tabs.map((tab) => {
+              const isActive = tab.id === activeTabId;
+              const hasUnsavedChanges = !!unsavedTabs[tab.id];
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => onSelectTab(tab.id)}
+                  onAuxClick={(e) => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onCloseTab(tab.id);
+                    }
                   }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-red-500 p-0.5 rounded transition-opacity cursor-pointer"
-                  title="Close Tab (Middle-click to close)"
+                  onMouseDown={(e) => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={cn(
+                    "group h-full flex items-center gap-2 px-3 text-xs font-sans cursor-pointer transition-colors border-r border-[#1e1e1e] select-none shrink-0 relative",
+                    isActive
+                      ? "bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#0078d4]"
+                      : "bg-[#2d2d2d] text-[#969696] hover:bg-[#2b2b2b] hover:text-[#cccccc] border-t-2 border-t-transparent"
+                  )}
                 >
-                  <X className="w-3 h-3" strokeWidth={1.5} />
+                  {getFileIcon(tab.title)}
+                  <span className="truncate max-w-[150px] text-[12px] font-normal">{tab.title}</span>
+                  {hasUnsavedChanges ? (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCloseTab(tab.id);
+                      }}
+                      className="w-2 h-2 rounded-full bg-white group-hover:hidden transition-all"
+                      title="Unsaved changes"
+                    />
+                  ) : null}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseTab(tab.id);
+                    }}
+                    className={cn(
+                      "p-0.5 rounded hover:bg-[#333333] hover:text-white transition-colors cursor-pointer",
+                      hasUnsavedChanges ? "hidden group-hover:block" : "opacity-0 group-hover:opacity-100"
+                    )}
+                    title="Close (Middle-click)"
+                  >
+                    <X className="w-3 h-3 text-[#969696] hover:text-white" strokeWidth={1.5} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right: VSCode Action Icons */}
+          {activeTab && (
+            <div className="flex items-center gap-1.5 shrink-0 px-2">
+              {activeDiff && (
+                <span className="text-[11px] text-[#38bdf8] bg-[#38bdf8]/10 px-2 py-0.5 rounded border border-[#38bdf8]/20 flex items-center gap-1.5 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8] animate-pulse" />
+                  <span>+{activeDiff.addedCount} / -{activeDiff.deletedCount}</span>
+                  <button
+                    onClick={() => setActiveDiffs((prev) => ({ ...prev, [activeTab.id]: null }))}
+                    className="ml-0.5 text-[#38bdf8] hover:text-white cursor-pointer"
+                    title="Dismiss highlight"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              )}
+
+              {isUnsaved && (
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0e639c] hover:bg-[#1177bb] text-white font-sans text-[11px] transition-colors cursor-pointer shadow-xs"
+                  title="Save Changes (Ctrl+S)"
+                >
+                  <Save className="w-3 h-3" />
+                  <span>Save</span>
                 </button>
-              </div>
-            );
-          })}
+              )}
+
+              <button
+                onClick={handleCopyContent}
+                className="p-1.5 rounded text-[#969696] hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+                title="Copy Content"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+
+              {activeTab.type === "canvas" && (
+                <button
+                  onClick={handleDownloadTxt}
+                  className="p-1.5 rounded text-[#969696] hover:text-white hover:bg-[#333333] transition-colors cursor-pointer"
+                  title="Download File"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Dynamic Content Body */}
-      <div className="flex-1 relative overflow-hidden bg-[var(--bg-app)] flex flex-col transition-colors duration-150">
+      {/* 2. VSCODE BREADCRUMBS BAR */}
+      {activeTab && (
+        <div className="h-[22px] bg-[#1e1e1e] border-b border-[#252526] px-4 flex items-center gap-1.5 text-[11px] text-[#969696] select-none shrink-0 font-sans">
+          <span>{folderName}</span>
+          <ChevronRight className="w-3 h-3 text-[#6e7681]" />
+          <span className="text-[#cccccc] font-medium">{activeTab.title}</span>
+        </div>
+      )}
+
+      {/* 3. DYNAMIC CONTENT BODY (VSCODE CANVAS) */}
+      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[#1e1e1e]">
         {activeTab ? (
           activeTab.type === "canvas" ? (
-            /* ANTIGRAVITY-STYLE CANVAS ARTIFACT VIEW (PURE MONOSPACE PLAINTEXT) */
-            <div className="h-full w-full flex flex-col bg-[var(--bg-app)] overflow-hidden select-text">
-              {/* Clean Sub-Header Bar */}
-              <div className="h-9 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-5 flex items-center justify-between text-xs select-none shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-xs font-semibold text-[var(--text-primary)] tracking-wide truncate">
-                    {formatCanvasTitle(activeTab.title)}
-                  </span>
-                  {(activeTab.timeStr || activeTab.createdAt) && (
-                    <span className="text-[11px] text-[var(--text-muted)] font-mono shrink-0">
-                      {activeTab.timeStr || (activeTab.createdAt ? new Date(activeTab.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "")}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleCopyCanvas}
-                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer flex items-center gap-1.5"
-                    title={copiedCanvas ? "Copied!" : "Copy to Clipboard"}
-                  >
-                    {copiedCanvas ? (
-                      <CopyCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={handleDownloadTxt}
-                    className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-                    title="Download File"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Pure Plaintext Body (Preserves exact raw spacing & ready to copy directly) */}
-              <div className="flex-1 overflow-auto px-8 py-6 bg-[var(--bg-app)]">
+            /* ARUNAKI DELIVERABLE CANVAS */
+            <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
+              <div className="flex-1 overflow-auto px-8 py-6 bg-[#1e1e1e]">
                 <div className="max-w-3xl mx-auto">
-                  <pre className="font-mono text-xs text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap select-text selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)]">
+                  <pre className="font-mono text-xs text-[#d4d4d4] leading-relaxed whitespace-pre-wrap select-text selection:bg-[#264f78] selection:text-[#ffffff]">
                     {currentContent}
                   </pre>
                 </div>
               </div>
             </div>
-          ) : isDiffActive && activeDiff ? (
-            /* CURSOR / ANTIGRAVITY LIVE DIFF VIEW */
-            <div className="h-full w-full flex flex-col bg-[var(--bg-app)] font-mono text-xs overflow-hidden select-text">
-              <div className="h-7 bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-3 flex items-center justify-between text-xs select-none shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse" />
-                  <span className="font-mono text-[var(--text-muted)] text-[11px]">AI Live Diff</span>
-                  <span className="text-[var(--text-dim)] text-[11px] font-mono">
-                    +{activeDiff.addedCount} / -{activeDiff.deletedCount}
-                  </span>
-                </div>
-                <span className="text-[var(--text-dim)] text-[10px] italic">Auto-settling...</span>
-              </div>
-
-              <div className="flex-1 overflow-auto p-2 bg-[var(--bg-app)] font-mono text-xs leading-relaxed">
-                {activeDiff.diffLines.map((line, idx) => {
-                  if (line.type === "added") {
-                    return (
-                      <div key={idx} className="flex items-start bg-emerald-500/10 border-l-2 border-emerald-500 text-[var(--text-primary)] px-2 py-0.5 whitespace-pre font-mono">
-                        <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber}</span>
-                        <span className="text-emerald-500 font-bold mr-2 select-none shrink-0">+</span>
-                        <span className="break-all">{line.content}</span>
-                      </div>
-                    );
-                  }
-                  if (line.type === "deleted") {
-                    return (
-                      <div key={idx} className="flex items-start bg-red-500/10 border-l-2 border-red-500 text-[var(--text-muted)] px-2 py-0.5 whitespace-pre font-mono">
-                        <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.oldLineNumber}</span>
-                        <span className="text-red-500 font-bold mr-2 select-none shrink-0">-</span>
-                        <span className="line-through break-all">{line.content}</span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={idx} className="flex items-start text-[var(--text-secondary)] px-2 py-0.5 whitespace-pre font-mono hover:bg-[var(--bg-hover)]">
-                      <span className="w-10 text-[var(--text-dim)] text-right pr-3 select-none text-[10px] shrink-0">{line.newLineNumber || line.oldLineNumber}</span>
-                      <span className="w-4 select-none shrink-0" />
-                      <span className="break-all">{line.content}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           ) : (
-            /* STANDARD EDITABLE FILE / DOCUMENT VIEWER */
-            <div className="h-full w-full flex flex-col bg-[var(--bg-app)]">
-              <textarea
-                value={currentContent}
-                onChange={(e) => handleTextChange(e.target.value)}
-                placeholder="Empty document..."
-                spellCheck={false}
-                className="w-full h-full p-4 bg-transparent font-mono text-xs text-[var(--text-primary)] leading-relaxed resize-none focus:outline-none select-text cursor-text selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)]"
-              />
+            /* VSCODE-STYLE LIVE EDITABLE FILE EDITOR WITH GUTTER */
+            <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
+              <div className="flex-1 flex overflow-hidden bg-[#1e1e1e] relative font-mono text-[13px]">
+                {/* Gutter with VSCode-style line numbers & change indicator bars */}
+                <div
+                  ref={gutterRef}
+                  className="w-[50px] shrink-0 select-none bg-[#1e1e1e] border-r border-[#252526]/50 overflow-hidden text-right py-2 pr-3.5 font-mono text-[12px] text-[#858585]"
+                >
+                  {lines.map((_, i) => {
+                    const lineNum = i + 1;
+                    const isAdded = addedLineNums.has(lineNum);
+                    const isCurrentLine = cursorPos.line === lineNum;
+                    return (
+                      <div
+                        key={i}
+                        className={cn(
+                          "h-[20px] leading-[20px] relative transition-colors",
+                          isCurrentLine && "text-[#c6c6c6] font-medium"
+                        )}
+                      >
+                        {isAdded && (
+                          <span
+                            className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#2ea043]"
+                            title="Line added / updated by AI"
+                          />
+                        )}
+                        <span>{lineNum}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Editable live document area (VSCode Typography & Caret) */}
+                <textarea
+                  ref={textareaRef}
+                  value={currentContent}
+                  onChange={(e) => {
+                    handleTextChange(e.target.value);
+                    updateCursorPos();
+                  }}
+                  onClick={updateCursorPos}
+                  onKeyUp={updateCursorPos}
+                  onSelect={updateCursorPos}
+                  onScroll={handleScroll}
+                  onKeyDown={handleKeyDown}
+                  spellCheck={false}
+                  placeholder="Empty document..."
+                  className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[#d4d4d4] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[#264f78] selection:text-[#ffffff] caret-[#0078d4]"
+                  style={{
+                    fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
+                  }}
+                />
+              </div>
             </div>
           )
         ) : (
-          /* CENTER ARUNAKI AGENT WATERMARK (Antigravity Style) */
+          /* CENTER ARUNAKI AGENT WATERMARK (Original) */
           <div className="h-full w-full flex flex-col items-center justify-center select-none p-8 animate-in fade-in duration-300">
             <div className="flex flex-col items-center gap-6">
               <ArunakiLogo className="w-16 h-16 text-[var(--text-primary)] opacity-95" />
@@ -370,6 +486,40 @@ function WorkstationCenterPanelComponent({
           </div>
         )}
       </div>
+
+      {/* 4. MONOCHROME BOTTOM STATUS BAR (WHITE BACKGROUND, BLACK CONTENT) */}
+      {activeTab && (
+        <footer className="h-[22px] bg-white text-black border-t border-neutral-300 px-3 flex items-center justify-between text-[11px] font-sans select-none shrink-0 font-medium">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1 hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer text-black">
+              <GitBranch className="w-3 h-3 text-black" />
+              <span>main*</span>
+            </span>
+            <span className="flex items-center gap-1 hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer text-black">
+              <AlertTriangle className="w-3 h-3 text-black" />
+              <span>0</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-black">
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              Ln {cursorPos.line}, Col {cursorPos.col}
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              Spaces: 4
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              UTF-8
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer">
+              CRLF
+            </span>
+            <span className="hover:bg-black/10 px-1.5 py-0.5 rounded cursor-pointer font-bold">
+              {langMode}
+            </span>
+          </div>
+        </footer>
+      )}
     </main>
   );
 }

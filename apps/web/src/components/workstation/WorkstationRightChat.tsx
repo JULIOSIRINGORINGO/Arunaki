@@ -17,6 +17,7 @@ import {
   Square,
   Copy,
   RotateCcw,
+  Brain,
 } from "lucide-react";
 import { LiveExecutionBadge, MessageThoughtBadge, LiveStatusData, StepItem } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -27,6 +28,7 @@ import { API_BASE } from "../../lib/api";
 import { toast } from "sonner";
 
 const COMMANDS = [
+  { name: "/thinking", description: "Collapse or expand model thinking process", icon: Brain },
   { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
   { name: "/new", description: "Start a new conversation session", icon: Plus },
   { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
@@ -41,6 +43,7 @@ interface Message {
   executionSteps?: StepItem[];
   thoughtSec?: number;
   metadata?: string | Record<string, any>;
+  reasoning?: string;
 }
 
 interface Workspace {
@@ -265,11 +268,13 @@ interface AttachedImage {
 const ChatMessageBubble = memo(function ChatMessageBubble({
   msg,
   isUser,
+  collapseThinking = true,
   onPreviewImage,
   onResend,
 }: {
   msg: Message;
   isUser: boolean;
+  collapseThinking?: boolean;
   onPreviewImage?: (url: string) => void;
   onResend?: (content: string) => void;
 }) {
@@ -317,7 +322,12 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
       )}
     >
       {!isUser && (
-        <MessageThoughtBadge steps={steps} thoughtSec={thoughtSec} />
+        <MessageThoughtBadge
+          steps={steps}
+          thoughtSec={thoughtSec}
+          reasoning={msg.reasoning}
+          defaultExpanded={!collapseThinking}
+        />
       )}
 
       <div
@@ -438,6 +448,10 @@ function WorkstationRightChatComponent({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [collapseThinking, setCollapseThinking] = useState<boolean>(() => {
+    return localStorage.getItem("arunaki_collapse_thinking") !== "false";
+  });
+
   const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
   const currentEffortLabel = currentEffortObj ? currentEffortObj.label : "Default";
 
@@ -527,6 +541,21 @@ function WorkstationRightChatComponent({
 
   const submitPrompt = () => {
     const promptTrimmed = localPrompt.trim();
+    if (promptTrimmed === "/thinking") {
+      setCollapseThinking((prev) => {
+        const next = !prev;
+        try { localStorage.setItem("arunaki_collapse_thinking", String(next)); } catch {}
+        toast.info(next ? "Thinking process collapsed" : "Thinking process expanded (showing dimmed reasoning)");
+        return next;
+      });
+      setLocalPrompt("");
+      setAttachedImages([]);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+      return;
+    }
+
     const imageTags = attachedImages.map((img) => `@${img.name}`).join(" ");
     const fullText = [promptTrimmed, imageTags].filter(Boolean).join(" ");
     if (!fullText) return;
@@ -598,6 +627,17 @@ function WorkstationRightChatComponent({
   };
 
   const handleCommandSelect = (cmdName: string) => {
+    if (cmdName === "/thinking") {
+      setLocalPrompt("");
+      setShowCommands(false);
+      setCollapseThinking((prev) => {
+        const next = !prev;
+        try { localStorage.setItem("arunaki_collapse_thinking", String(next)); } catch {}
+        toast.info(next ? "Thinking process collapsed" : "Thinking process expanded (showing dimmed reasoning)");
+        return next;
+      });
+      return;
+    }
     if (cmdName === "/search-section") {
       setLocalPrompt("");
       setShowCommands(false);
@@ -674,7 +714,7 @@ function WorkstationRightChatComponent({
 
       {/* Messages List Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-4 font-sans text-xs min-w-0">
-        {allMessages.length === 0 ? (
+        {allMessages.length === 0 && !isStreaming ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 select-none">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center mb-3 border border-[var(--border-color)]">
               <Sparkles className="w-5 h-5 text-[var(--text-muted)]" />
@@ -697,6 +737,7 @@ function WorkstationRightChatComponent({
                 key={msg.id || idx}
                 msg={msg}
                 isUser={isUser}
+                collapseThinking={collapseThinking}
                 onPreviewImage={(url) => setLightboxUrl(url)}
                 onResend={(content) => onSendMessage(content)}
               />

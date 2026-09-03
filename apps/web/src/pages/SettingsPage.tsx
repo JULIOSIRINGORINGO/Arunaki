@@ -32,12 +32,52 @@ export function SettingsPage() {
 
   const fetchProviders = async () => {
     try {
-      const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
-      if (!res.ok) throw new Error("Fetch failed");
-      const data = await res.json();
-      setProviders(data.data || []);
+      // Query active engine endpoints: /api/provider and /api/model
+      const [providerRes, modelRes] = await Promise.all([
+        apiFetch(`${API_BASE}/provider${directoryQuery()}`),
+        apiFetch(`${API_BASE}/model${directoryQuery()}`),
+      ]);
+
+      if (providerRes.ok) {
+        const pJson = await providerRes.json();
+        const mJson = modelRes.ok ? await modelRes.json() : { data: [] };
+        const rawProviders: any[] = pJson.data || [];
+        const rawModels: any[] = mJson.data || [];
+
+        if (rawProviders.length > 0) {
+          const mapped: Provider[] = rawProviders.map((p: any, idx: number) => {
+            const associatedModels = rawModels.filter((m: any) => m.providerID === p.id);
+            const modelNames = associatedModels.map((m: any) => m.id).join(", ") || "default";
+            const maskedKey = p.request?.body?.apiKey
+              ? `${p.request.body.apiKey.slice(0, 5)}••••••••`
+              : "Configured";
+            return {
+              id: p.id,
+              name: p.name || p.id,
+              type: p.api?.type || "openai-compatible",
+              baseUrl: p.api?.url || "",
+              apiKey: maskedKey,
+              model: modelNames,
+              active: true,
+              priority: idx + 1,
+            };
+          });
+          setProviders(mapped);
+          return;
+        }
+      }
+
+      // Fallback to legacy endpoint if available
+      const legacyRes = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
+      if (legacyRes.ok) {
+        const data = await legacyRes.json();
+        setProviders(data.data || []);
+      } else {
+        setProviders([]);
+      }
     } catch (err) {
       console.error("Failed to fetch providers:", err);
+      setProviders([]);
     } finally {
       setLoading(false);
     }
