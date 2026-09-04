@@ -4,7 +4,10 @@ import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
-import { ALL_CITIES } from '../../lib/cities';
+import { City } from 'country-state-city';
+
+// Pre-calculate a lightweight list of all global cities (names only) to prevent re-evaluation on every keystroke
+const ALL_CITIES = City.getAllCities().map(c => c.name);
 
 export interface KnowledgeDoc {
   id: string;
