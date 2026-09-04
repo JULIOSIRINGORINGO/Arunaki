@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, Search, MessageSquare, Loader2, Sparkles } from "lucide-react";
+import { Clock, Search, MessageSquare, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { listSessions } from "../lib/engine";
 
 interface ChatSession {
@@ -43,21 +43,27 @@ export function HistoryPage() {
     return sessions.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, searchQuery]);
 
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
   const groupedSessions = useMemo(() => {
     const today: ChatSession[] = [];
-    const yesterday: ChatSession[] = [];
+    const thisWeek: ChatSession[] = [];
+    const thisMonth: ChatSession[] = [];
     const older: ChatSession[] = [];
 
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayDate = todayDate - 86400000;
+    const weekDate = todayDate - 7 * 86400000;
+    const monthDate = todayDate - 30 * 86400000;
 
     for (const session of filteredSessions) {
       const time = new Date(session.createdAt || session.updatedAt || "").getTime();
       if (isNaN(time) || time >= todayDate) {
         today.push(session);
-      } else if (time >= yesterdayDate) {
-        yesterday.push(session);
+      } else if (time >= weekDate) {
+        thisWeek.push(session);
+      } else if (time >= monthDate) {
+        thisMonth.push(session);
       } else {
         older.push(session);
       }
@@ -65,10 +71,18 @@ export function HistoryPage() {
 
     const groups: Array<{ group: string; items: ChatSession[] }> = [];
     if (today.length > 0) groups.push({ group: "Today", items: today });
-    if (yesterday.length > 0) groups.push({ group: "Yesterday", items: yesterday });
-    if (older.length > 0) groups.push({ group: "Previous", items: older });
+    if (thisWeek.length > 0) groups.push({ group: "This Week", items: thisWeek });
+    if (thisMonth.length > 0) groups.push({ group: "This Month", items: thisMonth });
+    if (older.length > 0) groups.push({ group: "Older", items: older });
     return groups;
   }, [filteredSessions]);
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [group]: !prev[group],
+    }));
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden select-none transition-colors duration-150">
@@ -118,47 +132,63 @@ export function HistoryPage() {
           </div>
         ) : (
           <div className="space-y-6 pt-2">
-            {groupedSessions.map((group) => (
-              <div key={group.group} className="space-y-2">
-                <h2 className="text-[11px] font-semibold text-[var(--text-dim)] uppercase tracking-wider px-1">
-                  {group.group}
-                </h2>
-                <div className="space-y-1.5">
-                  {group.items.map((session) => {
-                    const dateStr = session.createdAt
-                      ? new Date(session.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "";
-                    return (
-                      <div
-                        key={session.id}
-                        onClick={() => navigate(`/?chatId=${session.id}`)}
-                        className="group flex items-center justify-between p-3.5 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-xl cursor-pointer transition-all duration-150"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center shrink-0 border border-[var(--border-color)]">
-                            <MessageSquare className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
+            {groupedSessions.map((group) => {
+              const isCollapsed = collapsedGroups[group.group];
+              return (
+                <div key={group.group} className="space-y-2">
+                  <button
+                    onClick={() => toggleGroup(group.group)}
+                    className="flex items-center gap-1.5 px-1 cursor-pointer group/header w-full text-left"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/header:text-[var(--text-primary)] transition-colors" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/header:text-[var(--text-primary)] transition-colors" />
+                    )}
+                    <h2 className="text-[11px] font-semibold text-[var(--text-dim)] tracking-wider">
+                      {group.group}
+                    </h2>
+                  </button>
+                  
+                  {!isCollapsed && (
+                    <div className="space-y-1.5">
+                      {group.items.map((session) => {
+                        const dateStr = session.createdAt
+                          ? new Date(session.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "";
+                        return (
+                          <div
+                            key={session.id}
+                            onClick={() => navigate(`/?chatId=${session.id}`)}
+                            className="group flex items-center justify-between p-3.5 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-xl cursor-pointer transition-all duration-150"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center shrink-0 border border-[var(--border-color)]">
+                                <MessageSquare className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                                  {session.title || "Untitled Conversation"}
+                                </p>
+                                <p className="text-[11px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5">
+                                  <Clock className="w-3 h-3" strokeWidth={1.5} />
+                                  <span>{dateStr || "Just now"}</span>
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
-                              {session.title || "Untitled Conversation"}
-                            </p>
-                            <p className="text-[11px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5">
-                              <Clock className="w-3 h-3" strokeWidth={1.5} />
-                              <span>{dateStr || "Just now"}</span>
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
