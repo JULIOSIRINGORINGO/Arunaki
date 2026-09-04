@@ -7,7 +7,7 @@ import { apiFetch, API_BASE } from '../../lib/api';
 import { City } from 'country-state-city';
 
 // Pre-calculate a lightweight list of all global cities (names only) to prevent re-evaluation on every keystroke
-const ALL_CITIES = City.getAllCities().map(c => c.name);
+const ALL_CITIES = Array.from(new Set(City.getAllCities().map(c => c.name)));
 
 export interface KnowledgeDoc {
   id: string;
