@@ -30,6 +30,7 @@ export default function App() {
         theme={effectiveTheme as 'light' | 'dark'} 
         position="top-center" 
         offset="52px"
+        visibleToasts={1}
         toastOptions={{
           className: 'dark:!bg-[#1C1C1F]/90 dark:!text-[#F4F4F5] dark:!border-[#323232] !bg-white/90 !text-[#111827] !border-[#E5E7EB] !rounded-full !shadow-none !px-4 !py-2 !text-[11px] !font-medium tracking-wide backdrop-blur-md flex items-center gap-2 justify-center border',
           duration: 3000,
