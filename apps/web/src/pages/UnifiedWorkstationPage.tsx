@@ -130,6 +130,7 @@ function mapEngineMessages(raw: any[]): Message[] {
         .filter((p: any) => p && p.type !== "reasoning")
         .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))
         .join("");
+    }
     let executionSteps: any[] | undefined = undefined;
     if (Array.isArray(msg.parts)) {
       const reasoningParts = msg.parts.filter((p: any) => p && p.type === "reasoning");
