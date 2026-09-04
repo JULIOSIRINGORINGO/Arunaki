@@ -30,7 +30,7 @@ export default function App() {
         theme={effectiveTheme as 'light' | 'dark'} 
         position="bottom-center" 
         toastOptions={{
-          className: 'dark:!bg-[#1C1C1F]/90 dark:!text-[#F4F4F5] dark:!border-[#2E2E35] !bg-white/90 !text-[#111827] !border-[#E5E7EB] !rounded-full !shadow-[0_8px_30px_rgb(0,0,0,0.12)] !px-5 !py-3 !text-[12px] !font-medium tracking-tight backdrop-blur-md',
+          className: 'dark:!bg-[#1C1C1F]/80 dark:!text-[#F4F4F5] dark:!border-[#323232] !bg-white/80 !text-[#111827] !border-[#E5E7EB] !rounded-full !shadow-md !px-3.5 !py-1.5 !text-[11px] !font-medium tracking-wide backdrop-blur-md !w-auto !max-w-fit !mx-auto !min-h-0 flex items-center gap-1.5',
           duration: 3000,
         }}
       />
