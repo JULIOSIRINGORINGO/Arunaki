@@ -26,12 +26,23 @@ export function response<A, E, R>(data: Effect.Effect<A, E, R>) {
   })
 }
 
+import * as fs from "fs"
+import * as os from "os"
+import * as path from "path"
+
 function ref(request: HttpServerRequest.HttpServerRequest): Location.Ref {
   const query = new URL(request.url, "http://localhost").searchParams
-  const workspaceID = query.get("location[workspace]") || request.headers["x-Arunaki-workspace"]
-  const directory =
-    query.get("location[directory]") ||
-    (request.headers["x-Arunaki-directory"] ? decode(request.headers["x-Arunaki-directory"]) : process.cwd())
+  const workspaceID = query.get("location[workspace]") || request.headers["x-arunaki-workspace"]
+  
+  let directory = query.get("location[directory]") || (request.headers["x-arunaki-directory"] ? decode(request.headers["x-arunaki-directory"]) : "")
+  
+  if (!directory) {
+    directory = path.join(os.homedir(), ".arunaki", "scratch")
+    if (!fs.existsSync(directory)) {
+      fs.mkdirSync(directory, { recursive: true })
+    }
+  }
+
   return Location.Ref.make({
     directory: AbsolutePath.make(directory),
     workspaceID: workspaceID ? WorkspaceV2.ID.make(workspaceID) : undefined,

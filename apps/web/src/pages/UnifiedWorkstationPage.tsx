@@ -155,7 +155,6 @@ export function UnifiedWorkstationPage() {
   const [activeFolder, setActiveFolder] = useState<string>(() => {
     return (
       searchParams.get("folder") ||
-      localStorage.getItem("arunaki_active_folder") ||
       ""
     );
   });
@@ -180,6 +179,8 @@ export function UnifiedWorkstationPage() {
     return raw.startsWith("ses_") ? raw : "";
   });
 
+  const isCreatingNewChat = useRef(false);
+
   // Persist active folder whenever it changes
   useEffect(() => {
     if (activeFolder) {
@@ -189,6 +190,14 @@ export function UnifiedWorkstationPage() {
 
   // Sync activeChatId with URL and localStorage
   useEffect(() => {
+    if (isCreatingNewChat.current) {
+      if (!urlChatId) {
+        // Navigation completed, URL is now clear. Resume normal sync.
+        isCreatingNewChat.current = false;
+      }
+      return;
+    }
+
     if (urlChatId && urlChatId !== activeChatId) {
       setActiveChatId(urlChatId);
       localStorage.setItem("arunaki_active_chat_id", urlChatId);
@@ -408,11 +417,21 @@ export function UnifiedWorkstationPage() {
     setActiveTabId(canvasTabId);
   }, []);
 
-  // Clear optimistic messages only on folder/chat navigation changes when not streaming.
-  // Do NOT clear during an active stream — createSession will assign activeChatId,
-  // which previously wiped in-flight optimistic messages and caused the chat to vanish.
+  // Clear optimistic messages only on explicit folder/chat navigation changes.
+  // Do NOT clear when isStreaming changes — the "done" event handler takes care
+  // of clearing optimistic messages *after* invalidateQueries finishes, so
+  // persisted messages are already in the cache and no blank flash occurs.
+  const prevChatIdRef = useRef(activeChatId);
+  const prevFolderRef = useRef(activeFolder);
   useEffect(() => {
-    if (!isStreaming) {
+    const chatChanged = prevChatIdRef.current !== activeChatId;
+    const folderChanged = prevFolderRef.current !== activeFolder;
+    prevChatIdRef.current = activeChatId;
+    prevFolderRef.current = activeFolder;
+
+    // Only clear if navigation actually changed AND we are not in the middle of a stream.
+    // During streaming, createSession sets activeChatId — we must NOT wipe optimistic in that case.
+    if ((chatChanged || folderChanged) && !isStreaming) {
       setOptimisticMessages([]);
     }
   }, [activeFolder, activeChatId, isStreaming]);
@@ -642,6 +661,7 @@ export function UnifiedWorkstationPage() {
   }, []);
 
   const handleNewChat = useCallback(() => {
+    isCreatingNewChat.current = true;
     setActiveChatId("");
     localStorage.removeItem("arunaki_active_chat_id");
     setSearchParams((prev) => {
@@ -1010,12 +1030,21 @@ export function UnifiedWorkstationPage() {
       >
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
-          onClose={() => setLeftCollapsed(!leftCollapsed)}
+          onClose={() => setLeftCollapsed(true)}
           activeWorkspace={activeWorkspace}
           workspaceFiles={workspaceFiles}
           onOpenFileTab={handleOpenFileTab}
           onOpenFolderModal={() => setShowFolderModal(true)}
-          width="var(--left-panel-width, 256px)"
+          onCloseFolder={() => {
+            setActiveFolder("");
+            setSearchParams((prev) => {
+              const next = new URLSearchParams(prev);
+              next.delete("folder");
+              return next;
+            }, { replace: true });
+            toast.info("Folder closed. Agent is now in sandbox mode.");
+          }}
+          width="var(--left-panel-width)"
           onNativeFilesChange={setNativeFileNames}
           recentCanvases={recentCanvases}
           onOpenCanvasTab={handleOpenCanvasTab}

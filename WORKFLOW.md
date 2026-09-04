@@ -2479,3 +2479,14 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   tier itu → no-op (default), aman.
 - Verifikasi: engine tsgo ✅; web build ✅; `httpapi-session` 3 fail = baseline
   lingkungan (MSYS2/path) — tidak ada regresi.
+
+## Phase 68: Sandbox Isolation Fallback & Document Persona (DONE)
+
+- [x] **Document Agent Persona**: Mengganti persona default CLI coding OpenCode menjadi Document & Data Agent Arunaki di `default.txt`, menyelaraskan prompt subagent (`explore.txt`, `compaction.txt`, `summary.txt`, `title.txt`), dan menghapus leakage `AGENTS.md` internal di `instruction.ts`.
+- [x] **Sandbox Isolation**: Memperbaiki fallback lokasi ketika belum ada folder aktif di UI; menambahkan `locationMiddleware` ke `session.create` di `packages/engine/protocol/src/groups/session.ts` dan `api.ts` agar engine secara konsisten mengisolasi sesi ke `~/.arunaki/scratch` (`C:\Users\AMD\.arunaki\scratch`).
+- [x] **Web UI Verification**: Menguji langsung melalui web browser menggunakan Playwright:
+  - Input prompt: `"halo, tolong cek isi folder saat ini ada file apa saja?"`
+  - Output agent: Terbukti hanya mengakses `C:\Users\AMD\.arunaki\scratch` (folder kosong) dan tidak lagi mengakses folder proyek root.
+- [x] **Path Leak Fix**: Memperbaiki kebocoran path internal (`C:\Users\AMD\.arunaki\scratch`) ke LLM prompt yang berasal dari system context di `packages/engine/core/src/system-context/builtins.ts`. LLM sekarang secara cerdas mengenali status workspace kosong (scratchpad) tanpa membocorkan lokasi path sistem ke pengguna.
+- [x] **Web Build**: `npm run build -w apps/web` ✅ Passed (0 error, build in 24s).
+

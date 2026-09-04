@@ -6,6 +6,7 @@ import { Ripgrep } from "@arunaki/core/ripgrep"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import DESCRIPTION from "./glob.txt"
 import * as Tool from "./tool"
+import { isScratchMode, SCRATCH_MODE_RESPONSE } from "./scratch-guard"
 
 export const Parameters = Schema.Struct({
   pattern: Schema.String.annotate({ description: "The glob pattern to match files against" }),
@@ -24,6 +25,12 @@ export const GlobTool = Tool.define(
       parameters: Parameters,
       execute: (params: { pattern: string; path?: string }, ctx: Tool.Context) =>
         Effect.gen(function* () {
+          // Guard: if in scratch mode (no folder connected), return friendly message
+          const scratch = yield* isScratchMode
+          if (scratch) {
+            return SCRATCH_MODE_RESPONSE as any
+          }
+
           const ins = yield* InstanceState.context
           yield* ctx.ask({
             permission: "glob",

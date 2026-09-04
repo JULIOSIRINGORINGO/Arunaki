@@ -1,4 +1,4 @@
-Summarize what was done in this conversation. Write like a pull request description.
+Summarize what was done in this conversation. Write a clear, concise summary of the document and data work completed.
 
 Rules:
 - 2-3 sentences max

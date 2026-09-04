@@ -4,6 +4,9 @@ import { getWorkspaceRouteSessionID } from "@/server/shared/workspace-routing"
 import { NotFoundError } from "@/storage/storage"
 import { Flag } from "@arunaki/core/flag/flag"
 import { Context, Data, Effect, Layer, Option, Schema } from "effect"
+import * as os from "node:os"
+import * as path from "node:path"
+import * as fs from "node:fs"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiMiddleware } from "effect/unstable/httpapi"
 import { InvalidRequestError } from "../errors"
@@ -73,7 +76,14 @@ function selectedV2WorkspaceID(
 }
 
 function defaultDirectory(request: HttpServerRequest.HttpServerRequest, url: URL): string {
-  return url.searchParams.get("directory") || request.headers["x-arunaki-directory"] || process.cwd()
+  const dir = url.searchParams.get("directory") || request.headers["x-arunaki-directory"]
+  if (dir) return dir
+  
+  const scratchDir = path.join(os.homedir(), ".arunaki", "scratch")
+  if (!fs.existsSync(scratchDir)) {
+    fs.mkdirSync(scratchDir, { recursive: true })
+  }
+  return scratchDir
 }
 
 function planRequest(

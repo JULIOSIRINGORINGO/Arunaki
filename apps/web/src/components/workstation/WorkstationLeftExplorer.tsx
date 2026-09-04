@@ -46,6 +46,7 @@ interface WorkstationLeftExplorerProps {
   workspaceFiles: WorkspaceFile[];
   onOpenFileTab: (path: string, name: string, content?: string) => void;
   onOpenFolderModal?: () => void;
+  onCloseFolder?: () => void;
   width?: number | string;
   onNativeFilesChange?: (names: string[]) => void;
   recentCanvases?: CanvasItem[];
@@ -77,6 +78,7 @@ function WorkstationLeftExplorerComponent({
   onNativeFilesChange,
   recentCanvases = [],
   onOpenCanvasTab,
+  onCloseFolder,
 }: WorkstationLeftExplorerProps) {
   const [nativeTree, setNativeTree] = useState<NativeNode[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
@@ -286,6 +288,15 @@ function WorkstationLeftExplorerComponent({
               disabled={isRefreshing}
             >
               <RotateCw className="w-3.5 h-3.5" strokeWidth={1.5} />
+            </button>
+          )}
+          {activeWorkspace?.rootPath && onCloseFolder && (
+            <button
+              onClick={onCloseFolder}
+              className="text-[var(--text-muted)] hover:text-red-500 p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+              title="Close Folder"
+            >
+              <PanelLeftClose className="w-4 h-4" strokeWidth={1.5} />
             </button>
           )}
           <button

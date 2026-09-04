@@ -103,7 +103,15 @@ export const SessionsQuery = Schema.Struct({
   cursor: SessionsQueryCursor.pipe(Schema.optional),
 }).annotate({ identifier: "SessionsQuery" })
 
-export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLocationMiddleware: Context.Key<I, S>) =>
+export const makeSessionGroup = <
+  LI extends HttpApiMiddleware.AnyId,
+  LS,
+  SI extends HttpApiMiddleware.AnyId,
+  SS,
+>(
+  locationMiddleware: Context.Key<LI, LS>,
+  sessionLocationMiddleware: Context.Key<SI, SS>,
+) =>
   HttpApiGroup.make("server.session")
     .add(
       HttpApiEndpoint.get("session.list", "/api/session", {
@@ -134,13 +142,15 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
           location: Location.Ref.pipe(Schema.optional),
         }),
         success: Schema.Struct({ data: Session.Info }),
-      }).annotateMerge(
-        OpenApi.annotations({
-          identifier: "v2.session.create",
-          summary: "Create session",
-          description: "Create a session at the requested location.",
-        }),
-      ),
+      })
+        .middleware(locationMiddleware)
+        .annotateMerge(
+          OpenApi.annotations({
+            identifier: "v2.session.create",
+            summary: "Create session",
+            description: "Create a session at the requested location.",
+          }),
+        ),
     )
     .add(
       HttpApiEndpoint.get("session.active", "/api/session/active", {

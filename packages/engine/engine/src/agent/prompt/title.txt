@@ -31,14 +31,14 @@ Your output must be:
 </rules>
 
 <examples>
-"debug 500 errors in production" → Debugging production 500 errors
-"refactor user service" → Refactoring user service
-"why is app.js failing" → app.js failure investigation
-"implement rate limiting" → Rate limiting implementation
-"how do I connect postgres to my API" → Postgres API connection
-"best practices for React hooks" → React hooks best practices
-"@src/auth.ts can you add refresh token support" → Auth refresh token support
-"@utils/parser.ts this is broken" → Parser bug fix
-"look at @config.json" → Config review
-"@App.tsx add dark mode toggle" → Dark mode toggle in App
+"summarize the sales figures for August" → August sales summary
+"update the VAT rate to 11% on the invoice template" → Invoice VAT rate update
+"check the total expenses in report.xlsx" → report.xlsx expense check
+"create a new receipt template" → New receipt template
+"why don't the Q2 numbers match the bank statement" → Q2 reconciliation issue
+"compare client data between Q1 and Q2" → Q1 vs Q2 client comparison
+"@ledger.xlsx enter this expense receipt into the cash sheet" → Ledger expense entry
+"@invoice.docx the date format looks wrong" → Invoice date format fix
+"summarize this week's employee attendance" → Weekly attendance summary
+"draft a price quotation letter" → Price quotation draft
 </examples>

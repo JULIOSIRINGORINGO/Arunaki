@@ -12,6 +12,7 @@ import {
   UnknownError,
 } from "@arunaki/protocol/errors"
 import { AbsolutePath } from "@arunaki/core/schema"
+import { Location } from "@arunaki/core/location"
 
 const DefaultSessionsLimit = 50
 const DefaultSessionHistoryLimit = 50
@@ -67,12 +68,13 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
       .handle(
         "session.create",
         Effect.fn(function* (ctx) {
+          const location = yield* Location.Service
           return {
             data: yield* session.create({
               id: ctx.payload.id,
               agent: ctx.payload.agent,
               model: ctx.payload.model,
-              location: ctx.payload.location ?? { directory: AbsolutePath.make(process.cwd()) },
+              location: ctx.payload.location ?? { directory: location.directory },
             }),
           }
         }),

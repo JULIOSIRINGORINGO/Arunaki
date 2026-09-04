@@ -13,14 +13,28 @@ const builtIns = Layer.effectDiscard(
   Effect.gen(function* () {
     const location = yield* Location.Service
     const registry = yield* SystemContextRegistry.Service
-    const environment = [
-      "<env>",
-      `  Working directory: ${location.directory}`,
-      `  Workspace root folder: ${location.project.directory}`,
-      `  Is directory a git repo: ${location.vcs?.type === "git" ? "yes" : "no"}`,
-      `  Platform: ${process.platform}`,
-      "</env>",
-    ].join("\n")
+    const normalizedDir = location.directory.toLowerCase().replace(/\\/g, "/")
+    const isScratch =
+      normalizedDir.includes("/.arunaki/scratch") ||
+      normalizedDir.endsWith("/.arunaki/scratch") ||
+      normalizedDir.includes(".arunaki/scratch")
+
+    const environment = isScratch
+      ? [
+          "<env>",
+          `  Workspace status: No project folder opened (unconnected scratchpad)`,
+          `  Is folder connected: no`,
+          `  Platform: ${process.platform}`,
+          "</env>",
+        ].join("\n")
+      : [
+          "<env>",
+          `  Working directory: ${location.directory}`,
+          `  Workspace root folder: ${location.project.directory}`,
+          `  Is directory a git repo: ${location.vcs?.type === "git" ? "yes" : "no"}`,
+          `  Platform: ${process.platform}`,
+          "</env>",
+        ].join("\n")
     const context = SystemContext.combine([
       SystemContext.make({
         key: SystemContext.Key.make("core/environment"),

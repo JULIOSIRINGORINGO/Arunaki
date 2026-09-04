@@ -1,4 +1,4 @@
-﻿# ponytail: first-pass ignores, tightened 2026-08-24
+# ponytail: first-pass ignores, tightened 2026-08-24
 node_modules/
 dist/
 build/
@@ -29,6 +29,7 @@ ref/
 
 # Scratch & test artifacts
 *.traineddata
+scratch/
 
 # Runtime sessions & workspace caches
 .arunaki/sessions/

@@ -58,14 +58,11 @@ const layer: Layer.Layer<
     const flags = yield* RuntimeFlags.Service
     const http = HttpClient.filterStatusOk(withTransientReadRetry(yield* HttpClient.HttpClient))
     const globalFiles = [
-      path.join(global.config, "AGENTS.md"),
-      ...(!flags.disableClaudeCodePrompt ? [path.join(global.home, ".claude", "CLAUDE.md")] : []),
+      path.join(global.config, "ARUNAKI.md"),
     ]
     const instructionFiles = [
-      "AGENTS.md",
-      ...(!flags.disableClaudeCodePrompt ? ["CLAUDE.md"] : []),
-      "CONTEXT.md", // deprecated
       ".arunaki/ARUNAKI.md", // living workspace operating rules (cartographer)
+      "ARUNAKI.md",
     ]
 
     const state = yield* InstanceState.make(

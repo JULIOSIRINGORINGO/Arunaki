@@ -8,6 +8,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import { Instruction } from "../session/instruction"
 import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
+import { isScratchMode, SCRATCH_MODE_RESPONSE } from "./scratch-guard"
 
 const DEFAULT_READ_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
@@ -223,6 +224,13 @@ export const ReadTool = Tool.define<
       ctx: Tool.Context<Metadata>,
     ) {
       const instance = yield* InstanceState.context
+
+      // Guard: if in scratch mode (no folder connected), return friendly message
+      const scratch = yield* isScratchMode
+      if (scratch) {
+        return SCRATCH_MODE_RESPONSE as any
+      }
+
       let filepath = params.filePath
       if (!path.isAbsolute(filepath)) {
         filepath = path.resolve(instance.directory, filepath)
