@@ -24,9 +24,9 @@ Instead, you must wrap your final output with [CANVAS]...[/CANVAS] tags.
 Arunaki's UI will automatically extract everything inside the [CANVAS]...[/CANVAS] block and display it in the user's Canvas editor.
 Example:
 [CANVAS]
-| No | Item | Qty |
-|---|---|---|
-| 1 | Example | 1 |
+# <Title of Document>
+
+<Any markdown content, text, tables, lists, or structured data goes here>
 [/CANVAS]
 `;
 
