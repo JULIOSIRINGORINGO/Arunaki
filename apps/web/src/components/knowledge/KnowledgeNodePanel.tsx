@@ -270,7 +270,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 type="url"
                 value={urls[0] || ''}
                 onChange={e => setUrls([e.target.value, ...urls.slice(1)])}
-                placeholder="https://acme.com"
+                placeholder="https://example.com"
                 className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
               />
               {urls.length > 1 && (
