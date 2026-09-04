@@ -1,0 +1,14 @@
+- Browse a website using a real headless browser (Puppeteer) with full JavaScript execution
+- Unlike webfetch, this tool renders pages like a real user and can interact with dynamic content
+- Automatically clicks buttons, expands modals, and loads JavaScript-rendered data
+- Best used for e-commerce sites, dashboards, and SPAs where data loads dynamically
+
+Usage notes:
+  - Use this tool when webfetch returns empty/incomplete data because the site relies on JavaScript
+  - Provide the URL to browse and optionally specify actions to perform (e.g., click buttons with specific text)
+  - The tool waits for the page to fully render before extracting content
+  - Returns the full rendered page content as Markdown
+  - Supports clicking buttons by text (e.g., "Pesanan Grosir", "Load More", "Show Stock")
+  - Can navigate search pages by providing a search query (appends ?q= or uses site search)
+  - Timeout is 45 seconds by default to allow for page rendering
+  - This tool is read-only and does not submit forms or make purchases

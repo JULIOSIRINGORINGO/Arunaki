@@ -28,6 +28,7 @@ import { Provider } from "@/provider/provider"
 import { WebSearchTool } from "./websearch"
 import * as Truncate from "./truncate"
 import { ApplyPatchTool } from "./apply_patch"
+import { BrowseWebsiteTool } from "./browse-website"
 import { ExcelComTool } from "@arunaki/tools/excel-com"
 import { WordComTool } from "@arunaki/tools/word-com"
 import { PptComTool } from "@arunaki/tools/ppt-com"
@@ -117,6 +118,7 @@ const layer = Layer.effect(
     const greptool = yield* GrepTool
     const patchtool = yield* ApplyPatchTool
     const skilltool = yield* SkillTool
+    const browseWebsite = yield* BrowseWebsiteTool
     const agent = yield* Agent.Service
 
     const excelComTool = yield* ExcelComTool
@@ -227,6 +229,7 @@ const layer = Layer.effect(
           todo: Tool.init(todo),
           search: Tool.init(websearch),
           skill: Tool.init(skilltool),
+          browseWebsite: Tool.init(browseWebsite),
           patch: Tool.init(patchtool),
           question: Tool.init(question),
           plan: Tool.init(plan),
@@ -255,6 +258,7 @@ const layer = Layer.effect(
             tool.search,
             tool.skill,
             tool.patch,
+            tool.browseWebsite,
             tool.excelCom,
             tool.wordCom,
             tool.pptCom,
