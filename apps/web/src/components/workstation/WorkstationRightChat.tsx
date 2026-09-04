@@ -72,6 +72,7 @@ interface WorkstationRightChatProps {
   setReasoningEffort?: (val: string) => void;
   onNewChat?: () => void;
   onCancelStream?: () => void;
+  activeChatId?: string;
 }
 
 const EFFORT_OPTIONS = [
@@ -422,9 +423,36 @@ function WorkstationRightChatComponent({
   setReasoningEffort = () => {},
   onNewChat,
   onCancelStream,
+  activeChatId,
 }: WorkstationRightChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localPrompt, setLocalPrompt] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [chatTitle, setChatTitle] = useState("Chat");
+
+  useEffect(() => {
+    if (activeChatId) {
+      const saved = localStorage.getItem(`arunaki_chat_name_${activeChatId}`);
+      setChatTitle(saved || "Chat");
+    } else {
+      setChatTitle("New Chat");
+    }
+  }, [activeChatId]);
+
+  const handleTitleSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value.trim() || "Chat";
+    setChatTitle(newTitle);
+    setIsEditingTitle(false);
+    if (activeChatId) {
+      localStorage.setItem(`arunaki_chat_name_${activeChatId}`, newTitle);
+    }
+  };
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showMentions, setShowMentions] = useState(false);
@@ -688,11 +716,29 @@ function WorkstationRightChatComponent({
     >
       {/* Panel Header */}
       <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-panel)] shrink-0 select-none">
-        <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-[var(--text-muted)]" />
-          <span className="text-xs font-semibold text-[var(--text-primary)]">Chat</span>
+        <div className="flex items-center gap-2 flex-1 min-w-0 pr-4">
+          <Bot className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+          {isEditingTitle ? (
+            <input
+              type="text"
+              defaultValue={chatTitle === "Chat" || chatTitle === "New Chat" ? "" : chatTitle}
+              placeholder="Session Name..."
+              autoFocus
+              onKeyDown={handleTitleSubmit}
+              onBlur={handleTitleBlur}
+              className="bg-transparent border-none outline-none text-xs font-semibold text-[var(--text-primary)] w-full focus:ring-1 focus:ring-[var(--border-strong)] rounded px-1 -ml-1 transition-all placeholder-[var(--text-dim)]"
+            />
+          ) : (
+            <span
+              onClick={() => setIsEditingTitle(true)}
+              className="text-xs font-semibold text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-hover)] px-1 py-0.5 -ml-1 rounded transition-colors"
+              title="Click to rename session"
+            >
+              {chatTitle}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5 shrink-0">
           {onNewChat && (
             <button
               onClick={onNewChat}

@@ -1108,6 +1108,7 @@ export function UnifiedWorkstationPage() {
         />
 
         <WorkstationRightChat
+          activeChatId={activeChatId}
           collapsed={rightCollapsed}
           onClose={() => setRightCollapsed(!rightCollapsed)}
           chatMessages={chatMessages}
