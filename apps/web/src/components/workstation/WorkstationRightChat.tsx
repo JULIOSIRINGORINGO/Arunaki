@@ -184,7 +184,15 @@ const ChatMessageContent = memo(function ChatMessageContent({ content }: { conte
                           key={hIdx}
                           className="px-3 py-2 font-semibold text-[var(--text-primary)] border-r last:border-r-0 border-[var(--border-color)] text-[11px] tracking-wide whitespace-nowrap"
                         >
-                          {h}
+                          <Markdown
+                            components={{
+                              p: ({ children }) => <>{children}</>,
+                              strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
+                              code: ({ children }) => <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">{children}</code>
+                            }}
+                          >
+                            {h}
+                          </Markdown>
                         </th>
                       ))}
                     </tr>
@@ -207,7 +215,15 @@ const ChatMessageContent = memo(function ChatMessageContent({ content }: { conte
                               key={cIdx}
                               className="px-3 py-1.5 border-r last:border-r-0 border-[var(--border-color)] text-xs font-normal"
                             >
-                              {cell}
+                              <Markdown
+                                components={{
+                                  p: ({ children }) => <>{children}</>,
+                                  strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
+                                  code: ({ children }) => <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">{children}</code>
+                                }}
+                              >
+                                {cell}
+                              </Markdown>
                             </td>
                           ))}
                         </tr>
@@ -341,47 +357,49 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
         />
       )}
 
-      <div
-        className={cn(
-          "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
-          isUser
-            ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
-            : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
-        )}
-      >
-        {imageMentions.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {imageMentions.map((imgName, i) => (
-              <div
-                key={i}
-                className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
-                onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
-                title="Click to view full image"
-              >
-                <img
-                  src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
-                  alt={imgName}
-                  className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
-                  onError={(e) => {
-                    const parent = (e.target as HTMLElement).parentElement;
-                    if (parent) {
-                      parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
-                    }
-                  }}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
-                  <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                    {imgName}
-                  </span>
+      {(displayContent || imageMentions.length > 0) && (
+        <div
+          className={cn(
+            "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
+            isUser
+              ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
+              : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
+          )}
+        >
+          {imageMentions.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {imageMentions.map((imgName, i) => (
+                <div
+                  key={i}
+                  className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
+                  onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
+                  title="Click to view full image"
+                >
+                  <img
+                    src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
+                    alt={imgName}
+                    className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
+                    onError={(e) => {
+                      const parent = (e.target as HTMLElement).parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
+                      }
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
+                    <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      {imgName}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {displayContent ? (
-          <ChatMessageContent content={displayContent} isUser={isUser} />
-        ) : null}
-      </div>
+              ))}
+            </div>
+          )}
+          {displayContent ? (
+            <ChatMessageContent content={displayContent} isUser={isUser} />
+          ) : null}
+        </div>
+      )}
 
       {/* Action Toolbar & Timestamp */}
       <div
