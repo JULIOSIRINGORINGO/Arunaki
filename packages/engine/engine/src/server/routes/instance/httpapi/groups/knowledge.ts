@@ -5,7 +5,7 @@ import { InstanceContextMiddleware } from "../middleware/instance-context"
 import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery } from "../middleware/workspace-routing"
 import { described } from "./metadata"
 
-const uiRoot = "/knowledge"
+const uiRoot = "/api/knowledge"
 
 export class KnowledgeError extends Schema.TaggedErrorClass<KnowledgeError>()("KnowledgeError", {
   message: Schema.String,
