@@ -12,21 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
 
       - name: Install dependencies
-        # ponytail: npm ci fails with "Cannot find module @rollup/rollup-linux-x64-gnu"
-        # because lockfile generated on Windows omits non-win32 optional deps (npm bug #4828).
-        # npm install re-resolves optional platform binaries on the runner.
-        run: npm install --ignore-scripts
+        run: bun install
 
       - name: Build Web
         working-directory: apps/web
         run: |
-          npm run build 2>&1 | tee /tmp/web-build.log || true
+          bun run build 2>&1 | tee /tmp/web-build.log || true
           if ! grep -q "built in" /tmp/web-build.log; then
             grep -iE "error|failed|cannot|not found" /tmp/web-build.log | head -20 | sed 's/^/::error::/'
             exit 1
