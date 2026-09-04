@@ -1,9 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Panel } from '@xyflow/react';
 import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
+import { ALL_CITIES } from '../../lib/cities';
+
+export interface KnowledgeDoc {
+  id: string;
+  title: string;
+  content: string;
+  type: string;
+  active: boolean;
+  positionX: number;
+  positionY: number;
+  nodeColor: string;
+  icon: string;
+}
 
 interface KnowledgeNodePanelProps {
   nodeId: string | null;
@@ -24,6 +37,19 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   const [content, setContent] = useState('');
   const [composing, setComposing] = useState(false);
   const [composeError, setComposeError] = useState('');
+  
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!nodeId || nodeId === 'main-ai-node') {
@@ -245,34 +271,41 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                   {urls.length - 1} pages discovered from this site (categories, products...)
                 </div>
               )}
-              <div>
+              <div className="relative" ref={cityDropdownRef}>
                 <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
                   Location / Branch (Optional)
                 </label>
                 <input
                   type="text"
-                  list="city-suggestions"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(e) => {
+                    setCity(e.target.value);
+                    setIsCityDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsCityDropdownOpen(true)}
                   placeholder="e.g. Jakarta, New York, Warehouse B..."
                   className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
                 />
-                <datalist id="city-suggestions">
-                  <option value="Jakarta" />
-                  <option value="Surabaya" />
-                  <option value="Bandung" />
-                  <option value="Medan" />
-                  <option value="Semarang" />
-                  <option value="Makassar" />
-                  <option value="Denpasar" />
-                  <option value="Singapore" />
-                  <option value="Kuala Lumpur" />
-                  <option value="Tokyo" />
-                  <option value="Seoul" />
-                  <option value="London" />
-                  <option value="New York" />
-                  <option value="Dubai" />
-                </datalist>
+                
+                {isCityDropdownOpen && city && ALL_CITIES.filter(c => c.toLowerCase().includes(city.toLowerCase())).length > 0 && (
+                  <div className="absolute left-0 top-full mt-1.5 w-full max-h-40 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
+                    {ALL_CITIES.filter(c => c.toLowerCase().includes(city.toLowerCase()))
+                      .slice(0, 7) // Only show top 7 to keep it small
+                      .map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setCity(opt);
+                            setIsCityDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                        >
+                          <span className="truncate">{opt}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
               </div>
               {urls[0] && /^https?:\/\/\S+$/i.test(urls[0].trim()) && (
                 <button
