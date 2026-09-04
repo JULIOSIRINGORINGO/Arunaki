@@ -130,14 +130,26 @@ function mapEngineMessages(raw: any[]): Message[] {
         .filter((p: any) => p && p.type !== "reasoning")
         .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))
         .join("");
-    } else if (Array.isArray(msg.parts)) {
+    let executionSteps: any[] | undefined = undefined;
+    if (Array.isArray(msg.parts)) {
       const reasoningParts = msg.parts.filter((p: any) => p && p.type === "reasoning");
       if (reasoningParts.length > 0) {
         reasoning = reasoningParts.map((p: any) => (p && typeof p.text === "string" ? p.text : "")).join("\n\n");
       }
-      const textParts = msg.parts.filter((p: any) => p && p.type !== "reasoning");
+      
+      const toolInvocations = msg.parts.filter((p: any) => p && p.type === "tool-invocation");
+      if (toolInvocations.length > 0) {
+        executionSteps = toolInvocations.map((t: any, i: number) => ({
+          id: `tool-${idx}-${i}`,
+          label: `Executed: ${t.toolInvocation?.toolName || "tool"}`,
+          status: "completed",
+          iconType: "tool",
+        }));
+      }
+
+      const textParts = msg.parts.filter((p: any) => p && p.type !== "reasoning" && p.type !== "tool-invocation");
       content = (textParts.length > 0 ? textParts : msg.parts)
-        .filter((p: any) => p && p.type !== "reasoning")
+        .filter((p: any) => p && p.type !== "reasoning" && p.type !== "tool-invocation")
         .map((p: any) => (p && typeof p.text === "string" ? p.text : ""))
         .join("");
     }
@@ -149,6 +161,7 @@ function mapEngineMessages(raw: any[]): Message[] {
       role,
       content,
       reasoning: reasoning || undefined,
+      executionSteps: executionSteps || undefined,
       createdAt: msg.createdAt || msg.time?.created || undefined,
     };
   });

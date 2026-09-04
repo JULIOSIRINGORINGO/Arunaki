@@ -774,10 +774,6 @@ function WorkstationRightChatComponent({
           allMessages.map((msg, idx) => {
             const isUser = msg.role === "user";
             
-            if (!isUser && (!msg.content || msg.content.trim() === "")) {
-              return null;
-            }
-
             return (
               <ChatMessageBubble
                 key={msg.id || idx}
