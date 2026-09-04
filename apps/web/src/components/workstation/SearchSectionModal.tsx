@@ -41,8 +41,8 @@ export function SearchSectionModal({
         return (data || []).map((s: any) => ({
           id: s.id,
           title: s.title || "",
-          createdAt: s.createdAt || "",
-          updatedAt: s.createdAt || s.updatedAt || "",
+          createdAt: s.time?.created || "",
+          updatedAt: s.time?.updated || s.time?.created || "",
         }));
       } catch {
         return [];

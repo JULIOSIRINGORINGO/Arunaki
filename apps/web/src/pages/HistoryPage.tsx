@@ -24,8 +24,8 @@ export function HistoryPage() {
           (raw || []).map((s: any) => ({
             id: s.id,
             title: s.title || "",
-            createdAt: s.createdAt || "",
-            updatedAt: s.createdAt || "",
+            createdAt: s.time?.created || "",
+            updatedAt: s.time?.updated || s.time?.created || "",
           }))
         );
       } catch (err) {
