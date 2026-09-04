@@ -145,7 +145,7 @@ export function HistoryPage() {
                     ) : (
                       <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/header:text-[var(--text-primary)] transition-colors" />
                     )}
-                    <h2 className="text-[11px] font-semibold text-[var(--text-dim)] tracking-wider">
+                    <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-wide">
                       {group.group}
                     </h2>
                   </button>
