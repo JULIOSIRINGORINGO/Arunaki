@@ -47,33 +47,45 @@ export function HistoryPage() {
 
   const groupedSessions = useMemo(() => {
     const today: ChatSession[] = [];
-    const thisWeek: ChatSession[] = [];
-    const thisMonth: ChatSession[] = [];
-    const older: ChatSession[] = [];
+    const yesterday: ChatSession[] = [];
+    const earlierThisWeek: ChatSession[] = [];
+    const lastWeek: ChatSession[] = [];
+    const lastMonth: ChatSession[] = [];
+    const aLongTimeAgo: ChatSession[] = [];
 
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const weekDate = todayDate - 7 * 86400000;
-    const monthDate = todayDate - 30 * 86400000;
+    
+    // Windows Explorer-like thresholds
+    const yesterdayDate = todayDate - 1 * 86400000;
+    const earlierThisWeekDate = todayDate - 6 * 86400000;
+    const lastWeekDate = todayDate - 13 * 86400000;
+    const lastMonthDate = todayDate - 30 * 86400000;
 
     for (const session of filteredSessions) {
       const time = new Date(session.createdAt || session.updatedAt || "").getTime();
       if (isNaN(time) || time >= todayDate) {
         today.push(session);
-      } else if (time >= weekDate) {
-        thisWeek.push(session);
-      } else if (time >= monthDate) {
-        thisMonth.push(session);
+      } else if (time >= yesterdayDate) {
+        yesterday.push(session);
+      } else if (time >= earlierThisWeekDate) {
+        earlierThisWeek.push(session);
+      } else if (time >= lastWeekDate) {
+        lastWeek.push(session);
+      } else if (time >= lastMonthDate) {
+        lastMonth.push(session);
       } else {
-        older.push(session);
+        aLongTimeAgo.push(session);
       }
     }
 
     const groups: Array<{ group: string; items: ChatSession[] }> = [];
     if (today.length > 0) groups.push({ group: "Today", items: today });
-    if (thisWeek.length > 0) groups.push({ group: "This Week", items: thisWeek });
-    if (thisMonth.length > 0) groups.push({ group: "This Month", items: thisMonth });
-    if (older.length > 0) groups.push({ group: "Older", items: older });
+    if (yesterday.length > 0) groups.push({ group: "Yesterday", items: yesterday });
+    if (earlierThisWeek.length > 0) groups.push({ group: "Earlier this week", items: earlierThisWeek });
+    if (lastWeek.length > 0) groups.push({ group: "Last week", items: lastWeek });
+    if (lastMonth.length > 0) groups.push({ group: "Last month", items: lastMonth });
+    if (aLongTimeAgo.length > 0) groups.push({ group: "A long time ago", items: aLongTimeAgo });
     return groups;
   }, [filteredSessions]);
 
