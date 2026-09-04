@@ -300,6 +300,16 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
     return msg.content.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
   }, [msg.content, imageMentions]);
 
+  const timeString = useMemo(() => {
+    if (!msg.createdAt) return "";
+    try {
+      const date = new Date(msg.createdAt);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "";
+    }
+  }, [msg.createdAt]);
+
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(msg.content);
@@ -373,32 +383,36 @@ const ChatMessageBubble = memo(function ChatMessageBubble({
         ) : null}
       </div>
 
-      {/* Antigravity-Style Hover Action Toolbar (Copy & Resend) */}
+      {/* Action Toolbar & Timestamp */}
       <div
         className={cn(
-          "flex items-center gap-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 select-none text-[10px] text-[var(--text-muted)]",
+          "flex items-center gap-2 px-1 select-none text-[10px] text-[var(--text-muted)] mt-0.5",
           isUser ? "flex-row-reverse" : "flex-row"
         )}
       >
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-          title="Copy message"
-        >
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-        </button>
-
-        {isUser && onResend && (
+        <span className="opacity-70">{timeString}</span>
+        
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           <button
             type="button"
-            onClick={handleResend}
-            className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-0.5"
-            title="Resend prompt"
+            onClick={handleCopy}
+            className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            title="Copy message"
           >
-            <RotateCcw className="w-3 h-3" />
+            {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
           </button>
-        )}
+
+          {isUser && onResend && (
+            <button
+              type="button"
+              onClick={handleResend}
+              className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-0.5"
+              title="Resend prompt"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
