@@ -85,16 +85,6 @@ function extractCanvasContent(llmText: string): string {
     return fencedMatch[1].trim();
   }
 
-  // 4. Real Markdown Table (Must have proper table headers and data rows)
-  // ONLY extracts the table itself, completely stripping out any conversation before or after it!
-  if (llmText.includes("|") && (llmText.includes("---") || llmText.includes("-|-"))) {
-    const normalized = llmText.replace(/\|\|\s*\|/g, "|\n|");
-    const tableMatch = normalized.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
-    if (tableMatch?.[0]?.trim()) {
-      return tableMatch[0].trim();
-    }
-  }
-
   // Conversational text, chit-chat, and bullet checklists stay in chat, never converted to Canvas
   return "";
 }
