@@ -155,6 +155,7 @@ export function UnifiedWorkstationPage() {
   const [activeFolder, setActiveFolder] = useState<string>(() => {
     return (
       searchParams.get("folder") ||
+      localStorage.getItem("arunaki_active_folder") ||
       ""
     );
   });
@@ -185,8 +186,17 @@ export function UnifiedWorkstationPage() {
   useEffect(() => {
     if (activeFolder) {
       localStorage.setItem("arunaki_active_folder", activeFolder);
+      
+      // Also sync it to URL if not present
+      if (searchParams.get("folder") !== activeFolder) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("folder", activeFolder);
+          return next;
+        }, { replace: true });
+      }
     }
-  }, [activeFolder]);
+  }, [activeFolder, searchParams, setSearchParams]);
 
   // Sync activeChatId with URL and localStorage
   useEffect(() => {
