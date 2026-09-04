@@ -17,17 +17,31 @@ import { Reference } from "@arunaki/core/reference"
 import { MCP } from "@/mcp"
 import { PermissionV1 } from "@arunaki/core/v1/permission"
 
+const CANVAS_INSTRUCTION = `
+# Canvas
+When the user asks you to "buat di canvas", "make in canvas", or wants the output in the Canvas, do NOT create a file or use any tools!
+Instead, you must wrap your final output with [CANVAS]...[/CANVAS] tags.
+Arunaki's UI will automatically extract everything inside the [CANVAS]...[/CANVAS] block and display it in the user's Canvas editor.
+Example:
+[CANVAS]
+| No | Item | Qty |
+|---|---|---|
+| 1 | Example | 1 |
+[/CANVAS]
+`;
+
 export function provider(model: Provider.Model) {
+  let prompt = PROMPT_DEFAULT
   if (model.api.id.includes("muse")) {
     const name = model.api.id.includes("muse-glimmer") ? "Muse Glimmer" : "Muse Spark"
-    return [PROMPT_META.replaceAll("{{MODEL_NAME}}", name)]
-  }
-  if (
+    prompt = PROMPT_META.replaceAll("{{MODEL_NAME}}", name)
+  } else if (
     model.api.id.toLowerCase().includes("kimi") ||
     ["kimi-for-coding", "moonshotai", "moonshotai-cn"].includes(model.providerID)
-  )
-    return [PROMPT_KIMI]
-  return [PROMPT_DEFAULT]
+  ) {
+    prompt = PROMPT_KIMI
+  }
+  return [prompt, CANVAS_INSTRUCTION]
 }
 
 export interface Interface {
