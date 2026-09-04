@@ -536,6 +536,7 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
           fitViewOptions={{ padding: 0.9, maxZoom: 0.85, minZoom: 0.1 }}
           minZoom={0.1}
           maxZoom={2}
+          panOnDrag={false}
           className="bg-[var(--bg-app)]"
           defaultEdgeOptions={{
             type: 'floating',
