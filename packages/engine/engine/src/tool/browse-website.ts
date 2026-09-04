@@ -91,6 +91,40 @@ async function browseWithPuppeteer(params: {
       }
     }
 
+    // AUTO-DETECT: Automatically click common e-commerce buttons that reveal
+    // hidden stock/wholesale/pricing data, even if LLM didn't specify click_text.
+    const autoClickKeywords = [
+      "pesanan grosir",
+      "wholesale",
+      "grosir",
+      "lihat stok",
+      "cek stok",
+      "show stock",
+      "view stock",
+      "detail harga",
+      "price detail",
+      "selengkapnya",
+      "load more",
+      "show more",
+      "lihat semua",
+      "view all",
+    ]
+    const clickableAll = await page.$$('button, a, div[role="button"], span[role="button"], [onclick]')
+    const clickedTexts: string[] = []
+    for (const el of clickableAll) {
+      const text = await page.evaluate((e: Element) => (e.textContent || "").trim(), el)
+      if (!text) continue
+      const lower = text.toLowerCase()
+      for (const keyword of autoClickKeywords) {
+        if (lower.includes(keyword) && !clickedTexts.includes(lower)) {
+          await el.click().catch(() => {})
+          clickedTexts.push(lower)
+          await new Promise((r) => setTimeout(r, 2500))
+          break
+        }
+      }
+    }
+
     // Wait a moment for any final rendering
     await new Promise((r) => setTimeout(r, 500))
 

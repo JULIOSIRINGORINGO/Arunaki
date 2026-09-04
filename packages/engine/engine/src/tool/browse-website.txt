@@ -2,13 +2,13 @@
 - Unlike webfetch, this tool renders pages like a real user and can interact with dynamic content
 - Automatically clicks buttons, expands modals, and loads JavaScript-rendered data
 - Best used for e-commerce sites, dashboards, and SPAs where data loads dynamically
+- AUTOMATICALLY detects and clicks common e-commerce buttons like "Pesanan Grosir", "Wholesale", "Show Stock", "Load More", "Lihat Semua" to reveal hidden stock/pricing data
 
 Usage notes:
-  - Use this tool when webfetch returns empty/incomplete data because the site relies on JavaScript
-  - Provide the URL to browse and optionally specify actions to perform (e.g., click buttons with specific text)
-  - The tool waits for the page to fully render before extracting content
-  - Returns the full rendered page content as Markdown
-  - Supports clicking buttons by text (e.g., "Pesanan Grosir", "Load More", "Show Stock")
-  - Can navigate search pages by providing a search query (appends ?q= or uses site search)
+  - PREFER this tool over webfetch when browsing e-commerce sites, product pages, or any site that uses JavaScript to render content
+  - The tool automatically discovers and clicks interactive elements that reveal hidden data (stock tables, wholesale pricing, expanded details)
+  - You can also manually specify a button to click via click_text parameter for non-standard buttons
+  - Provide a search_query to search within the website (finds search inputs and types the query)
+  - Returns the full rendered page content as Markdown, including any data revealed by auto-clicking
   - Timeout is 45 seconds by default to allow for page rendering
   - This tool is read-only and does not submit forms or make purchases
