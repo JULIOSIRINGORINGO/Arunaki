@@ -89,18 +89,21 @@ function extractCanvasContent(llmText: string): string {
   // Only triggers if the table looks like structured business data (has specific keywords, currency, or many columns)
   if (llmText.includes("|") && (llmText.includes("---") || llmText.includes("-|-"))) {
     const normalized = llmText.replace(/\|\|\s*\|/g, "|\n|");
-    const tableMatch = normalized.match(/(\|.+?\|\r?\n\|[-:\s|]+\|\r?\n(?:\|.+?\|\r?\n?)+)/);
-    if (tableMatch?.[0]?.trim()) {
-      const tableText = tableMatch[0].trim();
-      const firstRow = tableText.split("\n")[0].toLowerCase();
+    // Match one or more full tables
+    const tableRegex = /\|[^\n]+\|\r?\n\|[-:\s|]+\|\r?\n(?:\|[^\n]+\|\r?\n?)+/g;
+    const tableMatches = normalized.match(tableRegex);
+    
+    if (tableMatches && tableMatches.length > 0) {
+      const firstTableText = tableMatches[0].trim();
+      const firstRow = firstTableText.split("\n")[0].toLowerCase();
       
       const columnsCount = (firstRow.match(/\|/g) || []).length - 1;
       const hasDataKeywords = /harga|total|tanggal|price|amount|jumlah|date|keterangan|pengeluaran|pembelian|qty|kuantitas|status|id|nomor|no\.|biaya|cost|saldo|balance/i.test(firstRow);
-      const hasCurrency = /rp|\$|€|£|idr/i.test(tableText);
+      const hasCurrency = /rp|\$|€|£|idr/i.test(normalized);
       
       // Don't extract simple conversational tables like "Folder List" (| Nama | Tipe |)
       if (hasDataKeywords || hasCurrency || columnsCount >= 4) {
-        return tableText;
+        return tableMatches.map(t => t.trim()).join("\n\n");
       }
     }
   }
