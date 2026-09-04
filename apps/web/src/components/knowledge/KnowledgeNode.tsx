@@ -133,15 +133,13 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         onClick={() => data.onSelect?.(data.id)}
         className="relative group w-24 h-24 flex items-center justify-center cursor-pointer select-none"
       >
-        {/* Hexagon shape outer border - Monochrome and flat */}
+        {/* Circle shape outer border - Monochrome and flat */}
         <div 
-          className="absolute inset-0 bg-[var(--border-strong)] group-hover:bg-[var(--text-primary)] p-[1px] transition-colors duration-300"
-          style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+          className="absolute inset-0 bg-[var(--border-strong)] group-hover:bg-[var(--text-primary)] p-[1px] rounded-full transition-colors duration-300"
         >
-          {/* Hexagon inner background */}
+          {/* Circle inner background */}
           <div 
-            className="w-full h-full bg-[var(--bg-card)] flex items-center justify-center transition-colors duration-300"
-            style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+            className="w-full h-full bg-[var(--bg-card)] rounded-full flex items-center justify-center transition-colors duration-300 shadow-sm group-hover:shadow-md"
           >
             <ArunakiLogo className="w-8 h-8 text-[var(--text-primary)] transition-transform duration-300 group-hover:scale-110" />
           </div>

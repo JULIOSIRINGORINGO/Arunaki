@@ -114,7 +114,7 @@ function FlowEditor() {
           isMain: doc.id === 'main-ai-node',
           onSelect: () => setSelectedNodeId(doc.id),
         },
-        draggable: true,
+        draggable: doc.id !== 'main-ai-node',
       }));
 
       // Build edges with sleek floating auto-facing curves (9router hub style)
