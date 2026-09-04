@@ -2358,7 +2358,7 @@
       "qwen3-coder-480b-a35b-instruct": {
         "id": "qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -2785,7 +2785,7 @@
       "doubao-seed-2.0-code": {
         "id": "doubao-seed-2.0-code",
         "name": "Doubao Seed 2.0 Code",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [
@@ -3680,7 +3680,7 @@
       "qwen3-coder-30b-a3b-instruct": {
         "id": "qwen3-coder-30b-a3b-instruct",
         "name": "Qwen3-Coder 30B-A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -3706,7 +3706,7 @@
       "qwen2-5-coder-7b-instruct": {
         "id": "qwen2-5-coder-7b-instruct",
         "name": "Qwen2.5-Coder 7B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -4439,7 +4439,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -4814,7 +4814,7 @@
       "qwen2-5-coder-32b-instruct": {
         "id": "qwen2-5-coder-32b-instruct",
         "name": "Qwen2.5-Coder 32B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -5281,7 +5281,7 @@
       "qwen3-coder-480b-a35b-instruct": {
         "id": "qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3-Coder 480B-A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -5422,7 +5422,7 @@
       "qwen3-coder-flash": {
         "id": "qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -6280,7 +6280,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "Qwen3-Coder-Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -7061,7 +7061,7 @@
       "xai/grok-build-0.1": {
         "id": "xai/grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -7499,7 +7499,7 @@
       "voyage/voyage-code-3": {
         "id": "voyage/voyage-code-3",
         "name": "voyage-code-3",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "voyage",
         "attachment": false,
         "reasoning": false,
@@ -7583,7 +7583,7 @@
       "voyage/voyage-code-2": {
         "id": "voyage/voyage-code-2",
         "name": "voyage-code-2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "voyage",
         "attachment": false,
         "reasoning": false,
@@ -7756,7 +7756,7 @@
       "mistral/devstral-small": {
         "id": "mistral/devstral-small",
         "name": "Devstral Small 1.1",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -7865,7 +7865,7 @@
       "mistral/devstral-small-2": {
         "id": "mistral/devstral-small-2",
         "name": "Devstral Small 2",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -7917,7 +7917,7 @@
       "mistral/devstral-2": {
         "id": "mistral/devstral-2",
         "name": "Devstral 2",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -10942,7 +10942,7 @@
       "zai/glm-5.1": {
         "id": "zai/glm-5.1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": true,
         "reasoning": true,
@@ -10974,7 +10974,7 @@
       "zai/glm-4.6": {
         "id": "zai/glm-4.6",
         "name": "GLM 4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -11007,7 +11007,7 @@
       "zai/glm-5.2": {
         "id": "zai/glm-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -11262,7 +11262,7 @@
       "zai/glm-5-turbo": {
         "id": "zai/glm-5-turbo",
         "name": "GLM 5 Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -11782,7 +11782,7 @@
       "xiaomi/mimo-v2.5": {
         "id": "xiaomi/mimo-v2.5",
         "name": "MiMo M2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo-v2.5",
         "attachment": true,
         "reasoning": true,
@@ -11931,7 +11931,7 @@
       "inception/mercury-coder-small": {
         "id": "inception/mercury-coder-small",
         "name": "Mercury Coder Small Beta",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "mercury",
         "attachment": false,
         "reasoning": false,
@@ -12269,7 +12269,7 @@
       "anthropic/claude-sonnet-4.6": {
         "id": "anthropic/claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -13691,7 +13691,7 @@
       "alibaba/qwen3-max": {
         "id": "alibaba/qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -13718,7 +13718,7 @@
       "alibaba/qwen3-next-80b-a3b-thinking": {
         "id": "alibaba/qwen3-next-80b-a3b-thinking",
         "name": "Qwen3 Next 80B A3B Thinking",
-        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+        "description": "Efficient Qwen thinking model for local reasoning, math, and document agents",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -13808,7 +13808,7 @@
       "alibaba/qwen3-coder": {
         "id": "alibaba/qwen3-coder",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -13998,7 +13998,7 @@
       "alibaba/qwen3-coder-next": {
         "id": "alibaba/qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -14295,7 +14295,7 @@
       "alibaba/qwen3-coder-30b-a3b": {
         "id": "alibaba/qwen3-coder-30b-a3b",
         "name": "Qwen 3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -14949,7 +14949,7 @@
       "minimax/minimax-m2.5": {
         "id": "minimax/minimax-m2.5",
         "name": "MiniMax M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -15038,7 +15038,7 @@
       "minimax/minimax-m2": {
         "id": "minimax/minimax-m2",
         "name": "MiniMax M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -15068,7 +15068,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "Minimax M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -15153,7 +15153,7 @@
       "kwaipilot/kat-coder-air-v2.5": {
         "id": "kwaipilot/kat-coder-air-v2.5",
         "name": "Kat Coder Air V2.5",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "kat-coder",
         "attachment": false,
         "reasoning": true,
@@ -15180,7 +15180,7 @@
       "kwaipilot/kat-coder-pro-v2.5": {
         "id": "kwaipilot/kat-coder-pro-v2.5",
         "name": "Kat Coder Pro V2.5",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "kat-coder",
         "attachment": false,
         "reasoning": true,
@@ -15207,7 +15207,7 @@
       "kwaipilot/kat-coder-pro-v1": {
         "id": "kwaipilot/kat-coder-pro-v1",
         "name": "KAT-Coder-Pro V1",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "kat-coder",
         "attachment": false,
         "reasoning": true,
@@ -15235,7 +15235,7 @@
       "kwaipilot/kat-coder-pro-v2": {
         "id": "kwaipilot/kat-coder-pro-v2",
         "name": "Kat Coder Pro V2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "kat-coder",
         "attachment": false,
         "reasoning": true,
@@ -15298,7 +15298,7 @@
       "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8": {
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -15850,7 +15850,7 @@
       "Qwen/Qwen3-Coder-Next": {
         "id": "Qwen/Qwen3-Coder-Next",
         "name": "Qwen3-Coder-Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -16043,7 +16043,7 @@
       "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
         "name": "Qwen3-Coder-480B-A35B-Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -16435,7 +16435,7 @@
       "zai-org/GLM-4.6": {
         "id": "zai-org/GLM-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -16550,7 +16550,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -16838,7 +16838,7 @@
       "MiniMaxAI/MiniMax-M2": {
         "id": "MiniMaxAI/MiniMax-M2",
         "name": "MiniMax-M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -17098,7 +17098,7 @@
       "MiniMax-M3": {
         "id": "MiniMax-M3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -18453,7 +18453,7 @@
       "zai-org/glm-5.2": {
         "id": "zai-org/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -18723,7 +18723,7 @@
       "qwen/qwen3-coder-30b-a3b-instruct": {
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "name": "Qwen3 Coder 30b A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -19171,7 +19171,7 @@
       "qwen/qwen3-coder-next": {
         "id": "qwen/qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -19228,7 +19228,7 @@
       "qwen/qwen3-coder-480b-a35b-instruct": {
         "id": "qwen/qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -20092,7 +20092,7 @@
       "kwaipilot/kat-coder-pro": {
         "id": "kwaipilot/kat-coder-pro",
         "name": "Kat Coder Pro",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -20449,7 +20449,7 @@
       "grok-build-0.1": {
         "id": "grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -20617,7 +20617,7 @@
       "qwen3-coder-30b-a3b": {
         "id": "qwen3-coder-30b-a3b",
         "name": "Qwen3-Coder 30B-A3B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -20897,7 +20897,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -20993,7 +20993,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -21128,7 +21128,7 @@
       "MiniMax-M2.5": {
         "id": "MiniMax-M2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -21720,7 +21720,7 @@
       "accounts/fireworks/routers/kimi-k2p7-code-fast": {
         "id": "accounts/fireworks/routers/kimi-k2p7-code-fast",
         "name": "Kimi K2.7 Code Fast",
-        "description": "Kimi coding model for software agents, refactors, and repository reasoning",
+        "description": "Kimi document model for software agents, refactors, and repository reasoning",
         "family": "kimi-k2",
         "attachment": true,
         "reasoning": true,
@@ -21937,7 +21937,7 @@
       "accounts/fireworks/models/minimax-m3": {
         "id": "accounts/fireworks/models/minimax-m3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -22181,7 +22181,7 @@
       "accounts/fireworks/models/kimi-k2p7-code": {
         "id": "accounts/fireworks/models/kimi-k2p7-code",
         "name": "Kimi K2.7 Code",
-        "description": "Kimi coding model for software agents, refactors, and repository reasoning",
+        "description": "Kimi document model for software agents, refactors, and repository reasoning",
         "family": "kimi-k2",
         "attachment": true,
         "reasoning": true,
@@ -22418,7 +22418,7 @@
       "zai-org/GLM-5.2-FP8": {
         "id": "zai-org/GLM-5.2-FP8",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -22476,7 +22476,7 @@
       "MiniMaxAI/MiniMax-M2.7": {
         "id": "MiniMaxAI/MiniMax-M2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -24458,7 +24458,7 @@
       "doubao-seed-code-preview-251028": {
         "id": "doubao-seed-code-preview-251028",
         "name": "doubao-seed-code-preview-251028",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": true,
         "reasoning": false,
         "tool_call": true,
@@ -24522,7 +24522,7 @@
       "qwen3-coder-480b-a35b-instruct": {
         "id": "qwen3-coder-480b-a35b-instruct",
         "name": "qwen3-coder-480b-a35b-instruct",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -25567,7 +25567,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -25603,7 +25603,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -25840,7 +25840,7 @@
       "glm-4.6": {
         "id": "glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -26756,7 +26756,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -27150,7 +27150,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "Qwen3 Coder Next 80B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -27213,7 +27213,7 @@
       "qwen3-coder-480b-a35b-instruct": {
         "id": "qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -27239,7 +27239,7 @@
       "devstral-2512": {
         "id": "devstral-2512",
         "name": "Devstral 2 2512",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -27511,7 +27511,7 @@
       "codestral-2508": {
         "id": "codestral-2508",
         "name": "Codestral 2508",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "mistral",
         "attachment": false,
         "reasoning": false,
@@ -27592,7 +27592,7 @@
       "glm-5-turbo": {
         "id": "glm-5-turbo",
         "name": "GLM-5-Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -28411,7 +28411,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -28840,7 +28840,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -28995,7 +28995,7 @@
       "minimax-m2-7": {
         "id": "minimax-m2-7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -29234,7 +29234,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -29591,7 +29591,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -30302,7 +30302,7 @@
       "glm-5-2": {
         "id": "glm-5-2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -31458,7 +31458,7 @@
       "@cf/zai-org/glm-5.2": {
         "id": "@cf/zai-org/glm-5.2",
         "name": "Glm 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -31588,7 +31588,7 @@
       "@cf/qwen/qwen2.5-coder-32b-instruct": {
         "id": "@cf/qwen/qwen2.5-coder-32b-instruct",
         "name": "Qwen2.5 Coder 32B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -32590,7 +32590,7 @@
       "anthropic/claude-sonnet-4-6": {
         "id": "anthropic/claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -33879,7 +33879,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -33915,7 +33915,7 @@
       "minimax-m3": {
         "id": "minimax-m3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax-m3",
         "attachment": false,
         "reasoning": true,
@@ -35136,7 +35136,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -35291,7 +35291,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -36206,7 +36206,7 @@
       "qwen3-coder-flash": {
         "id": "qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -36865,7 +36865,7 @@
       "subconscious/glm-5.2": {
         "id": "subconscious/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -36944,7 +36944,7 @@
       "z-ai-glm-5-turbo": {
         "id": "z-ai-glm-5-turbo",
         "name": "GLM 5 Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -37536,7 +37536,7 @@
       "zai-org-glm-4.6": {
         "id": "zai-org-glm-4.6",
         "name": "GLM 4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -37697,7 +37697,7 @@
       "minimax-m27": {
         "id": "minimax-m27",
         "name": "MiniMax M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -38518,7 +38518,7 @@
       "xiaomi-mimo-v2-5": {
         "id": "xiaomi-mimo-v2-5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -38674,7 +38674,7 @@
       "zai-org-glm-5-2": {
         "id": "zai-org-glm-5-2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -38831,7 +38831,7 @@
       "minimax-m3-preview": {
         "id": "minimax-m3-preview",
         "name": "MiniMax M3 Preview",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax-m3",
         "attachment": true,
         "reasoning": true,
@@ -38910,7 +38910,7 @@
       "qwen3-coder-480b-a35b-instruct-turbo": {
         "id": "qwen3-coder-480b-a35b-instruct-turbo",
         "name": "Qwen 3 Coder 480B Turbo",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -39098,7 +39098,7 @@
       "grok-build-0-1": {
         "id": "grok-build-0-1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -39179,7 +39179,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -39361,7 +39361,7 @@
       "zai-org-glm-5-1": {
         "id": "zai-org-glm-5-1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -39663,7 +39663,7 @@
       "minimax-m25": {
         "id": "minimax-m25",
         "name": "MiniMax M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -39777,7 +39777,7 @@
       "z-ai/glm-5.1": {
         "id": "z-ai/glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -39822,7 +39822,7 @@
       "z-ai/glm-5.2": {
         "id": "z-ai/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -39899,7 +39899,7 @@
       "z-ai/glm-5-turbo": {
         "id": "z-ai/glm-5-turbo",
         "name": "GLM-5-Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -40201,7 +40201,7 @@
       "xiaomi/mimo-v2.5": {
         "id": "xiaomi/mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -40440,7 +40440,7 @@
       "anthropic/claude-sonnet-4-6": {
         "id": "anthropic/claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -41212,7 +41212,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -41307,7 +41307,7 @@
       "qwen/qwen3-coder-30b": {
         "id": "qwen/qwen3-coder-30b",
         "name": "Qwen3 Coder 30B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -41343,7 +41343,7 @@
       "poolside/laguna-xs.2": {
         "id": "poolside/laguna-xs.2",
         "name": "Laguna XS.2",
-        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+        "description": "Agentic document model from Poolside in the XS size class for local deployment",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -41375,7 +41375,7 @@
       "poolside/laguna-m.1": {
         "id": "poolside/laguna-m.1",
         "name": "Laguna M.1",
-        "description": "Poolside's flagship agentic coding model for long-horizon work",
+        "description": "Poolside's flagship agentic document model for long-horizon work",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -41407,7 +41407,7 @@
       "poolside/laguna-xs-2.1": {
         "id": "poolside/laguna-xs-2.1",
         "name": "Laguna XS 2.1",
-        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+        "description": "Agentic document model from Poolside in the XS size class for local deployment",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -42297,7 +42297,7 @@
       "x-ai/grok-build-0.1": {
         "id": "x-ai/grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -42477,7 +42477,7 @@
       "z-ai/glm-5.2": {
         "id": "z-ai/glm-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -42565,7 +42565,7 @@
       "z-ai/glm-5.2-free": {
         "id": "z-ai/glm-5.2-free",
         "name": "GLM 5.2 (Free)",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -43426,7 +43426,7 @@
       "xiaomi/mimo-v2.5": {
         "id": "xiaomi/mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -43722,7 +43722,7 @@
       "volcengine/doubao-seed-code": {
         "id": "volcengine/doubao-seed-code",
         "name": "Doubao-Seed-Code",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [
@@ -43853,7 +43853,7 @@
       "volcengine/doubao-seed-2.0-code": {
         "id": "volcengine/doubao-seed-2.0-code",
         "name": "Doubao Seed 2.0 Code",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": true,
         "reasoning": false,
         "tool_call": true,
@@ -44573,7 +44573,7 @@
       "kuaishou/kat-coder-pro-v2": {
         "id": "kuaishou/kat-coder-pro-v2",
         "name": "KAT-Coder-Pro-V2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -44598,7 +44598,7 @@
       "qwen/qwen3-coder-plus": {
         "id": "qwen/qwen3-coder-plus",
         "name": "Qwen3-Coder-Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -45298,7 +45298,7 @@
       "glm-5-1": {
         "id": "glm-5-1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -45629,7 +45629,7 @@
       "mimo-v2-5": {
         "id": "mimo-v2-5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -45722,7 +45722,7 @@
       "glm-5-2": {
         "id": "glm-5-2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -45754,7 +45754,7 @@
       "grok-build-0-1": {
         "id": "grok-build-0-1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -45781,7 +45781,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -46118,7 +46118,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -48654,7 +48654,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -49083,7 +49083,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -50235,7 +50235,7 @@
       "mistral-ai/codestral-2501": {
         "id": "mistral-ai/codestral-2501",
         "name": "Codestral 25.01",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "codestral",
         "attachment": false,
         "reasoning": true,
@@ -52272,7 +52272,7 @@
       "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
         "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
         "name": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -52298,7 +52298,7 @@
       "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
         "name": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -52431,7 +52431,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -53052,7 +53052,7 @@
       "mistral/devstral-small-2507": {
         "id": "mistral/devstral-small-2507",
         "name": "Devstral Small",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -53238,7 +53238,7 @@
       "mistral/devstral-medium-latest": {
         "id": "mistral/devstral-medium-latest",
         "name": "Devstral 2 (latest)",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -53318,7 +53318,7 @@
       "mistral/devstral-medium-2507": {
         "id": "mistral/devstral-medium-2507",
         "name": "Devstral Medium",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -54854,7 +54854,7 @@
       "zai/glm-5.1": {
         "id": "zai/glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -54890,7 +54890,7 @@
       "zai/glm-4.6": {
         "id": "zai/glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -54923,7 +54923,7 @@
       "zai/glm-5.2": {
         "id": "zai/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -55030,7 +55030,7 @@
       "zai/glm-5-turbo": {
         "id": "zai/glm-5-turbo",
         "name": "GLM-5-Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -55453,7 +55453,7 @@
       "anthropic/claude-sonnet-4-6": {
         "id": "anthropic/claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -55762,7 +55762,7 @@
       "minimax/minimax-m2.5": {
         "id": "minimax/minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -55851,7 +55851,7 @@
       "minimax/minimax-m2": {
         "id": "minimax/minimax-m2",
         "name": "MiniMax-M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -55877,7 +55877,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -56349,7 +56349,7 @@
       "mimo-v2.5": {
         "id": "mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -56496,7 +56496,7 @@
       "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
         "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
         "name": "Qwen3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -57720,7 +57720,7 @@
       "z-ai/glm-5.1": {
         "id": "z-ai/glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -57752,7 +57752,7 @@
       "z-ai/glm-4.6": {
         "id": "z-ai/glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -59245,7 +59245,7 @@
       "anthropic/claude-sonnet-4.6": {
         "id": "anthropic/claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -59433,7 +59433,7 @@
       "qwen/qwen3-max": {
         "id": "qwen/qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -59792,7 +59792,7 @@
       "minimax/minimax-m2.5": {
         "id": "minimax/minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -59820,7 +59820,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -60075,7 +60075,7 @@
       "qwen3-coder-30b-a3b-instruct": {
         "id": "qwen3-coder-30b-a3b-instruct",
         "name": "Qwen3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -61000,7 +61000,7 @@
       "qwen3-coder": {
         "id": "qwen3-coder",
         "name": "Qwen3 Coder 480B A35B Instruct Turbo",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -61458,7 +61458,7 @@
       "qwen2.5-coder-7b-fast": {
         "id": "qwen2.5-coder-7b-fast",
         "name": "Qwen2.5 Coder 7B fast",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -62571,7 +62571,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -62607,7 +62607,7 @@
       "glm-4.6": {
         "id": "glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -62640,7 +62640,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -62877,7 +62877,7 @@
       "glm-5-turbo": {
         "id": "glm-5-turbo",
         "name": "GLM-5-Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -64048,7 +64048,7 @@
       "anthropic/claude-sonnet-4-6": {
         "id": "anthropic/claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -65020,7 +65020,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -66159,7 +66159,7 @@
       "XiaomiMiMo/MiMo-V2.5": {
         "id": "XiaomiMiMo/MiMo-V2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -66513,7 +66513,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -66550,7 +66550,7 @@
       "zai-org/GLM-5.1": {
         "id": "zai-org/GLM-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -66855,7 +66855,7 @@
       "MiniMaxAI/MiniMax-M2.7": {
         "id": "MiniMaxAI/MiniMax-M2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -66901,7 +66901,7 @@
       "qwen-coder-plus": {
         "id": "qwen-coder-plus",
         "name": "Qwen Coder Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -66980,7 +66980,7 @@
       "devstral-small-2507": {
         "id": "devstral-small-2507",
         "name": "Devstral Small",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -67212,7 +67212,7 @@
       "minimax-m2.5": {
         "id": "minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -68287,7 +68287,7 @@
       "qwen3-max": {
         "id": "qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -68775,7 +68775,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -68843,7 +68843,7 @@
       "qwen3-next-80b-a3b-thinking": {
         "id": "qwen3-next-80b-a3b-thinking",
         "name": "Qwen3-Next 80B-A3B (Thinking)",
-        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+        "description": "Efficient Qwen thinking model for local reasoning, math, and document agents",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -68870,7 +68870,7 @@
       "glm-4.6": {
         "id": "glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -69273,7 +69273,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -69610,7 +69610,7 @@
       "minimax-m2": {
         "id": "minimax-m2",
         "name": "MiniMax-M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -69885,7 +69885,7 @@
       "minimax-m2.7": {
         "id": "minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -70752,7 +70752,7 @@
       "mimo-v2.5": {
         "id": "mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -70982,7 +70982,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -71411,7 +71411,7 @@
       "qwen3-coder-flash": {
         "id": "qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -71439,7 +71439,7 @@
       "grok-build-0-1": {
         "id": "grok-build-0-1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -71676,7 +71676,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -72328,7 +72328,7 @@
       "codestral-2508": {
         "id": "codestral-2508",
         "name": "Codestral",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "mistral",
         "attachment": false,
         "reasoning": false,
@@ -72612,7 +72612,7 @@
       "qwen3-coder-plus": {
         "id": "qwen3-coder-plus",
         "name": "Qwen3 Coder Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -72901,7 +72901,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -74445,7 +74445,7 @@
       "qwen-2.5-coder-32b": {
         "id": "qwen-2.5-coder-32b",
         "name": "Qwen 2.5 Coder 32B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -74585,7 +74585,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -75240,7 +75240,7 @@
       "zai-org/GLM-4.6": {
         "id": "zai-org/GLM-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -75320,7 +75320,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -75348,7 +75348,7 @@
       "zai-org/GLM-5.1": {
         "id": "zai-org/GLM-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -75565,7 +75565,7 @@
       "MiniMaxAI/MiniMax-M2.7": {
         "id": "MiniMaxAI/MiniMax-M2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -75827,7 +75827,7 @@
       "devstral-small-2:24b": {
         "id": "devstral-small-2:24b",
         "name": "devstral-small-2:24b",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": true,
         "reasoning": false,
@@ -76191,7 +76191,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -76222,7 +76222,7 @@
       "minimax-m3": {
         "id": "minimax-m3",
         "name": "minimax-m3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax-m3",
         "attachment": true,
         "reasoning": true,
@@ -76297,7 +76297,7 @@
       "qwen3-coder:480b": {
         "id": "qwen3-coder:480b",
         "name": "qwen3-coder:480b",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -76553,7 +76553,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "qwen3-coder-next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -76787,7 +76787,7 @@
       "devstral-2:123b": {
         "id": "devstral-2:123b",
         "name": "devstral-2:123b",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -77491,7 +77491,7 @@
       "workers-ai/@cf/qwen/qwen2.5-coder-32b-instruct": {
         "id": "workers-ai/@cf/qwen/qwen2.5-coder-32b-instruct",
         "name": "Qwen 2.5 Coder 32B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -80034,7 +80034,7 @@
       "Qwen/Qwen3-Max": {
         "id": "Qwen/Qwen3-Max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -80220,7 +80220,7 @@
       "Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo": {
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo",
         "name": "Qwen3 Coder 480B A35B Instruct Turbo",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -80341,7 +80341,7 @@
       "XiaomiMiMo/MiMo-V2.5": {
         "id": "XiaomiMiMo/MiMo-V2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -80637,7 +80637,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -80916,7 +80916,7 @@
       "MiniMaxAI/MiniMax-M2.7": {
         "id": "MiniMaxAI/MiniMax-M2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -81389,7 +81389,7 @@
       "claude-sonnet-4-6@default": {
         "id": "claude-sonnet-4-6@default",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -84301,7 +84301,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -84344,7 +84344,7 @@
       "codestral-2501": {
         "id": "codestral-2501",
         "name": "Codestral 25.01",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "codestral",
         "attachment": false,
         "reasoning": false,
@@ -85029,7 +85029,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -85568,7 +85568,7 @@
       "z-ai/glm-5.2": {
         "id": "z-ai/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -86871,7 +86871,7 @@
       "qwen/qwen3-coder-480b-a35b-instruct": {
         "id": "qwen/qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -86897,7 +86897,7 @@
       "qwen/qwen2.5-coder-32b-instruct": {
         "id": "qwen/qwen2.5-coder-32b-instruct",
         "name": "Qwen2.5 Coder 32b Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -87883,7 +87883,7 @@
       "mimo-v2.5": {
         "id": "mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -88671,7 +88671,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -89269,7 +89269,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -91400,7 +91400,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -91901,7 +91901,7 @@
       "north-mini-code-free": {
         "id": "north-mini-code-free",
         "name": "North Mini Code Free",
-        "description": "Cohere coding model for practical software engineering and agentic edits",
+        "description": "Cohere document model for practical document processing and agentic edits",
         "family": "north-free",
         "attachment": false,
         "reasoning": true,
@@ -93173,7 +93173,7 @@
       "grok-build-0.1": {
         "id": "grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Grok coding model for agentic engineering, edits, and codebase workflows",
+        "description": "Grok document model for agentic engineering, edits, and codebase workflows",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -93647,7 +93647,7 @@
       "zai-org/GLM-5.1-FP8": {
         "id": "zai-org/GLM-5.1-FP8",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -93684,7 +93684,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -93721,7 +93721,7 @@
       "MiniMaxAI/MiniMax-M2.5": {
         "id": "MiniMaxAI/MiniMax-M2.5",
         "name": "MiniMax M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -94431,7 +94431,7 @@
       "north-mini-code-1-0": {
         "id": "north-mini-code-1-0",
         "name": "North Mini Code",
-        "description": "Cohere coding model for practical software engineering and agentic edits",
+        "description": "Cohere document model for practical document processing and agentic edits",
         "family": "north",
         "attachment": false,
         "reasoning": true,
@@ -94987,7 +94987,7 @@
       "zai-org/glm-5.2": {
         "id": "zai-org/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -95097,7 +95097,7 @@
       "minimax/minimax-m2.5": {
         "id": "minimax/minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -95271,7 +95271,7 @@
       "MiniMax-M3": {
         "id": "MiniMax-M3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -95469,7 +95469,7 @@
       "minimax-m2.7:free": {
         "id": "minimax-m2.7:free",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -95713,7 +95713,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -95796,7 +95796,7 @@
       "minimax-m2.7": {
         "id": "minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -95879,7 +95879,7 @@
       "glm-5.2:free": {
         "id": "glm-5.2:free",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -96000,7 +96000,7 @@
       "qwen3-coder-plus": {
         "id": "qwen3-coder-plus",
         "name": "Qwen3 Coder Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -96290,7 +96290,7 @@
       "qwen3-coder-next": {
         "id": "qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -100220,7 +100220,7 @@
       "minimax-m2.5": {
         "id": "minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -100276,7 +100276,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -101406,7 +101406,7 @@
       "Qwen/Qwen3-Coder-480B-A35B-Instruct": {
         "id": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
         "name": "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -101458,7 +101458,7 @@
       "Qwen/Qwen3-Coder-30B-A3B-Instruct": {
         "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
         "name": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -102084,7 +102084,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -102531,7 +102531,7 @@
       "umans-glm-5.1": {
         "id": "umans-glm-5.1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -102640,7 +102640,7 @@
       "umans-glm-5.2": {
         "id": "umans-glm-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -103012,7 +103012,7 @@
       "mistralai/Devstral-Small-2505": {
         "id": "mistralai/Devstral-Small-2505",
         "name": "Devstral Small 2505",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -103124,7 +103124,7 @@
       "Intel/Qwen3-Coder-480B-A35B-Instruct-int4-mixed-ar": {
         "id": "Intel/Qwen3-Coder-480B-A35B-Instruct-int4-mixed-ar",
         "name": "Qwen 3 Coder 480B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -103432,7 +103432,7 @@
       "anthropic/claude-sonnet-4.6": {
         "id": "anthropic/claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -103500,7 +103500,7 @@
       "zai-org/GLM-5.1-FP8": {
         "id": "zai-org/GLM-5.1-FP8",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -103561,7 +103561,7 @@
       "zai-org/GLM-5.2-FP8": {
         "id": "zai-org/GLM-5.2-FP8",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -103719,7 +103719,7 @@
       "mimo-v2.5": {
         "id": "mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -103883,7 +103883,7 @@
       "z-code": {
         "id": "z-code",
         "name": "Z-Code",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": true,
         "reasoning_options": [
@@ -104092,7 +104092,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -104734,7 +104734,7 @@
       "qwen3-max": {
         "id": "qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -104772,7 +104772,7 @@
       "glm-5-1": {
         "id": "glm-5-1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -105062,7 +105062,7 @@
       "minimax-m2-7": {
         "id": "minimax-m2-7",
         "name": "MiniMax M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -105166,7 +105166,7 @@
       "mimo-v2-5": {
         "id": "mimo-v2-5",
         "name": "MiMo V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -105314,7 +105314,7 @@
       "glm-5-2": {
         "id": "glm-5-2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -105803,7 +105803,7 @@
       "qwen3-coder-30b-a3b-instruct": {
         "id": "qwen3-coder-30b-a3b-instruct",
         "name": "Qwen3-Coder-30B-A3B-Instruct",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -106245,7 +106245,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -106281,7 +106281,7 @@
       "zai-org/GLM-5.1": {
         "id": "zai-org/GLM-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -106347,7 +106347,7 @@
       "MiniMaxAI/MiniMax-M2.5": {
         "id": "MiniMaxAI/MiniMax-M2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -106638,7 +106638,7 @@
       "moonshotai/Kimi-K2.7-Code": {
         "id": "moonshotai/Kimi-K2.7-Code",
         "name": "Kimi K2.7 Code",
-        "description": "Kimi K2.7 Code is a 1T-parameter MoE model with 32B active parameters purpose-built for long-horizon agentic coding and software engineering.",
+        "description": "Kimi K2.7 Code is a 1T-parameter MoE model with 32B active parameters purpose-built for long-horizon agentic coding and document processing.",
         "family": "kimi-k2",
         "attachment": true,
         "reasoning": true,
@@ -109818,7 +109818,7 @@
       "x-ai/grok-build-0.1": {
         "id": "x-ai/grok-build-0.1",
         "name": "xAI: Grok Build 0.1",
-        "description": "Grok coding model for agentic engineering, edits, and codebase workflows",
+        "description": "Grok document model for agentic engineering, edits, and codebase workflows",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [],
@@ -112478,7 +112478,7 @@
       "mistralai/devstral-small": {
         "id": "mistralai/devstral-small",
         "name": "Mistral: Devstral Small 1.1",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -112623,7 +112623,7 @@
       "mistralai/devstral-medium": {
         "id": "mistralai/devstral-medium",
         "name": "Mistral: Devstral Medium",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -112793,7 +112793,7 @@
       "mistralai/devstral-2512": {
         "id": "mistralai/devstral-2512",
         "name": "Mistral: Devstral 2 2512",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -112914,7 +112914,7 @@
       "mistralai/codestral-2508": {
         "id": "mistralai/codestral-2508",
         "name": "Mistral: Codestral 2508",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -113322,7 +113322,7 @@
       "xiaomi/mimo-v2.5": {
         "id": "xiaomi/mimo-v2.5",
         "name": "Xiaomi: MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -114498,7 +114498,7 @@
       "arcee-ai/coder-large": {
         "id": "arcee-ai/coder-large",
         "name": "Arcee AI: Coder Large",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -114892,7 +114892,7 @@
       "openrouter/pareto-code": {
         "id": "openrouter/pareto-code",
         "name": "Pareto Code Router",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -115025,7 +115025,7 @@
       "qwen/qwen3-coder-plus": {
         "id": "qwen/qwen3-coder-plus",
         "name": "Qwen: Qwen3 Coder Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -115075,7 +115075,7 @@
       "qwen/qwen3-coder-30b-a3b-instruct": {
         "id": "qwen/qwen3-coder-30b-a3b-instruct",
         "name": "Qwen: Qwen3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -115381,7 +115381,7 @@
       "qwen/qwen-2.5-coder-32b-instruct": {
         "id": "qwen/qwen-2.5-coder-32b-instruct",
         "name": "Qwen2.5 Coder 32B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -115480,7 +115480,7 @@
       "qwen/qwen3-coder": {
         "id": "qwen/qwen3-coder",
         "name": "Qwen: Qwen3 Coder 480B A35B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -115823,7 +115823,7 @@
       "qwen/qwen3-coder-next": {
         "id": "qwen/qwen3-coder-next",
         "name": "Qwen: Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -116012,7 +116012,7 @@
       "qwen/qwen3-coder-flash": {
         "id": "qwen/qwen3-coder-flash",
         "name": "Qwen: Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -117104,7 +117104,7 @@
       "minimax/minimax-01": {
         "id": "minimax/minimax-01",
         "name": "MiniMax: MiniMax-01",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "attachment": true,
         "reasoning": false,
         "tool_call": false,
@@ -117366,7 +117366,7 @@
       "kwaipilot/kat-coder-pro-v2": {
         "id": "kwaipilot/kat-coder-pro-v2",
         "name": "Kwaipilot: KAT-Coder-Pro V2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -117559,7 +117559,7 @@
       "lucidquery-nexus-coder": {
         "id": "lucidquery-nexus-coder",
         "name": "LucidQuery Nexus Coder",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "lucid",
         "attachment": true,
         "reasoning": true,
@@ -118220,7 +118220,7 @@
       "qwen/qwen3-coder-next-fp8-1m": {
         "id": "qwen/qwen3-coder-next-fp8-1m",
         "name": "Qwen3 Coder Next FP8 1M",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -118309,7 +118309,7 @@
       "qwen/qwen3-coder-next-fp8": {
         "id": "qwen/qwen3-coder-next-fp8",
         "name": "Qwen3 Coder Next FP8",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -118693,7 +118693,7 @@
       "eu.anthropic.claude-sonnet-4-6": {
         "id": "eu.anthropic.claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6 (EU)",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -119053,7 +119053,7 @@
       "qwen.qwen3-coder-next": {
         "id": "qwen.qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -119168,7 +119168,7 @@
       "jp.anthropic.claude-sonnet-4-6": {
         "id": "jp.anthropic.claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6 (JP)",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -119287,7 +119287,7 @@
       "anthropic.claude-sonnet-4-6": {
         "id": "anthropic.claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -119740,7 +119740,7 @@
       "mistral.devstral-2-123b": {
         "id": "mistral.devstral-2-123b",
         "name": "Devstral 2 123B",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -119884,7 +119884,7 @@
       "qwen.qwen3-coder-480b-a35b-v1:0": {
         "id": "qwen.qwen3-coder-480b-a35b-v1:0",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -120280,7 +120280,7 @@
       "us.anthropic.claude-sonnet-4-6": {
         "id": "us.anthropic.claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6 (US)",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -120719,7 +120719,7 @@
       "global.anthropic.claude-sonnet-4-6": {
         "id": "global.anthropic.claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6 (Global)",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -121135,7 +121135,7 @@
       "qwen.qwen3-coder-30b-a3b-v1:0": {
         "id": "qwen.qwen3-coder-30b-a3b-v1:0",
         "name": "Qwen3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -121952,7 +121952,7 @@
       "umans-glm-5.1": {
         "id": "umans-glm-5.1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -122058,7 +122058,7 @@
       "umans-glm-5.2": {
         "id": "umans-glm-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -122248,7 +122248,7 @@
       "moonshotai/Kimi-K2.7-Code": {
         "id": "moonshotai/Kimi-K2.7-Code",
         "name": "Kimi K2.7 Code",
-        "description": "Kimi coding model for software agents, refactors, and repository reasoning",
+        "description": "Kimi document model for software agents, refactors, and repository reasoning",
         "family": "kimi-k2",
         "attachment": false,
         "reasoning": true,
@@ -122738,7 +122738,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -122963,7 +122963,7 @@
       "MiniMaxAI/MiniMax-M3": {
         "id": "MiniMaxAI/MiniMax-M3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -125864,7 +125864,7 @@
       "x-ai/grok-build-0.1": {
         "id": "x-ai/grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -126043,7 +126043,7 @@
       "poolside/laguna-m.1": {
         "id": "poolside/laguna-m.1",
         "name": "Laguna M.1",
-        "description": "Poolside's flagship agentic coding model for long-horizon work",
+        "description": "Poolside's flagship agentic document model for long-horizon work",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -126071,7 +126071,7 @@
       "poolside/laguna-xs-2.1": {
         "id": "poolside/laguna-xs-2.1",
         "name": "Laguna XS 2.1",
-        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+        "description": "Agentic document model from Poolside in the XS size class for local deployment",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -126253,7 +126253,7 @@
       "z-ai/glm-5.1": {
         "id": "z-ai/glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -126284,7 +126284,7 @@
       "z-ai/glm-4.6": {
         "id": "z-ai/glm-4.6",
         "name": "GLM-4.6",
-        "description": "Late GLM-4 workhorse for coding agents, reasoning, and structured tasks",
+        "description": "Late GLM-4 workhorse for document agents, reasoning, and structured tasks",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -126313,7 +126313,7 @@
       "z-ai/glm-5.2": {
         "id": "z-ai/glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -126502,7 +126502,7 @@
       "z-ai/glm-5-turbo": {
         "id": "z-ai/glm-5-turbo",
         "name": "GLM-5-Turbo",
-        "description": "Faster GLM-5 lane for coding agents that need lower latency",
+        "description": "Faster GLM-5 lane for document agents that need lower latency",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -129361,7 +129361,7 @@
       "mistralai/codestral-2508": {
         "id": "mistralai/codestral-2508",
         "name": "Codestral 2508",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "codestral",
         "attachment": true,
         "reasoning": false,
@@ -130006,7 +130006,7 @@
       "xiaomi/mimo-v2.5": {
         "id": "xiaomi/mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
@@ -130547,7 +130547,7 @@
       "anthropic/claude-sonnet-4.6": {
         "id": "anthropic/claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -131035,7 +131035,7 @@
       "cohere/north-mini-code:free": {
         "id": "cohere/north-mini-code:free",
         "name": "North Mini Code (free)",
-        "description": "Cohere coding model for practical software engineering and agentic edits",
+        "description": "Cohere document model for practical document processing and agentic edits",
         "family": "north",
         "attachment": false,
         "reasoning": true,
@@ -131438,7 +131438,7 @@
       "arcee-ai/coder-large": {
         "id": "arcee-ai/coder-large",
         "name": "Coder Large",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -131748,7 +131748,7 @@
       "openrouter/pareto-code": {
         "id": "openrouter/pareto-code",
         "name": "Pareto Code Router",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -132190,7 +132190,7 @@
       "qwen/qwen3-max": {
         "id": "qwen/qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -132314,7 +132314,7 @@
       "qwen/qwen3-coder:free": {
         "id": "qwen/qwen3-coder:free",
         "name": "Qwen3 Coder 480B A35B (free)",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -132368,7 +132368,7 @@
       "qwen/qwen-2.5-coder-32b-instruct": {
         "id": "qwen/qwen-2.5-coder-32b-instruct",
         "name": "Qwen2.5 Coder 32B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -132395,7 +132395,7 @@
       "qwen/qwen3-next-80b-a3b-thinking": {
         "id": "qwen/qwen3-next-80b-a3b-thinking",
         "name": "Qwen3-Next 80B-A3B (Thinking)",
-        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+        "description": "Efficient Qwen thinking model for local reasoning, math, and document agents",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -132477,7 +132477,7 @@
       "qwen/qwen3-coder": {
         "id": "qwen/qwen3-coder",
         "name": "Qwen3 Coder 480B A35B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -132850,7 +132850,7 @@
       "qwen/qwen3-coder-next": {
         "id": "qwen/qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -133058,7 +133058,7 @@
       "qwen/qwen3-coder-flash": {
         "id": "qwen/qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -134095,7 +134095,7 @@
       "minimax/minimax-m2.5": {
         "id": "minimax/minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -134157,7 +134157,7 @@
       "minimax/minimax-01": {
         "id": "minimax/minimax-01",
         "name": "MiniMax-01",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": false,
@@ -134212,7 +134212,7 @@
       "minimax/minimax-m2": {
         "id": "minimax/minimax-m2",
         "name": "MiniMax-M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -134269,7 +134269,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -134324,7 +134324,7 @@
       "kwaipilot/kat-coder-pro-v2": {
         "id": "kwaipilot/kat-coder-pro-v2",
         "name": "KAT-Coder-Pro V2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "kat-coder",
         "attachment": false,
         "reasoning": false,
@@ -135993,7 +135993,7 @@
       "qwen/qwen3-coder-next": {
         "id": "qwen/qwen3-coder-next",
         "name": "qwen/qwen3-coder-next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -136019,7 +136019,7 @@
       "qwen/qwen3-coder-480b-a35b-instruct": {
         "id": "qwen/qwen3-coder-480b-a35b-instruct",
         "name": "Qwen3 Coder 480B A35B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -136425,7 +136425,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -136525,7 +136525,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -136663,7 +136663,7 @@
       "MiniMax-M2.5": {
         "id": "MiniMax-M2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -137283,7 +137283,7 @@
       "qwen3-max": {
         "id": "qwen3-max",
         "name": "Qwen3 Max",
-        "description": "Flagship Qwen3 model for coding agents, complex reasoning, and tool use",
+        "description": "Flagship Qwen3 model for document agents, complex reasoning, and tool use",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -137397,7 +137397,7 @@
       "qwen3-next-80b-a3b-thinking": {
         "id": "qwen3-next-80b-a3b-thinking",
         "name": "Qwen3-Next 80B-A3B (Thinking)",
-        "description": "Efficient Qwen thinking model for local reasoning, math, and coding agents",
+        "description": "Efficient Qwen thinking model for local reasoning, math, and document agents",
         "family": "qwen",
         "attachment": false,
         "reasoning": true,
@@ -138146,7 +138146,7 @@
       "qwen3-coder-flash": {
         "id": "qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -138946,7 +138946,7 @@
       "databricks-glm-5-2": {
         "id": "databricks-glm-5-2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -139386,7 +139386,7 @@
       "databricks-claude-sonnet-4-6": {
         "id": "databricks-claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -139620,7 +139620,7 @@
       "minimax-m2.5": {
         "id": "minimax-m2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -139852,7 +139852,7 @@
       "glm-5.1": {
         "id": "glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -139932,7 +139932,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -140869,7 +140869,7 @@
       "x-ai/grok-build-0.1": {
         "id": "x-ai/grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Fast Grok coding model tuned for agentic engineering and iterative edits",
+        "description": "Fast Grok document model tuned for agentic engineering and iterative edits",
         "family": "grok-build",
         "attachment": true,
         "reasoning": true,
@@ -140901,7 +140901,7 @@
       "z-ai/glm-5.1": {
         "id": "z-ai/glm-5.1",
         "name": "GLM-5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -141488,7 +141488,7 @@
       "anthropic/claude-sonnet-4.6": {
         "id": "anthropic/claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -141600,7 +141600,7 @@
       "qwen/qwen3-coder": {
         "id": "qwen/qwen3-coder",
         "name": "Qwen3 Coder",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -141684,7 +141684,7 @@
       "minimax/minimax-m2.7": {
         "id": "minimax/minimax-m2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -141836,7 +141836,7 @@
       "xpersona-frieren-coder": {
         "id": "xpersona-frieren-coder",
         "name": "Xpersona Frieren 1",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": true,
         "reasoning_options": [
@@ -142851,7 +142851,7 @@
       "codestral-2501": {
         "id": "codestral-2501",
         "name": "Codestral 25.01",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "codestral",
         "attachment": false,
         "reasoning": false,
@@ -145057,7 +145057,7 @@
       "zai-org/GLM-5.2": {
         "id": "zai-org/GLM-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -145092,7 +145092,7 @@
       "zai-org/GLM-5.1": {
         "id": "zai-org/GLM-5.1",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -145534,7 +145534,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -145658,7 +145658,7 @@
       "glm-5.2-nitro": {
         "id": "glm-5.2-nitro",
         "name": "GLM 5.2 Nitro",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -145749,7 +145749,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -146131,7 +146131,7 @@
       "doubao-seed-2-0-code-preview": {
         "id": "doubao-seed-2-0-code-preview",
         "name": "Doubao Seed 2.0 Code Preview",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "family": "seed",
         "attachment": true,
         "reasoning": true,
@@ -146559,7 +146559,7 @@
       "xiaomi-mimo-v2.5-free": {
         "id": "xiaomi-mimo-v2.5-free",
         "name": "Xiaomi MiMo-V2.5 (free)",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo-v2.5",
         "attachment": true,
         "reasoning": true,
@@ -146722,7 +146722,7 @@
       "xiaomi-mimo-v2.5": {
         "id": "xiaomi-mimo-v2.5",
         "name": "Xiaomi MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo-v2.5",
         "attachment": true,
         "reasoning": true,
@@ -146830,7 +146830,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -146921,7 +146921,7 @@
       "coding-xiaomi-mimo-v2.5": {
         "id": "coding-xiaomi-mimo-v2.5",
         "name": "Coding Xiaomi MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo-v2.5",
         "attachment": true,
         "reasoning": true,
@@ -149389,7 +149389,7 @@
       "claude-sonnet-4-6@default": {
         "id": "claude-sonnet-4-6@default",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -158652,7 +158652,7 @@
       "x-ai/grok-build-0.1": {
         "id": "x-ai/grok-build-0.1",
         "name": "Grok Build 0.1",
-        "description": "Grok coding model for agentic engineering, edits, and codebase workflows",
+        "description": "Grok document model for agentic engineering, edits, and codebase workflows",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [
@@ -158840,7 +158840,7 @@
       "poolside/laguna-xs.2": {
         "id": "poolside/laguna-xs.2",
         "name": "Laguna XS.2",
-        "description": "Agentic coding model from Poolside in the XS size class for local deployment",
+        "description": "Agentic document model from Poolside in the XS size class for local deployment",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -158867,7 +158867,7 @@
       "poolside/laguna-m.1": {
         "id": "poolside/laguna-m.1",
         "name": "Laguna M.1",
-        "description": "Poolside's flagship agentic coding model for long-horizon work",
+        "description": "Poolside's flagship agentic document model for long-horizon work",
         "family": "laguna",
         "attachment": false,
         "reasoning": true,
@@ -160917,7 +160917,7 @@
       "mistralai/Devstral-Small-2505": {
         "id": "mistralai/Devstral-Small-2505",
         "name": "Mistral Devstral Small 2505",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -161207,7 +161207,7 @@
       "mistralai/devstral-2-123b-instruct-2512": {
         "id": "mistralai/devstral-2-123b-instruct-2512",
         "name": "Devstral 2 123B",
-        "description": "Mistral coding agent model for repository tasks and software engineering workflows",
+        "description": "Mistral document agent model for repository tasks and document processing workflows",
         "family": "devstral",
         "attachment": false,
         "reasoning": false,
@@ -161233,7 +161233,7 @@
       "mistralai/codestral-2508": {
         "id": "mistralai/codestral-2508",
         "name": "Codestral 2508",
-        "description": "Mistral coding model for code completion, generation, and developer workflows",
+        "description": "Mistral document model for code completion, generation, and developer workflows",
         "family": "codestral",
         "attachment": false,
         "reasoning": false,
@@ -163861,7 +163861,7 @@
       "qwen/qwen3-coder-plus": {
         "id": "qwen/qwen3-coder-plus",
         "name": "Qwen3 Coder Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -164118,7 +164118,7 @@
       "qwen/qwen3-coder": {
         "id": "qwen/qwen3-coder",
         "name": "Qwen 3 Coder 480B",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -164277,7 +164277,7 @@
       "qwen/qwen3-coder-next": {
         "id": "qwen/qwen3-coder-next",
         "name": "Qwen3 Coder Next",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": true,
@@ -164363,7 +164363,7 @@
       "qwen/qwen3-coder-flash": {
         "id": "qwen/qwen3-coder-flash",
         "name": "Qwen3 Coder Flash",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -164388,7 +164388,7 @@
       "qwen/Qwen2.5-Coder-32B-Instruct": {
         "id": "qwen/Qwen2.5-Coder-32B-Instruct",
         "name": "Qwen 2.5 Coder 32b",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -165429,7 +165429,7 @@
       "minimax/minimax-m3:thinking": {
         "id": "minimax/minimax-m3:thinking",
         "name": "MiniMax M3 Thinking",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [],
@@ -165536,7 +165536,7 @@
       "minimax/minimax-01": {
         "id": "minimax/minimax-01",
         "name": "MiniMax 01",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": false,
@@ -165562,7 +165562,7 @@
       "minimax/minimax-m3": {
         "id": "minimax/minimax-m3",
         "name": "MiniMax M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "attachment": true,
         "reasoning": false,
         "tool_call": true,
@@ -165614,7 +165614,7 @@
       "minimax/minimax-latest": {
         "id": "minimax/minimax-latest",
         "name": "MiniMax Latest",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "attachment": true,
         "reasoning": true,
         "reasoning_options": [
@@ -165672,7 +165672,7 @@
       "kwaipilot/kat-coder-pro-v2": {
         "id": "kwaipilot/kat-coder-pro-v2",
         "name": "KAT Coder Pro V2",
-        "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+        "description": "document model for repository understanding, refactors, and agentic engineering tasks",
         "attachment": false,
         "reasoning": false,
         "tool_call": false,
@@ -166912,7 +166912,7 @@
       "zai-org/glm-5.2": {
         "id": "zai-org/glm-5.2",
         "name": "GLM 5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -167024,7 +167024,7 @@
       "zai-org/GLM-5.1-FP8": {
         "id": "zai-org/GLM-5.1-FP8",
         "name": "GLM 5.1",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -167056,7 +167056,7 @@
       "zai-org/GLM-5.2-FP8": {
         "id": "zai-org/GLM-5.2-FP8",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -168288,7 +168288,7 @@
       "claude-sonnet-4-6": {
         "id": "claude-sonnet-4-6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -168735,7 +168735,7 @@
       "glm-5.2": {
         "id": "glm-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -169088,7 +169088,7 @@
       "zai-org/GLM-5.1-TEE": {
         "id": "zai-org/GLM-5.1-TEE",
         "name": "GLM 5.1 TEE",
-        "description": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
+        "description": "Strong GLM document model for agentic engineering, terminals, and repository generation",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -169119,7 +169119,7 @@
       "zai-org/GLM-5.2-TEE": {
         "id": "zai-org/GLM-5.2-TEE",
         "name": "GLM 5.2 TEE",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -169181,7 +169181,7 @@
       "MiniMaxAI/MiniMax-M2.5-TEE": {
         "id": "MiniMaxAI/MiniMax-M2.5-TEE",
         "name": "MiniMax M2.5 TEE",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -169358,7 +169358,7 @@
       "MiniMax-M3": {
         "id": "MiniMax-M3",
         "name": "MiniMax-M3",
-        "description": "MiniMax multimodal coding model for long-context reasoning and agent tasks",
+        "description": "MiniMax multimodal document model for long-context reasoning and agent tasks",
         "family": "minimax",
         "attachment": true,
         "reasoning": true,
@@ -169705,7 +169705,7 @@
       "GLM-5.2": {
         "id": "GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -169871,7 +169871,7 @@
       "MiniMax-M2": {
         "id": "MiniMax-M2",
         "name": "MiniMax-M2",
-        "description": "Efficient open MiniMax model built for coding agents and tool-heavy workflows",
+        "description": "Efficient open MiniMax model built for document agents and tool-heavy workflows",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -169897,7 +169897,7 @@
       "MiniMax-M2.5": {
         "id": "MiniMax-M2.5",
         "name": "MiniMax-M2.5",
-        "description": "Prior MiniMax coding model for agent workflows, office edits, and automation",
+        "description": "Prior MiniMax document model for agent workflows, office edits, and automation",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -169972,7 +169972,7 @@
       "MiniMax-M2.7": {
         "id": "MiniMax-M2.7",
         "name": "MiniMax-M2.7",
-        "description": "Open MiniMax flagship for coding agents, office automation, and complex environments",
+        "description": "Open MiniMax flagship for document agents, office automation, and complex environments",
         "family": "minimax",
         "attachment": false,
         "reasoning": true,
@@ -170338,7 +170338,7 @@
       "mai-code-1-flash-picker": {
         "id": "mai-code-1-flash-picker",
         "name": "MAI-Code-1-Flash",
-        "description": "Microsoft coding model built for fast, efficient assistance in everyday developer workflows",
+        "description": "Microsoft document model built for fast, efficient assistance in everyday developer workflows",
         "family": "mai",
         "attachment": false,
         "reasoning": true,
@@ -170836,7 +170836,7 @@
       "claude-sonnet-4.6": {
         "id": "claude-sonnet-4.6",
         "name": "Claude Sonnet 4.6",
-        "description": "Claude workhorse for coding agents, careful analysis, and production cost control",
+        "description": "Claude workhorse for document agents, careful analysis, and production cost control",
         "family": "claude-sonnet",
         "attachment": true,
         "reasoning": true,
@@ -171399,7 +171399,7 @@
       "qwen/qwenCoder/models/Qwen3-Coder-30B-A3B-Instruct": {
         "id": "qwen/qwenCoder/models/Qwen3-Coder-30B-A3B-Instruct",
         "name": "Qwen3 Coder 30B A3B Instruct",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -171863,7 +171863,7 @@
       "hf:zai-org/GLM-5.2": {
         "id": "hf:zai-org/GLM-5.2",
         "name": "GLM-5.2",
-        "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+        "description": "Open flagship GLM for long-horizon document agents and million-token context work",
         "family": "glm",
         "attachment": false,
         "reasoning": true,
@@ -172048,7 +172048,7 @@
       "qwen3-coder-plus": {
         "id": "qwen3-coder-plus",
         "name": "Qwen3-Coder-Plus",
-        "description": "Qwen coding model for software agents, repository edits, and code reasoning",
+        "description": "Qwen document model for software agents, repository edits, and code reasoning",
         "family": "qwen",
         "attachment": false,
         "reasoning": false,
@@ -172545,7 +172545,7 @@
       "mimo-v2.5": {
         "id": "mimo-v2.5",
         "name": "MiMo-V2.5",
-        "description": "Open MiMo model for multimodal coding agents and long-context automation",
+        "description": "Open MiMo model for multimodal document agents and long-context automation",
         "family": "mimo",
         "attachment": true,
         "reasoning": true,
