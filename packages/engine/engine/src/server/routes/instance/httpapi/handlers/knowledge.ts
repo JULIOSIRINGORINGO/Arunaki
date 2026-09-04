@@ -1,9 +1,10 @@
 import * as InstanceState from "@/effect/instance-state"
 import { FSUtil } from "@arunaki/core/fs-util"
 import { Effect, Layer, Option, Schema } from "effect"
-import { HttpClient, HttpClientRequest, HttpServerRequest } from "effect/unstable/http"
+import { HttpClient, HttpServerRequest } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
-import path from "path"
+import * as path from "node:path"
+import * as puppeteer from "puppeteer"
 import TurndownService from "turndown"
 import { InstanceHttpApi } from "../api"
 import { instanceContextLayer } from "../middleware/instance-context"
@@ -288,29 +289,44 @@ function titleFromUrl(url: string): string {
   }
 }
 
-function fetchAsMarkdown(url: string): Effect.Effect<string, KnowledgeError, HttpClient.HttpClient> {
+function fetchAsMarkdown(url: string): Effect.Effect<string, KnowledgeError> {
   return Effect.gen(function* () {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       return yield* Effect.fail(new KnowledgeError({ message: "URL must start with http:// or https://", status: 400 }))
     }
-    const http = yield* HttpClient.HttpClient
-    const response = yield* HttpClient.filterStatusOk(http)
-      .execute(
-        HttpClientRequest.get(url).pipe(
-          HttpClientRequest.setHeaders({
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-            Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-          }),
-        ),
-      )
-      .pipe(
-        Effect.timeout("30 seconds"),
-        Effect.catch(() => Effect.fail(new KnowledgeError({ message: "Failed to fetch URL", status: 400 }))),
-      )
-    const buffer = yield* response.arrayBuffer.pipe(Effect.orDie)
-    const html = new TextDecoder().decode(new Uint8Array(buffer))
+
+    const html = yield* Effect.tryPromise({
+      try: async () => {
+        const browser = await puppeteer.launch({
+          headless: true,
+          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        })
+        const page = await browser.newPage()
+        await page.setUserAgent(
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+        )
+
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 })
+
+        const buttons = await page.$$("button, div[role=\"button\"], a")
+        for (const btn of buttons) {
+          const text = await page.evaluate((el: any) => el.textContent, btn)
+          if (text && text.toLowerCase().includes("pesanan grosir")) {
+            await btn.click().catch(() => {})
+            await new Promise((r) => setTimeout(r, 2000))
+            break
+          }
+        }
+
+        await new Promise((r) => setTimeout(r, 1000))
+
+        const content = await page.content()
+        await browser.close()
+        return content
+      },
+      catch: (e) => new KnowledgeError({ message: `Failed to fetch URL with Puppeteer: ${String(e)}`, status: 400 }),
+    })
+
     if (!html) return ""
     const turndown = new TurndownService({
       headingStyle: "atx",
