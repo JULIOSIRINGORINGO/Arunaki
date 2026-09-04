@@ -130,98 +130,56 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
     return (
       <div
         onClick={() => data.onSelect?.(data.id)}
-        className={cn(
-          "relative group px-4 py-3 rounded-2xl bg-[var(--bg-card)] border transition-all select-none cursor-pointer min-w-[210px]",
-          selected
-            ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20"
-            : "border-[var(--border-strong)] hover:border-[var(--text-primary)]",
-          !isActive && "opacity-60 grayscale"
-        )}
+        className="relative group w-36 h-36 flex items-center justify-center cursor-pointer select-none"
       >
-        {/* 360-Degree Continuous Connection Array (36 Dense Hidden Connection Ports around the full perimeter) */}
-        {/* Top Array (10 Ports) */}
-        {[5, 15, 25, 35, 45, 55, 65, 75, 85, 95].map((pos, idx) => (
-          <div key={`top-${idx}`} style={{ position: 'absolute', left: `${pos}%`, top: 0 }}>
-            <Handle
-              type="target"
-              position={Position.Top}
-              id={`target-top-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
-            />
-            <Handle
-              type="source"
-              position={Position.Top}
-              id={`source-top-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-top-3 cursor-crosshair z-10"
-            />
-          </div>
-        ))}
-
-        {/* Bottom Array (10 Ports) */}
-        {[5, 15, 25, 35, 45, 55, 65, 75, 85, 95].map((pos, idx) => (
-          <div key={`bottom-${idx}`} style={{ position: 'absolute', left: `${pos}%`, bottom: 0 }}>
-            <Handle
-              type="target"
-              position={Position.Bottom}
-              id={`target-bottom-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
-            />
-            <Handle
-              type="source"
-              position={Position.Bottom}
-              id={`source-bottom-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
-            />
-          </div>
-        ))}
-
-        {/* Left Array (8 Ports) */}
-        {[8, 20, 32, 45, 58, 70, 82, 94].map((pos, idx) => (
-          <div key={`left-${idx}`} style={{ position: 'absolute', top: `${pos}%`, left: 0 }}>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={idx === 3 ? "in-left" : `target-left-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
-            />
-            <Handle
-              type="source"
-              position={Position.Left}
-              id={`source-left-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-left-3 cursor-crosshair z-10"
-            />
-          </div>
-        ))}
-
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-primary)] shrink-0">
-            <Bot className="w-5 h-5" strokeWidth={1.5} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-xs font-bold text-[var(--text-primary)] truncate">
-              {data.title || "Arunaki Assistant"}
-            </h3>
-            <p className="text-[10px] text-[var(--text-muted)] font-mono truncate mt-0.5">
-              Autonomous Agent Core
-            </p>
+        {/* Glow effect */}
+        <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="absolute inset-4 bg-orange-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-80 transition-opacity duration-500" />
+        
+        {/* Hexagon shape outer border */}
+        <div 
+          className="absolute inset-0 bg-gradient-to-br from-orange-400 to-red-600 p-[2px] transition-all duration-300 shadow-[0_0_40px_rgba(249,115,22,0.2)] group-hover:shadow-[0_0_60px_rgba(249,115,22,0.5)]"
+          style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+        >
+          {/* Hexagon inner background */}
+          <div 
+            className="w-full h-full bg-[var(--bg-card)] flex flex-col items-center justify-center transition-colors duration-300"
+            style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+          >
+            <Bot className="w-10 h-10 text-orange-500 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)] transition-transform duration-500 group-hover:scale-110" strokeWidth={1.5} />
+            <span className="mt-2 text-[11px] font-bold text-orange-500 tracking-[0.2em] drop-shadow-[0_0_10px_rgba(249,115,22,0.6)] uppercase">
+              {data.title || "ARUNAKI"}
+            </span>
           </div>
         </div>
 
-        {/* Right Array (8 Ports) */}
-        {[8, 20, 32, 45, 58, 70, 82, 94].map((pos, idx) => (
-          <div key={`right-${idx}`} style={{ position: 'absolute', top: `${pos}%`, right: 0 }}>
-            <Handle
-              type="target"
-              position={Position.Right}
-              id={`target-right-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
-            />
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={idx === 3 ? "out-right" : `source-right-${idx}`}
-              className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-right-3 cursor-crosshair z-10"
-            />
+        {/* 360-Degree Continuous Connection Array */}
+        {/* Top Array */}
+        {[10, 30, 50, 70, 90].map((pos, idx) => (
+          <div key={`top-${idx}`} style={{ position: 'absolute', left: `${pos}%`, top: '-5%' }}>
+            <Handle type="target" position={Position.Top} id={`target-top-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+            <Handle type="source" position={Position.Top} id={`source-top-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+          </div>
+        ))}
+        {/* Bottom Array */}
+        {[10, 30, 50, 70, 90].map((pos, idx) => (
+          <div key={`bottom-${idx}`} style={{ position: 'absolute', left: `${pos}%`, bottom: '-5%' }}>
+            <Handle type="target" position={Position.Bottom} id={`target-bottom-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+            <Handle type="source" position={Position.Bottom} id={`source-bottom-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+          </div>
+        ))}
+        {/* Left Array */}
+        {[20, 50, 80].map((pos, idx) => (
+          <div key={`left-${idx}`} style={{ position: 'absolute', top: `${pos}%`, left: '-5%' }}>
+            <Handle type="target" position={Position.Left} id={idx === 1 ? "in-left" : `target-left-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+            <Handle type="source" position={Position.Left} id={`source-left-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+          </div>
+        ))}
+        {/* Right Array */}
+        {[20, 50, 80].map((pos, idx) => (
+          <div key={`right-${idx}`} style={{ position: 'absolute', top: `${pos}%`, right: '-5%' }}>
+            <Handle type="target" position={Position.Right} id={`target-right-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
+            <Handle type="source" position={Position.Right} id={idx === 1 ? "out-right" : `source-right-${idx}`} className="!w-4 !h-4 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/30 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all cursor-crosshair z-10" />
           </div>
         ))}
       </div>
