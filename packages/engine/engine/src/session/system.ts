@@ -122,6 +122,10 @@ const layer = Layer.effect(
                   ]),
                 "</available_references>",
               ].join("\n"),
+          [
+            "CRITICAL INSTRUCTION FOR DATA AND DOCUMENTS:",
+            "If the user asks you to create, format, or organize data (like a table, report, list, plain text, or document), you MUST wrap the ENTIRE result inside a markdown code block (e.g. ```text ... ``` or ```markdown ... ```). Do NOT output raw markdown tables or text directly in the chat. Wrap it in a code block so it can be extracted to the Canvas.",
+          ].join("\n"),
         ].filter((part): part is string => part !== undefined)
       }),
 
