@@ -147,29 +147,29 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
           </div>
         </div>
 
-        {/* 4 Visible Connection Ports on the edges */}
+        {/* 4 Invisible Connection Ports on the edges */}
         {/* Top */}
         <div style={{ position: 'absolute', left: '50%', top: '-2px', transform: 'translateX(-50%)' }}>
-          <Handle type="target" position={Position.Top} id="target-top" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
-          <Handle type="source" position={Position.Top} id="source-top" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
+          <Handle type="target" position={Position.Top} id="target-top" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
+          <Handle type="source" position={Position.Top} id="source-top" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
         </div>
         
         {/* Bottom */}
         <div style={{ position: 'absolute', left: '50%', bottom: '-2px', transform: 'translateX(-50%)' }}>
-          <Handle type="target" position={Position.Bottom} id="target-bottom" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
-          <Handle type="source" position={Position.Bottom} id="source-bottom" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
+          <Handle type="target" position={Position.Bottom} id="target-bottom" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
+          <Handle type="source" position={Position.Bottom} id="source-bottom" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
         </div>
 
         {/* Left */}
         <div style={{ position: 'absolute', left: '-2px', top: '50%', transform: 'translateY(-50%)' }}>
-          <Handle type="target" position={Position.Left} id="in-left" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
-          <Handle type="source" position={Position.Left} id="source-left" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
+          <Handle type="target" position={Position.Left} id="in-left" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
+          <Handle type="source" position={Position.Left} id="source-left" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
         </div>
 
         {/* Right */}
         <div style={{ position: 'absolute', right: '-2px', top: '50%', transform: 'translateY(-50%)' }}>
-          <Handle type="target" position={Position.Right} id="target-right" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
-          <Handle type="source" position={Position.Right} id="out-right" className="!w-3 !h-3 !bg-[var(--bg-card)] !border-2 !border-[var(--border-strong)] hover:!border-[var(--text-primary)] !rounded-full !transition-colors cursor-crosshair z-10" />
+          <Handle type="target" position={Position.Right} id="target-right" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
+          <Handle type="source" position={Position.Right} id="out-right" className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 cursor-crosshair z-10" />
         </div>
       </div>
     );
