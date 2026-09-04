@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Panel } from '@xyflow/react';
 import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -86,6 +86,20 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
 
     fetchNode();
   }, [nodeId]);
+
+  const filteredCities = useMemo(() => {
+    if (!city || city.length < 2) return [];
+    
+    const results = [];
+    const query = city.toLowerCase();
+    for (let i = 0; i < ALL_CITIES.length; i++) {
+      if (ALL_CITIES[i].toLowerCase().includes(query)) {
+        results.push(ALL_CITIES[i]);
+        if (results.length >= 7) break;
+      }
+    }
+    return results;
+  }, [city]);
 
   if (!nodeId || nodeId === 'main-ai-node') return null;
 
@@ -290,11 +304,9 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                   className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
                 />
                 
-                {isCityDropdownOpen && city && ALL_CITIES.filter(c => c.toLowerCase().includes(city.toLowerCase())).length > 0 && (
+                {isCityDropdownOpen && filteredCities.length > 0 && (
                   <div className="absolute left-0 top-full mt-1.5 w-full max-h-40 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
-                    {ALL_CITIES.filter(c => c.toLowerCase().includes(city.toLowerCase()))
-                      .slice(0, 7) // Only show top 7 to keep it small
-                      .map((opt) => (
+                    {filteredCities.map((opt) => (
                         <button
                           key={opt}
                           type="button"
