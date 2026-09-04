@@ -68,6 +68,48 @@ function extractCanvasTitle(content: string): string {
   return "Data Canvas";
 }
 
+function formatMarkdownTable(tableString: string): string {
+  const lines = tableString.trim().split(/\r?\n/);
+  const parsedRows = lines.map(line => {
+    const cells = line.split("|");
+    if (cells.length > 0 && cells[0].trim() === "") cells.shift();
+    if (cells.length > 0 && cells[cells.length - 1].trim() === "") cells.pop();
+    return cells.map(c => c.trim());
+  });
+
+  const colWidths: number[] = [];
+  for (const row of parsedRows) {
+    for (let i = 0; i < row.length; i++) {
+      const cellLen = row[i].length;
+      if (colWidths[i] === undefined || cellLen > colWidths[i]) {
+        colWidths[i] = cellLen;
+      }
+    }
+  }
+
+  return parsedRows.map((row, rIdx) => {
+    const isSeparator = rIdx === 1 && row.every(c => /^[-:]+$/.test(c.replace(/\s/g, "")));
+    const formattedCells = row.map((cell, i) => {
+      const width = colWidths[i] || 1;
+      if (isSeparator) {
+        const hasLeftColon = cell.startsWith(":");
+        const hasRightColon = cell.endsWith(":");
+        let dashes = "-".repeat(width + 2);
+        if (hasLeftColon && hasRightColon) {
+          dashes = ":" + "-".repeat(width) + ":";
+        } else if (hasLeftColon) {
+          dashes = ":" + "-".repeat(width + 1);
+        } else if (hasRightColon) {
+          dashes = "-".repeat(width + 1) + ":";
+        }
+        return dashes;
+      }
+      return " " + cell.padEnd(width, " ") + " ";
+    });
+    return "|" + formattedCells.join("|") + "|";
+  }).join("\n");
+}
+
 function extractCanvasContent(llmText: string): string {
   if (!llmText) return "";
 
@@ -103,7 +145,7 @@ function extractCanvasContent(llmText: string): string {
       
       // Don't extract simple conversational tables like "Folder List" (| Nama | Tipe |)
       if (hasDataKeywords || hasCurrency || columnsCount >= 4) {
-        return tableMatches.map(t => t.trim()).join("\n\n");
+        return tableMatches.map(t => formatMarkdownTable(t.trim())).join("\n\n");
       }
     }
   }
