@@ -403,71 +403,60 @@ function WorkstationCenterPanelComponent({
       {/* 3. DYNAMIC CONTENT BODY (VSCODE CANVAS) */}
       <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[#1e1e1e]">
         {activeTab ? (
-          activeTab.type === "canvas" ? (
-            /* ARUNAKI DELIVERABLE CANVAS */
-            <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
-              <div className="flex-1 overflow-auto px-6 py-4 bg-[#1e1e1e]">
-                <pre className="font-mono text-[13px] text-[#d4d4d4] leading-[20px] whitespace-pre-wrap select-text selection:bg-[#264f78] selection:text-[#ffffff]">
-                  {currentContent}
-                </pre>
+          /* VSCODE-STYLE LIVE EDITABLE FILE EDITOR WITH GUTTER (Used for both Canvas and Files) */
+          <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
+            <div className="flex-1 flex overflow-hidden bg-[#1e1e1e] relative font-mono text-[13px]">
+              {/* Gutter with VSCode-style line numbers & change indicator bars */}
+              <div
+                ref={gutterRef}
+                className="w-[50px] shrink-0 select-none bg-[#1e1e1e] border-r border-[#252526]/50 overflow-hidden text-right py-2 pr-3.5 font-mono text-[12px] text-[#858585]"
+              >
+                {lines.map((_, i) => {
+                  const lineNum = i + 1;
+                  const isAdded = addedLineNums.has(lineNum);
+                  const isCurrentLine = cursorPos.line === lineNum;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "h-[20px] leading-[20px] relative transition-colors",
+                        isCurrentLine && "text-[#c6c6c6] font-medium"
+                      )}
+                    >
+                      {isAdded && (
+                        <span
+                          className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#2ea043]"
+                          title="Line added / updated by AI"
+                        />
+                      )}
+                      <span>{lineNum}</span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-          ) : (
-            /* VSCODE-STYLE LIVE EDITABLE FILE EDITOR WITH GUTTER */
-            <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
-              <div className="flex-1 flex overflow-hidden bg-[#1e1e1e] relative font-mono text-[13px]">
-                {/* Gutter with VSCode-style line numbers & change indicator bars */}
-                <div
-                  ref={gutterRef}
-                  className="w-[50px] shrink-0 select-none bg-[#1e1e1e] border-r border-[#252526]/50 overflow-hidden text-right py-2 pr-3.5 font-mono text-[12px] text-[#858585]"
-                >
-                  {lines.map((_, i) => {
-                    const lineNum = i + 1;
-                    const isAdded = addedLineNums.has(lineNum);
-                    const isCurrentLine = cursorPos.line === lineNum;
-                    return (
-                      <div
-                        key={i}
-                        className={cn(
-                          "h-[20px] leading-[20px] relative transition-colors",
-                          isCurrentLine && "text-[#c6c6c6] font-medium"
-                        )}
-                      >
-                        {isAdded && (
-                          <span
-                            className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#2ea043]"
-                            title="Line added / updated by AI"
-                          />
-                        )}
-                        <span>{lineNum}</span>
-                      </div>
-                    );
-                  })}
-                </div>
 
-                {/* Editable live document area (VSCode Typography & Caret) */}
-                <textarea
-                  ref={textareaRef}
-                  value={currentContent}
-                  onChange={(e) => {
-                    handleTextChange(e.target.value);
-                    updateCursorPos();
-                  }}
-                  onClick={updateCursorPos}
-                  onKeyUp={updateCursorPos}
-                  onSelect={updateCursorPos}
-                  onScroll={handleScroll}
-                  onKeyDown={handleKeyDown}
-                  spellCheck={false}
-                  placeholder="Empty document..."
-                  className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[#d4d4d4] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[#264f78] selection:text-[#ffffff] caret-[#0078d4]"
-                  style={{
-                    fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
-                  }}
-                />
-              </div>
+              {/* Editable live document area (VSCode Typography & Caret) */}
+              <textarea
+                ref={textareaRef}
+                value={currentContent}
+                onChange={(e) => {
+                  handleTextChange(e.target.value);
+                  updateCursorPos();
+                }}
+                onClick={updateCursorPos}
+                onKeyUp={updateCursorPos}
+                onSelect={updateCursorPos}
+                onScroll={handleScroll}
+                onKeyDown={handleKeyDown}
+                spellCheck={false}
+                placeholder="Empty document..."
+                className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[#d4d4d4] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[#264f78] selection:text-[#ffffff] caret-[#0078d4]"
+                style={{
+                  fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
+                }}
+              />
             </div>
-          )
+          </div>
         ) : (
           /* CENTER ARUNAKI AGENT WATERMARK (Original) */
           <div className="h-full w-full flex flex-col items-center justify-center select-none p-8 animate-in fade-in duration-300">
