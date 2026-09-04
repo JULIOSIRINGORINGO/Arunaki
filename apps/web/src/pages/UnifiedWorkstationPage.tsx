@@ -121,8 +121,8 @@ function extractCanvasContent(llmText: string): string {
   const streamMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*)$/i);
   if (streamMatch?.[1]?.trim()) return streamMatch[1].trim();
 
-  // 3. Explicit deliverable/data codeblocks (```deliverable, ```canvas, ```csv, ```table, ```excel)
-  const fencedMatch = llmText.match(/```(?:deliverable|canvas|document|csv|table|excel)\s*\n([\s\S]*?)\n```/i);
+  // 3. Smart Canvas Codeblocks (Captures any deliverable text/code block)
+  const fencedMatch = llmText.match(/```(?:[a-zA-Z0-9_-]*)\s*\n([\s\S]*?)\n```/i);
   if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 20) {
     return fencedMatch[1].trim();
   }
@@ -474,7 +474,7 @@ export function UnifiedWorkstationPage() {
           ? new Date(msg.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
           : undefined;
 
-        items.unshift({
+        items.push({
           id: msg.id || `canvas-${Date.now()}-${Math.random()}`,
           title,
           content: canvasContent,
@@ -482,6 +482,13 @@ export function UnifiedWorkstationPage() {
           timeStr,
         });
       }
+
+      // Sort canvases from newest to oldest (so slice(0,5) in the sidebar shows the 5 most recent across all chats)
+      items.sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      });
 
       const top5 = items.slice(0, 5);
       try {
