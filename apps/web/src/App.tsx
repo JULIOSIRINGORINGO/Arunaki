@@ -28,9 +28,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Toaster 
         theme={effectiveTheme as 'light' | 'dark'} 
-        position="bottom-center" 
+        position="top-center" 
+        offset="52px"
         toastOptions={{
-          className: 'dark:!bg-[#1C1C1F]/80 dark:!text-[#F4F4F5] dark:!border-[#323232] !bg-white/80 !text-[#111827] !border-[#E5E7EB] !rounded-full !shadow-md !px-3.5 !py-1.5 !text-[11px] !font-medium tracking-wide backdrop-blur-md !w-auto !max-w-fit !mx-auto !min-h-0 flex items-center gap-1.5',
+          className: 'dark:!bg-[#1C1C1F]/90 dark:!text-[#F4F4F5] dark:!border-[#323232] !bg-white/90 !text-[#111827] !border-[#E5E7EB] !rounded-full !shadow-none !px-4 !py-2 !text-[11px] !font-medium tracking-wide backdrop-blur-md flex items-center gap-2 justify-center border',
           duration: 3000,
         }}
       />
