@@ -98,8 +98,9 @@ export const ReadTool = Tool.define<
 
     const list = Effect.fn("ReadTool.list")(function* (filepath: string) {
       const items = yield* fs.readDirectoryEntries(filepath)
+      const filteredItems = items.filter(item => !item.name.startsWith(".arunaki"))
       return yield* Effect.forEach(
-        items,
+        filteredItems,
         Effect.fnUntraced(function* (item) {
           if (item.type === "directory") return item.name + "/"
           if (item.type !== "symlink") return item.name

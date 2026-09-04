@@ -94,6 +94,7 @@ const baseLayer = Layer.effect(
             items
               .flatMap((item) => {
                 if (item.type !== "file" && item.type !== "directory") return []
+                if (item.name.startsWith(".arunaki")) return []
                 const absolute = path.join(target.absolute, item.name)
                 const relative = path.relative(target.directory, absolute)
                 return [
