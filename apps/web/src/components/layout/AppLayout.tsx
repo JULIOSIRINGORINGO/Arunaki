@@ -277,12 +277,12 @@ export function AppLayout() {
         {/* Left: Active Folder Display (Read-Only Info) */}
         <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[380px]">
           <div
-            title={activeFolder ? `Folder Kerja Aktif: ${activeFolder}` : "Belum ada folder aktif"}
+            title={activeFolder ? `Active Folder: ${activeFolder}` : "No folder opened"}
             className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
             <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
             <span className="text-[11px] truncate text-[var(--text-primary)]">
-              {activeFolder ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder : "Belum ada folder aktif"}
+              {activeFolder ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder : "No folder opened"}
             </span>
           </div>
         </div>
