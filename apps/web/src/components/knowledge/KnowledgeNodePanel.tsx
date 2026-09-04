@@ -242,7 +242,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
                   nodeData.active 
-                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" 
+                    ? "bg-[var(--text-primary)] text-[var(--bg-card)] border border-[var(--text-primary)]" 
                     : "bg-[var(--bg-hover)] text-[var(--text-muted)] border border-[var(--border-color)]"
                 )}
               >
@@ -270,7 +270,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 type="url"
                 value={urls[0] || ''}
                 onChange={e => setUrls([e.target.value, ...urls.slice(1)])}
-                placeholder="https://cititex.com"
+                placeholder="https://acme.com"
                 className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
               />
               {urls.length > 1 && (

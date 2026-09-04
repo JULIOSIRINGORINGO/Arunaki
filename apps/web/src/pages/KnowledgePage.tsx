@@ -319,7 +319,7 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
         method: 'POST',
         body: JSON.stringify({
           title,
-          content: 'Isi knowledge di sini...',
+          content: 'Enter knowledge content here...',
           type,
           positionX: x + Math.random() * 50, // offset slightly
           positionY: y + Math.random() * 50,
