@@ -443,7 +443,6 @@ function WorkstationRightChatComponent({
   optimisticMessages,
   liveStatus,
   messagesEndRef,
-  activeWorkspace,
   isStreaming,
   onSendMessage,
   width = 320,
@@ -959,7 +958,7 @@ function WorkstationRightChatComponent({
 
           <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
             <div className="flex items-center gap-2">
-              {activeWorkspace && (
+              {setReasoningEffort && (
                 <div className="relative" ref={effortDropdownRef}>
                   <button
                     type="button"
