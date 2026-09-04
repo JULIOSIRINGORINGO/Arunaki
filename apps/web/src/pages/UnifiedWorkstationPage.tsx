@@ -177,10 +177,23 @@ function mapEngineMessages(raw: any[]): Message[] {
         .join("");
     }
     let executionSteps: any[] | undefined = undefined;
+    let thoughtSec: number | undefined = undefined;
+    
     if (Array.isArray(msg.parts)) {
       const reasoningParts = msg.parts.filter((p: any) => p && p.type === "reasoning");
       if (reasoningParts.length > 0) {
         reasoning = reasoningParts.map((p: any) => (p && typeof p.text === "string" ? p.text : "")).join("\n\n");
+        let totalReasoningTime = 0;
+        reasoningParts.forEach((p: any) => {
+          if (p.time?.created && p.time?.completed) {
+            totalReasoningTime += (p.time.completed - p.time.created);
+          } else if (p.time?.created && msg.time?.updated) {
+            totalReasoningTime += (msg.time.updated - p.time.created);
+          }
+        });
+        if (totalReasoningTime > 0) {
+          thoughtSec = Math.max(1, Math.round(totalReasoningTime / 1000));
+        }
       }
       
       const toolInvocations = msg.parts.filter((p: any) => p && p.type === "tool-invocation");
@@ -208,6 +221,7 @@ function mapEngineMessages(raw: any[]): Message[] {
       content,
       reasoning: reasoning || undefined,
       executionSteps: executionSteps || undefined,
+      thoughtSec: thoughtSec,
       createdAt: msg.createdAt || msg.time?.created || undefined,
     };
   });
