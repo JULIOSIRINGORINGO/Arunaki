@@ -307,7 +307,7 @@ function WorkstationCenterPanelComponent({
                   className={cn(
                     "group h-full flex items-center gap-2 px-3 text-xs font-sans cursor-pointer transition-colors border-r border-[#1e1e1e] select-none shrink-0 relative",
                     isActive
-                      ? "bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#0078d4]"
+                      ? "bg-[#1e1e1e] text-[#ffffff] border-t-2 border-t-[#ffffff]"
                       : "bg-[#2d2d2d] text-[#969696] hover:bg-[#2b2b2b] hover:text-[#cccccc] border-t-2 border-t-transparent"
                   )}
                 >
@@ -361,7 +361,7 @@ function WorkstationCenterPanelComponent({
               {isUnsaved && (
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#0e639c] hover:bg-[#1177bb] text-white font-sans text-[11px] transition-colors cursor-pointer shadow-xs"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#ffffff] hover:bg-[#e5e5e5] text-[#000000] font-semibold font-sans text-[11px] transition-colors cursor-pointer shadow-xs"
                   title="Save Changes (Ctrl+S)"
                 >
                   <Save className="w-3 h-3" />
