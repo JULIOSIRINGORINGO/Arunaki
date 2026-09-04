@@ -222,7 +222,7 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
     <div
       onClick={() => data.onSelect?.(data.id)}
       className={cn(
-        "relative group p-3 rounded-2xl bg-[var(--bg-card)] border transition-all select-none cursor-pointer flex flex-col items-center justify-center text-center min-w-[125px] max-w-[150px]",
+        "relative group p-2 pr-4 pl-2 rounded-2xl bg-[var(--bg-card)] border transition-all select-none cursor-pointer flex flex-row items-center gap-3 min-w-[130px] max-w-[200px]",
         selected
           ? "border-[var(--text-primary)] ring-2 ring-[var(--text-primary)]/20"
           : "border-[var(--border-strong)] hover:border-[var(--text-primary)]",
@@ -279,23 +279,25 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         className="!w-6 !h-6 !bg-transparent !border-0 opacity-0 hover:!opacity-100 hover:!bg-[var(--text-primary)]/15 hover:!border hover:!border-[var(--text-primary)] !rounded-full !transition-all !-bottom-3 cursor-crosshair z-10"
       />
 
-      {/* Center Icon Box */}
+      {/* Left Icon Box */}
       <div
         className={cn(
-          "w-11 h-11 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-105 border",
+          "w-9 h-9 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 border shrink-0",
           colorTheme
         )}
       >
         {getIconElement(data.type, data.icon)}
       </div>
 
-      {/* Node Title & Subtitle underneath */}
-      <h3 className="text-xs font-semibold text-[var(--text-primary)] truncate max-w-[110px]">
-        {data.title}
-      </h3>
-      <p className="text-[9px] text-[var(--text-muted)] font-mono truncate max-w-[110px] mt-0.5">
-        {data.type || "Document"}
-      </p>
+      {/* Node Title & Subtitle side-by-side */}
+      <div className="flex flex-col text-left overflow-hidden">
+        <h3 className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
+          {data.title}
+        </h3>
+        <p className="text-[9px] text-[var(--text-muted)] font-mono truncate mt-0.5">
+          {data.type || "Document"}
+        </p>
+      </div>
     </div>
   );
 });

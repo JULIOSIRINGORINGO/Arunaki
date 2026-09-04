@@ -1,29 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Panel } from '@xyflow/react';
-import { X, Save, Trash2, CheckCircle2, XCircle, ChevronDown, Check } from 'lucide-react';
+import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
-
-const CITY_OPTIONS = [
-  { value: "", label: "Not set (ask user / detect)" },
-  { value: "Medan", label: "Medan" },
-  { value: "Jakarta", label: "Jakarta" },
-  { value: "Kedoya", label: "Kedoya" },
-  { value: "Tebet", label: "Tebet" },
-  { value: "Buaran", label: "Buaran" },
-  { value: "Kemang", label: "Kemang" },
-  { value: "Transyogi", label: "Transyogi" },
-  { value: "Cempaka Putih", label: "Cempaka Putih" },
-  { value: "Surabaya", label: "Surabaya" },
-  { value: "Bandung", label: "Bandung" },
-  { value: "Semarang", label: "Semarang" },
-  { value: "Yogyakarta", label: "Yogyakarta" },
-  { value: "Makassar", label: "Makassar" },
-  { value: "Palembang", label: "Palembang" },
-  { value: "Denpasar", label: "Denpasar" },
-  { value: "Balikpapan", label: "Balikpapan" },
-];
 
 interface KnowledgeNodePanelProps {
   nodeId: string | null;
@@ -44,19 +24,6 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
   const [content, setContent] = useState('');
   const [composing, setComposing] = useState(false);
   const [composeError, setComposeError] = useState('');
-
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
-  const cityDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
-        setIsCityDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   useEffect(() => {
     if (!nodeId || nodeId === 'main-ai-node') {
@@ -284,11 +251,28 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 </label>
                 <input
                   type="text"
+                  list="city-suggestions"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="e.g. Jakarta, New York, Warehouse B..."
                   className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
                 />
+                <datalist id="city-suggestions">
+                  <option value="Jakarta" />
+                  <option value="Surabaya" />
+                  <option value="Bandung" />
+                  <option value="Medan" />
+                  <option value="Semarang" />
+                  <option value="Makassar" />
+                  <option value="Denpasar" />
+                  <option value="Singapore" />
+                  <option value="Kuala Lumpur" />
+                  <option value="Tokyo" />
+                  <option value="Seoul" />
+                  <option value="London" />
+                  <option value="New York" />
+                  <option value="Dubai" />
+                </datalist>
               </div>
               {urls[0] && /^https?:\/\/\S+$/i.test(urls[0].trim()) && (
                 <button
