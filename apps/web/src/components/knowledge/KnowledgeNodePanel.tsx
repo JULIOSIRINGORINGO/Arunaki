@@ -280,7 +280,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
               )}
               <div className="relative" ref={cityDropdownRef}>
                 <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
-                  Default City (stock checks)
+                  Location / Branch (Optional)
                 </label>
                 <button
                   type="button"
