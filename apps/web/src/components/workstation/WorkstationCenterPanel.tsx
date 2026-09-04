@@ -406,12 +406,10 @@ function WorkstationCenterPanelComponent({
           activeTab.type === "canvas" ? (
             /* ARUNAKI DELIVERABLE CANVAS */
             <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
-              <div className="flex-1 overflow-auto px-8 py-6 bg-[#1e1e1e]">
-                <div className="max-w-3xl mx-auto">
-                  <pre className="font-mono text-xs text-[#d4d4d4] leading-relaxed whitespace-pre-wrap select-text selection:bg-[#264f78] selection:text-[#ffffff]">
-                    {currentContent}
-                  </pre>
-                </div>
+              <div className="flex-1 overflow-auto px-6 py-4 bg-[#1e1e1e]">
+                <pre className="font-mono text-[13px] text-[#d4d4d4] leading-[20px] whitespace-pre-wrap select-text selection:bg-[#264f78] selection:text-[#ffffff]">
+                  {currentContent}
+                </pre>
               </div>
             </div>
           ) : (
