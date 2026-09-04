@@ -68,7 +68,7 @@ const edgeTypes = {
 function FlowEditor() {
   const { theme } = useTheme();
   const isLight = theme === 'light' || (theme === 'system' && getSystemTheme() === 'light');
-  const { fitView } = useReactFlow();
+  const { setCenter, fitView } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   
@@ -133,16 +133,22 @@ function FlowEditor() {
       setNodes(initialNodes);
       setEdges(initialEdges);
 
-      // Smooth auto-fit & zoom out generously when opened
+      // Smoothly center the camera exactly on the main AI node
       setTimeout(() => {
-        fitView({ padding: 0.9, maxZoom: 0.85, duration: 600 });
+        const mainNode = initialNodes.find(n => n.id === 'main-ai-node');
+        if (mainNode) {
+          // Add 48px to offset for the node's center (w-24 h-24 is 96x96)
+          setCenter(mainNode.position.x + 48, mainNode.position.y + 48, { zoom: 0.85, duration: 800 });
+        } else {
+          fitView({ padding: 0.9, maxZoom: 0.85, duration: 600 });
+        }
       }, 100);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges, isLight, fitView]);
+  }, [setNodes, setEdges, isLight, setCenter, fitView]);
 
   useEffect(() => {
     fetchData();
