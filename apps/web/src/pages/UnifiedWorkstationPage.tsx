@@ -198,6 +198,23 @@ export function UnifiedWorkstationPage() {
     }
   }, [activeFolder, searchParams, setSearchParams]);
 
+  // Sync activeFolder if changed externally (e.g. from AppLayout topbar)
+  useEffect(() => {
+    function handleFolderChange() {
+      const saved = localStorage.getItem("arunaki_active_folder");
+      if (saved && saved !== activeFolder) {
+        setActiveFolder(saved);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("folder", saved);
+          return next;
+        }, { replace: true });
+      }
+    }
+    window.addEventListener("arunaki-folder-change", handleFolderChange);
+    return () => window.removeEventListener("arunaki-folder-change", handleFolderChange);
+  }, [activeFolder, setSearchParams]);
+
   // Sync activeChatId with URL and localStorage
   useEffect(() => {
     if (isCreatingNewChat.current) {
