@@ -29,7 +29,7 @@ export function ConnectFolderModal({
       }
       return;
     }
-    toast.info("Gunakan input path di bawah ini (atau buka via aplikasi desktop)");
+    toast.info("Use the path input below (or open via desktop app)");
   };
 
   const handleConnectFolderSubmit = (e: React.FormEvent) => {

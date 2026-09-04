@@ -777,7 +777,7 @@ export function UnifiedWorkstationPage() {
     }
     setIsStreaming(false);
     setLiveStatus(null);
-    toast.info("Generasi dihentikan");
+    toast.info("Generation stopped");
   }, []);
 
   const handleSendMessage = async (textToSend: string) => {
@@ -787,7 +787,7 @@ export function UnifiedWorkstationPage() {
     // If currently streaming another turn, QUEUE the message (Google Antigravity pattern)!
     if (isStreaming) {
       setQueuedPrompts((prev) => [...prev, userText]);
-      toast.info("Pesan masuk ke antrian dan akan diproses otomatis setelah ini");
+      toast.info("Message queued and will be processed automatically");
       return;
     }
 
