@@ -41,6 +41,7 @@ export function layerFromPath(filename: string) {
 }
 
 export function path() {
+  if (process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test" || process.env.npm_lifecycle_event === "test") return ":memory:"
   if (Flag.Arunaki_DB) {
     if (Flag.Arunaki_DB === ":memory:" || isAbsolute(Flag.Arunaki_DB)) return Flag.Arunaki_DB
     return join(Global.Path.data, Flag.Arunaki_DB)

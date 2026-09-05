@@ -298,6 +298,7 @@
         "npm-package-arg": "13.0.2",
         "open": "10.1.2",
         "partial-json": "0.1.7",
+        "puppeteer": "^25.10.0",
         "remeda": "catalog:",
         "semver": "^7.6.3",
         "solid-js": "catalog:",
