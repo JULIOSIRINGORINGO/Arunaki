@@ -1,20 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, Search, MessageSquare, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Loader2, Sparkles, ChevronDown, ChevronRight } from "lucide-react";
 import { listSessions } from "../lib/engine";
-
-interface ChatSession {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt?: string;
-}
+import { ChatSession, groupSessionsByDate } from "../components/history/historyUtils";
+import { HistorySessionItem } from "../components/history/HistorySessionItem";
 
 export function HistoryPage() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchSessions() {
@@ -43,50 +39,8 @@ export function HistoryPage() {
     return sessions.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, searchQuery]);
 
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-
   const groupedSessions = useMemo(() => {
-    const today: ChatSession[] = [];
-    const yesterday: ChatSession[] = [];
-    const earlierThisWeek: ChatSession[] = [];
-    const lastWeek: ChatSession[] = [];
-    const lastMonth: ChatSession[] = [];
-    const aLongTimeAgo: ChatSession[] = [];
-
-    const now = new Date();
-    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    
-    // Windows Explorer-like thresholds
-    const yesterdayDate = todayDate - 1 * 86400000;
-    const earlierThisWeekDate = todayDate - 6 * 86400000;
-    const lastWeekDate = todayDate - 13 * 86400000;
-    const lastMonthDate = todayDate - 30 * 86400000;
-
-    for (const session of filteredSessions) {
-      const time = new Date(session.createdAt || session.updatedAt || "").getTime();
-      if (isNaN(time) || time >= todayDate) {
-        today.push(session);
-      } else if (time >= yesterdayDate) {
-        yesterday.push(session);
-      } else if (time >= earlierThisWeekDate) {
-        earlierThisWeek.push(session);
-      } else if (time >= lastWeekDate) {
-        lastWeek.push(session);
-      } else if (time >= lastMonthDate) {
-        lastMonth.push(session);
-      } else {
-        aLongTimeAgo.push(session);
-      }
-    }
-
-    const groups: Array<{ group: string; items: ChatSession[] }> = [];
-    if (today.length > 0) groups.push({ group: "Today", items: today });
-    if (yesterday.length > 0) groups.push({ group: "Yesterday", items: yesterday });
-    if (earlierThisWeek.length > 0) groups.push({ group: "Earlier this week", items: earlierThisWeek });
-    if (lastWeek.length > 0) groups.push({ group: "Last week", items: lastWeek });
-    if (lastMonth.length > 0) groups.push({ group: "Last month", items: lastMonth });
-    if (aLongTimeAgo.length > 0) groups.push({ group: "A long time ago", items: aLongTimeAgo });
-    return groups;
+    return groupSessionsByDate(filteredSessions);
   }, [filteredSessions]);
 
   const toggleGroup = (group: string) => {
@@ -149,6 +103,7 @@ export function HistoryPage() {
               return (
                 <div key={group.group} className="space-y-2">
                   <button
+                    type="button"
                     onClick={() => toggleGroup(group.group)}
                     className="flex items-center gap-1.5 px-1 cursor-pointer group/header w-full text-left"
                   >
@@ -161,41 +116,16 @@ export function HistoryPage() {
                       {group.group}
                     </h2>
                   </button>
-                  
+
                   {!isCollapsed && (
                     <div className="space-y-1.5">
-                      {group.items.map((session) => {
-                        const dateStr = session.createdAt
-                          ? new Date(session.createdAt).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "";
-                        return (
-                          <div
-                            key={session.id}
-                            onClick={() => navigate(`/?chatId=${session.id}`)}
-                            className="group flex items-center justify-between p-3.5 bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-xl cursor-pointer transition-all duration-150"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-[var(--bg-hover)] flex items-center justify-center shrink-0 border border-[var(--border-color)]">
-                                <MessageSquare className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
-                                  {session.title || "Untitled Conversation"}
-                                </p>
-                                <p className="text-[11px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5">
-                                  <Clock className="w-3 h-3" strokeWidth={1.5} />
-                                  <span>{dateStr || "Just now"}</span>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {group.items.map((session) => (
+                        <HistorySessionItem
+                          key={session.id}
+                          session={session}
+                          onClick={() => navigate(`/?chatId=${session.id}`)}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
