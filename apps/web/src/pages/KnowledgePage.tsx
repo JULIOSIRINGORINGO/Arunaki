@@ -95,8 +95,13 @@ function FlowEditor() {
       const dataDocs = await resDocs.json();
       const dataEdges = await resEdges.json();
       
-      const docs = dataDocs.data || [];
-      const dbEdges = dataEdges.data || [];
+      const docs = (dataDocs.data || []).filter(
+        (doc: KnowledgeDoc) => doc.id !== "arunaki-rulebook" && doc.type !== "rules"
+      );
+      const visibleNodeIds = new Set(docs.map((d: KnowledgeDoc) => d.id));
+      const dbEdges = (dataEdges.data || []).filter(
+        (e: KnowledgeEdgeData) => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId)
+      );
       
       // Build nodes
       const initialNodes: Node[] = docs.map((doc: KnowledgeDoc) => ({

@@ -31,7 +31,6 @@ import { Context, Effect, Layer } from "effect"
 import path from "path"
 
 const ARUNAKI_REL = path.join(".arunaki", "ARUNAKI.md")
-const KNOWLEDGE_FILE = path.join(".arunaki", "knowledge.json")
 const CORRECTIONS_FILE = path.join(".arunaki", "user-corrections.jsonl")
 const MIN_REFRESH_GAP_MS = 30_000
 
@@ -138,83 +137,7 @@ export function applyCorrections(doc: string, corrections: string[]): string {
   return re.test(doc) ? doc.replace(re, section) : `${doc}\n\n${section}\n`
 }
 
-interface KnowledgeNode {
-  id: string
-  title: string
-  content: string
-  type: string
-  active: boolean
-  positionX: number
-  positionY: number
-  nodeColor: string
-  icon: string
-  city: string
-  urls: string
-  createdAt: string
-  [k: string]: unknown
-}
 
-interface KnowledgeStore {
-  nodes: KnowledgeNode[]
-  nextId: number
-}
-
-/** Dual-sync: keep the ARUNAKI rulebook visible in the UI Knowledge graph. */
-function syncKnowledge(fs: FSUtil.Service, directory: string, doc: string): Effect.Effect<void> {
-  return Effect.gen(function* () {
-    const raw = yield* fs
-      .readFileStringSafe(path.join(directory, KNOWLEDGE_FILE))
-      .pipe(Effect.orDie)
-    let store: KnowledgeStore
-    if (raw) {
-      try {
-        store = JSON.parse(raw) as KnowledgeStore
-      } catch {
-        store = { nodes: [], edges: [], nextId: 1 }
-      }
-    } else {
-      store = { nodes: [], edges: [], nextId: 1 }
-    }
-    const nodes = Array.isArray(store.nodes) ? store.nodes : []
-    if (!nodes.some((n) => n.id === "main-ai-node")) {
-      nodes.unshift({
-        id: "main-ai-node",
-        title: "Agent Core",
-        content: "Arunaki agent core node.",
-        type: "agent",
-        active: true,
-        positionX: 60,
-        positionY: 60,
-        nodeColor: "#6366F1",
-        icon: "bot",
-        city: "",
-        urls: "[]",
-        createdAt: new Date().toISOString(),
-      })
-    }
-    const existing = nodes.find((n) => n.id === "arunaki-rulebook")
-    const node: KnowledgeNode = {
-      id: "arunaki-rulebook",
-      title: "ARUNAKI.md (Living Rules)",
-      content: doc,
-      type: "rules",
-      active: true,
-      positionX: 60,
-      positionY: 400,
-      nodeColor: "#F59E0B",
-      icon: "book-open",
-      city: "",
-      urls: "[]",
-      createdAt: existing?.createdAt ?? new Date().toISOString(),
-    }
-    if (existing) Object.assign(existing, node)
-    else nodes.push(node)
-    const edges = Array.isArray(store.edges) ? store.edges : []
-    yield* fs
-      .writeJson(path.join(directory, KNOWLEDGE_FILE), { nodes, edges, nextId: nodes.length + 2 }, 0o600)
-      .pipe(Effect.orDie)
-  }).pipe(Effect.catch(() => Effect.void))
-}
 
 const layer = Layer.effect(
   Service,
@@ -241,15 +164,13 @@ const layer = Layer.effect(
           const target = path.join(directory, ARUNAKI_REL)
           yield* fs.ensureDir(path.dirname(target)).pipe(Effect.orDie)
           yield* fs.writeFileString(target, doc).pipe(Effect.orDie)
-
-          yield* syncKnowledge(fs, directory, doc)
           return doc
         })
 
         const readRulebook = (): Effect.Effect<string> =>
           fs
             .readFileStringSafe(path.join(directory, ARUNAKI_REL))
-            .pipe(Effect.map((raw) => raw ?? ""))
+            .pipe(Effect.map((raw) => raw ?? ""), Effect.orDie)
 
         const ensureActive = Effect.fn("Memory.ensureActive")(function* () {
           // Merely materialize the per-folder instance state so the
@@ -295,13 +216,13 @@ const layer = Layer.effect(
           yield* appendCorrectionLog(sessionID, userText)
 
           const agentName =
-            lastUser.info.agent ?? (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(undefined)))?.agent
-          const ag = agentName ? yield* agents.get(agentName).pipe(Effect.orElseSucceed(undefined)) : undefined
+            lastUser.info.agent ?? (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(() => undefined)))?.agent
+          const ag = agentName ? yield* agents.get(agentName).pipe(Effect.orElseSucceed(() => undefined)) : undefined
           const modelRef = lastUser.info.model ??
-            (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(undefined)))?.model
+            (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(() => undefined)))?.model
           if (!ag || !modelRef) return
           const model = yield* provider.getModel(modelRef.providerID, modelRef.modelID).pipe(
-            Effect.orElseSucceed(undefined),
+            Effect.orElseSucceed(() => undefined),
           )
           if (!model) return
 
@@ -353,7 +274,6 @@ const layer = Layer.effect(
           const next = applyCorrections(current || synthesize(directory, []), [rule])
           const target = path.join(directory, ARUNAKI_REL)
           yield* fs.writeFileString(target, next).pipe(Effect.orDie)
-          yield* syncKnowledge(fs, directory, next)
         })
 
         let lastRefresh = 0

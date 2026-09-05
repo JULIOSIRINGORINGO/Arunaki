@@ -126,7 +126,8 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
 
     const listimpl = Effect.fn("Knowledge.list")(function* () {
       const store = yield* load()
-      return { data: store.nodes.map(toNodeSchema) }
+      const visibleNodes = store.nodes.filter((n) => n.id !== "arunaki-rulebook" && n.type !== "rules")
+      return { data: visibleNodes.map(toNodeSchema) }
     })
 
     const getImpl = Effect.fn("Knowledge.get")(function* (ctx: { params: { id: string } }) {
@@ -226,7 +227,14 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
 
     const listEdgesImpl = Effect.fn("Knowledge.listEdges")(function* () {
       const store = yield* load()
-      return { data: store.edges.map((e) => ({ ...e })) }
+      const visibleNodeIds = new Set(
+        store.nodes.filter((n) => n.id !== "arunaki-rulebook" && n.type !== "rules").map((n) => n.id),
+      )
+      return {
+        data: store.edges
+          .filter((e) => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId))
+          .map((e) => ({ ...e })),
+      }
     })
 
     const createEdgeImpl = Effect.fn("Knowledge.createEdge")(function* (ctx: {
