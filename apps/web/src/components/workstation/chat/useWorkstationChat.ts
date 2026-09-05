@@ -105,13 +105,35 @@ export function useWorkstationChat({
     toast.info("Generation stopped");
   }, []);
 
-  const handleNewChat = useCallback(() => {
-    setActiveChatId("");
-    localStorage.removeItem("arunaki_active_chat_id");
-    setOptimisticMessages([]);
+  const handleNewChat = useCallback(async () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
     setLiveStatus(null);
+    setOptimisticMessages([]);
+
+    try {
+      const session = await createSession({
+        directory: activeFolder || undefined,
+      });
+      if (session && session.id) {
+        setActiveChatId(session.id);
+        localStorage.setItem("arunaki_active_chat_id", session.id);
+        queryClient.setQueryData(["chat-messages", session.id], []);
+        queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      } else {
+        setActiveChatId("");
+        localStorage.removeItem("arunaki_active_chat_id");
+      }
+    } catch {
+      setActiveChatId("");
+      localStorage.removeItem("arunaki_active_chat_id");
+    }
+    queryClient.setQueryData(["chat-messages", ""], []);
     toast.info("New conversation session ready");
-  }, [setActiveChatId]);
+  }, [activeFolder, setActiveChatId, queryClient]);
 
   const handleSendMessage = async (textToSend: string) => {
     const userText = textToSend ? textToSend.trim() : "";

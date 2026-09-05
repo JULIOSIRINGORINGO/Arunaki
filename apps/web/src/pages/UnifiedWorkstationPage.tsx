@@ -75,19 +75,44 @@ export function UnifiedWorkstationPage() {
     return () => window.removeEventListener("arunaki-folder-change", handleFolderChange);
   }, [activeFolder, setSearchParams]);
 
-  // Sync activeChatId with URL and localStorage
+  // Sync external urlChatId changes into activeChatId
+  const prevUrlChatIdRef = useRef<string | null>(urlChatId);
   useEffect(() => {
-    if (urlChatId && urlChatId !== activeChatId) {
-      setActiveChatId(urlChatId);
-      localStorage.setItem("arunaki_active_chat_id", urlChatId);
-    } else if (!urlChatId && activeChatId) {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set("chatId", activeChatId);
-        return next;
-      }, { replace: true });
+    if (urlChatId !== prevUrlChatIdRef.current) {
+      prevUrlChatIdRef.current = urlChatId;
+      setActiveChatId(urlChatId || "");
+      if (urlChatId) {
+        localStorage.setItem("arunaki_active_chat_id", urlChatId);
+      } else {
+        localStorage.removeItem("arunaki_active_chat_id");
+      }
     }
-  }, [urlChatId, activeChatId, setSearchParams]);
+  }, [urlChatId]);
+
+  // Sync internal activeChatId changes back into URL & localStorage
+  useEffect(() => {
+    if (activeChatId) {
+      localStorage.setItem("arunaki_active_chat_id", activeChatId);
+      if (searchParams.get("chatId") !== activeChatId) {
+        prevUrlChatIdRef.current = activeChatId;
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("chatId", activeChatId);
+          return next;
+        }, { replace: true });
+      }
+    } else {
+      localStorage.removeItem("arunaki_active_chat_id");
+      if (searchParams.has("chatId")) {
+        prevUrlChatIdRef.current = null;
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("chatId");
+          return next;
+        }, { replace: true });
+      }
+    }
+  }, [activeChatId, searchParams, setSearchParams]);
 
   const openFolderParam = searchParams.get("openFolder");
   const openFolder = useCallback((folderPath: string) => {
@@ -96,6 +121,7 @@ export function UnifiedWorkstationPage() {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("folder", folderPath);
+      next.delete("chatId");
       return next;
     }, { replace: true });
     window.dispatchEvent(new Event("arunaki-folder-change"));
