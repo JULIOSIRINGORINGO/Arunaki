@@ -11,6 +11,12 @@ export interface Message {
   reasoning?: string;
 }
 
+export interface AttachedImage {
+  id: string;
+  name: string;
+  url: string;
+}
+
 export interface WorkspaceFile {
   id: string;
   name: string;
