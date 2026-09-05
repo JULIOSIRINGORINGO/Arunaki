@@ -68,89 +68,22 @@ function extractCanvasTitle(content: string): string {
   return "Data Canvas";
 }
 
-function formatMarkdownTable(tableString: string): string {
-  const lines = tableString.trim().split(/\r?\n/);
-  const parsedRows = lines.map(line => {
-    const cells = line.split("|");
-    if (cells.length > 0 && cells[0].trim() === "") cells.shift();
-    if (cells.length > 0 && cells[cells.length - 1].trim() === "") cells.pop();
-    return cells.map(c => c.trim());
-  });
-
-  const colWidths: number[] = [];
-  for (const row of parsedRows) {
-    for (let i = 0; i < row.length; i++) {
-      const cellLen = row[i].length;
-      if (colWidths[i] === undefined || cellLen > colWidths[i]) {
-        colWidths[i] = cellLen;
-      }
-    }
-  }
-
-  return parsedRows.map((row, rIdx) => {
-    const isSeparator = rIdx === 1 && row.every(c => /^[-:]+$/.test(c.replace(/\s/g, "")));
-    const formattedCells = row.map((cell, i) => {
-      const width = colWidths[i] || 1;
-      if (isSeparator) {
-        const hasLeftColon = cell.startsWith(":");
-        const hasRightColon = cell.endsWith(":");
-        let dashes = "-".repeat(width + 2);
-        if (hasLeftColon && hasRightColon) {
-          dashes = ":" + "-".repeat(width) + ":";
-        } else if (hasLeftColon) {
-          dashes = ":" + "-".repeat(width + 1);
-        } else if (hasRightColon) {
-          dashes = "-".repeat(width + 1) + ":";
-        }
-        return dashes;
-      }
-      return " " + cell.padEnd(width, " ") + " ";
-    });
-    return "|" + formattedCells.join("|") + "|";
-  }).join("\n");
-}
-
 function extractCanvasContent(llmText: string): string {
   if (!llmText) return "";
 
   // 1. Explicit [CANVAS]...[/CANVAS] block
   const completeMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*?)\s*\[\/CANVAS\]/i);
-  if (completeMatch?.[1]?.trim()) return completeMatch[1].trim();
+  if (completeMatch?.[1]?.trim() && completeMatch[1].trim().length >= 10) {
+    return completeMatch[1].trim();
+  }
 
-  // 2. Real-time streaming [CANVAS]...
+  // 2. Real-time streaming [CANVAS]... (only if meaningful content has started, at least 15 chars)
   const streamMatch = llmText.match(/\[CANVAS\]\s*([\s\S]*)$/i);
-  if (streamMatch?.[1]?.trim()) return streamMatch[1].trim();
-
-  // 3. Smart Canvas Codeblocks (Captures any deliverable text/code block)
-  const fencedMatch = llmText.match(/```(?:[a-zA-Z0-9_-]*)\s*\n([\s\S]*?)\n```/i);
-  if (fencedMatch?.[1]?.trim() && fencedMatch[1].trim().length > 20) {
-    return fencedMatch[1].trim();
+  if (streamMatch?.[1]?.trim() && streamMatch[1].trim().length >= 15) {
+    return streamMatch[1].trim();
   }
 
-  // 4. Smart Markdown Table Extraction
-  // Only triggers if the table looks like structured business data (has specific keywords, currency, or many columns)
-  if (llmText.includes("|") && (llmText.includes("---") || llmText.includes("-|-"))) {
-    const normalized = llmText.replace(/\|\|\s*\|/g, "|\n|");
-    // Match one or more full tables
-    const tableRegex = /\|[^\n]+\|\r?\n\|[-:\s|]+\|\r?\n(?:\|[^\n]+\|\r?\n?)+/g;
-    const tableMatches = normalized.match(tableRegex);
-    
-    if (tableMatches && tableMatches.length > 0) {
-      const firstTableText = tableMatches[0].trim();
-      const firstRow = firstTableText.split("\n")[0].toLowerCase();
-      
-      const columnsCount = (firstRow.match(/\|/g) || []).length - 1;
-      const hasDataKeywords = /harga|total|tanggal|price|amount|jumlah|date|keterangan|pengeluaran|pembelian|qty|kuantitas|status|id|nomor|no\.|biaya|cost|saldo|balance/i.test(firstRow);
-      const hasCurrency = /rp|\$|€|£|idr/i.test(normalized);
-      
-      // Don't extract simple conversational tables like "Folder List" (| Nama | Tipe |)
-      if (hasDataKeywords || hasCurrency || columnsCount >= 4) {
-        return tableMatches.map(t => formatMarkdownTable(t.trim())).join("\n\n");
-      }
-    }
-  }
-
-  // Conversational text, chit-chat, and bullet checklists stay in chat, never converted to Canvas
+  // Conversational text, codeblocks, tables, and normal chat answers stay in chat
   return "";
 }
 
@@ -561,18 +494,28 @@ export function UnifiedWorkstationPage() {
 
   const handleOpenFileTab = useCallback(
     async (filePath: string, fileName: string, content?: string, silent?: boolean) => {
-      const tabId = `file-${fileName}`;
-      const existing = tabs.find((t) => t.id === tabId || t.title === fileName);
-      if (existing) {
-        setActiveTabId(existing.id);
+      const cleanName = (fileName || "").trim();
+      if (!cleanName || cleanName === "." || cleanName === ".." || cleanName === activeFolder) {
+        return;
+      }
+      if (silent && !cleanName.includes(".")) {
         return;
       }
 
-      if (openingTabsRef.current.has(tabId) || openingTabsRef.current.has(fileName)) {
+      const tabId = `file-${cleanName}`;
+      const existing = tabs.find((t) => t.id === tabId || t.title === cleanName);
+      if (existing) {
+        if (!silent) {
+          setActiveTabId(existing.id);
+        }
+        return;
+      }
+
+      if (openingTabsRef.current.has(tabId) || openingTabsRef.current.has(cleanName)) {
         return;
       }
       openingTabsRef.current.add(tabId);
-      openingTabsRef.current.add(fileName);
+      openingTabsRef.current.add(cleanName);
 
       try {
         let fileContent = content || "";
@@ -603,17 +546,22 @@ export function UnifiedWorkstationPage() {
           } catch {}
         }
 
+        // CRITICAL: If silent (auto-opened in background) and file is empty or unreadable, NEVER open an empty dummy tab!
+        if (silent && (!fileContent || !fileContent.trim() || fileContent === "Empty document...")) {
+          return;
+        }
+
         const newTab: CenterTab = {
           id: tabId,
           type: "file",
-          title: fileName,
+          title: cleanName,
           path: filePath,
-          fileType: fileName.split(".").pop() || "txt",
+          fileType: cleanName.split(".").pop() || "txt",
           content: fileContent || "Empty document...",
         };
 
         setTabs((prev) => {
-          if (prev.some((t) => t.id === tabId || t.title === fileName || (filePath && t.path === filePath))) {
+          if (prev.some((t) => t.id === tabId || t.title === cleanName || (filePath && t.path === filePath))) {
             return prev;
           }
           return [...prev, newTab];
@@ -621,11 +569,11 @@ export function UnifiedWorkstationPage() {
         setActiveTabId(tabId);
       } catch {
         if (!silent) {
-          toast.error(`Failed to read file ${fileName}`);
+          toast.error(`Failed to read file ${cleanName}`);
         }
       } finally {
         openingTabsRef.current.delete(tabId);
-        openingTabsRef.current.delete(fileName);
+        openingTabsRef.current.delete(cleanName);
       }
     },
     [tabs, activeFolder]
@@ -899,7 +847,14 @@ export function UnifiedWorkstationPage() {
               refetchFiles();
               reloadOpenTabsContent();
 
-              // Auto-open file tab in center panel if AI is editing a file and it's not open yet!
+              // Auto-open file tab in center panel ONLY if AI is actively editing/writing a document!
+              // Read-only inspection tools (read, glob, grep, list_dir, desktop_action) must NEVER auto-open tabs!
+              const EDIT_FILE_TOOLS = new Set([
+                "write", "edit", "write_to_file", "replace_file_content",
+                "apply_patch", "edit_document", "create_file"
+              ]);
+              const isEditingTool = EDIT_FILE_TOOLS.has(toolName.toLowerCase());
+
               const toolData = event.data || {};
               const targetPath =
                 toolData.args?.TargetFile ||
@@ -907,13 +862,14 @@ export function UnifiedWorkstationPage() {
                 toolData.args?.targetFile ||
                 toolData.targetFile ||
                 toolData.path;
-              if (targetPath && typeof targetPath === "string") {
+
+              if (isEditingTool && targetPath && typeof targetPath === "string") {
                 const fileName = targetPath.split(/[/\\]/).pop();
-                if (fileName) {
+                if (fileName && fileName.includes(".") && fileName !== "." && fileName !== ".." && fileName !== activeFolder) {
                   handleOpenFileTab(targetPath, fileName, undefined, true);
-                }
-                if (isDocumentPath(targetPath) && !producedFilesRef.current.includes(targetPath)) {
-                  producedFilesRef.current.push(targetPath);
+                  if (isDocumentPath(targetPath) && !producedFilesRef.current.includes(targetPath)) {
+                    producedFilesRef.current.push(targetPath);
+                  }
                 }
               }
             } else if (event.type === "text_delta" && event.data) {
@@ -944,7 +900,7 @@ export function UnifiedWorkstationPage() {
                 );
               });
               const canvasText = extractCanvasContent(accumulatedResponseText);
-              if (canvasText) {
+              if (canvasText && canvasText.trim().length >= 10) {
                 const canvasTabId = "tab-canvas-active";
                 const canvasTitle = extractCanvasTitle(canvasText);
                 const currentTimeStr = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
@@ -966,7 +922,7 @@ export function UnifiedWorkstationPage() {
                   }
                   return [...prev, newTab];
                 });
-                setActiveTabId(canvasTabId);
+                setActiveTabId((currentActive) => currentActive || canvasTabId);
               }
             } else if (event.type === "done") {
               setIsStreaming(false);
@@ -1040,7 +996,7 @@ export function UnifiedWorkstationPage() {
                 }
 
               const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
-              if (canvasText) {
+              if (canvasText && canvasText.trim().length >= 10) {
                 const canvasTabId = "tab-canvas-active";
                 const canvasTitle = extractCanvasTitle(canvasText);
                 const currentTimeStr = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
