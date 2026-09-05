@@ -127,24 +127,32 @@ const layer = Layer.effect(
           if (raw) {
             const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> }
             const activeNodes = (store.nodes || []).filter(
-              (n) => n.active && n.id !== "main-ai-node" && n.content && n.content.trim().length > 0,
+              (n) =>
+                n.active &&
+                n.id !== "main-ai-node" &&
+                ((n.content && n.content.trim().length > 0 && n.content.trim() !== "Enter knowledge content here...") ||
+                  (n.urls && n.urls !== "[]" && n.urls.length > 2)),
             )
             require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Found active nodes: ${activeNodes.length}\n`)
             
             if (activeNodes.length > 0) {
               const knowledgeLines = [
                 "<knowledge_base>",
-                "The following knowledge nodes are provided by the user as reference data. Use them to answer questions accurately.",
+                "The following knowledge nodes are connected by the user as official data sources (e.g. Google Sheets, product catalog, inventory databases, guidelines):",
                 ...activeNodes.flatMap((node) => {
                   const lines = [
                     `  <knowledge title="${node.title}" type="${node.type}">`,
-                    `    ${node.content}`,
                   ]
+                  const hasRealContent = node.content && node.content.trim().length > 0 && node.content.trim() !== "Enter knowledge content here..."
+                  if (hasRealContent) {
+                    lines.push(`    ${node.content}`)
+                  }
                   if (node.urls) {
                     try {
                       const urls = JSON.parse(node.urls) as string[]
                       if (urls.length > 0) {
                         lines.push(`    <urls>${urls.join(", ")}</urls>`)
+                        lines.push(`    Data Source URL: ${urls.join(", ")}`)
                       }
                     } catch {}
                   }
@@ -153,7 +161,12 @@ const layer = Layer.effect(
                 }),
                 "</knowledge_base>",
                 "",
-                "IMPORTANT: When a knowledge node contains a URL (like a Google Sheets link), you MUST use the browse_website tool to fetch the actual data from that URL before answering the user's question. Do NOT guess or say you cannot access it.",
+                "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
+                "- The user has connected external knowledge nodes (e.g. Google Sheets, product catalog, price lists).",
+                "- When the user asks about stock, inventory, products, prices, or data related to any connected node:",
+                "  1. ALWAYS check the <knowledge_base> first. If the data is present in a knowledge node above, use it directly.",
+                "  2. If a knowledge node has a Data Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE the browse_website tool on that URL to inspect the live sheet/data!",
+                "  3. NEVER claim that data or stock is missing from the workspace without checking these connected knowledge nodes and their URLs first!",
               ]
               knowledgeContext = knowledgeLines.join("\n")
               require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Successfully built knowledge context.\n`)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Panel } from '@xyflow/react';
-import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { X, Save, Trash2, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
@@ -98,17 +98,75 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     return results;
   }, [city]);
 
+  const [syncing, setSyncing] = useState(false);
+
   if (!nodeId || nodeId === 'main-ai-node') return null;
+
+  const handleSyncUrl = async () => {
+    const targetUrl = (urls[0] || '').trim();
+    if (!targetUrl) {
+      toast.error("Please enter a website or Google Sheets URL first");
+      return;
+    }
+    setSyncing(true);
+    try {
+      const gsMatch = targetUrl.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)(?:.*[#?&]gid=(\d+))?/);
+      let fetchUrl = targetUrl;
+      if (gsMatch) {
+        const sheetId = gsMatch[1];
+        const gid = gsMatch[2];
+        fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${gid}` : ''}`;
+      }
+
+      const res = await fetch(fetchUrl);
+      if (!res.ok) {
+        throw new Error(`Fetch failed (${res.status}). If using Google Sheets, verify sharing is set to 'Anyone with the link can view'.`);
+      }
+      const text = await res.text();
+      if (gsMatch) {
+        setContent("```csv\n" + text.trim() + "\n```");
+      } else {
+        setContent(text.slice(0, 10000));
+      }
+      toast.success("Data successfully fetched from URL!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch data from URL");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!nodeData) return;
     setSaving(true);
     try {
+      let finalContent = content;
+      const isPlaceholder =
+        !finalContent.trim() ||
+        finalContent.trim() === "Enter knowledge content here..." ||
+        finalContent.includes("JavaScript tidak diaktifkan");
+
+      if (isPlaceholder && urls[0]?.trim()) {
+        try {
+          const targetUrl = urls[0].trim();
+          const gsMatch = targetUrl.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)(?:.*[#?&]gid=(\d+))?/);
+          const fetchUrl = gsMatch
+            ? `https://docs.google.com/spreadsheets/d/${gsMatch[1]}/export?format=csv${gsMatch[2] ? `&gid=${gsMatch[2]}` : ''}`
+            : targetUrl;
+          const r = await fetch(fetchUrl);
+          if (r.ok) {
+            const txt = await r.text();
+            finalContent = gsMatch ? "```csv\n" + txt.trim() + "\n```" : txt.slice(0, 10000);
+            setContent(finalContent);
+          }
+        } catch {}
+      }
+
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title,
-          content,
+          content: finalContent,
           urls: urls.map((u) => u.trim()).filter(Boolean),
           city,
         }),
@@ -236,6 +294,21 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 placeholder="https://example.com"
                 className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
               />
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-[var(--text-dim)]">
+                  Supports Google Sheets & Web Pages
+                </span>
+                <button
+                  type="button"
+                  disabled={syncing || !urls[0]?.trim()}
+                  onClick={handleSyncUrl}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--border-strong)] text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer disabled:opacity-40"
+                  title="Extract live CSV/Markdown data from this URL into the content area below"
+                >
+                  <RefreshCw className={cn("w-3 h-3", syncing && "animate-spin")} />
+                  <span>{syncing ? "Syncing..." : "Sync / Fetch Data"}</span>
+                </button>
+              </div>
               {urls.length > 1 && (
                 <div className="text-[10px] text-[var(--text-muted)]">
                   {urls.length - 1} pages discovered from this site (categories, products...)

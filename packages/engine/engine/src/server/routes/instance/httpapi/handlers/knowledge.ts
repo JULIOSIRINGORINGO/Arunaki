@@ -157,6 +157,60 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       return { data: toNodeSchema(store.nodes[store.nodes.length - 1]!) }
     })
 
+async function fetchUrlContent(rawUrl: string): Promise<string> {
+  const cleanUrl = rawUrl.trim()
+  if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+    return ""
+  }
+
+  // Auto-detect Google Sheets and convert to CSV export format
+  const gsMatch = cleanUrl.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)(?:.*[#?&]gid=(\d+))?/)
+  if (gsMatch) {
+    const sheetId = gsMatch[1]
+    const gid = gsMatch[2]
+    const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${gid}` : ""}`
+    try {
+      const res = await fetch(exportUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      })
+      if (res.ok) {
+        const text = await res.text()
+        return "```csv\n" + text.trim() + "\n```"
+      }
+    } catch (e) {
+      console.error("[fetchUrlContent] Google Sheet export error:", e)
+    }
+  }
+
+  // Generic fetch for text/markdown/html
+  try {
+    const res = await fetch(cleanUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    })
+    if (res.ok) {
+      const text = await res.text()
+      if (text.includes("<html") || text.includes("<body")) {
+        const stripped = text
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .trim()
+        return stripped.slice(0, 5000)
+      }
+      return text.slice(0, 10000)
+    }
+  } catch (e) {
+    console.error("[fetchUrlContent] URL fetch error:", e)
+  }
+
+  return ""
+}
+
     const updateImpl = Effect.fn("Knowledge.update")(function* (ctx: {
       params: { id: string }
       payload: typeof UpdateNodeInput.Type
@@ -164,8 +218,25 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       const store = yield* load()
       const node = yield* requireNode(store, ctx.params.id)
       node.title = ctx.payload.title
-      node.content = ctx.payload.content
-      node.urls = JSON.stringify(ctx.payload.urls)
+
+      let content = ctx.payload.content || ""
+      const urls = ctx.payload.urls || []
+      const isPlaceholder =
+        !content.trim() ||
+        content.trim() === "Enter knowledge content here..." ||
+        content.includes("JavaScript tidak diaktifkan")
+      if (isPlaceholder && urls.length > 0 && urls[0]) {
+        const fetched = yield* Effect.tryPromise({
+          try: () => fetchUrlContent(urls[0]),
+          catch: () => "",
+        }).pipe(Effect.orElseSucceed(() => ""))
+        if (fetched) {
+          content = fetched
+        }
+      }
+
+      node.content = content
+      node.urls = JSON.stringify(urls)
       node.city = ctx.payload.city
       yield* save(store)
       return { data: toNodeSchema(node) }
