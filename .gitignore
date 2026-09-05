@@ -56,3 +56,5 @@ packages/arunaki-poe-auth/dist/*.map
 
 
 arunaki.json
+
+.arunaki/

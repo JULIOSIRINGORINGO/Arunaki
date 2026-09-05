@@ -4,13 +4,10 @@ import { Effect, Layer, Option, Schema } from "effect"
 import { HttpClient, HttpServerRequest } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import * as path from "node:path"
-import * as puppeteer from "puppeteer"
-import TurndownService from "turndown"
 import { InstanceHttpApi } from "../api"
 import { instanceContextLayer } from "../middleware/instance-context"
 import { workspaceRoutingLayer } from "../middleware/workspace-routing"
 import {
-  ComposeInput,
   CreateEdgeInput,
   CreateNodeInput,
   KnowledgeError,
@@ -227,11 +224,6 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       return { data: toNodeSchema(store.nodes[store.nodes.length - 1]!) }
     })
 
-    const composeImpl = Effect.fn("Knowledge.compose")(function* (ctx: { payload: typeof ComposeInput.Type }) {
-      const content = yield* fetchAsMarkdown(ctx.payload.url)
-      return { data: { title: titleFromUrl(ctx.payload.url), content, urls: [ctx.payload.url] } }
-    })
-
     const listEdgesImpl = Effect.fn("Knowledge.listEdges")(function* () {
       const store = yield* load()
       return { data: store.edges.map((e) => ({ ...e })) }
@@ -270,7 +262,6 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       .handle("position", positionImpl)
       .handle("toggle", toggleImpl)
       .handleRaw("upload", uploadImpl)
-      .handle("compose", composeImpl)
       .handle("listEdges", listEdgesImpl)
       .handle("createEdge", createEdgeImpl)
       .handle("removeEdge", removeEdgeImpl)
@@ -279,65 +270,6 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
 
 function titleFromFilename(filename: string): string {
   return path.basename(filename).replace(/\.[^.]+$/, "") || "Uploaded file"
-}
-
-function titleFromUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "") || "Web page"
-  } catch {
-    return "Web page"
-  }
-}
-
-function fetchAsMarkdown(url: string): Effect.Effect<string, KnowledgeError> {
-  return Effect.gen(function* () {
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      return yield* Effect.fail(new KnowledgeError({ message: "URL must start with http:// or https://", status: 400 }))
-    }
-
-    const html = yield* Effect.tryPromise({
-      try: async () => {
-        const browser = await puppeteer.launch({
-          headless: true,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        })
-        const page = await browser.newPage()
-        await page.setUserAgent(
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-        )
-
-        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 })
-
-        const buttons = await page.$$("button, div[role=\"button\"], a")
-        for (const btn of buttons) {
-          const text = await page.evaluate((el: any) => el.textContent, btn)
-          if (text && text.toLowerCase().includes("pesanan grosir")) {
-            await btn.click().catch(() => {})
-            await new Promise((r) => setTimeout(r, 2000))
-            break
-          }
-        }
-
-        await new Promise((r) => setTimeout(r, 1000))
-
-        const content = await page.content()
-        await browser.close()
-        return content
-      },
-      catch: (e) => new KnowledgeError({ message: `Failed to fetch URL with Puppeteer: ${String(e)}`, status: 400 }),
-    })
-
-    if (!html) return ""
-    const turndown = new TurndownService({
-      headingStyle: "atx",
-      hr: "---",
-      bulletListMarker: "-",
-      codeBlockStyle: "fenced",
-      emDelimiter: "*",
-    })
-    turndown.remove(["script", "style", "meta", "link"])
-    return turndown.turndown(html)
-  })
 }
 
 function parseUpload(request: HttpServerRequest.HttpServerRequest): Effect.Effect<

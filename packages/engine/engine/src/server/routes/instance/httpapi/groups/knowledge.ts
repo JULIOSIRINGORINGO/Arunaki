@@ -71,15 +71,7 @@ export const CreateEdgeInput = Schema.Struct({
   label: Schema.optional(Schema.String),
 })
 
-export const ComposeInput = Schema.Struct({
-  url: Schema.String,
-})
 
-export const ComposeResult = Schema.Struct({
-  title: Schema.String,
-  content: Schema.String,
-  urls: Schema.Array(Schema.String),
-})
 
 export const KnowledgeApi = HttpApi.make("knowledge")
   .add(
@@ -179,18 +171,6 @@ export const KnowledgeApi = HttpApi.make("knowledge")
             identifier: "knowledge.upload",
             summary: "Upload knowledge file",
             description: "Upload a document file (TXT, Markdown, CSV, JSON) to create a knowledge node.",
-          }),
-        ),
-        HttpApiEndpoint.post("compose", `${uiRoot}/compose`, {
-          query: WorkspaceRoutingQuery,
-          payload: ComposeInput,
-          success: described(Schema.Struct({ data: ComposeResult }), "Composed content"),
-          error: KnowledgeError,
-        }).annotateMerge(
-          OpenApi.annotations({
-            identifier: "knowledge.compose",
-            summary: "Compose from URL",
-            description: "Fetch a website URL and extract its content as Markdown.",
           }),
         ),
         HttpApiEndpoint.get("listEdges", `${uiRoot}/edges`, {

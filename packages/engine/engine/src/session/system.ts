@@ -1,5 +1,6 @@
 import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { Context, Effect, Layer } from "effect"
+import * as path from "node:path"
 
 import { InstanceState } from "@/effect/instance-state"
 
@@ -16,6 +17,7 @@ import { LocationServiceMap, locationServiceMapLayer } from "@arunaki/core/locat
 import { Reference } from "@arunaki/core/reference"
 import { MCP } from "@/mcp"
 import { PermissionV1 } from "@arunaki/core/v1/permission"
+import { FSUtil } from "@arunaki/core/fs-util"
 
 const CANVAS_INSTRUCTION = `
 # Canvas
@@ -61,7 +63,9 @@ const layer = Layer.effect(
 
     return Service.of({
       environment: Effect.fn("SystemPrompt.environment")(function* (model: Provider.Model) {
+        require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[SystemPrompt.environment] called for model ${model.api.id}\n`);
         const ctx = yield* InstanceState.context
+        const fsService = yield* FSUtil.Service
         const references = yield* Effect.gen(function* () {
           return (yield* (yield* Reference.Service).list()).filter((reference) => reference.description !== undefined)
         }).pipe(Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(ctx.directory) }))))
@@ -102,6 +106,63 @@ const layer = Layer.effect(
               `</env>`,
             ]
 
+        // Inject active Knowledge nodes as context for the AI
+        let knowledgeContext: string | undefined = undefined
+        try {
+          const paths = [
+            path.join(ctx.directory, ".arunaki", "knowledge.json"),
+            path.join(ctx.worktree, ".arunaki", "knowledge.json"),
+          ]
+          require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Checking paths: ${JSON.stringify(paths)}\n`)
+          
+          let raw: string | undefined = undefined
+          for (const knowledgePath of paths) {
+            raw = yield* fsService.readFileStringSafe(knowledgePath).pipe(Effect.orDie)
+            if (raw) {
+              require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Found data at: ${knowledgePath}\n`)
+              break
+            }
+          }
+          
+          if (raw) {
+            const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> }
+            const activeNodes = (store.nodes || []).filter(
+              (n) => n.active && n.id !== "main-ai-node" && n.content && n.content.trim().length > 0,
+            )
+            require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Found active nodes: ${activeNodes.length}\n`)
+            
+            if (activeNodes.length > 0) {
+              const knowledgeLines = [
+                "<knowledge_base>",
+                "The following knowledge nodes are provided by the user as reference data. Use them to answer questions accurately.",
+                ...activeNodes.flatMap((node) => {
+                  const lines = [
+                    `  <knowledge title="${node.title}" type="${node.type}">`,
+                    `    ${node.content}`,
+                  ]
+                  if (node.urls) {
+                    try {
+                      const urls = JSON.parse(node.urls) as string[]
+                      if (urls.length > 0) {
+                        lines.push(`    <urls>${urls.join(", ")}</urls>`)
+                      }
+                    } catch {}
+                  }
+                  lines.push(`  </knowledge>`)
+                  return lines
+                }),
+                "</knowledge_base>",
+                "",
+                "IMPORTANT: When a knowledge node contains a URL (like a Google Sheets link), you MUST use the browse_website tool to fetch the actual data from that URL before answering the user's question. Do NOT guess or say you cannot access it.",
+              ]
+              knowledgeContext = knowledgeLines.join("\n")
+              require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Successfully built knowledge context.\n`)
+            }
+          }
+        } catch (e) {
+          require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Error reading knowledge: ${e}\n`)
+        }
+
         return [
           envLines.join("\n"),
           references.length === 0
@@ -122,6 +183,7 @@ const layer = Layer.effect(
                   ]),
                 "</available_references>",
               ].join("\n"),
+          knowledgeContext,
           [
             "CRITICAL INSTRUCTION FOR DATA AND DOCUMENTS:",
             "If the user asks you to create, format, or organize data (like a table, report, list, plain text, or document), you MUST wrap the ENTIRE result inside a markdown code block (e.g. ```text ... ``` or ```markdown ... ```). Do NOT output raw markdown tables or text directly in the chat. Wrap it in a code block so it can be extracted to the Canvas.",

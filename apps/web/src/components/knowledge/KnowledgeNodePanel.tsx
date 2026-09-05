@@ -31,16 +31,13 @@ interface KnowledgeNodePanelProps {
 export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: KnowledgeNodePanelProps) {
   const [nodeData, setNodeData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   
   // Form state
   const [title, setTitle] = useState('');
   const [urls, setUrls] = useState<string[]>([]);
   const [city, setCity] = useState('');
   const [content, setContent] = useState('');
-  const [composing, setComposing] = useState(false);
-  const [composeError, setComposeError] = useState('');
-  
+  const [saving, setSaving] = useState(false);
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -103,59 +100,15 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
 
   if (!nodeId || nodeId === 'main-ai-node') return null;
 
-  const handleCompose = async () => {
-    const target = urls[0]?.trim() || '';
-    if (!/^https?:\/\/\S+$/i.test(target)) return;
-    setComposing(true);
-    setComposeError('');
-    try {
-      const res = await apiFetch(`${API_BASE}/knowledge/compose`, {
-        method: 'POST',
-        body: JSON.stringify({ url: target }),
-      });
-      const { data, error } = await res.json();
-      if (error) {
-        setComposeError(error.message);
-      } else {
-        setTitle(data.title);
-        setContent(data.content);
-        if (Array.isArray(data.urls) && data.urls.length > 0) {
-          setUrls(data.urls);
-        }
-      }
-    } catch (e: any) {
-      setComposeError(e.message || 'Fetch failed');
-    } finally {
-      setComposing(false);
-    }
-  };
-
   const handleSave = async () => {
     if (!nodeData) return;
     setSaving(true);
-    setComposeError('');
     try {
-      let finalContent = content;
-      if (!finalContent.trim()) {
-        const target = urls.find((u) => /^https?:\/\/\S+$/i.test(u.trim()))?.trim();
-        if (target) {
-          const res = await apiFetch(`${API_BASE}/knowledge/compose`, {
-            method: 'POST',
-            body: JSON.stringify({ url: target }),
-          });
-          const { data, error } = await res.json();
-          if (error) {
-            setComposeError(error.message);
-          } else {
-            finalContent = data.content;
-          }
-        }
-      }
       const res = await apiFetch(`${API_BASE}/knowledge/${nodeId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title,
-          content: finalContent,
+          content,
           urls: urls.map((u) => u.trim()).filter(Boolean),
           city,
         }),
@@ -322,16 +275,6 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                   </div>
                 )}
               </div>
-              {urls[0] && /^https?:\/\/\S+$/i.test(urls[0].trim()) && (
-                <button
-                  onClick={handleCompose}
-                  disabled={composing}
-                  className="px-2.5 py-1.5 rounded-xl text-[10px] font-semibold bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 disabled:opacity-50 cursor-pointer"
-                >
-                  {composing ? 'Fetching...' : 'Fetch URL → Draft'}
-                </button>
-              )}
-              {composeError && <div className="text-[10px] text-red-500">{composeError}</div>}
             </div>
 
             <div className="space-y-1.5">

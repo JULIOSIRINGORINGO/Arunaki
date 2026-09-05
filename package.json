@@ -59,6 +59,7 @@
   "dependencies": {
     "iterare": "^1.2.1",
     "pdf-lib": "^1.17.1",
+    "puppeteer": "^25.10.0",
     "typescript": "catalog:"
   }
 }
