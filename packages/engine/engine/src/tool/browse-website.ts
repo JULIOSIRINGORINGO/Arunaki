@@ -108,21 +108,45 @@ async function browseWithPuppeteer(params: {
       "show more",
       "lihat semua",
       "view all",
+      "lokasi",
+      "locations",
+      "0 locations",
+      "pilih lokasi",
+      "select location",
+      "cabang",
+      "branches"
     ]
-    const clickableAll = await page.$$('button, a, div[role="button"], span[role="button"], [onclick]')
     const clickedTexts: string[] = []
-    for (const el of clickableAll) {
-      const text = await page.evaluate((e: Element) => (e.textContent || "").trim(), el)
-      if (!text) continue
-      const lower = text.toLowerCase()
-      for (const keyword of autoClickKeywords) {
-        if (lower.includes(keyword) && !clickedTexts.includes(lower)) {
-          await el.click().catch(() => {})
-          clickedTexts.push(lower)
-          await new Promise((r) => setTimeout(r, 2500))
-          break
+    
+    // We do up to 3 passes to handle multi-step reveals (e.g., click "Pesanan Grosir" -> reveals "0 Locations" -> click "0 Locations")
+    for (let pass = 0; pass < 3; pass++) {
+      let clickedInPass = false;
+      const clickableAll = await page.$$('button, a, div[role="button"], span[role="button"], [onclick], div')
+      
+      for (const el of clickableAll) {
+        const text = await page.evaluate((e: Element) => {
+          // Avoid extracting massive text from giant wrapper divs
+          if (e.children.length === 0) return (e.textContent || "").trim();
+          const t = (e.textContent || "").trim();
+          return t.length < 40 ? t : "";
+        }, el)
+        
+        if (!text) continue
+        const lower = text.toLowerCase()
+        
+        for (const keyword of autoClickKeywords) {
+          if (lower.includes(keyword) && !clickedTexts.includes(lower)) {
+            await el.click().catch(() => {})
+            clickedTexts.push(lower)
+            await new Promise((r) => setTimeout(r, 2000))
+            clickedInPass = true
+            break
+          }
         }
+        if (clickedInPass) break // Break inner loop to re-scan DOM with new pass
       }
+      
+      if (!clickedInPass) break // If we found nothing new to click, stop passes
     }
 
     // Wait a moment for any final rendering
