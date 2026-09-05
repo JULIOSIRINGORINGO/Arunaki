@@ -1,6 +1,7 @@
 import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { Context, Effect, Layer } from "effect"
 import * as path from "node:path"
+import * as fsSync from "node:fs"
 
 import { InstanceState } from "@/effect/instance-state"
 
@@ -17,7 +18,6 @@ import { LocationServiceMap, locationServiceMapLayer } from "@arunaki/core/locat
 import { Reference } from "@arunaki/core/reference"
 import { MCP } from "@/mcp"
 import { PermissionV1 } from "@arunaki/core/v1/permission"
-import { FSUtil } from "@arunaki/core/fs-util"
 
 const CANVAS_INSTRUCTION = `
 # Canvas
@@ -63,9 +63,7 @@ const layer = Layer.effect(
 
     return Service.of({
       environment: Effect.fn("SystemPrompt.environment")(function* (model: Provider.Model) {
-        require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[SystemPrompt.environment] called for model ${model.api.id}\n`);
         const ctx = yield* InstanceState.context
-        const fsService = yield* FSUtil.Service
         const references = yield* Effect.gen(function* () {
           return (yield* (yield* Reference.Service).list()).filter((reference) => reference.description !== undefined)
         }).pipe(Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(ctx.directory) }))))
@@ -113,17 +111,17 @@ const layer = Layer.effect(
             path.join(ctx.directory, ".arunaki", "knowledge.json"),
             path.join(ctx.worktree, ".arunaki", "knowledge.json"),
           ]
-          require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Checking paths: ${JSON.stringify(paths)}\n`)
-          
+
           let raw: string | undefined = undefined
           for (const knowledgePath of paths) {
-            raw = yield* fsService.readFileStringSafe(knowledgePath).pipe(Effect.orDie)
-            if (raw) {
-              require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Found data at: ${knowledgePath}\n`)
-              break
+            if (fsSync.existsSync(knowledgePath)) {
+              try {
+                raw = fsSync.readFileSync(knowledgePath, "utf-8")
+                if (raw) break
+              } catch {}
             }
           }
-          
+
           if (raw) {
             const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> }
             const activeNodes = (store.nodes || []).filter(
@@ -133,8 +131,7 @@ const layer = Layer.effect(
                 ((n.content && n.content.trim().length > 0 && n.content.trim() !== "Enter knowledge content here...") ||
                   (n.urls && n.urls !== "[]" && n.urls.length > 2)),
             )
-            require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Found active nodes: ${activeNodes.length}\n`)
-            
+
             if (activeNodes.length > 0) {
               const knowledgeLines = [
                 "<knowledge_base>",
@@ -169,12 +166,9 @@ const layer = Layer.effect(
                 "  3. NEVER claim that data or stock is missing from the workspace without checking these connected knowledge nodes and their URLs first!",
               ]
               knowledgeContext = knowledgeLines.join("\n")
-              require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Successfully built knowledge context.\n`)
             }
           }
-        } catch (e) {
-          require("node:fs").appendFileSync("E:\\JS\\Arunika\\knowledge-debug.log", `[Knowledge Injection] Error reading knowledge: ${e}\n`)
-        }
+        } catch {}
 
         return [
           envLines.join("\n"),
