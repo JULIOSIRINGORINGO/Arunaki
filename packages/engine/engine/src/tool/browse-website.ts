@@ -121,11 +121,13 @@ async function browseWithPuppeteer(params: {
     // We do up to 3 passes to handle multi-step reveals (e.g., click "Pesanan Grosir" -> reveals "0 Locations" -> click "0 Locations")
     for (let pass = 0; pass < 3; pass++) {
       let clickedInPass = false;
-      const clickableAll = await page.$$('button, a, div[role="button"], span[role="button"], [onclick], div')
+      const clickableAll = await page.$$('button, a, [role="button"], [onclick], div, span')
       
       for (const el of clickableAll) {
-        const text = await page.evaluate((e: Element) => {
-          // Avoid extracting massive text from giant wrapper divs
+        const tagName = await page.evaluate(e => e.tagName.toLowerCase(), el)
+        const role = await page.evaluate(e => e.getAttribute('role'), el)
+        
+        const text = await page.evaluate((e) => {
           if (e.children.length === 0) return (e.textContent || "").trim();
           const t = (e.textContent || "").trim();
           return t.length < 40 ? t : "";
@@ -134,8 +136,13 @@ async function browseWithPuppeteer(params: {
         if (!text) continue
         const lower = text.toLowerCase()
         
+        // Strict matching for generic div/span that are not explicitly interactive
+        const isGeneric = (tagName === 'div' || tagName === 'span') && role !== 'button'
+        
         for (const keyword of autoClickKeywords) {
-          if (lower.includes(keyword) && !clickedTexts.includes(lower)) {
+          const isMatch = isGeneric ? lower === keyword : lower.includes(keyword)
+          
+          if (isMatch && !clickedTexts.includes(lower)) {
             await el.click().catch(() => {})
             clickedTexts.push(lower)
             await new Promise((r) => setTimeout(r, 2000))
@@ -143,14 +150,13 @@ async function browseWithPuppeteer(params: {
             break
           }
         }
-        if (clickedInPass) break // Break inner loop to re-scan DOM with new pass
       }
       
-      if (!clickedInPass) break // If we found nothing new to click, stop passes
+      if (!clickedInPass) break // If we found nothing new to click in this entire pass, stop passes
     }
 
-    // Wait a moment for any final rendering
-    await new Promise((r) => setTimeout(r, 500))
+    // Wait for any final rendering or network fetches (e.g. skeleton loaders, stock API calls)
+    await new Promise((r) => setTimeout(r, 5000))
 
     // Extract the fully rendered HTML
     const html = await page.content()
