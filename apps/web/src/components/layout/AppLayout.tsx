@@ -245,31 +245,22 @@ export function AppLayout() {
           <UnifiedWorkstationPage />
         </div>
 
-        {/* Sub-pages: Fast zero-latency keep-alive render */}
-        <div
-          className={cn(
-            "w-full h-full flex flex-col flex-1",
-            location.pathname !== "/knowledge" && "hidden"
-          )}
-        >
-          <KnowledgePage />
-        </div>
-        <div
-          className={cn(
-            "w-full h-full flex flex-col flex-1",
-            location.pathname !== "/history" && "hidden"
-          )}
-        >
-          <HistoryPage />
-        </div>
-        <div
-          className={cn(
-            "w-full h-full flex flex-col flex-1",
-            location.pathname !== "/settings" && "hidden"
-          )}
-        >
-          <SettingsPage />
-        </div>
+        {/* Sub-pages: Rendered when active so ReactFlow and layout dimensions measure accurately */}
+        {location.pathname === "/knowledge" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <KnowledgePage />
+          </div>
+        )}
+        {location.pathname === "/history" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <HistoryPage />
+          </div>
+        )}
+        {location.pathname === "/settings" && (
+          <div className="w-full h-full flex flex-col flex-1 animate-in fade-in duration-100">
+            <SettingsPage />
+          </div>
+        )}
       </main>
 
       {/* 3. FOOTER BAWAH: Left Path Info, Center Capsule Nav, Right Status */}

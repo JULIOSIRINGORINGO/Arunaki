@@ -133,8 +133,11 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Kno
         onClick={() => data.onSelect?.(data.id)}
         className="relative group w-24 h-24 flex items-center justify-center cursor-pointer select-none"
       >
-        {/* Logo only, no background */}
-        <ArunakiLogo className="w-16 h-16 text-[var(--text-primary)] transition-transform duration-300 group-hover:scale-110" />
+        {/* Logo only, guaranteed 64x64 dimensions */}
+        <ArunakiLogo
+          size={64}
+          className="text-[var(--text-primary)] transition-transform duration-300 group-hover:scale-110 drop-shadow-xs"
+        />
 
         {/* 4 Invisible Connection Ports on the edges */}
         {/* Top */}

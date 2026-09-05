@@ -85,6 +85,23 @@ function FlowEditor() {
       const docs = (dataDocs.data || []).filter(
         (doc: KnowledgeDoc) => doc.id !== "arunaki-rulebook" && doc.type !== "rules"
       );
+
+      // Guarantee main-ai-node is always present in the graph
+      if (!docs.some((d: KnowledgeDoc) => d.id === "main-ai-node")) {
+        docs.unshift({
+          id: "main-ai-node",
+          title: "Agent Core",
+          content: "Central AI agent node",
+          type: "agent",
+          active: true,
+          positionX: 300,
+          positionY: 200,
+          nodeColor: "#8B5CF6",
+          icon: "sparkles",
+          createdAt: new Date(0).toISOString(),
+        } as KnowledgeDoc);
+      }
+
       const visibleNodeIds = new Set(docs.map((d: KnowledgeDoc) => d.id));
       const dbEdges = (dataEdges.data || []).filter(
         (e: KnowledgeEdgeData) => visibleNodeIds.has(e.sourceId) && visibleNodeIds.has(e.targetId)
@@ -130,11 +147,11 @@ function FlowEditor() {
         const mainNode = initialNodes.find(n => n.id === 'main-ai-node');
         if (mainNode) {
           // Add 48px to offset for the node's center (w-24 h-24 is 96x96)
-          setCenter(mainNode.position.x + 48, mainNode.position.y + 48, { zoom: 0.85, duration: 800 });
+          setCenter(mainNode.position.x + 48, mainNode.position.y + 48, { zoom: 0.85, duration: 400 });
         } else {
-          fitView({ padding: 0.9, maxZoom: 0.85, duration: 600 });
+          fitView({ padding: 0.9, maxZoom: 0.85, duration: 400 });
         }
-      }, 100);
+      }, 50);
     } catch (e) {
       console.error(e);
     } finally {
@@ -144,6 +161,14 @@ function FlowEditor() {
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const handleFolderChange = () => {
+      fetchData();
+    };
+    window.addEventListener("arunaki-folder-change", handleFolderChange);
+    return () => window.removeEventListener("arunaki-folder-change", handleFolderChange);
   }, [fetchData]);
 
   // ─── Flow Handlers ─────────────────────────────────────────────────────
@@ -433,7 +458,7 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
           fitViewOptions={{ padding: 0.9, maxZoom: 0.85, minZoom: 0.1 }}
           minZoom={0.1}
           maxZoom={2}
-          panOnDrag={false}
+          panOnDrag={true}
           className="bg-[var(--bg-app)]"
           defaultEdgeOptions={{
             type: 'floating',
