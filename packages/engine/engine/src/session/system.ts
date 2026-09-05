@@ -164,6 +164,7 @@ const layer = Layer.effect(
                 "  1. ALWAYS check the <knowledge_base> first. If the data is present in a knowledge node above, use it directly.",
                 "  2. If a knowledge node has a Data Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE the browse_website tool on that URL to inspect the live sheet/data!",
                 "  3. NEVER claim that data or stock is missing from the workspace without checking these connected knowledge nodes and their URLs first!",
+                "- When the user asks about 'knowledge yang ada' or what knowledge is connected, list all the connected knowledge nodes above with their titles, data sources, and brief descriptions.",
               ]
               knowledgeContext = knowledgeLines.join("\n")
             }
