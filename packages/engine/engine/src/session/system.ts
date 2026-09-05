@@ -128,6 +128,9 @@ const layer = Layer.effect(
               (n) =>
                 n.active &&
                 n.id !== "main-ai-node" &&
+                n.id !== "arunaki-rulebook" &&
+                n.type !== "rules" &&
+                n.type !== "agent" &&
                 ((n.content && n.content.trim().length > 0 && n.content.trim() !== "Enter knowledge content here...") ||
                   (n.urls && n.urls !== "[]" && n.urls.length > 2)),
             )
@@ -135,10 +138,10 @@ const layer = Layer.effect(
             if (activeNodes.length > 0) {
               const knowledgeLines = [
                 "<knowledge_base>",
-                "The following knowledge nodes are connected by the user as official data sources (e.g. Google Sheets, product catalog, inventory databases, guidelines):",
+                "The following external data sources are connected to the workspace:",
                 ...activeNodes.flatMap((node) => {
                   const lines = [
-                    `  <knowledge title="${node.title}" type="${node.type}">`,
+                    `  <data_source name="${node.title}">`,
                   ]
                   const hasRealContent = node.content && node.content.trim().length > 0 && node.content.trim() !== "Enter knowledge content here..."
                   if (hasRealContent) {
@@ -148,23 +151,24 @@ const layer = Layer.effect(
                     try {
                       const urls = JSON.parse(node.urls) as string[]
                       if (urls.length > 0) {
-                        lines.push(`    <urls>${urls.join(", ")}</urls>`)
-                        lines.push(`    Data Source URL: ${urls.join(", ")}`)
+                        lines.push(`    Source URL: ${urls.join(", ")}`)
                       }
                     } catch {}
                   }
-                  lines.push(`  </knowledge>`)
+                  lines.push(`  </data_source>`)
                   return lines
                 }),
                 "</knowledge_base>",
                 "",
                 "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
-                "- The user has connected external knowledge nodes (e.g. Google Sheets, product catalog, price lists).",
-                "- When the user asks about stock, inventory, products, prices, or data related to any connected node:",
-                "  1. ALWAYS check the <knowledge_base> first. If the data is present in a knowledge node above, use it directly.",
-                "  2. If a knowledge node has a Data Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE the browse_website tool on that URL to inspect the live sheet/data!",
-                "  3. NEVER claim that data or stock is missing from the workspace without checking these connected knowledge nodes and their URLs first!",
-                "- When the user asks about 'knowledge yang ada' or what knowledge is connected, list all the connected knowledge nodes above with their titles, data sources, and brief descriptions.",
+                "- The user has connected external business data sources (e.g. Google Sheets, product catalog, price lists).",
+                "- When the user asks about stock, inventory, products, prices, or data related to any connected data source:",
+                "  1. ALWAYS check the <knowledge_base> first. If the data is present in a data source above, use it directly.",
+                "  2. If a data source has a Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE the browse_website tool on that URL to inspect the live sheet/data!",
+                "  3. NEVER claim that data or stock is missing from the workspace without checking these connected data sources first!",
+                "- When the user asks about 'knowledge yang ada' or what knowledge is connected:",
+                "  Answer cleanly and professionally from a user perspective. Mention ONLY the business data sources connected (such as product catalog or spreadsheets).",
+                "  STRICT PRIVACY & ARCHITECTURE RULE: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations, or internal system concepts (such as Agent Core, Living Rules). The user must only see natural, clean business descriptions.",
               ]
               knowledgeContext = knowledgeLines.join("\n")
             }
