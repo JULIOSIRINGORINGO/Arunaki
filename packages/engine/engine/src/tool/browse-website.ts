@@ -192,38 +192,60 @@ export const BrowseWebsiteTool = Tool.define(
             },
           })
 
-          const result = yield* Effect.tryPromise({
-            try: () =>
-              browseWithPuppeteer({
-                url: params.url,
-                click_text: params.click_text,
-                wait_after_click: params.wait_after_click,
-                search_query: params.search_query,
-              }),
-            catch: (e) => new Error(`Failed to browse website: ${String(e)}`),
-          })
+          let result: { html?: string; pageTitle?: string; pageUrl: string; csvContent?: string }
+          const gsMatch = params.url.match(/^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)(?:.*[#?&]gid=(\d+))?/)
+          if (gsMatch) {
+            const sheetId = gsMatch[1]
+            const gid = gsMatch[2]
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gid ? `&gid=${gid}` : ''}`
+            
+            result = yield* Effect.tryPromise({
+              try: async () => {
+                const res = await fetch(exportUrl)
+                if (!res.ok) throw new Error(`Google Sheets export failed with status ${res.status}. Sheet might be private.`)
+                const csv = await res.text()
+                return { pageUrl: exportUrl, pageTitle: `Google Sheet: ${sheetId}`, csvContent: csv }
+              },
+              catch: (e) => new Error(`Failed to fetch Google Sheet CSV: ${String(e)}`),
+            })
+          } else {
+            result = yield* Effect.tryPromise({
+              try: () =>
+                browseWithPuppeteer({
+                  url: params.url,
+                  click_text: params.click_text,
+                  wait_after_click: params.wait_after_click,
+                  search_query: params.search_query,
+                }),
+              catch: (e) => new Error(`Failed to browse website: ${String(e)}`),
+            })
+          }
 
-          // Convert to Markdown
-          const turndown = new TurndownService({
-            headingStyle: "atx",
-            hr: "---",
-            bulletListMarker: "-",
-            codeBlockStyle: "fenced",
-            emDelimiter: "*",
-          })
-          turndown.remove(["script", "style", "meta", "link", "noscript"])
-
-          // Preserve table structure
-          turndown.addRule("tableCell", {
-            filter: ["th", "td"],
-            replacement: (content) => ` ${content.trim()} |`,
-          })
-          turndown.addRule("tableRow", {
-            filter: "tr",
-            replacement: (content) => `|${content}\n`,
-          })
-
-          const markdown = turndown.turndown(result.html)
+          let markdown = ""
+          if (result.csvContent) {
+            markdown = "```csv\n" + result.csvContent + "\n```"
+          } else if (result.html) {
+            const turndown = new TurndownService({
+              headingStyle: "atx",
+              hr: "---",
+              bulletListMarker: "-",
+              codeBlockStyle: "fenced",
+              emDelimiter: "*",
+            })
+            turndown.remove(["script", "style", "meta", "link", "noscript"])
+  
+            // Preserve table structure
+            turndown.addRule("tableCell", {
+              filter: ["th", "td"],
+              replacement: (content) => ` ${content.trim()} |`,
+            })
+            turndown.addRule("tableRow", {
+              filter: "tr",
+              replacement: (content) => `|${content}\n`,
+            })
+  
+            markdown = turndown.turndown(result.html)
+          }
 
           return {
             title: `Browsed: ${result.pageTitle || result.pageUrl}`,
