@@ -1,10 +1,12 @@
 import { memo, useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Keyboard,
   Search,
   RotateCcw,
   X,
   Edit3,
+  Sliders,
 } from "lucide-react";
 import {
   DEFAULT_SHORTCUTS,
@@ -27,6 +29,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
   isOpen,
   onClose,
 }: KeyboardShortcutsModalProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customShortcuts, setCustomShortcuts] = useState<Record<string, string>>({});
@@ -249,13 +252,17 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
 
         {/* Footer */}
         <div className="flex justify-between items-center pt-2 border-t border-[var(--border-color)]">
-          <div className="text-[11px] text-[var(--text-muted)]">
-            {editingId ? (
-              <span className="text-blue-400 font-medium">Listening for shortcut combination...</span>
-            ) : (
-              <span>Changes are saved automatically to your browser session.</span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              navigate("/settings?tab=shortcuts");
+            }}
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Open in Settings Page</span>
+          </button>
           <button
             type="button"
             onClick={onClose}
