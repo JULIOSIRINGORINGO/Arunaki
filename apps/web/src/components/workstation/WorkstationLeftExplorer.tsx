@@ -1,5 +1,5 @@
 import { useState, memo } from "react";
-import { Folder, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
+import { Folder, FolderX, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { CanvasItem, WorkspaceFile, Workspace } from "./explorer/types";
 import { useNativeFileTree } from "./explorer/useNativeFileTree";
@@ -10,6 +10,7 @@ export type { CanvasItem, WorkspaceFile, Workspace };
 interface WorkstationLeftExplorerProps {
   collapsed: boolean;
   onClose: () => void;
+  onToggle?: () => void;
   activeWorkspace: Workspace | null;
   workspaceFiles: WorkspaceFile[];
   onOpenFileTab: (path: string, name: string, content?: string) => void;
@@ -24,6 +25,7 @@ interface WorkstationLeftExplorerProps {
 function WorkstationLeftExplorerComponent({
   collapsed,
   onClose,
+  onToggle,
   activeWorkspace,
   workspaceFiles,
   onOpenFileTab,
@@ -50,20 +52,29 @@ function WorkstationLeftExplorerComponent({
     onNativeFilesChange,
   });
 
+  const handleToggle = onToggle || onClose;
+
   // Collapsed strip
   if (collapsed) {
     return (
       <aside className="w-10 bg-[var(--bg-panel)] border-r border-[var(--border-color)] flex flex-col items-center py-2 shrink-0 select-none transition-colors duration-150">
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleToggle}
           className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-          title="Open Explorer Panel"
+          title="Open Explorer Panel (Ctrl+B)"
         >
           <PanelLeftOpen className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={1.5} />
         </button>
         <div className="mt-4 flex flex-col items-center gap-4 text-[var(--text-muted)]">
-          <Folder className="w-4 h-4 opacity-40" strokeWidth={1.5} />
+          <button
+            type="button"
+            onClick={handleToggle}
+            className="p-1.5 rounded-md hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer text-[var(--text-muted)]"
+            title="Open Explorer Panel (Ctrl+B)"
+          >
+            <Folder className="w-4 h-4 opacity-50 hover:opacity-100" strokeWidth={1.5} />
+          </button>
         </div>
       </aside>
     );
@@ -107,14 +118,14 @@ function WorkstationLeftExplorerComponent({
               className="text-[var(--text-muted)] hover:text-red-500 p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
               title="Close Folder"
             >
-              <PanelLeftClose className="w-4 h-4" strokeWidth={1.5} />
+              <FolderX className="w-4 h-4" strokeWidth={1.5} />
             </button>
           )}
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleToggle}
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            title="Close Explorer"
+            title="Close Explorer (Ctrl+B)"
           >
             <PanelLeftClose className="w-4 h-4" strokeWidth={1.5} />
           </button>

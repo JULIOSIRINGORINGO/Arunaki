@@ -226,6 +226,23 @@ export function UnifiedWorkstationPage() {
     []
   );
 
+  // Shortcut: Ctrl+B / Cmd+B to toggle left explorer panel (VS Code parity)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+      if (!isInput && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setLeftCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <div className="flex flex-col h-full w-full bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden select-none transition-colors duration-150">
       <div
@@ -236,6 +253,7 @@ export function UnifiedWorkstationPage() {
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
           onClose={() => setLeftCollapsed(true)}
+          onToggle={() => setLeftCollapsed((prev) => !prev)}
           activeWorkspace={activeWorkspace}
           workspaceFiles={workspaceFiles}
           onOpenFileTab={tabs.handleOpenFileTab}
@@ -255,10 +273,12 @@ export function UnifiedWorkstationPage() {
           onOpenCanvasTab={tabs.handleOpenCanvasTab}
         />
 
-        <div
-          className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
-          onMouseDown={(e) => startDrag("left", e)}
-        />
+        {!leftCollapsed && (
+          <div
+            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
+            onMouseDown={(e) => startDrag("left", e)}
+          />
+        )}
 
         <WorkstationCenterPanel
           tabs={tabs.tabs}
@@ -270,10 +290,12 @@ export function UnifiedWorkstationPage() {
           onSaveTabContent={tabs.handleSaveFileTab}
         />
 
-        <div
-          className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
-          onMouseDown={(e) => startDrag("right", e)}
-        />
+        {!rightCollapsed && (
+          <div
+            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
+            onMouseDown={(e) => startDrag("right", e)}
+          />
+        )}
 
         <WorkstationRightChat
           activeChatId={activeChatId}
