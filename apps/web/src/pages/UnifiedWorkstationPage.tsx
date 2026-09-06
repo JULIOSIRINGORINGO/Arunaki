@@ -236,19 +236,25 @@ export function UnifiedWorkstationPage() {
       }
     };
     const handleSearchSessionEvent = () => setShowSearchSectionModal(true);
+    const handleToggleExplorerEvent = () => setLeftCollapsed((prev) => !prev);
+    const handleToggleChatEvent = () => setRightCollapsed((prev) => !prev);
 
     window.addEventListener("arunaki-new-chat", handleNewChatEvent);
     window.addEventListener("arunaki-save-file", handleSaveFileEvent);
     window.addEventListener("arunaki-search-session", handleSearchSessionEvent);
+    window.addEventListener("arunaki-toggle-explorer", handleToggleExplorerEvent);
+    window.addEventListener("arunaki-toggle-chat", handleToggleChatEvent);
 
     return () => {
       window.removeEventListener("arunaki-new-chat", handleNewChatEvent);
       window.removeEventListener("arunaki-save-file", handleSaveFileEvent);
       window.removeEventListener("arunaki-search-session", handleSearchSessionEvent);
+      window.removeEventListener("arunaki-toggle-explorer", handleToggleExplorerEvent);
+      window.removeEventListener("arunaki-toggle-chat", handleToggleChatEvent);
     };
   }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.tabs, tabs.activeTabId]);
 
-  // Shortcut: Ctrl+B / Cmd+B to toggle left explorer panel (VS Code parity)
+  // Shortcuts: Ctrl+B (Explorer), Ctrl+J (Chat) (VS Code parity)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -256,9 +262,14 @@ export function UnifiedWorkstationPage() {
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
-      if (!isInput && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-        e.preventDefault();
-        setLeftCollapsed((prev) => !prev);
+      if (!isInput && (e.ctrlKey || e.metaKey)) {
+        if (e.key.toLowerCase() === "b") {
+          e.preventDefault();
+          setLeftCollapsed((prev) => !prev);
+        } else if (e.key.toLowerCase() === "j") {
+          e.preventDefault();
+          setRightCollapsed((prev) => !prev);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);

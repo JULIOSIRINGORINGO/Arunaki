@@ -13,9 +13,18 @@ import {
   Clipboard,
   CheckSquare,
   Search,
+  PanelLeft,
+  PanelRight,
+  Sun,
+  Moon,
+  Laptop,
+  Maximize,
+  RotateCcw,
+  Check,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
+import { useTheme } from "../../lib/theme";
 
 interface TopMenuBarProps {
   activeFolder: string;
@@ -161,6 +170,34 @@ export function TopMenuBar({
       }
     } else {
       toast.info("Workspace backup is active in Desktop mode.");
+    }
+  };
+
+  const { theme, setTheme } = useTheme();
+
+  const handleToggleExplorer = () => {
+    window.dispatchEvent(new CustomEvent("arunaki-toggle-explorer"));
+    setActiveMenu(null);
+  };
+
+  const handleToggleChat = () => {
+    window.dispatchEvent(new CustomEvent("arunaki-toggle-chat"));
+    setActiveMenu(null);
+  };
+
+  const handleToggleFullscreen = () => {
+    setActiveMenu(null);
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const handleResetZoom = () => {
+    setActiveMenu(null);
+    if (typeof document !== "undefined") {
+      (document.body.style as any).zoom = "1";
     }
   };
 
@@ -388,6 +425,126 @@ export function TopMenuBar({
                 <span>Find in Session...</span>
               </div>
               <span className="text-[10px] text-[var(--text-muted)] font-mono">Ctrl+F</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 3. VIEW MENU */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleMenu("view")}
+          onMouseEnter={() => handleMouseEnter("view")}
+          className={cn(
+            "text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-medium px-2.5 py-1 rounded transition-colors cursor-pointer",
+            activeMenu === "view" && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
+          )}
+        >
+          View
+        </button>
+
+        {activeMenu === "view" && (
+          <div className="absolute top-full left-0 mt-1 min-w-[220px] bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+            <button
+              type="button"
+              onClick={handleToggleExplorer}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <PanelLeft className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.75} />
+                <span>Explorer Panel</span>
+              </div>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">Ctrl+B</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleChat}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <PanelRight className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.75} />
+                <span>Chat Panel</span>
+              </div>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">Ctrl+J</span>
+            </button>
+
+            <div className="h-px my-1 bg-[var(--border-color)]" />
+
+            <div className="px-3 py-1 text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">
+              Theme
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTheme("light");
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <Sun className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.75} />
+                <span>Light</span>
+              </div>
+              {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTheme("dark");
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <Moon className="w-3.5 h-3.5 text-indigo-400" strokeWidth={1.75} />
+                <span>Dark</span>
+              </div>
+              {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTheme("system");
+                setActiveMenu(null);
+              }}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <Laptop className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.75} />
+                <span>System Theme</span>
+              </div>
+              {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
+            </button>
+
+            <div className="h-px my-1 bg-[var(--border-color)]" />
+
+            <button
+              type="button"
+              onClick={handleToggleFullscreen}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <Maximize className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.75} />
+                <span>Toggle Fullscreen</span>
+              </div>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">F11</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+            >
+              <div className="flex items-center gap-2">
+                <RotateCcw className="w-3.5 h-3.5 text-[var(--text-muted)]" strokeWidth={1.75} />
+                <span>Reset Zoom</span>
+              </div>
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">Ctrl+0</span>
             </button>
           </div>
         )}

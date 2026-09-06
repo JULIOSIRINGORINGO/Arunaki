@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   MessageSquare,
@@ -8,8 +8,6 @@ import {
   User,
   Sun,
   Moon,
-  Laptop,
-  Check,
   Folder,
 } from "lucide-react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
@@ -25,13 +23,11 @@ import { SettingsPage } from "../../pages/SettingsPage";
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { theme, setTheme, isLight } = useTheme();
+  const { setTheme, isLight } = useTheme();
 
   const [activeFolder, setActiveFolder] = useState<string>(() => {
     return localStorage.getItem("arunaki_active_folder") || "";
   });
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
-  const viewMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function loadActiveFolder() {
@@ -45,21 +41,6 @@ export function AppLayout() {
       window.removeEventListener("storage", loadActiveFolder);
     };
   }, []);
-
-  // Close dropdown menu when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (viewMenuRef.current && !viewMenuRef.current.contains(event.target as Node)) {
-        setIsViewMenuOpen(false);
-      }
-    }
-    if (isViewMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isViewMenuOpen]);
 
   const handleOpenFolder = async () => {
     const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
@@ -133,80 +114,6 @@ export function AppLayout() {
               onOpenFolder={handleOpenFolder}
               onCloseFolder={handleCloseFolder}
             />
-
-            {/* View / Theme Dropdown */}
-            <div className="relative" ref={viewMenuRef}>
-              <button
-                onClick={() => setIsViewMenuOpen(!isViewMenuOpen)}
-                className={cn(
-                  "text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer flex items-center gap-1",
-                  isViewMenuOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
-                )}
-              >
-                <span>Theme</span>
-              </button>
-
-              {isViewMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-40 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg shadow-xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <button
-                    onClick={() => {
-                      setTheme("light");
-                      setIsViewMenuOpen(false);
-                    }}
-                    className={cn(
-                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
-                      theme === "light"
-                        ? "text-[var(--text-primary)] font-medium"
-                        : "text-[var(--text-muted)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sun className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Light</span>
-                    </div>
-                    {theme === "light" && <Check className="w-3.5 h-3.5 text-blue-500" />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTheme("dark");
-                      setIsViewMenuOpen(false);
-                    }}
-                    className={cn(
-                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
-                      theme === "dark"
-                        ? "text-[var(--text-primary)] font-medium"
-                        : "text-[var(--text-muted)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Dark</span>
-                    </div>
-                    {theme === "dark" && <Check className="w-3.5 h-3.5 text-blue-500" />}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setTheme("system");
-                      setIsViewMenuOpen(false);
-                    }}
-                    className={cn(
-                      "w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)]",
-                      theme === "system"
-                        ? "text-[var(--text-primary)] font-medium"
-                        : "text-[var(--text-muted)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Laptop className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span>System</span>
-                    </div>
-                    {theme === "system" && <Check className="w-3.5 h-3.5 text-blue-500" />}
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
