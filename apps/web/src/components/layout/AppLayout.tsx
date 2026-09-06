@@ -15,6 +15,8 @@ import {
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 import { useTheme } from "../../lib/theme";
+import { TopMenuBar } from "./TopMenuBar";
+import { toast } from "sonner";
 import { UnifiedWorkstationPage } from "../../pages/UnifiedWorkstationPage";
 import { KnowledgePage } from "../../pages/KnowledgePage";
 import { HistoryPage } from "../../pages/HistoryPage";
@@ -75,6 +77,13 @@ export function AppLayout() {
     }
   };
 
+  const handleCloseFolder = () => {
+    localStorage.removeItem("arunaki_active_folder");
+    setActiveFolder("");
+    window.dispatchEvent(new Event("arunaki-folder-change"));
+    toast.info("Folder closed. Agent is now in sandbox mode.");
+  };
+
   const toggleQuickTheme = () => {
     if (isLight) {
       setTheme("dark");
@@ -118,16 +127,12 @@ export function AppLayout() {
           </div>
 
           {/* Clean Dropdown Menus */}
-          <nav
-            className="flex items-center gap-1"
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-          >
-            <button
-              onClick={handleOpenFolder}
-              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-semibold px-3 py-1 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            >
-              Open Folder
-            </button>
+          <div className="flex items-center gap-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+            <TopMenuBar
+              activeFolder={activeFolder}
+              onOpenFolder={handleOpenFolder}
+              onCloseFolder={handleCloseFolder}
+            />
 
             {/* View / Theme Dropdown */}
             <div className="relative" ref={viewMenuRef}>
@@ -202,7 +207,7 @@ export function AppLayout() {
                 </div>
               )}
             </div>
-          </nav>
+          </div>
         </div>
 
         {/* Right side: Quick Theme Switch & User Avatar */}

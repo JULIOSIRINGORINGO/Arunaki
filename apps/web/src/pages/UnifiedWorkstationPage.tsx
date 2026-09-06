@@ -226,6 +226,25 @@ export function UnifiedWorkstationPage() {
     []
   );
 
+  // Listen for top menubar global events
+  useEffect(() => {
+    const handleNewChatEvent = () => chat.handleNewChat();
+    const handleSaveFileEvent = () => {
+      const activeTab = tabs.tabs.find((t) => t.id === tabs.activeTabId);
+      if (activeTab && activeTab.type === "file") {
+        tabs.handleSaveFileTab(activeTab.id, activeTab.content || "");
+      }
+    };
+
+    window.addEventListener("arunaki-new-chat", handleNewChatEvent);
+    window.addEventListener("arunaki-save-file", handleSaveFileEvent);
+
+    return () => {
+      window.removeEventListener("arunaki-new-chat", handleNewChatEvent);
+      window.removeEventListener("arunaki-save-file", handleSaveFileEvent);
+    };
+  }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.tabs, tabs.activeTabId]);
+
   // Shortcut: Ctrl+B / Cmd+B to toggle left explorer panel (VS Code parity)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
