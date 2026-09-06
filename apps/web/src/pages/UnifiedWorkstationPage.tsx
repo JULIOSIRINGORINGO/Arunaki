@@ -235,13 +235,16 @@ export function UnifiedWorkstationPage() {
         tabs.handleSaveFileTab(activeTab.id, activeTab.content || "");
       }
     };
+    const handleSearchSessionEvent = () => setShowSearchSectionModal(true);
 
     window.addEventListener("arunaki-new-chat", handleNewChatEvent);
     window.addEventListener("arunaki-save-file", handleSaveFileEvent);
+    window.addEventListener("arunaki-search-session", handleSearchSessionEvent);
 
     return () => {
       window.removeEventListener("arunaki-new-chat", handleNewChatEvent);
       window.removeEventListener("arunaki-save-file", handleSaveFileEvent);
+      window.removeEventListener("arunaki-search-session", handleSearchSessionEvent);
     };
   }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.tabs, tabs.activeTabId]);
 
