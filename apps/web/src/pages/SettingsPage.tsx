@@ -1,40 +1,21 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Cpu, User, Sliders, Keyboard } from "lucide-react";
+import { Cpu, User, Sliders } from "lucide-react";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch, directoryQuery } from "../lib/api";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
 import { SettingsAccountTab } from "../components/settings/SettingsAccountTab";
 import { SettingsAutomationTab } from "../components/settings/SettingsAutomationTab";
-import { SettingsShortcutsTab } from "../components/settings/SettingsShortcutsTab";
 
 const tabs = [
   { id: "models", label: "Model Routing & Providers", icon: Cpu },
-  { id: "shortcuts", label: "Keyboard Shortcuts", icon: Keyboard },
   { id: "integrations", label: "Desktop Automation & Office", icon: Sliders },
   { id: "account", label: "Account & License", icon: User },
 ];
 
 export function SettingsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") || "models";
-  const [activeTab, setActiveTab] = useState(
-    tabs.some((t) => t.id === initialTab) ? initialTab : "models"
-  );
+  const [activeTab, setActiveTab] = useState("models");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam && tabs.some((t) => t.id === tabParam)) {
-      setActiveTab(tabParam);
-    }
-  }, [searchParams]);
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    setSearchParams({ tab: tabId }, { replace: true });
-  };
 
   const fetchProviders = async () => {
     try {
@@ -99,10 +80,10 @@ export function SettingsPage() {
         {/* Header Title */}
         <div className="mb-4">
           <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-            Workstation & System Settings
+            Workstation System Settings
           </h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Configure model routing, customizable keyboard shortcuts, Office automation, and account license.
+            Configure model routing, desktop office automation behavior, and user account licensing.
           </p>
         </div>
 
@@ -115,7 +96,7 @@ export function SettingsPage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => handleTabChange(tab.id)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer border",
                   isActive
@@ -139,8 +120,6 @@ export function SettingsPage() {
               onRefresh={fetchProviders}
             />
           )}
-
-          {activeTab === "shortcuts" && <SettingsShortcutsTab />}
 
           {activeTab === "integrations" && <SettingsAutomationTab />}
 

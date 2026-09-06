@@ -1,12 +1,10 @@
 import { memo, useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Keyboard,
   Search,
   RotateCcw,
   X,
   Edit3,
-  Sliders,
 } from "lucide-react";
 import {
   DEFAULT_SHORTCUTS,
@@ -29,7 +27,6 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
   isOpen,
   onClose,
 }: KeyboardShortcutsModalProps) {
-  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customShortcuts, setCustomShortcuts] = useState<Record<string, string>>({});
@@ -131,7 +128,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
                 Keyboard Shortcuts
               </h3>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                Click any key combination to edit and rebind shortcuts.
+                Click any shortcut badge to reassign key combination.
               </p>
             </div>
           </div>
@@ -213,20 +210,20 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
                         <div className="flex items-center gap-1.5">
                           {isRecording ? (
                             <div className="flex items-center gap-2 animate-pulse bg-blue-500/20 text-blue-400 border border-blue-500/40 px-2.5 py-1 rounded-md text-[11px] font-mono font-medium">
-                              <span>Press keys... (Esc to cancel)</span>
+                              <span>Press keys now... (Esc to cancel)</span>
                             </div>
                           ) : (
                             <button
                               type="button"
                               onClick={() => setEditingId(item.id)}
                               className={cn(
-                                "group/btn flex items-center gap-1 px-2 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-primary)] shadow-2xs hover:border-blue-500 hover:text-blue-400 transition-colors cursor-pointer",
-                                isCustom && "border-blue-500/50 text-blue-300"
+                                "group/btn flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-primary)] shadow-2xs hover:border-blue-500 hover:text-blue-400 hover:bg-blue-500/5 transition-all cursor-pointer",
+                                isCustom && "border-blue-500/50 text-blue-300 font-semibold"
                               )}
-                              title="Click to reassign shortcut"
+                              title="Click to reassign this shortcut"
                             >
                               <span>{currentCombo}</span>
-                              <Edit3 className="w-2.5 h-2.5 opacity-0 group-hover/btn:opacity-100 transition-opacity ml-1" />
+                              <Edit3 className="w-2.5 h-2.5 opacity-40 group-hover/btn:opacity-100 text-blue-400 transition-opacity" />
                             </button>
                           )}
 
@@ -252,17 +249,13 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
 
         {/* Footer */}
         <div className="flex justify-between items-center pt-2 border-t border-[var(--border-color)]">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              navigate("/settings?tab=shortcuts");
-            }}
-            className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Open in Settings Page</span>
-          </button>
+          <div className="text-[11px] text-[var(--text-muted)]">
+            {editingId ? (
+              <span className="text-blue-400 font-medium">Listening for key combination... (Esc to cancel)</span>
+            ) : (
+              <span>Click any badge to modify. Changes are saved automatically.</span>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
