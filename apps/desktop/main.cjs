@@ -398,6 +398,26 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle('word:openNative', async (_event, filePath) => {
+    try {
+      const safePath = resolveInsideWorkspace(filePath);
+      const winax = require('winax');
+      const word = new winax.Object('Word.Application');
+      word.Visible = true;
+      word.Documents.Open(safePath);
+      return { success: true };
+    } catch (err) {
+      try {
+        const safePath = resolveInsideWorkspace(filePath);
+        const r = await shell.openPath(safePath);
+        if (r) return { error: r };
+        return { success: true, fallback: 'shell' };
+      } catch {
+        return { error: err.message };
+      }
+    }
+  });
+
 
 
   ipcMain.handle('fs:parseExcel', async (_event, filePath) => {

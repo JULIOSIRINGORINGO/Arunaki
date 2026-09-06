@@ -1,11 +1,18 @@
 import { useState, memo } from "react";
-import { Monitor, FileSpreadsheet, ShieldCheck, Bell } from "lucide-react";
+import {
+  Monitor,
+  Layers,
+  ShieldCheck,
+  Bell,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
 
 export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
-  const [autoOpenExcel, setAutoOpenExcel] = useState(
-    () => localStorage.getItem("arunaki_pref_auto_open_excel") === "true"
+  const [autoOpenOffice, setAutoOpenOffice] = useState(
+    () =>
+      localStorage.getItem("arunaki_pref_auto_open_office") === "true" ||
+      localStorage.getItem("arunaki_pref_auto_open_excel") === "true"
   );
   const [autoBackup, setAutoBackup] = useState(
     () => localStorage.getItem("arunaki_pref_auto_backup") !== "false"
@@ -21,48 +28,49 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
           Desktop Automation & OS Behavior
         </h3>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">
-          Configure desktop office automation, Excel application interaction, and operating system notifications.
+          Configure desktop Office automation (Word, Excel, PowerPoint), document application interaction, and operating system notifications.
         </p>
       </div>
 
       {/* Interactive Setting Cards (Monochrome) */}
       <div className="w-full space-y-4">
-        {/* 1. Auto Open Excel */}
+        {/* 1. Launch Microsoft Office on Edit */}
         <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start justify-between gap-4">
           <div className="flex gap-3.5">
             <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">
-              <FileSpreadsheet className="w-4 h-4 text-[var(--text-muted)]" />
+              <Layers className="w-4 h-4 text-[var(--text-muted)]" />
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Launch Microsoft Excel on Edit
+                Launch Microsoft Office on Edit
               </h4>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
-                Opens Microsoft Excel visibly on screen when executing spreadsheet tasks. If disabled, spreadsheet modifications are performed silently in headless background mode.
+                Opens native desktop Office applications (Word, Excel, PowerPoint, etc.) visibly on screen when executing document tasks. If disabled, all document modifications are performed silently in headless background mode.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => {
-              const next = !autoOpenExcel;
-              setAutoOpenExcel(next);
+              const next = !autoOpenOffice;
+              setAutoOpenOffice(next);
+              localStorage.setItem("arunaki_pref_auto_open_office", String(next));
               localStorage.setItem("arunaki_pref_auto_open_excel", String(next));
               toast.success(
                 next
-                  ? "Excel foreground launch enabled."
-                  : "Excel foreground launch disabled (headless mode)."
+                  ? "Office applications foreground launch enabled."
+                  : "Office applications foreground launch disabled (headless mode)."
               );
             }}
             className={cn(
               "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] items-center p-0.5 transition-colors duration-200 ease-in-out focus:outline-none",
-              autoOpenExcel ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
+              autoOpenOffice ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
             )}
           >
             <span
               className={cn(
                 "pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full shadow-sm ring-0 transition-transform duration-200 ease-in-out",
-                autoOpenExcel ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
+                autoOpenOffice ? "translate-x-5 bg-[var(--bg-app)]" : "translate-x-0 bg-[var(--text-muted)]"
               )}
             />
           </button>
@@ -178,7 +186,7 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
         </div>
       </div>
 
-      {/* Electron Diagnostic Bridge Status (Monochrome) */}
+      {/* Electron Diagnostic Bridge Status */}
       <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
         <div className="flex items-center gap-3.5">
           <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] flex items-center justify-center shrink-0 border border-[var(--border-strong)]">

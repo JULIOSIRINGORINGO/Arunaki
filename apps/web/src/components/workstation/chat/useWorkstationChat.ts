@@ -328,7 +328,9 @@ export function useWorkstationChat({
           } catch {}
 
           // Auto-backup + auto-open produced documents
-          const autoOpenExcel = localStorage.getItem("arunaki_pref_auto_open_excel") === "true";
+          const autoOpenOffice =
+            localStorage.getItem("arunaki_pref_auto_open_office") === "true" ||
+            localStorage.getItem("arunaki_pref_auto_open_excel") === "true";
           const autoBackup = localStorage.getItem("arunaki_pref_auto_backup") !== "false";
           const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
           const toolsCount = event.data?.toolOutputs?.length || 0;
@@ -343,17 +345,17 @@ export function useWorkstationChat({
             }
           }
 
-          if (autoOpenExcel && produced.length > 0) {
-            if (desktop?.openPath) {
-              for (const doc of produced) {
-                try {
-                  if ((/\.(xlsx|xls|xlsm)$/i).test(doc) && desktop.openExcelNative) {
-                    desktop.openExcelNative(doc);
-                  } else {
-                    desktop.openPath(doc);
-                  }
-                } catch {}
-              }
+          if (autoOpenOffice && produced.length > 0 && desktop?.openPath) {
+            for (const doc of produced) {
+              try {
+                if ((/\.(xlsx|xls|xlsm|csv)$/i).test(doc) && desktop.openExcelNative) {
+                  desktop.openExcelNative(doc);
+                } else if ((/\.(docx|doc|rtf)$/i).test(doc) && desktop.openWordNative) {
+                  desktop.openWordNative(doc);
+                } else {
+                  desktop.openPath(doc);
+                }
+              } catch {}
             }
           }
 
