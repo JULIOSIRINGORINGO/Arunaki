@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MessageSquarePlus,
   FolderOpen,
@@ -26,6 +27,7 @@ import {
   Bug,
   Info,
   ExternalLink,
+  Settings,
   X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -48,6 +50,7 @@ export function TopMenuBar({
   const [showAboutModal, setShowAboutModal] = useState(false);
   const menuBarRef = useRef<HTMLDivElement>(null);
 
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
   // Close menu when clicking outside
@@ -98,12 +101,15 @@ export function TopMenuBar({
         } else if (e.key === "/") {
           e.preventDefault();
           setShowShortcutsModal(true);
+        } else if (e.key === ",") {
+          e.preventDefault();
+          navigate("/settings");
         }
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onOpenFolder]);
+  }, [onOpenFolder, navigate]);
 
   const toggleMenu = (menuName: string) => {
     setActiveMenu((prev) => (prev === menuName ? null : menuName));
@@ -324,6 +330,23 @@ export function TopMenuBar({
 
               <button
                 type="button"
+                onClick={() => {
+                  setActiveMenu(null);
+                  navigate("/settings");
+                }}
+                className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
+                  <span>Preferences / Settings</span>
+                </div>
+                <span className="text-[11px] text-[var(--text-muted)] font-mono">Ctrl+,</span>
+              </button>
+
+              <div className="h-px my-1.5 bg-[var(--border-color)]" />
+
+              <button
+                type="button"
                 onClick={handleExit}
                 className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
               >
@@ -439,6 +462,23 @@ export function TopMenuBar({
                   <span>Find in Session...</span>
                 </div>
                 <span className="text-[11px] text-[var(--text-muted)] font-mono">Ctrl+F</span>
+              </button>
+
+              <div className="h-px my-1.5 bg-[var(--border-color)]" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMenu(null);
+                  navigate("/settings");
+                }}
+                className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
+                  <span>Preferences / Settings</span>
+                </div>
+                <span className="text-[11px] text-[var(--text-muted)] font-mono">Ctrl+,</span>
               </button>
             </div>
           )}
@@ -662,7 +702,7 @@ export function TopMenuBar({
       {/* KEYBOARD SHORTCUTS MODAL */}
       {showShortcutsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
-          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-2xl max-w-md w-full p-5 flex flex-col gap-4 text-xs">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl shadow-2xl max-w-lg w-full p-5 flex flex-col gap-4 text-xs">
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <h3 className="font-semibold text-sm text-[var(--text-primary)] flex items-center gap-2">
                 <Keyboard className="w-4 h-4 text-[var(--text-primary)]" />
@@ -677,32 +717,79 @@ export function TopMenuBar({
               </button>
             </div>
 
-            <div className="flex flex-col gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-4 max-h-[420px] overflow-y-auto pr-1">
               {[
-                { key: "Ctrl + O", desc: "Open workspace folder" },
-                { key: "Ctrl + S", desc: "Save active document" },
-                { key: "Ctrl + N", desc: "Start new chat session" },
-                { key: "Ctrl + B", desc: "Toggle Explorer panel" },
-                { key: "Ctrl + J", desc: "Toggle Chat panel" },
-                { key: "Ctrl + F", desc: "Find session in history" },
-                { key: "Ctrl + /", desc: "Show keyboard shortcuts" },
-                { key: "F11", desc: "Toggle fullscreen mode" },
-                { key: "Ctrl + 0", desc: "Reset display zoom" },
-                { key: "Esc", desc: "Dismiss active modal or menu" },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between py-1 border-b border-[var(--border-color)]/40 last:border-0"
-                >
-                  <span className="text-[var(--text-primary)] text-xs">{item.desc}</span>
-                  <span className="px-2 py-0.5 rounded bg-[var(--bg-hover)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-primary)]">
-                    {item.key}
-                  </span>
+                {
+                  category: "General & Settings",
+                  items: [
+                    { key: "Ctrl + ,", desc: "Open Preferences & Settings" },
+                    { key: "Ctrl + /", desc: "Show Keyboard Shortcuts" },
+                    { key: "F11", desc: "Toggle Fullscreen Mode" },
+                    { key: "Ctrl + 0", desc: "Reset Display Zoom" },
+                    { key: "Esc", desc: "Dismiss Active Modal or Menu" },
+                  ],
+                },
+                {
+                  category: "Edit & Text",
+                  items: [
+                    { key: "Ctrl + Z", desc: "Undo last change" },
+                    { key: "Ctrl + Y", desc: "Redo last change" },
+                    { key: "Ctrl + X", desc: "Cut selected text" },
+                    { key: "Ctrl + C", desc: "Copy selected text" },
+                    { key: "Ctrl + V", desc: "Paste from clipboard" },
+                    { key: "Ctrl + A", desc: "Select all text" },
+                  ],
+                },
+                {
+                  category: "File & Workstation",
+                  items: [
+                    { key: "Ctrl + O", desc: "Open Workspace Folder" },
+                    { key: "Ctrl + S", desc: "Save Active Document" },
+                    { key: "Ctrl + N", desc: "Start New Chat Session" },
+                    { key: "Ctrl + F", desc: "Find Session in History" },
+                  ],
+                },
+                {
+                  category: "Panels & Navigation",
+                  items: [
+                    { key: "Ctrl + B", desc: "Toggle Explorer Panel" },
+                    { key: "Ctrl + J", desc: "Toggle Chat Panel" },
+                  ],
+                },
+              ].map((section, sIdx) => (
+                <div key={sIdx} className="flex flex-col gap-1.5">
+                  <div className="text-[11px] font-semibold text-[var(--text-muted)] tracking-wide">
+                    {section.category}
+                  </div>
+                  <div className="bg-[var(--bg-hover)]/30 rounded-lg p-2 flex flex-col gap-1 border border-[var(--border-color)]/40">
+                    {section.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between py-1 px-1 border-b border-[var(--border-color)]/30 last:border-0"
+                      >
+                        <span className="text-[var(--text-primary)] text-xs">{item.desc}</span>
+                        <span className="px-2 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] font-mono text-[var(--text-primary)] shadow-2xs">
+                          {item.key}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between items-center pt-2 border-t border-[var(--border-color)]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShortcutsModal(false);
+                  navigate("/settings");
+                }}
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center gap-1.5 cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>Open Full Settings</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowShortcutsModal(false)}
