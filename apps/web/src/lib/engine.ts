@@ -15,12 +15,30 @@ export async function engineFetch(path: string, init?: RequestInit) {
 
 // --- Session (maps to old "chat") ---
 
-export async function createSession(opts?: { agent?: string; model?: string; directory?: string }) {
+export async function createSession(opts?: {
+  agent?: string;
+  model?: { providerID: string; id: string } | string;
+  directory?: string;
+}) {
+  let modelPayload: { providerID: string; id: string } | undefined;
+  if (opts?.model) {
+    if (typeof opts.model === "object") {
+      modelPayload = opts.model;
+    } else if (typeof opts.model === "string") {
+      if (opts.model.includes("/")) {
+        const [providerID, id] = opts.model.split("/", 2);
+        modelPayload = { providerID, id };
+      } else {
+        modelPayload = { providerID: "kenari", id: opts.model };
+      }
+    }
+  }
+
   const res = await engineFetch("/api/session", {
     method: "POST",
     body: JSON.stringify({
       ...(opts?.agent && { agent: opts.agent }),
-      ...(opts?.model && { model: opts.model }),
+      ...(modelPayload && { model: modelPayload }),
       ...(opts?.directory && { location: { type: "directory", directory: opts.directory } }),
     }),
   });
@@ -44,6 +62,14 @@ export async function getSession(sessionID: string) {
   if (!res.ok) throw new Error(`getSession failed: ${res.status}`);
   const json = await res.json();
   return json.data;
+}
+
+export async function switchSessionModel(sessionID: string, model: { providerID: string; id: string }) {
+  const res = await engineFetch(`/api/session/${sessionID}/model`, {
+    method: "POST",
+    body: JSON.stringify({ model }),
+  });
+  return res.ok;
 }
 
 export async function getMessages(sessionID: string, opts?: { limit?: number; order?: "asc" | "desc" }) {

@@ -12,6 +12,7 @@ import {
   subscribeEvents,
   mapEngineEvent,
   getMessages,
+  switchSessionModel,
 } from "../../../lib/engine";
 import { API_BASE, apiFetch } from "../../../lib/api";
 
@@ -183,9 +184,19 @@ export function useWorkstationChat({
     setLiveStatus(null);
     setOptimisticMessages([]);
 
+    const getActiveModelRef = (): { providerID: string; id: string } => {
+      const p = localStorage.getItem("arunaki_active_provider") || "kenari";
+      const m =
+        localStorage.getItem(`arunaki_provider_models_${p}`) ||
+        localStorage.getItem("arunaki_active_model") ||
+        "mimo-v2-5:free";
+      return { providerID: p, id: m };
+    };
+
     try {
       const session = await createSession({
         directory: activeFolder || undefined,
+        model: getActiveModelRef(),
       });
       if (session && session.id) {
         setActiveChatId(session.id);
@@ -244,11 +255,22 @@ export function useWorkstationChat({
     producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
+    const getActiveModelRef = (): { providerID: string; id: string } => {
+      const p = localStorage.getItem("arunaki_active_provider") || "kenari";
+      const m =
+        localStorage.getItem(`arunaki_provider_models_${p}`) ||
+        localStorage.getItem("arunaki_active_model") ||
+        "mimo-v2-5:free";
+      return { providerID: p, id: m };
+    };
+    const activeModel = getActiveModelRef();
+
     let chatIdToUse = activeChatId;
     if (!chatIdToUse || !chatIdToUse.startsWith("ses_")) {
       try {
         const session = await createSession({
           directory: activeFolder || undefined,
+          model: activeModel,
         });
         chatIdToUse = session.id;
         setActiveChatId(chatIdToUse);
@@ -262,6 +284,8 @@ export function useWorkstationChat({
         toast.error("Failed to create a new conversation");
         return;
       }
+    } else {
+      switchSessionModel(chatIdToUse, activeModel).catch(() => {});
     }
 
     let accumulatedResponseText = "";
