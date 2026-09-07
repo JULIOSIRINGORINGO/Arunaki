@@ -65,7 +65,18 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
           const { data } = await res.json();
           setNodeData(data);
           setTitle(data.title);
-          setContent(data.content || '');
+
+          // Auto-purge any legacy raw CSV dump or internal placeholder
+          let cleanContent = data.content || '';
+          if (
+            cleanContent.startsWith('```csv') ||
+            cleanContent.includes('JavaScript tidak diaktifkan') ||
+            cleanContent === 'Enter knowledge content here...'
+          ) {
+            cleanContent = '';
+          }
+          setContent(cleanContent);
+
           setCity(data.city || '');
           try {
             const parsed = JSON.parse(data.urls || '[]');
@@ -105,11 +116,11 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     setSaving(true);
     try {
       let finalContent = content;
-      const isPlaceholder =
+      if (
+        finalContent.startsWith('```csv') ||
         finalContent.trim() === "Enter knowledge content here..." ||
-        finalContent.includes("JavaScript tidak diaktifkan");
-
-      if (isPlaceholder) {
+        finalContent.includes("JavaScript tidak diaktifkan")
+      ) {
         finalContent = "";
       }
 
@@ -179,6 +190,8 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     return null;
   }
 
+  const isRulesNode = (nodeData.type || '').toLowerCase() === 'rules';
+
   return (
     <Panel 
       position="top-right" 
@@ -227,105 +240,102 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Knowledge Title</label>
+              <label className="text-xs font-semibold text-[var(--text-muted)]">
+                {isRulesNode ? "Rule / SOP Title" : "Knowledge Title"}
+              </label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
+                placeholder={isRulesNode ? "e.g. Sales Discount Policy" : "e.g. Product Catalog"}
                 className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-[var(--text-muted)]">Base Website / Sheet URL</label>
-              <input
-                type="url"
-                value={urls[0] || ''}
-                onChange={e => setUrls([e.target.value, ...urls.slice(1)])}
-                placeholder="https://docs.google.com/spreadsheets/d/... or https://example.com"
-                className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
-              />
-              
-              {urls[0]?.trim() ? (
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] shrink-0 animate-pulse" />
-                  <span className="font-medium text-[var(--text-primary)]">Live URL Connected</span>
-                  <span className="text-[10px] text-[var(--text-muted)] truncate">— LLM reads automatically during chat</span>
-                </div>
-              ) : (
-                <div className="text-[10px] text-[var(--text-dim)]">
-                  Supports Google Sheets & Web Pages (LLM accesses live link in real-time)
-                </div>
-              )}
-
-              {urls.length > 1 && (
-                <div className="text-[10px] text-[var(--text-muted)]">
-                  {urls.length - 1} pages discovered from this site (categories, products...)
-                </div>
-              )}
-
-              <div className="relative" ref={cityDropdownRef}>
-                <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
-                  Location / Branch (Optional)
-                </label>
+            {!isRulesNode && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">Spreadsheet / Website URL</label>
                 <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => {
-                    setCity(e.target.value);
-                    setIsCityDropdownOpen(true);
-                  }}
-                  onFocus={() => setIsCityDropdownOpen(true)}
-                  placeholder="e.g. Jakarta, New York, Warehouse B..."
+                  type="url"
+                  value={urls[0] || ''}
+                  onChange={e => setUrls([e.target.value, ...urls.slice(1)])}
+                  placeholder="https://docs.google.com/spreadsheets/d/... or https://example.com"
                   className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
                 />
                 
-                {isCityDropdownOpen && filteredCities.length > 0 && (
-                  <div className="absolute left-0 top-full mt-1.5 w-full max-h-40 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
-                    {filteredCities.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => {
-                          setCity(opt);
-                          setIsCityDropdownOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
-                      >
-                        <span className="truncate">{opt}</span>
-                      </button>
-                    ))}
+                {urls[0]?.trim() ? (
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] shrink-0 animate-pulse" />
+                    <span className="font-medium text-[var(--text-primary)]">Live URL Connected</span>
+                    <span className="text-[10px] text-[var(--text-muted)] truncate">— LLM reads automatically</span>
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-[var(--text-dim)]">
+                    Supports Google Sheets & Web Pages (read live by LLM in real-time)
                   </div>
                 )}
-              </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[var(--text-muted)]">
-                  Additional Notes / Rules <span className="font-normal opacity-70">(Optional)</span>
-                </label>
-                {content.trim().length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setContent('')}
-                    className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline cursor-pointer"
-                    title="Clear content"
-                  >
-                    Clear
-                  </button>
-                )}
+                <div className="relative" ref={cityDropdownRef}>
+                  <label className="text-xs font-semibold text-[var(--text-muted)] block mb-1">
+                    Location / Branch (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      setIsCityDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsCityDropdownOpen(true)}
+                    placeholder="e.g. Jakarta, New York, Warehouse B..."
+                    className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
+                  />
+                  
+                  {isCityDropdownOpen && filteredCities.length > 0 && (
+                    <div className="absolute left-0 top-full mt-1.5 w-full max-h-40 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100">
+                      {filteredCities.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => {
+                            setCity(opt);
+                            setIsCityDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                        >
+                          <span className="truncate">{opt}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <textarea
-                value={content}
-                onChange={e => setContent(e.target.value)}
-                placeholder="Add special instructions, business logic, or SOP rules (e.g. 'Always use wholesale prices for branch A'). No need to paste table data if URL is provided."
-                className="w-full h-32 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)] resize-none"
-              />
-              <p className="text-[10px] text-[var(--text-dim)] leading-relaxed">
-                Spreadsheets & web data are read live by the LLM in real-time. Use this field only for extra guidance, business rules, or offline notes.
-              </p>
-            </div>
+            )}
+
+            {isRulesNode ? (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">SOP & Business Rules</label>
+                <textarea
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  placeholder="Enter business guidelines, calculation rules, or standard operating procedures..."
+                  className="w-full h-44 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)] resize-none"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[var(--text-muted)]">
+                  Instructions for AI <span className="font-normal opacity-70">(Optional)</span>
+                </label>
+                <textarea
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  placeholder="e.g. 'Use wholesale prices for VIP customers', 'Ignore draft rows'..."
+                  rows={2}
+                  className="w-full h-16 px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)] resize-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* Footer Actions */}
