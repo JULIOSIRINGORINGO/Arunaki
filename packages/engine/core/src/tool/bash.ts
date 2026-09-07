@@ -172,6 +172,11 @@ const layer = Layer.effectDiscard(
                 stdin: "ignore",
                 detached: process.platform !== "win32",
                 forceKillAfter: Duration.seconds(3),
+                env: {
+                  PYTHONIOENCODING: "utf-8",
+                  PYTHONUTF8: "1",
+                },
+                extendEnv: true,
               })
               const timeout = input.timeout ?? DEFAULT_TIMEOUT_MS
               const result = yield* appProcess
