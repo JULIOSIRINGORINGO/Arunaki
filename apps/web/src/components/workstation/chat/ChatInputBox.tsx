@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { AttachedImage } from "./types";
 
 export const COMMANDS = [
-  { name: "/thinking", description: "Collapse or expand model thinking process", icon: Brain },
+  { name: "/thinking", description: "Toggle model thinking visibility (stream thoughts word-by-word)", icon: Brain },
   { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
   { name: "/new", description: "Start a new conversation session", icon: Plus },
   { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
@@ -52,8 +52,10 @@ interface ChatInputBoxProps {
   onNewChat?: () => void;
   reasoningEffort?: string;
   setReasoningEffort?: (val: string) => void;
-  collapseThinking: boolean;
-  setCollapseThinking: Dispatch<SetStateAction<boolean>>;
+  showThinking?: boolean;
+  setShowThinking?: Dispatch<SetStateAction<boolean>>;
+  collapseThinking?: boolean;
+  setCollapseThinking?: Dispatch<SetStateAction<boolean>>;
   onPreviewImage: (url: string) => void;
 }
 
@@ -66,6 +68,8 @@ export const ChatInputBox = memo(function ChatInputBox({
   onNewChat,
   reasoningEffort = "",
   setReasoningEffort,
+  showThinking,
+  setShowThinking,
   collapseThinking,
   setCollapseThinking,
   onPreviewImage,
@@ -152,14 +156,15 @@ export const ChatInputBox = memo(function ChatInputBox({
   const submitPrompt = () => {
     const promptTrimmed = localPrompt.trim();
     if (promptTrimmed === "/thinking") {
-      setCollapseThinking((prev) => {
-        const next = !prev;
-        try {
-          localStorage.setItem("arunaki_collapse_thinking", String(next));
-        } catch {}
-        toast.info(next ? "Thinking process collapsed" : "Thinking process expanded (showing dimmed reasoning)");
-        return next;
-      });
+      const current = showThinking !== undefined ? showThinking : !collapseThinking;
+      const next = !current;
+      try {
+        localStorage.setItem("arunaki_show_thinking", String(next));
+        localStorage.setItem("arunaki_collapse_thinking", String(!next));
+      } catch {}
+      setShowThinking?.(next);
+      setCollapseThinking?.(!next);
+      toast.info(next ? "Thinking display enabled (thoughts visible word-by-word)" : "Thinking display hidden");
       setLocalPrompt("");
       setAttachedImages([]);
       if (textareaRef.current) {
@@ -191,14 +196,15 @@ export const ChatInputBox = memo(function ChatInputBox({
     if (cmdName === "/thinking") {
       setLocalPrompt("");
       setShowCommands(false);
-      setCollapseThinking((prev) => {
-        const next = !prev;
-        try {
-          localStorage.setItem("arunaki_collapse_thinking", String(next));
-        } catch {}
-        toast.info(next ? "Thinking process collapsed" : "Thinking process expanded (showing dimmed reasoning)");
-        return next;
-      });
+      const current = showThinking !== undefined ? showThinking : !collapseThinking;
+      const next = !current;
+      try {
+        localStorage.setItem("arunaki_show_thinking", String(next));
+        localStorage.setItem("arunaki_collapse_thinking", String(!next));
+      } catch {}
+      setShowThinking?.(next);
+      setCollapseThinking?.(!next);
+      toast.info(next ? "Thinking display enabled (thoughts visible word-by-word)" : "Thinking display hidden");
       return;
     }
     if (cmdName === "/search-section") {
@@ -349,9 +355,9 @@ export const ChatInputBox = memo(function ChatInputBox({
                   </span>
                   <span className="text-[10px] text-[var(--text-dim)] truncate min-w-0">
                     {command.name === "/thinking"
-                      ? collapseThinking
-                        ? "Expand model thinking process (Currently Hidden)"
-                        : "Collapse model thinking process (Currently Shown)"
+                      ? (showThinking ?? !collapseThinking)
+                        ? "Hide model thinking thoughts (Currently Visible)"
+                        : "Show model thinking word-by-word (Currently Hidden)"
                       : command.description}
                   </span>
                 </button>

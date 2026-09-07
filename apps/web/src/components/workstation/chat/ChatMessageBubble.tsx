@@ -10,7 +10,7 @@ import { Message } from "./types";
 interface ChatMessageBubbleProps {
   msg: Message;
   isUser: boolean;
-  collapseThinking?: boolean;
+  showThinking?: boolean;
   onPreviewImage?: (url: string) => void;
   onResend?: (content: string) => void;
 }
@@ -18,7 +18,7 @@ interface ChatMessageBubbleProps {
 export const ChatMessageBubble = memo(function ChatMessageBubble({
   msg,
   isUser,
-  collapseThinking = true,
+  showThinking = true,
   onPreviewImage,
   onResend,
 }: ChatMessageBubbleProps) {
@@ -46,7 +46,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }, [msg.content, imageMentions]);
 
   const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
-  const hasThoughtOrSteps = !isUser && (Boolean(msg.reasoning) || Boolean(steps && steps.length > 0));
+  const hasThoughtOrSteps = !isUser && (Boolean(showThinking && msg.reasoning) || Boolean(steps && steps.length > 0));
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
     return null;
@@ -89,7 +89,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
           steps={steps}
           thoughtSec={thoughtSec}
           reasoning={msg.reasoning}
-          defaultExpanded={!collapseThinking}
+          showThinking={showThinking}
         />
       )}
 

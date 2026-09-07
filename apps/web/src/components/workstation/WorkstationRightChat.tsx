@@ -65,8 +65,12 @@ function WorkstationRightChatComponent({
 }: WorkstationRightChatProps) {
   // CRITICAL: React Rules of Hooks - all hooks declared unconditionally at top
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [collapseThinking, setCollapseThinking] = useState<boolean>(() => {
-    return localStorage.getItem("arunaki_collapse_thinking") !== "false";
+  const [showThinking, setShowThinking] = useState<boolean>(() => {
+    const saved = localStorage.getItem("arunaki_show_thinking");
+    if (saved !== null) return saved === "true";
+    const oldCollapse = localStorage.getItem("arunaki_collapse_thinking");
+    if (oldCollapse !== null) return oldCollapse === "false";
+    return true;
   });
 
   const allMessages = useMemo(() => {
@@ -139,7 +143,7 @@ function WorkstationRightChatComponent({
                 key={msg.id || idx}
                 msg={msg}
                 isUser={isUser}
-                collapseThinking={collapseThinking}
+                showThinking={showThinking}
                 onPreviewImage={(url) => setLightboxUrl(url)}
                 onResend={(content) => onSendMessage(content)}
               />
@@ -178,8 +182,8 @@ function WorkstationRightChatComponent({
           onNewChat={onNewChat}
           reasoningEffort={reasoningEffort}
           setReasoningEffort={setReasoningEffort}
-          collapseThinking={collapseThinking}
-          setCollapseThinking={setCollapseThinking}
+          showThinking={showThinking}
+          setShowThinking={setShowThinking}
           onPreviewImage={(url) => setLightboxUrl(url)}
         />
       </div>

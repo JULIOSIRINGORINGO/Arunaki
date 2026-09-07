@@ -11,10 +11,10 @@ import {
   Cpu,
   ChevronDown,
   ChevronUp,
-  ChevronRight,
   Check,
   Database,
   FileSearch,
+  Brain,
 } from "lucide-react";
 
 export interface LiveStatusData {
@@ -205,97 +205,75 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
  */
 export function MessageThoughtBadge({
   steps = [],
-  thoughtSec = 1,
+  thoughtSec,
   reasoning,
-  defaultExpanded = false,
+  showThinking = true,
 }: {
   steps?: StepItem[];
   thoughtSec?: number;
   reasoning?: string;
-  defaultExpanded?: boolean;
+  showThinking?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  useEffect(() => {
-    setIsExpanded(defaultExpanded);
-  }, [defaultExpanded]);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
+  const hasReasoning = Boolean(reasoning && reasoning.trim().length > 0);
 
-  if (hasToolExecution) {
-    return (
-      <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
-        <button
-          type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
-        >
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Check size={12} className="text-[var(--text-primary)] shrink-0" />
-            <span className="font-semibold text-[var(--text-primary)] truncate">
-              Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
-            </span>
-            <span className="text-[10px] text-[var(--text-dim)] shrink-0">
-              ({steps.length} step{steps.length > 1 ? 's' : ''}{thoughtSec ? ` · ${thoughtSec}s` : ''})
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
-            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </div>
-        </button>
-
-        {isExpanded && (
-          <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
-            {steps.map((step, idx) => (
-              <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
-                <Check size={11} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
-                <span className="truncate max-w-full text-[var(--text-muted)]">
-                  {step.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Pure Thought Reasoning (when reasoning text or steps exist)
-  if (!reasoning && steps.length === 0) {
+  if (!hasToolExecution && (!showThinking || !hasReasoning)) {
     return null;
   }
 
   return (
-    <div className="mb-2 font-sans select-none max-w-full min-w-0">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)] font-mono"
-      >
-        <ArunakiLogo size={12} className="text-[var(--text-muted)] shrink-0" />
-        <span>Thought for {thoughtSec || 1}s</span>
-        {isExpanded ? (
-          <ChevronDown size={12} className="text-[var(--text-muted)]" />
-        ) : (
-          <ChevronRight size={12} className="text-[var(--text-muted)]" />
-        )}
-      </button>
+    <div className="w-full min-w-0 mb-2 font-sans select-none">
+      {/* 1. Buka-Tutup Accordion: strictly for tool & function execution calls */}
+      {hasToolExecution && (
+        <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Check size={12} className="text-[var(--text-primary)] shrink-0" />
+              <span className="font-semibold text-[var(--text-primary)] truncate">
+                Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
+              </span>
+              <span className="text-[10px] text-[var(--text-dim)] shrink-0">
+                ({toolSteps.length} step{toolSteps.length > 1 ? 's' : ''}{thoughtSec ? ` · ${thoughtSec}s` : ''})
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
+              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </div>
+          </button>
 
-      {isExpanded && (
-        <div className="mt-1.5 p-3 rounded-xl bg-[var(--bg-panel)]/80 border border-[var(--border-color)] text-[11px] text-[var(--text-muted)] leading-relaxed max-w-full min-w-0 font-mono italic break-words [overflow-wrap:anywhere] max-h-72 overflow-y-auto whitespace-pre-wrap select-text">
-          {reasoning ? (
-            reasoning
-          ) : (
-            <div className="space-y-1 not-italic font-sans">
-              {steps.map((s, i) => (
-                <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
-                  <Check size={10} className="text-[var(--text-primary)] shrink-0" />
-                  <span className="truncate max-w-full">{s.label}</span>
+          {isExpanded && (
+            <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
+              {toolSteps.map((step, idx) => (
+                <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
+                  <Check size={11} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
+                  <span className="truncate max-w-full text-[var(--text-muted)]">
+                    {step.label}
+                  </span>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 2. Real-time Model Thoughts: Shown directly (kata per kata), NOT in a box, NO buka-tutup button */}
+      {showThinking && hasReasoning && (
+        <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono italic leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
+          <div className="flex items-center gap-1.5 mb-1 not-italic font-sans text-[10px] text-[var(--text-dim)] select-none">
+            <Brain size={11} className="shrink-0 text-[var(--text-muted)]" />
+            <span className="font-semibold tracking-wider uppercase">Thought</span>
+            {thoughtSec ? <span className="opacity-60 font-mono">({thoughtSec}s)</span> : null}
+          </div>
+          <div className="pl-3 border-l-2 border-[var(--border-color)] text-[var(--text-muted)] opacity-90 select-text">
+            {reasoning?.trim()}
+          </div>
         </div>
       )}
     </div>

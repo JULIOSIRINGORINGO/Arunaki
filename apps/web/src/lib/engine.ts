@@ -200,7 +200,7 @@ export function mapEngineEvent(
     case "session.next.text.ended":
       return { type: "done" };
     case "session.next.reasoning.delta":
-      return { type: "thinking", data: payload.delta || event.delta };
+      return { type: "reasoning_delta", data: payload.delta || event.delta };
     case "session.next.tool.called":
       return {
         type: "tool_start",

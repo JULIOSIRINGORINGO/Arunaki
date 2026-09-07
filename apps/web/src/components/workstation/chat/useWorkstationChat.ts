@@ -305,6 +305,7 @@ export function useWorkstationChat({
     }
 
     let accumulatedResponseText = "";
+    let accumulatedReasoningText = "";
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
 
@@ -423,7 +424,36 @@ export function useWorkstationChat({
         const event = mapEngineEvent(rawEvent, chatIdToUse);
         if (!event) return;
 
-        if (event.type === "thinking") {
+        if (event.type === "reasoning_delta" && event.data) {
+          resetWatchdog(90000);
+          accumulatedReasoningText += event.data;
+          setLiveStatus({ type: "thinking", preview: "Thinking..." });
+          setOptimisticMessages((prev) => {
+            const exists = prev.some((m) => m.id === assistantMessageId);
+            if (!exists) {
+              return [
+                ...prev,
+                {
+                  id: assistantMessageId,
+                  role: "assistant",
+                  content: "",
+                  reasoning: event.data,
+                  createdAt: new Date().toISOString(),
+                  executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                },
+              ];
+            }
+            return prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    reasoning: (m.reasoning || "") + event.data,
+                    executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
+                  }
+                : m
+            );
+          });
+        } else if (event.type === "thinking") {
           resetWatchdog(90000);
           const label = event.data || "Analyzing request & context";
           setLiveStatus({ type: "thinking", preview: label });
@@ -517,6 +547,7 @@ export function useWorkstationChat({
                 ? {
                     ...m,
                     content: accumulatedResponseText || m.content,
+                    reasoning: accumulatedReasoningText || m.reasoning,
                     executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
                     thoughtSec: elapsedSec,
                   }
