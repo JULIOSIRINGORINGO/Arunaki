@@ -305,14 +305,14 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 <label className="text-xs font-semibold text-[var(--text-muted)]">
                   Additional Notes / Rules <span className="font-normal opacity-70">(Optional)</span>
                 </label>
-                {content.trim().startsWith('```csv') && (
+                {content.trim().length > 0 && (
                   <button
                     type="button"
                     onClick={() => setContent('')}
                     className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] underline cursor-pointer"
-                    title="Remove stale CSV dump"
+                    title="Clear content"
                   >
-                    Clear raw CSV
+                    Clear
                   </button>
                 )}
               </div>
