@@ -112,15 +112,15 @@ const layer = Layer.effect(
           ...referenceDirs.map((dir) => path.join(dir, "*")),
         ]
         const readonlyExternalDirectory = {
-          "*": "ask",
+          "*": "deny",
           ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
         } satisfies Record<string, "allow" | "ask" | "deny">
 
         const defaults = Permission.fromConfig({
           "*": "allow",
-          doom_loop: "ask",
+          doom_loop: "deny",
           external_directory: {
-            "*": "ask",
+            "*": "deny",
             ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
           },
           question: "deny",
@@ -129,8 +129,8 @@ const layer = Layer.effect(
           // mirrors github.com/github/gitignore Node.gitignore pattern for .env files
           read: {
             "*": "allow",
-            "*.env": "ask",
-            "*.env.*": "ask",
+            "*.env": "deny",
+            "*.env.*": "deny",
             "*.env.example": "allow",
           },
         })

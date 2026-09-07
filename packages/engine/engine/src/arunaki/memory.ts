@@ -47,7 +47,7 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@arunaki/Memory") {}
 
-const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", ".arunaki", ".arunaki-backups", ".cache", "coverage"])
+const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", ".arunaki", ".arunaki-backups", ".cache", "coverage", "-p", "--parents"])
 
 function isSkipped(pathSegments: string[]): boolean {
   if (pathSegments.some((seg) => SKIP_DIRS.has(seg))) return true
@@ -226,7 +226,9 @@ const layer = Layer.effect(
             await fsPromises.mkdir(scratchRoot, { recursive: true })
             const entries = await fsPromises.readdir(directory, { withFileTypes: true })
             for (const entry of entries) {
-              if (entry.isFile()) {
+              if (entry.isDirectory() && (entry.name === "-p" || entry.name === "--parents")) {
+                await fsPromises.rm(path.join(directory, entry.name), { recursive: true, force: true })
+              } else if (entry.isFile()) {
                 const lower = entry.name.toLowerCase()
                 if (lower.endsWith(".bak")) {
                   await fsPromises.mkdir(backupRoot, { recursive: true })
@@ -401,11 +403,8 @@ const layer = Layer.effect(
         let lastRefresh = 0
 
         const onTurnCompleted = Effect.fn("Memory.onTurnCompleted")(function* (sessionID: string) {
-          const target = path.join(directory, ARUNAKI_REL)
-          const exists = yield* fs.existsSafe(target)
-          if (!exists) {
-            yield* cartographImpl().pipe(Effect.catch(() => Effect.void))
-          }
+          // Always refresh cartography on turn completion: 0-token local scan, updates catalog & sanitizes workspace
+          yield* cartographImpl().pipe(Effect.catch(() => Effect.void))
           const now = Date.now()
           if (now - lastRefresh < MIN_REFRESH_GAP_MS) return
           lastRefresh = now

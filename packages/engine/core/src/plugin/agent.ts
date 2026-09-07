@@ -23,7 +23,11 @@ CRITICAL ISOLATION & WORKSPACE CLEANLINESS RULES:
 3. Automatic Cleanup:
    - Always delete any temporary helper files created inside '.arunaki/scratch/' once your document operations are complete so no unnecessary files remain.
 4. Document Integrity:
-   - Preserve existing formulas, formatting, and OOXML structure in spreadsheets; make targeted, verified cell edits. Never touch files outside the active project folder.`
+   - Preserve existing formulas, formatting, and OOXML structure in spreadsheets; make targeted, verified cell edits. Never touch files outside the active project folder.
+5. Absolute Workspace Boundary (Sandbox Guardrail):
+   - You are strictly confined to the active workspace folder.
+   - NEVER read, write, list, inspect, or execute commands against files or directories outside this active workspace folder (such as C:\Windows, C:\Users, other drive roots like D:\, or system paths).
+   - If the user asks to inspect or operate on any file or path outside the active workspace folder, politely refuse, explaining that your access is strictly confined to the active workspace folder for security and project isolation.`
 
 const PROMPT_EXPLORE = `You are a file search specialist. You excel at thoroughly navigating and exploring codebases.
 
@@ -113,7 +117,7 @@ export const Plugin = define({
     const worktree = location.directory
     const whitelistedDirs = [TRUNCATION_GLOB, path.join(Global.Path.tmp, "*")]
     const readonlyExternalDirectory: PermissionV2.Ruleset = [
-      { action: "external_directory", resource: "*", effect: "ask" },
+      { action: "external_directory", resource: "*", effect: "deny" },
       ...whitelistedDirs.map(
         (resource): PermissionV2.Rule => ({ action: "external_directory", resource, effect: "allow" }),
       ),
@@ -121,12 +125,13 @@ export const Plugin = define({
     const defaults: PermissionV2.Ruleset = [
       { action: "*", resource: "*", effect: "allow" },
       ...readonlyExternalDirectory,
+      { action: "doom_loop", resource: "*", effect: "deny" },
       { action: "question", resource: "*", effect: "deny" },
       { action: "plan_enter", resource: "*", effect: "deny" },
       { action: "plan_exit", resource: "*", effect: "deny" },
       { action: "read", resource: "*", effect: "allow" },
-      { action: "read", resource: "*.env", effect: "ask" },
-      { action: "read", resource: "*.env.*", effect: "ask" },
+      { action: "read", resource: "*.env", effect: "deny" },
+      { action: "read", resource: "*.env.*", effect: "deny" },
       { action: "read", resource: "*.env.example", effect: "allow" },
     ]
 

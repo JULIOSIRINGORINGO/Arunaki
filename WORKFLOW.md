@@ -2506,4 +2506,22 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - Verifikasi via Microsoft Excel COM native: `STATUS: PERFECT_OPEN` tanpa error atau dialog repair.
   - Test suites: `memory-e2e.test.ts` (2 pass, 0 fail), `npm run build -w apps/web` ✅ (0 error).
 
+## Phase 70: Sandbox Boundary Guardrail & Multi-Feature E2E Hardening (DONE)
+
+- [x] **Sandbox Boundary Enforcement**:
+  - `external_directory` default permissions diubah dari `"ask"` menjadi `"deny"` pada `core/plugin/agent.ts` dan `engine/agent.ts` untuk mencegah agent menggantung (hang) tanpa UI dialog saat ada permintaan akses di luar folder.
+  - Bash tool security enforcement: mendeteksi argumen path direktori eksternal dan menegakkan `permission.assert({ action: "external_directory", ... })` alih-alih sekadar advisory warning, memblokir eksekusi bypass shell ke luar workspace (seperti `cmd /c dir D:\` atau `type C:\Windows\win.ini`).
+  - Rule 5 ditambahkan ke `BUILD_SYSTEM` (Absolute Workspace Boundary / Sandbox Guardrail) agar agent secara proaktif dan santun menolak permintaan di luar folder aktif.
+  - Menghapus folder artefak `-p` / `--parents` yang tidak sengaja terbuat oleh `mkdir -p` di Windows shell, dan menambahkannya ke `SKIP_DIRS` cartographer.
+- [x] **Multi-Feature E2E Suite Verification**:
+  - **Uji 1: Boundary Guardrail**: Terbukti agent menolak membaca `C:\Windows\win.ini` dan `D:\` dengan alasan isolasi sandbox yang jelas, 0 byte file eksternal bocor.
+  - **Uji 2: Multi-turn Document Update**: Mengubah entri `BAJU = 360 RB` menjadi `380 RB` dan total menjadi `460 RB` di `REKAPAN TERBARU2.txt` dan sel `H31` di `REKAP 9-2026.xlsx`. Formula Excel (`=SUM(H30,H31)`) tetap terjaga dan auto-recalculate secara sempurna. Verifikasi Microsoft Excel COM native: `STATUS: PERFECT_OPEN`.
+  - **Uji 3: Multi-turn Context Retention**: Menambahkan catatan verifikasi di baris terbawah catatan teks tanpa merusak format sebelumnya.
+  - **Uji 4: Natural Language Query & Cross-Referencing**: Mengkalkulasi total pengeluaran operasional (155 RB), belanja Labura (460 RB), dan total pengeluaran keseluruhan (615 RB) secara akurat.
+  - **Uji 5: New Document Creation**: Menghasilkan file baru `LAPORAN_7_SEPTEMBER.csv` dengan struktur kolom yang diminta dan isi data yang konsisten.
+  - **Uji 6: Scratch Isolation**: Semua helper script sementara python openpyxl tetap terisolasi di `.arunaki/scratch/` dan dibersihkan secara otomatis.
+- [x] **Verifikasi Build & Test**:
+  - `memory-e2e.test.ts` (2 pass, 0 fail).
+  - `npm run build -w apps/web` ✅ (0 error, build in 10.48s).
+
 

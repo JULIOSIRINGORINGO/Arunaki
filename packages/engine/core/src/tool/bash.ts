@@ -135,9 +135,20 @@ const layer = Layer.effectDiscard(
                   agent: context.agent,
                   source,
                 })
-              const warnings = (yield* externalCommandDirectories(fs, input.command, target.canonical)).map(
+              const externalDirs = yield* externalCommandDirectories(fs, input.command, target.canonical)
+              for (const extDir of externalDirs) {
+                yield* permission.assert({
+                  action: "external_directory",
+                  resources: [path.join(extDir, "*").replaceAll("\\", "/")],
+                  save: [path.join(extDir, "*").replaceAll("\\", "/")],
+                  sessionID: context.sessionID,
+                  agent: context.agent,
+                  source,
+                })
+              }
+              const warnings = externalDirs.map(
                 (directory) =>
-                  `Command argument references external directory ${path.join(directory, "*").replaceAll("\\", "/")}. Bash runs with host-user filesystem, process, and network authority; this scan is advisory only.`,
+                  `Command argument references external directory ${path.join(directory, "*").replaceAll("\\", "/")}.`,
               )
               yield* permission.assert({
                 action: name,
