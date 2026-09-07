@@ -40,9 +40,17 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }, [msg.content]);
 
   const displayContent = useMemo(() => {
-    if (imageMentions.length === 0) return msg.content;
-    return msg.content.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
+    const raw = msg.content || "";
+    if (imageMentions.length === 0) return raw.trim();
+    return raw.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
   }, [msg.content, imageMentions]);
+
+  const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
+  const hasThoughtOrSteps = !isUser && (Boolean(msg.reasoning) || Boolean(steps && steps.length > 0));
+
+  if (!hasVisibleContent && !hasThoughtOrSteps) {
+    return null;
+  }
 
   const timeString = useMemo(() => {
     if (!msg.createdAt) return "";
@@ -85,7 +93,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         />
       )}
 
-      {(displayContent || imageMentions.length > 0) && (
+      {hasVisibleContent && (
         <div
           className={cn(
             "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
@@ -129,37 +137,39 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         </div>
       )}
 
-      {/* Action Toolbar & Timestamp */}
-      <div
-        className={cn(
-          "flex items-center gap-2 px-1 select-none text-[10px] text-[var(--text-muted)] mt-0.5",
-          isUser ? "flex-row-reverse" : "flex-row"
-        )}
-      >
-        <span className="opacity-70">{timeString}</span>
+      {/* Action Toolbar & Timestamp - only rendered when there is visible bubble content */}
+      {hasVisibleContent && (
+        <div
+          className={cn(
+            "flex items-center gap-2 px-1 select-none text-[10px] text-[var(--text-muted)] mt-0.5",
+            isUser ? "flex-row-reverse" : "flex-row"
+          )}
+        >
+          <span className="opacity-70">{timeString}</span>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-            title="Copy message"
-          >
-            {copied ? <Check className="w-3 h-3 text-[var(--text-primary)]" /> : <Copy className="w-3 h-3" />}
-          </button>
-
-          {isUser && onResend && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
             <button
               type="button"
-              onClick={handleResend}
-              className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-0.5"
-              title="Resend prompt"
+              onClick={handleCopy}
+              className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              title="Copy message"
             >
-              <RotateCcw className="w-3 h-3" />
+              {copied ? <Check className="w-3 h-3 text-[var(--text-primary)]" /> : <Copy className="w-3 h-3" />}
             </button>
-          )}
+
+            {isUser && onResend && (
+              <button
+                type="button"
+                onClick={handleResend}
+                className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-0.5"
+                title="Resend prompt"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 });
