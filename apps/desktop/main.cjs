@@ -327,17 +327,20 @@ app.whenReady().then(() => {
       const backupRoot = path.join(workspaceRoot, '.arunaki-backups');
       await fs.mkdir(backupRoot, { recursive: true });
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const dest = path.join(backupRoot, stamp);
-      await fs.cp(workspaceRoot, dest, {
-        recursive: true,
-        force: true,
-        filter: (src) => {
-          const rel = path.relative(workspaceRoot, src);
-          if (!rel) return true;
-          const first = rel.split(path.sep)[0];
-          return first !== '.arunaki-backups' && first !== '.git' && first !== 'node_modules';
-        },
-      });
+      const entries = await fs.readdir(workspaceRoot, { withFileTypes: true });
+      for (const entry of entries) {
+        if (
+          entry.name === '.arunaki' ||
+          entry.name === '.arunaki-backups' ||
+          entry.name === '.git' ||
+          entry.name === 'node_modules'
+        ) {
+          continue;
+        }
+        const srcPath = path.join(workspaceRoot, entry.name);
+        const destPath = path.join(dest, entry.name);
+        await fs.cp(srcPath, destPath, { recursive: true, force: true });
+      }
       return { success: true, path: dest };
     } catch (err) {
       return { error: err.message };

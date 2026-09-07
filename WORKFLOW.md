@@ -2490,3 +2490,20 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Path Leak Fix**: Memperbaiki kebocoran path internal (`C:\Users\AMD\.arunaki\scratch`) ke LLM prompt yang berasal dari system context di `packages/engine/core/src/system-context/builtins.ts`. LLM sekarang secara cerdas mengenali status workspace kosong (scratchpad) tanpa membocorkan lokasi path sistem ke pengguna.
 - [x] **Web Build**: `npm run build -w apps/web` ✅ Passed (0 error, build in 24s).
 
+## Phase 69: Workspace Cartographer, Auto-Quarantine & Isolated Scratch Execution (DONE)
+
+- [x] **Workspace Cartographer & Sentinel Auto-Scan**: Mengaktifkan kembali pembentukan `.arunaki/ARUNAKI.md` otomatis via Sentinel scan saat folder dibuka atau session dibuat. Menyelaraskan memory synthesis agar memetakan file-file bisnis aktif secara terstruktur.
+- [x] **Strict Backup & Scratch Quarantine**:
+  - Semua file `.bak` otomatis dipindahkan ke `.arunaki-backups/` dan diabaikan dari File Catalog agar root workspace bersih.
+  - Memperbaiki `fs:backupFolder` di `apps/desktop/main.cjs` menjadi iterasi entri per entri non-rekursif ke root destinasi guna menghindari `EINVAL`.
+  - Menetapkan folder terisolasi `.arunaki/scratch/` untuk semua helper scripts (.py, .sh, .bat) dan file dump perantara.
+  - Auto-quarantine: jika ada script atau file dump perantara tertinggal di root workspace, dipindahkan otomatis ke `.arunaki/scratch/`.
+  - Memperbarui `BUILD_SYSTEM` di `packages/engine/core/src/plugin/agent.ts` dengan aturan ketat isolasi scratch dan larangan mengotori root folder dokumen.
+- [x] **Real-World Document Rekap E2E Verification**:
+  - Folder `E:\JS\Final-test` dikembalikan ke kondisi pristine (original).
+  - Menjalankan uji E2E dengan prompt catatan mentah WhatsApp untuk transaksi 7 September 2026.
+  - Arunaki secara otonom memetakan data ke `REKAPAN TERBARU2.txt` dan Kolom H `REKAP 9-2026.xlsx`.
+  - Verifikasi via Microsoft Excel COM native: `STATUS: PERFECT_OPEN` tanpa error atau dialog repair.
+  - Test suites: `memory-e2e.test.ts` (2 pass, 0 fail), `npm run build -w apps/web` ✅ (0 error).
+
+

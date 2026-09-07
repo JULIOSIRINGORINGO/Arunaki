@@ -76,7 +76,12 @@ function selectedV2WorkspaceID(
 }
 
 function defaultDirectory(request: HttpServerRequest.HttpServerRequest, url: URL): string {
-  const dir = url.searchParams.get("directory") || request.headers["x-arunaki-directory"]
+  const dir =
+    url.searchParams.get("directory") ||
+    request.headers["x-arunaki-directory"] ||
+    request.headers["x-directory"] ||
+    request.headers["x-folder"] ||
+    request.headers["x-workspace-directory"]
   if (dir) return dir
   
   const scratchDir = path.join(os.homedir(), ".arunaki", "scratch")

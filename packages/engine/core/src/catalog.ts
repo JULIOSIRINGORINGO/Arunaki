@@ -72,13 +72,8 @@ const layer = Layer.effect(
       if (provider.disabled) return false
       if (typeof provider.request.body.apiKey === "string" && provider.request.body.apiKey.length > 5) return true
       if (integration?.connections.length) return true
-      const url = String(provider.api?.url || "")
-      const isLocal =
-        url.includes("localhost") ||
-        url.includes("127.0.0.1") ||
-        provider.id === "ollama" ||
-        provider.id === "lmstudio"
-      if (isLocal) return true
+      if (provider.id === "kenari") return true
+      if (provider.id === "ollama" || provider.id === "lmstudio") return true
       return false
     }
 

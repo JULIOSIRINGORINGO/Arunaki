@@ -44,8 +44,12 @@ export async function createSession(opts?: {
     }
   }
 
-  const res = await engineFetch("/api/session", {
+  const query = opts?.directory ? `?directory=${encodeURIComponent(opts.directory)}` : "";
+  const res = await engineFetch(`/api/session${query}`, {
     method: "POST",
+    headers: {
+      ...(opts?.directory && { "x-arunaki-directory": opts.directory }),
+    },
     body: JSON.stringify({
       ...(opts?.agent && { agent: opts.agent }),
       ...(modelPayload && { model: modelPayload }),
@@ -57,11 +61,16 @@ export async function createSession(opts?: {
   return json.data;
 }
 
-export async function listSessions(opts?: { project?: string; limit?: number }) {
+export async function listSessions(opts?: { project?: string; limit?: number; directory?: string }) {
   const params = new URLSearchParams();
   if (opts?.project) params.set("project", opts.project);
   if (opts?.limit) params.set("limit", String(opts.limit));
-  const res = await engineFetch(`/api/session?${params}`);
+  if (opts?.directory) params.set("directory", opts.directory);
+  const res = await engineFetch(`/api/session?${params}`, {
+    headers: {
+      ...(opts?.directory && { "x-arunaki-directory": opts.directory }),
+    },
+  });
   if (!res.ok) throw new Error(`listSessions failed: ${res.status}`);
   const json = await res.json();
   return json.data;

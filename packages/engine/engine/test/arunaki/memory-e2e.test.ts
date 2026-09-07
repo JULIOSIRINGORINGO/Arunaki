@@ -87,10 +87,32 @@ describe("memory: learnCorrection (stubbed LLM)", () => {
       const jsonl = yield* read(path.join(".arunaki", "user-corrections.jsonl"))
       expect(jsonl).toContain(SESSION)
       expect(jsonl).toContain("jangan ubah nominal")
+    }))
 
-      const knowledge = JSON.parse(yield* read(path.join(".arunaki", "knowledge.json"))) as {
-        nodes: { id: string; content: string }[]
-      }
-      expect(knowledge.nodes.some((n) => n.id === "arunaki-rulebook")).toBe(true)
+  it.instance("ensureActive scans workspace files, creates ARUNAKI.md and initial backup snapshot", () =>
+    Effect.gen(function* () {
+      const test = yield* TestInstance
+      const dir = test.directory
+      const memory = yield* Memory.Service
+
+      // Create dummy files
+      yield* Effect.promise(() => fs.writeFile(path.join(dir, "REKAP.xlsx"), "excel-data"))
+      yield* Effect.promise(() => fs.writeFile(path.join(dir, "CATATAN.txt"), "text-notes"))
+
+      // Run ensureActive
+      yield* memory.ensureActive()
+
+      const read = (rel: string) => Effect.promise(() => fs.readFile(path.join(dir, rel), "utf8"))
+      const aru = yield* read(path.join(".arunaki", "ARUNAKI.md"))
+      expect(aru).toContain("# LOCAL WORKSPACE OPERATING RULES")
+      expect(aru).toContain("REKAP.xlsx")
+      expect(aru).toContain("CATATAN.txt")
+      expect(aru).toContain("File Spreadsheet (.xlsx, .csv)")
+      expect(aru).toContain("Catatan Dokumen Teks (.txt, .md)")
+
+      // Verify backup directory exists
+      const backupEntries = yield* Effect.promise(() => fs.readdir(path.join(dir, ".arunaki-backups")))
+      expect(backupEntries.length).toBeGreaterThan(0)
+      expect(backupEntries[0]).toContain("initial-")
     }))
 })

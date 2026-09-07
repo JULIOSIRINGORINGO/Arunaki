@@ -47,24 +47,82 @@ export interface Interface {
 
 export class Service extends Context.Service<Service, Interface>()("@arunaki/Memory") {}
 
-const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", ".arunaki", ".cache", "coverage"])
+const SKIP_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", ".arunaki", ".arunaki-backups", ".cache", "coverage"])
 
 function isSkipped(pathSegments: string[]): boolean {
-  return pathSegments.some((seg) => SKIP_DIRS.has(seg))
+  if (pathSegments.some((seg) => SKIP_DIRS.has(seg))) return true
+  const filename = pathSegments[pathSegments.length - 1]
+  if (filename && filename.toLowerCase().endsWith(".bak")) return true
+  return false
 }
 
-function inferDomain(topLevel: string[]): string {
-  if (topLevel.length === 0) return "General workspace"
+function extractExistingCorrections(doc?: string): string[] {
+  if (!doc) return []
+  const matches = Array.from(
+    doc.matchAll(/## User Preferences & Learned Corrections[\s\S]*?### Learned by the Sentinel\s*\n([\s\S]*?)(?=\n## |\n---|$)/g),
+    (m) =>
+      m[1]
+        .split("\n")
+        .map((l) => l.trim().replace(/^[-\*#\s]+/, ""))
+        .filter(Boolean),
+  ).flat()
+  return Array.from(new Set(matches))
+}
+
+function inferDomain(topLevel: string[], extensions: string[], relFiles: string[]): string {
+  const fileNames = relFiles.map((f) => path.basename(f).toLowerCase())
+  const hasRekap = fileNames.some((n) => n.includes("rekap") || n.includes("laporan") || n.includes("penjualan") || n.includes("transaksi"))
+  const hasSpreadsheet = extensions.some((ext) => [".xlsx", ".xls", ".csv"].includes(ext))
+  const hasDocs = extensions.some((ext) => [".docx", ".doc", ".pdf", ".txt", ".md"].includes(ext))
+
+  if (hasRekap && hasSpreadsheet) {
+    return "Rekapan Keuangan & Penjualan (Spreadsheet & Catatan Transaksi)"
+  }
+  if (hasSpreadsheet && hasDocs) {
+    return "Manajemen Dokumen & Spreadsheet Keuangan / Operasional"
+  }
+  if (hasSpreadsheet) {
+    return "Spreadsheet Data & Tabel Numerik"
+  }
+  if (topLevel.length === 0) return "General Document Workspace"
   return `Workspace focused on ${topLevel.slice(0, 6).join(", ")}`
+}
+
+function deriveSyntaxInvariants(extensions: string[], relFiles: string[]): string[] {
+  const invariants: string[] = []
+  const hasSpreadsheet = extensions.some((ext) => [".xlsx", ".xls", ".csv"].includes(ext))
+  const hasTxt = extensions.some((ext) => [".txt", ".md"].includes(ext))
+
+  if (hasSpreadsheet) {
+    invariants.push("- File Spreadsheet (.xlsx, .csv): Wajib menjaga susunan header kolom, formula kalkulasi (SUM, TOTAL), dan urutan tanggal tanpa mengubah format sel yang sudah ada.")
+    invariants.push("- Integritas OOXML: Saat memodifikasi file .xlsx, simpan langsung secara valid dan jangan merusak relasi file internal XML Excel.")
+  }
+
+  if (hasTxt) {
+    invariants.push("- Catatan Dokumen Teks (.txt, .md): Pertahankan pola struktur laporan (Pemasukan, Pengeluaran, Detail Belanja, Catatan Pembayaran) agar konsisten dengan entri historis.")
+  }
+
+  if (hasSpreadsheet && hasTxt) {
+    invariants.push("- Sinkronisasi Lintas Dokumen: Nilai transaksi pada catatan teks dan sel spreadsheet harian/bulanan harus selalu selaras dan diverifikasi setelah pengeditan.")
+  }
+
+  invariants.push("- Pembatasan Folder Aktif: Hanya operasikan file di dalam folder aktif yang sedang dibuka (Project Folder Isolation).")
+  invariants.push("- Aturan di bawah ini otomatis dipelajari oleh Sentinel saat pengguna memberikan arahan/koreksi.")
+
+  return invariants
 }
 
 /** Deterministic synthesizer (no LLM/credentials needed). Called on every scan. */
 // ponytail: deterministic file-catalog synthesis. Swap in a cartographer
 // sub-agent (TaskTool) that summarizes files and mines corrections when
 // budgets allow; sentinel call sites and the file format are unchanged.
-function synthesize(directory: string, files: string[]): string {
-  const rel = files.map((f) => path.relative(directory, f)).sort()
-  const topLevel = Array.from(new Set(rel.map((f) => f.split(path.sep)[0]!).filter(Boolean))).slice(0, 12)
+function synthesize(directory: string, files: string[], existingDoc?: string): string {
+  const rel = files
+    .map((f) => (path.isAbsolute(f) ? path.relative(directory, f) : f))
+    .map((f) => f.replace(/\\/g, "/"))
+    .filter((f) => Boolean(f) && f !== ".")
+    .sort()
+  const topLevel = Array.from(new Set(rel.map((f) => f.split("/")[0]!).filter(Boolean))).slice(0, 12)
 
   const catalog = rel
     .slice(0, 200)
@@ -73,7 +131,14 @@ function synthesize(directory: string, files: string[]): string {
 
   const extensions = Array.from(new Set(rel.map((f) => path.extname(f).toLowerCase()).filter(Boolean)))
     .sort()
-    .join(", ")
+
+  const domain = inferDomain(topLevel, extensions, rel)
+  const invariants = deriveSyntaxInvariants(extensions, rel)
+  const existingCorrections = extractExistingCorrections(existingDoc)
+
+  const learnedSection = existingCorrections.length > 0
+    ? ["### Learned by the Sentinel", ...existingCorrections.map((c) => `- ${c}`)].join("\n")
+    : "_Populated automatically as you correct Arunaki in chat._"
 
   return [
     "# LOCAL WORKSPACE OPERATING RULES",
@@ -83,7 +148,7 @@ function synthesize(directory: string, files: string[]): string {
     "",
     "## Domain Profile",
     "",
-    inferDomain(topLevel),
+    domain,
     "",
     "## File Catalog & Relationships",
     "",
@@ -91,17 +156,15 @@ function synthesize(directory: string, files: string[]): string {
     "",
     "## Strict Syntax Invariants",
     "",
-    "- Preserve header rows, column ordering, and immutable totals in workbook/data files.",
-    "- Never reinterpret or reformat data outside the active workspace folder.",
-    "- Rules below are learned from user corrections and stay active until changed.",
+    ...invariants,
     "",
     "## User Preferences & Learned Corrections",
     "",
-    "_Populated automatically as you correct Arunaki in chat._",
+    learnedSection,
     "",
     "---",
     "",
-    `_Sources: ${rel.length} files. File types: ${extensions || "n/a"}._`,
+    `_Sources: ${rel.length} files. File types: ${extensions.join(", ") || "n/a"}._`,
     "",
   ].join("\n")
 }
@@ -137,8 +200,6 @@ export function applyCorrections(doc: string, corrections: string[]): string {
   return re.test(doc) ? doc.replace(re, section) : `${doc}\n\n${section}\n`
 }
 
-
-
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -155,15 +216,74 @@ const layer = Layer.effect(
         const directory = (yield* InstanceState.context).directory
 
         const cartographImpl = Effect.fn("Memory.cartograph")(function* () {
+          const backupRoot = path.join(directory, ".arunaki-backups")
+
+          const scratchRoot = path.join(directory, ".arunaki", "scratch")
+
+          // Auto-quarantine: Keep root clean. Move .bak to backups, and stray scripts/dumps to .arunaki/scratch
+          yield* Effect.tryPromise(async () => {
+            const fsPromises = await import("fs/promises")
+            await fsPromises.mkdir(scratchRoot, { recursive: true })
+            const entries = await fsPromises.readdir(directory, { withFileTypes: true })
+            for (const entry of entries) {
+              if (entry.isFile()) {
+                const lower = entry.name.toLowerCase()
+                if (lower.endsWith(".bak")) {
+                  await fsPromises.mkdir(backupRoot, { recursive: true })
+                  await fsPromises.rename(path.join(directory, entry.name), path.join(backupRoot, entry.name))
+                } else if (
+                  lower.endsWith(".py") ||
+                  lower.endsWith(".sh") ||
+                  lower.endsWith(".bat") ||
+                  lower.startsWith("dump") ||
+                  lower.startsWith("hex_dump") ||
+                  lower.startsWith("temp_")
+                ) {
+                  await fsPromises.rename(path.join(directory, entry.name), path.join(scratchRoot, entry.name))
+                }
+              }
+            }
+          }).pipe(Effect.catch(() => Effect.void))
+
           const include = yield* fs
             .glob("**/*", { cwd: directory, include: "file", dot: true })
             .pipe(Effect.orDie)
-          const files = include.filter((f) => !isSkipped(f.split(/[\\/]/)))
-          const doc = synthesize(directory, files)
+          const files = include.filter((f) => {
+            const normalized = f.replace(/\\/g, "/")
+            return !isSkipped(normalized.split("/"))
+          })
+          const current = yield* readRulebook()
+          const doc = synthesize(directory, files, current)
 
           const target = path.join(directory, ARUNAKI_REL)
           yield* fs.ensureDir(path.dirname(target)).pipe(Effect.orDie)
           yield* fs.writeFileString(target, doc).pipe(Effect.orDie)
+
+          // Initial workspace snapshot into .arunaki-backups if not already present
+          const hasBackup = yield* fs.existsSafe(backupRoot)
+          if (!hasBackup && files.length > 0) {
+            const stamp = new Date().toISOString().replace(/[:.]/g, "-")
+            const dest = path.join(backupRoot, `initial-${stamp}`)
+            yield* fs.ensureDir(dest).pipe(Effect.catch(() => Effect.void))
+            yield* Effect.tryPromise(async () => {
+              const fsPromises = await import("fs/promises")
+              const entries = await fsPromises.readdir(directory, { withFileTypes: true })
+              for (const entry of entries) {
+                if (
+                  entry.name === ".arunaki" ||
+                  entry.name === ".arunaki-backups" ||
+                  entry.name === ".git" ||
+                  entry.name === "node_modules"
+                ) {
+                  continue
+                }
+                const srcPath = path.join(directory, entry.name)
+                const destPath = path.join(dest, entry.name)
+                await fsPromises.cp(srcPath, destPath, { recursive: true, force: true })
+              }
+            }).pipe(Effect.catch(() => Effect.void))
+          }
+
           return doc
         })
 
@@ -173,11 +293,13 @@ const layer = Layer.effect(
             .pipe(Effect.map((raw) => raw ?? ""), Effect.orDie)
 
         const ensureActive = Effect.fn("Memory.ensureActive")(function* () {
-          // Merely materialize the per-folder instance state so the
-          // Step.Ended subscription inside `make` is attached. No rulebook
-          // rewrite (cartograph) runs here, so a hand-authored ARUNAKI.md is
-          // preserved while the sentinel comes alive.
-          yield* Effect.void
+          const target = path.join(directory, ARUNAKI_REL)
+          const exists = yield* fs.existsSafe(target)
+          const backupRoot = path.join(directory, ".arunaki-backups")
+          const hasBackup = yield* fs.existsSafe(backupRoot)
+          if (!exists || !hasBackup) {
+            yield* cartographImpl()
+          }
         })
 
         const appendCorrectionLog = (sessionID: string, userText: string) =>
@@ -279,6 +401,11 @@ const layer = Layer.effect(
         let lastRefresh = 0
 
         const onTurnCompleted = Effect.fn("Memory.onTurnCompleted")(function* (sessionID: string) {
+          const target = path.join(directory, ARUNAKI_REL)
+          const exists = yield* fs.existsSafe(target)
+          if (!exists) {
+            yield* cartographImpl().pipe(Effect.catch(() => Effect.void))
+          }
           const now = Date.now()
           if (now - lastRefresh < MIN_REFRESH_GAP_MS) return
           lastRefresh = now
