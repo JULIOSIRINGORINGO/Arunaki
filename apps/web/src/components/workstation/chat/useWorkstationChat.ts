@@ -51,6 +51,7 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
       list.find(
         (m) =>
           m !== "mistral-large:free" &&
+          m !== "glm-4-7-flash:free" &&
           !m.includes("muse-spark") &&
           !m.includes("kimi") &&
           !m.includes("lightning") &&
@@ -62,7 +63,7 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
   }
   return {
     providerID: p,
-    id: p === "kenari" ? "glm-4-7-flash:free" : "default",
+    id: p === "kenari" ? "agnes-2-0-flash:free" : "default",
   };
 }
 

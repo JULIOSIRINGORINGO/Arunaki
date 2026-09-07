@@ -154,7 +154,7 @@ const OpenAIChatChoice = Schema.Struct({
 })
 
 const OpenAIChatEvent = Schema.Struct({
-  choices: Schema.Array(OpenAIChatChoice),
+  choices: optionalNull(Schema.Array(OpenAIChatChoice)),
   usage: optionalNull(OpenAIChatUsage),
 })
 type OpenAIChatEvent = Schema.Schema.Type<typeof OpenAIChatEvent>
@@ -408,7 +408,7 @@ const step = (state: ParserState, event: OpenAIChatEvent) =>
   Effect.gen(function* () {
     const events: LLMEvent[] = []
     const usage = mapUsage(event.usage) ?? state.usage
-    const choice = event.choices[0]
+    const choice = event.choices?.[0]
     const finishReason = choice?.finish_reason ? mapFinishReason(choice.finish_reason) : state.finishReason
     const delta = choice?.delta
     const toolDeltas = delta?.tool_calls ?? []

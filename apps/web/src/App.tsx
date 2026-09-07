@@ -30,6 +30,8 @@ if (typeof window !== "undefined") {
     const kenariPool = localStorage.getItem("arunaki_provider_models_kenari");
     if (
       !kenariPool ||
+      kenariPool.includes("glm-4-7-flash:free") ||
+      !kenariPool.includes("agnes-2-0-flash:free") ||
       kenariPool.includes("mistral-large:free") ||
       kenariPool.includes("muse-spark") ||
       kenariPool.includes("kimi") ||
@@ -39,11 +41,11 @@ if (typeof window !== "undefined") {
       kenariPool.includes("north-mini")
     ) {
       const verified = [
-        "glm-4-7-flash:free",
+        "agnes-2-0-flash:free",
         "mistral-medium-3-5:free",
-        "mimo-v2-5:free",
-        "step-3-7-flash:free",
         "nemotron-3-super-120b-a12b:free",
+        "step-3-7-flash:free",
+        "mimo-v2-5:free",
       ];
       localStorage.setItem("arunaki_provider_models_kenari", verified.join(", "));
     }
@@ -52,10 +54,11 @@ if (typeof window !== "undefined") {
     if (
       !activeModel ||
       activeModel.includes(",") ||
+      activeModel === "glm-4-7-flash:free" ||
       activeModel === "mistral-large:free" ||
       activeModel.includes("muse-spark")
     ) {
-      localStorage.setItem("arunaki_active_model", "glm-4-7-flash:free");
+      localStorage.setItem("arunaki_active_model", "agnes-2-0-flash:free");
     }
   } catch {}
 }
