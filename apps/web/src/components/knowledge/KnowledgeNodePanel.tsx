@@ -190,7 +190,7 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     return null;
   }
 
-  const isRulesNode = (nodeData.type || '').toLowerCase() === 'rules';
+  const isRulesNode = (nodeData?.type || '').toLowerCase() === 'rules';
 
   return (
     <Panel 
