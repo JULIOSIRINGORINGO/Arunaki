@@ -177,7 +177,11 @@ const layer = Layer.effect(
       recoverOverflow?: typeof compaction.compactAfterOverflow,
     ) {
       const session = yield* getSession(sessionID)
-      if (session.location.directory !== location.directory || session.location.workspaceID !== location.workspaceID)
+      const norm = (p?: string) => (p ? p.replace(/\\/g, "/").replace(/\/$/, "").toLowerCase() : "")
+      if (
+        norm(session.location.directory) !== norm(location.directory) ||
+        session.location.workspaceID !== location.workspaceID
+      )
         return yield* Effect.interrupt
       const agent = yield* agents.select(session.agent)
       const initialized = yield* SessionContextEpoch.initialize(db, loadSystemContext(agent), session.id)
@@ -401,29 +405,7 @@ const layer = Layer.effect(
         let needsContinuation = true
         let step = 1
         while (needsContinuation) {
-          const result = yield* runTurn(input.sessionID, promotion, step).pipe(
-            Effect.catchAll((error) =>
-              Effect.gen(function* () {
-                const message =
-                  error instanceof SessionRunnerModel.ModelNotSelectedError
-                    ? "Belum ada Model / Provider AI yang terkonfigurasi. Silakan buka menu Settings untuk menghubungkan Provider AI."
-                    : error instanceof SessionRunnerModel.ModelUnavailableError
-                      ? `Model tidak tersedia: ${error.providerID}/${error.modelID}`
-                      : error instanceof Error
-                        ? error.message
-                        : String(error)
-                yield* events.publish(SessionEvent.Step.Failed, {
-                  sessionID: input.sessionID,
-                  timestamp: yield* DateTime.now,
-                  error: {
-                    type: "unknown",
-                    message,
-                  },
-                })
-                return { needsContinuation: false, step }
-              }),
-            ),
-          )
+          const result = yield* runTurn(input.sessionID, promotion, step)
           needsContinuation = result.needsContinuation
           step = result.step + 1
           promotion = "steer"
