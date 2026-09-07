@@ -6,6 +6,7 @@ import { CenterBreadcrumbs } from "./tabs/CenterBreadcrumbs";
 import { CenterEditorView } from "./tabs/CenterEditorView";
 import { CenterEmptyState } from "./tabs/CenterEmptyState";
 import { CenterStatusBar } from "./tabs/CenterStatusBar";
+import { SpreadsheetViewer } from "./canvas/SpreadsheetViewer";
 
 export type { CenterTab };
 
@@ -208,6 +209,17 @@ function WorkstationCenterPanelComponent({
     ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || "workspace"
     : "workspace";
 
+  const isSpreadsheet = activeTab
+    ? Boolean(
+        activeTab.fileType === "xlsx" ||
+        activeTab.fileType === "xls" ||
+        activeTab.fileType === "csv" ||
+        activeTab.title.toLowerCase().endsWith(".xlsx") ||
+        activeTab.title.toLowerCase().endsWith(".xls") ||
+        activeTab.title.toLowerCase().endsWith(".csv")
+      )
+    : false;
+
   return (
     <main className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] overflow-hidden select-none border-r border-[#252526] transition-colors duration-150">
       {/* 1. TOP TABS BAR */}
@@ -234,21 +246,29 @@ function WorkstationCenterPanelComponent({
       {/* 2. BREADCRUMBS BAR */}
       {activeTab && <CenterBreadcrumbs folderName={folderName} tabTitle={activeTab.title} />}
 
-      {/* 3. DYNAMIC CONTENT BODY (CANVAS / FILE EDITOR) */}
+      {/* 3. DYNAMIC CONTENT BODY (SPREADSHEET / FILE EDITOR) */}
       <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[#1e1e1e]">
         {activeTab ? (
-          <CenterEditorView
-            currentContent={currentContent}
-            lines={lines}
-            addedLineNums={addedLineNums}
-            cursorPos={cursorPos}
-            textareaRef={textareaRef}
-            gutterRef={gutterRef}
-            onTextChange={handleTextChange}
-            updateCursorPos={updateCursorPos}
-            onScroll={handleScroll}
-            onKeyDown={handleKeyDown}
-          />
+          isSpreadsheet ? (
+            <SpreadsheetViewer
+              content={currentContent}
+              filePath={activeTab.path}
+              title={activeTab.title}
+            />
+          ) : (
+            <CenterEditorView
+              currentContent={currentContent}
+              lines={lines}
+              addedLineNums={addedLineNums}
+              cursorPos={cursorPos}
+              textareaRef={textareaRef}
+              gutterRef={gutterRef}
+              onTextChange={handleTextChange}
+              updateCursorPos={updateCursorPos}
+              onScroll={handleScroll}
+              onKeyDown={handleKeyDown}
+            />
+          )
         ) : (
           <CenterEmptyState />
         )}
