@@ -474,13 +474,17 @@ function resolveNodeCollision(draggedNode: Node, allNodes: Node[]): { x: number;
           <Background color={isLight ? "#D1D5DB" : "#333338"} gap={20} size={1.2} />
           <Controls className="!bg-[var(--bg-panel)] border !border-[var(--border-strong)] rounded-xl overflow-hidden !bottom-8 !left-4 [&_button]:!bg-[var(--bg-panel)] [&_button]:!text-[var(--text-primary)] [&_button]:!border-b-[var(--border-color)] [&_button:hover]:!bg-[var(--bg-hover)]" />
           <MiniMap 
-            className="rounded-xl !bg-[#121214] border !border-[var(--border-strong)] overflow-hidden !bottom-8 !right-4"
-            maskColor={isLight ? "rgba(243, 244, 246, 0.75)" : "rgba(10, 10, 10, 0.85)"}
-            nodeBorderRadius={16}
+            className="rounded-xl !bg-[var(--bg-card)] border !border-[var(--border-color)] shadow-md overflow-hidden !bottom-8 !right-4 transition-colors"
+            maskColor={isLight ? "rgba(15, 23, 42, 0.08)" : "rgba(0, 0, 0, 0.65)"}
+            maskStrokeColor={isLight ? "rgba(15, 23, 42, 0.25)" : "rgba(255, 255, 255, 0.25)"}
+            maskStrokeWidth={1.5}
+            nodeBorderRadius={6}
             nodeColor={(node) => {
-              if (node.id === 'main-ai-node') return isLight ? '#8B5CF6' : '#a855f7';
-              return '#3b82f6';
+              if (node.id === 'main-ai-node') return isLight ? '#0f172a' : '#ffffff';
+              return isLight ? '#94a3b8' : '#71717a';
             }}
+            nodeStrokeColor={isLight ? '#cbd5e1' : '#3f3f46'}
+            nodeStrokeWidth={1}
           />
           
           <KnowledgeToolbar 

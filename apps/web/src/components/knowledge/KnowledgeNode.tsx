@@ -82,41 +82,8 @@ const getIconElement = (type: string, iconName?: string) => {
   return <FileText className="w-5 h-5" strokeWidth={1.5} />;
 };
 
-const getNodeColorTheme = (type: string, iconName?: string) => {
-  const t = (type || "").toLowerCase();
-  const icon = (iconName || "").toLowerCase();
-
-  if (icon === "send" || icon === "telegram" || t.includes("telegram")) {
-    return "bg-sky-500/15 text-sky-500 border-sky-500/30";
-  }
-  if (icon === "brain" || t.includes("openai") || t.includes("model")) {
-    return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30";
-  }
-  if (icon === "database" || t.includes("memory") || t.includes("buffer")) {
-    return "bg-indigo-500/15 text-indigo-500 border-indigo-500/30";
-  }
-  if (icon === "mail" || t.includes("email")) {
-    return "bg-purple-500/15 text-purple-500 border-purple-500/30";
-  }
-  if (icon === "calendar" || t.includes("calendar")) {
-    return "bg-teal-500/15 text-teal-500 border-teal-500/30";
-  }
-  if (icon === "globe" || t.includes("web") || t.includes("tavily")) {
-    return "bg-blue-500/15 text-blue-500 border-blue-500/30";
-  }
-  if (icon === "calc" || t.includes("calc")) {
-    return "bg-amber-500/15 text-amber-500 border-amber-500/30";
-  }
-  if (icon === "shield-check" || t.includes("rules") || t.includes("sop")) {
-    return "bg-orange-500/15 text-orange-500 border-orange-500/30";
-  }
-  if (t.includes("switch") || t.includes("router")) {
-    return "bg-cyan-500/15 text-cyan-500 border-cyan-500/30";
-  }
-  if (t.includes("sheet") || t.includes("excel") || t.includes("csv")) {
-    return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30";
-  }
-  return "bg-[var(--bg-hover)] text-[var(--text-primary)] border-[var(--border-color)]";
+const getNodeColorTheme = (_type: string, _iconName?: string) => {
+  return "bg-[var(--bg-card)] text-[var(--text-primary)] border-[var(--border-strong)] shadow-xs";
 };
 
 export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: KnowledgeNodeProps) {

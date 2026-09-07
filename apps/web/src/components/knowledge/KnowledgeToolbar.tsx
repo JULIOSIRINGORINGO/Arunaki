@@ -60,7 +60,7 @@ export function KnowledgeToolbar({ onAddNode }: KnowledgeToolbarProps) {
                 onClick={() => handleAdd('catalog')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
-                <Globe className="w-4 h-4 text-blue-500" strokeWidth={1.5} />
+                <Globe className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
                 <span>Website / Catalog URL</span>
               </button>
               
@@ -68,7 +68,7 @@ export function KnowledgeToolbar({ onAddNode }: KnowledgeToolbarProps) {
                 onClick={() => handleAdd('sheet')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
-                <Table2 className="w-4 h-4 text-emerald-500" strokeWidth={1.5} />
+                <Table2 className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
                 <span>Price List / Stock URL</span>
               </button>
 
@@ -76,7 +76,7 @@ export function KnowledgeToolbar({ onAddNode }: KnowledgeToolbarProps) {
                 onClick={() => handleAdd('rules')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-xl transition-colors cursor-pointer group"
               >
-                <ShieldCheck className="w-4 h-4 text-amber-500" strokeWidth={1.5} />
+                <ShieldCheck className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors" strokeWidth={1.5} />
                 <span>SOP & Business Rules</span>
               </button>
             </div>

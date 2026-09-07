@@ -294,16 +294,16 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 placeholder="https://example.com"
                 className="w-full px-3 py-2 bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-color)] rounded-xl text-xs focus:outline-none focus:border-[var(--border-strong)]"
               />
-              <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center justify-between mt-1 gap-2">
                 <span className="text-[10px] text-[var(--text-dim)]">
-                  Supports Google Sheets & Web Pages
+                  Supports Google Sheets & Web Pages (LLM reads live URL automatically)
                 </span>
                 <button
                   type="button"
                   disabled={syncing || !urls[0]?.trim()}
                   onClick={handleSyncUrl}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--border-strong)] text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer disabled:opacity-40"
-                  title="Extract live CSV/Markdown data from this URL into the content area below"
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--border-strong)] text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer disabled:opacity-40 shrink-0"
+                  title="Optional: Copy a snapshot of data into the Markdown box below now. If left empty, LLM still automatically reads the live URL in real-time during chat."
                 >
                   <RefreshCw className={cn("w-3 h-3", syncing && "animate-spin")} />
                   <span>{syncing ? "Syncing..." : "Sync / Fetch Data"}</span>
