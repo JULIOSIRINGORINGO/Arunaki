@@ -123,7 +123,15 @@ export function HistoryPage() {
                         <HistorySessionItem
                           key={session.id}
                           session={session}
-                          onClick={() => navigate(`/?chatId=${session.id}`)}
+                          onClick={() => {
+                            localStorage.setItem("arunaki_active_chat_id", session.id);
+                            const activeFolder = localStorage.getItem("arunaki_active_folder") || "";
+                            const params = new URLSearchParams();
+                            params.set("chatId", session.id);
+                            if (activeFolder) params.set("folder", activeFolder);
+                            navigate(`/?${params.toString()}`);
+                            window.dispatchEvent(new Event("arunaki-session-change"));
+                          }}
                         />
                       ))}
                     </div>

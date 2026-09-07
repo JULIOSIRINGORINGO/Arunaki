@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, type KeyboardEvent, type FocusEvent } from "react";
 import { Bot, Plus, PanelRightClose } from "lucide-react";
+import { getSession } from "../../../lib/engine";
 
 interface WorkstationRightChatHeaderProps {
   activeChatId?: string;
@@ -18,7 +19,17 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
   useEffect(() => {
     if (activeChatId) {
       const saved = localStorage.getItem(`arunaki_chat_name_${activeChatId}`);
-      setChatTitle(saved || "Chat");
+      if (saved) {
+        setChatTitle(saved);
+      } else {
+        getSession(activeChatId).then((sess) => {
+          if (sess?.title) {
+            setChatTitle(sess.title);
+          } else {
+            setChatTitle("Chat");
+          }
+        }).catch(() => setChatTitle("Chat"));
+      }
     } else {
       setChatTitle("New Chat");
     }

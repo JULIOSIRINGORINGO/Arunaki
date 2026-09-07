@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { WorkstationLeftExplorer } from "../components/workstation/WorkstationLeftExplorer";
@@ -13,7 +13,11 @@ import { WorkspaceFile } from "../components/workstation/chat/types";
 import { engineFetch } from "../lib/engine";
 
 export function UnifiedWorkstationPage() {
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const isWorkstationRoute =
+    location.pathname === "/" || location.pathname.startsWith("/workspace");
 
   const urlChatId = searchParams.get("chatId") || "";
 
@@ -44,8 +48,9 @@ export function UnifiedWorkstationPage() {
     return raw.startsWith("ses_") ? raw : "";
   });
 
-  // Sync active folder with localStorage and URL
+  // Sync active folder with localStorage and URL (only when on workstation route)
   useEffect(() => {
+    if (!isWorkstationRoute) return;
     if (activeFolder) {
       localStorage.setItem("arunaki_active_folder", activeFolder);
       if (searchParams.get("folder") !== activeFolder) {
@@ -56,7 +61,7 @@ export function UnifiedWorkstationPage() {
         }, { replace: true });
       }
     }
-  }, [activeFolder, searchParams, setSearchParams]);
+  }, [isWorkstationRoute, activeFolder, searchParams, setSearchParams]);
 
   // Sync external folder changes (e.g. from topbar)
   useEffect(() => {
@@ -64,55 +69,61 @@ export function UnifiedWorkstationPage() {
       const saved = localStorage.getItem("arunaki_active_folder");
       if (saved && saved !== activeFolder) {
         setActiveFolder(saved);
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
-          next.set("folder", saved);
-          return next;
-        }, { replace: true });
+        if (isWorkstationRoute) {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("folder", saved);
+            return next;
+          }, { replace: true });
+        }
       }
     }
     window.addEventListener("arunaki-folder-change", handleFolderChange);
     return () => window.removeEventListener("arunaki-folder-change", handleFolderChange);
-  }, [activeFolder, setSearchParams]);
+  }, [isWorkstationRoute, activeFolder, setSearchParams]);
 
-  // Sync external urlChatId changes into activeChatId
-  const prevUrlChatIdRef = useRef<string | null>(urlChatId);
+  // Sync external session changes (e.g. from HistoryPage navigation)
   useEffect(() => {
-    if (urlChatId !== prevUrlChatIdRef.current) {
-      prevUrlChatIdRef.current = urlChatId;
-      setActiveChatId(urlChatId || "");
-      if (urlChatId) {
-        localStorage.setItem("arunaki_active_chat_id", urlChatId);
-      } else {
-        localStorage.removeItem("arunaki_active_chat_id");
+    function handleSessionChange() {
+      const saved = localStorage.getItem("arunaki_active_chat_id");
+      if (saved && saved.startsWith("ses_") && saved !== activeChatId) {
+        setActiveChatId(saved);
+        if (isWorkstationRoute && searchParams.get("chatId") !== saved) {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("chatId", saved);
+            return next;
+          }, { replace: true });
+        }
       }
     }
-  }, [urlChatId]);
+    window.addEventListener("arunaki-session-change", handleSessionChange);
+    return () => window.removeEventListener("arunaki-session-change", handleSessionChange);
+  }, [isWorkstationRoute, activeChatId, searchParams, setSearchParams]);
 
-  // Sync internal activeChatId changes back into URL & localStorage
+  // Sync incoming urlChatId into activeChatId
   useEffect(() => {
-    if (activeChatId) {
+    if (!isWorkstationRoute) return;
+    if (urlChatId && urlChatId.startsWith("ses_") && urlChatId !== activeChatId) {
+      setActiveChatId(urlChatId);
+      localStorage.setItem("arunaki_active_chat_id", urlChatId);
+    }
+  }, [isWorkstationRoute, urlChatId, activeChatId]);
+
+  // Sync internal activeChatId state changes into URL searchParams
+  useEffect(() => {
+    if (!isWorkstationRoute) return;
+    if (activeChatId && activeChatId.startsWith("ses_")) {
       localStorage.setItem("arunaki_active_chat_id", activeChatId);
       if (searchParams.get("chatId") !== activeChatId) {
-        prevUrlChatIdRef.current = activeChatId;
         setSearchParams((prev) => {
           const next = new URLSearchParams(prev);
           next.set("chatId", activeChatId);
           return next;
         }, { replace: true });
       }
-    } else {
-      localStorage.removeItem("arunaki_active_chat_id");
-      if (searchParams.has("chatId")) {
-        prevUrlChatIdRef.current = null;
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete("chatId");
-          return next;
-        }, { replace: true });
-      }
     }
-  }, [activeChatId, searchParams, setSearchParams]);
+  }, [isWorkstationRoute, activeChatId, searchParams, setSearchParams]);
 
   const openFolderParam = searchParams.get("openFolder");
   const openFolder = useCallback((folderPath: string) => {
@@ -362,7 +373,15 @@ export function UnifiedWorkstationPage() {
       <SearchSectionModal
         isOpen={showSearchSectionModal}
         onClose={() => setShowSearchSectionModal(false)}
-        onSelectSession={(chatId) => setSearchParams({ chatId })}
+        onSelectSession={(chatId) => {
+          setActiveChatId(chatId);
+          localStorage.setItem("arunaki_active_chat_id", chatId);
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("chatId", chatId);
+            return next;
+          }, { replace: true });
+        }}
       />
     </div>
   );
