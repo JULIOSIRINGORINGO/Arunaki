@@ -36,6 +36,36 @@ const EDIT_FILE_TOOLS = new Set([
   "create_file",
 ]);
 
+export function resolveActiveSingleModel(): { providerID: string; id: string } {
+  const p = localStorage.getItem("arunaki_active_provider") || "kenari";
+  const specific =
+    localStorage.getItem("arunaki_active_model") ||
+    localStorage.getItem(`arunaki_provider_model_${p}`);
+  if (specific && specific.trim() && !specific.includes(",")) {
+    return { providerID: p, id: specific.trim() };
+  }
+  const pool = localStorage.getItem(`arunaki_provider_models_${p}`);
+  if (pool && pool.trim()) {
+    const list = pool.split(",").map((s) => s.trim()).filter(Boolean);
+    const valid =
+      list.find(
+        (m) =>
+          m !== "mistral-large:free" &&
+          !m.includes("muse-spark") &&
+          !m.includes("kimi") &&
+          !m.includes("lightning") &&
+          !m.includes("tiny") &&
+          !m.includes("longcat") &&
+          !m.includes("north-mini")
+      ) || list[0];
+    if (valid) return { providerID: p, id: valid };
+  }
+  return {
+    providerID: p,
+    id: p === "kenari" ? "glm-4-7-flash:free" : "default",
+  };
+}
+
 export function useWorkstationChat({
   activeFolder,
   activeChatId,
@@ -184,19 +214,12 @@ export function useWorkstationChat({
     setLiveStatus(null);
     setOptimisticMessages([]);
 
-    const getActiveModelRef = (): { providerID: string; id: string } => {
-      const p = localStorage.getItem("arunaki_active_provider") || "kenari";
-      const m =
-        localStorage.getItem(`arunaki_provider_models_${p}`) ||
-        localStorage.getItem("arunaki_active_model") ||
-        "mimo-v2-5:free";
-      return { providerID: p, id: m };
-    };
+    const activeModel = resolveActiveSingleModel();
 
     try {
       const session = await createSession({
         directory: activeFolder || undefined,
-        model: getActiveModelRef(),
+        model: activeModel,
       });
       if (session && session.id) {
         setActiveChatId(session.id);
@@ -255,15 +278,7 @@ export function useWorkstationChat({
     producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
-    const getActiveModelRef = (): { providerID: string; id: string } => {
-      const p = localStorage.getItem("arunaki_active_provider") || "kenari";
-      const m =
-        localStorage.getItem(`arunaki_provider_models_${p}`) ||
-        localStorage.getItem("arunaki_active_model") ||
-        "mimo-v2-5:free";
-      return { providerID: p, id: m };
-    };
-    const activeModel = getActiveModelRef();
+    const activeModel = resolveActiveSingleModel();
 
     let chatIdToUse = activeChatId;
     if (!chatIdToUse || !chatIdToUse.startsWith("ses_")) {
@@ -313,6 +328,7 @@ export function useWorkstationChat({
       activeProviderName: string;
       modelName?: string;
     }> => {
+      const activeModel = resolveActiveSingleModel();
       try {
         const res = await apiFetch(`${API_BASE}/providers`);
         if (res.ok) {
@@ -327,15 +343,10 @@ export function useWorkstationChat({
             providers.find((p) => p.id === "kenari" || p.apiKey) ||
             providers[0];
 
-          const model =
-            (active && localStorage.getItem(`arunaki_provider_models_${active.id}`)) ||
-            active?.model ||
-            undefined;
-
           return {
             hasConfiguredProvider: true,
             activeProviderName: active?.name || active?.id || "AI Provider",
-            modelName: model,
+            modelName: activeModel.id,
           };
         }
       } catch {}
@@ -344,7 +355,7 @@ export function useWorkstationChat({
       return {
         hasConfiguredProvider: !!fallbackId,
         activeProviderName: fallbackId === "kenari" ? "Kenari" : fallbackId || "AI Provider",
-        modelName: fallbackId ? localStorage.getItem(`arunaki_provider_models_${fallbackId}`) || undefined : undefined,
+        modelName: activeModel.id,
       };
     };
 

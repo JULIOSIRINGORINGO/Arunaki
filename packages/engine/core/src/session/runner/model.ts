@@ -194,10 +194,21 @@ export const locationLayer = Layer.effect(
             (typeof m.request.body.apiKey === "string" && m.request.body.apiKey.length > 5) ||
             m.providerID === "kenari",
         )
+        // Sanitize requested model ID in case it contains commas or is a pool
+        let requestedID = session.model?.id
+        if (requestedID && requestedID.includes(",")) {
+          const parts = requestedID.split(",").map((s) => s.trim()).filter(Boolean)
+          requestedID = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0]
+        }
+
         const selected = session.model
           ? allAvailable.find(
-              (model) => model.providerID === session.model?.providerID && model.id === session.model.id,
-            )
+              (model) =>
+                model.providerID === session.model?.providerID &&
+                (model.id === requestedID || (requestedID ? requestedID.includes(model.id) : false)),
+            ) ??
+            withKey.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
+            allAvailable.find((m) => m.providerID === session.model?.providerID && supported(m))
           : defaultModel && supported(defaultModel)
             ? defaultModel
             : withKey.find(supported) ?? allAvailable.find(supported)

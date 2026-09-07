@@ -39,11 +39,11 @@ export const DEFAULT_MODELS: Record<string, string[]> = {
     "meta-llama/llama-4-maverick:free",
   ],
   kenari: [
+    "glm-4-7-flash:free",
+    "mistral-medium-3-5:free",
     "mimo-v2-5:free",
-    "agnes-2-0-flash:free",
-    "agnes-2-5-flash:free",
-    "nemotron-3-ultra-550b-a55b:free",
     "step-3-7-flash:free",
+    "nemotron-3-super-120b-a12b:free",
   ],
   openai: ["gpt-4o", "gpt-4o-mini", "o3-mini", "gpt-4-turbo"],
   anthropic: [

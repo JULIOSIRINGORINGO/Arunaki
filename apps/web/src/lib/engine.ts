@@ -23,13 +23,23 @@ export async function createSession(opts?: {
   let modelPayload: { providerID: string; id: string } | undefined;
   if (opts?.model) {
     if (typeof opts.model === "object") {
-      modelPayload = opts.model;
+      let id = opts.model.id;
+      if (id && id.includes(",")) {
+        const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
+        id = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
+      }
+      modelPayload = { providerID: opts.model.providerID, id };
     } else if (typeof opts.model === "string") {
-      if (opts.model.includes("/")) {
-        const [providerID, id] = opts.model.split("/", 2);
+      let clean = opts.model;
+      if (clean.includes(",")) {
+        const parts = clean.split(",").map((s) => s.trim()).filter(Boolean);
+        clean = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
+      }
+      if (clean.includes("/")) {
+        const [providerID, id] = clean.split("/", 2);
         modelPayload = { providerID, id };
       } else {
-        modelPayload = { providerID: "kenari", id: opts.model };
+        modelPayload = { providerID: "kenari", id: clean };
       }
     }
   }
@@ -65,9 +75,14 @@ export async function getSession(sessionID: string) {
 }
 
 export async function switchSessionModel(sessionID: string, model: { providerID: string; id: string }) {
+  let id = model.id;
+  if (id && id.includes(",")) {
+    const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
+    id = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
+  }
   const res = await engineFetch(`/api/session/${sessionID}/model`, {
     method: "POST",
-    body: JSON.stringify({ model }),
+    body: JSON.stringify({ model: { providerID: model.providerID, id } }),
   });
   return res.ok;
 }
