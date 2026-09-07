@@ -208,15 +208,12 @@ export const locationLayer = Layer.effect(
                 (model.id === requestedID || (requestedID ? requestedID.includes(model.id) : false)),
             ) ??
             withKey.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
-            allAvailable.find((m) => m.providerID === session.model?.providerID && supported(m))
+            withKey.find(supported) ??
+            allAvailable.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
+            (defaultModel && supported(defaultModel) ? defaultModel : allAvailable.find(supported))
           : defaultModel && supported(defaultModel)
             ? defaultModel
             : withKey.find(supported) ?? allAvailable.find(supported)
-        if (!selected && session.model)
-          return yield* new ModelUnavailableError({
-            providerID: session.model.providerID,
-            modelID: session.model.id,
-          })
         if (!selected) return yield* new ModelNotSelectedError({ sessionID: session.id })
         const provider = yield* catalog.provider.get(selected.providerID)
         const connection = yield* integrations.connection.active(

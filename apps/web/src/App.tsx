@@ -20,6 +20,46 @@ const queryClient = new QueryClient({
 const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
 const RouterComponent = isFileProtocol ? HashRouter : BrowserRouter;
 
+// Self-healing migration: sanitize and heal model & provider configuration on app launch
+if (typeof window !== "undefined") {
+  try {
+    if (!localStorage.getItem("arunaki_active_provider")) {
+      localStorage.setItem("arunaki_active_provider", "kenari");
+    }
+
+    const kenariPool = localStorage.getItem("arunaki_provider_models_kenari");
+    if (
+      !kenariPool ||
+      kenariPool.includes("mistral-large:free") ||
+      kenariPool.includes("muse-spark") ||
+      kenariPool.includes("kimi") ||
+      kenariPool.includes("lightning") ||
+      kenariPool.includes("tiny") ||
+      kenariPool.includes("longcat") ||
+      kenariPool.includes("north-mini")
+    ) {
+      const verified = [
+        "glm-4-7-flash:free",
+        "mistral-medium-3-5:free",
+        "mimo-v2-5:free",
+        "step-3-7-flash:free",
+        "nemotron-3-super-120b-a12b:free",
+      ];
+      localStorage.setItem("arunaki_provider_models_kenari", verified.join(", "));
+    }
+
+    const activeModel = localStorage.getItem("arunaki_active_model");
+    if (
+      !activeModel ||
+      activeModel.includes(",") ||
+      activeModel === "mistral-large:free" ||
+      activeModel.includes("muse-spark")
+    ) {
+      localStorage.setItem("arunaki_active_model", "glm-4-7-flash:free");
+    }
+  } catch {}
+}
+
 export default function App() {
   const { theme } = useTheme();
   const effectiveTheme = theme === 'system' ? getSystemTheme() : theme;

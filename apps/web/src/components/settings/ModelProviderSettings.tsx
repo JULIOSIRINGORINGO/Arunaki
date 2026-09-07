@@ -97,6 +97,9 @@ export function ModelProviderSettings({
     setForm((f) => ({ ...f, model: modelStr }));
     if (editingId) {
       localStorage.setItem("arunaki_provider_models_" + editingId, modelStr);
+      if (updated[0]) {
+        localStorage.setItem("arunaki_active_model", updated[0]);
+      }
     }
   };
 
@@ -105,6 +108,9 @@ export function ModelProviderSettings({
     setForm((f) => ({ ...f, model: modelStr }));
     if (editingId) {
       localStorage.setItem("arunaki_provider_models_" + editingId, modelStr);
+      if (newOrder[0]) {
+        localStorage.setItem("arunaki_active_model", newOrder[0]);
+      }
     }
   };
 
@@ -176,6 +182,10 @@ export function ModelProviderSettings({
 
       if (providerId) {
         localStorage.setItem("arunaki_provider_models_" + providerId, form.model);
+        const primary = form.model.split(",").map((s) => s.trim()).filter(Boolean)[0];
+        if (primary) {
+          localStorage.setItem("arunaki_active_model", primary);
+        }
         setCustomModelsMap((prev) => ({
           ...prev,
           [providerId!]: formAvailableModels,
@@ -203,6 +213,11 @@ export function ModelProviderSettings({
   const handleToggleActive = async (provider: Provider) => {
     try {
       localStorage.setItem("arunaki_active_provider", provider.id);
+      const pool = localStorage.getItem("arunaki_provider_models_" + provider.id) || provider.model;
+      const primary = pool ? pool.split(",").map((s) => s.trim()).filter(Boolean)[0] : "";
+      if (primary) {
+        localStorage.setItem("arunaki_active_model", primary);
+      }
       await apiFetch(`${API_BASE}/providers/${provider.id}/state${directoryQuery()}`, {
         method: "PUT",
         body: JSON.stringify({ active: true }),

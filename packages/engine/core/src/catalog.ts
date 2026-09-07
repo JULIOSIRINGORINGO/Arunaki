@@ -70,9 +70,16 @@ const layer = Layer.effect(
 
     const available = (provider: ProviderV2.Info, integration: Integration.Info | undefined) => {
       if (provider.disabled) return false
-      if (typeof provider.request.body.apiKey === "string") return true
+      if (typeof provider.request.body.apiKey === "string" && provider.request.body.apiKey.length > 5) return true
       if (integration?.connections.length) return true
-      return provider.integrationID === undefined && !integration
+      const url = String(provider.api?.url || "")
+      const isLocal =
+        url.includes("localhost") ||
+        url.includes("127.0.0.1") ||
+        provider.id === "ollama" ||
+        provider.id === "lmstudio"
+      if (isLocal) return true
+      return false
     }
 
     const projectModel = (model: ModelV2.Info, provider: ProviderV2.Info) => {
