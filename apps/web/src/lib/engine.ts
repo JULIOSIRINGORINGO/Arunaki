@@ -190,7 +190,7 @@ export function mapEngineEvent(
   event: { type: string; data?: any; sessionID?: string; [key: string]: any },
   currentSessionID: string,
 ): { type: string; data?: any } | null {
-  const payload = event.data || event;
+  const payload = event.data || event.properties || event;
   const sessionID = payload.sessionID || event.sessionID;
   if (sessionID && sessionID !== currentSessionID) return null;
 
@@ -201,21 +201,68 @@ export function mapEngineEvent(
       return { type: "done" };
     case "session.next.reasoning.delta":
       return { type: "reasoning_delta", data: payload.delta || event.delta };
-    case "session.next.tool.called":
+    case "session.next.tool.input.started": {
+      const toolName = payload.name || event.name || "action";
+      return {
+        type: "tool_preparing",
+        data: {
+          toolName,
+          preview: `Preparing ${toolName}...`,
+        },
+      };
+    }
+    case "session.next.tool.called": {
+      const toolName = payload.tool || event.tool || "action";
+      const input = payload.input || event.input || {};
+      const target =
+        input.path ||
+        input.TargetFile ||
+        input.filePath ||
+        input.targetFile ||
+        input.pattern ||
+        (typeof input.command === "string" ? input.command.slice(0, 40) : undefined);
+      const filePreview = target && typeof target === "string" ? target.split(/[/\\]/).pop() : undefined;
       return {
         type: "tool_start",
-        data: { toolName: payload.tool || event.tool, args: payload.input || event.input },
+        data: {
+          toolName,
+          args: input,
+          preview: filePreview || (typeof target === "string" ? target : undefined),
+        },
       };
-    case "session.next.tool.success":
+    }
+    case "session.next.tool.progress": {
+      const toolName = payload.tool || event.tool || "action";
+      return {
+        type: "tool_progress",
+        data: {
+          toolName,
+          preview: `Executing ${toolName}...`,
+        },
+      };
+    }
+    case "session.next.tool.success": {
+      const toolName = payload.tool || event.tool || "action";
       return {
         type: "tool_live_status",
-        data: { toolName: payload.tool || event.tool, status: "completed" },
+        data: {
+          toolName,
+          status: "completed",
+          preview: `Completed ${toolName}`,
+        },
       };
-    case "session.next.tool.failed":
+    }
+    case "session.next.tool.failed": {
+      const toolName = payload.tool || event.tool || "action";
       return {
         type: "tool_live_status",
-        data: { toolName: payload.tool || event.tool, status: "failed" },
+        data: {
+          toolName,
+          status: "failed",
+          preview: `Failed ${toolName}`,
+        },
       };
+    }
     case "session.next.step.started":
       return { type: "thinking", data: "Processing..." };
     case "session.next.step.ended":
@@ -227,8 +274,6 @@ export function mapEngineEvent(
           message: payload.error?.message || event.error?.message || "An error occurred while processing your request.",
         },
       };
-    case "session.next.tool.input.started":
-      return { type: "thinking", data: `Preparing ${payload.name || event.name || "tool"}...` };
     default:
       return null;
   }

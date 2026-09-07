@@ -465,17 +465,46 @@ export function useWorkstationChat({
               iconType: "thinking",
             });
           }
-        } else if (event.type === "tool_live_status" || event.type === "tool_start") {
+        } else if (event.type === "tool_preparing") {
           resetWatchdog(120000);
-          const toolName = event.data?.toolName || "desktop_action";
-          const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
-          const label = `Executing: ${toolName}${preview}`;
-          setLiveStatus({ type: "tool_start", ...event.data });
+          const toolName = event.data?.toolName || "action";
+          const label = `Preparing ${toolName}...`;
+          setLiveStatus({ type: "tool_preparing", toolName, preview: label });
           if (!accumulatedSteps.some((s) => s.label === label)) {
             accumulatedSteps.push({
               id: `${Date.now()}-${Math.random()}`,
               label,
-              status: "completed",
+              status: "running",
+              iconType: "tool",
+              toolName,
+            });
+          }
+        } else if (event.type === "tool_live_status" || event.type === "tool_start" || event.type === "tool_progress") {
+          resetWatchdog(120000);
+          const toolName = event.data?.toolName || "desktop_action";
+          const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
+          const isFinished = event.data?.status === "completed" || event.data?.status === "failed";
+          const label = isFinished ? `Executed: ${toolName}${preview}` : `Executing: ${toolName}${preview}`;
+          setLiveStatus({
+            type: event.type === "tool_live_status" ? "tool_live_status" : "tool_start",
+            ...event.data,
+            toolName,
+            preview: isFinished ? `Completed ${toolName}` : `Executing: ${toolName}${preview}`,
+          });
+
+          const prepIdx = accumulatedSteps.findIndex((s) => s.iconType === "tool" && s.label.startsWith(`Preparing ${toolName}`));
+          if (prepIdx >= 0) {
+            accumulatedSteps[prepIdx] = {
+              ...accumulatedSteps[prepIdx],
+              label,
+              status: isFinished ? "completed" : "running",
+              toolName,
+            };
+          } else if (!accumulatedSteps.some((s) => s.label === label)) {
+            accumulatedSteps.push({
+              id: `${Date.now()}-${Math.random()}`,
+              label,
+              status: isFinished ? "completed" : "running",
               iconType: "tool",
               toolName,
             });

@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export interface LiveStatusData {
-  type?: 'thinking' | 'tool_start' | 'tool_live_status' | 'tool_done' | 'text_delta';
+  type?: 'thinking' | 'tool_preparing' | 'tool_start' | 'tool_progress' | 'tool_live_status' | 'tool_done' | 'text_delta';
   toolName?: string;
   preview?: string;
   screenshot?: string;
@@ -46,7 +46,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
       id: `step-init-${Date.now()}`,
       label: status.preview || "Analyzing request...",
       status: "completed",
-      iconType: status.type === "tool_start" ? "tool" : "thinking",
+      iconType: status.type === "tool_start" || status.type === "tool_preparing" ? "tool" : "thinking",
     }];
   });
   const [waitingSec, setWaitingSec] = useState(0);
@@ -76,11 +76,15 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
       if (type === 'thinking') {
         label = preview ? preview : "Analyzing request...";
         iconType = 'thinking';
-      } else if (type === 'tool_start' || type === 'tool_live_status') {
+      } else if (type === 'tool_preparing') {
+        iconType = 'tool';
+        const displayTool = toolName ? toolName : 'action';
+        label = preview || `Preparing ${displayTool}...`;
+      } else if (type === 'tool_start' || type === 'tool_live_status' || type === 'tool_progress') {
         iconType = 'tool';
         const displayTool = toolName ? toolName : 'desktop_action';
-        const detail = preview ? ` → ${preview}` : '';
-        label = `Executing: ${displayTool}${detail}`;
+        const detail = preview && !preview.startsWith("Executing") && !preview.startsWith("Completed") ? ` → ${preview}` : '';
+        label = preview || `Executing: ${displayTool}${detail}`;
       } else if (type === 'text_delta') {
         label = preview ? preview : "Generating response...";
         iconType = 'text';
@@ -92,6 +96,19 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         return prev;
       }
 
+      // If replacing an existing "Preparing [tool]" with the actual "Executing [tool]"
+      const prepIdx = prev.findIndex((s) => s.iconType === 'tool' && s.label.startsWith(`Preparing ${toolName}`));
+      if (prepIdx >= 0 && (type === 'tool_start' || type === 'tool_progress' || type === 'tool_live_status')) {
+        const copy = [...prev];
+        copy[prepIdx] = {
+          ...copy[prepIdx],
+          label,
+          status: type === 'tool_live_status' ? 'completed' : 'running',
+          toolName,
+        };
+        return copy;
+      }
+
       // Mark all previous steps as completed
       const updatedPrev = prev.map((s) => ({ ...s, status: 'completed' as const }));
       return [
@@ -99,7 +116,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         {
           id: `${Date.now()}-${Math.random()}`,
           label,
-          status: 'running',
+          status: type === 'tool_live_status' ? 'completed' : 'running',
           iconType,
           toolName,
         },
@@ -111,7 +128,12 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const toolSteps = steps.filter((s) => s.iconType === 'tool');
-  const hasToolExecution = toolSteps.length > 0;
+  const hasToolExecution =
+    toolSteps.length > 0 ||
+    status.type === 'tool_preparing' ||
+    status.type === 'tool_start' ||
+    status.type === 'tool_live_status' ||
+    status.type === 'tool_progress';
 
   // Antigravity style: If no tools are being executed (simple text response / thinking),
   // show only a subtle minimal indicator while waiting for tokens, not a big task card!
@@ -122,12 +144,16 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     return (
       <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] font-sans max-w-fit select-none my-1">
         <ArunakiLogo size={13} className="animate-spin text-[var(--text-primary)] shrink-0" />
-        <span className="text-[11px] text-[var(--text-muted)]">Thinking... ({waitingSec}s)</span>
+        <span className="text-[11px] text-[var(--text-muted)]">
+          {status.preview || `Thinking... (${waitingSec}s)`}
+        </span>
       </div>
     );
   }
 
-  const summaryHeader = `Executing ${toolSteps.length} document task${toolSteps.length > 1 ? 's' : ''}`;
+  const summaryHeader = status.preview && status.preview.startsWith("Preparing")
+    ? status.preview
+    : `Executing ${toolSteps.length || 1} document task${(toolSteps.length || 1) > 1 ? 's' : ''}`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
@@ -268,8 +294,8 @@ export function MessageThoughtBadge({
         <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono italic leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <div className="flex items-center gap-1.5 mb-1 not-italic font-sans text-[10px] text-[var(--text-dim)] select-none">
             <Brain size={11} className="shrink-0 text-[var(--text-muted)]" />
-            <span className="font-semibold tracking-wider uppercase">Thought</span>
-            {thoughtSec ? <span className="opacity-60 font-mono">({thoughtSec}s)</span> : null}
+            <span className="font-medium text-[11px] text-[var(--text-dim)]">Thought</span>
+            {thoughtSec ? <span className="opacity-60 font-mono text-[10px]">({thoughtSec}s)</span> : null}
           </div>
           <div className="pl-3 border-l-2 border-[var(--border-color)] text-[var(--text-muted)] opacity-90 select-text">
             {reasoning?.trim()}

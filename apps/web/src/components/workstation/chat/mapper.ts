@@ -31,9 +31,19 @@ export function mapEngineMessages(raw: any[]): Message[] {
       if (toolParts.length > 0) {
         executionSteps = toolParts.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";
+          const input = t.state?.input || t.input || t.args || t.toolInvocation?.args || {};
+          const target =
+            input.path ||
+            input.TargetFile ||
+            input.filePath ||
+            input.targetFile ||
+            input.pattern ||
+            (typeof input.command === "string" ? input.command.slice(0, 40) : undefined);
+          const filePreview = target && typeof target === "string" ? target.split(/[/\\]/).pop() : undefined;
+          const label = filePreview ? `Executed: ${toolName} → ${filePreview}` : `Executed: ${toolName}`;
           return {
             id: t.id || `tool-${idx}-${i}`,
-            label: `Executed: ${toolName}`,
+            label,
             status: "completed",
             iconType: "tool",
             toolName,
@@ -67,9 +77,19 @@ export function mapEngineMessages(raw: any[]): Message[] {
       if (toolInvocations.length > 0) {
         executionSteps = toolInvocations.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";
+          const input = t.state?.input || t.input || t.args || t.toolInvocation?.args || {};
+          const target =
+            input.path ||
+            input.TargetFile ||
+            input.filePath ||
+            input.targetFile ||
+            input.pattern ||
+            (typeof input.command === "string" ? input.command.slice(0, 40) : undefined);
+          const filePreview = target && typeof target === "string" ? target.split(/[/\\]/).pop() : undefined;
+          const label = filePreview ? `Executed: ${toolName} → ${filePreview}` : `Executed: ${toolName}`;
           return {
             id: t.id || `tool-${idx}-${i}`,
-            label: `Executed: ${toolName}`,
+            label,
             status: "completed",
             iconType: "tool",
             toolName,
@@ -107,10 +127,28 @@ export function mapEngineMessages(raw: any[]): Message[] {
         last.content = last.content ? `${last.content}\n\n${m.content}` : m.content;
       }
       if (m.reasoning) {
-        last.reasoning = last.reasoning ? `${last.reasoning}\n\n${m.reasoning}` : m.reasoning;
+        if (!last.reasoning) {
+          last.reasoning = m.reasoning;
+        } else {
+          const existingParas = new Set(
+            last.reasoning
+              .split(/\n\s*\n/)
+              .map((p) => p.trim())
+              .filter(Boolean)
+          );
+          const newParas = m.reasoning
+            .split(/\n\s*\n/)
+            .map((p) => p.trim())
+            .filter((p) => p && !existingParas.has(p));
+          if (newParas.length > 0) {
+            last.reasoning = `${last.reasoning}\n\n${newParas.join("\n\n")}`;
+          }
+        }
       }
       if (m.executionSteps) {
-        last.executionSteps = [...(last.executionSteps || []), ...m.executionSteps];
+        const existingLabels = new Set((last.executionSteps || []).map((s) => s.label));
+        const newSteps = m.executionSteps.filter((s) => !existingLabels.has(s.label));
+        last.executionSteps = [...(last.executionSteps || []), ...newSteps];
       }
       if (m.thoughtSec) {
         last.thoughtSec = (last.thoughtSec || 0) + m.thoughtSec;
