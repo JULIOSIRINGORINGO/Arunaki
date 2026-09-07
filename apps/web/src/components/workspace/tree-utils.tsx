@@ -1,4 +1,4 @@
-import { FileText, FileImage, FileSpreadsheet, File, FileCode } from "lucide-react";
+import { FileText, FileImage, FileSpreadsheet, File, FileCode, FileArchive } from "lucide-react";
 
 export interface FileItem {
   id: string;
@@ -77,28 +77,100 @@ export function getFileIcon(name: string) {
   const lowerName = name.toLowerCase();
   const ext = lowerName.split(".").pop() || "";
 
-  if (["docx", "doc"].includes(ext)) {
-    return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+  // Excel / Spreadsheets (Soft Sage / Emerald Green)
+  if (["xlsx", "xls", "xlsm", "xlsb", "csv", "tsv"].includes(ext)) {
+    return (
+      <FileSpreadsheet
+        className="w-3.5 h-3.5 text-emerald-600/85 dark:text-emerald-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
+
+  // Word Documents (Soft Steel / Slate Blue)
+  if (["docx", "doc", "rtf", "odt"].includes(ext)) {
+    return (
+      <FileText
+        className="w-3.5 h-3.5 text-sky-600/85 dark:text-sky-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
+  }
+
+  // PDF Documents (Soft Coral / Muted Rose)
   if (["pdf"].includes(ext)) {
-    return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+    return (
+      <FileText
+        className="w-3.5 h-3.5 text-rose-500/85 dark:text-rose-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
-  if (["jpg", "jpeg", "png", "gif", "svg", "webp", "ico"].includes(ext)) {
-    return <FileImage className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+
+  // Presentations / Slides (Soft Ochre / Muted Amber)
+  if (["pptx", "ppt", "key"].includes(ext)) {
+    return (
+      <FileText
+        className="w-3.5 h-3.5 text-amber-500/85 dark:text-amber-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
-  if (["xlsx", "xls", "xlsm", "csv"].includes(ext)) {
-    return <FileSpreadsheet className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+
+  // Images / Media (Soft Teal / Cyan)
+  if (["jpg", "jpeg", "png", "gif", "svg", "webp", "ico", "bmp", "tiff"].includes(ext)) {
+    return (
+      <FileImage
+        className="w-3.5 h-3.5 text-teal-600/85 dark:text-teal-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
+
+  // Archives / Compressed (Soft Sand / Muted Orange)
+  if (["zip", "rar", "7z", "tar", "gz", "bz2"].includes(ext)) {
+    return (
+      <FileArchive
+        className="w-3.5 h-3.5 text-amber-600/75 dark:text-amber-300/75 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
+  }
+
+  // JSON / Config Data (Soft Warm Gold / Amber)
+  if (["json", "yaml", "yml", "xml", "toml"].includes(ext)) {
+    return (
+      <FileCode
+        className="w-3.5 h-3.5 text-amber-600/80 dark:text-amber-300/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
+  }
+
+  // Code / Scripts (Soft Lilac / Muted Violet)
   if (
-    ["json", "js", "jsx", "ts", "tsx", "html", "css", "py", "sh", "cmd", "ps1"].includes(ext) ||
+    ["js", "jsx", "ts", "tsx", "html", "css", "py", "sh", "cmd", "ps1", "sql", "rs", "go", "java", "c", "cpp"].includes(ext) ||
     lowerName.startsWith(".env") ||
     lowerName === ".gitignore"
   ) {
-    return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+    return (
+      <FileCode
+        className="w-3.5 h-3.5 text-violet-500/85 dark:text-violet-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
-  if (["md", "txt", "log"].includes(ext)) {
-    return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
+
+  // Markdown / Plain Text / Logs (Soft Slate / Neutral)
+  if (["md", "txt", "log", "rtf"].includes(ext)) {
+    return (
+      <FileText
+        className="w-3.5 h-3.5 text-slate-500/85 dark:text-zinc-400/80 shrink-0"
+        strokeWidth={1.5}
+      />
+    );
   }
+
   return <File className="w-3.5 h-3.5 text-[var(--text-dim)] shrink-0" strokeWidth={1.5} />;
 }
 

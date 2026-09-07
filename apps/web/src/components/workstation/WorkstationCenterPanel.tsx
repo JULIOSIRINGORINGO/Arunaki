@@ -200,7 +200,7 @@ function WorkstationCenterPanelComponent({
       ? "JSON"
       : activeTab.title.endsWith(".csv")
       ? "CSV"
-      : activeTab.title.endsWith(".xlsx") || activeTab.title.endsWith(".xls")
+      : (/\.(xlsx|xls|xlsm|xlsb)$/i).test(activeTab.title)
       ? "Excel"
       : activeTab.title.split(".").pop()?.toUpperCase() || "Plain Text"
     : "Plain Text";
@@ -211,12 +211,8 @@ function WorkstationCenterPanelComponent({
 
   const isSpreadsheet = activeTab
     ? Boolean(
-        activeTab.fileType === "xlsx" ||
-        activeTab.fileType === "xls" ||
-        activeTab.fileType === "csv" ||
-        activeTab.title.toLowerCase().endsWith(".xlsx") ||
-        activeTab.title.toLowerCase().endsWith(".xls") ||
-        activeTab.title.toLowerCase().endsWith(".csv")
+        ["xlsx", "xls", "xlsm", "xlsb", "csv", "tsv"].includes(activeTab.fileType?.toLowerCase() || "") ||
+        (/\.(xlsx|xls|xlsm|xlsb|csv|tsv)$/i).test(activeTab.title)
       )
     : false;
 

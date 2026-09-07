@@ -52,12 +52,13 @@ export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewe
 
     try {
       let wb: XLSX.WorkBook | null = null;
-      const isCsv = title.toLowerCase().endsWith(".csv");
+      const clean = content.trim();
+      const isCsv = (/\.(csv|tsv)$/i).test(title);
 
       if (isCsv) {
-        wb = XLSX.read(content, { type: "string" });
-      } else if (content.startsWith("UEsDB") || /^[A-Za-z0-9+/=]{80,}/.test(content.slice(0, 100))) {
-        wb = XLSX.read(content, {
+        wb = XLSX.read(clean, { type: "string" });
+      } else if (clean.startsWith("UEsDB") || /^[A-Za-z0-9+/=]{60,}/.test(clean.slice(0, 100))) {
+        wb = XLSX.read(clean, {
           type: "base64",
           cellStyles: true,
           cellFormula: true,
@@ -65,7 +66,7 @@ export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewe
           cellNF: true,
         });
       } else {
-        wb = XLSX.read(content, {
+        wb = XLSX.read(clean, {
           type: "binary",
           cellStyles: true,
           cellFormula: true,
