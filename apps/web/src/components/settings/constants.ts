@@ -3,7 +3,7 @@ export const PROVIDER_TYPES = [
   { value: "gemini", label: "Google Gemini (Official / Vertex)", defaultUrl: "https://generativelanguage.googleapis.com/v1beta/openai" },
   { value: "deepseek", label: "DeepSeek Official", defaultUrl: "https://api.deepseek.com/v1" },
   { value: "openrouter", label: "OpenRouter", defaultUrl: "https://openrouter.ai/api/v1" },
-  { value: "kenari", label: "Kenari Cloud", defaultUrl: "https://api.kenari.id/v1" },
+  { value: "kenari", label: "Kenari Cloud", defaultUrl: "https://kenari.id/v1" },
   { value: "openai", label: "OpenAI Official", defaultUrl: "https://api.openai.com/v1" },
   { value: "anthropic", label: "Anthropic Official", defaultUrl: "https://api.anthropic.com/v1" },
   { value: "mistral", label: "Mistral AI Official", defaultUrl: "https://api.mistral.ai/v1" },
@@ -39,10 +39,11 @@ export const DEFAULT_MODELS: Record<string, string[]> = {
     "meta-llama/llama-4-maverick:free",
   ],
   kenari: [
-    "gpt-oss-120b",
-    "deepseek-v4-flash:free",
-    "deepseek-v4-flash",
-    "llama-3-1-70b-instruct",
+    "mimo-v2-5:free",
+    "agnes-2-0-flash:free",
+    "agnes-2-5-flash:free",
+    "nemotron-3-ultra-550b-a55b:free",
+    "step-3-7-flash:free",
   ],
   openai: ["gpt-4o", "gpt-4o-mini", "o3-mini", "gpt-4-turbo"],
   anthropic: [
@@ -74,3 +75,44 @@ export const DEFAULT_MODELS: Record<string, string[]> = {
   ],
   "openai-compatible": [],
 };
+
+export function formatToastError(rawError?: string): string {
+  if (!rawError) return "Endpoint unreachable";
+  const str = String(rawError);
+
+  if (str.includes("Header 'Authorization' has invalid value") || str.includes("kn-d4•") || str.includes("••••")) {
+    return "Invalid API key format (contains placeholder dots)";
+  }
+  if (str.includes("ConnectTimeoutError") || str.includes("timeout") || str.includes("Timeout")) {
+    return "Connection timed out (host unreachable)";
+  }
+  if (str.includes("401") || str.includes("Unauthorized") || str.includes("invalid_api_key")) {
+    return "Unauthorized (401): Check API key";
+  }
+  if (str.includes("404") || str.includes("Not Found")) {
+    return "Model or endpoint not found (404)";
+  }
+  if (str.includes("429") || str.includes("rate limit")) {
+    return "Rate limit exceeded (429)";
+  }
+  if (str.includes("ENOTFOUND") || str.includes("ECONNREFUSED") || str.includes("fetch failed")) {
+    return "Network error: Cannot reach endpoint";
+  }
+
+  // Strip nested Effect Cause([Fail(... (cause: ...))]) wrappers
+  let cleaned = str
+    .replace(/^Request failed:\s*/i, "")
+    .replace(/Cause\(\[Fail\([^)]*\(cause:\s*/i, "")
+    .replace(/^Cause\(\[Fail\([^:]*:\s*/i, "")
+    .replace(/HttpClientError:\s*/i, "")
+    .replace(/Transport error\s*\([^)]*\)\s*/i, "")
+    .replace(/\)\)\]\)$/, "")
+    .replace(/\)\]\)$/, "")
+    .trim();
+
+  if (cleaned.length > 70) {
+    cleaned = cleaned.slice(0, 67) + "...";
+  }
+  return cleaned || "Endpoint error";
+}
+

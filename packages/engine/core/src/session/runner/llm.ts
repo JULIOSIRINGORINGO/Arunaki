@@ -401,7 +401,29 @@ const layer = Layer.effect(
         let needsContinuation = true
         let step = 1
         while (needsContinuation) {
-          const result = yield* runTurn(input.sessionID, promotion, step)
+          const result = yield* runTurn(input.sessionID, promotion, step).pipe(
+            Effect.catchAll((error) =>
+              Effect.gen(function* () {
+                const message =
+                  error instanceof SessionRunnerModel.ModelNotSelectedError
+                    ? "Belum ada Model / Provider AI yang terkonfigurasi. Silakan buka menu Settings untuk menghubungkan Provider AI."
+                    : error instanceof SessionRunnerModel.ModelUnavailableError
+                      ? `Model tidak tersedia: ${error.providerID}/${error.modelID}`
+                      : error instanceof Error
+                        ? error.message
+                        : String(error)
+                yield* events.publish(SessionEvent.Step.Failed, {
+                  sessionID: input.sessionID,
+                  timestamp: yield* DateTime.now,
+                  error: {
+                    type: "unknown",
+                    message,
+                  },
+                })
+                return { needsContinuation: false, step }
+              }),
+            ),
+          )
           needsContinuation = result.needsContinuation
           step = result.step + 1
           promotion = "steer"

@@ -1,8 +1,8 @@
 import { RefObject, useState, useMemo, memo } from "react";
+import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Bot,
   PanelRightOpen,
-  Sparkles,
 } from "lucide-react";
 import { LiveExecutionBadge, LiveStatusData } from "./LiveExecutionBadge";
 import { LiveMirrorCard } from "./LiveMirrorCard";
@@ -123,7 +123,7 @@ function WorkstationRightChatComponent({
         {allMessages.length === 0 && !isStreaming ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 select-none">
             <div className="w-10 h-10 rounded-full bg-[var(--bg-card)] flex items-center justify-center mb-3 border border-[var(--border-color)]">
-              <Sparkles className="w-5 h-5 text-[var(--text-muted)]" />
+              <ArunakiLogo size={20} className="text-[var(--text-muted)]" />
             </div>
             <p className="text-xs font-medium text-[var(--text-primary)] mb-1">Workspace Agent</p>
             <p className="text-[11px] text-[var(--text-muted)] max-w-[200px]">

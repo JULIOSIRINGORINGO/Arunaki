@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, Wifi, Trash2, Check, ArrowUp, ArrowDown, Settings2, Info, X, Terminal } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { Provider } from "./ModelProviderSettings";
+import { formatToastError } from "./constants";
 
 interface ProviderCardProps {
   provider: Provider;
@@ -109,8 +110,8 @@ export function ProviderCard({
                       : "bg-red-500/10 text-red-400 border-red-500/20"
                   )}
                 >
-                  <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-emerald-500" : "bg-red-400")} />
-                  <span>{result.success ? `Connected (${result.timeMs}ms)` : `Failed: ${result.error || result.status}`}</span>
+                  <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-[var(--text-primary)]" : "bg-red-400")} />
+                  <span>{result.success ? `Connected (${result.timeMs}ms)` : `Failed: ${formatToastError(result.error) || result.status}`}</span>
                   <Info className="w-2.5 h-2.5 text-[var(--text-muted)]" />
                 </button>
               )}

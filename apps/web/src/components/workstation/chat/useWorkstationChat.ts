@@ -13,6 +13,7 @@ import {
   mapEngineEvent,
   getMessages,
 } from "../../../lib/engine";
+import { API_BASE, apiFetch } from "../../../lib/api";
 
 interface UseWorkstationChatOptions {
   activeFolder: string;
@@ -54,6 +55,19 @@ export function useWorkstationChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const producedFilesRef = useRef<string[]>([]);
+  const watchdogRef = useRef<NodeJS.Timeout | null>(null);
+  const resetWatchdogRef = useRef<((timeoutMs?: number) => void) | null>(null);
+
+  const clearWatchdog = useCallback(() => {
+    if (watchdogRef.current) {
+      clearTimeout(watchdogRef.current);
+      watchdogRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearWatchdog();
+  }, [clearWatchdog]);
 
   // 1. Fetch chat messages from engine
   const { data: chatMessages = [] } = useQuery<Message[]>({
@@ -91,11 +105,65 @@ export function useWorkstationChat({
     });
   }, [chatMessages, optimisticMessages, isStreaming]);
 
+  // 4. Network offline / online resilience listener
+  useEffect(() => {
+    const handleOffline = () => {
+      if (isStreaming) {
+        clearWatchdog();
+        setLiveStatus({
+          type: "thinking",
+          preview: "Network disconnected — Waiting for internet connection...",
+        });
+        toast.warning("Network connection lost", {
+          description: "Execution paused. Arunaki will resume automatically when reconnected.",
+          duration: 5000,
+        });
+      }
+    };
+
+    const handleOnline = () => {
+      if (isStreaming && activeChatId) {
+        toast.success("Network connection restored", {
+          description: "Resuming session stream...",
+          duration: 3000,
+        });
+        setLiveStatus({
+          type: "thinking",
+          preview: "Reconnecting to AI stream...",
+        });
+        // Check if engine already finished processing while offline
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] }).then(async () => {
+          try {
+            const raw = await getMessages(activeChatId);
+            const messages = mapEngineMessages(raw || []);
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && lastMsg.role === "assistant" && lastMsg.content) {
+              setIsStreaming(false);
+              setLiveStatus(null);
+              setOptimisticMessages([]);
+              return;
+            }
+          } catch {}
+          // Still waiting for completion: reset watchdog to generous 90s
+          resetWatchdogRef.current?.(90000);
+        });
+      }
+    };
+
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [isStreaming, activeChatId, queryClient, clearWatchdog]);
+
   const handleRemoveQueuedPrompt = useCallback((index: number) => {
     setQueuedPrompts((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleCancelStream = useCallback(() => {
+    clearWatchdog();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -103,9 +171,10 @@ export function useWorkstationChat({
     setIsStreaming(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
-  }, []);
+  }, [clearWatchdog]);
 
   const handleNewChat = useCallback(async () => {
+    clearWatchdog();
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -135,19 +204,26 @@ export function useWorkstationChat({
     toast.info("New conversation session ready");
   }, [activeFolder, setActiveChatId, queryClient]);
 
-  const handleSendMessage = async (textToSend: string) => {
-    const userText = textToSend ? textToSend.trim() : "";
-    if (!userText) return;
-
-    // Queue if currently busy
-    if (isStreaming) {
-      setQueuedPrompts((prev) => [...prev, userText]);
-      toast.info("Message queued and will be processed automatically");
+  const handleSendMessage = async (textToSend?: string) => {
+    const userText = (textToSend !== undefined ? textToSend : "").trim();
+    if (!userText || isStreaming) {
+      if (textToSend) {
+        setQueuedPrompts((prev) => [...prev, userText]);
+        toast.info("Message queued and will be processed automatically");
+      }
       return;
     }
 
-    const userMessageId = `user-${Date.now()}`;
-    const assistantMessageId = `assistant-${Date.now()}`;
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Computer is offline", {
+        description: "Please reconnect to the internet before sending instructions.",
+        duration: 5000,
+      });
+      return;
+    }
+
+    const userMessageId = `user-${Date.now()}-${Math.random()}`;
+    const assistantMessageId = `asst-${Date.now()}-${Math.random()}`;
 
     const newUserMsg: Message = {
       id: userMessageId,
@@ -208,12 +284,111 @@ export function useWorkstationChat({
       });
     };
 
+    const getActiveProviderDiagnostic = async (): Promise<{
+      hasConfiguredProvider: boolean;
+      activeProviderName: string;
+      modelName?: string;
+    }> => {
+      try {
+        const res = await apiFetch(`${API_BASE}/providers`);
+        if (res.ok) {
+          const json = await res.json();
+          const providers: any[] = json.data || [];
+          if (providers.length === 0) {
+            return { hasConfiguredProvider: false, activeProviderName: "" };
+          }
+          const savedActiveId = localStorage.getItem("arunaki_active_provider");
+          const active =
+            providers.find((p) => p.id === savedActiveId) ||
+            providers.find((p) => p.id === "kenari" || p.apiKey) ||
+            providers[0];
+
+          const model =
+            (active && localStorage.getItem(`arunaki_provider_models_${active.id}`)) ||
+            active?.model ||
+            undefined;
+
+          return {
+            hasConfiguredProvider: true,
+            activeProviderName: active?.name || active?.id || "AI Provider",
+            modelName: model,
+          };
+        }
+      } catch {}
+
+      const fallbackId = localStorage.getItem("arunaki_active_provider");
+      return {
+        hasConfiguredProvider: !!fallbackId,
+        activeProviderName: fallbackId === "kenari" ? "Kenari" : fallbackId || "AI Provider",
+        modelName: fallbackId ? localStorage.getItem(`arunaki_provider_models_${fallbackId}`) || undefined : undefined,
+      };
+    };
+
+    const resetWatchdog = (timeoutMs = 90000) => {
+      clearWatchdog();
+      watchdogRef.current = setTimeout(async () => {
+        // If computer is offline, don't abort — wait for reconnect!
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          setLiveStatus({
+            type: "thinking",
+            preview: "Network disconnected — Waiting for internet connection...",
+          });
+          return;
+        }
+
+        abortCtrl.abort();
+        setIsStreaming(false);
+        setLiveStatus(null);
+
+        const diagnostic = await getActiveProviderDiagnostic();
+
+        if (!diagnostic.hasConfiguredProvider) {
+          toast.error("No AI Provider Configured", {
+            description: "Please configure an active AI provider in File → Preferences → Settings.",
+            duration: 8000,
+          });
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: `⚠️ **No Model Provider Configured:**\n\nNo active AI model provider is configured on this workstation.\n\n**Quick Fix:**\n1. Open **File → Preferences → Settings**.\n2. Add and connect your provider (e.g., **Kenari** or **OpenAI**) with a valid API key.\n3. Verify connection with **Test Ping** and ensure it is set to **Primary Active**.\n4. Return here to send your instruction.`,
+                  }
+                : m
+            )
+          );
+        } else {
+          const pName = diagnostic.activeProviderName || "AI Provider";
+          toast.error(`Upstream Provider Timeout (${pName})`, {
+            description: `The provider did not return a response within 90 seconds (server latency ~5000ms or queue delay).`,
+            duration: 7000,
+          });
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: `⚠️ **Upstream Provider Timeout (${pName}):**\n\nNo response received from **${pName}** within 90 seconds.\n\n**Diagnostics:**\n- Upstream server latency is high (~5000ms ping) or server queue is currently experiencing heavy load.\n${diagnostic.modelName ? `- Active Model: \`${diagnostic.modelName}\`\n` : ""}\n**Recommendations:**\n1. **Try sending again:** Free model queues often clear within 1-2 minutes.\n2. **Switch model:** In **File → Preferences → Settings**, select another fast model from the model pool.\n3. Verify provider status with **Test Ping** in Settings.`,
+                  }
+                : m
+            )
+          );
+        }
+
+        processNext();
+      }, timeoutMs);
+    };
+
+    resetWatchdogRef.current = resetWatchdog;
+    resetWatchdog(90000);
+
     try {
       subscribeEvents((rawEvent) => {
         const event = mapEngineEvent(rawEvent, chatIdToUse);
         if (!event) return;
 
         if (event.type === "thinking") {
+          resetWatchdog(90000);
           const label = event.data || "Analyzing request & context";
           setLiveStatus({ type: "thinking", preview: label });
           if (!accumulatedSteps.some((s) => s.label === label)) {
@@ -225,6 +400,7 @@ export function useWorkstationChat({
             });
           }
         } else if (event.type === "tool_live_status" || event.type === "tool_start") {
+          resetWatchdog(120000);
           const toolName = event.data?.toolName || "desktop_action";
           const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
           const label = `Executing: ${toolName}${preview}`;
@@ -261,6 +437,7 @@ export function useWorkstationChat({
             }
           }
         } else if (event.type === "text_delta" && event.data) {
+          resetWatchdog(30000);
           accumulatedResponseText += event.data;
           setLiveStatus({ type: "text_delta", preview: "Generating response" });
           setOptimisticMessages((prev) => {
@@ -293,6 +470,7 @@ export function useWorkstationChat({
             upsertCanvasTab(canvasText, false);
           }
         } else if (event.type === "done") {
+          clearWatchdog();
           setIsStreaming(false);
           setLiveStatus(null);
           const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
@@ -371,6 +549,7 @@ export function useWorkstationChat({
           reloadOpenTabsContent();
           processNext();
         } else if (event.type === "error") {
+          clearWatchdog();
           setIsStreaming(false);
           setLiveStatus(null);
           const errorMsg = event.data?.message || "An error occurred.";
@@ -391,6 +570,7 @@ export function useWorkstationChat({
 
       await sendPrompt(chatIdToUse, userText, { variant: reasoningEffort || undefined });
     } catch (err: any) {
+      clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);
       toast.error(`Error sending message: ${err?.message || err}`);
       setIsStreaming(false);

@@ -15,53 +15,77 @@ const tabs = [
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState("models");
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [availableCatalogModels, setAvailableCatalogModels] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchProviders = async () => {
     try {
-      // Query active engine endpoints: /api/provider and /api/model
-      const [providerRes, modelRes] = await Promise.all([
-        apiFetch(`${API_BASE}/provider${directoryQuery()}`),
+      // 1. Fetch user-configured providers from /api/providers and catalog models from /api/model
+      const [providersRes, modelRes] = await Promise.all([
+        apiFetch(`${API_BASE}/providers${directoryQuery()}`),
         apiFetch(`${API_BASE}/model${directoryQuery()}`),
       ]);
 
-      if (providerRes.ok) {
-        const pJson = await providerRes.json();
-        const mJson = modelRes.ok ? await modelRes.json() : { data: [] };
+      const mJson = modelRes.ok ? await modelRes.json() : { data: [] };
+      const rawModels: any[] = mJson.data || [];
+
+      // Build a catalog lookup of all discovered models per provider ID
+      const catalogMap: Record<string, string[]> = {};
+      for (const m of rawModels) {
+        if (m.providerID) {
+          catalogMap[m.providerID] = catalogMap[m.providerID] || [];
+          catalogMap[m.providerID].push(m.id);
+        }
+      }
+      setAvailableCatalogModels(catalogMap);
+
+      if (providersRes.ok) {
+        const pJson = await providersRes.json();
         const rawProviders: any[] = pJson.data || [];
-        const rawModels: any[] = mJson.data || [];
 
         if (rawProviders.length > 0) {
+          const savedActiveId = localStorage.getItem("arunaki_active_provider");
+          const activeId =
+            savedActiveId && rawProviders.some((p: any) => p.id === savedActiveId)
+              ? savedActiveId
+              : (rawProviders.find((p: any) => p.id === "kenari" || p.apiKey)?.id || rawProviders[0]?.id);
+
           const mapped: Provider[] = rawProviders.map((p: any, idx: number) => {
+            const savedSelected = localStorage.getItem("arunaki_provider_models_" + p.id);
             const associatedModels = rawModels.filter((m: any) => m.providerID === p.id);
-            const modelNames = associatedModels.map((m: any) => m.id).join(", ") || "default";
-            const maskedKey = p.request?.body?.apiKey
-              ? `${p.request.body.apiKey.slice(0, 5)}••••••••`
-              : "Configured";
+            let modelNames = "";
+            if (savedSelected && savedSelected.trim()) {
+              modelNames = savedSelected.trim();
+            } else if (p.model && p.model.trim()) {
+              modelNames = p.model.trim();
+            } else {
+              const defaults = catalogMap[p.id] || associatedModels.map((m: any) => m.id);
+              modelNames = defaults.slice(0, 3).join(", ") || "default";
+            }
+
+            const rawKey = p.apiKey || "";
+            const isMasked = rawKey.includes("•") || rawKey.includes("****");
+            const cleanKey = isMasked ? "" : rawKey;
+            const isActive = p.id === activeId;
+
             return {
               id: p.id,
               name: p.name || p.id,
-              type: p.api?.type || "openai-compatible",
-              baseUrl: p.api?.url || "",
-              apiKey: maskedKey,
+              type: p.type || "openai-compatible",
+              baseUrl: p.baseUrl || "",
+              apiKey: cleanKey,
               model: modelNames,
-              active: true,
-              priority: idx + 1,
+              active: isActive,
+              priority: p.priority ?? idx + 1,
             };
           });
+
           setProviders(mapped);
           return;
         }
       }
 
-      // Fallback to legacy endpoint if available
-      const legacyRes = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
-      if (legacyRes.ok) {
-        const data = await legacyRes.json();
-        setProviders(data.data || []);
-      } else {
-        setProviders([]);
-      }
+      setProviders([]);
     } catch (err) {
       console.error("Failed to fetch providers:", err);
       setProviders([]);
@@ -116,6 +140,7 @@ export function SettingsPage() {
           {activeTab === "models" && (
             <ModelProviderSettings
               providers={providers}
+              availableCatalogModels={availableCatalogModels}
               loading={loading}
               onRefresh={fetchProviders}
             />

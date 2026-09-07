@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Monitor,
   Camera,
@@ -7,7 +8,6 @@ import {
   FileSpreadsheet,
   FileText,
   Keyboard,
-  Sparkles,
   Cpu,
   ChevronDown,
   ChevronUp,
@@ -120,8 +120,8 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
       return null;
     }
     return (
-      <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] animate-pulse font-sans max-w-fit select-none my-1">
-        <Sparkles size={12} className="text-amber-500/80 shrink-0" />
+      <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] font-sans max-w-fit select-none my-1">
+        <ArunakiLogo size={13} className="animate-spin text-[var(--text-primary)] shrink-0" />
         <span className="text-[11px] text-[var(--text-muted)]">Thinking... ({waitingSec}s)</span>
       </div>
     );
@@ -131,7 +131,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
-      return <Sparkles size={12} className="text-zinc-400 shrink-0 mt-0.5" />;
+      return <ArunakiLogo size={12} className="animate-spin text-[var(--text-muted)] shrink-0 mt-0.5" />;
     }
     if (step.iconType === 'text') {
       return <Cpu size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
@@ -273,7 +273,7 @@ export function MessageThoughtBadge({
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border-color)] font-mono"
       >
-        <Sparkles size={11} className="text-amber-500/80 shrink-0" />
+        <ArunakiLogo size={12} className="text-[var(--text-muted)] shrink-0" />
         <span>Thought for {thoughtSec || 1}s</span>
         {isExpanded ? (
           <ChevronDown size={12} className="text-[var(--text-muted)]" />

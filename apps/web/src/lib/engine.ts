@@ -90,31 +90,46 @@ export function subscribeEvents(
       })()
     : controller.signal;
 
-  fetch(`${ENGINE_BASE}/api/event`, {
-    headers: { Accept: "text/event-stream" },
-    signal: finalSignal,
-  }).then(async (res) => {
-    const reader = res.body?.getReader();
-    if (!reader) return;
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const event = JSON.parse(line.slice(6));
-            onEvent(event);
-          } catch {}
+  (async () => {
+    while (!finalSignal.aborted) {
+      try {
+        const res = await fetch(`${ENGINE_BASE}/api/event`, {
+          headers: { Accept: "text/event-stream" },
+          signal: finalSignal,
+        });
+        const reader = res.body?.getReader();
+        if (!reader) {
+          if (!finalSignal.aborted) await new Promise((r) => setTimeout(r, 1500));
+          continue;
         }
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!finalSignal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                onEvent(event);
+              } catch {}
+            }
+          }
+        }
+      } catch {
+        // SSE connection dropped or fetch failed
+      }
+
+      // If disconnected due to network drop and not explicitly aborted, wait and retry
+      if (!finalSignal.aborted) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
     }
-  }).catch(() => {});
+  })();
 
   return controller;
 }

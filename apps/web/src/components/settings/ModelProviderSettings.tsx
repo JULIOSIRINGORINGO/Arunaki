@@ -5,18 +5,20 @@ import { toast } from "sonner";
 import { ProviderCard } from "./ProviderCard";
 import { ProviderForm } from "./ProviderForm";
 import { Provider, ProviderFormData, FormTestResult } from "./types";
-import { PROVIDER_TYPES, DEFAULT_MODELS } from "./constants";
+import { PROVIDER_TYPES, DEFAULT_MODELS, formatToastError } from "./constants";
 
 export type { Provider };
 
 interface ModelProviderSettingsProps {
   providers: Provider[];
+  availableCatalogModels?: Record<string, string[]>;
   loading: boolean;
   onRefresh: () => void;
 }
 
 export function ModelProviderSettings({
   providers,
+  availableCatalogModels,
   loading,
   onRefresh,
 }: ModelProviderSettingsProps) {
@@ -91,17 +93,25 @@ export function ModelProviderSettings({
     } else {
       updated = [...current, m];
     }
-    setForm((f) => ({ ...f, model: updated.join(", ") }));
+    const modelStr = updated.join(", ");
+    setForm((f) => ({ ...f, model: modelStr }));
+    if (editingId) {
+      localStorage.setItem("arunaki_provider_models_" + editingId, modelStr);
+    }
   };
 
   const handleReorderModels = (newOrder: string[]) => {
-    setForm((f) => ({ ...f, model: newOrder.join(", ") }));
+    const modelStr = newOrder.join(", ");
+    setForm((f) => ({ ...f, model: modelStr }));
+    if (editingId) {
+      localStorage.setItem("arunaki_provider_models_" + editingId, modelStr);
+    }
   };
 
   const handleTypeChange = (type: string) => {
     const pt = PROVIDER_TYPES.find((p) => p.value === type);
     const defaults = DEFAULT_MODELS[type] || DEFAULT_MODELS["openai-compatible"] || [];
-    const defaultModel = defaults[0] || "";
+    const defaultModel = defaults.slice(0, 2).join(", ") || "";
     setForm((f) => ({
       ...f,
       type,
@@ -115,20 +125,23 @@ export function ModelProviderSettings({
 
   const handleEdit = (p: Provider) => {
     setEditingId(p.id);
+    const savedSelected = localStorage.getItem("arunaki_provider_models_" + p.id) || p.model;
+    const cleanKey = p.apiKey?.includes("•") ? "" : p.apiKey;
     setForm({
       name: p.name,
       type: p.type,
       baseUrl: p.baseUrl,
-      apiKey: p.apiKey || "",
-      model: p.model,
+      apiKey: cleanKey || "",
+      model: savedSelected,
       headerPrefix: p.headerPrefix || "",
       headerTitle: p.headerTitle || "",
     });
 
-    const defaults = DEFAULT_MODELS[p.type] || DEFAULT_MODELS["openai-compatible"] || [];
+    const defaults = DEFAULT_MODELS[p.type] || DEFAULT_MODELS[p.id] || DEFAULT_MODELS["openai-compatible"] || [];
     const custom = customModelsMap[p.id] || [];
-    const existingModels = getSelectedModels(p.model);
-    const combined = Array.from(new Set([...existingModels, ...custom, ...defaults]));
+    const catalogForProvider = availableCatalogModels?.[p.id] || [];
+    const existingModels = getSelectedModels(savedSelected);
+    const combined = Array.from(new Set([...existingModels, ...catalogForProvider, ...custom, ...defaults]));
     setFormAvailableModels(combined);
     setIsAddingFormModel(false);
     setFormNewModelInput("");
@@ -140,16 +153,21 @@ export function ModelProviderSettings({
     e.preventDefault();
     try {
       let providerId = editingId;
+      const cleanApiKey = form.apiKey?.trim();
+      const payload = {
+        ...form,
+        apiKey: cleanApiKey && !cleanApiKey.includes("•") ? cleanApiKey : undefined,
+      };
       if (editingId) {
         await apiFetch(`${API_BASE}/providers/${editingId}${directoryQuery()}`, {
           method: "PUT",
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
         toast.success("Provider connection updated successfully.");
       } else {
         const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`, {
           method: "POST",
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         providerId = data.data?.id || null;
@@ -157,6 +175,7 @@ export function ModelProviderSettings({
       }
 
       if (providerId) {
+        localStorage.setItem("arunaki_provider_models_" + providerId, form.model);
         setCustomModelsMap((prev) => ({
           ...prev,
           [providerId!]: formAvailableModels,
@@ -183,11 +202,12 @@ export function ModelProviderSettings({
 
   const handleToggleActive = async (provider: Provider) => {
     try {
+      localStorage.setItem("arunaki_active_provider", provider.id);
       await apiFetch(`${API_BASE}/providers/${provider.id}/state${directoryQuery()}`, {
         method: "PUT",
-        body: JSON.stringify({ active: !provider.active }),
-      });
-      toast.success(`Provider ${provider.active ? "deactivated" : "set as primary"}`);
+        body: JSON.stringify({ active: true }),
+      }).catch(() => {});
+      toast.success(`Provider ${provider.name || provider.id} set as primary active`);
       onRefresh();
     } catch {
       toast.error("Failed to update provider status.");
@@ -290,16 +310,22 @@ export function ModelProviderSettings({
       }));
 
       if (isOk) {
-        toast.success(`Connection Test Passed! (${elapsed}ms) ${reply ? `— "${reply}"` : ""}`);
+        toast.success(`Connected (${elapsed}ms)`, {
+          description: reply ? `"${reply.slice(0, 50)}"` : undefined,
+        });
       } else {
-        toast.error(`Connection Test Failed: ${data.data?.error || "Endpoint unreachable"}`);
+        toast.error("Connection Test Failed", {
+          description: formatToastError(data.data?.error),
+        });
       }
     } catch (err: any) {
       setTestResults((prev) => ({
         ...prev,
         [id]: { success: false, error: err.message },
       }));
-      toast.error(`Connection Test Failed: ${err.message}`);
+      toast.error("Connection Test Failed", {
+        description: formatToastError(err.message),
+      });
     } finally {
       setTestingId(null);
     }
@@ -336,13 +362,19 @@ export function ModelProviderSettings({
       setFormTestResult(result);
 
       if (isOk) {
-        toast.success(`Ping Successful! (${elapsed}ms) ${reply ? `— "${reply}"` : ""}`);
+        toast.success(`Ping Successful! (${elapsed}ms)`, {
+          description: reply ? `"${reply.slice(0, 50)}"` : undefined,
+        });
       } else {
-        toast.error(`Ping Failed: ${data.data?.error || "Endpoint unreachable"}`);
+        toast.error("Ping Failed", {
+          description: formatToastError(data.data?.error),
+        });
       }
     } catch (err: any) {
       setFormTestResult({ success: false, error: err.message });
-      toast.error(`Ping Error: ${err.message}`);
+      toast.error("Ping Error", {
+        description: formatToastError(err.message),
+      });
     } finally {
       setIsTestingForm(false);
     }

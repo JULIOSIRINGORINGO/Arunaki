@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
-import { Plus, Check, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles, GripVertical, ChevronDown } from "lucide-react";
+import { Plus, Check, CheckCheck, Loader2, Wifi, Bot, Settings2, RefreshCw, Search, ArrowUp, ArrowDown, X, Sparkles, GripVertical, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { toast } from "sonner";
 
 export interface ProviderFormData {
   name: string;
@@ -45,6 +46,35 @@ interface ProviderFormProps {
   onCancel: () => void;
 }
 
+export function isFreeModel(name: string): boolean {
+  return name.toLowerCase().includes("free");
+}
+
+export function getModelFamily(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes("claude") || lower.includes("anthropic")) return "Claude";
+  if (lower.includes("deepseek")) return "DeepSeek";
+  if (lower.includes("gemini") || lower.includes("google")) return "Gemini";
+  if (lower.includes("gpt") || lower.includes("openai") || lower.includes("o1") || lower.includes("o3")) return "GPT";
+  if (lower.includes("qwen")) return "Qwen";
+  if (lower.includes("glm") || lower.includes("z-ai") || lower.includes("zhipu")) return "GLM";
+  if (lower.includes("kimi") || lower.includes("moonshot")) return "Kimi";
+  if (lower.includes("minimax")) return "MiniMax";
+  if (lower.includes("nemotron") || lower.includes("nvidia")) return "Nemotron";
+  if (lower.includes("mistral") || lower.includes("codestral") || lower.includes("voxtral")) return "Mistral";
+  if (lower.includes("step")) return "StepFun";
+  if (lower.includes("mimo") || lower.includes("xiaomi")) return "Mimo";
+  if (lower.includes("grok") || lower.includes("xai")) return "Grok";
+  if (lower.includes("gemma")) return "Gemma";
+  if (lower.includes("llama") || lower.includes("meta")) return "Llama";
+  if (lower.includes("agnes")) return "Agnes";
+  if (lower.includes("/")) {
+    const prefix = lower.split("/")[0];
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+  }
+  return "Other";
+}
+
 export function ProviderForm({
   form,
   setForm,
@@ -68,6 +98,7 @@ export function ProviderForm({
   onCancel,
 }: ProviderFormProps) {
   const [modelSearch, setModelSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const getSelectedModels = (modelStr: string): string[] => {
     if (!modelStr) return [];
@@ -76,12 +107,53 @@ export function ProviderForm({
 
   const selectedModels = useMemo(() => getSelectedModels(form.model), [form.model]);
 
-  // Filter available models via search query
+  // Compute counts for quick filtering
+  const freeCount = useMemo(
+    () => formAvailableModels.filter(isFreeModel).length,
+    [formAvailableModels]
+  );
+
+  const availableFamilies = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const m of formAvailableModels) {
+      const fam = getModelFamily(m);
+      counts[fam] = (counts[fam] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([family, count]) => ({ family, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [formAvailableModels]);
+
+  // Filter available models via category and search query
   const filteredModels = useMemo(() => {
-    if (!modelSearch.trim()) return formAvailableModels;
-    const q = modelSearch.toLowerCase().trim();
-    return formAvailableModels.filter((m) => m.toLowerCase().includes(q));
-  }, [formAvailableModels, modelSearch]);
+    let list = formAvailableModels;
+
+    if (selectedCategory === "free") {
+      list = list.filter(isFreeModel);
+    } else if (selectedCategory === "selected") {
+      list = list.filter((m) => selectedModels.includes(m));
+    } else if (selectedCategory !== "all") {
+      list = list.filter((m) => getModelFamily(m).toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    if (modelSearch.trim()) {
+      const q = modelSearch.toLowerCase().trim();
+      list = list.filter((m) => m.toLowerCase().includes(q));
+    }
+
+    return list;
+  }, [formAvailableModels, selectedCategory, modelSearch, selectedModels]);
+
+  const handleSelectAllFree = () => {
+    const freeModels = formAvailableModels.filter(isFreeModel);
+    if (freeModels.length === 0) {
+      toast.info("No free models found in current list.");
+      return;
+    }
+    const combined = Array.from(new Set([...selectedModels, ...freeModels]));
+    onReorderModels(combined);
+    toast.success(`Added ${freeModels.length} free models to routing pool!`);
+  };
 
   const moveModelPriority = (index: number, direction: "up" | "down") => {
     const list = [...selectedModels];
@@ -123,15 +195,29 @@ export function ProviderForm({
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const typeDropdownRef = React.useRef<HTMLDivElement>(null);
 
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = React.useRef<HTMLDivElement>(null);
+
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (typeDropdownRef.current && !typeDropdownRef.current.contains(event.target as Node)) {
         setIsTypeDropdownOpen(false);
       }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const selectedCategoryLabel = useMemo(() => {
+    if (selectedCategory === "all") return `All Models (${formAvailableModels.length})`;
+    if (selectedCategory === "free") return `Free Models (${freeCount})`;
+    if (selectedCategory === "selected") return `Selected (${selectedModels.length})`;
+    const fam = availableFamilies.find((f) => f.family.toLowerCase() === selectedCategory.toLowerCase());
+    return fam ? `${fam.family} (${fam.count})` : selectedCategory;
+  }, [selectedCategory, formAvailableModels.length, freeCount, selectedModels.length, availableFamilies]);
 
   const selectedTypeObj = providerTypes.find((pt) => pt.value === form.type);
   const selectedTypeLabel = selectedTypeObj ? selectedTypeObj.label : form.type;
@@ -318,7 +404,7 @@ export function ProviderForm({
         </div>
       )}
 
-      {/* INTEGRATED AVAILABLE MODELS SELECTOR WITH SEARCH */}
+      {/* INTEGRATED AVAILABLE MODELS SELECTOR WITH SEARCH & CATEGORY FILTERS */}
       <div className="pt-2 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
@@ -326,7 +412,144 @@ export function ProviderForm({
             Available Models ({filteredModels.length} of {formAvailableModels.length})
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+            {/* Category / Family Filter Custom Dropdown (Reasoning Effort styled) */}
+            <div className="relative shrink-0" ref={categoryDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                className="bg-[var(--bg-input)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] hover:border-[var(--border-strong)] rounded-lg px-2.5 py-1 text-xs text-[var(--text-primary)] font-medium flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                title="Filter models by category or family"
+              >
+                <SlidersHorizontal className="w-3 h-3 text-[var(--text-muted)] shrink-0" />
+                <span className="truncate max-w-[130px] sm:max-w-[160px] text-left">{selectedCategoryLabel}</span>
+                <ChevronDown
+                  className={cn(
+                    "w-3 h-3 text-[var(--text-muted)] transition-transform duration-150 shrink-0 ml-0.5",
+                    isCategoryDropdownOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {isCategoryDropdownOpen && (
+                <div className="absolute right-0 sm:left-0 top-full mt-1.5 w-56 max-h-64 overflow-y-auto rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1.5 space-y-0.5 z-50 animate-in fade-in duration-100 scrollbar-thin">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-[var(--text-muted)] border-b border-[var(--border-color)] mb-1">
+                    Filter Models
+                  </div>
+
+                  {/* Top quick options */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory("all");
+                      setIsCategoryDropdownOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                      selectedCategory === "all"
+                        ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                    )}
+                  >
+                    <span>All Models</span>
+                    <span className="text-[10px] font-mono opacity-60">({formAvailableModels.length})</span>
+                    {selectedCategory === "all" && (
+                      <Check className="w-3 h-3 text-[var(--text-primary)] shrink-0 ml-1 stroke-[2.5]" />
+                    )}
+                  </button>
+
+                  {freeCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory("free");
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                        selectedCategory === "free"
+                          ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                      )}
+                    >
+                      <span>Free Models Only</span>
+                      <span className="text-[10px] font-mono opacity-60">({freeCount})</span>
+                      {selectedCategory === "free" && (
+                        <Check className="w-3 h-3 text-[var(--text-primary)] shrink-0 ml-1 stroke-[2.5]" />
+                      )}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory("selected");
+                      setIsCategoryDropdownOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                      selectedCategory === "selected"
+                        ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                    )}
+                  >
+                    <span>Selected in Pool</span>
+                    <span className="text-[10px] font-mono opacity-60">({selectedModels.length})</span>
+                    {selectedCategory === "selected" && (
+                      <Check className="w-3 h-3 text-[var(--text-primary)] shrink-0 ml-1 stroke-[2.5]" />
+                    )}
+                  </button>
+
+                  {/* Families section */}
+                  {availableFamilies.length > 0 && (
+                    <>
+                      <div className="my-1 border-t border-[var(--border-color)]" />
+                      <div className="px-2 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
+                        Model Families
+                      </div>
+                      {availableFamilies.map(({ family, count }) => {
+                        const isSelected = selectedCategory.toLowerCase() === family.toLowerCase();
+                        return (
+                          <button
+                            key={family}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory(family);
+                              setIsCategoryDropdownOpen(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors",
+                              isSelected
+                                ? "bg-[var(--bg-hover)] text-[var(--text-primary)] font-bold"
+                                : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+                            )}
+                          >
+                            <span>{family}</span>
+                            <span className="text-[10px] font-mono opacity-60">({count})</span>
+                            {isSelected && (
+                              <Check className="w-3 h-3 text-[var(--text-primary)] shrink-0 ml-1 stroke-[2.5]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {freeCount > 0 && (
+              <button
+                type="button"
+                onClick={handleSelectAllFree}
+                className="px-2.5 py-1 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium shrink-0"
+                title="Add all available free models to routing pool"
+              >
+                <CheckCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                <span>Select All Free</span>
+              </button>
+            )}
+
             {/* Search Input */}
             <div className="relative">
               <Search className="w-3 h-3 text-[var(--text-muted)] absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -335,13 +558,13 @@ export function ProviderForm({
                 placeholder="Search models..."
                 value={modelSearch}
                 onChange={(e) => setModelSearch(e.target.value)}
-                className="w-36 sm:w-48 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg pl-7 pr-2.5 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
+                className="w-32 sm:w-40 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-lg pl-7 pr-6 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-dim)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
               />
               {modelSearch && (
                 <button
                   type="button"
                   onClick={() => setModelSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   ✕
                 </button>
@@ -352,11 +575,11 @@ export function ProviderForm({
               type="button"
               onClick={onFetchModels}
               disabled={isFetchingFormModels}
-              className="px-3 py-1 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium shrink-0"
+              className="px-2.5 py-1 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 font-medium shrink-0"
               title="Fetch all available models automatically from API endpoint"
             >
               <RefreshCw className={cn("w-3 h-3 text-[var(--text-muted)]", isFetchingFormModels && "animate-spin")} />
-              <span>{isFetchingFormModels ? "Syncing..." : "Sync Models from API"}</span>
+              <span>{isFetchingFormModels ? "Syncing..." : "Sync from API"}</span>
             </button>
           </div>
         </div>
@@ -367,22 +590,19 @@ export function ProviderForm({
             <div className="p-6 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-input)] rounded-xl border border-[var(--border-color)] space-y-3">
               <p>
                 {formAvailableModels.length === 0
-                  ? "No models configured for this endpoint yet. Click 'Sync Models from API' or add your model name below."
-                  : `No models match "${modelSearch}". Try another keyword or add custom model below.`}
+                  ? "No models configured for this endpoint yet. Click 'Sync from API' or add your model name below."
+                  : `No models match current filter "${selectedCategory}" or keyword "${modelSearch}". Try another filter or reset to All.`}
               </p>
-              {!isAddingFormModel && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddingFormModel(true);
-                    setFormNewModelInput("");
-                  }}
-                  className="px-4 py-2 bg-[var(--bg-hover)] border border-[var(--border-strong)] text-[var(--text-primary)] hover:opacity-90 text-xs rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 font-medium shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Add Custom Model Name</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("all");
+                  setModelSearch("");
+                }}
+                className="px-3 py-1.5 bg-[var(--bg-hover)] border border-[var(--border-strong)] text-[var(--text-primary)] text-xs rounded-xl cursor-pointer inline-flex items-center gap-1"
+              >
+                Reset Filters
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -390,27 +610,41 @@ export function ProviderForm({
                 const isSelected = selectedModels.includes(m);
                 const isPrimary = selectedModels[0] === m;
                 const priorityIdx = selectedModels.indexOf(m);
+                const isFree = isFreeModel(m);
+                const family = getModelFamily(m);
                 return (
                   <button
                     key={m}
                     type="button"
                     onClick={() => onToggleModelSelection(m)}
                     className={cn(
-                      "p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer",
+                      "p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer group",
                       isSelected
                         ? "bg-[var(--bg-hover)] border-[var(--border-strong)] text-[var(--text-primary)] shadow-xs"
                         : "bg-[var(--bg-input)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)]"
                     )}
                   >
-                    <div className="truncate pr-2">
-                      <span className="font-mono text-xs block truncate font-semibold">{m}</span>
-                      <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">
-                        {isPrimary
-                          ? "● Primary Active"
-                          : isSelected
-                          ? `✓ Fallback #${priorityIdx}`
-                          : "Click to select"}
-                      </span>
+                    <div className="truncate pr-2 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-xs truncate font-semibold">{m}</span>
+                        {isFree && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-app)] text-[var(--text-primary)] border border-[var(--border-strong)] font-mono">
+                            FREE
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] px-1.5 py-0.2 bg-[var(--bg-app)] border border-[var(--border-color)] rounded text-[var(--text-dim)] font-mono">
+                          {family}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-muted)]">
+                          {isPrimary
+                            ? "● Primary Active"
+                            : isSelected
+                            ? `✓ Fallback #${priorityIdx}`
+                            : "Click to select"}
+                        </span>
+                      </div>
                     </div>
                     {isSelected && <Check className="w-4 h-4 text-[var(--text-primary)] shrink-0 stroke-[2.5]" />}
                   </button>
@@ -488,7 +722,7 @@ export function ProviderForm({
               )}
             >
               <span
-                className={cn("w-2 h-2 rounded-full", testResult.success ? "bg-emerald-500" : "bg-red-400")}
+                className={cn("w-2 h-2 rounded-full", testResult.success ? "bg-[var(--text-primary)]" : "bg-red-400")}
               />
               <span className="font-semibold">
                 {testResult.success

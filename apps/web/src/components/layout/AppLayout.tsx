@@ -29,6 +29,42 @@ export function AppLayout() {
     return localStorage.getItem("arunaki_active_folder") || "";
   });
 
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    return typeof navigator !== "undefined" ? navigator.onLine : true;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("Network connected", {
+        description: "Internet connection restored.",
+        duration: 3000,
+      });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error("Network offline", {
+        description: "Computer is disconnected from the network.",
+        duration: 5000,
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    const interval = setInterval(() => {
+      if (typeof navigator !== "undefined") {
+        setIsOnline(navigator.onLine);
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
+
   useEffect(() => {
     function loadActiveFolder() {
       setActiveFolder(localStorage.getItem("arunaki_active_folder") || "");
@@ -223,11 +259,26 @@ export function AppLayout() {
           })}
         </div>
 
-        {/* Right: Status Indicator */}
+        {/* Right: Status Indicator (Network Online/Offline) */}
         <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[340px] justify-end">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px] font-medium text-[var(--text-muted)]">Arunaki Engine</span>
+          <div
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[11px] transition-colors select-none",
+              isOnline
+                ? "bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)]"
+                : "bg-rose-500/10 border-rose-500/30 text-rose-400 font-medium"
+            )}
+            title={isOnline ? "Computer is connected to the network" : "Computer is offline"}
+          >
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full transition-all",
+                isOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+              )}
+            />
+            <span className="text-[11px] font-medium">
+              {isOnline ? "Online" : "Offline"}
+            </span>
           </div>
         </div>
       </footer>
