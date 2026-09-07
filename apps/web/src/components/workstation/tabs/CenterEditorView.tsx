@@ -27,12 +27,12 @@ export const CenterEditorView = memo(function CenterEditorView({
   onKeyDown,
 }: CenterEditorViewProps) {
   return (
-    <div className="h-full w-full flex flex-col bg-[#1e1e1e] overflow-hidden">
-      <div className="flex-1 flex overflow-hidden bg-[#1e1e1e] relative font-mono text-[13px]">
-        {/* Gutter with VSCode-style line numbers & change indicator bars */}
+    <div className="h-full w-full flex flex-col bg-[var(--bg-card)] overflow-hidden transition-colors">
+      <div className="flex-1 flex overflow-hidden bg-[var(--bg-card)] relative font-mono text-[13px]">
+        {/* Gutter with line numbers & change indicator bars */}
         <div
           ref={gutterRef}
-          className="w-[50px] shrink-0 select-none bg-[#1e1e1e] border-r border-[#252526]/50 overflow-hidden text-right py-2 pr-3.5 font-mono text-[12px] text-[#858585]"
+          className="w-[50px] shrink-0 select-none bg-[var(--bg-panel)] border-r border-[var(--border-color)] overflow-hidden text-right py-2 pr-3.5 font-mono text-[12px] text-[var(--text-dim)] transition-colors"
         >
           {lines.map((_, i) => {
             const lineNum = i + 1;
@@ -43,12 +43,12 @@ export const CenterEditorView = memo(function CenterEditorView({
                 key={i}
                 className={cn(
                   "h-[20px] leading-[20px] relative transition-colors",
-                  isCurrentLine && "text-[#c6c6c6] font-medium"
+                  isCurrentLine && "text-[var(--text-primary)] font-medium"
                 )}
               >
                 {isAdded && (
                   <span
-                    className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#2ea043]"
+                    className="absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--text-muted)]"
                     title="Line added / updated by AI"
                   />
                 )}
@@ -58,7 +58,7 @@ export const CenterEditorView = memo(function CenterEditorView({
           })}
         </div>
 
-        {/* Editable live document area (VSCode Typography & Caret) */}
+        {/* Editable live document area */}
         <textarea
           ref={textareaRef}
           value={currentContent}
@@ -73,7 +73,7 @@ export const CenterEditorView = memo(function CenterEditorView({
           onKeyDown={onKeyDown}
           spellCheck={false}
           placeholder="Empty document..."
-          className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[#d4d4d4] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[#264f78] selection:text-[#ffffff] caret-[#0078d4]"
+          className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[var(--text-primary)] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)] caret-[var(--text-primary)] placeholder-[var(--text-dim)]"
           style={{
             fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
           }}

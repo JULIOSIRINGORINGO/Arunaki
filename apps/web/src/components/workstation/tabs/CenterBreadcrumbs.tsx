@@ -11,10 +11,10 @@ export const CenterBreadcrumbs = memo(function CenterBreadcrumbs({
   tabTitle,
 }: CenterBreadcrumbsProps) {
   return (
-    <div className="h-[22px] bg-[#1e1e1e] border-b border-[#252526] px-4 flex items-center gap-1.5 text-[11px] text-[#969696] select-none shrink-0 font-sans">
+    <div className="h-[24px] bg-[var(--bg-panel)] border-b border-[var(--border-color)] px-4 flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] select-none shrink-0 font-sans transition-colors">
       <span>{folderName}</span>
-      <ChevronRight className="w-3 h-3 text-[#6e7681]" />
-      <span className="text-[#cccccc] font-medium">{tabTitle}</span>
+      <ChevronRight className="w-3 h-3 text-[var(--text-dim)]" />
+      <span className="text-[var(--text-primary)] font-medium">{tabTitle}</span>
     </div>
   );
 });

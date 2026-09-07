@@ -134,15 +134,15 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
       return <ArunakiLogo size={12} className="animate-spin text-[var(--text-muted)] shrink-0 mt-0.5" />;
     }
     if (step.iconType === 'text') {
-      return <Cpu size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
+      return <Cpu size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
     }
     const t = (step.toolName || '').toLowerCase();
-    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
-    if (t.includes("word")) return <FileText size={12} className="text-blue-400 shrink-0 mt-0.5" />;
-    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-amber-500 shrink-0 mt-0.5" />;
+    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    if (t.includes("word")) return <FileText size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
     if (t.includes("read") || t.includes("file") || t.includes("search")) return <FileSearch size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("browser")) return <Globe size={12} className="text-indigo-500 shrink-0 mt-0.5" />;
-    if (t.includes("screenshot")) return <Camera size={12} className="text-purple-500 shrink-0 mt-0.5" />;
+    if (t.includes("browser")) return <Globe size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+    if (t.includes("screenshot")) return <Camera size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
     if (t.includes("key")) return <Keyboard size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
     return <Monitor size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
   };
@@ -174,7 +174,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
             return (
               <div key={step.id} className="flex items-start gap-2 text-[var(--text-secondary)]">
                 {isCompleted ? (
-                  <Check size={12} className="text-emerald-500 mt-0.5 shrink-0" />
+                  <Check size={12} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
                 ) : (
                   renderStepIcon(step)
                 )}
@@ -232,7 +232,7 @@ export function MessageThoughtBadge({
           className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <Check size={12} className="text-emerald-500 shrink-0" />
+            <Check size={12} className="text-[var(--text-primary)] shrink-0" />
             <span className="font-semibold text-[var(--text-primary)] truncate">
               Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
             </span>
@@ -249,7 +249,7 @@ export function MessageThoughtBadge({
           <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
             {steps.map((step, idx) => (
               <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
-                <Check size={11} className="text-emerald-500 mt-0.5 shrink-0" />
+                <Check size={11} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
                 <span className="truncate max-w-full text-[var(--text-muted)]">
                   {step.label}
                 </span>
@@ -290,7 +290,7 @@ export function MessageThoughtBadge({
             <div className="space-y-1 not-italic font-sans">
               {steps.map((s, i) => (
                 <div key={s.id || i} className="flex items-center gap-1.5 min-w-0">
-                  <Check size={10} className="text-emerald-500 shrink-0" />
+                  <Check size={10} className="text-[var(--text-primary)] shrink-0" />
                   <span className="truncate max-w-full">{s.label}</span>
                 </div>
               ))}

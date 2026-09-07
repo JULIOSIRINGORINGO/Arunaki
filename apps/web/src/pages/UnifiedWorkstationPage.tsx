@@ -308,7 +308,7 @@ export function UnifiedWorkstationPage() {
 
         {!leftCollapsed && (
           <div
-            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
+            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-[var(--border-strong)] transition-colors"
             onMouseDown={(e) => startDrag("left", e)}
           />
         )}
@@ -325,7 +325,7 @@ export function UnifiedWorkstationPage() {
 
         {!rightCollapsed && (
           <div
-            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-blue-500/50 transition-colors"
+            className="w-1 cursor-col-resize bg-transparent shrink-0 hover:bg-[var(--border-strong)] transition-colors"
             onMouseDown={(e) => startDrag("right", e)}
           />
         )}

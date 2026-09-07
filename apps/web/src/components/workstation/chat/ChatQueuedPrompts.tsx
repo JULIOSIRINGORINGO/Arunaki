@@ -16,7 +16,7 @@ export const ChatQueuedPrompts = memo(function ChatQueuedPrompts({
     <div className="mb-2 px-3 py-2 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
       <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
         <div className="flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
+          <Clock className="w-3.5 h-3.5 text-[var(--text-primary)] animate-pulse" />
           <span className="font-semibold text-[var(--text-primary)]">
             Message Queue ({queuedPrompts.length})
           </span>

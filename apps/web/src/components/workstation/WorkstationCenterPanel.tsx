@@ -221,7 +221,7 @@ function WorkstationCenterPanelComponent({
     : false;
 
   return (
-    <main className="flex-1 flex flex-col min-w-0 bg-[#1e1e1e] overflow-hidden select-none border-r border-[#252526] transition-colors duration-150">
+    <main className="flex-1 flex flex-col min-w-0 bg-[var(--bg-app)] overflow-hidden select-none border-r border-[var(--border-color)] transition-colors duration-150">
       {/* 1. TOP TABS BAR */}
       <CenterTabHeader
         tabs={tabs}
@@ -247,7 +247,7 @@ function WorkstationCenterPanelComponent({
       {activeTab && <CenterBreadcrumbs folderName={folderName} tabTitle={activeTab.title} />}
 
       {/* 3. DYNAMIC CONTENT BODY (SPREADSHEET / FILE EDITOR) */}
-      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[#1e1e1e]">
+      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[var(--bg-card)]">
         {activeTab ? (
           isSpreadsheet ? (
             <SpreadsheetViewer

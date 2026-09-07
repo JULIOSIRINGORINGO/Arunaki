@@ -15,11 +15,11 @@
   }
 
   :root, [data-theme="dark"], .dark {
-    --bg-app: #0A0A0A;
-    --bg-header: #121214;
-    --bg-panel: #141416;
-    --bg-panel-sub: #18181B;
-    --bg-card: #1E1E22;
+    --bg-app: #0A0A0C;
+    --bg-header: #121215;
+    --bg-panel: #141417;
+    --bg-panel-sub: #18181C;
+    --bg-card: #1C1C20;
     --bg-hover: #26262B;
     --bg-input: #121215;
     --border-color: #222226;
@@ -28,28 +28,28 @@
     --text-secondary: #E4E4E7;
     --text-muted: #8A8A93;
     --text-dim: #52525B;
-    --accent: #38BDF8;
+    --accent: #FFFFFF;
     --scrollbar-thumb: #2D2D33;
     --scrollbar-thumb-hover: #3F3F46;
   }
 
   [data-theme="light"], .light {
-    --bg-app: #F8F9FA;
+    --bg-app: #F8FAFC;
     --bg-header: #FFFFFF;
-    --bg-panel: #F3F4F6;
-    --bg-panel-sub: #FFFFFF;
+    --bg-panel: #F1F5F9;
+    --bg-panel-sub: #E2E8F0;
     --bg-card: #FFFFFF;
-    --bg-hover: #E5E7EB;
+    --bg-hover: #E2E8F0;
     --bg-input: #FFFFFF;
-    --border-color: #E5E7EB;
-    --border-strong: #D1D5DB;
-    --text-primary: #111827;
-    --text-secondary: #1F2937;
-    --text-muted: #6B7280;
-    --text-dim: #9CA3AF;
-    --accent: #0284C7;
-    --scrollbar-thumb: #D1D5DB;
-    --scrollbar-thumb-hover: #9CA3AF;
+    --border-color: #E2E8F0;
+    --border-strong: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
+    --text-dim: #94A3B8;
+    --accent: #0F172A;
+    --scrollbar-thumb: #CBD5E1;
+    --scrollbar-thumb-hover: #94A3B8;
   }
 
   html, body, #root {

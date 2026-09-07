@@ -145,7 +145,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             className="p-1 rounded-md hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             title="Copy message"
           >
-            {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+            {copied ? <Check className="w-3 h-3 text-[var(--text-primary)]" /> : <Copy className="w-3 h-3" />}
           </button>
 
           {isUser && onResend && (

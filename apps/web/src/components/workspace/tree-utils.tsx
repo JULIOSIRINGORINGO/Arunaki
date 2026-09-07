@@ -78,23 +78,23 @@ export function getFileIcon(name: string) {
   const ext = lowerName.split(".").pop() || "";
 
   if (["docx", "doc"].includes(ext)) {
-    return <FileText className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0" strokeWidth={1.5} />;
+    return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
   }
   if (["pdf"].includes(ext)) {
-    return <FileText className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400 shrink-0" strokeWidth={1.5} />;
+    return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
   }
   if (["jpg", "jpeg", "png", "gif", "svg", "webp", "ico"].includes(ext)) {
-    return <FileImage className="w-3.5 h-3.5 text-violet-500 dark:text-violet-400 shrink-0" strokeWidth={1.5} />;
+    return <FileImage className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
   }
   if (["xlsx", "xls", "xlsm", "csv"].includes(ext)) {
-    return <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" strokeWidth={1.5} />;
+    return <FileSpreadsheet className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
   }
   if (
     ["json", "js", "jsx", "ts", "tsx", "html", "css", "py", "sh", "cmd", "ps1"].includes(ext) ||
     lowerName.startsWith(".env") ||
     lowerName === ".gitignore"
   ) {
-    return <FileCode className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" strokeWidth={1.5} />;
+    return <FileCode className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;
   }
   if (["md", "txt", "log"].includes(ext)) {
     return <FileText className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" strokeWidth={1.5} />;

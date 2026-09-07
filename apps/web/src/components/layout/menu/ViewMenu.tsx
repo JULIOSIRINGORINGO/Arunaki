@@ -107,10 +107,10 @@ export const ViewMenu = memo(function ViewMenu({
             className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
           >
             <div className="flex items-center gap-2.5">
-              <Sun className="w-4 h-4 text-amber-500" strokeWidth={1.75} />
+              <Sun className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
               <span>Light</span>
             </div>
-            {theme === "light" && <Check className="w-4 h-4 text-blue-500" />}
+            {theme === "light" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
 
           <button
@@ -122,10 +122,10 @@ export const ViewMenu = memo(function ViewMenu({
             className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
           >
             <div className="flex items-center gap-2.5">
-              <Moon className="w-4 h-4 text-indigo-400" strokeWidth={1.75} />
+              <Moon className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
               <span>Dark</span>
             </div>
-            {theme === "dark" && <Check className="w-4 h-4 text-blue-500" />}
+            {theme === "dark" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
 
           <button
@@ -140,7 +140,7 @@ export const ViewMenu = memo(function ViewMenu({
               <Laptop className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
               <span>System Theme</span>
             </div>
-            {theme === "system" && <Check className="w-4 h-4 text-blue-500" />}
+            {theme === "system" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
 
           <div className="h-px my-1.5 bg-[var(--border-color)]" />
