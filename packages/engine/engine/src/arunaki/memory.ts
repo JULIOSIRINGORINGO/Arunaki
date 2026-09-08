@@ -69,53 +69,47 @@ function extractExistingCorrections(doc?: string): string[] {
   return Array.from(new Set(matches))
 }
 
-function inferDomain(topLevel: string[], extensions: string[], relFiles: string[]): string {
-  const fileNames = relFiles.map((f) => path.basename(f).toLowerCase())
-  const hasRekap = fileNames.some((n) => n.includes("rekap") || n.includes("laporan") || n.includes("penjualan") || n.includes("transaksi"))
-  const hasSpreadsheet = extensions.some((ext) => [".xlsx", ".xls", ".csv"].includes(ext))
-  const hasDocs = extensions.some((ext) => [".docx", ".doc", ".pdf", ".txt", ".md"].includes(ext))
-
-  if (hasRekap && hasSpreadsheet) {
-    return "Rekapan Keuangan & Penjualan (Spreadsheet & Catatan Transaksi)"
+export function inferDomain(topLevel: string[], extensions: string[]): string {
+  const types: string[] = []
+  if (extensions.some((ext) => [".xlsx", ".xls", ".csv", ".tsv"].includes(ext))) {
+    types.push("Spreadsheets & Tabular Data")
   }
-  if (hasSpreadsheet && hasDocs) {
-    return "Manajemen Dokumen & Spreadsheet Keuangan / Operasional"
+  if (extensions.some((ext) => [".docx", ".doc", ".pdf", ".rtf", ".odt"].includes(ext))) {
+    types.push("Documents & Reports")
   }
-  if (hasSpreadsheet) {
-    return "Spreadsheet Data & Tabel Numerik"
+  if (extensions.some((ext) => [".txt", ".md"].includes(ext))) {
+    types.push("Text Notes & Markdown")
   }
-  if (topLevel.length === 0) return "General Document Workspace"
-  return `Workspace focused on ${topLevel.slice(0, 6).join(", ")}`
+  if (types.length > 0) {
+    return types.join(" | ")
+  }
+  if (topLevel.length > 0) {
+    return `Workspace: ${topLevel.slice(0, 5).join(", ")}`
+  }
+  return "General Document Workspace"
 }
 
-function deriveSyntaxInvariants(extensions: string[], relFiles: string[]): string[] {
+export function deriveSyntaxInvariants(extensions: string[]): string[] {
   const invariants: string[] = []
-  const hasSpreadsheet = extensions.some((ext) => [".xlsx", ".xls", ".csv"].includes(ext))
-  const hasTxt = extensions.some((ext) => [".txt", ".md"].includes(ext))
+  const hasSpreadsheet = extensions.some((ext) => [".xlsx", ".xls", ".csv", ".tsv"].includes(ext))
+  const hasDocs = extensions.some((ext) => [".docx", ".doc", ".pdf", ".txt", ".md"].includes(ext))
 
   if (hasSpreadsheet) {
-    invariants.push("- File Spreadsheet (.xlsx, .csv): Wajib menjaga susunan header kolom, formula kalkulasi (SUM, TOTAL), dan urutan tanggal tanpa mengubah format sel yang sudah ada.")
-    invariants.push("- Integritas OOXML: Saat memodifikasi file .xlsx, simpan langsung secara valid dan jangan merusak relasi file internal XML Excel.")
+    invariants.push("- Tabular & Spreadsheet Files: Preserve existing sheet structures, column headers, and calculation formulas (SUM, TOTAL, math formulas) without altering unedited cells or formatting.")
+    invariants.push("- Workbook Integrity: When editing spreadsheets, save valid structures and verify all calculated values.")
   }
 
-  if (hasTxt) {
-    invariants.push("- Catatan Dokumen Teks (.txt, .md): Pertahankan pola struktur laporan (Pemasukan, Pengeluaran, Detail Belanja, Catatan Pembayaran) agar konsisten dengan entri historis.")
+  if (hasDocs) {
+    invariants.push("- Document Files: Respect existing formatting conventions, section hierarchy, and historical style when adding or updating content.")
   }
 
-  if (hasSpreadsheet && hasTxt) {
-    invariants.push("- Sinkronisasi Lintas Dokumen: Nilai transaksi pada catatan teks dan sel spreadsheet harian/bulanan harus selalu selaras dan diverifikasi setelah pengeditan.")
-  }
-
-  invariants.push("- Pembatasan Folder Aktif: Hanya operasikan file di dalam folder aktif yang sedang dibuka (Project Folder Isolation).")
-  invariants.push("- Aturan di bawah ini otomatis dipelajari oleh Sentinel saat pengguna memberikan arahan/koreksi.")
+  invariants.push("- Active Folder Isolation: Strictly operate within the active project folder. Never access or modify external files.")
+  invariants.push("- Non-Destructive Mutation: Only modify what is requested. Never overwrite or delete unrelated files or records.")
 
   return invariants
 }
 
 /** Deterministic synthesizer (no LLM/credentials needed). Called on every scan. */
-// ponytail: deterministic file-catalog synthesis. Swap in a cartographer
-// sub-agent (TaskTool) that summarizes files and mines corrections when
-// budgets allow; sentinel call sites and the file format are unchanged.
 function synthesize(directory: string, files: string[], existingDoc?: string): string {
   const rel = files
     .map((f) => (path.isAbsolute(f) ? path.relative(directory, f) : f))
@@ -132,13 +126,13 @@ function synthesize(directory: string, files: string[], existingDoc?: string): s
   const extensions = Array.from(new Set(rel.map((f) => path.extname(f).toLowerCase()).filter(Boolean)))
     .sort()
 
-  const domain = inferDomain(topLevel, extensions, rel)
-  const invariants = deriveSyntaxInvariants(extensions, rel)
+  const domain = inferDomain(topLevel, extensions)
+  const invariants = deriveSyntaxInvariants(extensions)
   const existingCorrections = extractExistingCorrections(existingDoc)
 
   const learnedSection = existingCorrections.length > 0
     ? ["### Learned by the Sentinel", ...existingCorrections.map((c) => `- ${c}`)].join("\n")
-    : "_Populated automatically as you correct Arunaki in chat._"
+    : "_No learned preferences yet. Arunaki automatically records user rules here as you interact._"
 
   return [
     "# LOCAL WORKSPACE OPERATING RULES",
@@ -170,15 +164,11 @@ function synthesize(directory: string, files: string[], existingDoc?: string): s
 }
 
 /**
- * Cheap, 0-token pre-filter that decides whether a turn *might* contain a
- * correction. An idle turn ("rekap ke excel", "halo") never matches, so the
- * LLM stays asleep and no tokens are spent. Only a positive match wakes it.
+ * Universal content gate: no rigid keyword regex.
+ * Discards empty turns; the Sentinel LLM performs semantic classification.
  */
-const CORRECTION_HINTS =
-  /\b(jangan|jangan lagi|harusnya|seharusnya|itu salah|salah|keliru|tapi|ubah|ganti|lupa|ingat|tolong (mulai|berhenti)|kalau bisa|mulai sekarang|ke depannya|nanti|aturan|rule|rules|selisih|tambah aturan|perbaiki|koreksi|catat|selalu|format|memory|memo|remember|always|never|instead|fix|correct|note|prefer|preference|keep|don't|should|must|wrong|mistake|error)\b/i
-
 export function mightBeCorrection(text: string): boolean {
-  return CORRECTION_HINTS.test(text)
+  return Boolean(text && text.trim().length > 0)
 }
 
 /** Replace (or append) the "User Preferences & Learned Corrections" section. */

@@ -1,23 +1,38 @@
 import { describe, expect, test } from "vitest"
-import { applyCorrections, mightBeCorrection } from "../../src/arunaki/memory"
+import { applyCorrections, deriveSyntaxInvariants, inferDomain, mightBeCorrection } from "../../src/arunaki/memory"
 
 describe("memory: mightBeCorrection", () => {
-  test("flags negative/corrective messages without spending tokens on idle turns", () => {
+  test("accepts substantive messages across all languages (Arabic, Chinese, English, Indonesian, dialects)", () => {
     expect(mightBeCorrection("jangan ubah nominal ke rupiah")).toBe(true)
-    expect(mightBeCorrection("harusnya kolom total di akhir")).toBe(true)
-    expect(mightBeCorrection("itu salah, pakai tanggal kemarin")).toBe(true)
-    expect(mightBeCorrection("lupa totalnya belum dihitung ulang")).toBe(true)
-    expect(mightBeCorrection("mulai sekarang formatnya pakai koma")).toBe(true)
     expect(mightBeCorrection("tambah aturan format tanggal YYYY-MM-DD")).toBe(true)
-    expect(mightBeCorrection("catat aturan ini ke living memory")).toBe(true)
     expect(mightBeCorrection("remember this rule: always round up")).toBe(true)
-    expect(mightBeCorrection("please correct the total row")).toBe(true)
+    expect(mightBeCorrection("يرجى عدم تغيير هذا العمود")).toBe(true) // Arabic
+    expect(mightBeCorrection("请记住总计必须四舍五入")).toBe(true) // Chinese
+    expect(mightBeCorrection("ojo lali format tanggal")).toBe(true) // Javanese
   })
 
-  test("ignores neutral document tasks", () => {
-    expect(mightBeCorrection("rekap data penjualan ke excel")).toBe(false)
-    expect(mightBeCorrection("halo")).toBe(false)
-    expect(mightBeCorrection("update ini ke laporan harian")).toBe(false)
+  test("ignores empty or whitespace turns", () => {
+    expect(mightBeCorrection("")).toBe(false)
+    expect(mightBeCorrection("   ")).toBe(false)
+  })
+})
+
+describe("memory: dynamic cartography", () => {
+  test("infers domain dynamically based on actual scanned file extensions", () => {
+    expect(inferDomain(["finance"], [".xlsx", ".csv"])).toBe("Spreadsheets & Tabular Data")
+    expect(inferDomain(["legal"], [".docx", ".pdf"])).toBe("Documents & Reports")
+    expect(inferDomain(["hybrid"], [".xlsx", ".docx"])).toBe("Spreadsheets & Tabular Data | Documents & Reports")
+    expect(inferDomain([], [])).toBe("General Document Workspace")
+  })
+
+  test("derives universal syntax invariants without hardcoded test assumptions", () => {
+    const invariants = deriveSyntaxInvariants([".xlsx", ".txt"])
+    const text = invariants.join("\n")
+    expect(text).toContain("Tabular & Spreadsheet Files")
+    expect(text).toContain("Document Files")
+    expect(text).toContain("Active Folder Isolation")
+    expect(text).not.toContain("Pemasukan, Pengeluaran")
+    expect(text).not.toContain("Labura")
   })
 })
 
