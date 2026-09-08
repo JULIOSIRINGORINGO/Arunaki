@@ -327,14 +327,18 @@ const layer = Layer.effect(
             .reverse()
             .find((m) => m.info.role === "user" && m.parts[0]?.type !== "subtask")
 
-          // 1) Cheap 0-token gate: idle turns never reach the LLM.
+          // 1) Universal Multilingual Intake: Never filter by rigid regex keywords.
+          // Users may speak Arabic, Chinese, English, regional dialects, or natural conversational slang.
+          // Only discard empty/whitespace turns. The Sentinel LLM (Step 3) autonomously decides whether
+          // a message contains an operating rule or correction.
           if (!lastUser || lastUser.info.role !== "user") return
           const userInfo = lastUser.info
           const userText = lastUser.parts
             .map((p) => (p.type === "text" ? (p.text ?? "") : ""))
             .join("\n")
             .slice(0, 2000)
-          if (!userText || !mightBeCorrection(userText)) return
+            .trim()
+          if (!userText) return
 
           // 2) Rulebook + (best-effort) provider config; missing model = sleep.
           const current = yield* readRulebook()
@@ -351,7 +355,7 @@ const layer = Layer.effect(
           )
           if (!model) return
 
-          // 3) LLM reads the turn and rewrites the learned rules (1-shot).
+          // 3) LLM reads the turn in ANY language and rewrites learned rules (1-shot).
           const userMsg: SessionV1.User = {
             id: MessageID.ascending(),
             role: "user",
@@ -361,10 +365,10 @@ const layer = Layer.effect(
             agent: ag.name,
             model: { providerID: model.providerID, modelID: model.id },
             system:
-              "You are the Arunaki memory sentinel. Read the last user message. " +
-              "If it states a correction or preference about how files/data are handled, " +
+              "You are the Arunaki memory sentinel. Read the last user message (which may be in any language, including Indonesian, English, Arabic, Chinese, regional dialects, etc.). " +
+              "If it states a correction, preference, or operating rule about how documents, data, or files are handled, " +
               "rewrite it as ONE concise imperative rule in Indonesian. Output ONLY the rule " +
-              "bullet text (no markdown, no explanation). If there is no real correction, output nothing.",
+              "bullet text (no markdown, no explanation). If there is no real correction or preference, output nothing.",
             format: { type: "text" },
           }
 
