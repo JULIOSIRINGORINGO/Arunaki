@@ -22,11 +22,35 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   onPreviewImage,
   onResend,
 }: ChatMessageBubbleProps) {
+  // CRITICAL: React Rules of Hooks - all hooks unconditionally declared at the top before any condition or early return!
   const [copied, setCopied] = useState(false);
-  let steps: StepItem[] | undefined = msg.executionSteps;
-  let thoughtSec = msg.thoughtSec;
 
-  if (!steps && msg.metadata) {
+  const imageMentions = useMemo(() => {
+    const contentStr = msg?.content || "";
+    const matches = contentStr.match(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi) || [];
+    return Array.from(new Set(matches.map((m) => m.replace(/^@/, ""))));
+  }, [msg?.content]);
+
+  const displayContent = useMemo(() => {
+    const raw = msg?.content || "";
+    if (imageMentions.length === 0) return raw.trim();
+    return raw.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
+  }, [msg?.content, imageMentions]);
+
+  const timeString = useMemo(() => {
+    if (!msg?.createdAt) return "";
+    try {
+      const date = new Date(msg.createdAt);
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  }, [msg?.createdAt]);
+
+  let steps: StepItem[] | undefined = msg?.executionSteps;
+  let thoughtSec = msg?.thoughtSec;
+
+  if (!steps && msg?.metadata) {
     try {
       const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
       if (meta?.executionSteps) steps = meta.executionSteps;
@@ -34,37 +58,16 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     } catch {}
   }
 
-  const imageMentions = useMemo(() => {
-    const matches = msg.content?.match(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi) || [];
-    return Array.from(new Set(matches.map((m) => m.replace(/^@/, ""))));
-  }, [msg.content]);
-
-  const displayContent = useMemo(() => {
-    const raw = msg.content || "";
-    if (imageMentions.length === 0) return raw.trim();
-    return raw.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
-  }, [msg.content, imageMentions]);
-
   const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
-  const hasThoughtOrSteps = !isUser && (Boolean(showThinking && msg.reasoning) || Boolean(steps && steps.length > 0));
+  const hasThoughtOrSteps = !isUser && (Boolean(showThinking && msg?.reasoning) || Boolean(steps && steps.length > 0));
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
     return null;
   }
 
-  const timeString = useMemo(() => {
-    if (!msg.createdAt) return "";
-    try {
-      const date = new Date(msg.createdAt);
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return "";
-    }
-  }, [msg.createdAt]);
-
   const handleCopy = (e: MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(msg.content);
+    navigator.clipboard.writeText(msg.content || "");
     setCopied(true);
     toast.success("Copied to clipboard");
     setTimeout(() => setCopied(false), 2000);

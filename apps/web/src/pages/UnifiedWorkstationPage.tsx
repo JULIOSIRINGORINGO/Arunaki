@@ -10,6 +10,7 @@ import { SearchSectionModal } from "../components/workstation/SearchSectionModal
 import { useTabs } from "../components/workstation/tabs/useTabs";
 import { useWorkstationChat } from "../components/workstation/chat/useWorkstationChat";
 import { WorkspaceFile } from "../components/workstation/chat/types";
+import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { engineFetch } from "../lib/engine";
 
 export function UnifiedWorkstationPage() {
@@ -341,27 +342,29 @@ export function UnifiedWorkstationPage() {
           />
         )}
 
-        <WorkstationRightChat
-          activeChatId={activeChatId}
-          collapsed={rightCollapsed}
-          onClose={() => setRightCollapsed(!rightCollapsed)}
-          chatMessages={chat.chatMessages}
-          optimisticMessages={chat.optimisticMessages}
-          liveStatus={chat.liveStatus}
-          messagesEndRef={chat.messagesEndRef}
-          activeWorkspace={activeWorkspace}
-          isStreaming={chat.isStreaming}
-          onSendMessage={chat.handleSendMessage}
-          width="var(--right-panel-width, 320px)"
-          files={mentionFiles}
-          queuedPrompts={chat.queuedPrompts}
-          onRemoveQueuedPrompt={chat.handleRemoveQueuedPrompt}
-          onSearchSection={() => setShowSearchSectionModal(true)}
-          reasoningEffort={chat.reasoningEffort}
-          setReasoningEffort={chat.setReasoningEffort}
-          onNewChat={chat.handleNewChat}
-          onCancelStream={chat.handleCancelStream}
-        />
+        <ErrorBoundary fullScreen={false} fallbackTitle="Chat panel encountered an error">
+          <WorkstationRightChat
+            activeChatId={activeChatId}
+            collapsed={rightCollapsed}
+            onClose={() => setRightCollapsed(!rightCollapsed)}
+            chatMessages={chat.chatMessages}
+            optimisticMessages={chat.optimisticMessages}
+            liveStatus={chat.liveStatus}
+            messagesEndRef={chat.messagesEndRef}
+            activeWorkspace={activeWorkspace}
+            isStreaming={chat.isStreaming}
+            onSendMessage={chat.handleSendMessage}
+            width="var(--right-panel-width, 320px)"
+            files={mentionFiles}
+            queuedPrompts={chat.queuedPrompts}
+            onRemoveQueuedPrompt={chat.handleRemoveQueuedPrompt}
+            onSearchSection={() => setShowSearchSectionModal(true)}
+            reasoningEffort={chat.reasoningEffort}
+            setReasoningEffort={chat.setReasoningEffort}
+            onNewChat={chat.handleNewChat}
+            onCancelStream={chat.handleCancelStream}
+          />
+        </ErrorBoundary>
       </div>
 
       <ConnectFolderModal

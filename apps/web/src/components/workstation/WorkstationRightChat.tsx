@@ -82,8 +82,9 @@ function WorkstationRightChatComponent({
 
     for (const opt of optimisticMessages) {
       if (seenIds.has(opt.id)) continue;
+      const optText = (opt.content || "").trim();
       const alreadyPersisted = chatMessages.some(
-        (m) => m.role === opt.role && m.content.trim() === opt.content.trim() && opt.content.trim().length > 0
+        (m) => m.role === opt.role && (m.content || "").trim() === optText && optText.length > 0
       );
       if (!alreadyPersisted) {
         result.push(opt);

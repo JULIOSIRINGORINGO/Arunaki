@@ -1,6 +1,7 @@
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { AppLayout } from "./components/layout/AppLayout";
 import { UnifiedWorkstationPage } from "./pages/UnifiedWorkstationPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -79,17 +80,19 @@ export default function App() {
           duration: 3000,
         }}
       />
-      <RouterComponent>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<UnifiedWorkstationPage />} />
-            <Route path="/workspace" element={<Navigate to="/" replace />} />
-            <Route path="/knowledge" element={<KnowledgePage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
-        </Routes>
-      </RouterComponent>
+      <ErrorBoundary fullScreen fallbackTitle="Workstation encountered an unexpected error">
+        <RouterComponent>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<UnifiedWorkstationPage />} />
+              <Route path="/workspace" element={<Navigate to="/" replace />} />
+              <Route path="/knowledge" element={<KnowledgePage />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
+          </Routes>
+        </RouterComponent>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
