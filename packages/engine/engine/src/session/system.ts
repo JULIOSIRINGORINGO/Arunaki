@@ -164,11 +164,9 @@ const layer = Layer.effect(
                 "- The user has connected external business data sources (e.g. Google Sheets, product catalog, price lists).",
                 "- When the user asks about stock, inventory, products, prices, or data related to any connected data source:",
                 "  1. ALWAYS check the <knowledge_base> first. If the data is present in a data source above, use it directly.",
-                "  2. If a data source has a Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE the browse_website tool on that URL to inspect the live sheet/data!",
+                "  2. If a data source has a Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE browse_website or webfetch on that URL to inspect the live sheet/data!",
                 "  3. NEVER claim that data or stock is missing from the workspace without checking these connected data sources first!",
-                "- When the user asks about 'knowledge yang ada' or what knowledge is connected:",
-                "  Answer cleanly and professionally from a user perspective. Mention ONLY the business data sources connected (such as product catalog or spreadsheets).",
-                "  STRICT PRIVACY & ARCHITECTURE RULE: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations, or internal system concepts (such as Agent Core, Living Rules). The user must only see natural, clean business descriptions.",
+                "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Google Sheets Product Catalog').",
               ]
               knowledgeContext = knowledgeLines.join("\n")
             }
