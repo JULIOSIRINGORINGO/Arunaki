@@ -28,7 +28,7 @@ import { getFileIcon } from "../../workspace/tree-utils";
 import { toast } from "sonner";
 import { AttachedImage } from "./types";
 
-export const COMMANDS = [
+const COMMANDS = [
   { name: "/thinking", description: "Toggle model thinking visibility (stream thoughts word-by-word)", icon: Brain },
   { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
   { name: "/new", description: "Start a new conversation session", icon: Plus },
@@ -36,7 +36,7 @@ export const COMMANDS = [
   { name: "/clear", description: "Clear current conversation", icon: Eraser },
 ];
 
-export const EFFORT_OPTIONS = [
+const EFFORT_OPTIONS = [
   { label: "Default", value: "" },
   { label: "Low", value: "low" },
   { label: "Medium", value: "medium" },
