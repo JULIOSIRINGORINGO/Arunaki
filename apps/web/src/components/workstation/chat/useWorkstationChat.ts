@@ -195,6 +195,7 @@ export function useWorkstationChat({
   useEffect(() => {
     if (!activeChatId || isStreaming || chatMessages.length === 0) return;
     if (hasRestoredCanvasRef.current === activeChatId) return;
+    hasRestoredCanvasRef.current = activeChatId;
 
     for (let i = chatMessages.length - 1; i >= 0; i--) {
       const msg = chatMessages[i];
@@ -202,7 +203,6 @@ export function useWorkstationChat({
         const canvasContent = extractCanvasContent(msg.content);
         if (canvasContent) {
           upsertCanvasTab(canvasContent, false);
-          hasRestoredCanvasRef.current = activeChatId;
           break;
         }
       }
@@ -233,6 +233,15 @@ export function useWorkstationChat({
     setIsStreaming(false);
     setLiveStatus(null);
     setOptimisticMessages([]);
+    hasRestoredCanvasRef.current = null;
+
+    // Immediately clear chat to blank state for instant feedback with 0 flicker
+    setActiveChatId("");
+    queryClient.setQueryData(["chat-messages", ""], []);
+    localStorage.removeItem("arunaki_active_chat_id");
+    if (activeFolder) {
+      localStorage.removeItem(`arunaki_active_chat_id_${activeFolder}`);
+    }
 
     const activeModel = resolveActiveSingleModel();
 
@@ -244,17 +253,15 @@ export function useWorkstationChat({
       if (session && session.id) {
         setActiveChatId(session.id);
         localStorage.setItem("arunaki_active_chat_id", session.id);
+        if (activeFolder) {
+          localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, session.id);
+        }
         queryClient.setQueryData(["chat-messages", session.id], []);
         queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      } else {
-        setActiveChatId("");
-        localStorage.removeItem("arunaki_active_chat_id");
       }
     } catch {
       setActiveChatId("");
-      localStorage.removeItem("arunaki_active_chat_id");
     }
-    queryClient.setQueryData(["chat-messages", ""], []);
     toast.info("New conversation session ready");
   }, [activeFolder, setActiveChatId, queryClient]);
 
@@ -312,6 +319,7 @@ export function useWorkstationChat({
         localStorage.setItem("arunaki_active_chat_id", chatIdToUse);
         if (activeFolder) {
           localStorage.setItem("arunaki_active_folder", activeFolder);
+          localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, chatIdToUse);
         }
       } catch {
         setIsStreaming(false);

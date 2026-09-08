@@ -14,12 +14,14 @@ interface SearchSectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSession: (chatId: string) => void;
+  activeFolder?: string;
 }
 
 export function SearchSectionModal({
   isOpen,
   onClose,
   onSelectSession,
+  activeFolder,
 }: SearchSectionModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,10 +36,10 @@ export function SearchSectionModal({
   }, [isOpen, onClose]);
 
   const { data: sessions = [], isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["chat-sessions-search-section"],
+    queryKey: ["chat-sessions-search-section", activeFolder],
     queryFn: async () => {
       try {
-        const data = await listSessions({ limit: 50 });
+        const data = await listSessions({ directory: activeFolder || undefined, limit: 50 });
         return (data || []).map((s: any) => ({
           id: s.id,
           title: s.title || "",

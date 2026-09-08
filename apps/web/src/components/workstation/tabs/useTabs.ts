@@ -24,6 +24,16 @@ export function useTabs({ activeFolder, refetchFiles }: UseTabsOptions) {
   });
 
   const openingTabsRef = useRef<Set<string>>(new Set());
+  const prevFolderRef = useRef<string>(activeFolder);
+
+  // Workspace folder isolation: when active folder changes, close previous folder's tabs
+  useEffect(() => {
+    if (prevFolderRef.current && prevFolderRef.current !== activeFolder) {
+      setTabs([]);
+      setActiveTabId(null);
+    }
+    prevFolderRef.current = activeFolder;
+  }, [activeFolder]);
 
   // Auto-deduplicate tabs by title/path to purge any duplicate tabs from state
   useEffect(() => {
@@ -291,6 +301,9 @@ export function useTabs({ activeFolder, refetchFiles }: UseTabsOptions) {
         createdAt: currentCreatedAt,
       };
       if (existingIdx >= 0) {
+        if (prev[existingIdx].content === canvasText && prev[existingIdx].title === canvasTitle) {
+          return prev;
+        }
         const copy = [...prev];
         copy[existingIdx] = newTab;
         return copy;

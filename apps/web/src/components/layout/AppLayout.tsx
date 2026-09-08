@@ -117,12 +117,13 @@ export function AppLayout() {
   ];
 
   const handleNavigateWorkstation = useCallback(() => {
+    const savedFolder = localStorage.getItem("arunaki_active_folder") || "";
     const savedChatId = localStorage.getItem("arunaki_active_chat_id") || "";
-    if (savedChatId) {
-      navigate(`/?chatId=${savedChatId}`);
-    } else {
-      navigate("/");
-    }
+    const params = new URLSearchParams();
+    if (savedFolder) params.set("folder", savedFolder);
+    if (savedChatId) params.set("chatId", savedChatId);
+    const query = params.toString();
+    navigate(query ? `/?${query}` : "/");
   }, [navigate]);
 
   return (

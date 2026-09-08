@@ -45,100 +45,139 @@ export function UnifiedWorkstationPage() {
   );
 
   const [activeChatId, setActiveChatId] = useState<string>(() => {
-    const raw = urlChatId || localStorage.getItem("arunaki_active_chat_id") || "";
-    return raw.startsWith("ses_") ? raw : "";
+    if (urlChatId && urlChatId.startsWith("ses_")) return urlChatId;
+    const initialFolder = searchParams.get("folder") || localStorage.getItem("arunaki_active_folder") || "";
+    if (initialFolder) {
+      const folderChat = localStorage.getItem(`arunaki_active_chat_id_${initialFolder}`) || "";
+      if (folderChat.startsWith("ses_")) return folderChat;
+    }
+    const globalChat = localStorage.getItem("arunaki_active_chat_id") || "";
+    return globalChat.startsWith("ses_") ? globalChat : "";
   });
 
-  // Sync active folder with localStorage and URL (only when on workstation route)
+  const isUpdatingUrlFromStateRef = useRef(false);
+
+  // 1. Open / Switch Active Folder with complete workspace isolation (Antigravity Parity)
+  const openFolder = useCallback((folderPath: string) => {
+    const cleanPath = (folderPath || "").trim();
+    if (!cleanPath) return;
+
+    setActiveFolder(cleanPath);
+    localStorage.setItem("arunaki_active_folder", cleanPath);
+
+    // Workspace folder isolation: check if this folder already has an existing session
+    const savedFolderSession = localStorage.getItem(`arunaki_active_chat_id_${cleanPath}`) || "";
+    const nextChatId = savedFolderSession.startsWith("ses_") ? savedFolderSession : "";
+
+    setActiveChatId(nextChatId);
+    if (nextChatId) {
+      localStorage.setItem("arunaki_active_chat_id", nextChatId);
+    } else {
+      localStorage.removeItem("arunaki_active_chat_id");
+    }
+
+    isUpdatingUrlFromStateRef.current = true;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("folder", cleanPath);
+      if (nextChatId) {
+        next.set("chatId", nextChatId);
+      } else {
+        next.delete("chatId");
+      }
+      return next;
+    }, { replace: true });
+
+    window.dispatchEvent(new Event("arunaki-folder-change"));
+  }, [setSearchParams]);
+
+  // 2. Unidirectional Sync: State (activeFolder, activeChatId) -> URL & localStorage
   useEffect(() => {
     if (!isWorkstationRoute) return;
+
     if (activeFolder) {
       localStorage.setItem("arunaki_active_folder", activeFolder);
-      if (searchParams.get("folder") !== activeFolder) {
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
-          next.set("folder", activeFolder);
-          return next;
-        }, { replace: true });
+    }
+
+    if (activeChatId && activeChatId.startsWith("ses_")) {
+      localStorage.setItem("arunaki_active_chat_id", activeChatId);
+      if (activeFolder) {
+        localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, activeChatId);
+      }
+    } else {
+      localStorage.removeItem("arunaki_active_chat_id");
+      if (activeFolder) {
+        localStorage.removeItem(`arunaki_active_chat_id_${activeFolder}`);
       }
     }
-  }, [isWorkstationRoute, activeFolder, searchParams, setSearchParams]);
 
-  // Sync external folder changes (e.g. from topbar)
+    const currentUrlFolder = searchParams.get("folder") || "";
+    const currentUrlChatId = searchParams.get("chatId") || "";
+
+    const targetFolder = activeFolder || "";
+    const targetChatId = (activeChatId && activeChatId.startsWith("ses_")) ? activeChatId : "";
+
+    if (currentUrlFolder === targetFolder && currentUrlChatId === targetChatId) {
+      return;
+    }
+
+    isUpdatingUrlFromStateRef.current = true;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (targetFolder) next.set("folder", targetFolder);
+      else next.delete("folder");
+
+      if (targetChatId) next.set("chatId", targetChatId);
+      else next.delete("chatId");
+
+      if (next.toString() === prev.toString()) return prev;
+      return next;
+    }, { replace: true });
+  }, [isWorkstationRoute, activeFolder, activeChatId, searchParams, setSearchParams]);
+
+  // 3. Unidirectional Sync: URL -> State (for browser history navigation or deep linking)
+  useEffect(() => {
+    if (!isWorkstationRoute) return;
+    if (isUpdatingUrlFromStateRef.current) {
+      isUpdatingUrlFromStateRef.current = false;
+      return;
+    }
+
+    const targetFolder = searchParams.get("folder") || "";
+    const targetChatId = searchParams.get("chatId") || "";
+
+    if (targetFolder && targetFolder !== activeFolder) {
+      openFolder(targetFolder);
+    } else if (targetChatId !== activeChatId) {
+      if (!targetChatId || targetChatId.startsWith("ses_")) {
+        setActiveChatId(targetChatId);
+      }
+    }
+  }, [isWorkstationRoute, searchParams, activeFolder, activeChatId, openFolder]);
+
+  // 4. External window event listeners for folder and session changes
   useEffect(() => {
     function handleFolderChange() {
-      const saved = localStorage.getItem("arunaki_active_folder");
+      const saved = localStorage.getItem("arunaki_active_folder") || "";
       if (saved && saved !== activeFolder) {
-        setActiveFolder(saved);
-        if (isWorkstationRoute) {
-          setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("folder", saved);
-            return next;
-          }, { replace: true });
-        }
+        openFolder(saved);
+      }
+    }
+    function handleSessionChange() {
+      const saved = localStorage.getItem("arunaki_active_chat_id") || "";
+      if (saved !== activeChatId && (!saved || saved.startsWith("ses_"))) {
+        setActiveChatId(saved);
       }
     }
     window.addEventListener("arunaki-folder-change", handleFolderChange);
-    return () => window.removeEventListener("arunaki-folder-change", handleFolderChange);
-  }, [isWorkstationRoute, activeFolder, setSearchParams]);
-
-  // Sync external session changes (e.g. from HistoryPage navigation)
-  useEffect(() => {
-    function handleSessionChange() {
-      const saved = localStorage.getItem("arunaki_active_chat_id");
-      if (saved && saved.startsWith("ses_") && saved !== activeChatId) {
-        setActiveChatId(saved);
-        if (isWorkstationRoute && searchParams.get("chatId") !== saved) {
-          setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("chatId", saved);
-            return next;
-          }, { replace: true });
-        }
-      }
-    }
     window.addEventListener("arunaki-session-change", handleSessionChange);
-    return () => window.removeEventListener("arunaki-session-change", handleSessionChange);
-  }, [isWorkstationRoute, activeChatId, searchParams, setSearchParams]);
-
-  // Sync incoming urlChatId into activeChatId
-  useEffect(() => {
-    if (!isWorkstationRoute) return;
-    if (urlChatId && urlChatId.startsWith("ses_") && urlChatId !== activeChatId) {
-      setActiveChatId(urlChatId);
-      localStorage.setItem("arunaki_active_chat_id", urlChatId);
-    }
-  }, [isWorkstationRoute, urlChatId, activeChatId]);
-
-  // Sync internal activeChatId state changes into URL searchParams
-  useEffect(() => {
-    if (!isWorkstationRoute) return;
-    if (activeChatId && activeChatId.startsWith("ses_")) {
-      localStorage.setItem("arunaki_active_chat_id", activeChatId);
-      if (searchParams.get("chatId") !== activeChatId) {
-        setSearchParams((prev) => {
-          const next = new URLSearchParams(prev);
-          next.set("chatId", activeChatId);
-          return next;
-        }, { replace: true });
-      }
-    }
-  }, [isWorkstationRoute, activeChatId, searchParams, setSearchParams]);
+    return () => {
+      window.removeEventListener("arunaki-folder-change", handleFolderChange);
+      window.removeEventListener("arunaki-session-change", handleSessionChange);
+    };
+  }, [activeFolder, activeChatId, openFolder]);
 
   const openFolderParam = searchParams.get("openFolder");
-  const openFolder = useCallback((folderPath: string) => {
-    setActiveFolder(folderPath);
-    setActiveChatId("");
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.set("folder", folderPath);
-      next.delete("chatId");
-      return next;
-    }, { replace: true });
-    window.dispatchEvent(new Event("arunaki-folder-change"));
-  }, [setActiveFolder, setSearchParams]);
-
   useEffect(() => {
     if (openFolderParam && openFolderParam !== activeFolder) {
       openFolder(openFolderParam);
@@ -238,13 +277,20 @@ export function UnifiedWorkstationPage() {
     []
   );
 
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const chatRef = useRef(chat);
+  chatRef.current = chat;
+
   // Listen for top menubar global events
   useEffect(() => {
-    const handleNewChatEvent = () => chat.handleNewChat();
+    const handleNewChatEvent = () => chatRef.current.handleNewChat();
     const handleSaveFileEvent = () => {
-      const activeTab = tabs.tabs.find((t) => t.id === tabs.activeTabId);
+      const currentTabs = tabsRef.current.tabs;
+      const currentActiveId = tabsRef.current.activeTabId;
+      const activeTab = currentTabs.find((t) => t.id === currentActiveId);
       if (activeTab && activeTab.type === "file") {
-        tabs.handleSaveFileTab(activeTab.id, activeTab.content || "");
+        tabsRef.current.handleSaveFileTab(activeTab.id, activeTab.content || "");
       }
     };
     const handleSearchSessionEvent = () => setShowSearchSectionModal(true);
@@ -253,7 +299,7 @@ export function UnifiedWorkstationPage() {
     const handleOpenCanvasEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ content: string }>;
       if (customEvent.detail?.content) {
-        tabs.upsertCanvasTab(customEvent.detail.content, true);
+        tabsRef.current.upsertCanvasTab(customEvent.detail.content, true);
       }
     };
 
@@ -272,7 +318,7 @@ export function UnifiedWorkstationPage() {
       window.removeEventListener("arunaki-toggle-chat", handleToggleChatEvent);
       window.removeEventListener("arunaki-open-canvas", handleOpenCanvasEvent);
     };
-  }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.upsertCanvasTab, tabs.tabs, tabs.activeTabId]);
+  }, []);
 
   // Shortcuts: Ctrl+B (Explorer), Ctrl+J (Chat) (VS Code parity)
   useEffect(() => {
@@ -383,15 +429,10 @@ export function UnifiedWorkstationPage() {
 
       <SearchSectionModal
         isOpen={showSearchSectionModal}
+        activeFolder={activeFolder}
         onClose={() => setShowSearchSectionModal(false)}
         onSelectSession={(chatId) => {
           setActiveChatId(chatId);
-          localStorage.setItem("arunaki_active_chat_id", chatId);
-          setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set("chatId", chatId);
-            return next;
-          }, { replace: true });
         }}
       />
     </div>
