@@ -162,11 +162,11 @@ const layer = Layer.effect(
                 "",
                 "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
                 "- The user has connected external business data sources (e.g. Google Sheets, product catalog, price lists).",
-                "- When the user asks about stock, inventory, products, prices, or data related to any connected data source:",
-                "  1. ALWAYS check the <knowledge_base> first. If the data is present in a data source above, use it directly.",
-                "  2. If a data source has a Source URL (such as a Google Sheets link) and the requested item is not found in local workspace files, YOU MUST USE browse_website or webfetch on that URL to inspect the live sheet/data!",
-                "  3. NEVER claim that data or stock is missing from the workspace without checking these connected data sources first!",
-                "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Google Sheets Product Catalog').",
+                "- When the user asks about stock, inventory, products, catalog items, or prices (even without mentioning 'knowledge' or 'link'):",
+                "  1. IMMEDIATELY check the <knowledge_base> first! If the item or data exists in a connected data source above, use it directly without scanning unrelated transaction files.",
+                "  2. If a data source has a Source URL (such as a Google Sheets link) and live verification is needed, USE browse_website or webfetch on that URL directly.",
+                "  3. NEVER claim that data or stock is missing without checking these connected data sources first!",
+                "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Google Sheets Product Catalog' or 'Product Catalog').",
               ]
               knowledgeContext = knowledgeLines.join("\n")
             }
@@ -175,6 +175,7 @@ const layer = Layer.effect(
 
         return [
           envLines.join("\n"),
+          knowledgeContext,
           references.length === 0
             ? undefined
             : [
@@ -193,7 +194,6 @@ const layer = Layer.effect(
                   ]),
                 "</available_references>",
               ].join("\n"),
-          knowledgeContext,
           [
             "CRITICAL INSTRUCTION FOR DATA AND DOCUMENTS:",
             "If the user asks you to create, format, or organize data (like a table, report, list, plain text, or document), you MUST wrap the ENTIRE result inside a markdown code block (e.g. ```text ... ``` or ```markdown ... ```). Do NOT output raw markdown tables or text directly in the chat. Wrap it in a code block so it can be extracted to the Canvas.",
