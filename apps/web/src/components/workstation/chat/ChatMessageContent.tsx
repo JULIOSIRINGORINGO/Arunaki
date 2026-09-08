@@ -1,5 +1,7 @@
 import { memo, useMemo } from "react";
 import Markdown from "react-markdown";
+import { FileSpreadsheet } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "../../../lib/utils";
 
 export interface TableBlock {
@@ -100,6 +102,32 @@ export const ChatMessageContent = memo(function ChatMessageContent({
               key={bIdx}
               className="my-2 max-w-full overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] select-text shadow-xs"
             >
+              <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)] text-[11px] text-[var(--text-muted)] select-none">
+                <span className="font-medium text-[11px] text-[var(--text-secondary)]">
+                  Tabel Data ({block.rows.length} baris)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const fullTableMd = [
+                      `| ${block.headers.join(" | ")} |`,
+                      `| ${block.headers.map(() => "---").join(" | ")} |`,
+                      ...block.rows.map((r) => `| ${r.join(" | ")} |`),
+                    ].join("\n");
+                    window.dispatchEvent(
+                      new CustomEvent("arunaki-open-canvas", {
+                        detail: { content: fullTableMd },
+                      })
+                    );
+                    toast.success("Tabel dibuka di panel Canvas");
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border-color)] transition-colors cursor-pointer"
+                  title="Buka tabel ini di Panel Canvas Tengah"
+                >
+                  <FileSpreadsheet className="w-3 h-3 text-emerald-400" />
+                  <span>Buka di Canvas</span>
+                </button>
+              </div>
               <div className="overflow-x-auto no-scrollbar max-w-full">
                 <table className="w-full text-left border-collapse font-sans text-xs">
                   <thead>

@@ -190,6 +190,25 @@ export function useWorkstationChat({
     };
   }, [isStreaming, activeChatId, queryClient, clearWatchdog]);
 
+  // 5. Restore Canvas from history on session load so center panel is populated with recent data
+  const hasRestoredCanvasRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!activeChatId || isStreaming || chatMessages.length === 0) return;
+    if (hasRestoredCanvasRef.current === activeChatId) return;
+
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      const msg = chatMessages[i];
+      if (msg.role === "assistant" && msg.content) {
+        const canvasContent = extractCanvasContent(msg.content);
+        if (canvasContent) {
+          upsertCanvasTab(canvasContent, false);
+          hasRestoredCanvasRef.current = activeChatId;
+          break;
+        }
+      }
+    }
+  }, [activeChatId, chatMessages, isStreaming, upsertCanvasTab]);
+
   const handleRemoveQueuedPrompt = useCallback((index: number) => {
     setQueuedPrompts((prev) => prev.filter((_, i) => i !== index));
   }, []);

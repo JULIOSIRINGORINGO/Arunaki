@@ -20,15 +20,20 @@ import { MCP } from "@/mcp"
 import { PermissionV1 } from "@arunaki/core/v1/permission"
 
 const CANVAS_INSTRUCTION = `
-# Canvas
-When the user asks you to "buat di canvas", "make in canvas", or wants the output in the Canvas, do NOT create a file or use any tools!
-Instead, you must wrap your final output with [CANVAS]...[/CANVAS] tags.
-Arunaki's UI will automatically extract everything inside the [CANVAS]...[/CANVAS] block and display it in the user's Canvas editor.
-Example:
-[CANVAS]
-# <Title of Document>
+# Canvas & Structured Documents
+When the user asks you to organize, tidy up, format, summarize, reconcile, calculate, or produce structured data/recaps/order lists (e.g. "rapihkan", "rekap", "satukan", "gabungkan", "buat tabel", "buat di canvas", "make in canvas", or when presenting a clean structured data table/recap), you MUST wrap the resulting structured table or document inside [CANVAS]...[/CANVAS] tags!
+You may still write a brief conversational summary or note outside the [CANVAS] tags in the chat, but the entire structured document/table must be inside [CANVAS]...[/CANVAS].
+Arunaki's UI will automatically extract everything inside the [CANVAS]...[/CANVAS] block and display it in the user's Center Panel Canvas editor.
 
-<Any markdown content, text, tables, lists, or structured data goes here>
+Example:
+Berikut rekap pesanan yang sudah dirapikan:
+
+[CANVAS]
+# Rekap Pesanan
+| Warna | Size | Qty |
+|-------|------|-----|
+| Putih | S | 2 |
+| Sport Grey | S | 1 |
 [/CANVAS]
 `;
 

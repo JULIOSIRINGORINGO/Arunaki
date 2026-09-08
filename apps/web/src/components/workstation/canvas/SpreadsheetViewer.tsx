@@ -65,6 +65,19 @@ export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewe
           cellDates: true,
           cellNF: true,
         });
+      } else if (clean.includes("|") && clean.includes("\n")) {
+        // Markdown table parser: Convert markdown pipe table directly to interactive Excel grid
+        const lines = clean.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+        const tableLines = lines.filter((l) => l.startsWith("|") && l.endsWith("|"));
+        const dataLines = tableLines.filter((l) => !(/^\|[\s\-:]+(\|[\s\-:]+)+\|$/.test(l)));
+        const aoa = dataLines.map((l) => l.slice(1, -1).split("|").map((c) => c.trim()));
+        if (aoa.length > 0) {
+          const ws = XLSX.utils.aoa_to_sheet(aoa);
+          wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Tabel");
+        } else {
+          wb = XLSX.read(clean, { type: "string" });
+        }
       } else {
         wb = XLSX.read(clean, {
           type: "binary",

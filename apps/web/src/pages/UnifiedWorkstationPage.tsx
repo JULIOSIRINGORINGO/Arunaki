@@ -250,12 +250,19 @@ export function UnifiedWorkstationPage() {
     const handleSearchSessionEvent = () => setShowSearchSectionModal(true);
     const handleToggleExplorerEvent = () => setLeftCollapsed((prev) => !prev);
     const handleToggleChatEvent = () => setRightCollapsed((prev) => !prev);
+    const handleOpenCanvasEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ content: string }>;
+      if (customEvent.detail?.content) {
+        tabs.upsertCanvasTab(customEvent.detail.content, true);
+      }
+    };
 
     window.addEventListener("arunaki-new-chat", handleNewChatEvent);
     window.addEventListener("arunaki-save-file", handleSaveFileEvent);
     window.addEventListener("arunaki-search-session", handleSearchSessionEvent);
     window.addEventListener("arunaki-toggle-explorer", handleToggleExplorerEvent);
     window.addEventListener("arunaki-toggle-chat", handleToggleChatEvent);
+    window.addEventListener("arunaki-open-canvas", handleOpenCanvasEvent);
 
     return () => {
       window.removeEventListener("arunaki-new-chat", handleNewChatEvent);
@@ -263,8 +270,9 @@ export function UnifiedWorkstationPage() {
       window.removeEventListener("arunaki-search-session", handleSearchSessionEvent);
       window.removeEventListener("arunaki-toggle-explorer", handleToggleExplorerEvent);
       window.removeEventListener("arunaki-toggle-chat", handleToggleChatEvent);
+      window.removeEventListener("arunaki-open-canvas", handleOpenCanvasEvent);
     };
-  }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.tabs, tabs.activeTabId]);
+  }, [chat.handleNewChat, tabs.handleSaveFileTab, tabs.upsertCanvasTab, tabs.tabs, tabs.activeTabId]);
 
   // Shortcuts: Ctrl+B (Explorer), Ctrl+J (Chat) (VS Code parity)
   useEffect(() => {

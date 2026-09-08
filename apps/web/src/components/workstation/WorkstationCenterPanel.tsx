@@ -212,7 +212,8 @@ function WorkstationCenterPanelComponent({
   const isSpreadsheet = activeTab
     ? Boolean(
         ["xlsx", "xls", "xlsm", "xlsb", "csv", "tsv"].includes(activeTab.fileType?.toLowerCase() || "") ||
-        (/\.(xlsx|xls|xlsm|xlsb|csv|tsv)$/i).test(activeTab.title)
+        (/\.(xlsx|xls|xlsm|xlsb|csv|tsv)$/i).test(activeTab.title) ||
+        (activeTab.type === "canvas" && Boolean(activeTab.content && activeTab.content.includes("|") && activeTab.content.includes("\n")))
       )
     : false;
 
