@@ -8,6 +8,10 @@ describe("memory: mightBeCorrection", () => {
     expect(mightBeCorrection("itu salah, pakai tanggal kemarin")).toBe(true)
     expect(mightBeCorrection("lupa totalnya belum dihitung ulang")).toBe(true)
     expect(mightBeCorrection("mulai sekarang formatnya pakai koma")).toBe(true)
+    expect(mightBeCorrection("tambah aturan format tanggal YYYY-MM-DD")).toBe(true)
+    expect(mightBeCorrection("catat aturan ini ke living memory")).toBe(true)
+    expect(mightBeCorrection("remember this rule: always round up")).toBe(true)
+    expect(mightBeCorrection("please correct the total row")).toBe(true)
   })
 
   test("ignores neutral document tasks", () => {

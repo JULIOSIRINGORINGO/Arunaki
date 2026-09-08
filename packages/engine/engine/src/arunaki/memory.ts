@@ -175,7 +175,7 @@ function synthesize(directory: string, files: string[], existingDoc?: string): s
  * LLM stays asleep and no tokens are spent. Only a positive match wakes it.
  */
 const CORRECTION_HINTS =
-  /\b(jangan|jangan lagi|harusnya|seharusnya|itu salah|tapi|ubah|ganti|lupa|ingat|tolong (mulai|berhenti)|kalau bisa|mulai sekarang|ke depannya|nanti|aturan|rule|selisih|tambah aturan|perbaiki|koreksi|catat)\b/i
+  /\b(jangan|jangan lagi|harusnya|seharusnya|itu salah|salah|keliru|tapi|ubah|ganti|lupa|ingat|tolong (mulai|berhenti)|kalau bisa|mulai sekarang|ke depannya|nanti|aturan|rule|rules|selisih|tambah aturan|perbaiki|koreksi|catat|selalu|format|memory|memo|remember|always|never|instead|fix|correct|note|prefer|preference|keep|don't|should|must|wrong|mistake|error)\b/i
 
 export function mightBeCorrection(text: string): boolean {
   return CORRECTION_HINTS.test(text)
