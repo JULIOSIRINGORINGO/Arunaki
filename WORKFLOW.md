@@ -2548,5 +2548,19 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Native Microsoft Excel COM**:
   - Validasi COM automation melalui PowerShell (`validate-excel.ps1`) memastikan file `.xlsx` terbuka sempurna di aplikasi asli Microsoft Excel dengan status `STATUS: PERFECT_OPEN` dan formula otomatis (`=SUM(...)`) berfungsi normal.
 
+## Phase 72: Real-World Testing UX Polish, Folder Isolation Guard & Memory Sentinel Fixes (DONE)
 
-
+- [x] **Active Animated Thinking Indicator**:
+  - `LiveExecutionBadge.tsx`: Menambahkan cycling dot indicator (`.` -> `..` -> `...` per 400ms), spinning amber `Loader2`, dan counter live elapsed seconds `(${waitingSec}s)` agar pengguna selalu melihat status visual aktif dan tidak mengira model sedang hang/freeze.
+- [x] **Prominent Vibrant Red Stop Button**:
+  - `ChatInputBox.tsx`: Mengganti tombol submit yang redup saat streaming menjadi tombol Stop merah menyala yang berdenyut (`bg-red-600 hover:bg-red-700 animate-pulse text-white`) dengan ikon kotak putih (`Square`), memberikan kejelasan visual bahwa AI sedang berjalan dan bisa dihentikan kapan saja.
+- [x] **Project Folder Isolation Prompt Enforcement**:
+  - `system.ts`: Menambahkan instruksi sandboxing absolut ke dalam blok `<env>` (`CRITICAL INSTRUCTION — PROJECT FOLDER ISOLATION: strictly confined to the active project folder. Never search drive roots like E:\ or C:\`).
+  - `default.txt`: Menegaskan instruksi pengaplikasian aturan dokumen langsung ke file target dan menyerahkan sinkronisasi otomatis rulebook ke Memory Sentinel.
+- [x] **Memory Sentinel Typing & Linter Bugfixes**:
+  - `memory.ts`: Menghapus semua error TypeScript pada `learnCorrection` dan event projector (`lastUser.info` narrowing, `model.id`, `format: { type: "text" }`, `orElseSucceed` lazy callback, background job return type `Effect<string>`).
+  - Mempercepat rate limit sentinel dari 30s menjadi 5s dan memperluas deteksi regex kata kunci koreksi (`aturan`, `rule`, `selisih`, `perbaiki`, `koreksi`, `catat`) agar penambahan aturan langsung dipelajari dan disinkronkan ke `.arunaki/ARUNAKI.md`.
+- [x] **Verifikasi Build & Test**:
+  - `bun test packages/engine/engine/test/arunaki/memory.test.ts` ✅ (5 pass, 0 fail).
+  - `npm run build -w apps/web` ✅ (0 error, build in 12.49s).
+  - `bun run typecheck` di engine: `memory.ts` 0 error.

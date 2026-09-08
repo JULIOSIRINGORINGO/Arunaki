@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, test } from "vitest"
 import { applyCorrections, mightBeCorrection } from "../../src/arunaki/memory"
 
 describe("memory: mightBeCorrection", () => {

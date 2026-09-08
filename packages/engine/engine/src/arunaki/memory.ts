@@ -32,7 +32,7 @@ import path from "path"
 
 const ARUNAKI_REL = path.join(".arunaki", "ARUNAKI.md")
 const CORRECTIONS_FILE = path.join(".arunaki", "user-corrections.jsonl")
-const MIN_REFRESH_GAP_MS = 30_000
+const MIN_REFRESH_GAP_MS = 5_000
 
 export interface Interface {
   /** Scan the active folder and (re)generate `.arunaki/ARUNAKI.md`. */
@@ -175,7 +175,7 @@ function synthesize(directory: string, files: string[], existingDoc?: string): s
  * LLM stays asleep and no tokens are spent. Only a positive match wakes it.
  */
 const CORRECTION_HINTS =
-  /\b(jangan|jangan lagi|harusnya|seharusnya|itu salah|tapi|ubah|ganti|lupa|ingat|tolong (mulai|berhenti)|kalau bisa|mulai sekarang|ke depannya|nanti)\b/i
+  /\b(jangan|jangan lagi|harusnya|seharusnya|itu salah|tapi|ubah|ganti|lupa|ingat|tolong (mulai|berhenti)|kalau bisa|mulai sekarang|ke depannya|nanti|aturan|rule|selisih|tambah aturan|perbaiki|koreksi|catat)\b/i
 
 export function mightBeCorrection(text: string): boolean {
   return CORRECTION_HINTS.test(text)
@@ -328,7 +328,8 @@ const layer = Layer.effect(
             .find((m) => m.info.role === "user" && m.parts[0]?.type !== "subtask")
 
           // 1) Cheap 0-token gate: idle turns never reach the LLM.
-          if (!lastUser) return
+          if (!lastUser || lastUser.info.role !== "user") return
+          const userInfo = lastUser.info
           const userText = lastUser.parts
             .map((p) => (p.type === "text" ? (p.text ?? "") : ""))
             .join("\n")
@@ -340,9 +341,9 @@ const layer = Layer.effect(
           yield* appendCorrectionLog(sessionID, userText)
 
           const agentName =
-            lastUser.info.agent ?? (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(() => undefined)))?.agent
+            userInfo.agent ?? (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(() => undefined)))?.agent
           const ag = agentName ? yield* agents.get(agentName).pipe(Effect.orElseSucceed(() => undefined)) : undefined
-          const modelRef = lastUser.info.model ??
+          const modelRef = userInfo.model ??
             (yield* sessions.get(SessionID.make(sessionID)).pipe(Effect.orElseSucceed(() => undefined)))?.model
           if (!ag || !modelRef) return
           const model = yield* provider.getModel(modelRef.providerID, modelRef.modelID).pipe(
@@ -358,13 +359,13 @@ const layer = Layer.effect(
             time: { created: Date.now() },
             tools: {},
             agent: ag.name,
-            model: { providerID: model.providerID, modelID: model.modelID },
+            model: { providerID: model.providerID, modelID: model.id },
             system:
               "You are the Arunaki memory sentinel. Read the last user message. " +
               "If it states a correction or preference about how files/data are handled, " +
               "rewrite it as ONE concise imperative rule in Indonesian. Output ONLY the rule " +
               "bullet text (no markdown, no explanation). If there is no real correction, output nothing.",
-            format: "text",
+            format: { type: "text" },
           }
 
           const assistantFromUser = current ? `Current ARUNAKI.md:\n${current}` : "(no rulebook yet)"
@@ -385,8 +386,8 @@ const layer = Layer.effect(
               Stream.map((e) => e.text),
               Stream.mkString,
               Effect.orDie,
+              Effect.orElseSucceed(() => ""),
             )
-            .pipe(Effect.orElseSucceed(""))
 
           const rule = reply
             .replace(/^[-\*#\s]+/, "")
@@ -415,15 +416,17 @@ const layer = Layer.effect(
               metadata: { sessionID },
               // Token-gated: cartography refresh + correction learning, both
               // fully failure-tolerant so a missing provider = sleep, not crash.
-              run: learnCorrection(sessionID).pipe(Effect.catch(() => Effect.void)),
+              run: learnCorrection(sessionID).pipe(
+                Effect.as("done"),
+                Effect.catch(() => Effect.succeed("error")),
+              ),
             })
             .pipe(Effect.as(void 0), Effect.catch(() => Effect.void))
         })
 
-        const unsubscribe = yield* events.project(SessionEvent.Step.Ended, (event) =>
+        yield* events.project(SessionEvent.Step.Ended, (event) =>
           onTurnCompleted(event.data.sessionID),
         )
-        yield* Effect.addFinalizer(() => unsubscribe)
 
         return Service.of({
           cartograph: cartographImpl,

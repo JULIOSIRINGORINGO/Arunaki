@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Monitor,
   Camera,
@@ -50,13 +49,18 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     }];
   });
   const [waitingSec, setWaitingSec] = useState(0);
+  const [dotIndex, setDotIndex] = useState(1);
 
   useEffect(() => {
     if (!active) return;
     setWaitingSec(0);
     const start = Date.now();
     const t = setInterval(() => setWaitingSec(Math.max(1, Math.floor((Date.now() - start) / 1000))), 1000);
-    return () => clearInterval(t);
+    const d = setInterval(() => setDotIndex((prev) => (prev % 3) + 1), 400);
+    return () => {
+      clearInterval(t);
+      clearInterval(d);
+    };
   }, [active]);
 
   useEffect(() => {
@@ -137,15 +141,19 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 
   // Antigravity style: If no tools are being executed (simple text response / thinking),
   // show only a subtle minimal indicator while waiting for tokens, not a big task card!
+  const animatedDots = ".".repeat(dotIndex);
   if (!hasToolExecution) {
     if (status.type === 'text_delta') {
       return null;
     }
+    const rawPreview = (status.preview || "Thinking").trim().replace(/\.+$/, "");
     return (
-      <div className="flex items-center gap-2 py-1 px-2.5 rounded-md bg-[var(--bg-panel)] border border-[var(--border-color)] text-xs text-[var(--text-muted)] font-sans max-w-fit select-none my-1">
-        <ArunakiLogo size={13} className="animate-spin text-[var(--text-primary)] shrink-0" />
-        <span className="text-[11px] text-[var(--text-muted)]">
-          {status.preview || `Thinking... (${waitingSec}s)`}
+      <div className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] font-sans max-w-fit select-none my-1 shadow-xs animate-in fade-in duration-150">
+        <Loader2 size={13} className="animate-spin text-amber-400 shrink-0" />
+        <span className="text-[11px] text-[var(--text-secondary)] font-medium flex items-center">
+          <span>{rawPreview}</span>
+          <span className="inline-block w-4 text-left font-mono font-bold text-amber-400 ml-0.5">{animatedDots}</span>
+          <span className="text-[10px] text-[var(--text-muted)] font-mono ml-1">({waitingSec}s)</span>
         </span>
       </div>
     );
@@ -157,7 +165,7 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
-      return <ArunakiLogo size={12} className="animate-spin text-[var(--text-muted)] shrink-0 mt-0.5" />;
+      return <Loader2 size={12} className="animate-spin text-amber-400 shrink-0 mt-0.5" />;
     }
     if (step.iconType === 'text') {
       return <Cpu size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
@@ -181,8 +189,9 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         className="w-full flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Loader2 size={12} className="animate-spin text-[var(--text-muted)] shrink-0" />
+          <Loader2 size={12} className="animate-spin text-amber-400 shrink-0" />
           <span className="font-semibold text-[var(--text-primary)] truncate">{summaryHeader}</span>
+          <span className="inline-block w-3 text-left font-mono font-bold text-amber-400">{animatedDots}</span>
           <span className="text-[10px] text-[var(--text-dim)] shrink-0">
             ({completedCount > 0 ? `${completedCount} done · ` : ''}{waitingSec}s)
           </span>

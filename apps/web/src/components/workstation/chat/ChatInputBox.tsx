@@ -467,31 +467,37 @@ export const ChatInputBox = memo(function ChatInputBox({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {isStreaming && (
-            <button
-              type="button"
-              onClick={onCancelStream}
-              className="w-7 h-7 bg-red-500/15 hover:bg-red-500/25 active:bg-red-500/35 text-red-500 border border-red-500/30 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs animate-in fade-in zoom-in duration-150"
-              title="Stop generating"
-            >
-              <Square className="w-2.5 h-2.5 fill-current" />
-            </button>
-          )}
+          {isStreaming ? (
+            <>
+              {(localPrompt.trim() || attachedImages.length > 0) && (
+                <button
+                  type="button"
+                  onClick={submitPrompt}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]"
+                  title="Add to queue"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                </button>
+              )}
 
-          {(!isStreaming || localPrompt.trim() || attachedImages.length > 0) && (
+              <button
+                type="button"
+                onClick={onCancelStream}
+                className="w-7 h-7 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm animate-pulse shrink-0"
+                title="Stop generation"
+              >
+                <Square className="w-2.5 h-2.5 fill-white text-white" />
+              </button>
+            </>
+          ) : (
             <button
               type="button"
               onClick={submitPrompt}
               disabled={!localPrompt.trim() && attachedImages.length === 0}
-              className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer",
-                isStreaming
-                  ? "bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]"
-                  : "bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)]"
-              )}
-              title={isStreaming ? "Add to queue" : "Send message"}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)]"
+              title="Send message"
             >
-              {isStreaming ? <Clock className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" strokeWidth={1.5} />}
+              <Send className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           )}
         </div>

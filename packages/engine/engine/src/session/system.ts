@@ -103,10 +103,16 @@ const layer = Layer.effect(
               `<env>`,
               `  Working directory: ${ctx.directory}`,
               `  Workspace root folder: ${ctx.worktree}`,
-              `  Agent scope: Document & Data Processing (confined to Working directory)`,
+              `  Agent scope: Document & Data Processing (strictly confined to Working directory)`,
               `  Platform: ${process.platform}`,
               `  Today's date: ${new Date().toDateString()}`,
               `</env>`,
+              ``,
+              `CRITICAL INSTRUCTION — PROJECT FOLDER ISOLATION:`,
+              `- You are strictly confined to your active working directory: ${ctx.directory}.`,
+              `- You CANNOT and MUST NOT attempt to access, list, search, or read the entire drive (e.g. "E:\\", "C:\\", or root drives) or any folder outside ${ctx.directory}.`,
+              `- All documents, spreadsheets, text files, and rules belong exclusively inside ${ctx.directory}.`,
+              `- If you need to search or read files, operate ONLY inside ${ctx.directory}. Do NOT plan or reason about scanning external drives.`,
             ]
 
         // Inject active Knowledge nodes as context for the AI
