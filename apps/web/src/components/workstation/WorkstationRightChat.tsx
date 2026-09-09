@@ -83,15 +83,31 @@ function WorkstationRightChatComponent({
     for (const opt of optimisticMessages) {
       if (seenIds.has(opt.id)) continue;
       const optText = (opt.content || "").trim();
-      const alreadyPersisted = chatMessages.some(
-        (m) => m.role === opt.role && (m.content || "").trim() === optText && optText.length > 0
-      );
+      const optReasoning = (opt.reasoning || "").trim();
+
+      const alreadyPersisted = chatMessages.some((m) => {
+        if (m.role !== opt.role) return false;
+        const mContent = (m.content || "").trim();
+        const mReasoning = (m.reasoning || "").trim();
+
+        // 1. Exact content match
+        if (optText.length > 0 && mContent === optText) return true;
+
+        // 2. Exact reasoning match (same turn reasoning)
+        if (optReasoning.length > 0 && mReasoning.length > 0 && (mReasoning === optReasoning || mReasoning.includes(optReasoning) || optReasoning.includes(mReasoning))) return true;
+
+        // 3. If turn is no longer streaming, do not keep stale assistant optimistic bubbles if persisted message exists
+        if (!isStreaming && opt.role === "assistant" && mContent.length > 0) return true;
+
+        return false;
+      });
+
       if (!alreadyPersisted) {
         result.push(opt);
       }
     }
     return result;
-  }, [chatMessages, optimisticMessages]);
+  }, [chatMessages, optimisticMessages, isStreaming]);
 
   if (collapsed) {
     return (

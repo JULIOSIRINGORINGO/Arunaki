@@ -300,7 +300,7 @@ export function useWorkstationChat({
       createdAt: new Date().toISOString(),
     };
 
-    setOptimisticMessages((prev) => [...prev, newUserMsg, newAssistantMsg]);
+    setOptimisticMessages([newUserMsg, newAssistantMsg]);
     setIsStreaming(true);
     producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
@@ -438,6 +438,15 @@ export function useWorkstationChat({
         abortCtrl.abort();
         setIsStreaming(false);
         setLiveStatus(null);
+
+        // If response content was already received, never overwrite it with a timeout error!
+        if (accumulatedResponseText.trim().length > 0) {
+          dispatchCompletionNotification(accumulatedSteps.filter((s) => s.iconType === "tool").length);
+          queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
+          setOptimisticMessages([]);
+          processNext();
+          return;
+        }
 
         const diagnostic = await getActiveProviderDiagnostic();
 
@@ -612,7 +621,7 @@ export function useWorkstationChat({
             }
           }
         } else if (event.type === "text_delta" && event.data) {
-          resetWatchdog(30000);
+          resetWatchdog(90000);
           accumulatedResponseText += event.data;
           setLiveStatus({ type: "text_delta", preview: "Generating response" });
           setOptimisticMessages((prev) => {
@@ -745,7 +754,10 @@ export function useWorkstationChat({
         }
       }, abortCtrl.signal);
 
-      await sendPrompt(chatIdToUse, userText, { variant: reasoningEffort || undefined });
+      await sendPrompt(chatIdToUse, userText, {
+        variant: reasoningEffort || undefined,
+        signal: abortCtrl.signal,
+      });
       // Finalize streaming safely
       clearWatchdog();
       setIsStreaming(false);

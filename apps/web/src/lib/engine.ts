@@ -108,13 +108,15 @@ export async function getMessages(sessionID: string, opts?: { limit?: number; or
 
 // --- Prompt (send message) ---
 
-export async function sendPrompt(sessionID: string, content: string, opts?: { variant?: string }) {
+export async function sendPrompt(sessionID: string, content: string, opts?: { variant?: string; signal?: AbortSignal }) {
   const res = await engineFetch(`/api/session/${sessionID}/prompt`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       prompt: { type: "text", text: content },
       ...(opts?.variant ? { variant: opts.variant } : {}),
     }),
+    signal: opts?.signal,
   });
   if (!res.ok) {
     const errorBody = await res.text().catch(() => "");
