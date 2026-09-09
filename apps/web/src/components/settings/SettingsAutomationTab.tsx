@@ -146,6 +146,24 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
                           body: "Document automation task completed successfully.",
                         });
                         toast.success("Desktop test notification dispatched.");
+                      } else if (typeof window !== "undefined" && "Notification" in window) {
+                        if (Notification.permission === "granted") {
+                          new Notification("Arunaki Workstation", {
+                            body: "Document automation task completed successfully.",
+                          });
+                          toast.success("Desktop test notification dispatched.");
+                        } else {
+                          Notification.requestPermission().then((perm) => {
+                            if (perm === "granted") {
+                              new Notification("Arunaki Workstation", {
+                                body: "Document automation task completed successfully.",
+                              });
+                              toast.success("Desktop test notification dispatched.");
+                            } else {
+                              toast.warning("Notification permission denied in browser.");
+                            }
+                          });
+                        }
                       } else {
                         toast.info("Native notifications are active inside Electron desktop shell.");
                       }
@@ -165,6 +183,9 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
               const next = !desktopNotification;
               setDesktopNotification(next);
               localStorage.setItem("arunaki_pref_desktop_notification", String(next));
+              if (next && typeof window !== "undefined" && "Notification" in window && Notification.permission !== "granted") {
+                Notification.requestPermission().catch(() => {});
+              }
               toast.success(
                 next ? "Desktop notifications enabled." : "Desktop notifications disabled."
               );

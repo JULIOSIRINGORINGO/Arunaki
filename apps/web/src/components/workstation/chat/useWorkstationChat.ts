@@ -336,6 +336,41 @@ export function useWorkstationChat({
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
 
+    let hasDispatchedNotification = false;
+    const dispatchCompletionNotification = (toolsCount = 0) => {
+      if (hasDispatchedNotification) return;
+      hasDispatchedNotification = true;
+      try {
+        const isNotifEnabled = localStorage.getItem("arunaki_pref_desktop_notification") !== "false";
+        if (!isNotifEnabled) return;
+
+        const notifBody =
+          toolsCount > 0
+            ? `Executed ${toolsCount} document task${toolsCount > 1 ? "s" : ""} successfully.`
+            : "Document response generated.";
+
+        const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+        if (desktop?.notify) {
+          desktop.notify({
+            title: "Arunaki Workstation",
+            body: notifBody,
+          });
+        } else if (typeof window !== "undefined" && "Notification" in window) {
+          if (Notification.permission === "granted") {
+            new Notification("Arunaki Workstation", { body: notifBody });
+          } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then((perm) => {
+              if (perm === "granted") {
+                new Notification("Arunaki Workstation", { body: notifBody });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[useWorkstationChat] notification error:", err);
+      }
+    };
+
     const abortCtrl = new AbortController();
     abortControllerRef.current = abortCtrl;
 
@@ -643,22 +678,9 @@ export function useWorkstationChat({
             )
           );
 
-          // Desktop Notification
-          try {
-            const isNotifEnabled = localStorage.getItem("arunaki_pref_desktop_notification") !== "false";
-            const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
-            const isWindowHidden = typeof document !== "undefined" && (!document.hasFocus() || document.hidden);
-            if (isNotifEnabled && desktop?.notify && isWindowHidden) {
-              const toolsCount = event.data?.toolOutputs?.length || 0;
-              const notifBody = toolsCount > 0
-                ? `Executed ${toolsCount} document task${toolsCount > 1 ? "s" : ""} successfully.`
-                : "Document response generated.";
-              desktop.notify({
-                title: "Arunaki Workstation",
-                body: notifBody,
-              });
-            }
-          } catch {}
+          // Desktop OS Notification
+          const completedToolsCount = event.data?.toolOutputs?.length || accumulatedSteps.filter((s) => s.iconType === "tool").length;
+          dispatchCompletionNotification(completedToolsCount);
 
           // Auto-backup + auto-open produced documents
           const autoOpenOffice =
@@ -728,6 +750,7 @@ export function useWorkstationChat({
       clearWatchdog();
       setIsStreaming(false);
       setLiveStatus(null);
+      dispatchCompletionNotification(accumulatedSteps.filter((s) => s.iconType === "tool").length);
       await queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
       setOptimisticMessages([]);
       processNext();

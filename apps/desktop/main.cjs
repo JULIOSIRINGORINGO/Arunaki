@@ -8,6 +8,11 @@ const fsSync = require('node:fs');
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu-compositing');
 
+// Windows requires explicit AppUserModelId for desktop notifications in Action Center
+if (process.platform === 'win32') {
+  app.setAppUserModelId('Arunaki');
+}
+
 // Load .env manually since dotenv might not be installed
 try {
   // Try apps/desktop/.env first, then root .env
@@ -182,9 +187,15 @@ app.whenReady().then(() => {
       const { title, body, silent } = payload || {};
       if (Notification && Notification.isSupported()) {
         const notif = new Notification({
-          title: title || 'Arunaki',
+          title: title || 'Arunaki Workstation',
           body: body || 'Tugas dokumen selesai.',
           silent: !!silent,
+        });
+        notif.on('click', () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+          }
         });
         notif.show();
         return { success: true };
