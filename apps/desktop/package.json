@@ -8,6 +8,7 @@
     "dev": "npx electron ."
   },
   "dependencies": {
-    "winax": "^3.6.9"
+    "winax": "^3.6.9",
+    "xlsx": "^0.18.5"
   }
 }

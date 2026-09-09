@@ -300,7 +300,7 @@ app.whenReady().then(() => {
     try {
       const safePath = resolveInsideWorkspace(filePath);
       const ext = path.extname(safePath).toLowerCase();
-      const BINARY_EXT = new Set(['.pdf', '.doc', '.docx', '.xlsx', '.xls', '.xlsm', '.pptx', '.ppt', '.odt', '.ods', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.zip', '.rar', '.7z', '.mp4', '.mp3']);
+      const BINARY_EXT = new Set(['.pdf', '.doc', '.docx', '.xlsx', '.xls', '.xlsm', '.pptx', '.ppt', '.odt', '.ods', '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.ico', '.tiff', '.tif', '.zip', '.rar', '.7z', '.mp4', '.mp3']);
       if (BINARY_EXT.has(ext)) {
         const buf = await fs.readFile(safePath);
         return { content: buf.toString('base64'), encoding: 'base64' };
@@ -441,11 +441,14 @@ app.whenReady().then(() => {
       const safePath = resolveInsideWorkspace(filePath);
       const xlsx = require('xlsx');
       const workbook = xlsx.readFile(safePath, { cellDates: true, cellStyles: true, cellNF: true, cellFormulas: true });
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        return { success: true, sheetName: '', sheets: [], rows: [] };
+      }
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       
-      if (!worksheet['!ref']) {
-        return { success: true, sheetName, sheets: workbook.SheetNames, rows: [] };
+      if (!worksheet || !worksheet['!ref']) {
+        return { success: true, sheetName: sheetName || '', sheets: workbook.SheetNames, rows: [] };
       }
 
       const range = xlsx.utils.decode_range(worksheet['!ref']);
@@ -482,7 +485,7 @@ app.whenReady().then(() => {
     try {
       const safePath = resolveInsideWorkspace(filePath);
       const xlsx = require('xlsx');
-      const worksheet = xlsx.utils.aoa_to_sheet(rows);
+      const worksheet = xlsx.utils.aoa_to_sheet(Array.isArray(rows) ? rows : []);
       const workbook = xlsx.utils.book_new();
       xlsx.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
       xlsx.writeFile(workbook, safePath);

@@ -2584,3 +2584,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web` ✅ (0 error, build in 12.17s).
   - `bun test test/arunaki/` di engine ✅ (9 pass, 0 fail).
 
+## Phase 74: Desktop Shell Resilience, Notification Parity & Full Codebase Hardening (DONE)
+
+- [x] **Desktop Backup IPC Bug Fix**:
+  - `apps/desktop/main.cjs`: Memperbaiki bug `dest is not defined` pada `fs:backupFolder` dengan mendefinisikan `dest = path.join(backupRoot, "backup-" + stamp)` dan membuat foldernya secara rekursif sebelum menyalin file.
+- [x] **Desktop Completion Notification Parity**:
+  - `apps/desktop/main.cjs`: Mendaftarkan `app.setAppUserModelId('Arunaki')` pada Windows (wajib untuk Windows Action Center / Toast notifications) serta menambahkan event click-to-focus pada window utama.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`: Menghapus pembatasan `isWindowHidden` agar notifikasi turn completion selalu berbunyi dan tampil saat model selesai berpikir/menjawab, ditambah fallback Web Notification API di mode browser.
+  - `apps/web/src/components/settings/SettingsAutomationTab.tsx`: Menambahkan izin Web Notification di menu Automation Settings.
+- [x] **Desktop Excel IPC Defensive Hardening**:
+  - `apps/desktop/main.cjs`: Menambahkan guard null-safety pada `fs:parseExcel` (`!workbook.SheetNames.length`, `!worksheet['!ref']`) untuk mencegah unhandled `TypeError` saat membaca file Excel kosong atau korup.
+  - Menambahkan guard `Array.isArray(rows)` pada `fs:writeExcel` sebelum membuat worksheet baru.
+  - Menambahkan ekstensi gambar `.ico`, `.tiff`, dan `.tif` ke `BINARY_EXT` pada `fs:readFile`.
+- [x] **Dependency Gap Hardening**:
+  - `apps/desktop/package.json`: Menambahkan dependency `"xlsx": "^0.18.5"` yang digunakan oleh IPC handlers desktop.
+- [x] **Verifikasi Build & Test**:
+  - `node -c apps/desktop/main.cjs` ✅ (syntax valid).
+  - `npm run build -w apps/web` ✅ (0 error, production bundle built cleanly in 32.47s).
+  - `bun test test/arunaki/` di engine ✅ (9 pass, 0 fail, 34 assertions).
+
+
