@@ -325,8 +325,10 @@ app.whenReady().then(() => {
     try {
       if (!workspaceRoot) return { error: 'No folder is open' };
       const backupRoot = path.join(workspaceRoot, '.arunaki-backups');
-      await fs.mkdir(backupRoot, { recursive: true });
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const dest = path.join(backupRoot, `backup-${stamp}`);
+      await fs.mkdir(dest, { recursive: true });
+
       const entries = await fs.readdir(workspaceRoot, { withFileTypes: true });
       for (const entry of entries) {
         if (
