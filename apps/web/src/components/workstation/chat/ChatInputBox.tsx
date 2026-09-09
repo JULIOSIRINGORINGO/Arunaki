@@ -164,7 +164,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking display enabled (thoughts visible word-by-word)" : "Thinking display hidden");
+      toast.info(next ? "Thinking expanded (Visible word-by-word)" : "Thinking collapsed");
       setLocalPrompt("");
       setAttachedImages([]);
       if (textareaRef.current) {
@@ -204,7 +204,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking display enabled (thoughts visible word-by-word)" : "Thinking display hidden");
+      toast.info(next ? "Thinking expanded (Visible word-by-word)" : "Thinking collapsed");
       return;
     }
     if (cmdName === "/search-section") {
@@ -356,8 +356,8 @@ export const ChatInputBox = memo(function ChatInputBox({
                   <span className="text-[10px] text-[var(--text-dim)] truncate min-w-0">
                     {command.name === "/thinking"
                       ? (showThinking ?? !collapseThinking)
-                        ? "Hide model thinking thoughts (Currently Visible)"
-                        : "Show model thinking word-by-word (Currently Hidden)"
+                        ? "Collapse thinking (Expanded)"
+                        : "Expand thinking (Collapsed)"
                       : command.description}
                   </span>
                 </button>
