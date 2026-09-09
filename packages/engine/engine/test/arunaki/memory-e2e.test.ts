@@ -33,6 +33,8 @@ const mockProvider = Layer.mock(Provider.Service, {
 
 const mockEvents = Layer.mock(EventV2.Service, {
   project: () => Effect.void,
+  listen: () => Effect.succeed(Effect.void),
+  publish: () => Effect.void,
 })
 
 const mockBackground = Layer.mock(CoreBackgroundJob.Service, {
@@ -107,8 +109,8 @@ describe("memory: learnCorrection (stubbed LLM)", () => {
       expect(aru).toContain("# LOCAL WORKSPACE OPERATING RULES")
       expect(aru).toContain("REKAP.xlsx")
       expect(aru).toContain("CATATAN.txt")
-      expect(aru).toContain("File Spreadsheet (.xlsx, .csv)")
-      expect(aru).toContain("Catatan Dokumen Teks (.txt, .md)")
+      expect(aru).toContain("Tabular & Spreadsheet Files")
+      expect(aru).toContain("Document Files")
 
       // Verify backup directory exists
       const backupEntries = yield* Effect.promise(() => fs.readdir(path.join(dir, ".arunaki-backups")))

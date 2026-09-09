@@ -28,6 +28,7 @@ import { pathToFileURL, fileURLToPath } from "url"
 import { Config } from "@/config/config"
 import { ConfigMarkdown } from "@/config/markdown"
 import { SessionSummary } from "./summary"
+import { SessionMemory } from "./memory"
 import { NamedError } from "@arunaki/core/util/error"
 import { SessionProcessor } from "./processor"
 import { Tool } from "@/tool/tool"
@@ -134,6 +135,7 @@ const layer = Layer.effect(
     const state = yield* SessionRunState.Service
     const revert = yield* SessionRevert.Service
     const summary = yield* SessionSummary.Service
+    const memory = yield* SessionMemory.Service
     const sys = yield* SystemPrompt.Service
     const llm = yield* LLM.Service
     const events = yield* EventV2Bridge.Service
@@ -1321,6 +1323,7 @@ const layer = Layer.effect(
         }
 
         yield* compaction.prune({ sessionID }).pipe(Effect.ignore, Effect.forkIn(scope))
+        yield* memory.onTurnCompleted(sessionID).pipe(Effect.ignore, Effect.forkIn(scope))
         const finalAssistant = yield* lastAssistant(sessionID)
         if (finalAssistant) {
           const info = finalAssistant.info
@@ -1617,6 +1620,7 @@ export const node = LayerNode.make({
     SessionRunState.node,
     SessionRevert.node,
     SessionSummary.node,
+    SessionMemory.node,
     SystemPrompt.node,
     LLM.node,
     EventV2Bridge.node,
