@@ -413,7 +413,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       />
 
       <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {setReasoningEffort && (
             <div className="relative" ref={effortDropdownRef}>
               <button
@@ -463,6 +463,32 @@ export const ChatInputBox = memo(function ChatInputBox({
                 </div>
               )}
             </div>
+          )}
+
+          {setShowThinking && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showThinking;
+                try {
+                  localStorage.setItem("arunaki_show_thinking", String(next));
+                  localStorage.setItem("arunaki_collapse_thinking", String(!next));
+                } catch {}
+                setShowThinking(next);
+                setCollapseThinking?.(!next);
+                toast.info(next ? "Thinking display enabled (thoughts visible word-by-word)" : "Thinking display hidden");
+              }}
+              className={cn(
+                "text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 cursor-pointer transition-colors shadow-xs select-none",
+                showThinking
+                  ? "bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25"
+                  : "bg-[var(--bg-hover)] border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              )}
+              title={showThinking ? "Thinking is visible word-by-word (Click to hide)" : "Thinking is hidden (Click to show)"}
+            >
+              <Brain className={cn("w-2.5 h-2.5", showThinking ? "text-amber-400" : "text-[var(--text-muted)]")} />
+              <span>{showThinking ? "Thinking: On" : "Thinking: Off"}</span>
+            </button>
           )}
         </div>
 

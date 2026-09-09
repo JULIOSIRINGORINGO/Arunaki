@@ -198,9 +198,17 @@ export function mapEngineEvent(
     case "session.next.text.delta":
       return { type: "text_delta", data: payload.delta || event.delta };
     case "session.next.text.ended":
-      return { type: "done" };
+      return { type: "text_end", data: payload.text };
+    case "session.next.reasoning.started":
+      return { type: "thinking", data: "Thinking..." };
     case "session.next.reasoning.delta":
       return { type: "reasoning_delta", data: payload.delta || event.delta };
+    case "session.next.reasoning.ended":
+      return { type: "reasoning_end", data: payload.text };
+    case "session.next.step.started":
+      return { type: "thinking", data: "Processing..." };
+    case "session.next.step.ended":
+      return { type: "done" };
     case "session.next.tool.input.started": {
       const toolName = payload.name || event.name || "action";
       return {
@@ -263,10 +271,6 @@ export function mapEngineEvent(
         },
       };
     }
-    case "session.next.step.started":
-      return { type: "thinking", data: "Processing..." };
-    case "session.next.step.ended":
-      return null;
     case "session.next.step.failed":
       return {
         type: "error",

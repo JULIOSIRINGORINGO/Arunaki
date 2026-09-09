@@ -138,12 +138,14 @@ function WorkstationRightChatComponent({
         ) : (
           allMessages.map((msg, idx) => {
             const isUser = msg.role === "user";
+            const isMsgStreaming = isStreaming && !isUser && idx === allMessages.length - 1;
 
             return (
               <ChatMessageBubble
                 key={msg.id || idx}
                 msg={msg}
                 isUser={isUser}
+                isStreaming={isMsgStreaming}
                 showThinking={showThinking}
                 onPreviewImage={(url) => setLightboxUrl(url)}
                 onResend={(content) => onSendMessage(content)}

@@ -480,6 +480,24 @@ export function useWorkstationChat({
                 : m
             );
           });
+        } else if (event.type === "reasoning_end") {
+          resetWatchdog(90000);
+          if (event.data && typeof event.data === "string") {
+            accumulatedReasoningText = event.data;
+          }
+          const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+          setLiveStatus({ type: "text_delta", preview: "Generating response" });
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    reasoning: accumulatedReasoningText || m.reasoning,
+                    thoughtSec: elapsedSec,
+                  }
+                : m
+            )
+          );
         } else if (event.type === "thinking") {
           resetWatchdog(90000);
           const label = event.data || "Analyzing request & context";
@@ -591,6 +609,20 @@ export function useWorkstationChat({
           if (canvasText) {
             upsertCanvasTab(canvasText, false);
           }
+        } else if (event.type === "text_end") {
+          if (event.data && typeof event.data === "string") {
+            accumulatedResponseText = event.data;
+            setOptimisticMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? {
+                      ...m,
+                      content: event.data,
+                    }
+                  : m
+              )
+            );
+          }
         } else if (event.type === "done") {
           clearWatchdog();
           setIsStreaming(false);
@@ -692,6 +724,13 @@ export function useWorkstationChat({
       }, abortCtrl.signal);
 
       await sendPrompt(chatIdToUse, userText, { variant: reasoningEffort || undefined });
+      // Finalize streaming safely
+      clearWatchdog();
+      setIsStreaming(false);
+      setLiveStatus(null);
+      await queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
+      setOptimisticMessages([]);
+      processNext();
     } catch (err: any) {
       clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);

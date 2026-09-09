@@ -2,7 +2,8 @@ import { LayerNode } from "@arunaki/core/effect/layer-node"
 import { PermissionV1 } from "@arunaki/core/v1/permission"
 import { Image } from "@/image/image"
 import { SessionV1 } from "@arunaki/core/v1/session"
-import { Cause, Deferred, Effect, Exit, Layer, Context, Scope, Schema } from "effect"
+import { Cause, Deferred, Effect, Exit, Layer, Context, Scope, Schema, DateTime } from "effect"
+import { SessionEvent } from "@arunaki/schema/session-event"
 import * as Stream from "effect/Stream"
 import { Agent } from "@/agent/agent"
 import { Config } from "@/config/config"
@@ -289,6 +290,13 @@ const layer = Layer.effect(
               metadata: value.providerMetadata,
             }
             yield* session.updatePart(ctx.reasoningMap[value.id])
+            yield* events.publish(SessionEvent.Reasoning.Started, {
+              sessionID: ctx.assistantMessage.sessionID,
+              assistantMessageID: ctx.assistantMessage.id,
+              timestamp: yield* DateTime.now,
+              reasoningID: ctx.reasoningMap[value.id].id,
+              providerMetadata: value.providerMetadata,
+            }).pipe(Effect.ignore)
             return
 
           case "reasoning-delta":
@@ -303,11 +311,31 @@ const layer = Layer.effect(
               field: "text",
               delta: value.text,
             })
+            yield* events.publish(SessionEvent.Reasoning.Delta, {
+              sessionID: ctx.reasoningMap[value.id].sessionID,
+              assistantMessageID: ctx.reasoningMap[value.id].messageID,
+              timestamp: yield* DateTime.now,
+              reasoningID: ctx.reasoningMap[value.id].id,
+              delta: value.text,
+            }).pipe(Effect.ignore)
             return
 
           case "reasoning-end":
             if (value.providerMetadata && value.id in ctx.reasoningMap) {
               ctx.reasoningMap[value.id].metadata = value.providerMetadata
+            }
+            {
+              const rPart = ctx.reasoningMap[value.id]
+              if (rPart) {
+                yield* events.publish(SessionEvent.Reasoning.Ended, {
+                  sessionID: rPart.sessionID,
+                  assistantMessageID: rPart.messageID,
+                  timestamp: yield* DateTime.now,
+                  reasoningID: rPart.id,
+                  text: rPart.text,
+                  providerMetadata: value.providerMetadata,
+                }).pipe(Effect.ignore)
+              }
             }
             yield* finishReasoning(value.id)
             return
@@ -494,6 +522,12 @@ const layer = Layer.effect(
               metadata: value.providerMetadata,
             }
             yield* session.updatePart(ctx.currentText)
+            yield* events.publish(SessionEvent.Text.Started, {
+              sessionID: ctx.assistantMessage.sessionID,
+              assistantMessageID: ctx.assistantMessage.id,
+              timestamp: yield* DateTime.now,
+              textID: ctx.currentText.id,
+            }).pipe(Effect.ignore)
             return
 
           case "text-delta":
@@ -507,10 +541,24 @@ const layer = Layer.effect(
               field: "text",
               delta: value.text,
             })
+            yield* events.publish(SessionEvent.Text.Delta, {
+              sessionID: ctx.currentText.sessionID,
+              assistantMessageID: ctx.currentText.messageID,
+              timestamp: yield* DateTime.now,
+              textID: ctx.currentText.id,
+              delta: value.text,
+            }).pipe(Effect.ignore)
             return
 
           case "text-end":
             if (!ctx.currentText) return
+            yield* events.publish(SessionEvent.Text.Ended, {
+              sessionID: ctx.currentText.sessionID,
+              assistantMessageID: ctx.currentText.messageID,
+              timestamp: yield* DateTime.now,
+              textID: ctx.currentText.id,
+              text: ctx.currentText.text,
+            }).pipe(Effect.ignore)
             // oxlint-disable-next-line no-self-assign -- reactivity trigger
             ctx.currentText.text = ctx.currentText.text
             ctx.currentText.text = (yield* plugin.trigger(

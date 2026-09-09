@@ -2564,3 +2564,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `bun test packages/engine/engine/test/arunaki/memory.test.ts` ✅ (5 pass, 0 fail).
   - `npm run build -w apps/web` ✅ (0 error, build in 12.49s).
   - `bun run typecheck` di engine: `memory.ts` 0 error.
+
+## Phase 73: Real-Time Word-by-Word Streaming for Thinking & Partial Responses (DONE)
+
+- [x] **Engine Event Pipeline**:
+  - `processor.ts`: Mengalirkan event `SessionEvent.Reasoning.*` (Started, Delta, Ended) dan `SessionEvent.Text.*` (Started, Delta, Ended) ke event bus secara real-time.
+  - `engine.ts`: Mengoptimalkan `mapEngineEvent` agar memetakan `session.next.reasoning.delta` ke `reasoning_delta` dan `session.next.text.delta` ke `text_delta` tanpa duplikasi token maupun kebocoran reasoning ke teks jawaban.
+- [x] **Real-Time Word-by-Word Thinking Visibility**:
+  - `MessageThoughtBadge`: Menampilkan pemikiran model secara langsung kata demi kata (word-by-word) saat thinking diaktifkan, mempertahankan spasi antar-kata saat streaming tanpa truncate berulang, dan menyertakan kursor denyut amber (`▋`).
+  - Menampilkan status aktif `Thinking...` dengan ikon `Brain` yang berdenyut selama proses penalaran berlangsung.
+- [x] **Real-Time Partial Answer Streaming**:
+  - `ChatMessageBubble`: Menampilkan respons sebagian secara real-time kata perkata saat masih menunggu, lengkap dengan inline typing cursor berdenyut, sehingga pengguna dapat langsung membaca jawaban tanpa menunggu hingga selesai.
+  - `WorkstationRightChat`: Mengirimkan flag `isStreaming` ke bubble pesan asisten yang sedang aktif.
+- [x] **Direct Thinking Toggle in Chat Bar**:
+  - `ChatInputBox`: Menambahkan tombol toggle langsung `Thinking: On / Off` di bilah input chat sebelah dropdown reasoning effort, tersinkronisasi ke `localStorage` dan chat state.
+- [x] **Lifecycle & Safe Finalization**:
+  - `useWorkstationChat`: Menangani event `reasoning_end` dan `text_end` serta menambahkan finalisasi aman pada resolusi `sendPrompt` agar streaming tidak menggantung jika event `done` tertunda.
+- [x] **Verifikasi Build & Test**:
+  - `npm run build -w apps/web` ✅ (0 error, build in 12.17s).
+  - `bun test test/arunaki/` di engine ✅ (9 pass, 0 fail).
+

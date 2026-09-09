@@ -10,6 +10,7 @@ import { Message } from "./types";
 interface ChatMessageBubbleProps {
   msg: Message;
   isUser: boolean;
+  isStreaming?: boolean;
   showThinking?: boolean;
   onPreviewImage?: (url: string) => void;
   onResend?: (content: string) => void;
@@ -18,6 +19,7 @@ interface ChatMessageBubbleProps {
 export const ChatMessageBubble = memo(function ChatMessageBubble({
   msg,
   isUser,
+  isStreaming = false,
   showThinking = true,
   onPreviewImage,
   onResend,
@@ -33,9 +35,9 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
 
   const displayContent = useMemo(() => {
     const raw = msg?.content || "";
-    if (imageMentions.length === 0) return raw.trim();
+    if (imageMentions.length === 0) return isStreaming ? raw : raw.trim();
     return raw.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
-  }, [msg?.content, imageMentions]);
+  }, [msg?.content, imageMentions, isStreaming]);
 
   const timeString = useMemo(() => {
     if (!msg?.createdAt) return "";
@@ -59,7 +61,11 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }
 
   const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
-  const hasThoughtOrSteps = !isUser && (Boolean(showThinking && msg?.reasoning) || Boolean(steps && steps.length > 0));
+  const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
+  const hasThoughtOrSteps =
+    !isUser &&
+    (Boolean(showThinking && (msg?.reasoning || isThinkingActive)) ||
+      Boolean(steps && steps.length > 0));
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
     return null;
@@ -93,10 +99,11 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
           thoughtSec={thoughtSec}
           reasoning={msg.reasoning}
           showThinking={showThinking}
+          isStreaming={isStreaming}
         />
       )}
 
-      {hasVisibleContent && (
+      {hasVisibleContent ? (
         <div
           className={cn(
             "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
@@ -135,10 +142,22 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             </div>
           )}
           {displayContent ? (
-            <ChatMessageContent content={displayContent} isUser={isUser} />
+            <div className="relative">
+              <ChatMessageContent content={displayContent} isUser={isUser} />
+              {isStreaming && !isUser && (
+                <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
+              )}
+            </div>
           ) : null}
         </div>
-      )}
+      ) : !isUser && isStreaming && !showThinking ? (
+        <div className="p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full font-sans bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]">
+          <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-[11px]">
+            <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 animate-pulse" />
+            <span className="italic">Generating response...</span>
+          </div>
+        </div>
+      ) : null}
 
       {/* Action Toolbar & Timestamp - only rendered when there is visible bubble content */}
       {hasVisibleContent && (

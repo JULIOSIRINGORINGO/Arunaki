@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { cn } from "../../lib/utils";
 import {
   Monitor,
   Camera,
@@ -243,19 +244,22 @@ export function MessageThoughtBadge({
   thoughtSec,
   reasoning,
   showThinking = true,
+  isStreaming = false,
 }: {
   steps?: StepItem[];
   thoughtSec?: number;
   reasoning?: string;
   showThinking?: boolean;
+  isStreaming?: boolean;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
-  const hasReasoning = Boolean(reasoning && reasoning.trim().length > 0);
+  const hasReasoning = Boolean(reasoning && reasoning.length > 0);
+  const isThinkingActive = isStreaming && !steps.some((s) => s.iconType === 'text');
 
-  if (!hasToolExecution && (!showThinking || !hasReasoning)) {
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive))) {
     return null;
   }
 
@@ -298,17 +302,29 @@ export function MessageThoughtBadge({
         </div>
       )}
 
-      {/* 2. Real-time Model Thoughts: Shown directly (kata per kata), NOT in a box, NO buka-tutup button */}
-      {showThinking && hasReasoning && (
+      {/* 2. Real-time Model Thoughts: Shown directly (kata per kata), preserving word boundaries during stream */}
+      {showThinking && (hasReasoning || isThinkingActive) && (
         <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono italic leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <div className="flex items-center gap-1.5 mb-1 not-italic font-sans text-[10px] text-[var(--text-dim)] select-none">
-            <Brain size={11} className="shrink-0 text-[var(--text-muted)]" />
-            <span className="font-medium text-[11px] text-[var(--text-dim)]">Thought</span>
+            <Brain size={11} className={cn("shrink-0", isThinkingActive ? "text-amber-400 animate-pulse" : "text-[var(--text-muted)]")} />
+            <span className={cn("font-medium text-[11px]", isThinkingActive ? "text-amber-400" : "text-[var(--text-dim)]")}>
+              {isThinkingActive ? "Thinking..." : "Thought"}
+            </span>
             {thoughtSec ? <span className="opacity-60 font-mono text-[10px]">({thoughtSec}s)</span> : null}
           </div>
-          <div className="pl-3 border-l-2 border-[var(--border-color)] text-[var(--text-muted)] opacity-90 select-text">
-            {reasoning?.trim()}
-          </div>
+          {hasReasoning ? (
+            <div className="pl-3 border-l-2 border-amber-500/40 text-[var(--text-muted)] opacity-90 select-text break-words">
+              {isStreaming ? reasoning : reasoning?.trim()}
+              {isStreaming && isThinkingActive && (
+                <span className="inline-block w-1.5 h-3 bg-amber-400/80 ml-0.5 animate-pulse align-middle" />
+              )}
+            </div>
+          ) : isThinkingActive ? (
+            <div className="pl-3 border-l-2 border-amber-500/30 text-[var(--text-muted)] opacity-70 italic text-[10px]">
+              <span className="inline-block w-1.5 h-2.5 bg-amber-400/70 animate-pulse mr-1.5" />
+              Processing request & workspace context...
+            </div>
+          ) : null}
         </div>
       )}
     </div>
