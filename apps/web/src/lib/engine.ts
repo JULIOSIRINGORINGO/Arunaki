@@ -17,10 +17,10 @@ export async function engineFetch(path: string, init?: RequestInit) {
 
 export async function createSession(opts?: {
   agent?: string;
-  model?: { providerID: string; id: string } | string;
+  model?: { providerID: string; id: string; variant?: string } | string;
   directory?: string;
 }) {
-  let modelPayload: { providerID: string; id: string } | undefined;
+  let modelPayload: { providerID: string; id: string; variant?: string } | undefined;
   if (opts?.model) {
     if (typeof opts.model === "object") {
       let id = opts.model.id;
@@ -28,7 +28,11 @@ export async function createSession(opts?: {
         const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
         id = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
       }
-      modelPayload = { providerID: opts.model.providerID, id };
+      modelPayload = {
+        providerID: opts.model.providerID,
+        id,
+        ...(opts.model.variant ? { variant: opts.model.variant } : {}),
+      };
     } else if (typeof opts.model === "string") {
       let clean = opts.model;
       if (clean.includes(",")) {
@@ -83,7 +87,7 @@ export async function getSession(sessionID: string) {
   return json.data;
 }
 
-export async function switchSessionModel(sessionID: string, model: { providerID: string; id: string }) {
+export async function switchSessionModel(sessionID: string, model: { providerID: string; id: string; variant?: string }) {
   let id = model.id;
   if (id && id.includes(",")) {
     const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
@@ -91,7 +95,13 @@ export async function switchSessionModel(sessionID: string, model: { providerID:
   }
   const res = await engineFetch(`/api/session/${sessionID}/model`, {
     method: "POST",
-    body: JSON.stringify({ model: { providerID: model.providerID, id } }),
+    body: JSON.stringify({
+      model: {
+        providerID: model.providerID,
+        id,
+        ...(model.variant ? { variant: model.variant } : {}),
+      },
+    }),
   });
   return res.ok;
 }
@@ -131,6 +141,7 @@ export async function sendPrompt(sessionID: string, content: string, opts?: { va
 export function subscribeEvents(
   onEvent: (event: { type: string; data?: any }) => void,
   signal?: AbortSignal,
+  directory?: string,
 ) {
   const controller = new AbortController();
   const finalSignal = signal
@@ -145,8 +156,12 @@ export function subscribeEvents(
   (async () => {
     while (!finalSignal.aborted) {
       try {
-        const res = await fetch(`${ENGINE_BASE}/api/event`, {
-          headers: { Accept: "text/event-stream" },
+        const query = directory ? `?directory=${encodeURIComponent(directory)}` : "";
+        const res = await fetch(`${ENGINE_BASE}/api/event${query}`, {
+          headers: {
+            Accept: "text/event-stream",
+            ...(directory && { "x-arunaki-directory": directory }),
+          },
           signal: finalSignal,
         });
         const reader = res.body?.getReader();
@@ -242,8 +257,14 @@ export function mapEngineEvent(
       return { type: "reasoning_end", data: payload.text };
     case "session.next.step.started":
       return { type: "thinking", data: "Processing..." };
-    case "session.next.step.ended":
-      return { type: "done" };
+    case "session.next.step.ended": {
+      const finish = payload.finish || event.finish;
+      // If the model finished the step with tool-calls, continuation step will follow
+      if (finish === "tool-calls") {
+        return { type: "step_continuation", data: payload };
+      }
+      return { type: "done", data: payload };
+    }
     case "session.next.tool.input.started": {
       const toolName = payload.name || event.name || "action";
       return {

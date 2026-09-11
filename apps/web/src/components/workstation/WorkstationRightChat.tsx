@@ -78,31 +78,37 @@ function WorkstationRightChatComponent({
     const result: Message[] = [...chatMessages];
     const seenIds = new Set(chatMessages.map((m) => m.id));
 
+    const lastPersistedUser = [...chatMessages].reverse().find((m) => m.role === "user");
+    const lastPersistedAsst = [...chatMessages].reverse().find((m) => m.role === "assistant");
+
     for (const opt of optimisticMessages) {
       if (seenIds.has(opt.id)) continue;
       const optText = (opt.content || "").trim();
       const optReasoning = (opt.reasoning || "").trim();
 
-      const alreadyPersisted = chatMessages.some((m) => {
-        if (m.role !== opt.role) return false;
-        const mContent = (m.content || "").trim();
-        const mReasoning = (m.reasoning || "").trim();
-
-        // 1. Exact content match
-        if (optText.length > 0 && mContent === optText) return true;
-
-        // 2. Exact reasoning match (same turn reasoning)
-        if (optReasoning.length > 0 && mReasoning.length > 0 && (mReasoning === optReasoning || mReasoning.includes(optReasoning) || optReasoning.includes(mReasoning))) return true;
-
-        // 3. If turn is no longer streaming, do not keep stale assistant optimistic bubbles if persisted message exists
-        if (!isStreaming && opt.role === "assistant" && mContent.length > 0) return true;
-
-        return false;
-      });
-
-      if (!alreadyPersisted) {
+      // 1. User message: deduplicate only if the latest persisted user message matches exact content
+      if (opt.role === "user") {
+        const lastUserText = (lastPersistedUser?.content || "").trim();
+        if (optText.length > 0 && lastUserText === optText) continue;
         result.push(opt);
+        continue;
       }
+
+      // 2. Assistant message: while actively streaming, ALWAYS keep the active assistant bubble so thinking and tokens stream live!
+      if (isStreaming) {
+        result.push(opt);
+        continue;
+      }
+
+      // 3. When streaming has finished, deduplicate if the latest persisted assistant message has matching content or reasoning
+      const lastAsstText = (lastPersistedAsst?.content || "").trim();
+      const lastAsstReasoning = (lastPersistedAsst?.reasoning || "").trim();
+      if (lastAsstText.length > 0) {
+        if (optText.length > 0 && lastAsstText === optText) continue;
+        if (optReasoning.length > 0 && lastAsstReasoning.length > 0 && lastAsstReasoning === optReasoning) continue;
+      }
+
+      result.push(opt);
     }
     return result;
   }, [chatMessages, optimisticMessages, isStreaming]);

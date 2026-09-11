@@ -206,6 +206,13 @@ const layer = Layer.effect(
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
       const toolMaterialization = isLastStep ? undefined : yield* tools.materialize(agent.info?.permissions)
       const promptCacheKey = /^ses_[0-9a-f]{64}$/.test(session.id) ? session.id.slice(4) : session.id
+      const variant = session.model?.variant
+      const isReasoningVariant = variant === "high" || variant === "medium" || variant === "low" || variant === "max"
+      const reasoningEffort = isReasoningVariant
+        ? variant
+        : variant === "none"
+          ? undefined
+          : "high"
       const request = LLM.request({
         model,
         http: {
@@ -214,8 +221,22 @@ const layer = Layer.effect(
             "X-Session-Id": session.id,
             ...(session.parentID ? { "x-parent-session-id": session.parentID } : {}),
           },
+          body: {
+            ...(reasoningEffort ? { reasoning_effort: reasoningEffort, reasoningEffort } : {}),
+          },
         },
-        providerOptions: { openai: { promptCacheKey } },
+        providerOptions: {
+          openai: {
+            promptCacheKey,
+            ...(reasoningEffort ? { reasoningEffort } : {}),
+          },
+          ...(reasoningEffort
+            ? {
+                openaiCompatible: { reasoningEffort },
+                ...(model.provider ? { [model.provider]: { reasoningEffort } } : {}),
+              }
+            : {}),
+        },
         system: [agent.info?.system, system.baseline]
           .filter((part): part is string => part !== undefined && part.length > 0)
           .map(SystemPart.make),

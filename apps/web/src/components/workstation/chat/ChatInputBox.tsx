@@ -163,6 +163,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       const next = !current;
       try {
         localStorage.setItem("arunaki_show_thinking", String(next));
+        localStorage.setItem("arunaki_reasoning_effort", next ? "high" : "");
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
@@ -202,6 +203,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       const next = !current;
       try {
         localStorage.setItem("arunaki_show_thinking", String(next));
+        localStorage.setItem("arunaki_reasoning_effort", next ? "high" : "");
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);

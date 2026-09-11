@@ -43,7 +43,10 @@ export const isReasoningEffort = (effort: unknown): effort is OpenAIReasoningEff
 const isTextVerbosity = (value: unknown): value is TextVerbosityValue =>
   typeof value === "string" && TEXT_VERBOSITY.has(value)
 
-const options = (request: LLMRequest) => request.providerOptions?.openai
+const options = (request: LLMRequest) =>
+  request.providerOptions?.openai ??
+  request.providerOptions?.openaiCompatible ??
+  (request.model?.provider ? request.providerOptions?.[request.model.provider] : undefined)
 
 export const store = (request: LLMRequest): boolean | undefined => {
   const value = options(request)?.store
@@ -52,7 +55,10 @@ export const store = (request: LLMRequest): boolean | undefined => {
 
 export const reasoningEffort = (request: LLMRequest): ReasoningEffort | undefined => {
   const value = options(request)?.reasoningEffort
-  return isAnyReasoningEffort(value) ? value : undefined
+  if (isAnyReasoningEffort(value)) return value
+  const httpEffort = request.http?.body?.reasoning_effort ?? request.http?.body?.reasoningEffort
+  if (isAnyReasoningEffort(httpEffort)) return httpEffort
+  return undefined
 }
 
 export const reasoningSummary = (request: LLMRequest): "auto" | undefined =>

@@ -80,7 +80,15 @@ export function useWorkstationChat({
 }: UseWorkstationChatOptions) {
   const queryClient = useQueryClient();
 
-  const [reasoningEffort, setReasoningEffort] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("arunaki_reasoning_effort");
+      if (saved) return saved;
+      const showThinking = localStorage.getItem("arunaki_show_thinking") !== "false";
+      return showThinking ? "high" : "";
+    }
+    return "high";
+  });
   const [isStreaming, setIsStreaming] = useState(false);
   const isStreamingRef = useRef(false);
   const setStreamingState = useCallback((val: boolean) => {
@@ -255,11 +263,12 @@ export function useWorkstationChat({
     }
 
     const activeModel = resolveActiveSingleModel();
+    const effectiveVariant = reasoningEffort || "high";
 
     try {
       const session = await createSession({
         directory: activeFolder || undefined,
-        model: activeModel,
+        model: { ...activeModel, variant: effectiveVariant },
       });
       if (session && session.id) {
         setActiveChatId(session.id);
@@ -329,11 +338,12 @@ export function useWorkstationChat({
     const activeModel = resolveActiveSingleModel();
 
     let chatIdToUse = activeChatId;
+    const effectiveVariant = reasoningEffort || "high";
     if (!chatIdToUse || !chatIdToUse.startsWith("ses_")) {
       try {
         const session = await createSession({
           directory: activeFolder || undefined,
-          model: activeModel,
+          model: { ...activeModel, variant: effectiveVariant },
         });
         chatIdToUse = session.id;
         setActiveChatId(chatIdToUse);
@@ -349,11 +359,13 @@ export function useWorkstationChat({
         return;
       }
     } else {
-      switchSessionModel(chatIdToUse, activeModel).catch(() => {});
+      switchSessionModel(chatIdToUse, { ...activeModel, variant: effectiveVariant }).catch(() => {});
     }
 
     let accumulatedResponseText = "";
     let accumulatedReasoningText = "";
+    let needsReasoningSeparator = false;
+    let needsTextSeparator = false;
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
 
@@ -604,6 +616,14 @@ export function useWorkstationChat({
 
         if (event.type === "reasoning_delta" && event.data) {
           resetWatchdog(90000);
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
+          if (needsReasoningSeparator && accumulatedReasoningText.trim().length > 0) {
+            accumulatedReasoningText += "\n\n";
+            needsReasoningSeparator = false;
+          }
           accumulatedReasoningText += event.data;
           setLiveStatus({ type: "thinking", preview: "Thinking..." });
           setOptimisticMessages((prev) => {
@@ -614,8 +634,8 @@ export function useWorkstationChat({
                 {
                   id: assistantMessageId,
                   role: "assistant",
-                  content: "",
-                  reasoning: event.data,
+                  content: accumulatedResponseText,
+                  reasoning: accumulatedReasoningText,
                   createdAt: new Date().toISOString(),
                   executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
                 },
@@ -625,7 +645,7 @@ export function useWorkstationChat({
               m.id === assistantMessageId
                 ? {
                     ...m,
-                    reasoning: (m.reasoning || "") + event.data,
+                    reasoning: accumulatedReasoningText,
                     executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
                   }
                 : m
@@ -634,7 +654,12 @@ export function useWorkstationChat({
         } else if (event.type === "reasoning_end") {
           resetWatchdog(90000);
           if (event.data && typeof event.data === "string") {
-            accumulatedReasoningText = event.data;
+            if (needsReasoningSeparator && accumulatedReasoningText.trim().length > 0) {
+              accumulatedReasoningText += "\n\n" + event.data;
+              needsReasoningSeparator = false;
+            } else if (!accumulatedReasoningText) {
+              accumulatedReasoningText = event.data;
+            }
           }
           const elapsedMs = Date.now() - streamStartTime;
           const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000));
@@ -651,6 +676,18 @@ export function useWorkstationChat({
                 : m
             )
           );
+        } else if (event.type === "step_continuation") {
+          resetWatchdog(120000);
+          needsReasoningSeparator = true;
+          needsTextSeparator = true;
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
+          setLiveStatus({
+            type: "thinking",
+            preview: "Thinking...",
+          });
         } else if (event.type === "thinking") {
           resetWatchdog(90000);
           const label = event.data || "Analyzing request & context";
@@ -762,19 +799,45 @@ export function useWorkstationChat({
           }
         } else if (event.type === "text_delta" && event.data) {
           resetWatchdog(90000);
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
+          if (needsTextSeparator && accumulatedResponseText.trim().length > 0) {
+            accumulatedResponseText += "\n\n";
+            needsTextSeparator = false;
+          }
           accumulatedResponseText += event.data;
 
           let displayReasoning = accumulatedReasoningText;
           let displayText = accumulatedResponseText;
 
+          // Extract <think> blocks from inline content only when no reasoning stream exists.
+          // IMPORTANT: Preserve all non-<think> content (e.g. step 1's answer) when extracting.
           if (!displayReasoning && displayText.includes("<think>")) {
-            if (displayText.includes("</think>")) {
-              const parts = displayText.split("</think>");
-              displayReasoning = parts[0].replace("<think>", "").trim();
-              displayText = parts.slice(1).join("</think>").trim();
-            } else {
-              displayReasoning = displayText.replace("<think>", "");
-              displayText = "";
+            // Extract ALL <think>...</think> blocks as reasoning, keep the rest as displayText
+            const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+            let extractedReasoning = "";
+            let cleanedText = displayText;
+            let match;
+            while ((match = thinkRegex.exec(displayText)) !== null) {
+              extractedReasoning += (extractedReasoning ? "\n\n" : "") + match[1].trim();
+            }
+            cleanedText = displayText.replace(thinkRegex, "").trim();
+
+            // Check if there's still an unclosed <think> tag (streaming in progress)
+            const lastOpenThink = cleanedText.lastIndexOf("<think>");
+            if (lastOpenThink >= 0) {
+              // Unclosed think tag — content after it is still-streaming reasoning
+              const beforeThink = cleanedText.substring(0, lastOpenThink).trim();
+              const afterThink = cleanedText.substring(lastOpenThink + 7).trim();
+              extractedReasoning += (extractedReasoning ? "\n\n" : "") + afterThink;
+              cleanedText = beforeThink;
+            }
+
+            if (extractedReasoning) {
+              displayReasoning = extractedReasoning;
+              displayText = cleanedText;
             }
           }
 
@@ -816,20 +879,26 @@ export function useWorkstationChat({
           }
         } else if (event.type === "text_end") {
           if (event.data && typeof event.data === "string") {
-            accumulatedResponseText = event.data;
+            if (needsTextSeparator && accumulatedResponseText.trim().length > 0) {
+              accumulatedResponseText += "\n\n" + event.data;
+              needsTextSeparator = false;
+            } else if (!accumulatedResponseText) {
+              accumulatedResponseText = event.data;
+            }
             setOptimisticMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMessageId
                   ? {
                       ...m,
-                      content: event.data,
+                      content: accumulatedResponseText,
                     }
                   : m
               )
             );
           }
           const hasToolSteps = accumulatedSteps.some((s) => s.iconType === "tool");
-          if (!hasToolSteps) {
+          const hasRunningTool = accumulatedSteps.some((s) => s.status === "running");
+          if (!hasToolSteps && !hasRunningTool) {
             // For simple conversation without tools, finalize if 'done' hasn't arrived
             if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = setTimeout(() => {
@@ -838,12 +907,18 @@ export function useWorkstationChat({
           } else {
             // In a tool-based turn, intermediate text has finished; engine is now running tools
             // or preparing the next turn. Keep live status active so the user sees progress!
+            needsTextSeparator = true;
+            needsReasoningSeparator = true;
             setLiveStatus({
-              type: "tool_live_status",
-              preview: "Analyzing data & preparing final answer...",
+              type: "thinking",
+              preview: "Analyzing data & preparing next response...",
             });
           }
         } else if (event.type === "done") {
+          const hasRunningTool = accumulatedSteps.some((s) => s.status === "running");
+          if (hasRunningTool) {
+            return;
+          }
           finalizeDone(event.data);
         } else if (event.type === "error") {
           if (currentTurnIdRef.current !== assistantMessageId) return;
@@ -868,10 +943,10 @@ export function useWorkstationChat({
           });
           processNext();
         }
-      }, abortCtrl.signal);
+      }, abortCtrl.signal, activeFolder);
 
       await sendPrompt(chatIdToUse, userText, {
-        variant: reasoningEffort || undefined,
+        variant: reasoningEffort || "high",
         signal: abortCtrl.signal,
       });
       // Prompt was accepted by the engine. Streaming is now in progress over SSE.
