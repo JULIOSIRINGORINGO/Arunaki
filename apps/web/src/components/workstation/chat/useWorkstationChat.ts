@@ -763,7 +763,26 @@ export function useWorkstationChat({
         } else if (event.type === "text_delta" && event.data) {
           resetWatchdog(90000);
           accumulatedResponseText += event.data;
-          setLiveStatus({ type: "text_delta", preview: "Generating response" });
+
+          let displayReasoning = accumulatedReasoningText;
+          let displayText = accumulatedResponseText;
+
+          if (!displayReasoning && displayText.includes("<think>")) {
+            if (displayText.includes("</think>")) {
+              const parts = displayText.split("</think>");
+              displayReasoning = parts[0].replace("<think>", "").trim();
+              displayText = parts.slice(1).join("</think>").trim();
+            } else {
+              displayReasoning = displayText.replace("<think>", "");
+              displayText = "";
+            }
+          }
+
+          setLiveStatus({
+            type: displayReasoning && !displayText ? "thinking" : "text_delta",
+            preview: displayReasoning && !displayText ? "Thinking..." : "Generating response",
+          });
+
           setOptimisticMessages((prev) => {
             const exists = prev.some((m) => m.id === assistantMessageId);
             if (!exists) {
@@ -772,7 +791,8 @@ export function useWorkstationChat({
                 {
                   id: assistantMessageId,
                   role: "assistant",
-                  content: event.data,
+                  content: displayText,
+                  reasoning: displayReasoning || undefined,
                   createdAt: new Date().toISOString(),
                   executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
                 },
@@ -782,14 +802,15 @@ export function useWorkstationChat({
               m.id === assistantMessageId
                 ? {
                     ...m,
-                    content: m.content + event.data,
+                    content: displayText,
+                    reasoning: displayReasoning || m.reasoning,
                     executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
                   }
                 : m
             );
           });
 
-          const canvasText = extractCanvasContent(accumulatedResponseText);
+          const canvasText = extractCanvasContent(displayText);
           if (canvasText) {
             upsertCanvasTab(canvasText, false);
           }

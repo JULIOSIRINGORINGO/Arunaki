@@ -117,6 +117,15 @@ export function mapEngineMessages(raw: any[]): Message[] {
       }
     }
 
+    // Extract <think>...</think> tags if model returns reasoning embedded in content
+    if (!reasoning && content.includes("<think>")) {
+      const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+      if (thinkMatch) {
+        reasoning = thinkMatch[1].trim();
+        content = content.replace(/<think>[\s\S]*?(?:<\/think>|$)/i, "").trim();
+      }
+    }
+
     content = content.trim();
 
     return {
