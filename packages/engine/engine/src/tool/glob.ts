@@ -55,12 +55,13 @@ export const GlobTool = Tool.define(
 
           const limit = 100
           const files = yield* ripgrep.glob({ cwd: search, pattern: params.pattern, limit })
-          const truncated = files.length === limit
+          const visibleFiles = files.filter((f) => !f.path.split(/[\\/]/).some((part) => part.startsWith(".")))
+          const truncated = visibleFiles.length === limit
 
           const output = []
-          if (files.length === 0) output.push("No files found")
-          if (files.length > 0) {
-            output.push(...files.map((file) => path.resolve(search, file.path)))
+          if (visibleFiles.length === 0) output.push("No files found")
+          if (visibleFiles.length > 0) {
+            output.push(...visibleFiles.map((file) => path.resolve(search, file.path)))
             if (truncated) {
               output.push("")
               output.push(

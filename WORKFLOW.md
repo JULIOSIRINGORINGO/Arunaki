@@ -2717,5 +2717,19 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build**:
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses).
 
+## Phase 80: Dot-Files Exclusion, Kenari Reasoning Activation & Multi-Step Live Progress Indicator (DONE)
+
+- [x] **Dot-Files & System Folders Strict Exclusion**:
+  - `packages/engine/engine/src/session/system.ts`: Menambahkan instruksi ketat `HIDDEN & SYSTEM FILES POLICY (STRICT)` di system prompt agar agent tidak pernah membaca, memeriksa, atau memaparkan direktori/berkas yang diawali titik (`.arunaki/`, `.arunaki-backups/`, `.git/`, `.gitignore`, `.arunaki.json`) sebagai dokumen kerja pengguna.
+  - `packages/engine/engine/src/tool/read.ts`: Mengubah filter `ReadTool.list` agar mengecualikan seluruh entri yang diawali titik (`!item.name.startsWith(".arunaki")` ➔ `!item.name.startsWith(".")}}`).
+  - `packages/engine/engine/src/tool/glob.ts`: Menambahkan filter pada hasil `ripgrep.glob` agar mengabaikan path apa pun yang mengandung segmen tersembunyi yang diawali titik (`!part.startsWith(".")}}`).
+- [x] **Kenari / OpenAI-Compatible Reasoning Activation**:
+  - `packages/engine/engine/src/provider/transform.ts`: Menambahkan konfigurasi default `reasoningEffort: "high"` untuk model berkemampuan penalaran pada provider `kenari` dan `@ai-sdk/openai-compatible`. Mengaktifkan keluaran `reasoning_content` pada model seperti `deepseek-v4-flash`.
+- [x] **Multi-Step Live Streaming & Progress Continuity Fix**:
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`: Memperbaiki penanganan `text_end` agar tidak melakukan finalisasi prematur (`finalizeDone()`) ketika ada tool call yang sedang/akan dieksekusi. Tetap mempertahankan status live `Analyzing data & preparing final answer...` dengan animasi denyut ArunakiLogo hingga event `done` resmi tiba dari engine.
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses).
+
+
 
 

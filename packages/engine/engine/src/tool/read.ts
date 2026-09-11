@@ -98,7 +98,7 @@ export const ReadTool = Tool.define<
 
     const list = Effect.fn("ReadTool.list")(function* (filepath: string) {
       const items = yield* fs.readDirectoryEntries(filepath)
-      const filteredItems = items.filter(item => !item.name.startsWith(".arunaki"))
+      const filteredItems = items.filter(item => !item.name.startsWith("."))
       return yield* Effect.forEach(
         filteredItems,
         Effect.fnUntraced(function* (item) {

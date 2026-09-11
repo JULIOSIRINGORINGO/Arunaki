@@ -1257,6 +1257,20 @@ export function options(input: {
     result["enable_thinking"] = true
   }
 
+  // Enable thinking for reasoning models on Kenari or OpenAI-compatible providers.
+  // Kenari requires `reasoning_effort` in the request body for models like deepseek-v4-flash
+  // to return reasoning_content in the stream.
+  if (
+    (input.model.providerID === "kenari" ||
+      input.model.providerID.includes("kenari") ||
+      input.providerOptions?.baseURL?.includes("kenari.id") ||
+      input.model.api.npm === "@ai-sdk/openai-compatible") &&
+    input.model.capabilities.reasoning
+  ) {
+    result["reasoningEffort"] = result["reasoningEffort"] ?? "high"
+    result["reasoning_effort"] = result["reasoning_effort"] ?? "high"
+  }
+
   if (input.providerOptions?.setCacheKey !== false) {
     if (input.model.api.npm === "@ai-sdk/deepinfra" || input.model.api.npm === "@ai-sdk/cerebras") {
       result["prompt_cache_key"] = input.sessionID

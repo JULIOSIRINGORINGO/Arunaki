@@ -113,6 +113,10 @@ const layer = Layer.effect(
               `- You CANNOT and MUST NOT attempt to access, list, search, or read the entire drive (e.g. "E:\\", "C:\\", or root drives) or any folder outside ${ctx.directory}.`,
               `- All documents, spreadsheets, text files, and rules belong exclusively inside ${ctx.directory}.`,
               `- If you need to search or read files, operate ONLY inside ${ctx.directory}. Do NOT plan or reason about scanning external drives.`,
+              `- HIDDEN & SYSTEM FILES POLICY (STRICT):`,
+              `  * NEVER read, inspect, list, or present files or directories starting with a dot (such as .arunaki/, .arunaki-backups/, .git/, .gitignore, .arunaki.json, etc.) to the user.`,
+              `  * They are internal application metadata and backup files, NOT user documents.`,
+              `  * When asked to check or list folder contents ("cek isi folder", "rekap dokumen", etc.), show ONLY actual user documents (e.g. .xlsx, .docx, .txt, .pdf, .csv) and completely omit any dot-directories and dot-files from your responses.`,
             ]
 
         // Inject active Knowledge nodes as context for the AI

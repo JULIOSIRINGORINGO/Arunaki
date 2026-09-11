@@ -787,16 +787,21 @@ export function useWorkstationChat({
               )
             );
           }
-          // When text ends, mark any remaining running tool steps as completed
-          for (let i = 0; i < accumulatedSteps.length; i++) {
-            if (accumulatedSteps[i].status === "running") {
-              accumulatedSteps[i] = { ...accumulatedSteps[i], status: "completed" };
-            }
+          const hasToolSteps = accumulatedSteps.some((s) => s.iconType === "tool");
+          if (!hasToolSteps) {
+            // For simple conversation without tools, finalize if 'done' hasn't arrived
+            if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = setTimeout(() => {
+              finalizeDone();
+            }, 800);
+          } else {
+            // In a tool-based turn, intermediate text has finished; engine is now running tools
+            // or preparing the next turn. Keep live status active so the user sees progress!
+            setLiveStatus({
+              type: "tool_live_status",
+              preview: "Analyzing data & preparing final answer...",
+            });
           }
-          if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
-          textEndFinalizeTimeout = setTimeout(() => {
-            finalizeDone();
-          }, 600);
         } else if (event.type === "done") {
           finalizeDone(event.data);
         } else if (event.type === "error") {
