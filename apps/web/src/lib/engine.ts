@@ -107,13 +107,33 @@ export async function switchSessionModel(sessionID: string, model: { providerID:
 }
 
 export async function getMessages(sessionID: string, opts?: { limit?: number; order?: "asc" | "desc" }) {
-  const params = new URLSearchParams();
-  params.set("order", opts?.order ?? "asc");
-  if (opts?.limit) params.set("limit", String(opts.limit));
-  const res = await engineFetch(`/api/session/${sessionID}/message?${params}`);
-  if (!res.ok) throw new Error(`getMessages failed: ${res.status}`);
-  const json = await res.json();
-  return json.data;
+  const allMessages: any[] = [];
+  let nextCursor: string | undefined = undefined;
+  const requestedLimit = opts?.limit;
+  const pageLimit = Math.min(requestedLimit || 200, 200);
+
+  do {
+    const params = new URLSearchParams();
+    if (nextCursor) {
+      params.set("cursor", nextCursor);
+      params.set("limit", String(pageLimit));
+    } else {
+      params.set("order", opts?.order ?? "asc");
+      params.set("limit", String(pageLimit));
+    }
+    const res = await engineFetch(`/api/session/${sessionID}/message?${params}`);
+    if (!res.ok) throw new Error(`getMessages failed: ${res.status}`);
+    const json = await res.json();
+    const data = json.data || [];
+    allMessages.push(...data);
+
+    if (requestedLimit && allMessages.length >= requestedLimit) {
+      break;
+    }
+    nextCursor = json.cursor?.next;
+  } while (nextCursor && allMessages.length < 1000);
+
+  return allMessages;
 }
 
 // --- Prompt (send message) ---

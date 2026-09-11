@@ -28,7 +28,15 @@ function isInternalToolPart(p: any): boolean {
 export function mapEngineMessages(raw: any[]): Message[] {
   if (!Array.isArray(raw)) return [];
 
-  const individualMessages: Message[] = raw.map((msg, idx) => {
+  const sortedRaw = [...raw]
+    .filter((m) => m && m.role !== "compaction" && m.type !== "compaction")
+    .sort((a, b) => {
+      const timeA = Number(a.time?.created ?? a.time_created ?? a.time?.start ?? 0);
+      const timeB = Number(b.time?.created ?? b.time_created ?? b.time?.start ?? 0);
+      return timeA - timeB;
+    });
+
+  const individualMessages: Message[] = sortedRaw.map((msg, idx) => {
     const role: "user" | "assistant" = msg.type === "user" || msg.role === "user" ? "user" : "assistant";
     let content = "";
     let reasoning = "";
