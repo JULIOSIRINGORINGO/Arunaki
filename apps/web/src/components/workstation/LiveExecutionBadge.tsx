@@ -59,17 +59,23 @@ export function formatToolStepLabel(
       "";
   }
 
-  // Clean filename if it's a path
-  const fileName = target ? target.replace(/\\/g, "/").split("/").filter(Boolean).pop() || target : "";
+  // Clean filename if it's a path, suppressing internal dotfiles and ARUNAKI.md
+  const rawFileName = target ? target.replace(/\\/g, "/").split("/").filter(Boolean).pop() || target : "";
+  const isInternalOrHidden =
+    rawFileName.startsWith(".") ||
+    rawFileName.toLowerCase() === "arunaki.md" ||
+    target.includes(".arunaki") ||
+    target.includes(".git");
+  const fileName = isInternalOrHidden ? "" : rawFileName;
 
   // 1. Read / View / Explore
   if (t === "read" || t === "read_file" || t === "view_file") {
     if (fileName) return isFinished ? `Explored ${fileName}` : `Reading ${fileName}`;
-    return isFinished ? `Explored 1 file` : `Exploring file`;
+    return isFinished ? `Explored workspace` : `Exploring workspace`;
   }
   if (t === "list_dir" || t === "glob") {
     if (fileName) return isFinished ? `Explored folder ${fileName}` : `Exploring folder ${fileName}`;
-    return isFinished ? `Explored folder` : `Exploring folder`;
+    return isFinished ? `Explored workspace` : `Exploring workspace`;
   }
 
   // 2. Edit / Write / Replace

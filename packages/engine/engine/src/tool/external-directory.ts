@@ -24,16 +24,28 @@ export const assertExternalDirectoryEffect = Effect.fn("Tool.assertExternalDirec
   const ins = yield* InstanceState.context
   const full = process.platform === "win32" ? FSUtil.normalizePath(target) : target
 
-  // STRICT GUARDRAIL: Automatically block access to hidden files and directories starting with '.'
+  // STRICT GUARDRAIL: Automatically block tool access to internal application metadata and backup directories
+  const normTarget = target.replace(/\\/g, "/").toLowerCase()
+  const rawSegments = normTarget.split("/").filter(Boolean)
+  const isProtected = rawSegments.some(
+    (s) => s === ".arunaki" || s === ".arunaki-backups" || s.startsWith(".arunaki-") || s === ".git" || s === "arunaki.json"
+  )
+  if (isProtected) {
+    return yield* Effect.fail(
+      new Error(`Access denied: '${target}' is a protected hidden or system file/directory.`)
+    )
+  }
+
   const root = ins.worktree || ins.directory
   if (root) {
     const normRoot = process.platform === "win32" ? FSUtil.normalizePath(root) : root
     const rel = path.relative(normRoot, full)
     if (rel && !rel.startsWith("..")) {
-      const segments = rel.split(/[/\\]/)
-      if (segments.some((seg) => seg.startsWith(".") && seg !== "." && seg !== "..")) {
+      const relNorm = rel.replace(/\\/g, "/").toLowerCase()
+      const segments = relNorm.split("/").filter(Boolean)
+      if (segments.some((s) => s === ".arunaki" || s === ".arunaki-backups" || s.startsWith(".arunaki-") || s === ".git" || s === "arunaki.json")) {
         return yield* Effect.fail(
-          new Error(`Access denied: '${target}' is a protected hidden or system file/directory (starting with '.').`)
+          new Error(`Access denied: '${target}' is a protected hidden or system file/directory.`)
         )
       }
     }

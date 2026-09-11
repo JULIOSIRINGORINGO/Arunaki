@@ -323,7 +323,7 @@ export const read = Effect.fn("ReadTool.read")(function* (
 
 export const list = Effect.fn("ReadTool.list")(function* (fs: FSUtil.Interface, input: string, page: PageInput = {}) {
   const real = yield* fs.realPath(input)
-  const items = yield* fs.readDirectoryEntries(real)
+  const items = (yield* fs.readDirectoryEntries(real)).filter((item) => !item.name.startsWith("."))
   const offset = page.offset ?? 1
   const limit = Math.min(page.limit ?? MAX_READ_LINES, MAX_READ_LINES)
   const entries = yield* Effect.forEach(

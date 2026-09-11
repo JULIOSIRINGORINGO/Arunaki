@@ -81,12 +81,14 @@ const layer = Layer.effectDiscard(
                 })
                 .pipe(
                   Effect.map((result) =>
-                    result.map((entry) =>
-                      FileSystem.Entry.make({
-                        ...entry,
-                        path: RelativePath.make(path.relative(location.directory, path.resolve(cwd, entry.path))),
-                      }),
-                    ),
+                    result
+                      .filter((entry) => !entry.path.split(/[\\/]/).some((part) => part.startsWith(".")))
+                      .map((entry) =>
+                        FileSystem.Entry.make({
+                          ...entry,
+                          path: RelativePath.make(path.relative(location.directory, path.resolve(cwd, entry.path))),
+                        }),
+                      ),
                   ),
                 )
             }).pipe(

@@ -54,7 +54,7 @@ const SKIP_DIRS = new Set([
 ])
 
 function isSkipped(pathSegments: string[]): boolean {
-  if (pathSegments.some((seg) => SKIP_DIRS.has(seg))) return true
+  if (pathSegments.some((seg) => seg.startsWith(".") || SKIP_DIRS.has(seg))) return true
   const filename = pathSegments[pathSegments.length - 1]
   if (filename && filename.toLowerCase().endsWith(".bak")) return true
   return false
@@ -293,9 +293,7 @@ const layer = Layer.effect(
           const entries = await fsPromises.readdir(directory, { withFileTypes: true })
           for (const entry of entries) {
             if (
-              entry.name === ".arunaki" ||
-              entry.name === ".arunaki-backups" ||
-              entry.name === ".git" ||
+              entry.name.startsWith(".") ||
               entry.name === "node_modules"
             ) {
               continue

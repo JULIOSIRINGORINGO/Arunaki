@@ -1,6 +1,30 @@
 import { Message } from "./types";
 import { formatToolStepLabel } from "../LiveExecutionBadge";
 
+function isInternalToolPart(p: any): boolean {
+  if (!p) return false;
+  const input = p.state?.input || p.input || p.args || p.toolInvocation?.args || {};
+  const target =
+    input.TargetFile ||
+    input.targetFile ||
+    input.path ||
+    input.filePath ||
+    input.file ||
+    (typeof input.command === "string" ? input.command : "") ||
+    "";
+  if (typeof target === "string" && target) {
+    const raw = target.replace(/\\/g, "/");
+    if (raw.includes(".arunaki") || raw.includes(".git") || raw.toLowerCase().includes("arunaki.md")) {
+      return true;
+    }
+    const segments = raw.split("/").filter(Boolean);
+    if (segments.some((s) => s.startsWith(".") && s !== "." && s !== "..")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function mapEngineMessages(raw: any[]): Message[] {
   if (!Array.isArray(raw)) return [];
 
@@ -43,7 +67,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       const textParts = msg.content.filter((p: any) => p && p.type === "text" && typeof p.text === "string");
       content = textParts.map((p: any) => p.text).join("");
 
-      const toolParts = msg.content.filter((p: any) => p && (p.type === "tool" || p.type === "tool-invocation"));
+      const toolParts = msg.content.filter((p: any) => p && (p.type === "tool" || p.type === "tool-invocation") && !isInternalToolPart(p));
       if (toolParts.length > 0) {
         executionSteps = toolParts.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";
@@ -84,7 +108,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
         thoughtSec = totalReasoningTime > 0 ? Math.max(1, Math.round(totalReasoningTime / 1000)) : 1;
       }
 
-      const toolInvocations = msg.parts.filter((p: any) => p && (p.type === "tool" || p.type === "tool-invocation"));
+      const toolInvocations = msg.parts.filter((p: any) => p && (p.type === "tool" || p.type === "tool-invocation") && !isInternalToolPart(p));
       if (toolInvocations.length > 0) {
         executionSteps = toolInvocations.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";

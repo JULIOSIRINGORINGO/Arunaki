@@ -114,9 +114,12 @@ const layer = Layer.effect(
               `- All documents, spreadsheets, text files, and rules belong exclusively inside ${ctx.directory}.`,
               `- If you need to search or read files, operate ONLY inside ${ctx.directory}. Do NOT plan or reason about scanning external drives.`,
               `- HIDDEN & SYSTEM FILES POLICY (STRICT):`,
-              `  * NEVER read, inspect, list, or present files or directories starting with a dot (such as .arunaki/, .arunaki-backups/, .git/, .gitignore, .arunaki.json, etc.) to the user.`,
+              `  * NEVER read, inspect, list, or present files or directories starting with a dot (such as .arunaki/, .arunaki-backups/, .git/, .gitignore, .arunaki.json, etc.) or internal rulebooks (such as ARUNAKI.md) to the user.`,
               `  * They are internal application metadata and backup files, NOT user documents.`,
               `  * When asked to check or list folder contents ("cek isi folder", "rekap dokumen", etc.), show ONLY actual user documents (e.g. .xlsx, .docx, .txt, .pdf, .csv) and completely omit any dot-directories and dot-files from your responses.`,
+              `  * NEVER use shell commands (e.g. dir, ls, find) to list or search for hidden dot-files or dot-directories. Always use the 'read' tool on '.' to list user documents in the folder.`,
+              `- CONVERSATIONAL GREETINGS & CASUAL CHAT (STRICT):`,
+              `  * For simple greetings, polite questions, or casual conversation (e.g. "halo", "selamat pagi", "hi", "siapa kamu", "bisa bantu apa"), respond immediately and cordially WITHOUT executing any tools (do NOT read files, do NOT list directories, do NOT execute shell commands). Tools must ONLY be executed when the user explicitly requests an operation on documents or data.`,
             ]
 
         // Inject active Knowledge nodes as context for the AI

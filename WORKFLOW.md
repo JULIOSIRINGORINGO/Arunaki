@@ -2727,9 +2727,22 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `packages/engine/engine/src/provider/transform.ts`: Menambahkan konfigurasi default `reasoningEffort: "high"` untuk model berkemampuan penalaran pada provider `kenari` dan `@ai-sdk/openai-compatible`. Mengaktifkan keluaran `reasoning_content` pada model seperti `deepseek-v4-flash`.
 - [x] **Multi-Step Live Streaming & Progress Continuity Fix**:
   - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`: Memperbaiki penanganan `text_end` agar tidak melakukan finalisasi prematur (`finalizeDone()`) ketika ada tool call yang sedang/akan dieksekusi. Tetap mempertahankan status live `Analyzing data & preparing final answer...` dengan animasi denyut ArunakiLogo hingga event `done` resmi tiba dari engine.
-- [x] **Verifikasi Build**:
-  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses).
+## Phase 81: Comprehensive Dot-Files Isolation, Tool Telemetry Sanitization & Conversational Guardrails (DONE)
 
-
-
-
+- [x] **Core & Engine Strict Dot-Files Exclusion**:
+  - `packages/engine/core/src/tool/read-filesystem.ts`: Menambahkan filter `.filter((item) => !item.name.startsWith("."))` pada `ReadTool.list` sehingga hasil pembacaan struktur direktori tidak pernah menyertakan folder/file tersembunyi.
+  - `packages/engine/core/src/filesystem.ts`: Mengubah `item.name.startsWith(".arunaki")` menjadi `item.name.startsWith(".")` pada `FileSystem.list`.
+  - `packages/engine/core/src/tool/glob.ts` & `grep.ts`: Memfilter entri hasil pencarian agar seluruh path yang mengandung segmen tersembunyi yang diawali titik dieliminasi sebelum diserahkan ke model.
+  - `packages/engine/engine/src/session/memory.ts`: Memperbarui `isSkipped` agar mengabaikan segmen berkas yang diawali titik (`seg.startsWith(".")`) pada proses sintesis cartographer serta pembuatan snapshot backup awal.
+- [x] **Hard Guardrail & Shell Output Sanitization**:
+  - `packages/engine/engine/src/tool/external-directory.ts`: Memperketat pengecekan guardrail tool sehingga akses terhadap target berkas/folder yang diawali titik maupun berkas sistem internal (`ARUNAKI.md`) langsung ditolak dengan `Access denied`.
+  - `packages/engine/engine/src/tool/shell.ts`: Membersihkan keluaran baris perintah shell (`dir /b`, `ls`, dll.) dari berkas/folder tersembunyi (`.arunaki`, `.arunaki-backups`, `.git`, `.gitignore`, `ARUNAKI.md`) sebelum dikirimkan ke konteks LLM.
+- [x] **Conversational Greetings & Prompt Sanitization**:
+  - `packages/engine/engine/src/session/system.ts`: Menambahkan instruksi ketat `CONVERSATIONAL GREETINGS & CASUAL CHAT (STRICT)` agar model tidak mengeksekusi tool baca berkas atau listing direktori saat menerima sapaan santai (`"halo"`, `"selamat pagi"`, dll.).
+  - `packages/engine/engine/src/session/prompt/default.txt`: Menghapus instruksi bagi LLM untuk memanggil tool `read`/`edit` pada `.arunaki/ARUNAKI.md` (karena aturan Living Memory dikelola secara otonom oleh background Sentinel), serta melarang pemanggilan tool pada sapaan percakapan biasa.
+- [x] **UI Telemetry & Execution Badge Sanitization**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`: Menyaring `formatFriendlyToolLabel` agar target berkas tersembunyi atau berkas internal tidak pernah dipaparkan ke antarmuka pengguna sebagai `Explored ARUNAKI.md`.
+  - `apps/web/src/components/workstation/chat/mapper.ts`: Menambahkan `isInternalToolPart` untuk mengecualikan langkah-langkah tool internal (seperti inspeksi rulebook atau dotfiles) dari collapsible execution card, sehingga percakapan biasa tidak memunculkan card eksekusi (sesuai aturan ketat AGENTS.md rule 3).
+- [x] **Verifikasi Build & Test**:
+  - `bun test packages/engine/core/test/tool-read-filesystem.test.ts` ✅ (8 passing tests, termasuk uji baru `excludes dotfiles and hidden directories from listing`).
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses dalam 22.38s).

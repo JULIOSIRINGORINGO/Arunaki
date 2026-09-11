@@ -115,4 +115,21 @@ describe("ReadToolFileSystem", () => {
       )
     }),
   )
+
+  it.effect("excludes dotfiles and hidden directories from listing", () =>
+    Effect.gen(function* () {
+      const { fs, files, directory } = yield* fixture
+      yield* files.writeFileString(path.join(directory, ".hidden"), "secret")
+      yield* files.writeFileString(path.join(directory, "visible.txt"), "hello")
+      yield* files.makeDirectory(path.join(directory, ".arunaki"))
+      yield* files.makeDirectory(path.join(directory, "docs"))
+
+      const result = yield* ReadToolFileSystem.list(fs, directory)
+      const entryPaths = result.entries.map((e) => e.path)
+
+      expect(entryPaths).toContain("docs" + path.sep)
+      expect(entryPaths).toContain("visible.txt")
+      expect(entryPaths.some((p) => p.startsWith("."))).toBe(false)
+    }),
+  )
 })

@@ -104,23 +104,25 @@ const layer = Layer.effectDiscard(
                 })
                 .pipe(
                   Effect.map((result) =>
-                    result.map((match) =>
-                      FileSystem.Match.make({
-                        ...match,
-                        entry: FileSystem.Entry.make({
-                          ...match.entry,
-                          path: RelativePath.make(
-                            path.relative(
-                              location.directory,
-                              path.resolve(
-                                info?.type === "Directory" ? target : path.dirname(target),
-                                match.entry.path,
+                    result
+                      .filter((match) => !match.entry.path.split(/[\\/]/).some((part) => part.startsWith(".")))
+                      .map((match) =>
+                        FileSystem.Match.make({
+                          ...match,
+                          entry: FileSystem.Entry.make({
+                            ...match.entry,
+                            path: RelativePath.make(
+                              path.relative(
+                                location.directory,
+                                path.resolve(
+                                  info?.type === "Directory" ? target : path.dirname(target),
+                                  match.entry.path,
+                                ),
                               ),
                             ),
-                          ),
+                          }),
                         }),
-                      }),
-                    ),
+                      ),
                   ),
                 )
             }).pipe(Effect.mapError(() => new ToolFailure({ message: `Unable to grep for ${input.pattern}` }))),

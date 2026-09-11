@@ -567,10 +567,22 @@ export const ShellTool = Tool.define(
       }
       if (aborted) meta.push("User aborted the command")
       const raw = list.map((item) => item.text).join("")
-      const end = tail(raw, limits.maxLines, limits.maxBytes)
+      // Filter out hidden files and system directories (.arunaki, .arunaki-backups, .git, etc.) from shell output
+      const rawCleaned = raw
+        .split("\n")
+        .filter((line) => {
+          const t = line.trim()
+          if (!t) return true
+          if (t.startsWith(".") && t !== "." && t !== ".." && !t.startsWith("./") && !t.startsWith("../")) return false
+          if (t.includes(".arunaki") || t.includes(".git") || t.toLowerCase().includes("arunaki.md")) return false
+          return true
+        })
+        .join("\n")
+
+      const end = tail(rawCleaned, limits.maxLines, limits.maxBytes)
       if (end.cut) cut = true
       if (!file && end.cut) {
-        file = yield* trunc.write(raw)
+        file = yield* trunc.write(rawCleaned)
       }
 
       let output = end.text
