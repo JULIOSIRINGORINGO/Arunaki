@@ -1,4 +1,5 @@
 import { Message } from "./types";
+import { formatToolStepLabel } from "../LiveExecutionBadge";
 
 export function mapEngineMessages(raw: any[]): Message[] {
   if (!Array.isArray(raw)) return [];
@@ -47,15 +48,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
         executionSteps = toolParts.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";
           const input = t.state?.input || t.input || t.args || t.toolInvocation?.args || {};
-          const target =
-            input.path ||
-            input.TargetFile ||
-            input.filePath ||
-            input.targetFile ||
-            input.pattern ||
-            (typeof input.command === "string" ? input.command.slice(0, 40) : undefined);
-          const filePreview = target && typeof target === "string" ? target.split(/[/\\]/).pop() : undefined;
-          const label = filePreview ? `Executed: ${toolName} → ${filePreview}` : `Executed: ${toolName}`;
+          const label = formatToolStepLabel(toolName, input, true);
           return {
             id: t.id || `tool-${idx}-${i}`,
             label,
@@ -96,15 +89,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
         executionSteps = toolInvocations.map((t: any, i: number) => {
           const toolName = t.name || t.tool || t.toolInvocation?.toolName || "action";
           const input = t.state?.input || t.input || t.args || t.toolInvocation?.args || {};
-          const target =
-            input.path ||
-            input.TargetFile ||
-            input.filePath ||
-            input.targetFile ||
-            input.pattern ||
-            (typeof input.command === "string" ? input.command.slice(0, 40) : undefined);
-          const filePreview = target && typeof target === "string" ? target.split(/[/\\]/).pop() : undefined;
-          const label = filePreview ? `Executed: ${toolName} → ${filePreview}` : `Executed: ${toolName}`;
+          const label = formatToolStepLabel(toolName, input, true);
           return {
             id: t.id || `tool-${idx}-${i}`,
             label,

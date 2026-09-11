@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Message } from "./types";
 import { mapEngineMessages } from "./mapper";
-import { LiveStatusData, StepItem } from "../LiveExecutionBadge";
+import { LiveStatusData, StepItem, formatToolStepLabel } from "../LiveExecutionBadge";
 import { extractCanvasContent } from "../canvas/canvas";
 import { isDocumentPath } from "../tabs/utils";
 import {
@@ -670,7 +670,7 @@ export function useWorkstationChat({
           }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
-          const label = `Preparing ${toolName}...`;
+          const label = formatToolStepLabel(toolName, event.data?.args || event.data?.input, false);
           setLiveStatus({ type: "tool_preparing", toolName, preview: label });
           if (!accumulatedSteps.some((s) => s.label === label)) {
             accumulatedSteps.push({
@@ -680,6 +680,16 @@ export function useWorkstationChat({
               iconType: "tool",
               toolName,
             });
+            setOptimisticMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMessageId
+                  ? {
+                      ...m,
+                      executionSteps: [...accumulatedSteps],
+                    }
+                  : m
+              )
+            );
           }
         } else if (event.type === "tool_live_status" || event.type === "tool_start" || event.type === "tool_progress") {
           if (textEndFinalizeTimeout) {
@@ -687,15 +697,15 @@ export function useWorkstationChat({
             textEndFinalizeTimeout = null;
           }
           resetWatchdog(120000);
-          const toolName = event.data?.toolName || "desktop_action";
-          const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
+          const toolName = event.data?.toolName || "action";
           const isFinished = event.data?.status === "completed" || event.data?.status === "failed";
-          const label = isFinished ? `Executed: ${toolName}${preview}` : `Executing: ${toolName}${preview}`;
+          const args = event.data?.args || event.data?.input || event.data?.preview;
+          const label = formatToolStepLabel(toolName, args, isFinished);
           setLiveStatus({
             type: event.type === "tool_live_status" ? "tool_live_status" : "tool_start",
             ...event.data,
             toolName,
-            preview: isFinished ? `Completed ${toolName}` : `Executing: ${toolName}${preview}`,
+            preview: label,
           });
 
           const finalStatus: "completed" | "running" = isFinished ? "completed" : "running";
@@ -718,6 +728,16 @@ export function useWorkstationChat({
               toolName,
             });
           }
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    executionSteps: [...accumulatedSteps],
+                  }
+                : m
+            )
+          );
           refetchFiles();
           reloadOpenTabsContent();
 

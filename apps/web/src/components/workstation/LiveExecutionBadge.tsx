@@ -3,8 +3,6 @@ import { cn } from "../../lib/utils";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Monitor,
-  Camera,
-  Globe,
   FileSpreadsheet,
   FileText,
   Keyboard,
@@ -14,6 +12,7 @@ import {
   Check,
   Database,
   FileSearch,
+  Loader2,
 } from "lucide-react";
 
 export interface LiveStatusData {
@@ -32,199 +31,224 @@ export interface StepItem {
   toolName?: string;
 }
 
+/**
+ * Clean, transparent action step label formatter.
+ * Produces user-friendly Antigravity-style labels instead of raw tool internals.
+ */
+export function formatToolStepLabel(
+  toolName: string,
+  argsOrTarget?: any,
+  isFinished = false
+): string {
+  const t = (toolName || "").toLowerCase();
+
+  let target = "";
+  if (typeof argsOrTarget === "string") {
+    target = argsOrTarget;
+  } else if (argsOrTarget && typeof argsOrTarget === "object") {
+    target =
+      argsOrTarget.TargetFile ||
+      argsOrTarget.targetFile ||
+      argsOrTarget.path ||
+      argsOrTarget.filePath ||
+      argsOrTarget.file ||
+      argsOrTarget.pattern ||
+      argsOrTarget.CommandLine ||
+      argsOrTarget.commandLine ||
+      (typeof argsOrTarget.command === "string" ? argsOrTarget.command : "") ||
+      "";
+  }
+
+  // Clean filename if it's a path
+  const fileName = target ? target.replace(/\\/g, "/").split("/").filter(Boolean).pop() || target : "";
+
+  // 1. Read / View / Explore
+  if (t === "read" || t === "read_file" || t === "view_file") {
+    if (fileName) return isFinished ? `Explored ${fileName}` : `Reading ${fileName}`;
+    return isFinished ? `Explored 1 file` : `Exploring file`;
+  }
+  if (t === "list_dir" || t === "glob") {
+    if (fileName) return isFinished ? `Explored folder ${fileName}` : `Exploring folder ${fileName}`;
+    return isFinished ? `Explored folder` : `Exploring folder`;
+  }
+
+  // 2. Edit / Write / Replace
+  if (t === "replace_file_content" || t === "multi_replace_file_content" || t === "edit" || t === "edit_file") {
+    return isFinished ? `Edited ${fileName || "file"}` : `Editing ${fileName || "file"}`;
+  }
+  if (t === "write_to_file" || t === "write" || t === "create_file") {
+    return isFinished ? `Created ${fileName || "file"}` : `Writing ${fileName || "file"}`;
+  }
+
+  // 3. Excel tools
+  if (t.includes("excel")) {
+    if (t.includes("read") || t.includes("view")) {
+      return isFinished ? `Read Excel ${fileName || ""}`.trim() : `Reading Excel ${fileName || ""}`.trim();
+    }
+    if (t.includes("create") || t.includes("new")) {
+      return isFinished ? `Created Excel ${fileName || ""}`.trim() : `Creating Excel ${fileName || ""}`.trim();
+    }
+    return isFinished ? `Updated Excel ${fileName || ""}`.trim() : `Updating Excel ${fileName || ""}`.trim();
+  }
+
+  // 4. Command / Bash / Script
+  if (t === "run_command" || t === "bash" || t === "powershell") {
+    const cmdPreview = target ? target.slice(0, 30) : "";
+    return isFinished ? `Ran ${cmdPreview || "command"}` : `Running ${cmdPreview || "command"}`;
+  }
+
+  // 5. Search / Knowledge
+  if (t.includes("knowledge") || t.includes("search") || t.includes("memory") || t.includes("grep")) {
+    return isFinished ? `Searched workspace` : `Searching workspace`;
+  }
+
+  // Fallback
+  const displayTool = toolName || "action";
+  if (fileName) {
+    return isFinished ? `${displayTool}: ${fileName}` : `Running ${displayTool}: ${fileName}`;
+  }
+  return isFinished ? `Executed ${displayTool}` : `Executing ${displayTool}`;
+}
+
+/**
+ * Returns dynamic contextual action verb for active live indicator.
+ * Active verbs instead of generic passive text.
+ */
+export function getActiveActionText(
+  steps?: StepItem[],
+  status?: LiveStatusData | null,
+  isReasoning?: boolean,
+  hasVisibleContent?: boolean
+): string {
+  // 1. If there is an active running tool
+  const runningStep = steps?.find((s) => s.status === "running");
+  if (runningStep) {
+    const t = (runningStep.toolName || runningStep.label || "").toLowerCase();
+    const l = runningStep.label;
+    if (l && !l.startsWith("Executing:") && !l.startsWith("Preparing")) {
+      return l.replace(/\.\.\.$/, "");
+    }
+    if (t.includes("excel")) return "Updating Excel document";
+    if (t.includes("read") || t.includes("view")) return "Reading document";
+    if (t.includes("write") || t.includes("edit")) return "Writing document";
+    if (t.includes("search") || t.includes("grep")) return "Searching workspace";
+    return runningStep.toolName ? `Running ${runningStep.toolName}` : "Executing action";
+  }
+
+  // 2. If status preview provides active tool action
+  if (status?.preview && status.type && status.type !== "text_delta" && status.type !== "thinking") {
+    return status.preview.replace(/\.\.\.$/, "");
+  }
+
+  // 3. If tools have finished and now preparing / synthesizing response
+  const hasCompletedTools = steps && steps.some((s) => s.iconType === "tool");
+  if (hasCompletedTools && !hasVisibleContent) {
+    return "Synthesizing document data";
+  }
+
+  // 4. If active reasoning / thinking
+  if (isReasoning) {
+    return "Thinking";
+  }
+
+  // 5. If response is already streaming text
+  if (hasVisibleContent) {
+    return "Generating response";
+  }
+
+  return "Analyzing request";
+}
+
+/**
+ * Dynamic active indicator with cycling animated dots (. -> .. -> ...).
+ * Ensures the UI is alive, transparent, and never passive.
+ */
+export function LiveActionIndicator({
+  action,
+  elapsedSec,
+  className,
+}: {
+  action?: string;
+  elapsedSec?: number;
+  className?: string;
+}) {
+  const [dotCount, setDotCount] = useState(1);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 400);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dots = ".".repeat(dotCount);
+  const displayAction = action || "Thinking";
+
+  return (
+    <div className={cn("flex items-center gap-1.5 font-mono text-xs select-none py-1 animate-fade-in text-[var(--text-muted)]", className)}>
+      <ArunakiLogo size={12} className="animate-pulse text-[#e59344] shrink-0" />
+      <span className="text-[var(--text-primary)] font-medium">
+        {displayAction}
+        <span className="inline-block w-4 text-left font-mono text-[#e59344]">{dots}</span>
+      </span>
+      {typeof elapsedSec === "number" && elapsedSec > 0 && (
+        <span className="text-[10px] text-[var(--text-dim)] font-mono">({elapsedSec}s)</span>
+      )}
+    </div>
+  );
+}
+
+function renderStepIcon(step: StepItem) {
+  if (step.iconType === "thinking") {
+    return <ArunakiLogo size={12} className="animate-pulse text-[#e59344] shrink-0 mt-0.5" />;
+  }
+  if (step.iconType === "text") {
+    return <Cpu size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+  }
+  const t = (step.toolName || step.label || "").toLowerCase();
+  if (t.includes("excel") || t.includes("csv") || t.includes("xlsx") || t.includes("xls")) {
+    return <FileSpreadsheet size={12} className="text-emerald-400 shrink-0 mt-0.5" />;
+  }
+  if (t.includes("word") || t.includes("docx") || t.includes("doc")) {
+    return <FileText size={12} className="text-blue-400 shrink-0 mt-0.5" />;
+  }
+  if (t.includes("knowledge") || t.includes("memory")) {
+    return <Database size={12} className="text-purple-400 shrink-0 mt-0.5" />;
+  }
+  if (t.includes("read") || t.includes("explore") || t.includes("file") || t.includes("search")) {
+    return <FileSearch size={12} className="text-amber-400 shrink-0 mt-0.5" />;
+  }
+  if (t.includes("edit") || t.includes("write") || t.includes("replace")) {
+    return <Keyboard size={12} className="text-cyan-400 shrink-0 mt-0.5" />;
+  }
+  return <Monitor size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
+}
+
 interface LiveExecutionBadgeProps {
   status: LiveStatusData | null;
   active?: boolean;
 }
 
 export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadgeProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [steps, setSteps] = useState<StepItem[]>(() => {
-    if (!status) return [];
-    return [{
-      id: `step-init-${Date.now()}`,
-      label: status.preview || "Analyzing request...",
-      status: "completed",
-      iconType: status.type === "tool_start" || status.type === "tool_preparing" ? "tool" : "thinking",
-    }];
-  });
-  const [waitingSec, setWaitingSec] = useState(0);
-  const [dotIndex, setDotIndex] = useState(1);
-
-  useEffect(() => {
-    if (!active) return;
-    setWaitingSec(0);
-    const start = Date.now();
-    const t = setInterval(() => setWaitingSec(Math.max(1, Math.floor((Date.now() - start) / 1000))), 1000);
-    const d = setInterval(() => setDotIndex((prev) => (prev % 3) + 1), 400);
-    return () => {
-      clearInterval(t);
-      clearInterval(d);
-    };
-  }, [active]);
-
-  useEffect(() => {
-    if (!status) {
-      setSteps([]);
-      return;
-    }
-
-    const type = status.type || (status.toolName ? 'tool_start' : 'thinking');
-    const toolName = status.toolName || '';
-    const preview = status.preview || '';
-
-    setSteps((prev) => {
-      let label = "Analyzing";
-      let iconType: 'thinking' | 'tool' | 'text' = 'thinking';
-
-      if (type === 'thinking') {
-        label = preview ? preview : "Analyzing request...";
-        iconType = 'thinking';
-      } else if (type === 'tool_preparing') {
-        iconType = 'tool';
-        const displayTool = toolName ? toolName : 'action';
-        label = preview || `Preparing ${displayTool}...`;
-      } else if (type === 'tool_start' || type === 'tool_live_status' || type === 'tool_progress') {
-        iconType = 'tool';
-        const displayTool = toolName ? toolName : 'desktop_action';
-        const detail = preview && !preview.startsWith("Executing") && !preview.startsWith("Completed") ? ` → ${preview}` : '';
-        label = preview || `Executing: ${displayTool}${detail}`;
-      } else if (type === 'text_delta') {
-        label = preview ? preview : "Generating response...";
-        iconType = 'text';
-      }
-
-      // Avoid duplicate consecutive identical step labels
-      const last = prev[prev.length - 1];
-      if (last && last.label === label) {
-        return prev;
-      }
-
-      // If replacing an existing "Preparing [tool]" with the actual "Executing [tool]"
-      const prepIdx = prev.findIndex((s) => s.iconType === 'tool' && s.label.startsWith(`Preparing ${toolName}`));
-      if (prepIdx >= 0 && (type === 'tool_start' || type === 'tool_progress' || type === 'tool_live_status')) {
-        const copy = [...prev];
-        copy[prepIdx] = {
-          ...copy[prepIdx],
-          label,
-          status: type === 'tool_live_status' ? 'completed' : 'running',
-          toolName,
-        };
-        return copy;
-      }
-
-      // Mark all previous steps as completed
-      const updatedPrev = prev.map((s) => ({ ...s, status: 'completed' as const }));
-      return [
-        ...updatedPrev,
-        {
-          id: `${Date.now()}-${Math.random()}`,
-          label,
-          status: type === 'tool_live_status' ? 'completed' : 'running',
-          iconType,
-          toolName,
-        },
-      ];
-    });
-  }, [status?.type, status?.toolName, status?.preview]);
-
   if (!status || !active) return null;
 
-  const completedCount = steps.filter((s) => s.status === 'completed').length;
-  const toolSteps = steps.filter((s) => s.iconType === 'tool');
   const hasToolExecution =
-    toolSteps.length > 0 ||
-    status.type === 'tool_preparing' ||
-    status.type === 'tool_start' ||
-    status.type === 'tool_live_status' ||
-    status.type === 'tool_progress';
+    status.type === "tool_preparing" ||
+    status.type === "tool_start" ||
+    status.type === "tool_live_status" ||
+    status.type === "tool_progress";
 
-  // Antigravity style: When no tools are being executed (simple text response / thinking),
-  // MessageThoughtBadge inside the message bubble exclusively handles thinking telemetry.
-  // Returning null here completely eliminates duplicate "Processing request & analyzing" indicators.
-  if (!hasToolExecution) {
-    return null;
-  }
+  if (!hasToolExecution) return null;
 
-  const animatedDots = ".".repeat(dotIndex);
-  const summaryHeader = status.preview && status.preview.startsWith("Preparing")
-    ? status.preview
-    : `Executing ${toolSteps.length || 1} document task${(toolSteps.length || 1) > 1 ? 's' : ''}`;
-
-  const renderStepIcon = (step: StepItem) => {
-    if (step.iconType === 'thinking') {
-      return <ArunakiLogo size={12} className="animate-pulse text-white shrink-0 mt-0.5" />;
-    }
-    if (step.iconType === 'text') {
-      return <Cpu size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    }
-    const t = (step.toolName || '').toLowerCase();
-    if (t.includes("excel")) return <FileSpreadsheet size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("word")) return <FileText size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("knowledge") || t.includes("memory")) return <Database size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("read") || t.includes("file") || t.includes("search")) return <FileSearch size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("browser")) return <Globe size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("screenshot")) return <Camera size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    if (t.includes("key")) return <Keyboard size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-    return <Monitor size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
-  };
-
-  return (
-    <div className="my-2 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] font-mono text-[11px] overflow-hidden animate-fade-in max-w-sm select-none">
-      {/* Collapsible Header */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <ArunakiLogo size={12} className="animate-pulse text-white shrink-0" />
-          <span className="font-semibold text-white truncate">{summaryHeader}</span>
-          <span className="inline-block w-3 text-left font-mono font-bold text-white">{animatedDots}</span>
-          <span className="text-[10px] text-[var(--text-dim)] shrink-0">
-            ({completedCount > 0 ? `${completedCount} done · ` : ''}{waitingSec}s)
-          </span>
-        </div>
-        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
-          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </div>
-      </button>
-
-      {/* Expanded Trace List */}
-      {isExpanded && (
-        <div className="px-3 py-2 space-y-1.5 bg-[var(--bg-panel)]">
-          {steps.map((step) => {
-            const isCompleted = step.status === 'completed';
-            return (
-              <div key={step.id} className="flex items-start gap-2 text-[var(--text-secondary)]">
-                {isCompleted ? (
-                  <Check size={12} className="text-white mt-0.5 shrink-0" />
-                ) : (
-                  renderStepIcon(step)
-                )}
-                <span
-                  className={`truncate max-w-[260px] ${
-                    isCompleted ? "text-[var(--text-dim)]" : "text-white font-medium"
-                  }`}
-                >
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
-          <div className="pt-1 flex items-center gap-1.5 text-[var(--text-dim)] text-[10px]">
-            <span className="animate-pulse">
-              Working... ({waitingSec}s)
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  return null;
 }
 
 /**
- * Opencode / Antigravity style collapsible thought/execution badge.
- * Matches Opencode UI parity: "Thought: 488ms" header with expandable reasoning text.
+ * Unified Agentic Thought & Execution Card.
+ * Matches Antigravity / Cursor / Opencode standards:
+ * 1. Compact document tasks checklist with running spinner & completed checkmarks
+ * 2. Monospace collapsible thought stream with duration
+ * 3. Transparent and active
  */
 export function MessageThoughtBadge({
   steps = [],
@@ -242,14 +266,25 @@ export function MessageThoughtBadge({
   isStreaming?: boolean;
 }) {
   const [collapsedManually, setCollapsedManually] = useState(false);
+  const [liveSec, setLiveSec] = useState(0);
 
-  const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
+  useEffect(() => {
+    if (!isStreaming) return;
+    setLiveSec(0);
+    const start = Date.now();
+    const interval = setInterval(() => {
+      setLiveSec(Math.max(1, Math.floor((Date.now() - start) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isStreaming]);
+
+  const toolSteps = steps.filter((s) => s.iconType === "tool" || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
+  const hasRunningTool = toolSteps.some((s) => s.status === "running");
+  const completedToolCount = toolSteps.filter((s) => s.status === "completed").length;
   const hasReasoning = Boolean(reasoning && reasoning.length > 0);
   const hasThoughtTime = Boolean((thoughtMs && thoughtMs > 0) || (thoughtSec && thoughtSec > 0));
-  const isThinkingActive = isStreaming && !steps.some((s) => s.iconType === 'text');
 
-  // Format Opencode duration: e.g. "488ms" or "1.4s"
   const durationLabel = useMemo(() => {
     if (thoughtMs && thoughtMs > 0) {
       if (thoughtMs < 1000) return `${thoughtMs}ms`;
@@ -258,32 +293,41 @@ export function MessageThoughtBadge({
     if (thoughtSec && thoughtSec > 0) {
       return `${thoughtSec}s`;
     }
+    if (isStreaming && liveSec > 0) {
+      return `${liveSec}s`;
+    }
     return undefined;
-  }, [thoughtMs, thoughtSec]);
+  }, [thoughtMs, thoughtSec, isStreaming, liveSec]);
 
-  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive && !hasThoughtTime))) {
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !hasThoughtTime))) {
     return null;
   }
 
   const isExpanded = showThinking && !collapsedManually;
 
   return (
-    <div className="w-full min-w-0 mb-2 font-sans select-none">
-      {/* 1. Buka-Tutup Accordion: strictly for tool & function execution calls */}
+    <div className="w-full min-w-0 mb-1 font-sans select-none animate-in fade-in duration-150">
+      {/* 1. Live / Completed Function Calling Card */}
       {hasToolExecution && (
-        <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
+        <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none shadow-xs">
           <button
             type="button"
             onClick={() => setCollapsedManually(!collapsedManually)}
-            className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
+            className="w-full flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
           >
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Check size={12} className="text-white shrink-0" />
+            <div className="flex items-center gap-2 min-w-0">
+              {hasRunningTool ? (
+                <Loader2 size={12} className="animate-spin text-amber-400 shrink-0" />
+              ) : (
+                <Check size={12} className="text-emerald-400 shrink-0" />
+              )}
               <span className="font-semibold text-white truncate">
-                Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
+                {hasRunningTool
+                  ? `Executing ${toolSteps.length} document task${toolSteps.length > 1 ? "s" : ""}...`
+                  : `Executed ${toolSteps.length} document task${toolSteps.length > 1 ? "s" : ""}`}
               </span>
-              <span className="text-[10px] text-[var(--text-dim)] shrink-0">
-                ({toolSteps.length} step{toolSteps.length > 1 ? 's' : ''}{durationLabel ? ` · ${durationLabel}` : ''})
+              <span className="text-[10px] text-[var(--text-dim)] shrink-0 font-mono">
+                ({hasRunningTool ? `${completedToolCount}/${toolSteps.length} done · ${liveSec}s` : `${toolSteps.length} step${toolSteps.length > 1 ? "s" : ""}${durationLabel ? ` · ${durationLabel}` : ""}`})
               </span>
             </div>
             <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
@@ -293,37 +337,47 @@ export function MessageThoughtBadge({
 
           {isExpanded && (
             <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
-              {toolSteps.map((step, idx) => (
-                <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
-                  <Check size={11} className="text-white mt-0.5 shrink-0" />
-                  <span className="truncate max-w-full text-[var(--text-muted)]">
-                    {step.label}
-                  </span>
-                </div>
-              ))}
+              {toolSteps.map((step, idx) => {
+                const isRunning = step.status === "running";
+                return (
+                  <div key={step.id || idx} className="flex items-center gap-2 text-[var(--text-secondary)] min-w-0">
+                    {isRunning ? (
+                      <Loader2 size={11} className="animate-spin text-amber-400 shrink-0" />
+                    ) : (
+                      <Check size={11} className="text-emerald-400 shrink-0" />
+                    )}
+                    {renderStepIcon(step)}
+                    <span className={cn("truncate max-w-[80%]", isRunning ? "text-white font-medium" : "text-[var(--text-muted)]")}>
+                      {step.label}
+                    </span>
+                    <span className={cn("text-[10px] ml-auto font-mono shrink-0", isRunning ? "text-amber-400 animate-pulse" : "text-[var(--text-dim)]")}>
+                      {isRunning ? "running..." : "done"}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* 2. Opencode Parity: Thought: 488ms header + actual reasoning content */}
-      {showThinking && (hasReasoning || isThinkingActive || hasThoughtTime) && (
-        <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1.5 whitespace-pre-wrap">
+      {/* 2. Opencode / Antigravity Parity: Live or Completed Thought Block */}
+      {showThinking && (hasReasoning || hasThoughtTime) && (
+        <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <button
             type="button"
             onClick={() => hasReasoning && setCollapsedManually(!collapsedManually)}
             className={cn(
               "flex items-center gap-1.5 mb-1.5 not-italic font-mono text-[11px] select-none transition-opacity",
-              hasReasoning ? "cursor-pointer hover:opacity-80" : "cursor-default opacity-80"
+              hasReasoning ? "cursor-pointer hover:opacity-80" : "cursor-default opacity-90"
             )}
           >
-            <span className="font-medium text-[#e59344]">
-              {isThinkingActive ? "Thinking..." : "Thought:"}
-            </span>
-            {durationLabel && !isThinkingActive ? (
+            <ArunakiLogo size={12} className={cn("shrink-0", isStreaming ? "animate-pulse text-[#e59344]" : "text-[#e59344]/80")} />
+            <span className="font-medium text-[#e59344]">Thought:</span>
+            {durationLabel ? (
               <span className="text-[#e59344]/90 font-mono text-[11px]">{durationLabel}</span>
             ) : null}
-            {hasReasoning && !isThinkingActive && (
+            {hasReasoning && !isStreaming && (
               <span className="text-[#e59344]/50 flex items-center ml-0.5">
                 {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
               </span>
@@ -333,7 +387,7 @@ export function MessageThoughtBadge({
           {hasReasoning && isExpanded && (
             <div className="text-[11.5px] font-mono text-[var(--text-muted)] leading-relaxed select-text break-words not-italic opacity-90 pl-0.5">
               {isStreaming ? reasoning : reasoning?.trim()}
-              {isStreaming && isThinkingActive && (
+              {isStreaming && (
                 <span className="inline-block w-1.5 h-3 bg-[#e59344] ml-0.5 animate-pulse align-middle" />
               )}
             </div>

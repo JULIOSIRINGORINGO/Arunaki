@@ -1,9 +1,9 @@
-import { memo, useState, useMemo, type MouseEvent } from "react";
+import { memo, useState, useEffect, useMemo, type MouseEvent } from "react";
 import { Check, Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../../lib/utils";
 import { API_BASE } from "../../../lib/api";
-import { MessageThoughtBadge, StepItem } from "../LiveExecutionBadge";
+import { MessageThoughtBadge, StepItem, LiveActionIndicator, getActiveActionText } from "../LiveExecutionBadge";
 import { ChatMessageContent } from "./ChatMessageContent";
 import { Message } from "./types";
 
@@ -26,6 +26,17 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
 }: ChatMessageBubbleProps) {
   // CRITICAL: React Rules of Hooks - all hooks unconditionally declared at the top before any condition or early return!
   const [copied, setCopied] = useState(false);
+  const [liveElapsedSec, setLiveElapsedSec] = useState(0);
+
+  useEffect(() => {
+    if (!isStreaming) return;
+    setLiveElapsedSec(0);
+    const start = Date.now();
+    const interval = setInterval(() => {
+      setLiveElapsedSec(Math.max(1, Math.floor((Date.now() - start) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isStreaming]);
 
   const imageMentions = useMemo(() => {
     const contentStr = msg?.content || "";
@@ -64,6 +75,12 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
 
   const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
+
+  const activeActionText = useMemo(() => {
+    if (!isStreaming) return "";
+    return getActiveActionText(steps, undefined, Boolean(isThinkingActive || (msg?.reasoning && !hasVisibleContent)), hasVisibleContent);
+  }, [isStreaming, steps, isThinkingActive, msg?.reasoning, hasVisibleContent]);
+
   const hasThoughtOrSteps =
     !isUser &&
     (Boolean(showThinking && (msg?.reasoning || isThinkingActive || msg?.thoughtSec || thoughtSec || msg?.thoughtMs || thoughtMs)) ||
@@ -153,14 +170,17 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             </div>
           ) : null}
         </div>
-      ) : !isUser && isStreaming && !showThinking ? (
-        <div className="p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full font-sans bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]">
-          <div className="flex items-center gap-1.5 text-[var(--text-muted)] text-[11px]">
-            <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 animate-pulse" />
-            <span className="italic">Generating response...</span>
-          </div>
-        </div>
       ) : null}
+
+      {/* Dynamic active indicator while streaming - active, transparent, never passive */}
+      {!isUser && isStreaming && (
+        <div className="py-0.5 px-1">
+          <LiveActionIndicator
+            action={activeActionText}
+            elapsedSec={liveElapsedSec}
+          />
+        </div>
+      )}
 
       {/* Action Toolbar & Timestamp - only rendered when there is visible bubble content */}
       {hasVisibleContent && (
