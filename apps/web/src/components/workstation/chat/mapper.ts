@@ -1,4 +1,4 @@
-import { Message } from "./types";
+import { Message, MessagePart } from "./types";
 import { formatToolStepLabel } from "../LiveExecutionBadge";
 
 function isInternalToolPart(p: any): boolean {
@@ -35,6 +35,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
     let executionSteps: any[] | undefined = undefined;
     let thoughtSec: number | undefined = undefined;
     let thoughtMs: number | undefined = undefined;
+    const parts: MessagePart[] = [];
 
     // 1. Text & reasoning from msg.content / msg.text
     if (typeof msg.content === "string") {
@@ -157,6 +158,65 @@ export function mapEngineMessages(raw: any[]): Message[] {
 
     content = content.trim();
 
+    // 3. Build chronological parts
+    const sourceArray = Array.isArray(msg.parts) ? msg.parts : Array.isArray(msg.content) ? msg.content : [];
+    sourceArray.forEach((p: any, pIdx: number) => {
+      if (!p) return;
+      if (p.type === "reasoning" && typeof p.text === "string" && p.text.trim()) {
+        let durSec: number | undefined = undefined;
+        let durMs: number | undefined = undefined;
+        if (p.time?.start && p.time?.end && p.time.end > p.time.start) {
+          durMs = p.time.end - p.time.start;
+          durSec = Math.max(1, Math.round(durMs / 1000));
+        }
+        parts.push({
+          type: "thought",
+          text: p.text.trim(),
+          durationSec: durSec || thoughtSec,
+          durationMs: durMs || thoughtMs,
+        });
+      } else if (p.type === "text" && typeof p.text === "string" && p.text.trim()) {
+        parts.push({
+          type: "text",
+          text: p.text.trim(),
+        });
+      } else if ((p.type === "tool" || p.type === "tool-invocation") && !isInternalToolPart(p)) {
+        const toolName = p.name || p.tool || p.toolInvocation?.toolName || "action";
+        const input = p.state?.input || p.input || p.args || p.toolInvocation?.args || {};
+        const label = formatToolStepLabel(toolName, input, true);
+        parts.push({
+          type: "tool",
+          step: {
+            id: p.id || `tool-${idx}-${pIdx}`,
+            label,
+            status: "completed",
+            iconType: "tool",
+            toolName,
+          },
+        });
+      }
+    });
+
+    if (parts.length === 0 && role === "assistant") {
+      if (reasoning.trim()) {
+        parts.push({
+          type: "thought",
+          text: reasoning.trim(),
+          durationSec: thoughtSec,
+          durationMs: thoughtMs,
+        });
+      }
+      if (executionSteps && executionSteps.length > 0) {
+        executionSteps.forEach((s) => parts.push({ type: "tool", step: s }));
+      }
+      if (content.trim()) {
+        parts.push({
+          type: "text",
+          text: content.trim(),
+        });
+      }
+    }
+
     return {
       id: msg.id || `${role}-${idx}-${Date.now()}`,
       role,
@@ -165,6 +225,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       executionSteps: executionSteps || undefined,
       thoughtSec: thoughtSec,
       thoughtMs: thoughtMs,
+      parts: parts.length > 0 ? parts : undefined,
       createdAt: msg.createdAt || msg.time?.created || (msg.time?.start ? msg.time.start : undefined),
     };
   });
@@ -176,6 +237,9 @@ export function mapEngineMessages(raw: any[]): Message[] {
     if (last && last.role === "assistant" && m.role === "assistant") {
       if (m.content) {
         last.content = last.content ? `${last.content}\n\n${m.content}` : m.content;
+      }
+      if (m.parts && m.parts.length > 0) {
+        last.parts = [...(last.parts || []), ...m.parts];
       }
       if (m.reasoning) {
         if (!last.reasoning) {

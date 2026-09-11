@@ -120,6 +120,11 @@ const layer = Layer.effect(
               `  * NEVER use shell commands (e.g. dir, ls, find) to list or search for hidden dot-files or dot-directories. Always use the 'read' tool on '.' to list user documents in the folder.`,
               `- CONVERSATIONAL GREETINGS & CASUAL CHAT (STRICT):`,
               `  * For simple greetings, polite questions, or casual conversation (e.g. "halo", "selamat pagi", "hi", "siapa kamu", "bisa bantu apa"), respond immediately and cordially WITHOUT executing any tools (do NOT read files, do NOT list directories, do NOT execute shell commands). Tools must ONLY be executed when the user explicitly requests an operation on documents or data.`,
+              `- ACTION-FIRST BIAS FOR DOCUMENT UPDATES & RAW DATA (STRICT):`,
+              `  * Minimal Typing, Maximum Automation: When the user provides unformatted text, notes, chat excerpts, daily sales figures, or requests document updates in any phrasing:`,
+              `  * DO NOT engage in lengthy internal monologues, repetitive hypothetical debates, or paralysis by analysis.`,
+              `  * IMMEDIATELY invoke the relevant document inspection or editing tools (such as 'read' or 'edit') on the target documents in the active workspace.`,
+              `  * Resolve document or column ambiguities by inspecting actual file contents directly with tools, perform the updates decisively, and report the result concisely.`,
             ]
 
         // Inject active Knowledge nodes as context for the AI

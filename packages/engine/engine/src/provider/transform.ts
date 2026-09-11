@@ -34,7 +34,7 @@ function isKimiFamily(model: Provider.Model) {
     })
   )
     return true
-  const url = model.api.url.toLowerCase()
+  const url = model.api.url?.toLowerCase() ?? ""
   return ["api.kimi.com", "api.moonshot.ai", "api.moonshot.cn", "api.moonshotai.cn"].some((host) => url.includes(host))
 }
 
@@ -889,7 +889,10 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
         )
       }
       return Object.fromEntries(
-        openaiCompatibleReasoningEfforts(model.api.id).map((effort) => [effort, { reasoningEffort: effort }]),
+        openaiCompatibleReasoningEfforts(model.api.id).map((effort) => [
+          effort,
+          { reasoningEffort: effort, reasoning_effort: effort },
+        ]),
       )
 
     case "@ai-sdk/github-copilot":
@@ -930,13 +933,23 @@ export function variants(model: Provider.Model): Record<string, Record<string, a
     // https://docs.venice.ai/overview/guides/reasoning-models#reasoning-effort
     case "@ai-sdk/openai-compatible":
       if (model.api.id.toLowerCase().includes("north-mini-code")) {
-        return Object.fromEntries(["none", "high"].map((effort) => [effort, { reasoningEffort: effort }]))
+        return Object.fromEntries(
+          ["none", "high"].map((effort) => [
+            effort,
+            { reasoningEffort: effort, reasoning_effort: effort },
+          ]),
+        )
       }
       const efforts = [...WIDELY_SUPPORTED_EFFORTS]
       if (model.api.id.toLowerCase().includes("deepseek-v4")) {
         efforts.push("max")
       }
-      return Object.fromEntries(efforts.map((effort) => [effort, { reasoningEffort: effort }]))
+      return Object.fromEntries(
+        efforts.map((effort) => [
+          effort,
+          { reasoningEffort: effort, reasoning_effort: effort },
+        ]),
+      )
 
     case "@ai-sdk/azure":
       // https://v5.ai-sdk.dev/providers/ai-sdk-providers/azure
@@ -1267,8 +1280,8 @@ export function options(input: {
       input.model.api.npm === "@ai-sdk/openai-compatible") &&
     input.model.capabilities.reasoning
   ) {
-    result["reasoningEffort"] = result["reasoningEffort"] ?? "high"
-    result["reasoning_effort"] = result["reasoning_effort"] ?? "high"
+    result["reasoningEffort"] = result["reasoningEffort"] ?? "medium"
+    result["reasoning_effort"] = result["reasoning_effort"] ?? "medium"
   }
 
   if (input.providerOptions?.setCacheKey !== false) {
@@ -1787,7 +1800,7 @@ function reasoningEffort(model: Provider.Model, effort: string) {
     case "venice-ai-sdk-provider":
     case "ai-gateway-provider":
     case "merge-gateway-ai-sdk-provider":
-      return { reasoningEffort: effort }
+      return { reasoningEffort: effort, reasoning_effort: effort }
     case "@ai-sdk/cohere":
     case "@ai-sdk/perplexity":
     case "@ai-sdk/vercel":

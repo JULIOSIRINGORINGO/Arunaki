@@ -2746,3 +2746,27 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build & Test**:
   - `bun test packages/engine/core/test/tool-read-filesystem.test.ts` ✅ (8 passing tests, termasuk uji baru `excludes dotfiles and hidden directories from listing`).
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses dalam 22.38s).
+
+## Phase 82: Document Action-First Execution, Watchdog Timeout Resilience, Payload Sync & Segmented Box-per-Box Chat UI (DONE)
+
+- [x] **Engine Provider Transform & Payload Sync**:
+  - `packages/engine/engine/src/provider/transform.ts`:
+    - Memperbaiki `isKimiFamily` agar menggunakan safe navigation `model.api.url?.toLowerCase() ?? ""` sehingga tidak memicu crash `TypeError` saat `url` tidak didefinisikan.
+    - Menyelaraskan opsi reasoning pada `@ai-sdk/openai-compatible` agar memetakan kedua key sekaligus (`reasoningEffort: effort` dan `reasoning_effort: effort`). Ketika pengguna memilih "Low" di UI, nilai snake_case yang dibaca API provider ikut berubah menjadi `"low"`.
+    - Mengubah default fallback reasoning effort dari `"high"` menjadi `"medium"` agar model reasoning tidak boros token secara tidak sengaja.
+- [x] **Action-First System Prompt & Decisiveness**:
+  - `packages/engine/engine/src/session/system.ts`: Menambahkan instruksi ketat `ACTION-FIRST BIAS FOR DOCUMENT UPDATES & RAW DATA (STRICT)` dalam bahasa Inggris teknis formal untuk mencegah model berputar-putar dalam loop penalaran panjang (*paralysis by analysis*).
+  - `packages/engine/engine/src/session/prompt/default.txt`: Menegaskan prinsip kepatuhan prompt bahwa model wajib segera memanggil tool pembacaan/penulisan file target saat menerima rekapan teks mentah dari pengguna.
+- [x] **Watchdog Timeout Resilience**:
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Memperbaiki kondisi watchdog (baris 474): Menambahkan pemeriksaan `accumulatedReasoningText.trim().length > 0`, `accumulatedSteps.length > 0`, dan `accumulatedParts.length > 0`. Menjamin respons aktif tidak pernah dipotong atau ditimpa kartu timeout error jika data penalaran/tool sedang aktif diterima.
+    - Menyelaraskan fallback variant dari `"high"` menjadi `"medium"`.
+- [x] **Segmented Box-per-Box Chat UI (Antigravity Parity)**:
+  - `apps/web/src/components/workstation/chat/types.ts`: Menambahkan definisi `MessagePart` (`thought`, `text`, `tool`) dan menambahkan `parts?: MessagePart[]` pada antarmuka `Message`.
+  - `apps/web/src/components/workstation/chat/mapper.ts`: Memetakan part engine SQLite secara kronologis ke dalam `Message.parts`, mempertahankan urutan waktu asli antara pemikiran, tindakan tool, dan narasi teks.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`: Mengakumulasikan `accumulatedParts` secara real-time selama streaming SSE berlangsung dan menyertakannya pada state pesan optimistik.
+  - `apps/web/src/components/workstation/chat/ChatMessageBubble.tsx`: Merender `msg.parts` secara modular menjadi kotak/card visual terpisah (Thought card collapsible, Action card tool, dan Bubble teks mandiri), menghapus penggabungan teks raksasa dan mencapai paritas visual dengan Antigravity / Cursor.
+- [x] **Verifikasi Build & Test**:
+  - `bun test packages/engine/core/test/tool-read-filesystem.test.ts` ✅ (8 passing tests).
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai dalam 20.53s).
+

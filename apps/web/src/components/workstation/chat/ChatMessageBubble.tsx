@@ -73,7 +73,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     } catch {}
   }
 
-  const hasVisibleContent = displayContent.length > 0 || imageMentions.length > 0;
+  const hasPartsContent = !isUser && Boolean(msg?.parts && msg.parts.length > 0);
+  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || imageMentions.length > 0;
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
 
   const activeActionText = useMemo(() => {
@@ -84,7 +85,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   const hasThoughtOrSteps =
     !isUser &&
     (Boolean(showThinking && (msg?.reasoning || isThinkingActive || msg?.thoughtSec || thoughtSec || msg?.thoughtMs || thoughtMs)) ||
-      Boolean(steps && steps.length > 0));
+      Boolean(steps && steps.length > 0) ||
+      hasPartsContent);
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
     return null;
@@ -112,65 +114,114 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
-      {!isUser && (
-        <MessageThoughtBadge
-          steps={steps}
-          thoughtSec={thoughtSec}
-          thoughtMs={thoughtMs}
-          reasoning={msg.reasoning}
-          showThinking={showThinking}
-          isStreaming={isStreaming}
-        />
-      )}
-
-      {hasVisibleContent ? (
-        <div
-          className={cn(
-            "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
-            isUser
-              ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
-              : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
-          )}
-        >
-          {imageMentions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {imageMentions.map((imgName, i) => (
+      {!isUser && msg?.parts && msg.parts.length > 0 ? (
+        <div className="flex flex-col gap-1.5 w-full min-w-0">
+          {msg.parts.map((part, pIdx) => {
+            const isLastPart = pIdx === msg.parts!.length - 1;
+            if (part.type === "thought") {
+              return (
+                <MessageThoughtBadge
+                  key={`part-${pIdx}`}
+                  thoughtSec={part.durationSec || thoughtSec}
+                  thoughtMs={part.durationMs || thoughtMs}
+                  reasoning={part.text}
+                  showThinking={showThinking}
+                  isStreaming={isStreaming && isLastPart}
+                />
+              );
+            }
+            if (part.type === "tool") {
+              return (
+                <MessageThoughtBadge
+                  key={`part-${pIdx}`}
+                  steps={[part.step]}
+                  showThinking={false}
+                  isStreaming={isStreaming && isLastPart && part.step.status === "running"}
+                />
+              );
+            }
+            if (part.type === "text" && part.text.trim().length > 0) {
+              return (
                 <div
-                  key={i}
-                  className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
-                  onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
-                  title="Click to view full image"
+                  key={`part-${pIdx}`}
+                  className={cn(
+                    "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
+                    "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
+                  )}
                 >
-                  <img
-                    src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
-                    alt={imgName}
-                    className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
-                    onError={(e) => {
-                      const parent = (e.target as HTMLElement).parentElement;
-                      if (parent) {
-                        parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
-                      }
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
-                    <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                      {imgName}
-                    </span>
-                  </div>
+                  <ChatMessageContent content={part.text} isUser={false} />
+                  {isStreaming && isLastPart && (
+                    <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      ) : (
+        <>
+          {!isUser && (
+            <MessageThoughtBadge
+              steps={steps}
+              thoughtSec={thoughtSec}
+              thoughtMs={thoughtMs}
+              reasoning={msg.reasoning}
+              showThinking={showThinking}
+              isStreaming={isStreaming}
+            />
           )}
-          {displayContent ? (
-            <div className="relative">
-              <ChatMessageContent content={displayContent} isUser={isUser} />
-              {isStreaming && !isUser && (
-                <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
+
+          {hasVisibleContent ? (
+            <div
+              className={cn(
+                "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
+                isUser
+                  ? "bg-[var(--bg-hover)] text-[var(--text-primary)] rounded-br-xs border border-[var(--border-strong)]"
+                  : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
               )}
+            >
+              {imageMentions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {imageMentions.map((imgName, i) => (
+                    <div
+                      key={i}
+                      className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
+                      onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
+                      title="Click to view full image"
+                    >
+                      <img
+                        src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
+                        alt={imgName}
+                        className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
+                        onError={(e) => {
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
+                          }
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
+                        <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                          {imgName}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {displayContent ? (
+                <div className="relative">
+                  <ChatMessageContent content={displayContent} isUser={isUser} />
+                  {isStreaming && !isUser && (
+                    <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : null}
-        </div>
-      ) : null}
+        </>
+      )}
 
       {/* Dynamic active indicator while streaming - active, transparent, never passive */}
       {!isUser && isStreaming && (

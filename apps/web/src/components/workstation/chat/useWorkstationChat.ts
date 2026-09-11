@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Message } from "./types";
+import { Message, MessagePart } from "./types";
 import { mapEngineMessages } from "./mapper";
 import { LiveStatusData, StepItem, formatToolStepLabel } from "../LiveExecutionBadge";
 import { extractCanvasContent } from "../canvas/canvas";
@@ -263,7 +263,7 @@ export function useWorkstationChat({
     }
 
     const activeModel = resolveActiveSingleModel();
-    const effectiveVariant = reasoningEffort || "high";
+    const effectiveVariant = reasoningEffort || "medium";
 
     try {
       const session = await createSession({
@@ -338,7 +338,7 @@ export function useWorkstationChat({
     const activeModel = resolveActiveSingleModel();
 
     let chatIdToUse = activeChatId;
-    const effectiveVariant = reasoningEffort || "high";
+    const effectiveVariant = reasoningEffort || "medium";
     if (!chatIdToUse || !chatIdToUse.startsWith("ses_")) {
       try {
         const session = await createSession({
@@ -368,6 +368,7 @@ export function useWorkstationChat({
     let needsTextSeparator = false;
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
+    const accumulatedParts: MessagePart[] = [];
 
     let hasDispatchedNotification = false;
     const dispatchCompletionNotification = (toolsCount = 0) => {
@@ -471,7 +472,13 @@ export function useWorkstationChat({
         setLiveStatus(null);
 
         // If response content was already received, never overwrite it with a timeout error!
-        if (accumulatedResponseText.trim().length > 0) {
+        const hasReceivedData =
+          accumulatedResponseText.trim().length > 0 ||
+          accumulatedReasoningText.trim().length > 0 ||
+          accumulatedSteps.length > 0 ||
+          accumulatedParts.length > 0;
+
+        if (hasReceivedData) {
           dispatchCompletionNotification(accumulatedSteps.filter((s) => s.iconType === "tool").length);
           queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
           setOptimisticMessages([]);
@@ -625,6 +632,12 @@ export function useWorkstationChat({
             needsReasoningSeparator = false;
           }
           accumulatedReasoningText += event.data;
+          const lastThought = accumulatedParts[accumulatedParts.length - 1];
+          if (lastThought && lastThought.type === "thought") {
+            lastThought.text = accumulatedReasoningText;
+          } else {
+            accumulatedParts.push({ type: "thought", text: accumulatedReasoningText });
+          }
           setLiveStatus({ type: "thinking", preview: "Thinking..." });
           setOptimisticMessages((prev) => {
             const exists = prev.some((m) => m.id === assistantMessageId);
@@ -638,6 +651,7 @@ export function useWorkstationChat({
                   reasoning: accumulatedReasoningText,
                   createdAt: new Date().toISOString(),
                   executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                  parts: [...accumulatedParts],
                 },
               ];
             }
@@ -647,6 +661,7 @@ export function useWorkstationChat({
                     ...m,
                     reasoning: accumulatedReasoningText,
                     executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
+                    parts: [...accumulatedParts],
                   }
                 : m
             );
@@ -710,12 +725,23 @@ export function useWorkstationChat({
           const label = formatToolStepLabel(toolName, event.data?.args || event.data?.input, false);
           setLiveStatus({ type: "tool_preparing", toolName, preview: label });
           if (!accumulatedSteps.some((s) => s.label === label)) {
+            const toolStepId = `${Date.now()}-${Math.random()}`;
             accumulatedSteps.push({
-              id: `${Date.now()}-${Math.random()}`,
+              id: toolStepId,
               label,
               status: "running",
               iconType: "tool",
               toolName,
+            });
+            accumulatedParts.push({
+              type: "tool",
+              step: {
+                id: toolStepId,
+                label,
+                status: "running",
+                iconType: "tool",
+                toolName,
+              },
             });
             setOptimisticMessages((prev) =>
               prev.map((m) =>
@@ -723,6 +749,7 @@ export function useWorkstationChat({
                   ? {
                       ...m,
                       executionSteps: [...accumulatedSteps],
+                      parts: [...accumulatedParts],
                     }
                   : m
               )
@@ -765,12 +792,33 @@ export function useWorkstationChat({
               toolName,
             });
           }
+
+          const existingToolPart = accumulatedParts.find(
+            (p) => p.type === "tool" && (p.step.toolName === toolName || p.step.label.includes(toolName))
+          );
+          if (existingToolPart && existingToolPart.type === "tool") {
+            existingToolPart.step.label = label;
+            existingToolPart.step.status = finalStatus;
+          } else {
+            accumulatedParts.push({
+              type: "tool",
+              step: {
+                id: `${Date.now()}-${Math.random()}`,
+                label,
+                status: finalStatus,
+                iconType: "tool",
+                toolName,
+              },
+            });
+          }
+
           setOptimisticMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
                 ? {
                     ...m,
                     executionSteps: [...accumulatedSteps],
+                    parts: [...accumulatedParts],
                   }
                 : m
             )
@@ -808,6 +856,13 @@ export function useWorkstationChat({
             needsTextSeparator = false;
           }
           accumulatedResponseText += event.data;
+
+          let lastTextPart = accumulatedParts[accumulatedParts.length - 1];
+          if (!lastTextPart || lastTextPart.type !== "text") {
+            lastTextPart = { type: "text", text: "" };
+            accumulatedParts.push(lastTextPart);
+          }
+          lastTextPart.text += event.data;
 
           let displayReasoning = accumulatedReasoningText;
           let displayText = accumulatedResponseText;
@@ -858,6 +913,7 @@ export function useWorkstationChat({
                   reasoning: displayReasoning || undefined,
                   createdAt: new Date().toISOString(),
                   executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                  parts: [...accumulatedParts],
                 },
               ];
             }
@@ -868,6 +924,7 @@ export function useWorkstationChat({
                     content: displayText,
                     reasoning: displayReasoning || m.reasoning,
                     executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
+                    parts: [...accumulatedParts],
                   }
                 : m
             );
@@ -946,7 +1003,7 @@ export function useWorkstationChat({
       }, abortCtrl.signal, activeFolder);
 
       await sendPrompt(chatIdToUse, userText, {
-        variant: reasoningEffort || "high",
+        variant: reasoningEffort || "medium",
         signal: abortCtrl.signal,
       });
       // Prompt was accepted by the engine. Streaming is now in progress over SSE.

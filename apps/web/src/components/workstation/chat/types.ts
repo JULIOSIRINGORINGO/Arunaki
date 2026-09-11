@@ -1,5 +1,10 @@
 import { StepItem } from "../LiveExecutionBadge";
 
+export type MessagePart =
+  | { type: "thought"; text: string; durationSec?: number; durationMs?: number }
+  | { type: "text"; text: string }
+  | { type: "tool"; step: StepItem };
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -10,6 +15,7 @@ export interface Message {
   thoughtMs?: number;
   metadata?: string | Record<string, any>;
   reasoning?: string;
+  parts?: MessagePart[];
 }
 
 export interface AttachedImage {
