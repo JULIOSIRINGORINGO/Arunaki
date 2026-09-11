@@ -97,6 +97,7 @@ export function useWorkstationChat({
   const producedFilesRef = useRef<string[]>([]);
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const resetWatchdogRef = useRef<((timeoutMs?: number) => void) | null>(null);
+  const currentTurnIdRef = useRef<string>("");
 
   const clearWatchdog = useCallback(() => {
     if (watchdogRef.current) {
@@ -228,6 +229,7 @@ export function useWorkstationChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    currentTurnIdRef.current = "";
     setStreamingState(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
@@ -293,8 +295,17 @@ export function useWorkstationChat({
       return;
     }
 
+    clearWatchdog();
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch {}
+      abortControllerRef.current = null;
+    }
+
     const userMessageId = `user-${Date.now()}-${Math.random()}`;
     const assistantMessageId = `asst-${Date.now()}-${Math.random()}`;
+    currentTurnIdRef.current = assistantMessageId;
 
     const newUserMsg: Message = {
       id: userMessageId,
@@ -433,6 +444,7 @@ export function useWorkstationChat({
     const resetWatchdog = (timeoutMs = 90000) => {
       clearWatchdog();
       watchdogRef.current = setTimeout(async () => {
+        if (currentTurnIdRef.current !== assistantMessageId) return;
         // If computer is offline, don't abort — wait for reconnect!
         if (typeof navigator !== "undefined" && !navigator.onLine) {
           setLiveStatus({
@@ -500,6 +512,7 @@ export function useWorkstationChat({
     let textEndFinalizeTimeout: any = null;
 
     const finalizeDone = (doneData?: any) => {
+      if (currentTurnIdRef.current !== assistantMessageId) return;
       if (!isStreamingRef.current) return;
       clearWatchdog();
       if (textEndFinalizeTimeout) {
@@ -570,11 +583,22 @@ export function useWorkstationChat({
       });
       refetchFiles();
       reloadOpenTabsContent();
+      setTimeout(() => {
+        try {
+          abortCtrl.abort();
+        } catch {}
+      }, 300);
       processNext();
     };
 
     try {
       subscribeEvents((rawEvent) => {
+        if (currentTurnIdRef.current !== assistantMessageId) {
+          try {
+            abortCtrl.abort();
+          } catch {}
+          return;
+        }
         const event = mapEngineEvent(rawEvent, chatIdToUse);
         if (!event) return;
 
@@ -774,10 +798,14 @@ export function useWorkstationChat({
         } else if (event.type === "done") {
           finalizeDone(event.data);
         } else if (event.type === "error") {
+          if (currentTurnIdRef.current !== assistantMessageId) return;
           if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
           clearWatchdog();
           setStreamingState(false);
           setLiveStatus(null);
+          try {
+            abortCtrl.abort();
+          } catch {}
           const errorMsg = event.data?.message || "An error occurred.";
           toast.error(errorMsg);
           setOptimisticMessages((prev) =>
@@ -801,12 +829,16 @@ export function useWorkstationChat({
       // Prompt was accepted by the engine. Streaming is now in progress over SSE.
       // Finalization is handled by the SSE listener (done / error events) or watchdog.
     } catch (err: any) {
+      if (currentTurnIdRef.current !== assistantMessageId) return;
       clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);
       toast.error(`Error sending message: ${err?.message || err}`);
       setStreamingState(false);
       setLiveStatus(null);
       setOptimisticMessages([]);
+      try {
+        abortCtrl.abort();
+      } catch {}
       processNext();
     }
   };

@@ -2627,5 +2627,31 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Tombol kirim pesan kembali aktif dengan ikon pesawat kertas dan siap menerima input berikutnya.
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai dalam 14.63s).
 
+## Phase 76: 10-Turn Full E2E Conversational Stress Verification & Watchdog Isolation (DONE)
 
+- [x] **Cross-Turn Watchdog Leak Prevention & Stream Lifecycle Isolation**:
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Menambahkan `currentTurnIdRef = useRef<string>("")` untuk mengisolasi setiap turn percakapan secara unik.
+    - Menghapus watchdog sebelumnya (`clearWatchdog()`) dan meng-abort `abortControllerRef` yang masih aktif saat turn baru dimulai.
+    - Menutup koneksi pembaca SSE secara aman via `abortCtrl.abort()` dengan jeda tenggang (grace period) 300ms setelah `finalizeDone()` dipanggil agar stream reader tidak menggantung atau menahan memori.
+    - Menambahkan turn ID guard (`if (currentTurnIdRef.current !== assistantMessageId) return;`) pada watchdog, event subscriber, dan error handler sehingga timeout atau callback usang dari turn sebelumnya tidak membatalkan atau menimpa turn aktif yang baru.
+- [x] **OpenAI Protocol Finish Reason Tool Calls Alignment**:
+  - `packages/engine/llm/src/protocols/openai-chat.ts`:
+    - Memperbaiki penentuan `reason` pada `finishEvents()`: `const reason = hasToolCalls ? "tool-calls" : (state.finishReason ?? "stop")`.
+    - Mencegah model gagal melangkah ke eksekusi tool ketika provider mengembalikan `finish_reason` kosong atau null pada chunk yang memiliki tool calls.
+- [x] **10-Turn Full E2E Web Browser Automated Verification**:
+  - Menjalankan pengujian browser otomatis (Playwright Chromium) langsung pada Web Workstation UI (`http://localhost:5173/?directory=E%3A%5CREKAPAN`) sebanyak 10 giliran percakapan berturut-turut dalam satu sesi aktif tanpa reload halaman:
+    - **Turn 1/10**: "Halo Arunaki! Siapa kamu dan apa fungsi utamamu?" ➔ Difinalisasi dalam 3.0s (`true` / `true`)
+    - **Turn 2/10**: "Apa kepanjangan dari SOP dalam administrasi perkantoran?" ➔ Difinalisasi dalam 13.1s (`true` / `true`)
+    - **Turn 3/10**: "Sebutkan 3 format file dokumen yang umum digunakan untuk laporan kerja" ➔ Difinalisasi dalam 4.0s (`true` / `true`)
+    - **Turn 4/10**: "Apa rumus dasar Excel untuk menghitung rata-rata nilai dari sel B1 sampai B10?" ➔ Difinalisasi dalam 7.0s (`true` / `true`)
+    - **Turn 5/10**: "Tuliskan contoh subjek email resmi untuk permohonan izin cuti tahunan" ➔ Difinalisasi dalam 6.0s (`true` / `true`)
+    - **Turn 6/10**: "Apa kepanjangan dari KPI dalam manajemen kinerja karyawan?" ➔ Difinalisasi dalam 5.0s (`true` / `true`)
+    - **Turn 7/10**: "Sebutkan 3 komponen utama dalam laporan keuangan perusahaan" ➔ Difinalisasi dalam 4.0s (`true` / `true`)
+    - **Turn 8/10**: "Apa fungsi utama dari kop surat pada dokumen dinas atau resmi?" ➔ Difinalisasi dalam 13.1s (`true` / `true`)
+    - **Turn 9/10**: "Sebutkan 3 jenis lampiran yang umum disertakan dalam surat penawaran harga" ➔ Difinalisasi dalam 5.0s (`true` / `true`)
+    - **Turn 10/10 (Context Retention & Synthesis)**: "Terima kasih Arunaki! Tolong rangkum dalam 3 poin singkat apa saja yang sudah kita bahas dalam percakapan ini" ➔ Difinalisasi dalam 11.1s (`true` / `true`), sukses merangkum topik SOP, Excel, KPI, dokumen dinas, dan laporan keuangan dari giliran sebelumnya.
+  - Hasil Pengujian: **10/10 turns PASSED**, 0 timeout, 0 error toast, input textarea dan tombol kirim selalu kembali siap (*idle/ready*).
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai tanpa regresi).
 
