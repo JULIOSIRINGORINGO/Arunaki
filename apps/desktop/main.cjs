@@ -239,6 +239,7 @@ app.whenReady().then(() => {
     const IGNORED = new Set([
       'node_modules', '.git', 'dist', 'build', '.next', '.venv',
       '__pycache__', '.idea', '.vscode', 'coverage', '.cache', '.nuxt',
+      'arunaki.json', 'arunaki.jsonc',
     ]);
 
     const buildTree = async (dir, depth = 0) => {

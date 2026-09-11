@@ -423,7 +423,7 @@ const layer = Layer.effect(
         const deps: Fiber.Fiber<void>[] = []
 
         for (const dir of directories) {
-          if (dir.endsWith(".Arunaki") || dir === Flag.Arunaki_CONFIG_DIR) {
+          if (dir.toLowerCase().endsWith(".arunaki") || dir === Flag.Arunaki_CONFIG_DIR) {
             for (const file of ["arunaki.json", "arunaki.jsonc"]) {
               const source = path.join(dir, file)
               yield* Effect.logDebug(`loading config from ${source}`)
@@ -624,16 +624,25 @@ const layer = Layer.effect(
 
     const update = Effect.fn("Config.update")(function* (config: Info) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "arunaki.json")
-      const existing = yield* loadFile(file)
+      const dotArunaki = path.join(dir, ".arunaki")
+      const dotFile = path.join(dotArunaki, "arunaki.json")
+      const rootFile = path.join(dir, "arunaki.json")
+      yield* fs.ensureDir(dotArunaki).pipe(Effect.orDie)
+      const existing = (yield* loadFile(dotFile)) ?? (yield* loadFile(rootFile))
       yield* fs
-        .writeFileString(file, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
+        .writeFileString(dotFile, JSON.stringify(mergeDeep(writable(existing), writable(config)), null, 2))
         .pipe(Effect.orDie)
+      if (yield* fs.existsSafe(rootFile)) {
+        yield* fs.remove(rootFile).pipe(Effect.ignore)
+      }
     })
 
     const deleteProvider = Effect.fn("Config.deleteProvider")(function* (providerID: string) {
       const dir = yield* InstanceState.directory
-      const file = path.join(dir, "arunaki.json")
+      const dotFile = path.join(dir, ".arunaki", "arunaki.json")
+      const rootFile = path.join(dir, "arunaki.json")
+      const hasDot = yield* fs.existsSafe(dotFile)
+      const file = hasDot ? dotFile : rootFile
       const before = (yield* readConfigFile(file)) ?? "{}"
       const existing = ConfigParse.schema(ConfigV1.Info, ConfigParse.jsonc(before, file), file)
       if (!existing.provider || !(providerID in existing.provider)) return false

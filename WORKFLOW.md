@@ -2655,3 +2655,18 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build**:
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai tanpa regresi).
 
+## Phase 77: Relocate Workspace Configuration into .arunaki and Hide from Document Explorer (DONE)
+
+- [x] **Relocate Workspace Config Storage to `.arunaki/arunaki.json`**:
+  - `packages/engine/engine/src/config/config.ts`:
+    - Memperbarui `Config.update` agar menulis file konfigurasi workspace ke dalam folder tersembunyi `.arunaki/arunaki.json` (otomatis membuat direktori `.arunaki` jika belum ada) dan membersihkan file `arunaki.json` lama di root folder kerja pengguna.
+    - Memperbarui `Config.deleteProvider` agar membaca dan menghapus provider dari `.arunaki/arunaki.json` dengan fallback ke root file lama jika ada.
+- [x] **Case-Insensitive `.arunaki` Config Discovery**:
+  - `packages/engine/engine/src/config/paths.ts`: Menambahkan `".arunaki"` (huruf kecil) ke daftar `targets` pencarian direktori konfigurasi.
+  - `packages/engine/engine/src/config/config.ts`: Mengubah pengecekan direktori menjadi case-insensitive (`dir.toLowerCase().endsWith(".arunaki")`) sehingga konfigurasi di dalam `.arunaki/arunaki.json` terbaca secara konsisten di semua sistem operasi.
+- [x] **Document Explorer Cleanliness & Accidental Edit Prevention**:
+  - `apps/desktop/main.cjs`: Menambahkan `'arunaki.json'` dan `'arunaki.jsonc'` ke dalam `IGNORED` set pada handler IPC `fs:getFolderTree` agar file konfigurasi sistem tidak pernah muncul di panel Explorer dokumen desktop.
+  - `apps/web/src/components/workspace/tree-utils.tsx`: Menambahkan filter `arunaki.json` dan `arunaki.jsonc` pada fungsi pembangun pohon berkas (`buildTree` dan `nativeToTreeNodes`) untuk menjamin UI Explorer dokumen bersih dari file internal.
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai tanpa regresi).
+

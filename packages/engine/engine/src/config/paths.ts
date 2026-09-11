@@ -26,13 +26,13 @@ export const directories = Effect.fn("ConfigPaths.directories")(function* (direc
     Global.Path.config,
     ...(!Flag.Arunaki_DISABLE_PROJECT_CONFIG
       ? yield* afs.up({
-          targets: [".Arunaki"],
+          targets: [".arunaki", ".Arunaki"],
           start: directory,
           stop: worktree,
         })
       : []),
     ...(yield* afs.up({
-      targets: [".Arunaki"],
+      targets: [".arunaki", ".Arunaki"],
       start: Global.Path.home,
       stop: Global.Path.home,
     })),

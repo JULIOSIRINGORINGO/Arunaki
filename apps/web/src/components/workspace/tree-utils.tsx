@@ -27,8 +27,11 @@ export interface TreeNode {
 
 export function buildTree(files: FileItem[]): TreeNode[] {
   const root: TreeNode[] = [];
+  const filteredFiles = files.filter(
+    (f) => !["arunaki.json", "arunaki.jsonc"].includes(f.name.toLowerCase()),
+  );
 
-  for (const file of files) {
+  for (const file of filteredFiles) {
     const parts = file.name.replace(/\\/g, "/").split("/");
     let current = root;
 
@@ -64,13 +67,15 @@ export function buildTree(files: FileItem[]): TreeNode[] {
 }
 
 export function nativeToTreeNodes(nodes: NativeNode[]): TreeNode[] {
-  return nodes.map((n) => ({
-    name: n.name,
-    isDir: n.type === "directory",
-    nativePath: n.path,
-    size: n.size,
-    children: n.children ? nativeToTreeNodes(n.children) : [],
-  }));
+  return nodes
+    .filter((n) => !["arunaki.json", "arunaki.jsonc"].includes(n.name.toLowerCase()))
+    .map((n) => ({
+      name: n.name,
+      isDir: n.type === "directory",
+      nativePath: n.path,
+      size: n.size,
+      children: n.children ? nativeToTreeNodes(n.children) : [],
+    }));
 }
 
 export function getFileIcon(name: string) {
