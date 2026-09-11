@@ -21,7 +21,6 @@ import {
   Plus,
   Flame,
   Square,
-  Brain,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { ArunakiLogo } from "../../common/ArunakiLogo";
@@ -30,7 +29,7 @@ import { toast } from "sonner";
 import { AttachedImage } from "./types";
 
 const COMMANDS = [
-  { name: "/thinking", description: "Toggle model thinking visibility (stream thoughts word-by-word)", icon: Brain },
+  { name: "/thinking", description: "Toggle model thinking on / off", icon: ArunakiLogo },
   { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
   { name: "/new", description: "Start a new conversation session", icon: Plus },
   { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
@@ -71,7 +70,6 @@ export const ChatInputBox = memo(function ChatInputBox({
   setReasoningEffort,
   showThinking,
   setShowThinking,
-  collapseThinking,
   setCollapseThinking,
   onPreviewImage,
 }: ChatInputBoxProps) {
@@ -157,15 +155,14 @@ export const ChatInputBox = memo(function ChatInputBox({
   const submitPrompt = () => {
     const promptTrimmed = localPrompt.trim();
     if (promptTrimmed === "/thinking") {
-      const current = showThinking !== undefined ? showThinking : !collapseThinking;
+      const current = showThinking !== undefined ? showThinking : true;
       const next = !current;
       try {
         localStorage.setItem("arunaki_show_thinking", String(next));
-        localStorage.setItem("arunaki_collapse_thinking", String(!next));
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking expanded (Visible word-by-word)" : "Thinking collapsed");
+      toast.info(next ? "Thinking enabled (Visible)" : "Thinking disabled (Hidden)");
       setLocalPrompt("");
       setAttachedImages([]);
       if (textareaRef.current) {
@@ -197,15 +194,14 @@ export const ChatInputBox = memo(function ChatInputBox({
     if (cmdName === "/thinking") {
       setLocalPrompt("");
       setShowCommands(false);
-      const current = showThinking !== undefined ? showThinking : !collapseThinking;
+      const current = showThinking !== undefined ? showThinking : true;
       const next = !current;
       try {
         localStorage.setItem("arunaki_show_thinking", String(next));
-        localStorage.setItem("arunaki_collapse_thinking", String(!next));
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking expanded (Visible word-by-word)" : "Thinking collapsed");
+      toast.info(next ? "Thinking enabled (Visible)" : "Thinking disabled (Hidden)");
       return;
     }
     if (cmdName === "/search-section") {
@@ -356,9 +352,9 @@ export const ChatInputBox = memo(function ChatInputBox({
                   </span>
                   <span className="text-[10px] text-[var(--text-dim)] truncate min-w-0">
                     {command.name === "/thinking"
-                      ? (showThinking ?? !collapseThinking)
-                        ? "Collapse thinking (Expanded)"
-                        : "Expand thinking (Collapsed)"
+                      ? (showThinking ?? true)
+                        ? "Toggle thinking off (Currently On)"
+                        : "Toggle thinking on (Currently Off)"
                       : command.description}
                   </span>
                 </button>
@@ -464,30 +460,6 @@ export const ChatInputBox = memo(function ChatInputBox({
                 </div>
               )}
             </div>
-          )}
-
-          {setShowThinking && (
-            <button
-              type="button"
-              onClick={() => {
-                const next = !showThinking;
-                setShowThinking(next);
-                try {
-                  localStorage.setItem("arunaki_show_thinking", String(next));
-                } catch {}
-                toast.info(next ? "Thinking visible" : "Thinking hidden");
-              }}
-              className={cn(
-                "text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 cursor-pointer transition-colors shadow-xs select-none",
-                showThinking
-                  ? "bg-white/10 text-white border-white/30 hover:bg-white/15"
-                  : "bg-[var(--bg-hover)] text-[var(--text-muted)] border-[var(--border-color)] hover:text-[var(--text-primary)]"
-              )}
-              title={showThinking ? "Thinking is visible (click to toggle off)" : "Thinking is hidden (click to toggle on)"}
-            >
-              <ArunakiLogo size={10} className={showThinking ? "text-white" : "text-[var(--text-muted)]"} />
-              <span>Thinking: {showThinking ? "On" : "Off"}</span>
-            </button>
           )}
         </div>
 

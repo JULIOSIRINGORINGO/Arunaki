@@ -10,7 +10,7 @@ Memenuhi permintaan pengguna mengenai antarmuka thinking dan telemetry status:
 3. Menghilangkan **indikator ganda (duplicate processing request)**: Menghindari kemunculan pill `Analyzing request & context . . . (2s)` di bawah bubble ketika `MessageThoughtBadge` di dalam bubble sudah menangani indikator berpikir. `LiveExecutionBadge` sekarang hanya muncul saat ada tool eksekusi nyata (`hasToolExecution`).
 4. Menghilangkan teks kedua yang berulang (`"Processing request & workspace context..."`).
 5. Memastikan header **Thought (Xs)** dengan logo Arunaki tetap bertahan (*persistent*) pada pesan asisten yang telah selesai dijawab, tidak lagi lenyap menjadi langsung teks jawaban saja (*"langsung jawabannya aja"*).
-6. Menambahkan tombol toggle visual **`Thinking: On / Off`** dengan logo Arunaki pada toolbar bawah di sebelah `Reasoning Effort`, sehingga pengguna dapat melihat status thinking secara jelas dan menyalakan/mematikannya dengan 1 kali klik.
+6. Mengintegrasikan kontrol toggle thinking secara eksklusif ke dalam menu perintah slash (**`/thinking`**) dengan ikon resmi Arunaki Logo dan deskripsi status dinamis (`Toggle thinking off (Currently On)` / `Toggle thinking on (Currently Off)`), serta menghapus tombol khusus di toolbar agar antarmuka input tetap bersih dan minimalis.
 
 ## Files Changed
 - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
@@ -18,7 +18,8 @@ Memenuhi permintaan pengguna mengenai antarmuka thinking dan telemetry status:
   - Mengganti spinner amber dengan `ArunakiLogo` berdenyut putih.
   - Memperbarui `MessageThoughtBadge` dengan pengecekan `hasThoughtSec` dan accordion expand/collapse untuk teks reasoning.
 - `apps/web/src/components/workstation/chat/ChatInputBox.tsx`:
-  - Menambahkan tombol `Thinking: On / Off` dengan `ArunakiLogo` di toolbar bawah chat.
+  - Menghubungkan `/thinking` di menu slash (`/`) dengan ikon `ArunakiLogo` dan toggle status dinamis.
+  - Menghapus tombol khusus di toolbar bawah sesuai preferensi pengguna.
 - `apps/web/src/components/workstation/WorkstationRightChat.tsx`:
   - Memastikan default `showThinking = true`.
 - `apps/web/src/components/workstation/chat/mapper.ts`:
@@ -29,9 +30,11 @@ Memenuhi permintaan pengguna mengenai antarmuka thinking dan telemetry status:
   - Mencatat dokumentasi Phase 78.
 
 ## Tests & Verification
-- `npm run build -w apps/web`: ✅ 0 TypeScript compilation errors, production bundle built cleanly in 12.72s.
+- `npm run build -w apps/web`: ✅ 0 TypeScript compilation errors, production bundle built cleanly in 13.43s.
 - Browser E2E verification:
-  - Tombol `Thinking: On` terlihat jelas di toolbar chat.
+  - Toolbar chat bersih (hanya selector Reasoning Effort dan Send button).
+  - Mengetik `/` di chatbox memunculkan opsi `/thinking` dengan logo Arunaki dan status on/off dinamis.
+  - Menekan Enter / memilih `/thinking` berhasil mengubah status dan memicu toast feedback `Thinking enabled / disabled`.
   - Mengirim prompt `halo`: Indikator thinking monokrom putih berdenyut dengan logo Arunaki, tidak ada duplikasi pill di bawah bubble.
-  - Setelah jawaban selesai: Header `Thought (22s)` dengan logo Arunaki tetap bertahan dengan rapi di atas pesan.
-  - Tangkapan layar bukti tersimpan di `thinking_header_verified_1789110572918.png`.
+  - Setelah jawaban selesai: Header `Thought (Xs)` dengan logo Arunaki tetap bertahan dengan rapi di atas pesan.
+  - Tangkapan layar bukti tersimpan di `slash_command_menu_1789111312690.png`.
