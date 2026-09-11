@@ -28,14 +28,6 @@ import { getFileIcon } from "../../workspace/tree-utils";
 import { toast } from "sonner";
 import { AttachedImage } from "./types";
 
-const COMMANDS = [
-  { name: "/thinking", description: "Toggle model thinking on / off", icon: ArunakiLogo },
-  { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
-  { name: "/new", description: "Start a new conversation session", icon: Plus },
-  { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
-  { name: "/clear", description: "Clear current conversation", icon: Eraser },
-];
-
 const EFFORT_OPTIONS = [
   { label: "Default", value: "" },
   { label: "Low", value: "low" },
@@ -121,11 +113,23 @@ export const ChatInputBox = memo(function ChatInputBox({
       .slice(0, 8);
   }, [showMentions, mentionQuery, files]);
 
+  const availableCommands = useMemo(() => [
+    {
+      name: "/thinking",
+      description: showThinking ? "Collapse thinking" : "Expand thinking",
+      icon: ArunakiLogo,
+    },
+    { name: "/grill-me", description: "Interview requirements deeply before executing", icon: Flame },
+    { name: "/new", description: "Start a new conversation session", icon: Plus },
+    { name: "/search-section", description: "Search topics across sessions", icon: FileSearch },
+    { name: "/clear", description: "Clear current conversation", icon: Eraser },
+  ], [showThinking]);
+
   const filteredCommands = useMemo(() => {
     if (!showCommands) return [];
     const q = commandQuery.toLowerCase();
-    return COMMANDS.filter((cmd) => cmd.name.toLowerCase().includes(q));
-  }, [showCommands, commandQuery]);
+    return availableCommands.filter((cmd) => cmd.name.toLowerCase().includes(q));
+  }, [showCommands, commandQuery, availableCommands]);
 
   const handleInputChange = (val: string) => {
     setLocalPrompt(val);
@@ -162,7 +166,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking enabled (Visible)" : "Thinking disabled (Hidden)");
+      toast.info(next ? "Thinking expanded" : "Thinking collapsed");
       setLocalPrompt("");
       setAttachedImages([]);
       if (textareaRef.current) {
@@ -201,7 +205,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       } catch {}
       setShowThinking?.(next);
       setCollapseThinking?.(!next);
-      toast.info(next ? "Thinking enabled (Visible)" : "Thinking disabled (Hidden)");
+      toast.info(next ? "Thinking expanded" : "Thinking collapsed");
       return;
     }
     if (cmdName === "/search-section") {
@@ -351,11 +355,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                     {command.name}
                   </span>
                   <span className="text-[10px] text-[var(--text-dim)] truncate min-w-0">
-                    {command.name === "/thinking"
-                      ? (showThinking ?? true)
-                        ? "Toggle thinking off (Currently On)"
-                        : "Toggle thinking on (Currently Off)"
-                      : command.description}
+                    {command.description}
                   </span>
                 </button>
               );

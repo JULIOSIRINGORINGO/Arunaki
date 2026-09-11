@@ -51,12 +51,14 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
 
   let steps: StepItem[] | undefined = msg?.executionSteps;
   let thoughtSec = msg?.thoughtSec;
+  let thoughtMs = msg?.thoughtMs;
 
   if (!steps && msg?.metadata) {
     try {
       const meta = typeof msg.metadata === "string" ? JSON.parse(msg.metadata) : msg.metadata;
       if (meta?.executionSteps) steps = meta.executionSteps;
       if (meta?.thoughtSec) thoughtSec = meta.thoughtSec;
+      if (meta?.thoughtMs) thoughtMs = meta.thoughtMs;
     } catch {}
   }
 
@@ -64,7 +66,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
   const hasThoughtOrSteps =
     !isUser &&
-    (Boolean(showThinking && (msg?.reasoning || isThinkingActive || msg?.thoughtSec || thoughtSec)) ||
+    (Boolean(showThinking && (msg?.reasoning || isThinkingActive || msg?.thoughtSec || thoughtSec || msg?.thoughtMs || thoughtMs)) ||
       Boolean(steps && steps.length > 0));
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
@@ -97,6 +99,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         <MessageThoughtBadge
           steps={steps}
           thoughtSec={thoughtSec}
+          thoughtMs={thoughtMs}
           reasoning={msg.reasoning}
           showThinking={showThinking}
           isStreaming={isStreaming}

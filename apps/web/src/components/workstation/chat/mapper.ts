@@ -9,6 +9,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
     let reasoning = "";
     let executionSteps: any[] | undefined = undefined;
     let thoughtSec: number | undefined = undefined;
+    let thoughtMs: number | undefined = undefined;
 
     // 1. Text & reasoning from msg.content / msg.text
     if (typeof msg.content === "string") {
@@ -34,6 +35,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
             totalReasoningTime += (p.time_updated - p.time_created);
           }
         });
+        thoughtMs = totalReasoningTime > 0 ? totalReasoningTime : undefined;
         thoughtSec = totalReasoningTime > 0 ? Math.max(1, Math.round(totalReasoningTime / 1000)) : 1;
       }
 
@@ -85,6 +87,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
             totalReasoningTime += (p.time_updated - p.time_created);
           }
         });
+        thoughtMs = totalReasoningTime > 0 ? totalReasoningTime : undefined;
         thoughtSec = totalReasoningTime > 0 ? Math.max(1, Math.round(totalReasoningTime / 1000)) : 1;
       }
 
@@ -124,6 +127,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       const startTime = msg.time?.created || msg.time_created || msg.time?.start;
       const endTime = msg.time?.updated || msg.time_updated || msg.time?.end;
       if (startTime && endTime && endTime > startTime) {
+        thoughtMs = endTime - startTime;
         thoughtSec = Math.max(1, Math.round((endTime - startTime) / 1000));
       }
     }
@@ -137,6 +141,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       reasoning: reasoning.trim() || undefined,
       executionSteps: executionSteps || undefined,
       thoughtSec: thoughtSec,
+      thoughtMs: thoughtMs,
       createdAt: msg.createdAt || msg.time?.created || (msg.time?.start ? msg.time.start : undefined),
     };
   });

@@ -28,13 +28,13 @@ const MIN_REFRESH_GAP_MS = 5_000
 
 export interface Interface {
   /** Scan the active folder and (re)generate `.arunaki/ARUNAKI.md`. */
-  readonly cartograph: () => Effect.Effect<string, Error>
+  readonly cartograph: (directory?: string) => Effect.Effect<string, Error>
   /** Sentinel hook: rate-limited, autonomous correction learning after a turn. */
-  readonly onTurnCompleted: (sessionID: SessionID | string) => Effect.Effect<void>
+  readonly onTurnCompleted: (sessionID: SessionID | string, directory?: string) => Effect.Effect<void>
   /** Run the correction-learning pipeline for a single turn (substantive check + Sentinel LLM). */
-  readonly learnCorrection: (sessionID: SessionID | string) => Effect.Effect<void>
+  readonly learnCorrection: (sessionID: SessionID | string, directory?: string) => Effect.Effect<void>
   /** Activate the per-folder sentinel without rewriting ARUNAKI.md. */
-  readonly ensureActive: () => Effect.Effect<void>
+  readonly ensureActive: (directory?: string) => Effect.Effect<void>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@arunaki/SessionMemory") {}
@@ -233,8 +233,11 @@ const layer = Layer.effect(
           .pipe(Effect.orDie)
       })
 
-    const cartograph = Effect.fn("SessionMemory.cartograph")(function* () {
-      const { directory } = yield* InstanceState.context
+    const cartograph = Effect.fn("SessionMemory.cartograph")(function* (dir?: string) {
+      const directory =
+        dir ??
+        (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined))) ??
+        process.cwd()
       const backupRoot = path.join(directory, ".arunaki-backups")
       const scratchRoot = path.join(directory, ".arunaki", "scratch")
 
@@ -307,20 +310,31 @@ const layer = Layer.effect(
       return doc
     })
 
-    const ensureActive = Effect.fn("SessionMemory.ensureActive")(function* () {
-      const { directory } = yield* InstanceState.context
+    const ensureActive = Effect.fn("SessionMemory.ensureActive")(function* (dir?: string) {
+      const directory =
+        dir ??
+        (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined))) ??
+        process.cwd()
       const target = path.join(directory, ARUNAKI_REL)
       const exists = yield* fs.existsSafe(target)
       const backupRoot = path.join(directory, ".arunaki-backups")
       const hasBackup = yield* fs.existsSafe(backupRoot)
       if (!exists || !hasBackup) {
-        yield* cartograph()
+        yield* cartograph(directory)
       }
     })
 
-    const learnCorrection = Effect.fn("SessionMemory.learnCorrection")(function* (sessionID: SessionID | string) {
+    const learnCorrection = Effect.fn("SessionMemory.learnCorrection")(function* (
+      sessionID: SessionID | string,
+      dir?: string,
+    ) {
       const sid = typeof sessionID === "string" ? SessionID.make(sessionID) : sessionID
-      const { directory } = yield* InstanceState.context
+      const session = yield* sessions.get(sid).pipe(Effect.orElseSucceed(() => undefined))
+      const directory =
+        dir ??
+        session?.directory ??
+        (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined))) ??
+        process.cwd()
       const msgs = yield* sessions
         .messages({ sessionID: sid, limit: 4 })
         .pipe(Effect.orElseSucceed(() => []))
@@ -401,11 +415,20 @@ const layer = Layer.effect(
       yield* fs.writeFileString(target, next).pipe(Effect.orDie)
     })
 
-    const onTurnCompleted = Effect.fn("SessionMemory.onTurnCompleted")(function* (sessionID: SessionID | string) {
+    const onTurnCompleted = Effect.fn("SessionMemory.onTurnCompleted")(function* (
+      sessionID: SessionID | string,
+      dir?: string,
+    ) {
       const sid = typeof sessionID === "string" ? SessionID.make(sessionID) : sessionID
-      const { directory } = yield* InstanceState.context
+      const session = yield* sessions.get(sid).pipe(Effect.orElseSucceed(() => undefined))
+      const directory =
+        dir ??
+        session?.directory ??
+        (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined)))
+      if (!directory) return
+
       // 0-token instant local scan updates workspace catalog
-      yield* cartograph().pipe(Effect.catch(() => Effect.void))
+      yield* cartograph(directory).pipe(Effect.catch(() => Effect.void))
 
       const now = Date.now()
       const last = lastRefreshes.get(directory) ?? 0
@@ -417,7 +440,7 @@ const layer = Layer.effect(
           type: "memory-correction-learning",
           title: "Learn correction",
           metadata: { sessionID: sid },
-          run: learnCorrection(sid).pipe(
+          run: learnCorrection(sid, directory).pipe(
             Effect.as("done"),
             Effect.catch(() => Effect.succeed("error")),
           ),
@@ -427,8 +450,16 @@ const layer = Layer.effect(
 
     // Subscribe to Step.Ended event as a secondary fallback
     yield* events.project(SessionEvent.Step.Ended, (event) =>
-      onTurnCompleted(event.data.sessionID),
-    ).pipe(Effect.catch(() => Effect.void))
+      Effect.gen(function* () {
+        // Only run memory/sentinel on actual completion of the turn, not intermediate tool steps!
+        if (event.data.finish === "tool-calls") return
+        yield* onTurnCompleted(event.data.sessionID)
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logDebug("SessionMemory onTurnCompleted ignored defect in projector", cause),
+        ),
+      ),
+    )
 
     return Service.of({
       cartograph,

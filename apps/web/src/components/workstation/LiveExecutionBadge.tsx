@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "../../lib/utils";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
@@ -223,33 +223,49 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
 }
 
 /**
- * Persisted Antigravity / Cursor IDE style collapsible thought/execution badge.
- * Rendered directly above assistant chat messages in the history.
+ * Opencode / Antigravity style collapsible thought/execution badge.
+ * Matches Opencode UI parity: "Thought: 488ms" header with expandable reasoning text.
  */
 export function MessageThoughtBadge({
   steps = [],
   thoughtSec,
+  thoughtMs,
   reasoning,
   showThinking = true,
   isStreaming = false,
 }: {
   steps?: StepItem[];
   thoughtSec?: number;
+  thoughtMs?: number;
   reasoning?: string;
   showThinking?: boolean;
   isStreaming?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [collapsedManually, setCollapsedManually] = useState(false);
 
   const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
   const hasReasoning = Boolean(reasoning && reasoning.length > 0);
-  const hasThoughtSec = Boolean(thoughtSec && thoughtSec > 0);
+  const hasThoughtTime = Boolean((thoughtMs && thoughtMs > 0) || (thoughtSec && thoughtSec > 0));
   const isThinkingActive = isStreaming && !steps.some((s) => s.iconType === 'text');
 
-  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive && !hasThoughtSec))) {
+  // Format Opencode duration: e.g. "488ms" or "1.4s"
+  const durationLabel = useMemo(() => {
+    if (thoughtMs && thoughtMs > 0) {
+      if (thoughtMs < 1000) return `${thoughtMs}ms`;
+      return `${(thoughtMs / 1000).toFixed(1).replace(/\.0$/, "")}s`;
+    }
+    if (thoughtSec && thoughtSec > 0) {
+      return `${thoughtSec}s`;
+    }
+    return undefined;
+  }, [thoughtMs, thoughtSec]);
+
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive && !hasThoughtTime))) {
     return null;
   }
+
+  const isExpanded = showThinking && !collapsedManually;
 
   return (
     <div className="w-full min-w-0 mb-2 font-sans select-none">
@@ -258,7 +274,7 @@ export function MessageThoughtBadge({
         <div className="mb-2 max-w-full w-full min-w-0 font-mono text-[11px] rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] overflow-hidden select-none">
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => setCollapsedManually(!collapsedManually)}
             className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
           >
             <div className="flex items-center gap-1.5 min-w-0">
@@ -267,7 +283,7 @@ export function MessageThoughtBadge({
                 Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
               </span>
               <span className="text-[10px] text-[var(--text-dim)] shrink-0">
-                ({toolSteps.length} step{toolSteps.length > 1 ? 's' : ''}{thoughtSec ? ` · ${thoughtSec}s` : ''})
+                ({toolSteps.length} step{toolSteps.length > 1 ? 's' : ''}{durationLabel ? ` · ${durationLabel}` : ''})
               </span>
             </div>
             <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
@@ -290,47 +306,38 @@ export function MessageThoughtBadge({
         </div>
       )}
 
-      {/* 2. Real-time Model Thoughts: Monochrome white styling with Arunaki logo */}
-      {showThinking && (hasReasoning || isThinkingActive || hasThoughtSec) && (
-        <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
+      {/* 2. Opencode Parity: Thought: 488ms header + actual reasoning content */}
+      {showThinking && (hasReasoning || isThinkingActive || hasThoughtTime) && (
+        <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1.5 whitespace-pre-wrap">
           <button
             type="button"
-            onClick={() => hasReasoning && setIsExpanded(!isExpanded)}
+            onClick={() => hasReasoning && setCollapsedManually(!collapsedManually)}
             className={cn(
-              "flex items-center gap-1.5 mb-1 not-italic font-sans text-[11px] select-none transition-colors",
-              hasReasoning ? "cursor-pointer hover:text-white" : "cursor-default text-[var(--text-dim)]"
+              "flex items-center gap-1.5 mb-1.5 not-italic font-mono text-[11px] select-none transition-opacity",
+              hasReasoning ? "cursor-pointer hover:opacity-80" : "cursor-default opacity-80"
             )}
           >
-            <ArunakiLogo
-              size={12}
-              className={cn(
-                "shrink-0 transition-transform duration-150",
-                isThinkingActive ? "animate-pulse text-white" : "text-white/80"
-              )}
-            />
-            <span className={cn("font-medium", isThinkingActive ? "text-white" : "text-[var(--text-secondary)]")}>
-              {isThinkingActive ? "Thinking..." : "Thought"}
+            <span className="font-medium text-[#e59344]">
+              {isThinkingActive ? "Thinking..." : "Thought:"}
             </span>
-            {thoughtSec ? (
-              <span className="opacity-60 font-mono text-[10px] text-[var(--text-muted)]">({thoughtSec}s)</span>
+            {durationLabel && !isThinkingActive ? (
+              <span className="text-[#e59344]/90 font-mono text-[11px]">{durationLabel}</span>
             ) : null}
             {hasReasoning && !isThinkingActive && (
-              <span className="text-[10px] text-[var(--text-dim)] flex items-center ml-0.5">
+              <span className="text-[#e59344]/50 flex items-center ml-0.5">
                 {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
               </span>
             )}
           </button>
 
-          {hasReasoning ? (
-            (isStreaming || isExpanded) && (
-              <div className="pl-3 border-l-2 border-white/20 text-[var(--text-muted)] opacity-90 select-text break-words not-italic">
-                {isStreaming ? reasoning : reasoning?.trim()}
-                {isStreaming && isThinkingActive && (
-                  <span className="inline-block w-1.5 h-3 bg-white/80 ml-0.5 animate-pulse align-middle" />
-                )}
-              </div>
-            )
-          ) : null}
+          {hasReasoning && isExpanded && (
+            <div className="text-[11.5px] font-mono text-[var(--text-muted)] leading-relaxed select-text break-words not-italic opacity-90 pl-0.5">
+              {isStreaming ? reasoning : reasoning?.trim()}
+              {isStreaming && isThinkingActive && (
+                <span className="inline-block w-1.5 h-3 bg-[#e59344] ml-0.5 animate-pulse align-middle" />
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

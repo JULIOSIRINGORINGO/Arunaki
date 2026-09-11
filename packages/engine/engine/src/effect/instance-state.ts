@@ -1,7 +1,8 @@
-import { Effect, ScopedCache, Scope } from "effect"
+import { Effect, ScopedCache, Scope, Option } from "effect"
 import type { InstanceContext } from "@/project/instance-context"
 import { InstanceRef, WorkspaceRef } from "./instance-ref"
 import { registerDisposer } from "./instance-registry"
+import { Location } from "@arunaki/core/location"
 
 const TypeId = "~Arunaki/InstanceState"
 
@@ -12,12 +13,34 @@ export interface InstanceState<A, E = never, R = never> {
 
 export const context = Effect.gen(function* () {
   const ctx = yield* InstanceRef
-  if (!ctx) return yield* Effect.die(new Error("InstanceRef not provided"))
-  return ctx
+  if (ctx) return ctx
+
+  const location = yield* Effect.serviceOption(Location.Service)
+  if (Option.isSome(location)) {
+    const loc = location.value
+    return {
+      directory: loc.directory,
+      worktree: loc.project?.directory ?? loc.directory,
+      project: {
+        id: loc.project?.id ?? "global",
+        directory: loc.project?.directory ?? loc.directory,
+      } as any,
+    } as InstanceContext
+  }
+
+  return yield* Effect.die(new Error("InstanceRef not provided"))
 })
 
 export const workspaceID = Effect.gen(function* () {
-  return yield* WorkspaceRef
+  const ws = yield* WorkspaceRef
+  if (ws) return ws
+
+  const location = yield* Effect.serviceOption(Location.Service)
+  if (Option.isSome(location)) {
+    return location.value.workspaceID
+  }
+
+  return undefined
 })
 
 export const directory = Effect.map(context, (ctx) => ctx.directory)

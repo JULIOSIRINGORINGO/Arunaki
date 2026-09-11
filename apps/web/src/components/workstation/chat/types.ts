@@ -7,6 +7,7 @@ export interface Message {
   createdAt?: string;
   executionSteps?: StepItem[];
   thoughtSec?: number;
+  thoughtMs?: number;
   metadata?: string | Record<string, any>;
   reasoning?: string;
 }

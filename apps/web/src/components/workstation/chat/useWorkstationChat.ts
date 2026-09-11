@@ -636,7 +636,8 @@ export function useWorkstationChat({
           if (event.data && typeof event.data === "string") {
             accumulatedReasoningText = event.data;
           }
-          const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+          const elapsedMs = Date.now() - streamStartTime;
+          const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000));
           setLiveStatus({ type: "text_delta", preview: "Generating response" });
           setOptimisticMessages((prev) =>
             prev.map((m) =>
@@ -645,6 +646,7 @@ export function useWorkstationChat({
                     ...m,
                     reasoning: accumulatedReasoningText || m.reasoning,
                     thoughtSec: elapsedSec,
+                    thoughtMs: elapsedMs,
                   }
                 : m
             )

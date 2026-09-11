@@ -2699,4 +2699,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses dalam 13.43s).
   - Verifikasi browser UI otomatis: Konfirmasi toolbar bersih tanpa tombol khusus, menu slash (`/`) menampilkan opsi `/thinking` dengan logo Arunaki, eksekusi `/thinking` men-toggle status dengan toast feedback, indikator monokrom putih berdenyut, ketiadaan duplikasi card eksekusi, dan bertahannya badge `Thought (Xs)` pada bubble pesan selesai.
 
+## Phase 79: Opencode Thinking UI Parity & Multi-Step Tool Execution Engine Fix (DONE)
+
+- [x] **Multi-Step Tool Execution Engine Defect Fix**:
+  - **Root Cause**: Ketika agent selesai menjalankan tool (misal `read -> .` pada perintah `"coba cek isi foder ini"`), `SessionRunner.run` menerbitkan `SessionEvent.Step.Ended`. Di `memory.ts`, subscriber `onTurnCompleted` memanggil `InstanceState.context`. Karena `SessionRunner` berjalan pada background worker fiber (`SessionExecutionLocal`), `InstanceRef` bernilai `undefined`. Hal ini menyebabkan `Effect.die(new Error("InstanceRef not provided"))`, yang meng-abort loop proyektor event di engine, men-crash fiber `SessionRunner.run`, dan mencegah step 2 (turn asisten untuk menjawab hasil pembacaan berkas) dijalankan, sehingga UI membeku di state `Executing 2 doc... (3 done · 84s)`.
+  - **Engine Fix (`packages/engine/engine/src/effect/instance-state.ts`)**:
+    - Menambahkan fallback ke `Location.Service` ketika `InstanceRef` tidak tersedia.
+  - **Memory Subscriber Hardening (`packages/engine/engine/src/session/memory.ts`)**:
+    - Mengambil direktori dari `session.directory`.
+    - Mengabaikan intermediate tool step (`if (event.data.finish === "tool-calls") return;`) sehingga memory turn hanya disimpan saat asisten benar-benar selesai memberikan respon akhir.
+    - Membungkus proyektor dengan `.pipe(Effect.catchCause(...))` untuk menjamin defect tidak pernah menginterupsi publikasi event engine.
+  - **Verifikasi**: Uji end-to-end backend berhasil menuntaskan step 1 tool `read -> .` dan langsung melanjutkan ke step 2 menyajikan seluruh berkas dalam tabel markdown lengkap tanpa delay/crash.
+- [x] **Opencode Thinking Parity UI**:
+  - **Header & Format**: Menampilkan `Thought: Xms` (atau `Thought: Xs`) menggunakan warna warm amber (`#e59344`), persis seperti antarmuka Opencode.
+  - **Default Expanded Thought**: Ketika thinking aktif, teks penalaran (*thought process*) ditampilkan terbuka secara langsung di bawah header `Thought: Xms`, dan dapat diklik untuk di-collapse/expand sesuai kebutuhan.
+  - **Slash Command Menu Parity**: Perintah `/thinking` di menu slash menampilkan deskripsi dinamis `Collapse thinking` (ketika sedang terbuka) dan `Expand thinking` (ketika tertutup), persis seperti di Opencode.
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses).
+
+
 
