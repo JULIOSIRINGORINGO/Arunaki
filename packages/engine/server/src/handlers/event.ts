@@ -9,11 +9,17 @@ import { Api } from "../api"
 const subscriberCapacity = 256
 
 function eventData(data: unknown): Sse.Event {
+  let payload = data
+  try {
+    payload = Schema.encodeUnknownSync(ArunakiEvent)(data)
+  } catch {
+    // Preserve raw data payload rather than failing the SSE stream
+  }
   return {
     _tag: "Event",
     event: "message",
     id: undefined,
-    data: JSON.stringify(Schema.encodeUnknownSync(ArunakiEvent)(data)),
+    data: JSON.stringify(payload),
   }
 }
 

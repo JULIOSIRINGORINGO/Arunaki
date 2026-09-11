@@ -48,6 +48,8 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
   if (pool && pool.trim()) {
     const list = pool.split(",").map((s) => s.trim()).filter(Boolean);
     const valid =
+      list.find((m) => m === "agnes-2-0-flash:free") ||
+      list.find((m) => m.endsWith(":free") && m !== "mistral-large:free" && m !== "glm-4-7-flash:free") ||
       list.find(
         (m) =>
           m !== "mistral-large:free" &&
@@ -80,9 +82,15 @@ export function useWorkstationChat({
 
   const [reasoningEffort, setReasoningEffort] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const isStreamingRef = useRef(false);
+  const setStreamingState = useCallback((val: boolean) => {
+    isStreamingRef.current = val;
+    setIsStreaming(val);
+  }, []);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
+  const queuedPromptsRef = useRef<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -210,7 +218,8 @@ export function useWorkstationChat({
   }, [activeChatId, chatMessages, isStreaming, upsertCanvasTab]);
 
   const handleRemoveQueuedPrompt = useCallback((index: number) => {
-    setQueuedPrompts((prev) => prev.filter((_, i) => i !== index));
+    queuedPromptsRef.current = queuedPromptsRef.current.filter((_, i) => i !== index);
+    setQueuedPrompts([...queuedPromptsRef.current]);
   }, []);
 
   const handleCancelStream = useCallback(() => {
@@ -219,10 +228,10 @@ export function useWorkstationChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    setIsStreaming(false);
+    setStreamingState(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
-  }, [clearWatchdog]);
+  }, [clearWatchdog, setStreamingState]);
 
   const handleNewChat = useCallback(async () => {
     clearWatchdog();
@@ -230,7 +239,7 @@ export function useWorkstationChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    setIsStreaming(false);
+    setStreamingState(false);
     setLiveStatus(null);
     setOptimisticMessages([]);
     hasRestoredCanvasRef.current = null;
@@ -267,9 +276,10 @@ export function useWorkstationChat({
 
   const handleSendMessage = async (textToSend?: string) => {
     const userText = (textToSend !== undefined ? textToSend : "").trim();
-    if (!userText || isStreaming) {
+    if (!userText || isStreamingRef.current) {
       if (textToSend) {
-        setQueuedPrompts((prev) => [...prev, userText]);
+        queuedPromptsRef.current.push(userText);
+        setQueuedPrompts([...queuedPromptsRef.current]);
         toast.info("Message queued and will be processed automatically");
       }
       return;
@@ -301,7 +311,7 @@ export function useWorkstationChat({
     };
 
     setOptimisticMessages([newUserMsg, newAssistantMsg]);
-    setIsStreaming(true);
+    setStreamingState(true);
     producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
 
@@ -322,7 +332,7 @@ export function useWorkstationChat({
           localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, chatIdToUse);
         }
       } catch {
-        setIsStreaming(false);
+        setStreamingState(false);
         setLiveStatus(null);
         toast.error("Failed to create a new conversation");
         return;
@@ -375,16 +385,13 @@ export function useWorkstationChat({
     abortControllerRef.current = abortCtrl;
 
     const processNext = () => {
-      setQueuedPrompts((prevQueue) => {
-        if (prevQueue.length > 0) {
-          const [nextPrompt, ...remaining] = prevQueue;
-          setTimeout(() => {
-            handleSendMessage(nextPrompt);
-          }, 350);
-          return remaining;
-        }
-        return prevQueue;
-      });
+      if (queuedPromptsRef.current.length > 0) {
+        const nextPrompt = queuedPromptsRef.current.shift()!;
+        setQueuedPrompts([...queuedPromptsRef.current]);
+        setTimeout(() => {
+          handleSendMessage(nextPrompt);
+        }, 300);
+      }
     };
 
     const getActiveProviderDiagnostic = async (): Promise<{
@@ -436,7 +443,7 @@ export function useWorkstationChat({
         }
 
         abortCtrl.abort();
-        setIsStreaming(false);
+        setStreamingState(false);
         setLiveStatus(null);
 
         // If response content was already received, never overwrite it with a timeout error!
@@ -489,6 +496,82 @@ export function useWorkstationChat({
 
     resetWatchdogRef.current = resetWatchdog;
     resetWatchdog(90000);
+
+    let textEndFinalizeTimeout: any = null;
+
+    const finalizeDone = (doneData?: any) => {
+      if (!isStreamingRef.current) return;
+      clearWatchdog();
+      if (textEndFinalizeTimeout) {
+        clearTimeout(textEndFinalizeTimeout);
+        textEndFinalizeTimeout = null;
+      }
+      setStreamingState(false);
+      setLiveStatus(null);
+      const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+
+      setOptimisticMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content: accumulatedResponseText || m.content,
+                reasoning: accumulatedReasoningText || m.reasoning,
+                executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                thoughtSec: elapsedSec,
+              }
+            : m
+        )
+      );
+
+      // Desktop OS Notification
+      const completedToolsCount = doneData?.toolOutputs?.length || accumulatedSteps.filter((s) => s.iconType === "tool").length;
+      dispatchCompletionNotification(completedToolsCount);
+
+      // Auto-backup + auto-open produced documents
+      const autoOpenOffice =
+        localStorage.getItem("arunaki_pref_auto_open_office") === "true" ||
+        localStorage.getItem("arunaki_pref_auto_open_excel") === "true";
+      const autoBackup = localStorage.getItem("arunaki_pref_auto_backup") !== "false";
+      const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+      const toolsCount = doneData?.toolOutputs?.length || 0;
+      const produced = producedFilesRef.current.filter(isDocumentPath);
+
+      if (autoBackup && toolsCount > 0) {
+        if (desktop?.backupFolder) {
+          desktop.backupFolder().then((r: any) => {
+            if (r?.success) toast.success("Workspace backed up automatically");
+            else if (r?.error) toast.error(`Auto-backup failed: ${r.error}`);
+          }).catch(() => {});
+        }
+      }
+
+      if (autoOpenOffice && produced.length > 0 && desktop?.openPath) {
+        for (const doc of produced) {
+          try {
+            if ((/\.(xlsx|xls|xlsm|csv)$/i).test(doc) && desktop.openExcelNative) {
+              desktop.openExcelNative(doc);
+            } else if ((/\.(docx|doc|rtf)$/i).test(doc) && desktop.openWordNative) {
+              desktop.openWordNative(doc);
+            } else {
+              desktop.openPath(doc);
+            }
+          } catch {}
+        }
+      }
+
+      const canvasText = extractCanvasContent(accumulatedResponseText || doneData?.content || "");
+      if (canvasText) {
+        upsertCanvasTab(canvasText, true);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] }).then(() => {
+        setOptimisticMessages([]);
+      });
+      refetchFiles();
+      reloadOpenTabsContent();
+      processNext();
+    };
 
     try {
       subscribeEvents((rawEvent) => {
@@ -555,6 +638,10 @@ export function useWorkstationChat({
             });
           }
         } else if (event.type === "tool_preparing") {
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
           const label = `Preparing ${toolName}...`;
@@ -569,6 +656,10 @@ export function useWorkstationChat({
             });
           }
         } else if (event.type === "tool_live_status" || event.type === "tool_start" || event.type === "tool_progress") {
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "desktop_action";
           const preview = event.data?.preview ? ` → ${event.data.preview}` : "";
@@ -581,19 +672,22 @@ export function useWorkstationChat({
             preview: isFinished ? `Completed ${toolName}` : `Executing: ${toolName}${preview}`,
           });
 
-          const prepIdx = accumulatedSteps.findIndex((s) => s.iconType === "tool" && s.label.startsWith(`Preparing ${toolName}`));
+          const finalStatus: "completed" | "running" = isFinished ? "completed" : "running";
+          const prepIdx = accumulatedSteps.findIndex(
+            (s) => s.iconType === "tool" && (s.toolName === toolName || s.label.includes(toolName))
+          );
           if (prepIdx >= 0) {
             accumulatedSteps[prepIdx] = {
               ...accumulatedSteps[prepIdx],
               label,
-              status: isFinished ? "completed" : "running",
+              status: finalStatus,
               toolName,
             };
-          } else if (!accumulatedSteps.some((s) => s.label === label)) {
+          } else {
             accumulatedSteps.push({
               id: `${Date.now()}-${Math.random()}`,
               label,
-              status: isFinished ? "completed" : "running",
+              status: finalStatus,
               iconType: "tool",
               toolName,
             });
@@ -667,76 +761,22 @@ export function useWorkstationChat({
               )
             );
           }
+          // When text ends, mark any remaining running tool steps as completed
+          for (let i = 0; i < accumulatedSteps.length; i++) {
+            if (accumulatedSteps[i].status === "running") {
+              accumulatedSteps[i] = { ...accumulatedSteps[i], status: "completed" };
+            }
+          }
+          if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
+          textEndFinalizeTimeout = setTimeout(() => {
+            finalizeDone();
+          }, 600);
         } else if (event.type === "done") {
-          clearWatchdog();
-          setIsStreaming(false);
-          setLiveStatus(null);
-          const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
-
-          setOptimisticMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantMessageId
-                ? {
-                    ...m,
-                    content: accumulatedResponseText || m.content,
-                    reasoning: accumulatedReasoningText || m.reasoning,
-                    executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
-                    thoughtSec: elapsedSec,
-                  }
-                : m
-            )
-          );
-
-          // Desktop OS Notification
-          const completedToolsCount = event.data?.toolOutputs?.length || accumulatedSteps.filter((s) => s.iconType === "tool").length;
-          dispatchCompletionNotification(completedToolsCount);
-
-          // Auto-backup + auto-open produced documents
-          const autoOpenOffice =
-            localStorage.getItem("arunaki_pref_auto_open_office") === "true" ||
-            localStorage.getItem("arunaki_pref_auto_open_excel") === "true";
-          const autoBackup = localStorage.getItem("arunaki_pref_auto_backup") !== "false";
-          const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
-          const toolsCount = event.data?.toolOutputs?.length || 0;
-          const produced = producedFilesRef.current.filter(isDocumentPath);
-
-          if (autoBackup && toolsCount > 0) {
-            if (desktop?.backupFolder) {
-              desktop.backupFolder().then((r: any) => {
-                if (r?.success) toast.success("Workspace backed up automatically");
-                else if (r?.error) toast.error(`Auto-backup failed: ${r.error}`);
-              }).catch(() => {});
-            }
-          }
-
-          if (autoOpenOffice && produced.length > 0 && desktop?.openPath) {
-            for (const doc of produced) {
-              try {
-                if ((/\.(xlsx|xls|xlsm|csv)$/i).test(doc) && desktop.openExcelNative) {
-                  desktop.openExcelNative(doc);
-                } else if ((/\.(docx|doc|rtf)$/i).test(doc) && desktop.openWordNative) {
-                  desktop.openWordNative(doc);
-                } else {
-                  desktop.openPath(doc);
-                }
-              } catch {}
-            }
-          }
-
-          const canvasText = extractCanvasContent(accumulatedResponseText || event.data?.content || "");
-          if (canvasText) {
-            upsertCanvasTab(canvasText, true);
-          }
-
-          queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] }).then(() => {
-            setOptimisticMessages([]);
-          });
-          refetchFiles();
-          reloadOpenTabsContent();
-          processNext();
+          finalizeDone(event.data);
         } else if (event.type === "error") {
+          if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
           clearWatchdog();
-          setIsStreaming(false);
+          setStreamingState(false);
           setLiveStatus(null);
           const errorMsg = event.data?.message || "An error occurred.";
           toast.error(errorMsg);
@@ -758,20 +798,15 @@ export function useWorkstationChat({
         variant: reasoningEffort || undefined,
         signal: abortCtrl.signal,
       });
-      // Finalize streaming safely
-      clearWatchdog();
-      setIsStreaming(false);
-      setLiveStatus(null);
-      dispatchCompletionNotification(accumulatedSteps.filter((s) => s.iconType === "tool").length);
-      await queryClient.invalidateQueries({ queryKey: ["chat-messages", chatIdToUse] });
-      setOptimisticMessages([]);
-      processNext();
+      // Prompt was accepted by the engine. Streaming is now in progress over SSE.
+      // Finalization is handled by the SSE listener (done / error events) or watchdog.
     } catch (err: any) {
       clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);
       toast.error(`Error sending message: ${err?.message || err}`);
-      setIsStreaming(false);
+      setStreamingState(false);
       setLiveStatus(null);
+      setOptimisticMessages([]);
       processNext();
     }
   };

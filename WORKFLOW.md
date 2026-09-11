@@ -2603,4 +2603,29 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web` ✅ (0 error, production bundle built cleanly in 32.47s).
   - `bun test test/arunaki/` di engine ✅ (9 pass, 0 fail, 34 assertions).
 
+## Phase 75: Web Workstation Multi-Turn Chat & SSE Streaming Hardening (DONE)
+
+- [x] **Engine Provider Finish Reason Fallback**:
+  - `packages/engine/llm/src/protocols/openai-chat.ts`: Memperbaiki handling `finishEvents` ketika provider mengirimkan `finish_reason` kosong atau null pada stream chunks, dengan default fallback ke `"stop"`, sehingga `Lifecycle.finish()` selalu dipanggil dan `stepSettlement` terisi sempurna.
+- [x] **Engine Server SSE Resiliency**:
+  - `packages/engine/server/src/handlers/event.ts`: Membungkus `Schema.encodeUnknownSync` dengan `try-catch` fallback agar serialisasi payload event durable/non-standar tidak memicu uncaught `SchemaError` yang mematikan koneksi SSE.
+- [x] **Web Client Durable Event Normalization**:
+  - `apps/web/src/lib/engine.ts`: Menambahkan normalisasi regex `event.type.replace(/\.\d+$/, "")` pada `mapEngineEvent` agar event durable berversi (`session.next.text.ended.1`, `session.next.step.ended.2`, dll.) terpetakan secara tepat ke UI.
+  - Memperbaiki SSE message chunking untuk menangani split double newline standar SSE secara robust.
+- [x] **Workstation Chat Multi-Turn Finalization & Queue Sync**:
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Menyinkronkan `isStreamingRef.current = false` bersamaan dengan `setIsStreaming(false)` via `setStreamingState(false)` agar `processNext()` antrean prompt tidak terblokir.
+    - Mengekstrak fungsi terpusat `finalizeDone()` dengan debounce timeout (600ms) pada event `text_end` untuk giliran percakapan teks tanpa tool call.
+    - Memastikan status tool call yang telah selesai diperbarui menjadi `status: "completed"` sehingga kartu eksekusi tidak macet berputar.
+- [x] **Engine Serve-Only Async Startup**:
+  - `packages/engine/engine/src/serve-only.ts`: Menggunakan `await cli.parseAsync()` agar proses CLI engine tidak keluar prematur saat dijalankan secara mandiri.
+- [x] **Verifikasi Multi-Turn End-to-End**:
+  - Headless Playwright E2E browser test pada Workstation Web (`http://localhost:5173`):
+    - Turn 1 ("halo") -> Selesai dan difinalisasi dalam 8 detik (`Turn 1 finalized: true`).
+    - Turn 2 ("hitung 25 + 75") -> Dijawab "25 + 75 = 100" dan difinalisasi dalam 5 detik (`Turn 2 finalized: true`).
+    - Turn 3 ("sebutkan 3 warna pelangi") -> Dijawab dengan benar dan difinalisasi dalam 10 detik (`Turn 3 finalized: true`).
+    - Tombol kirim pesan kembali aktif dengan ikon pesawat kertas dan siap menerima input berikutnya.
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai dalam 14.63s).
+
+
 

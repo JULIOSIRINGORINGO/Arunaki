@@ -65,13 +65,13 @@ const cli = yargs(args)
 
 try {
   if (args.includes("-h") || args.includes("--help")) {
-    await cli.parse(args, (err: Error | undefined, _argv: unknown, out: string) => {
+    await cli.parseAsync(args, (err: Error | undefined, _argv: unknown, out: string) => {
       if (err) throw err
       if (!out) return
       show(out)
     })
   } else {
-    await cli.parse()
+    await cli.parseAsync()
   }
 } catch (e) {
   const formatted = FormatError(e)
@@ -80,7 +80,5 @@ try {
     UI.error("Unexpected error: " + (e instanceof Error ? e.stack : String(e)) + EOL)
     process.stderr.write(errorMessage(e) + EOL)
   }
-  process.exitCode = 1
-} finally {
-  process.exit()
+  process.exit(1)
 }

@@ -161,14 +161,45 @@ export function subscribeEvents(
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
+
+          // An SSE stream consists of events separated by double newlines (\n\n or \r\n\r\n)
+          const messages = buffer.split(/\r?\n\r?\n/);
+          // Keep incomplete trailing fragment in buffer
+          buffer = messages.pop() || "";
+
+          for (const msg of messages) {
+            const lines = msg.split(/\r?\n/);
+            let eventData = "";
+            let eventType = "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("data:")) {
+                const dataSlice = trimmed.slice(5).trim();
+                eventData += (eventData ? "\n" : "") + dataSlice;
+              } else if (trimmed.startsWith("event:")) {
+                eventType = trimmed.slice(6).trim();
+              }
+            }
+
+            if (eventData) {
               try {
-                const event = JSON.parse(line.slice(6));
-                onEvent(event);
-              } catch {}
+                const parsed = JSON.parse(eventData);
+                if (eventType && !parsed.type) parsed.type = eventType;
+                console.log("[SSE-EVENT-RCVD]", parsed.type, parsed.data?.sessionID || parsed.sessionID);
+                onEvent(parsed);
+              } catch {
+                // Fallback for single data line parse
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (trimmed.startsWith("data:")) {
+                    try {
+                      const single = JSON.parse(trimmed.slice(5).trim());
+                      onEvent(single);
+                    } catch {}
+                  }
+                }
+              }
             }
           }
         }
@@ -196,7 +227,9 @@ export function mapEngineEvent(
   const sessionID = payload.sessionID || event.sessionID;
   if (sessionID && sessionID !== currentSessionID) return null;
 
-  switch (event.type) {
+  const normalizedType = event.type ? event.type.replace(/\.\d+$/, "") : "";
+
+  switch (normalizedType || event.type) {
     case "session.next.text.delta":
       return { type: "text_delta", data: payload.delta || event.delta };
     case "session.next.text.ended":
