@@ -2670,3 +2670,32 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build**:
   - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai tanpa regresi).
 
+## Phase 78: Monochrome White Thinking UI, Arunaki Logo Telemetry & Deduplication (DONE)
+
+- [x] **Unified Single Indicator & Telemetry Deduplication**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Memperbaiki `LiveExecutionBadge` agar mengembalikan `null` saat tidak ada tool call yang sedang dieksekusi (`!hasToolExecution`), sepenuhnya menghapus indikator ganda (*duplicate pill* `"Analyzing request & context"`) yang sebelumnya muncul bersamaan di bawah bubble chat.
+    - Menghapus teks repetitif `"Processing request & workspace context..."` di dalam badge thought.
+- [x] **Monochrome White Aesthetics & Arunaki Logo**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Mengganti seluruh spinner oranye/amber dan ikon generic loader dengan `<ArunakiLogo size={12} className="animate-pulse text-white shrink-0" />`.
+    - Menerapkan palet warna monokrom murni (putih dan abu-abu/zinc elegan) pada teks status, border, pulsing cursor (`bg-white/80`), dan animasi dots.
+- [x] **Persistent Thought Header & Expandable Reasoning**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Memperbarui `MessageThoughtBadge` agar menyertakan `hasThoughtSec` dalam pengecekan render (`!hasReasoning && !isThinkingActive && !hasThoughtSec`), sehingga pesan yang telah selesai dijawab tetap menampilkan header `Thought (Xs)` dengan logo Arunaki, bukan menghilang atau langsung menyisakan teks jawaban mentah.
+    - Menjadikan blok teks penalaran (*reasoning*) dapat dibuka/tutup (*expandable/collapsible*) secara mulus dengan mengklik header `Thought (Xs) ▸`.
+- [x] **Explicit Thinking On/Off Toggle Button in Chat Input Toolbar**:
+  - `apps/web/src/components/workstation/chat/ChatInputBox.tsx`:
+    - Menambahkan tombol toggle visual `Thinking: On / Off` dengan logo Arunaki di toolbar bawah chat tepat di sebelah selector `Reasoning Effort`, memudahkan pengguna melihat status thinking dan menyalakannya/mematikannya dengan 1 klik.
+  - `apps/web/src/components/workstation/WorkstationRightChat.tsx`:
+    - Memastikan `showThinking` default bernilai `true` dan menyinkronkannya ke `localStorage.arunaki_show_thinking`.
+- [x] **Accurate Thought Duration Mapping from Engine Time**:
+  - `apps/web/src/components/workstation/chat/mapper.ts`:
+    - Memperbaiki kalkulasi `thoughtSec` agar membaca `p.time.start` dan `p.time.end` pada part SQLite engine, serta menghitung durasi turn asisten jika part reasoning tidak memiliki durasi eksplisit, menjamin `thoughtSec >= 1s`.
+  - `apps/web/src/components/workstation/chat/ChatMessageBubble.tsx`:
+    - Memperbarui pengecekan `hasThoughtOrSteps` agar menyertakan `thoughtSec` dari metadata.
+- [x] **Verifikasi Build & UI Test**:
+  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build sukses dalam 12.72s).
+  - Verifikasi browser UI otomatis: Konfirmasi tombol `Thinking: On` di toolbar, indikator monokrom putih berdenyut dengan logo Arunaki, ketiadaan duplikasi card eksekusi saat streaming, dan bertahannya badge `Thought (22s)` pada bubble pesan yang telah selesai.
+
+

@@ -68,8 +68,6 @@ function WorkstationRightChatComponent({
   const [showThinking, setShowThinking] = useState<boolean>(() => {
     const saved = localStorage.getItem("arunaki_show_thinking");
     if (saved !== null) return saved === "true";
-    const oldCollapse = localStorage.getItem("arunaki_collapse_thinking");
-    if (oldCollapse !== null) return oldCollapse === "false";
     return true;
   });
 

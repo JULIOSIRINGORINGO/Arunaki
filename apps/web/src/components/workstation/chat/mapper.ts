@@ -24,15 +24,17 @@ export function mapEngineMessages(raw: any[]): Message[] {
           .join("\n\n");
         let totalReasoningTime = 0;
         reasoningParts.forEach((p: any) => {
-          if (p.time?.created && p.time?.completed) {
+          if (p.time?.start && p.time?.end && p.time.end > p.time.start) {
+            totalReasoningTime += (p.time.end - p.time.start);
+          } else if (p.time?.created && p.time?.completed && p.time.completed > p.time.created) {
             totalReasoningTime += (p.time.completed - p.time.created);
-          } else if (p.time?.created && msg.time?.updated) {
+          } else if (p.time?.created && msg.time?.updated && msg.time.updated > p.time.created) {
             totalReasoningTime += (msg.time.updated - p.time.created);
+          } else if (p.time_created && p.time_updated && p.time_updated > p.time_created) {
+            totalReasoningTime += (p.time_updated - p.time_created);
           }
         });
-        if (totalReasoningTime > 0) {
-          thoughtSec = Math.max(1, Math.round(totalReasoningTime / 1000));
-        }
+        thoughtSec = totalReasoningTime > 0 ? Math.max(1, Math.round(totalReasoningTime / 1000)) : 1;
       }
 
       const textParts = msg.content.filter((p: any) => p && p.type === "text" && typeof p.text === "string");
@@ -73,15 +75,17 @@ export function mapEngineMessages(raw: any[]): Message[] {
           .join("\n\n");
         let totalReasoningTime = 0;
         reasoningParts.forEach((p: any) => {
-          if (p.time?.created && p.time?.completed) {
+          if (p.time?.start && p.time?.end && p.time.end > p.time.start) {
+            totalReasoningTime += (p.time.end - p.time.start);
+          } else if (p.time?.created && p.time?.completed && p.time.completed > p.time.created) {
             totalReasoningTime += (p.time.completed - p.time.created);
-          } else if (p.time?.created && msg.time?.updated) {
+          } else if (p.time?.created && msg.time?.updated && msg.time.updated > p.time.created) {
             totalReasoningTime += (msg.time.updated - p.time.created);
+          } else if (p.time_created && p.time_updated && p.time_updated > p.time_created) {
+            totalReasoningTime += (p.time_updated - p.time_created);
           }
         });
-        if (totalReasoningTime > 0) {
-          thoughtSec = Math.max(1, Math.round(totalReasoningTime / 1000));
-        }
+        thoughtSec = totalReasoningTime > 0 ? Math.max(1, Math.round(totalReasoningTime / 1000)) : 1;
       }
 
       const toolInvocations = msg.parts.filter((p: any) => p && (p.type === "tool" || p.type === "tool-invocation"));
@@ -114,6 +118,14 @@ export function mapEngineMessages(raw: any[]): Message[] {
 
     if (!content && msg.error?.message) {
       content = `⚠️ ${msg.error.message}`;
+    }
+
+    if (role === "assistant" && !thoughtSec) {
+      const startTime = msg.time?.created || msg.time_created || msg.time?.start;
+      const endTime = msg.time?.updated || msg.time_updated || msg.time?.end;
+      if (startTime && endTime && endTime > startTime) {
+        thoughtSec = Math.max(1, Math.round((endTime - startTime) / 1000));
+      }
     }
 
     content = content.trim();

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { cn } from "../../lib/utils";
+import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Monitor,
   Camera,
   Globe,
-  Loader2,
   FileSpreadsheet,
   FileText,
   Keyboard,
@@ -14,7 +14,6 @@ import {
   Check,
   Database,
   FileSearch,
-  Brain,
 } from "lucide-react";
 
 export interface LiveStatusData {
@@ -140,33 +139,21 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
     status.type === 'tool_live_status' ||
     status.type === 'tool_progress';
 
-  // Antigravity style: If no tools are being executed (simple text response / thinking),
-  // show only a subtle minimal indicator while waiting for tokens, not a big task card!
-  const animatedDots = ".".repeat(dotIndex);
+  // Antigravity style: When no tools are being executed (simple text response / thinking),
+  // MessageThoughtBadge inside the message bubble exclusively handles thinking telemetry.
+  // Returning null here completely eliminates duplicate "Processing request & analyzing" indicators.
   if (!hasToolExecution) {
-    if (status.type === 'text_delta') {
-      return null;
-    }
-    const rawPreview = (status.preview || "Thinking").trim().replace(/\.+$/, "");
-    return (
-      <div className="flex items-center gap-2 py-1.5 px-3 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-strong)] text-xs text-[var(--text-primary)] font-sans max-w-fit select-none my-1 shadow-xs animate-in fade-in duration-150">
-        <Loader2 size={13} className="animate-spin text-amber-400 shrink-0" />
-        <span className="text-[11px] text-[var(--text-secondary)] font-medium flex items-center">
-          <span>{rawPreview}</span>
-          <span className="inline-block w-4 text-left font-mono font-bold text-amber-400 ml-0.5">{animatedDots}</span>
-          <span className="text-[10px] text-[var(--text-muted)] font-mono ml-1">({waitingSec}s)</span>
-        </span>
-      </div>
-    );
+    return null;
   }
 
+  const animatedDots = ".".repeat(dotIndex);
   const summaryHeader = status.preview && status.preview.startsWith("Preparing")
     ? status.preview
     : `Executing ${toolSteps.length || 1} document task${(toolSteps.length || 1) > 1 ? 's' : ''}`;
 
   const renderStepIcon = (step: StepItem) => {
     if (step.iconType === 'thinking') {
-      return <Loader2 size={12} className="animate-spin text-amber-400 shrink-0 mt-0.5" />;
+      return <ArunakiLogo size={12} className="animate-pulse text-white shrink-0 mt-0.5" />;
     }
     if (step.iconType === 'text') {
       return <Cpu size={12} className="text-[var(--text-muted)] shrink-0 mt-0.5" />;
@@ -190,14 +177,14 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
         className="w-full flex items-center justify-between px-3 py-1.5 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Loader2 size={12} className="animate-spin text-amber-400 shrink-0" />
-          <span className="font-semibold text-[var(--text-primary)] truncate">{summaryHeader}</span>
-          <span className="inline-block w-3 text-left font-mono font-bold text-amber-400">{animatedDots}</span>
+          <ArunakiLogo size={12} className="animate-pulse text-white shrink-0" />
+          <span className="font-semibold text-white truncate">{summaryHeader}</span>
+          <span className="inline-block w-3 text-left font-mono font-bold text-white">{animatedDots}</span>
           <span className="text-[10px] text-[var(--text-dim)] shrink-0">
             ({completedCount > 0 ? `${completedCount} done · ` : ''}{waitingSec}s)
           </span>
         </div>
-        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
+        <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
           {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </div>
       </button>
@@ -210,13 +197,13 @@ export function LiveExecutionBadge({ status, active = true }: LiveExecutionBadge
             return (
               <div key={step.id} className="flex items-start gap-2 text-[var(--text-secondary)]">
                 {isCompleted ? (
-                  <Check size={12} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
+                  <Check size={12} className="text-white mt-0.5 shrink-0" />
                 ) : (
                   renderStepIcon(step)
                 )}
                 <span
                   className={`truncate max-w-[260px] ${
-                    isCompleted ? "text-[var(--text-dim)]" : "text-[var(--text-primary)] font-medium"
+                    isCompleted ? "text-[var(--text-dim)]" : "text-white font-medium"
                   }`}
                 >
                   {step.label}
@@ -257,9 +244,10 @@ export function MessageThoughtBadge({
   const toolSteps = steps.filter((s) => s.iconType === 'tool' || s.toolName);
   const hasToolExecution = toolSteps.length > 0;
   const hasReasoning = Boolean(reasoning && reasoning.length > 0);
+  const hasThoughtSec = Boolean(thoughtSec && thoughtSec > 0);
   const isThinkingActive = isStreaming && !steps.some((s) => s.iconType === 'text');
 
-  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive))) {
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !isThinkingActive && !hasThoughtSec))) {
     return null;
   }
 
@@ -274,15 +262,15 @@ export function MessageThoughtBadge({
             className="w-full flex items-center justify-between px-2.5 py-1 bg-[var(--bg-panel-sub)] hover:bg-[var(--bg-hover)] transition-colors border-b border-[var(--border-color)] cursor-pointer text-left"
           >
             <div className="flex items-center gap-1.5 min-w-0">
-              <Check size={12} className="text-[var(--text-primary)] shrink-0" />
-              <span className="font-semibold text-[var(--text-primary)] truncate">
+              <Check size={12} className="text-white shrink-0" />
+              <span className="font-semibold text-white truncate">
                 Executed {toolSteps.length} document task{toolSteps.length > 1 ? 's' : ''}
               </span>
               <span className="text-[10px] text-[var(--text-dim)] shrink-0">
                 ({toolSteps.length} step{toolSteps.length > 1 ? 's' : ''}{thoughtSec ? ` · ${thoughtSec}s` : ''})
               </span>
             </div>
-            <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] shrink-0">
+            <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
               {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
             </div>
           </button>
@@ -291,7 +279,7 @@ export function MessageThoughtBadge({
             <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
               {toolSteps.map((step, idx) => (
                 <div key={step.id || idx} className="flex items-start gap-1.5 text-[var(--text-secondary)] min-w-0">
-                  <Check size={11} className="text-[var(--text-primary)] mt-0.5 shrink-0" />
+                  <Check size={11} className="text-white mt-0.5 shrink-0" />
                   <span className="truncate max-w-full text-[var(--text-muted)]">
                     {step.label}
                   </span>
@@ -302,28 +290,46 @@ export function MessageThoughtBadge({
         </div>
       )}
 
-      {/* 2. Real-time Model Thoughts: Shown directly (kata per kata), preserving word boundaries during stream */}
-      {showThinking && (hasReasoning || isThinkingActive) && (
-        <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono italic leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
-          <div className="flex items-center gap-1.5 mb-1 not-italic font-sans text-[10px] text-[var(--text-dim)] select-none">
-            <Brain size={11} className={cn("shrink-0", isThinkingActive ? "text-amber-400 animate-pulse" : "text-[var(--text-muted)]")} />
-            <span className={cn("font-medium text-[11px]", isThinkingActive ? "text-amber-400" : "text-[var(--text-dim)]")}>
+      {/* 2. Real-time Model Thoughts: Monochrome white styling with Arunaki logo */}
+      {showThinking && (hasReasoning || isThinkingActive || hasThoughtSec) && (
+        <div className="w-full min-w-0 text-[11px] text-[var(--text-muted)] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
+          <button
+            type="button"
+            onClick={() => hasReasoning && setIsExpanded(!isExpanded)}
+            className={cn(
+              "flex items-center gap-1.5 mb-1 not-italic font-sans text-[11px] select-none transition-colors",
+              hasReasoning ? "cursor-pointer hover:text-white" : "cursor-default text-[var(--text-dim)]"
+            )}
+          >
+            <ArunakiLogo
+              size={12}
+              className={cn(
+                "shrink-0 transition-transform duration-150",
+                isThinkingActive ? "animate-pulse text-white" : "text-white/80"
+              )}
+            />
+            <span className={cn("font-medium", isThinkingActive ? "text-white" : "text-[var(--text-secondary)]")}>
               {isThinkingActive ? "Thinking..." : "Thought"}
             </span>
-            {thoughtSec ? <span className="opacity-60 font-mono text-[10px]">({thoughtSec}s)</span> : null}
-          </div>
+            {thoughtSec ? (
+              <span className="opacity-60 font-mono text-[10px] text-[var(--text-muted)]">({thoughtSec}s)</span>
+            ) : null}
+            {hasReasoning && !isThinkingActive && (
+              <span className="text-[10px] text-[var(--text-dim)] flex items-center ml-0.5">
+                {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+              </span>
+            )}
+          </button>
+
           {hasReasoning ? (
-            <div className="pl-3 border-l-2 border-amber-500/40 text-[var(--text-muted)] opacity-90 select-text break-words">
-              {isStreaming ? reasoning : reasoning?.trim()}
-              {isStreaming && isThinkingActive && (
-                <span className="inline-block w-1.5 h-3 bg-amber-400/80 ml-0.5 animate-pulse align-middle" />
-              )}
-            </div>
-          ) : isThinkingActive ? (
-            <div className="pl-3 border-l-2 border-amber-500/30 text-[var(--text-muted)] opacity-70 italic text-[10px]">
-              <span className="inline-block w-1.5 h-2.5 bg-amber-400/70 animate-pulse mr-1.5" />
-              Processing request & workspace context...
-            </div>
+            (isStreaming || isExpanded) && (
+              <div className="pl-3 border-l-2 border-white/20 text-[var(--text-muted)] opacity-90 select-text break-words not-italic">
+                {isStreaming ? reasoning : reasoning?.trim()}
+                {isStreaming && isThinkingActive && (
+                  <span className="inline-block w-1.5 h-3 bg-white/80 ml-0.5 animate-pulse align-middle" />
+                )}
+              </div>
+            )
           ) : null}
         </div>
       )}

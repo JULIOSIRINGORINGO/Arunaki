@@ -64,7 +64,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
   const hasThoughtOrSteps =
     !isUser &&
-    (Boolean(showThinking && (msg?.reasoning || isThinkingActive)) ||
+    (Boolean(showThinking && (msg?.reasoning || isThinkingActive || msg?.thoughtSec || thoughtSec)) ||
       Boolean(steps && steps.length > 0));
 
   if (!hasVisibleContent && !hasThoughtOrSteps) {
