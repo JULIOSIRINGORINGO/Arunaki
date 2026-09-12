@@ -750,10 +750,19 @@ export function useWorkstationChat({
           }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
+          const callId = event.data?.callID;
           const label = formatToolStepLabel(toolName, event.data?.args || event.data?.input, false);
           setLiveStatus({ type: "tool_preparing", toolName, preview: label });
-          if (!accumulatedSteps.some((s) => s.label === label)) {
-            const toolStepId = `${Date.now()}-${Math.random()}`;
+
+          const existingStep = accumulatedSteps.find(
+            (s) => s.iconType === "tool" && (callId ? s.id === callId : s.status === "running" || s.toolName === toolName)
+          );
+          if (existingStep) {
+            existingStep.label = label;
+            existingStep.status = "running";
+            existingStep.toolName = toolName;
+          } else {
+            const toolStepId = callId || `${Date.now()}-${Math.random()}`;
             accumulatedSteps.push({
               id: toolStepId,
               label,
@@ -761,28 +770,39 @@ export function useWorkstationChat({
               iconType: "tool",
               toolName,
             });
+          }
+
+          const existingToolPart = accumulatedParts.find(
+            (p) => p.type === "tool" && (callId ? p.step.id === callId : p.step.status === "running" || p.step.toolName === toolName)
+          );
+          if (existingToolPart && existingToolPart.type === "tool") {
+            existingToolPart.step.label = label;
+            existingToolPart.step.status = "running";
+            existingToolPart.step.toolName = toolName;
+          } else {
             accumulatedParts.push({
               type: "tool",
               step: {
-                id: toolStepId,
+                id: callId || `${Date.now()}-${Math.random()}`,
                 label,
                 status: "running",
                 iconType: "tool",
                 toolName,
               },
             });
-            setOptimisticMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId
-                  ? {
-                      ...m,
-                      executionSteps: [...accumulatedSteps],
-                      parts: [...accumulatedParts],
-                    }
-                  : m
-              )
-            );
           }
+
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    executionSteps: [...accumulatedSteps],
+                    parts: [...accumulatedParts],
+                  }
+                : m
+            )
+          );
         } else if (event.type === "tool_live_status" || event.type === "tool_start" || event.type === "tool_progress") {
           if (textEndFinalizeTimeout) {
             clearTimeout(textEndFinalizeTimeout);
@@ -790,6 +810,7 @@ export function useWorkstationChat({
           }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
+          const callId = event.data?.callID;
           const isFinished = event.data?.status === "completed" || event.data?.status === "failed";
           const args = event.data?.args || event.data?.input || event.data?.preview;
           const label = formatToolStepLabel(toolName, args, isFinished);
@@ -801,19 +822,16 @@ export function useWorkstationChat({
           });
 
           const finalStatus: "completed" | "running" = isFinished ? "completed" : "running";
-          const prepIdx = accumulatedSteps.findIndex(
-            (s) => s.iconType === "tool" && (s.toolName === toolName || s.label.includes(toolName))
+          const existingStep = accumulatedSteps.find(
+            (s) => s.iconType === "tool" && (callId ? s.id === callId : s.status === "running" || s.toolName === toolName)
           );
-          if (prepIdx >= 0) {
-            accumulatedSteps[prepIdx] = {
-              ...accumulatedSteps[prepIdx],
-              label,
-              status: finalStatus,
-              toolName,
-            };
+          if (existingStep) {
+            existingStep.label = label;
+            existingStep.status = finalStatus;
+            existingStep.toolName = toolName;
           } else {
             accumulatedSteps.push({
-              id: `${Date.now()}-${Math.random()}`,
+              id: callId || `${Date.now()}-${Math.random()}`,
               label,
               status: finalStatus,
               iconType: "tool",
@@ -822,16 +840,17 @@ export function useWorkstationChat({
           }
 
           const existingToolPart = accumulatedParts.find(
-            (p) => p.type === "tool" && (p.step.toolName === toolName || p.step.label.includes(toolName))
+            (p) => p.type === "tool" && (callId ? p.step.id === callId : p.step.status === "running" || p.step.toolName === toolName)
           );
           if (existingToolPart && existingToolPart.type === "tool") {
             existingToolPart.step.label = label;
             existingToolPart.step.status = finalStatus;
+            existingToolPart.step.toolName = toolName;
           } else {
             accumulatedParts.push({
               type: "tool",
               step: {
-                id: `${Date.now()}-${Math.random()}`,
+                id: callId || `${Date.now()}-${Math.random()}`,
                 label,
                 status: finalStatus,
                 iconType: "tool",
@@ -1008,9 +1027,18 @@ export function useWorkstationChat({
             });
           }
         } else if (event.type === "done") {
-          const hasRunningTool = accumulatedSteps.some((s) => s.status === "running");
-          if (hasRunningTool) {
-            return;
+          // Finalize all remaining tool steps to completed when engine turn finishes
+          for (const s of accumulatedSteps) {
+            if (s.status === "running") {
+              s.status = "completed";
+              s.label = formatToolStepLabel(s.toolName || "action", undefined, true);
+            }
+          }
+          for (const p of accumulatedParts) {
+            if (p.type === "tool" && p.step.status === "running") {
+              p.step.status = "completed";
+              p.step.label = formatToolStepLabel(p.step.toolName || "action", undefined, true);
+            }
           }
           finalizeDone(event.data);
         } else if (event.type === "error") {

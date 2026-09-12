@@ -250,6 +250,8 @@ export function subscribeEvents(
 
 // --- Event mapping: engine events → old frontend format ---
 
+const toolCallNameMap = new Map<string, string>();
+
 export function mapEngineEvent(
   event: { type: string; data?: any; sessionID?: string; [key: string]: any },
   currentSessionID: string,
@@ -282,17 +284,22 @@ export function mapEngineEvent(
       return { type: "done", data: payload };
     }
     case "session.next.tool.input.started": {
+      const callID = payload.callID || event.callID || payload.id || event.id;
       const toolName = payload.name || event.name || "action";
+      if (callID) toolCallNameMap.set(callID, toolName);
       return {
         type: "tool_preparing",
         data: {
+          callID,
           toolName,
           preview: `Preparing ${toolName}...`,
         },
       };
     }
     case "session.next.tool.called": {
-      const toolName = payload.tool || event.tool || "action";
+      const callID = payload.callID || event.callID || payload.id || event.id;
+      const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
+      if (callID) toolCallNameMap.set(callID, toolName);
       const input = payload.input || event.input || {};
       const target =
         input.path ||
@@ -305,6 +312,7 @@ export function mapEngineEvent(
       return {
         type: "tool_start",
         data: {
+          callID,
           toolName,
           args: input,
           preview: filePreview || (typeof target === "string" ? target : undefined),
@@ -312,20 +320,25 @@ export function mapEngineEvent(
       };
     }
     case "session.next.tool.progress": {
-      const toolName = payload.tool || event.tool || "action";
+      const callID = payload.callID || event.callID || payload.id || event.id;
+      const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
       return {
         type: "tool_progress",
         data: {
+          callID,
           toolName,
           preview: `Executing ${toolName}...`,
         },
       };
     }
     case "session.next.tool.success": {
-      const toolName = payload.tool || event.tool || "action";
+      const callID = payload.callID || event.callID || payload.id || event.id;
+      const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
+      if (callID) toolCallNameMap.delete(callID);
       return {
         type: "tool_live_status",
         data: {
+          callID,
           toolName,
           status: "completed",
           preview: `Completed ${toolName}`,
@@ -333,10 +346,13 @@ export function mapEngineEvent(
       };
     }
     case "session.next.tool.failed": {
-      const toolName = payload.tool || event.tool || "action";
+      const callID = payload.callID || event.callID || payload.id || event.id;
+      const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
+      if (callID) toolCallNameMap.delete(callID);
       return {
         type: "tool_live_status",
         data: {
+          callID,
           toolName,
           status: "failed",
           preview: `Failed ${toolName}`,

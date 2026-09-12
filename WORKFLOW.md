@@ -2892,6 +2892,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build**:
   - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 28.18s.
 
+---
+
+### Phase 89: Fix Streaming State Finalization & Tool Step Desync (UI Delay Bug) ✅
+- [x] **Investigasi Akar Masalah UI Terjebak Loading (78s) Pasca Output Selesai**:
+  - Dari database SQLite (`Arunaki-local.db`), diverifikasi bahwa LLM dan backend engine sebenarnya **telah selesai 100% dalam waktu 0.76 detik** (`msg_09489d1e1001u5l8kwzF7QiLWj`, `finish: stop`).
+  - Masalah keterlambatan 78 detik terjadi murni di frontend listener web (`apps/web`):
+    1. Pada event `session.next.tool.success`, payload backend tidak menyertakan `toolName` eksplisit (hanya `callID`), sehingga terfallback ke `"action"`. Akibatnya, pembaruan status tidak cocok dengan step `"read"` yang dibuat saat `tool_preparing`, menghasilkan step ganda (satu `running`, satu `completed`).
+    2. Ketika event `done` tiba dari backend, kode frontend memiliki pengecekan salah: `if (hasRunningTool) return;`. Karena ada step phantom yang tertinggal dalam status `"running"`, frontend mengabaikan event `done` dan terus menunggu hingga watchdog timeout 90 detik.
+- [x] **Perbaikan di `apps/web/src/lib/engine.ts`**:
+  - Menambahkan `toolCallNameMap` yang melacak pasangan `callID -> toolName` secara konsisten di seluruh siklus event tool (`input.started`, `called`, `progress`, `success`, `failed`).
+- [x] **Perbaikan di `apps/web/src/components/workstation/chat/useWorkstationChat.ts`**:
+  - Memastikan pencarian dan deduplikasi step tool menggunakan `callId` atau step aktif yang sedang berjalan, mencegah kemunculan card task ganda.
+  - Pada event `done`, menandai seluruh step tool yang tersisa menjadi `completed` dan secara mutlak memanggil `finalizeDone(event.data)` (menghapus blokade `if (hasRunningTool) return;`).
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 26.02s.
+
+
 
 
 
