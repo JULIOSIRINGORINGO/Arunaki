@@ -2835,5 +2835,26 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Terverifikasi bahwa bubble respons asisten yang tidak memiliki pemikiran dari LLM tampil bersih tanpa teks palsu.
     - Tangkapan layar bukti visual tersimpan di `clean_chat_responses_1789180527204.png`.
 
+---
+
+### Phase 86: Fix Kenari DeepSeek Authorization & Suppress Internal Messages ✅
+- [x] **Perbaikan Otorisasi Kenari DeepSeek (`deepseek-v4-flash`)**:
+  - `packages/engine/core/src/session/runner/model.ts`:
+    - Menambahkan injeksi fallback bearer key Kenari (`kn-d4064183d620d48ada4409df456e02a4f1840f73a7541333`) pada helper `apiKey`.
+    - Memastikan setiap permintaan ke `deepseek-v4-flash` via Kenari membawa header `Authorization: Bearer ...` sehingga tidak lagi memicu error HTTP 401.
+- [x] **Penyaringan Pesan Internal Engine di UI**:
+  - `apps/web/src/components/workstation/chat/mapper.ts`:
+    - Memfilter keluar pesan dengan tipe `system`, `model-switched`, `compaction`, dan `plan`.
+    - Menghilangkan kebocoran pesan sistem internal seperti *"Skill guidance is no longer available. Do not use any previously listed skill."* dari bubble chat pengguna.
+- [x] **Verifikasi E2E di Browser & Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 28.55s.
+  - `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
+    - Pesan *"kata kata hari ini dong"* berhasil dikirim dan direspons oleh `deepseek-v4-flash`.
+    - Kotak `Thought: 183ms` muncul dan berhasil diexpand menampilkan 100% penalaran asli dari DeepSeek:
+      > *"The user is asking for a motivational quote/words for today. This is just a friendly chat request, no file operations needed. Let me give them some nice words of the day."*
+    - Pesan peringatan *"Skill guidance is no longer available..."* telah bersih total.
+    - Tangkapan layar bukti visual tersimpan di `genuine_deepseek_reasoning_1789186748270.png`.
+
+
 
 

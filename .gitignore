@@ -35,6 +35,7 @@ scratch/
 .arunaki/sessions/
 **/.arunaki/sessions/
 **/.arunaki/backups/
+**/.arunaki-backups/
 
 # Root-level local business files
 REKAPAN TERBARU*.txt

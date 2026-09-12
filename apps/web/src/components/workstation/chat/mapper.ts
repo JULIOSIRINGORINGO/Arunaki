@@ -29,7 +29,12 @@ export function mapEngineMessages(raw: any[]): Message[] {
   if (!Array.isArray(raw)) return [];
 
   const sortedRaw = [...raw]
-    .filter((m) => m && m.role !== "compaction" && m.type !== "compaction")
+    .filter((m) => {
+      if (!m) return false;
+      const t = m.type || m.role;
+      if (t === "compaction" || t === "system" || t === "model-switched" || t === "plan") return false;
+      return true;
+    })
     .sort((a, b) => {
       const timeA = Number(a.time?.created ?? a.time_created ?? a.time?.start ?? 0);
       const timeB = Number(b.time?.created ?? b.time_created ?? b.time?.start ?? 0);

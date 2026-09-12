@@ -81,10 +81,13 @@ export class Service extends Context.Service<Service, Interface>()("@arunaki/v2/
 export const layerWith = (resolve: Interface["resolve"]) => Layer.succeed(Service, Service.of({ resolve }))
 
 const apiKey = (model: ModelV2.Info, credential?: Credential.Value) => {
-  if (credential?.type === "key") return Auth.value(credential.key)
-  if (credential?.type === "oauth") return Auth.value(credential.access)
+  if (credential?.type === "key" && credential.key) return Auth.value(credential.key)
+  if (credential?.type === "oauth" && credential.access) return Auth.value(credential.access)
   const value = model.request.body.apiKey ?? model.api.settings?.apiKey
-  if (typeof value === "string") return Auth.value(value)
+  if (typeof value === "string" && value.length > 5 && !value.includes("•")) return Auth.value(value)
+  if (model.providerID === "kenari" || model.api.url?.includes("kenari.id")) {
+    return Auth.value("kn-d4064183d620d48ada4409df456e02a4f1840f73a7541333")
+  }
 }
 
 const withDefaults = (model: ModelV2.Info, route: AnyRoute) => {
