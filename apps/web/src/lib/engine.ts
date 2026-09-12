@@ -25,8 +25,7 @@ export async function createSession(opts?: {
     if (typeof opts.model === "object") {
       let id = opts.model.id;
       if (id && id.includes(",")) {
-        const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
-        id = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
+        id = id.split(",")[0].trim();
       }
       modelPayload = {
         providerID: opts.model.providerID,
@@ -34,16 +33,14 @@ export async function createSession(opts?: {
         ...(opts.model.variant ? { variant: opts.model.variant } : {}),
       };
     } else if (typeof opts.model === "string") {
-      let clean = opts.model;
-      if (clean.includes(",")) {
-        const parts = clean.split(",").map((s) => s.trim()).filter(Boolean);
-        clean = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
-      }
+      let clean = opts.model.includes(",") ? opts.model.split(",")[0].trim() : opts.model.trim();
       if (clean.includes("/")) {
         const [providerID, id] = clean.split("/", 2);
         modelPayload = { providerID, id };
       } else {
-        modelPayload = { providerID: "kenari", id: clean };
+        const activeProvider =
+          (typeof localStorage !== "undefined" && localStorage.getItem("arunaki_active_provider")) || "default";
+        modelPayload = { providerID: activeProvider, id: clean };
       }
     }
   }
@@ -90,8 +87,7 @@ export async function getSession(sessionID: string) {
 export async function switchSessionModel(sessionID: string, model: { providerID: string; id: string; variant?: string }) {
   let id = model.id;
   if (id && id.includes(",")) {
-    const parts = id.split(",").map((s) => s.trim()).filter(Boolean);
-    id = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0];
+    id = id.split(",")[0].trim();
   }
   const res = await engineFetch(`/api/session/${sessionID}/model`, {
     method: "POST",
