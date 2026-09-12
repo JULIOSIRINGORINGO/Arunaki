@@ -29,11 +29,10 @@ interface UseWorkstationChatOptions {
 }
 
 const EDIT_FILE_TOOLS = new Set([
-  "write",
-  "edit",
-  "write_to_file",
-  "replace_file_content",
-  "apply_patch",
+  "write_file",
+  "edit_file",
+  "write_excel",
+  "edit_excel",
   "edit_document",
   "create_file",
 ]);
@@ -44,30 +43,30 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
     localStorage.getItem("arunaki_active_model") ||
     localStorage.getItem(`arunaki_provider_model_${p}`);
   if (specific && specific.trim() && !specific.includes(",")) {
-    return { providerID: p, id: specific.trim() };
+    const trimmed = specific.trim();
+    return { providerID: p, id: trimmed };
   }
   const pool = localStorage.getItem(`arunaki_provider_models_${p}`);
   if (pool && pool.trim()) {
-    const list = pool.split(",").map((s) => s.trim()).filter(Boolean);
+    const list = pool
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     const valid =
+      list.find((m) => m === "deepseek-v4-flash") ||
+      list.find((m) => m === "mistral-medium-3-5:free") ||
+      list.find((m) => m === "mimo-v2-5:free") ||
       list.find((m) => m === "agnes-2-0-flash:free") ||
-      list.find((m) => m.endsWith(":free") && m !== "mistral-large:free" && m !== "glm-4-7-flash:free") ||
-      list.find(
-        (m) =>
-          m !== "mistral-large:free" &&
-          m !== "glm-4-7-flash:free" &&
-          !m.includes("muse-spark") &&
-          !m.includes("kimi") &&
-          !m.includes("lightning") &&
-          !m.includes("tiny") &&
-          !m.includes("longcat") &&
-          !m.includes("north-mini")
-      ) || list[0];
-    if (valid) return { providerID: p, id: valid };
+      list.find((m) => m.endsWith(":free")) ||
+      list[0];
+    if (valid) {
+      localStorage.setItem("arunaki_active_model", valid);
+      return { providerID: p, id: valid };
+    }
   }
   return {
     providerID: p,
-    id: p === "kenari" ? "agnes-2-0-flash:free" : "default",
+    id: p === "kenari" ? "deepseek-v4-flash" : "default",
   };
 }
 

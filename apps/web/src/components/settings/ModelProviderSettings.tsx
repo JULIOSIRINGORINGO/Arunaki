@@ -36,7 +36,15 @@ export function ModelProviderSettings({
   const [customModelsMap, setCustomModelsMap] = useState<Record<string, string[]>>(() => {
     try {
       const saved = localStorage.getItem("arunaki_custom_provider_models");
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) return {};
+      const parsed = JSON.parse(saved);
+      const cleaned: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (Array.isArray(v)) {
+          cleaned[k] = v.filter(Boolean);
+        }
+      }
+      return cleaned;
     } catch {
       return {};
     }
@@ -160,8 +168,14 @@ export function ModelProviderSettings({
     try {
       let providerId = editingId;
       const cleanApiKey = form.apiKey?.trim();
+      const sanitizedModelList = form.model
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const cleanModelStr = sanitizedModelList.join(", ") || formAvailableModels[0] || "deepseek-v4-flash";
       const payload = {
         ...form,
+        model: cleanModelStr,
         apiKey: cleanApiKey && !cleanApiKey.includes("•") ? cleanApiKey : undefined,
       };
       if (editingId) {
@@ -181,8 +195,8 @@ export function ModelProviderSettings({
       }
 
       if (providerId) {
-        localStorage.setItem("arunaki_provider_models_" + providerId, form.model);
-        const primary = form.model.split(",").map((s) => s.trim()).filter(Boolean)[0];
+        localStorage.setItem("arunaki_provider_models_" + providerId, cleanModelStr);
+        const primary = cleanModelStr.split(",").map((s) => s.trim()).filter(Boolean)[0];
         if (primary) {
           localStorage.setItem("arunaki_active_model", primary);
         }
@@ -271,10 +285,11 @@ export function ModelProviderSettings({
         }),
       });
       const data = await res.json();
-      const fetchedModels: string[] = data.data?.models || [];
+      const rawFetchedModels: string[] = data.data?.models || [];
+      const fetchedModels = rawFetchedModels.filter(Boolean);
 
       if (fetchedModels.length === 0) {
-        toast.info("No models discovered from endpoint. Keeping default catalog.");
+        toast.info("No supported models discovered from endpoint. Keeping default catalog.");
         return;
       }
 

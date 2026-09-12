@@ -211,11 +211,11 @@ export const locationLayer = Layer.effect(
           requestedID = requestedID.split(",")[0].trim()
         }
 
-        const selected = session.model
+        const selected = session.model && requestedID
           ? allAvailable.find(
               (model) =>
                 model.providerID === session.model?.providerID &&
-                (model.id === requestedID || (requestedID ? requestedID.includes(model.id) : false)),
+                (model.id === requestedID || requestedID.includes(model.id)),
             ) ??
             withKey.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
             withKey.find(supported) ??
@@ -223,7 +223,9 @@ export const locationLayer = Layer.effect(
             (defaultModel && supported(defaultModel) ? defaultModel : allAvailable.find(supported))
           : defaultModel && supported(defaultModel)
             ? defaultModel
-            : withKey.find(supported) ?? allAvailable.find(supported)
+            : withKey.find((m) => session.model?.providerID ? m.providerID === session.model.providerID && supported(m) : supported(m)) ??
+              withKey.find(supported) ??
+              allAvailable.find(supported)
         if (!selected) return yield* new ModelNotSelectedError({ sessionID: session.id })
         const provider = yield* catalog.provider.get(selected.providerID)
         const connection = yield* integrations.connection.active(

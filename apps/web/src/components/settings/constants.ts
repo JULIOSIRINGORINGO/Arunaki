@@ -15,6 +15,8 @@ export const PROVIDER_TYPES = [
   { value: "openai-compatible", label: "Other (Custom Endpoint)", defaultUrl: "" },
 ];
 
+
+
 export const DEFAULT_MODELS: Record<string, string[]> = {
   groq: [
     "llama-3.3-70b-versatile",
@@ -39,11 +41,11 @@ export const DEFAULT_MODELS: Record<string, string[]> = {
     "meta-llama/llama-4-maverick:free",
   ],
   kenari: [
-    "agnes-2-0-flash:free",
+    "deepseek-v4-flash",
     "mistral-medium-3-5:free",
-    "nemotron-3-super-120b-a12b:free",
-    "step-3-7-flash:free",
     "mimo-v2-5:free",
+    "agnes-2-0-flash:free",
+    "step-3-7-flash:free",
   ],
   openai: ["gpt-4o", "gpt-4o-mini", "o3-mini", "gpt-4-turbo"],
   anthropic: [

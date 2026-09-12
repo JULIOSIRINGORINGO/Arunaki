@@ -131,13 +131,14 @@ function providerUIItem(
   priority: number,
 ) {
   const options = info.options as { headerPrefix?: string; headerTitle?: string; priority?: number } | undefined
+  const model = Object.keys(info.models ?? {}).join(", ")
   return {
     id: providerID,
     name: info.name ?? providerID,
     type: providerID,
     baseUrl: info.options?.baseURL ?? "",
     apiKey: info.options?.apiKey ?? "",
-    model: Object.keys(info.models ?? {}).join(", "),
+    model,
     headerPrefix: options?.headerPrefix,
     headerTitle: options?.headerTitle,
     active,

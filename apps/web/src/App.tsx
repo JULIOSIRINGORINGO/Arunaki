@@ -8,6 +8,8 @@ import { HistoryPage } from "./pages/HistoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { KnowledgePage } from "./pages/KnowledgePage";
 import { useTheme, getSystemTheme } from "./lib/theme";
+import { DEFAULT_MODELS } from "./components/settings/constants";
+import { API_BASE, apiFetch, directoryQuery } from "./lib/api";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,47 +23,52 @@ const queryClient = new QueryClient({
 const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
 const RouterComponent = isFileProtocol ? HashRouter : BrowserRouter;
 
-// Self-healing migration: sanitize and heal model & provider configuration on app launch
-if (typeof window !== "undefined") {
+// Auto-refresh model catalog from API on app launch (fire-and-forget, non-blocking).
+// Dead/discontinued models automatically disappear because the API only returns live models.
+async function refreshModelCatalog() {
   try {
-    if (!localStorage.getItem("arunaki_active_provider")) {
-      localStorage.setItem("arunaki_active_provider", "kenari");
+    const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
+    const data = await res.json();
+    const providers: Array<{ id?: string; baseUrl?: string; apiKey?: string; model?: string }> =
+      data?.data || data || [];
+
+    for (const p of providers) {
+      if (!p.id || !p.baseUrl) continue;
+      try {
+        const modelsRes = await apiFetch(`${API_BASE}/providers/fetch-models${directoryQuery()}`, {
+          method: "POST",
+          body: JSON.stringify({ baseUrl: p.baseUrl, apiKey: p.apiKey }),
+        });
+        const modelsData = await modelsRes.json();
+        const models: string[] = (modelsData?.data?.models || []).filter(Boolean);
+        if (models.length > 0) {
+          localStorage.setItem(`arunaki_provider_models_${p.id}`, models.join(", "));
+        }
+      } catch { /* single provider fail — skip, don't break loop */ }
     }
 
-    const kenariPool = localStorage.getItem("arunaki_provider_models_kenari");
-    if (
-      !kenariPool ||
-      kenariPool.includes("glm-4-7-flash:free") ||
-      !kenariPool.includes("agnes-2-0-flash:free") ||
-      kenariPool.includes("mistral-large:free") ||
-      kenariPool.includes("muse-spark") ||
-      kenariPool.includes("kimi") ||
-      kenariPool.includes("lightning") ||
-      kenariPool.includes("tiny") ||
-      kenariPool.includes("longcat") ||
-      kenariPool.includes("north-mini")
-    ) {
-      const verified = [
-        "agnes-2-0-flash:free",
-        "mistral-medium-3-5:free",
-        "nemotron-3-super-120b-a12b:free",
-        "step-3-7-flash:free",
-        "mimo-v2-5:free",
-      ];
-      localStorage.setItem("arunaki_provider_models_kenari", verified.join(", "));
-    }
-
+    // Validate active model still exists in its provider's catalog
+    const activeProvider = localStorage.getItem("arunaki_active_provider") || "kenari";
     const activeModel = localStorage.getItem("arunaki_active_model");
-    if (
-      !activeModel ||
-      activeModel.includes(",") ||
-      activeModel === "glm-4-7-flash:free" ||
-      activeModel === "mistral-large:free" ||
-      activeModel.includes("muse-spark")
-    ) {
-      localStorage.setItem("arunaki_active_model", "agnes-2-0-flash:free");
+    const pool = localStorage.getItem(`arunaki_provider_models_${activeProvider}`);
+    if (activeModel && pool && !pool.split(",").map((s) => s.trim()).includes(activeModel.trim())) {
+      const first = pool.split(",").map((s) => s.trim()).filter(Boolean)[0];
+      if (first) localStorage.setItem("arunaki_active_model", first);
     }
-  } catch {}
+  } catch { /* offline or API unavailable — keep cached localStorage values */ }
+}
+
+if (typeof window !== "undefined") {
+  // Ensure default provider is set
+  if (!localStorage.getItem("arunaki_active_provider")) {
+    localStorage.setItem("arunaki_active_provider", "kenari");
+  }
+  // Ensure default active model for first-time users
+  if (!localStorage.getItem("arunaki_active_model")) {
+    localStorage.setItem("arunaki_active_model", (DEFAULT_MODELS.kenari || [])[0] || "deepseek-v4-flash");
+  }
+  // Fire-and-forget: refresh catalog from API (non-blocking)
+  refreshModelCatalog();
 }
 
 export default function App() {
