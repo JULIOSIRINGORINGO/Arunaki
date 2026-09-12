@@ -73,7 +73,57 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     } catch {}
   }
 
-  const hasPartsContent = !isUser && Boolean(msg?.parts && msg.parts.length > 0);
+  type PartGroup =
+    | { type: "thought"; id: string; text: string; durationSec?: number; durationMs?: number; isLast: boolean }
+    | { type: "tools"; id: string; steps: StepItem[]; isRunning: boolean; isLast: boolean }
+    | { type: "text"; id: string; text: string; isLast: boolean };
+
+  const partGroups = useMemo<PartGroup[]>(() => {
+    if (!msg?.parts || msg.parts.length === 0) return [];
+    const groups: PartGroup[] = [];
+    for (let i = 0; i < msg.parts.length; i++) {
+      const part = msg.parts[i];
+      const isLast = i === msg.parts.length - 1;
+      if (part.type === "thought") {
+        const text = (part.text || "").trim();
+        if (text || isStreaming) {
+          groups.push({
+            type: "thought",
+            id: `thought-${i}`,
+            text,
+            durationSec: part.durationSec,
+            durationMs: part.durationMs,
+            isLast,
+          });
+        }
+      } else if (part.type === "tool") {
+        const lastGroup = groups[groups.length - 1];
+        if (lastGroup && lastGroup.type === "tools") {
+          lastGroup.steps.push(part.step);
+          if (part.step.status === "running") lastGroup.isRunning = true;
+          if (isLast) lastGroup.isLast = true;
+        } else {
+          groups.push({
+            type: "tools",
+            id: `tools-${i}`,
+            steps: [part.step],
+            isRunning: part.step.status === "running",
+            isLast,
+          });
+        }
+      } else if (part.type === "text" && part.text.trim().length > 0) {
+        groups.push({
+          type: "text",
+          id: `text-${i}`,
+          text: part.text,
+          isLast,
+        });
+      }
+    }
+    return groups;
+  }, [msg?.parts, isStreaming]);
+
+  const hasPartsContent = !isUser && Boolean(partGroups.length > 0);
   const hasVisibleContent = hasPartsContent || displayContent.length > 0 || imageMentions.length > 0;
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
 
@@ -114,45 +164,43 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
-      {!isUser && msg?.parts && msg.parts.length > 0 ? (
+      {!isUser && partGroups.length > 0 ? (
         <div className="flex flex-col gap-1.5 w-full min-w-0">
-          {msg.parts.map((part, pIdx) => {
-            const isLastPart = pIdx === msg.parts!.length - 1;
-            if (part.type === "thought") {
-              const actualReasoning = (part.text || msg.reasoning || "").trim();
-              if (!actualReasoning && !isStreaming) return null;
+          {partGroups.map((group) => {
+            if (group.type === "thought") {
+              if (!group.text && !isStreaming) return null;
               return (
                 <MessageThoughtBadge
-                  key={`part-${pIdx}`}
-                  thoughtSec={part.durationSec || thoughtSec}
-                  thoughtMs={part.durationMs || thoughtMs}
-                  reasoning={actualReasoning}
+                  key={group.id}
+                  thoughtSec={group.durationSec}
+                  thoughtMs={group.durationMs}
+                  reasoning={group.text}
                   showThinking={showThinking}
-                  isStreaming={isStreaming && isLastPart}
+                  isStreaming={isStreaming && group.isLast}
                 />
               );
             }
-            if (part.type === "tool") {
+            if (group.type === "tools") {
               return (
                 <MessageThoughtBadge
-                  key={`part-${pIdx}`}
-                  steps={[part.step]}
+                  key={group.id}
+                  steps={group.steps}
                   showThinking={false}
-                  isStreaming={isStreaming && isLastPart && part.step.status === "running"}
+                  isStreaming={isStreaming && group.isLast && group.isRunning}
                 />
               );
             }
-            if (part.type === "text" && part.text.trim().length > 0) {
+            if (group.type === "text") {
               return (
                 <div
-                  key={`part-${pIdx}`}
+                  key={group.id}
                   className={cn(
                     "p-3 rounded-2xl text-xs leading-relaxed w-full min-w-0 max-w-full break-words [word-break:break-word] [overflow-wrap:anywhere] overflow-hidden font-sans relative",
                     "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
                   )}
                 >
-                  <ChatMessageContent content={part.text} isUser={false} />
-                  {isStreaming && isLastPart && (
+                  <ChatMessageContent content={group.text} isUser={false} />
+                  {isStreaming && group.isLast && (
                     <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
                   )}
                 </div>

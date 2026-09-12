@@ -357,6 +357,8 @@ export function useWorkstationChat({
 
     let accumulatedResponseText = "";
     let accumulatedReasoningText = "";
+    let currentStepReasoningStart = Date.now();
+    let isCurrentStepNewThought = true;
     let needsReasoningSeparator = false;
     let needsTextSeparator = false;
     const streamStartTime = Date.now();
@@ -583,11 +585,8 @@ export function useWorkstationChat({
         accumulatedResponseText = accumulatedResponseText.replace(thinkRegex, "").trim();
       }
       if (accumulatedReasoningText.trim()) {
-        const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
-        if (thoughtPart && thoughtPart.type === "thought") {
-          thoughtPart.durationSec = elapsedSec;
-          thoughtPart.text = accumulatedReasoningText.trim();
-        } else {
+        const hasExistingThoughts = accumulatedParts.some((p) => p.type === "thought");
+        if (!hasExistingThoughts) {
           accumulatedParts.unshift({
             type: "thought",
             text: accumulatedReasoningText.trim(),
@@ -692,12 +691,19 @@ export function useWorkstationChat({
             needsReasoningSeparator = false;
           }
           accumulatedReasoningText += event.data;
-          const existingThought = accumulatedParts.find((p) => p.type === "thought");
-          if (existingThought && existingThought.type === "thought") {
-            existingThought.text = accumulatedReasoningText;
+
+          const lastPart = accumulatedParts[accumulatedParts.length - 1];
+          if (!isCurrentStepNewThought && lastPart && lastPart.type === "thought") {
+            lastPart.text += event.data;
           } else {
-            accumulatedParts.unshift({ type: "thought", text: accumulatedReasoningText });
+            isCurrentStepNewThought = false;
+            accumulatedParts.push({
+              type: "thought",
+              text: event.data,
+              durationSec: 1,
+            });
           }
+
           setLiveStatus({ type: "thinking", preview: "Thinking..." });
           setOptimisticMessages((prev) => {
             const exists = prev.some((m) => m.id === assistantMessageId);
@@ -736,8 +742,13 @@ export function useWorkstationChat({
               accumulatedReasoningText = event.data;
             }
           }
-          const elapsedMs = Date.now() - streamStartTime;
-          const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000));
+          const stepElapsedMs = Date.now() - currentStepReasoningStart;
+          const stepElapsedSec = Math.max(1, Math.round(stepElapsedMs / 1000));
+          const lastThought = [...accumulatedParts].reverse().find((p) => p.type === "thought");
+          if (lastThought && lastThought.type === "thought") {
+            lastThought.durationSec = stepElapsedSec;
+            lastThought.durationMs = stepElapsedMs;
+          }
           setLiveStatus({ type: "text_delta", preview: "Generating response" });
           setOptimisticMessages((prev) =>
             prev.map((m) =>
@@ -745,8 +756,9 @@ export function useWorkstationChat({
                 ? {
                     ...m,
                     reasoning: accumulatedReasoningText || m.reasoning,
-                    thoughtSec: elapsedSec,
-                    thoughtMs: elapsedMs,
+                    thoughtSec: stepElapsedSec,
+                    thoughtMs: stepElapsedMs,
+                    parts: [...accumulatedParts],
                   }
                 : m
             )
@@ -755,6 +767,8 @@ export function useWorkstationChat({
           resetWatchdog(120000);
           needsReasoningSeparator = true;
           needsTextSeparator = true;
+          isCurrentStepNewThought = true;
+          currentStepReasoningStart = Date.now();
           if (textEndFinalizeTimeout) {
             clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = null;

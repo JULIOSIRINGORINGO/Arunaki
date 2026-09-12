@@ -2924,8 +2924,22 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Saat membuka sesi lama yang memiliki riwayat pesan, canvas dipulihkan dan diekstrak secara otomatis hanya dari pesan asisten sesi tersebut.
   - `apps/web/src/pages/UnifiedWorkstationPage.tsx`:
     - Menghubungkan `activeChatId` dan setter `setRecentCanvases` antara `useTabs` dan `useWorkstationChat`.
-- [x] **Verifikasi Build**:
-  - `npm run build -w apps/web`: ✅ 0 error TypeScript, tuntas dalam 21.91s.
+---
+
+### Phase 91: Thought Slicing, Tool Card Unification & Office Scripting Loop Prevention 🔄 [AI]
+- [ ] **Investigasi Akar Masalah Thought Memanjang & Multi-Card Tool**:
+  - Semua reasoning lintas-turn digabungkan menjadi 1 kolom thought raksasa (`Thought: 287.8s`) di UI alih-alih dipotong per langkah.
+  - Setiap pemanggilan tool dirender sebagai kartu terpisah bertumpuk (`Executed 1 document task`) alih-alih disatukan dalam satu collapsible card.
+  - AI terjebak dalam loop bash menjalankan skrip Python untuk membaca dokumen Excel yang mengembalikan output kosong.
+- [ ] **Perbaikan Prompt & Kebijakan Dokumen (`packages/engine/engine/src/session/prompt/default.txt`)**:
+  - Melarang keras eksekusi skrip Python / PowerShell / bash untuk dokumen Office.
+  - Mengarahkan AI menggunakan tool dokumen resmi (`excelRead`, `excelCom`, `read`, `edit`) dan melarang perulangan jika perintah menghasilkan output kosong.
+- [ ] **Perbaikan UI Grouping di Frontend (`ChatMessageBubble.tsx`, `useWorkstationChat.ts`, `mapper.ts`)**:
+  - Menyatukan eksekusi tool berurutan ke dalam 1 kartu badge (`✓ Executed N document tasks`).
+  - Memisahkan blok thought per putaran/langkah sehingga tidak menumpuk menjadi 1 kolom panjang dan durasi waktunya terukur secara akurat per segmen.
+- [ ] **Verifikasi & Build**:
+  - Memastikan 0 TypeScript error pada `apps/web`.
+
 
 
 
