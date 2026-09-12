@@ -55,7 +55,6 @@ import { eq } from "drizzle-orm"
 import { SessionTable } from "@arunaki/core/session/sql"
 import { SessionReminders } from "./reminders"
 import { SessionTools } from "./tools"
-import { isCasualGreetingOrChat } from "./query-classifier"
 import { LLMEvent } from "@arunaki/llm"
 import { SessionEvent } from "@arunaki/schema/session-event"
 

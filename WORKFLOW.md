@@ -2875,32 +2875,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 
 ---
 
-### Phase 88: Enforce Zero-Tools on Casual Greeting & Chat (Deterministic Engine Hardening) ✅
-- [x] **Investigasi Akar Masalah Pemanggilan Tool Berulang pada Sapaan Santai**:
-  - Ditemukan bahwa instruksi prompt saja tidak cukup kuat mencegah model proaktif (seperti DeepSeek / Flash models) memanggil tool listing saat workspace context tersedia, karena model menerima seluruh definisi tools dengan `toolChoice: undefined` (`auto`).
-- [x] **Implementasi Deterministic Classifier & Zero-Tools Enforcement di Level Engine**:
-  - `packages/engine/core/src/session/runner/casual.ts`:
-    - Membuat fungsi murni `isCasualText()` yang mendeteksi sapaan santai (`halo`, `hai`, `selamat pagi`, dll), obrolan ringan, ucapan terima kasih, dan pertanyaan identitas secara komprehensif.
-    - Memastikan permintaan berorientasi dokumen (`rekap ke excel`, `baca file ...`, catatan transaksi mentah, tabel/multiline) tetap diidentifikasi sebagai tugas dokumen non-kasual.
-  - `packages/engine/core/src/session/runner/llm.ts`:
-    - Mengintegrasikan deteksi kasual pada giliran pertama (`currentStep <= 1`).
-    - Jika pesan user kasual: materialisasi tools dilewati, daftar `tools` dikosongkan (`[]`), dan `toolChoice` diset tegas ke `"none"`.
-    - LLM secara matematis tidak dapat memanggil tool apa pun pada obrolan sapaan santai.
+### Phase 88: Autonomous LLM Tool Discipline (Eliminating Heuristic Parsers) ✅
+- [x] **Evaluasi Arsitektural terhadap Heuristic Parser**:
+  - Sesuai prinsip agen otonom sejati (Computer Use / OpenClaw / Antigravity), sistem tidak boleh menggunakan parser regex buatan untuk mencegat perintah pengguna atau membatasi `toolChoice: "none"` secara kaku.
+  - LLM itu sendiri yang harus memiliki kognisi untuk memutuskan apakah memanggil tool atau merespons dengan teks murni.
+- [x] **Pembersihan Modul Parser & Pemulihan Kebebasan Tool Choice LLM**:
+  - Menghapus parser regex (`casual.ts`, `query-classifier.ts`).
+  - Memulihkan `packages/engine/core/src/session/runner/llm.ts` dan `prompt.ts` agar daftar tools selalu tersedia penuh untuk dievaluasi oleh LLM (`toolChoice: undefined` / `auto`).
+- [x] **Penyempurnaan Disiplin Tool pada `BUILD_SYSTEM` & Deskripsi Tool**:
   - `packages/engine/core/src/plugin/agent.ts`:
-    - Menambahkan Rule 7 (*Casual Chat & Greetings - Zero-Tools Rule*) pada `BUILD_SYSTEM`.
-  - `packages/engine/engine/src/session/query-classifier.ts` & `prompt.ts`:
-    - Menambahkan classifier deterministik dan perlindungan lapis kedua pada prompt loop engine.
-  - `packages/engine/engine/src/session/prompt/default.txt` & `system.ts`:
-    - Menambahkan contoh sapaan santai dalam bahasa Inggris standar dan memperjelas instruksi non-intervensi file pada obrolan santai.
-- [x] **Unit Testing Komprehensif**:
-  - `packages/engine/core/test/session-casual.test.ts`: ✅ 5 tests pass (45 assertions).
-  - `packages/engine/engine/test/session/query-classifier.test.ts`: ✅ 7 tests pass (48 assertions).
-  - Total 12 tests pass, 0 fail (93 assertions).
-- [x] **Verifikasi E2E di Browser & Build**:
-  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 28.45s.
-  - `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
-    - Sapaan `"halo"` diuji pada sesi chat baru: Asisten menjawab dengan teks ramah secara instan tanpa ada satu pun card eksekusi tool (*0 document tasks*). Bukti visual tersimpan di `halo_chat_completed_1789197369424.png`.
-    - Perintah dokumen nyata `"baca file Kata-Kata Hari Ini.txt"` diuji: Asisten secara akurat mengeksekusi tool `read` dan menampilkan konten file dengan tepat. Bukti visual tersimpan di `read_file_result_1789197445909.png`.
+    - Menetapkan aturan kognitif yang tegas di bagian atas `BUILD_SYSTEM`:
+      1. *Pure Text for Greetings & Casual Conversation (ZERO TOOLS)*: Menjawab langsung secara ramah dengan teks alami tanpa eksplorasi folder atau pemanggilan tool yang tidak perlu.
+      2. *Action-First for Document Tasks (MINIMAL TYPING, MAXIMUM AUTOMATION)*: Eksekusi tool otonom hanya diterapkan saat pengguna meminta tugas dokumen/spreadsheet atau memberikan data transaksi.
+  - `packages/engine/core/src/tool/read.ts`:
+    - Memperjelas deskripsi tool `read` agar LLM hanya memanggilnya untuk kebutuhan dokumen/file dan tidak memanggilnya untuk sapaan santai.
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 28.18s.
+
 
 
 

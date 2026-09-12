@@ -1,39 +1,33 @@
-# Dev Log — Enforce Zero-Tools on Casual Greeting & Chat
+# Dev Log — Autonomous LLM Tool Discipline (Eliminating Heuristic Parsers)
 
-**Date & Time:** 2026-09-12 14:20:00 WIB  
+**Date & Time:** 2026-09-12 14:35:00 WIB  
 **Author:** AI Software Engineer (Antigravity)
 
 ## What
-Mengatasi akar masalah perilaku agent yang selalu memanggil tool (seperti `read .` / exploring directory) bahkan pada sapaan sederhana seperti `"halo"`. Solusi dilakukan dengan menerapkan perlindungan deterministik ganda:
-1. **Deterministic Classifier (`packages/engine/core/src/session/runner/casual.ts` & `packages/engine/engine/src/session/query-classifier.ts`)**: Mendeteksi secara akurat sapaan santai (`halo`, `hai`, `selamat pagi`, `apa kabar`, dsb) tanpa salah mengklasifikasikan tugas dokumen riil (`rekap ke excel`, pembacaan file, catatan transaksi numerik, atau input multi-baris).
-2. **Programmatic Zero-Tools Enforcement (`packages/engine/core/src/session/runner/llm.ts`)**: Pada giliran awal (`currentStep <= 1`) jika query terdeteksi kasual:
-   - Pengambilan tools dari registry dilewati (`toolMaterialization = undefined`).
-   - Properti `tools` yang dikirim ke LLM dikosongkan secara mutlak (`tools: []`).
-   - Properti `toolChoice` diset tegas ke `"none"`.
-   Hal ini menjamin secara matematis model LLM tidak dapat memanggil tool apa pun pada sapaan santai.
-3. **Prompt & System Context Hardening**:
-   - Menambahkan Rule 7 (*Casual Chat & Greetings - Zero-Tools Rule*) pada `BUILD_SYSTEM` di `packages/engine/core/src/plugin/agent.ts`.
-   - Memperbarui `default.txt` dan `system.ts` di `packages/engine/engine`.
+Sesuai arahan dan prinsip arsitektur agent otonom (Computer Use / OpenClaw / Antigravity), sistem tidak menggunakan parser regex atau heuristic code interceptor untuk menentukan pemanggilan tool. Keputusan untuk memanggil tool atau merespons dengan teks murni sepenuhnya diserahkan kepada kognisi LLM (`toolChoice: undefined` / `auto`).
+
+Perbaikan dilakukan murni pada kognisi model melalui:
+1. **Pembersihan Parser**:
+   - Menghapus seluruh file detektor regex/parser (`casual.ts`, `query-classifier.ts`).
+   - Mengembalikan `packages/engine/core/src/session/runner/llm.ts` dan `packages/engine/engine/src/session/prompt.ts` agar selalu menyajikan `tools` lengkap ke LLM tanpa pencegatan kaku.
+2. **Penyempurnaan `BUILD_SYSTEM`**:
+   - Menata ulang hierarki instruksi pada `BUILD_SYSTEM` di `packages/engine/core/src/plugin/agent.ts`.
+   - Mengklarifikasi bahwa sapaan santai, pertanyaan identitas, atau obrolan umum cukup direspons dengan teks murni.
+   - Menegaskan bahwa prinsip "Action-First & Autonomous Minimal Typing" berlaku saat ada permintaan dokumen/spreadsheet atau data transaksi yang diberikan pengguna.
+3. **Scoping Deskripsi Tool**:
+   - Memperjelas deskripsi tool `read` di `packages/engine/core/src/tool/read.ts` agar model memahami tool ini hanya dipanggil untuk operasi file dokumen dan bukan untuk sapaan santai.
 
 ## Files Changed
-- `packages/engine/core/src/session/runner/casual.ts` — Modul klasifikasi teks kasual.
-- `packages/engine/core/src/session/runner/llm.ts` — Penegakan programmatic `tools: []` & `toolChoice: "none"`.
-- `packages/engine/core/src/plugin/agent.ts` — Penambahan aturan kasual pada `BUILD_SYSTEM`.
-- `packages/engine/core/test/session-casual.test.ts` — Unit test untuk deteksi kasual core runner.
-- `packages/engine/engine/src/session/query-classifier.ts` — Modul query classifier prompt loop.
-- `packages/engine/engine/src/session/prompt.ts` — Integrasi perlindungan query classifier.
-- `packages/engine/engine/src/session/prompt/default.txt` — Panduan sapaan santai pada template prompt.
-- `packages/engine/engine/src/session/system.ts` — Klarifikasi non-intervensi file saat obrolan santai.
-- `packages/engine/engine/test/session/query-classifier.test.ts` — Unit test untuk query classifier.
-- `WORKFLOW.md` — Pencatatan fase 88 sebagai selesai (✅).
+- `packages/engine/core/src/plugin/agent.ts` — Penyempurnaan `BUILD_SYSTEM` kognisi tool vs sapaan.
+- `packages/engine/core/src/session/runner/llm.ts` — Pemulihan tool pass-through murni ke LLM.
+- `packages/engine/core/src/tool/read.ts` — Penyempurnaan deskripsi tool `read`.
+- `packages/engine/engine/src/session/prompt.ts` — Pembersihan import lama.
+- `WORKFLOW.md` — Pembaruan catatan fase 88.
+- `docs/dev-logs/dev-log-2026-09-12-zero-tools-on-casual-chat.md` — Dev log.
 
 ## Tests
-- `bun test packages/engine/core/test/session-casual.test.ts packages/engine/engine/test/session/query-classifier.test.ts` — ✅ 12 passed, 0 failed (93 assertions).
-- `npm run build -w apps/web` — ✅ 0 errors, tuntas dalam 28.45s.
-- `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
-  - Input `"halo"`: Model membalas ramah tanpa mengeksekusi tool apapun (0 document task cards). Bukti: `halo_chat_completed_1789197369424.png`.
-  - Input `"baca file Kata-Kata Hari Ini.txt"`: Model mengeksekusi tool `read` dan menampilkan konten file dengan tepat. Bukti: `read_file_result_1789197445909.png`.
+- `npm run build -w apps/web` — ✅ 0 errors, tuntas dalam 28.18s.
+- `Invoke-RestMethod http://127.0.0.1:4096/api/health` — ✅ healthy: True.
 
 ## Notes
-- Tidak ada regresi pada operasi dokumen riil.
-- Pengalaman percakapan kasual kini instan, bersih, dan sesuai standar Antigravity/Cursor.
+- Arsitektur kini 100% selaras dengan prinsip AI Agent otonom: kognisi internal LLM yang menentukan interaksi tool tanpa dibatasi oleh parser buatan.
