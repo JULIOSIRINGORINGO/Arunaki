@@ -116,28 +116,17 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     >
       {!isUser && msg?.parts && msg.parts.length > 0 ? (
         <div className="flex flex-col gap-1.5 w-full min-w-0">
-          {showThinking && !msg.parts.some((p) => p.type === "thought") && (
-            <MessageThoughtBadge
-              thoughtSec={thoughtSec || 1}
-              thoughtMs={thoughtMs || 500}
-              reasoning={msg.reasoning}
-              content={msg.content}
-              steps={steps}
-              showThinking={showThinking}
-              isStreaming={isStreaming}
-            />
-          )}
           {msg.parts.map((part, pIdx) => {
             const isLastPart = pIdx === msg.parts!.length - 1;
             if (part.type === "thought") {
+              const actualReasoning = (part.text || msg.reasoning || "").trim();
+              if (!actualReasoning && !isStreaming) return null;
               return (
                 <MessageThoughtBadge
                   key={`part-${pIdx}`}
-                  thoughtSec={part.durationSec || thoughtSec || 1}
-                  thoughtMs={part.durationMs || thoughtMs || 500}
-                  reasoning={part.text || msg.reasoning}
-                  content={msg.content}
-                  steps={steps}
+                  thoughtSec={part.durationSec || thoughtSec}
+                  thoughtMs={part.durationMs || thoughtMs}
+                  reasoning={actualReasoning}
                   showThinking={showThinking}
                   isStreaming={isStreaming && isLastPart}
                 />
@@ -174,13 +163,12 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         </div>
       ) : (
         <>
-          {!isUser && (
+          {!isUser && ((msg.reasoning && msg.reasoning.trim().length > 0) || (steps && steps.length > 0)) && (
             <MessageThoughtBadge
               steps={steps}
               thoughtSec={thoughtSec}
               thoughtMs={thoughtMs}
               reasoning={msg.reasoning}
-              content={msg.content}
               showThinking={showThinking}
               isStreaming={isStreaming}
             />

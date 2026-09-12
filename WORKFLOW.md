@@ -2815,4 +2815,25 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Mengirim pesan baru `"halo"`, menunggu streaming selesai, dan mengklik header `Thought : 488ms`: bodi reasoning mengembang dengan mulus menampilkan penalaran model.
     - Tangkapan layar bukti visual tersimpan di `expanded_thought_process_1789179770083.png`.
 
+---
+
+### Phase 85: Strict Genuine LLM Reasoning (Zero Synthetic Fallback) ✅
+- [x] **Pembersihan Total Fallback Buatan di UI**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Menghapus seluruh string fallback sintetis (`Evaluated conversational greeting...`).
+    - `displayReasoning` kini hanya mengembalikan `reasoning.trim()`.
+    - Blok `Thought` hanya dirender jika LLM benar-benar menghasilkan teks penalaran (`hasReasoning = true`).
+  - `apps/web/src/components/workstation/chat/ChatMessageBubble.tsx`:
+    - Menghapus render paksa part thought kosong. Badge Thought hanya muncul jika `part.text` atau `msg.reasoning` memiliki isi dari LLM.
+  - `apps/web/src/components/workstation/chat/mapper.ts`:
+    - Hanya menambahkan part thought jika `reasoning.trim().length > 0`.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Menghapus inisialisasi part thought dummy. Part thought hanya dibuat jika event `reasoning_delta` atau `<think>` dialirkan langsung dari LLM.
+- [x] **Verifikasi E2E di Browser & Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 21.68s.
+  - `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
+    - Terverifikasi bahwa bubble respons asisten yang tidak memiliki pemikiran dari LLM tampil bersih tanpa teks palsu.
+    - Tangkapan layar bukti visual tersimpan di `clean_chat_responses_1789180527204.png`.
+
+
 

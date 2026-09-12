@@ -261,7 +261,6 @@ export function MessageThoughtBadge({
   thoughtSec,
   thoughtMs,
   reasoning,
-  content,
   showThinking = true,
   isStreaming = false,
 }: {
@@ -269,7 +268,6 @@ export function MessageThoughtBadge({
   thoughtSec?: number;
   thoughtMs?: number;
   reasoning?: string;
-  content?: string;
   showThinking?: boolean;
   isStreaming?: boolean;
 }) {
@@ -294,24 +292,10 @@ export function MessageThoughtBadge({
 
   const displayReasoning = useMemo(() => {
     if (reasoning && reasoning.trim().length > 0) return reasoning.trim();
-    if (isStreaming) return "Thinking and evaluating request...";
-    const nonToolSteps = steps.filter((s) => s.iconType === "tool" || s.toolName);
-    if (nonToolSteps.length > 0) {
-      const toolNames = Array.from(new Set(nonToolSteps.map((s) => s.toolName || "action").filter(Boolean)));
-      return `Analyzed user instruction. Planned and executed document operations using [${toolNames.join(", ")}]. Verified final output and updated workspace.`;
-    }
-    const text = (content || "").trim();
-    if (/^(halo|hi|hai|selamat|pagi|siang|sore|malam|apa kabar|assalamu|hey)/i.test(text)) {
-      return "Evaluated conversational greeting. Context verified: no document mutation required. Formulated polite greeting response.";
-    }
-    if (text.length > 0) {
-      return "Processed user query. Analyzed workspace context and formulated response.";
-    }
-    return "Evaluated context and prepared response.";
-  }, [reasoning, isStreaming, steps, content]);
+    return "";
+  }, [reasoning]);
 
   const hasReasoning = Boolean(displayReasoning && displayReasoning.length > 0);
-  const hasThoughtTime = Boolean((thoughtMs && thoughtMs > 0) || (thoughtSec && thoughtSec > 0));
 
   const durationLabel = useMemo(() => {
     if (thoughtMs && thoughtMs > 0) {
@@ -321,13 +305,13 @@ export function MessageThoughtBadge({
     if (thoughtSec && thoughtSec > 0) {
       return `${thoughtSec}s`;
     }
-    if (isStreaming) {
-      return `${Math.max(1, liveSec)}s`;
+    if (isStreaming && liveSec > 0) {
+      return `${liveSec}s`;
     }
     return undefined;
   }, [thoughtMs, thoughtSec, isStreaming, liveSec]);
 
-  if (!hasToolExecution && (!showThinking || (!hasReasoning && !hasThoughtTime && !isStreaming))) {
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !(isStreaming && hasReasoning)))) {
     return null;
   }
 
@@ -399,8 +383,8 @@ export function MessageThoughtBadge({
         </div>
       )}
 
-      {/* 2. Opencode / Antigravity Parity: Live or Completed Thought Block */}
-      {showThinking && (hasReasoning || hasThoughtTime || isStreaming) && (
+      {/* 2. Opencode / Antigravity Parity: Thought Block only rendered if LLM generated genuine reasoning */}
+      {showThinking && hasReasoning && (
         <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <button
             type="button"

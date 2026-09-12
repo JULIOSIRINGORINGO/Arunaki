@@ -239,7 +239,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       }
     }
 
-    if (role === "assistant" && !parts.some((p) => p.type === "thought")) {
+    if (role === "assistant" && reasoning.trim().length > 0 && !parts.some((p) => p.type === "thought")) {
       parts.unshift({
         type: "thought",
         text: reasoning.trim(),

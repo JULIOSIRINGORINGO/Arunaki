@@ -329,12 +329,7 @@ export function useWorkstationChat({
     let needsTextSeparator = false;
     const streamStartTime = Date.now();
     const accumulatedSteps: StepItem[] = [];
-    const accumulatedParts: MessagePart[] = [
-      {
-        type: "thought",
-        text: "",
-      },
-    ];
+    const accumulatedParts: MessagePart[] = [];
 
     const newAssistantMsg: Message = {
       id: assistantMessageId,
@@ -555,11 +550,22 @@ export function useWorkstationChat({
         }
         accumulatedResponseText = accumulatedResponseText.replace(thinkRegex, "").trim();
       }
-      const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
-      if (thoughtPart && thoughtPart.type === "thought") {
-        thoughtPart.durationSec = elapsedSec;
-        if (accumulatedReasoningText) {
-          thoughtPart.text = accumulatedReasoningText;
+      if (accumulatedReasoningText.trim()) {
+        const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
+        if (thoughtPart && thoughtPart.type === "thought") {
+          thoughtPart.durationSec = elapsedSec;
+          thoughtPart.text = accumulatedReasoningText.trim();
+        } else {
+          accumulatedParts.unshift({
+            type: "thought",
+            text: accumulatedReasoningText.trim(),
+            durationSec: elapsedSec,
+          });
+        }
+      } else {
+        const thoughtIdx = accumulatedParts.findIndex((p) => p.type === "thought");
+        if (thoughtIdx >= 0) {
+          accumulatedParts.splice(thoughtIdx, 1);
         }
       }
 
@@ -654,11 +660,11 @@ export function useWorkstationChat({
             needsReasoningSeparator = false;
           }
           accumulatedReasoningText += event.data;
-          const lastThought = accumulatedParts[accumulatedParts.length - 1];
-          if (lastThought && lastThought.type === "thought") {
-            lastThought.text = accumulatedReasoningText;
+          const existingThought = accumulatedParts.find((p) => p.type === "thought");
+          if (existingThought && existingThought.type === "thought") {
+            existingThought.text = accumulatedReasoningText;
           } else {
-            accumulatedParts.push({ type: "thought", text: accumulatedReasoningText });
+            accumulatedParts.unshift({ type: "thought", text: accumulatedReasoningText });
           }
           setLiveStatus({ type: "thinking", preview: "Thinking..." });
           setOptimisticMessages((prev) => {
@@ -917,6 +923,8 @@ export function useWorkstationChat({
               const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
               if (thoughtPart && thoughtPart.type === "thought") {
                 thoughtPart.text = extractedReasoning;
+              } else {
+                accumulatedParts.unshift({ type: "thought", text: extractedReasoning });
               }
               if (lastTextPart && lastTextPart.type === "text") {
                 lastTextPart.text = displayText;
