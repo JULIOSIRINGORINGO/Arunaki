@@ -37,7 +37,20 @@ export const WriteTool = Tool.define(
           const filepath = path.isAbsolute(params.filePath)
             ? params.filePath
             : path.join(instance.directory, params.filePath)
-          yield* assertExternalDirectoryEffect(ctx, filepath)
+          const basename = path.basename(filepath).toLowerCase()
+          const PYTHON_STDLIB_SHADOWS = new Set([
+            "inspect.py", "types.py", "code.py", "string.py", "copy.py", "json.py", "io.py",
+            "os.py", "sys.py", "math.py", "time.py", "random.py", "re.py", "test.py", "socket.py",
+            "dis.py", "ast.py", "tokenize.py", "queue.py", "threading.py", "subprocess.py",
+            "logging.py", "pathlib.py", "typing.py", "operator.py", "functools.py", "itertools.py"
+          ])
+          if (PYTHON_STDLIB_SHADOWS.has(basename)) {
+            return yield* Effect.fail(
+              new Error(
+                `Filename '${path.basename(filepath)}' shadows a Python standard library module and causes runtime collisions. Please name your script 'arunaki_${path.basename(filepath)}' instead.`
+              )
+            )
+          }
 
           const exists = yield* fs.existsSafe(filepath)
           const source = exists ? yield* Bom.readFile(fs, filepath) : { bom: false, text: "" }

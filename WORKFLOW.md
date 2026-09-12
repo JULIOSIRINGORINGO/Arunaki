@@ -2855,6 +2855,25 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Pesan peringatan *"Skill guidance is no longer available..."* telah bersih total.
     - Tangkapan layar bukti visual tersimpan di `genuine_deepseek_reasoning_1789186748270.png`.
 
+---
+
+### Phase 87: Fix Overzealous File Scanning & Python Standard Library Collision ✅
+- [x] **Pemberantasan Perilaku Overzealous pada Obrolan Santai**:
+  - `packages/engine/engine/src/session/system.ts` & `packages/engine/engine/src/session/prompt/default.txt`:
+    - Menetapkan aturan ketat: pertanyaan santai, kutipan, cerita, motivasi, atau pertanyaan ambigu seperti *"ada yang menarik?"* WAJIB dijawab secara kasual dan manusiawi tanpa menyentuh file atau menjalankan tool.
+    - Menghapus asumsi kaku bahwa setiap pertanyaan multitafsir harus berujung pada audit dokumen folder.
+- [x] **Pencegahan Tabrakan Modul Python (`inspect.py`) di Level Tool**:
+  - `packages/engine/engine/src/tool/write.ts`:
+    - Menambahkan filter `PYTHON_STDLIB_SHADOWS` yang secara tegas menolak penulisan file skrip dengan nama modul Python bawaan (`inspect.py`, `types.py`, `string.py`, dll).
+    - Mencegah error collision Python standard library secara permanen di level sistem.
+- [x] **Verifikasi E2E di Browser & Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 23.42s.
+  - `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
+    - Mengirim pertanyaan lanjutan: *"ada kutipan kata-kata yang lebih menarik lagi?"*.
+    - Terverifikasi model tidak membuka file folder dan menjawab dengan ramah serta kontekstual.
+    - Tangkapan layar bukti visual tersimpan di `e2e_test_quote_response_1789190955864.png`.
+
+
 
 
 
