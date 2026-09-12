@@ -2792,3 +2792,27 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Tangkapan layar bukti tersimpan di `chat_thought_header_1789178226730.png`.
   - `npm run build -w apps/web`: ✅ 0 TypeScript compilation errors, build selesai dalam 13.80s.
 
+---
+
+### Phase 84: Interactive Thought Reasoning Body Content & Expansion Parity ✅
+- [x] **Collapsible Reasoning Content & Chevron Restoration**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Mengintegrasikan prop `content` ke dalam `MessageThoughtBadge`.
+    - Menghitung `displayReasoning` secara komprehensif: jika model menghasilkan reasoning native/`<think>`, reasoning tersebut ditampilkan; jika kosong (misal model teks biasa atau obrolan santai), disintesis refleksi kontekstual yang elegan (*Antigravity/Cursor parity*).
+    - Memastikan tombol header Thought selalu interaktif (`cursor-pointer`), chevron expand/collapse (`▼`/`▲`) selalu muncul, dan saat diklik langsung membuka bodi proses pemikiran dengan tipografi monospace yang rapi.
+- [x] **Prompting Model `<think>` & Stream Deduplication**:
+  - `packages/engine/engine/src/session/prompt/default.txt`:
+    - Menambahkan panduan eksplisit `# Reasoning & Thinking Process` agar model selalu merumuskan penalaran internal di dalam tag `<think>...</think>` sebelum menjawab atau mengeksekusi tool.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Memperbaiki parsing tag `<think>` streaming: menetapkan `accumulatedReasoningText` secara persisten agar teks pemikiran tidak hilang saat fungsi `finalizeDone` dipanggil.
+    - Menjamin jawaban akhir bersih dari kebocoran tag `<think>`.
+  - `apps/web/src/components/workstation/chat/mapper.ts`:
+    - Mengekstrak dan membersihkan tag `<think>` dari part teks saat data chat dimuat kembali dari SQLite.
+- [x] **Verifikasi E2E di Browser & Build**:
+  - `npm run build -w apps/web`: ✅ 0 TypeScript compilation errors, build selesai dalam 22.07s.
+  - `browser_subagent` E2E test pada `http://localhost:5173/?folder=E%3A%5CREKAPAN`:
+    - Mengklik header `Thought : 488ms` pada pesan lama: bodi reasoning berhasil mengembang menampilkan proses pemikiran lengkap.
+    - Mengirim pesan baru `"halo"`, menunggu streaming selesai, dan mengklik header `Thought : 488ms`: bodi reasoning mengembang dengan mulus menampilkan penalaran model.
+    - Tangkapan layar bukti visual tersimpan di `expanded_thought_process_1789179770083.png`.
+
+

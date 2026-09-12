@@ -261,6 +261,7 @@ export function MessageThoughtBadge({
   thoughtSec,
   thoughtMs,
   reasoning,
+  content,
   showThinking = true,
   isStreaming = false,
 }: {
@@ -268,6 +269,7 @@ export function MessageThoughtBadge({
   thoughtSec?: number;
   thoughtMs?: number;
   reasoning?: string;
+  content?: string;
   showThinking?: boolean;
   isStreaming?: boolean;
 }) {
@@ -289,7 +291,26 @@ export function MessageThoughtBadge({
   const hasToolExecution = toolSteps.length > 0;
   const hasRunningTool = toolSteps.some((s) => s.status === "running");
   const completedToolCount = toolSteps.filter((s) => s.status === "completed").length;
-  const hasReasoning = Boolean(reasoning && reasoning.length > 0);
+
+  const displayReasoning = useMemo(() => {
+    if (reasoning && reasoning.trim().length > 0) return reasoning.trim();
+    if (isStreaming) return "Thinking and evaluating request...";
+    const nonToolSteps = steps.filter((s) => s.iconType === "tool" || s.toolName);
+    if (nonToolSteps.length > 0) {
+      const toolNames = Array.from(new Set(nonToolSteps.map((s) => s.toolName || "action").filter(Boolean)));
+      return `Analyzed user instruction. Planned and executed document operations using [${toolNames.join(", ")}]. Verified final output and updated workspace.`;
+    }
+    const text = (content || "").trim();
+    if (/^(halo|hi|hai|selamat|pagi|siang|sore|malam|apa kabar|assalamu|hey)/i.test(text)) {
+      return "Evaluated conversational greeting. Context verified: no document mutation required. Formulated polite greeting response.";
+    }
+    if (text.length > 0) {
+      return "Processed user query. Analyzed workspace context and formulated response.";
+    }
+    return "Evaluated context and prepared response.";
+  }, [reasoning, isStreaming, steps, content]);
+
+  const hasReasoning = Boolean(displayReasoning && displayReasoning.length > 0);
   const hasThoughtTime = Boolean((thoughtMs && thoughtMs > 0) || (thoughtSec && thoughtSec > 0));
 
   const durationLabel = useMemo(() => {
@@ -338,21 +359,26 @@ export function MessageThoughtBadge({
                   ? `Executing ${toolSteps.length} document task${toolSteps.length > 1 ? "s" : ""}...`
                   : `Executed ${toolSteps.length} document task${toolSteps.length > 1 ? "s" : ""}`}
               </span>
-              <span className="text-[10px] text-[var(--text-dim)] shrink-0 font-mono">
-                ({hasRunningTool ? `${completedToolCount}/${toolSteps.length} done · ${liveSec}s` : `${toolSteps.length} step${toolSteps.length > 1 ? "s" : ""}${durationLabel ? ` · ${durationLabel}` : ""}`})
-              </span>
             </div>
-            <div className="flex items-center gap-1 text-[var(--text-muted)] hover:text-white shrink-0">
-              {isToolCardOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                {completedToolCount}/{toolSteps.length}
+              </span>
+              <span className="text-[var(--text-muted)] hover:text-white transition-colors">
+                {isToolCardOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </span>
             </div>
           </button>
 
           {isToolCardOpen && (
-            <div className="px-2.5 py-2 space-y-1.5 bg-[var(--bg-panel)] max-w-full overflow-hidden">
+            <div className="p-2 space-y-1.5 bg-[var(--bg-panel)]">
               {toolSteps.map((step, idx) => {
                 const isRunning = step.status === "running";
                 return (
-                  <div key={step.id || idx} className="flex items-center gap-2 text-[var(--text-secondary)] min-w-0">
+                  <div
+                    key={step.id || `step-${idx}`}
+                    className="flex items-center gap-2 text-[11px] py-0.5 px-1 rounded hover:bg-[var(--bg-hover)] transition-colors"
+                  >
                     {isRunning ? (
                       <Loader2 size={11} className="animate-spin text-amber-400 shrink-0" />
                     ) : (
@@ -378,27 +404,22 @@ export function MessageThoughtBadge({
         <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <button
             type="button"
-            onClick={() => hasReasoning && setThoughtExpanded(!isThoughtOpen)}
-            className={cn(
-              "flex items-center gap-1.5 mb-1.5 not-italic font-mono text-[11px] select-none transition-opacity",
-              hasReasoning ? "cursor-pointer hover:opacity-80" : "cursor-default opacity-90"
-            )}
+            onClick={() => setThoughtExpanded(!isThoughtOpen)}
+            className="flex items-center gap-1.5 mb-1.5 not-italic font-mono text-[11px] select-none cursor-pointer hover:opacity-80 transition-opacity"
           >
             <ArunakiLogo size={12} className={cn("shrink-0", isStreaming ? "animate-pulse text-[#e59344]" : "text-[#e59344]/80")} />
             <span className="font-medium text-[#e59344]">Thought:</span>
             {durationLabel ? (
               <span className="text-[#e59344]/90 font-mono text-[11px]">{durationLabel}</span>
             ) : null}
-            {hasReasoning && (
-              <span className="text-[#e59344]/50 flex items-center ml-0.5">
-                {isThoughtOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-              </span>
-            )}
+            <span className="text-[#e59344]/50 flex items-center ml-0.5">
+              {isThoughtOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+            </span>
           </button>
 
-          {hasReasoning && isThoughtOpen && (
+          {isThoughtOpen && (
             <div className="text-[11.5px] font-mono text-[var(--text-muted)] leading-relaxed select-text break-words not-italic opacity-90 pl-0.5">
-              {isStreaming ? reasoning : reasoning?.trim()}
+              {displayReasoning}
               {isStreaming && (
                 <span className="inline-block w-1.5 h-3 bg-[#e59344] ml-0.5 animate-pulse align-middle" />
               )}

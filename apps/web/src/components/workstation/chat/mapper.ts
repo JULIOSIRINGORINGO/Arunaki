@@ -187,10 +187,21 @@ export function mapEngineMessages(raw: any[]): Message[] {
           durationMs: durMs || thoughtMs,
         });
       } else if (p.type === "text" && typeof p.text === "string" && p.text.trim()) {
-        parts.push({
-          type: "text",
-          text: p.text.trim(),
-        });
+        let textVal = p.text.trim();
+        if (textVal.includes("<think>")) {
+          const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+          let match;
+          while ((match = thinkRegex.exec(textVal)) !== null) {
+            reasoning += (reasoning ? "\n\n" : "") + match[1].trim();
+          }
+          textVal = textVal.replace(thinkRegex, "").trim();
+        }
+        if (textVal.length > 0) {
+          parts.push({
+            type: "text",
+            text: textVal,
+          });
+        }
       } else if ((p.type === "tool" || p.type === "tool-invocation") && !isInternalToolPart(p)) {
         const toolName = p.name || p.tool || p.toolInvocation?.toolName || "action";
         const input = p.state?.input || p.input || p.args || p.toolInvocation?.args || {};
@@ -235,6 +246,11 @@ export function mapEngineMessages(raw: any[]): Message[] {
         durationSec: thoughtSec,
         durationMs: thoughtMs,
       });
+    } else if (role === "assistant") {
+      const existingThought = parts.find((p) => p.type === "thought");
+      if (existingThought && !existingThought.text && reasoning.trim()) {
+        existingThought.text = reasoning.trim();
+      }
     }
 
     return {

@@ -547,6 +547,14 @@ export function useWorkstationChat({
       setStreamingState(false);
       setLiveStatus(null);
       const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+      if (!accumulatedReasoningText && accumulatedResponseText.includes("<think>")) {
+        const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+        let match;
+        while ((match = thinkRegex.exec(accumulatedResponseText)) !== null) {
+          accumulatedReasoningText += (accumulatedReasoningText ? "\n\n" : "") + match[1].trim();
+        }
+        accumulatedResponseText = accumulatedResponseText.replace(thinkRegex, "").trim();
+      }
       const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
       if (thoughtPart && thoughtPart.type === "thought") {
         thoughtPart.durationSec = elapsedSec;
@@ -881,10 +889,9 @@ export function useWorkstationChat({
           let displayReasoning = accumulatedReasoningText;
           let displayText = accumulatedResponseText;
 
-          // Extract <think> blocks from inline content only when no reasoning stream exists.
-          // IMPORTANT: Preserve all non-<think> content (e.g. step 1's answer) when extracting.
-          if (!displayReasoning && displayText.includes("<think>")) {
-            // Extract ALL <think>...</think> blocks as reasoning, keep the rest as displayText
+          // Extract <think> blocks from inline content when <think> tag is present.
+          // Keeps reasoning inside the thought part and cleans the response text.
+          if (displayText.includes("<think>")) {
             const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
             let extractedReasoning = "";
             let cleanedText = displayText;
@@ -897,7 +904,6 @@ export function useWorkstationChat({
             // Check if there's still an unclosed <think> tag (streaming in progress)
             const lastOpenThink = cleanedText.lastIndexOf("<think>");
             if (lastOpenThink >= 0) {
-              // Unclosed think tag — content after it is still-streaming reasoning
               const beforeThink = cleanedText.substring(0, lastOpenThink).trim();
               const afterThink = cleanedText.substring(lastOpenThink + 7).trim();
               extractedReasoning += (extractedReasoning ? "\n\n" : "") + afterThink;
@@ -905,6 +911,7 @@ export function useWorkstationChat({
             }
 
             if (extractedReasoning) {
+              accumulatedReasoningText = extractedReasoning;
               displayReasoning = extractedReasoning;
               displayText = cleanedText;
               const thoughtPart = accumulatedParts.find((p) => p.type === "thought");

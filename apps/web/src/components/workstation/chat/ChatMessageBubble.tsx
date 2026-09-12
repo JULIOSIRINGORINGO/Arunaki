@@ -121,6 +121,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
               thoughtSec={thoughtSec || 1}
               thoughtMs={thoughtMs || 500}
               reasoning={msg.reasoning}
+              content={msg.content}
+              steps={steps}
               showThinking={showThinking}
               isStreaming={isStreaming}
             />
@@ -134,6 +136,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                   thoughtSec={part.durationSec || thoughtSec || 1}
                   thoughtMs={part.durationMs || thoughtMs || 500}
                   reasoning={part.text || msg.reasoning}
+                  content={msg.content}
+                  steps={steps}
                   showThinking={showThinking}
                   isStreaming={isStreaming && isLastPart}
                 />
@@ -176,6 +180,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
               thoughtSec={thoughtSec}
               thoughtMs={thoughtMs}
               reasoning={msg.reasoning}
+              content={msg.content}
               showThinking={showThinking}
               isStreaming={isStreaming}
             />
