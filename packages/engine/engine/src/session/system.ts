@@ -117,7 +117,7 @@ const layer = Layer.effect(
               `  * NEVER read, inspect, list, or present files or directories starting with a dot (such as .arunaki/, .arunaki-backups/, .git/, .gitignore, .arunaki.json, etc.) or internal rulebooks (such as ARUNAKI.md) to the user.`,
               `  * They are internal application metadata and backup files, NOT user documents.`,
               `  * When asked to check or list folder contents, show ONLY actual user documents (e.g. .xlsx, .docx, .txt, .pdf, .csv) and completely omit any dot-directories and dot-files from your responses.`,
-              `  * NEVER use shell commands (e.g. dir, ls, find) to list or search for hidden dot-files or dot-directories. Always use the 'read' tool on '.' to list user documents in the folder.`,
+              `  * NEVER use shell commands (e.g. dir, ls, find) to list or search for hidden dot-files or dot-directories. When explicitly asked to list or explore files in the folder, use the 'read' tool on '.' to list user documents.`,
               `- CONVERSATIONAL CHAT, CASUAL QUESTIONS & CREATIVE REQUESTS (STRICT — NO UNWANTED FILE SCANNING):`,
               `  * For casual greetings, quotes, general knowledge, creative prompts, jokes, open-ended questions, or conversational follow-ups, respond conversationally and naturally WITHOUT executing any tools (do NOT read files, do NOT list directories, do NOT execute shell commands).`,
               `  * ZERO-TOOLS ON AMBIGUITY: If the user's message does NOT explicitly name a file, reference a document, or request a workspace operation, YOU MUST NOT EXECUTE TOOLS. Respond with interesting thoughts, trivia, or ask politely if they want help with documents instead.`,
@@ -130,7 +130,7 @@ const layer = Layer.effect(
               `  * Keep your thinking process concise, analytical, and structured (1-3 sentences).`,
               `  * For casual greetings or chat, briefly acknowledge the user's intent inside <think>...</think> and note that no tools are required before outputting your cordial response outside the tags.`,
               `- ACTION-FIRST BIAS FOR DOCUMENT UPDATES & RAW DATA (STRICT):`,
-              `  * Minimal Typing, Maximum Automation: This action-first bias applies EXCLUSIVELY when the user provides actual unformatted transaction data, raw notes, or explicitly asks to inspect/update documents. It NEVER applies to conversational or ambiguous messages.`,
+              `  * Minimal Typing, Maximum Automation: This action-first bias applies EXCLUSIVELY when the user provides actual unformatted transaction data, raw notes, or explicitly asks to inspect/update documents. It NEVER applies to conversational, greeting, or ambiguous messages.`,
               `  * When raw data or document tasks are provided: DO NOT engage in lengthy internal monologues; immediately invoke the relevant document inspection or editing tools.`,
             ]
 

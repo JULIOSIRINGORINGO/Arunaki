@@ -55,6 +55,7 @@ import { eq } from "drizzle-orm"
 import { SessionTable } from "@arunaki/core/session/sql"
 import { SessionReminders } from "./reminders"
 import { SessionTools } from "./tools"
+import { isCasualGreetingOrChat } from "./query-classifier"
 import { LLMEvent } from "@arunaki/llm"
 import { SessionEvent } from "@arunaki/schema/session-event"
 
@@ -1210,22 +1211,33 @@ const layer = Layer.effect(
             const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
             const promptOps = yield* ops()
 
-            const tools = yield* SessionTools.resolve({
-              agent,
-              session,
-              model,
-              processor: handle,
-              bypassAgentCheck,
-              messages: msgs,
-              promptOps,
-            }).pipe(
-              Effect.provideService(Plugin.Service, plugin),
-              Effect.provideService(Permission.Service, permission),
-              Effect.provideService(ToolRegistry.Service, registry),
-              Effect.provideService(MCP.Service, mcp),
-              Effect.provideService(Truncate.Service, truncate),
-              Effect.provideService(RuntimeFlags.Service, flags),
-            )
+            // Deterministic Zero-Tools on Casual Greeting / Small Talk
+            const isCasual = isCasualGreetingOrChat(lastUserMsg, step)
+            if (isCasual) {
+              yield* Effect.logInfo("casual greeting/chat detected, enforcing zero-tools", {
+                "session.id": sessionID,
+                step,
+              })
+            }
+
+            const tools = isCasual
+              ? {}
+              : yield* SessionTools.resolve({
+                  agent,
+                  session,
+                  model,
+                  processor: handle,
+                  bypassAgentCheck,
+                  messages: msgs,
+                  promptOps,
+                }).pipe(
+                  Effect.provideService(Plugin.Service, plugin),
+                  Effect.provideService(Permission.Service, permission),
+                  Effect.provideService(ToolRegistry.Service, registry),
+                  Effect.provideService(MCP.Service, mcp),
+                  Effect.provideService(Truncate.Service, truncate),
+                  Effect.provideService(RuntimeFlags.Service, flags),
+                )
 
             if (lastUser.format?.type === "json_schema") {
               tools["StructuredOutput"] = createStructuredOutputTool({
@@ -1269,7 +1281,7 @@ const layer = Layer.effect(
               ],
               tools,
               model,
-              toolChoice: format.type === "json_schema" ? "required" : undefined,
+              toolChoice: isCasual ? "none" : format.type === "json_schema" ? "required" : undefined,
             })
 
             if (structured !== undefined) {
