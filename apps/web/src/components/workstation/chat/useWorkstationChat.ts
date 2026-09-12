@@ -323,10 +323,24 @@ export function useWorkstationChat({
       createdAt: new Date().toISOString(),
     };
 
+    let accumulatedResponseText = "";
+    let accumulatedReasoningText = "";
+    let needsReasoningSeparator = false;
+    let needsTextSeparator = false;
+    const streamStartTime = Date.now();
+    const accumulatedSteps: StepItem[] = [];
+    const accumulatedParts: MessagePart[] = [
+      {
+        type: "thought",
+        text: "",
+      },
+    ];
+
     const newAssistantMsg: Message = {
       id: assistantMessageId,
       role: "assistant",
       content: "",
+      parts: [...accumulatedParts],
       createdAt: new Date().toISOString(),
     };
 
@@ -361,14 +375,6 @@ export function useWorkstationChat({
     } else {
       switchSessionModel(chatIdToUse, { ...activeModel, variant: effectiveVariant }).catch(() => {});
     }
-
-    let accumulatedResponseText = "";
-    let accumulatedReasoningText = "";
-    let needsReasoningSeparator = false;
-    let needsTextSeparator = false;
-    const streamStartTime = Date.now();
-    const accumulatedSteps: StepItem[] = [];
-    const accumulatedParts: MessagePart[] = [];
 
     let hasDispatchedNotification = false;
     const dispatchCompletionNotification = (toolsCount = 0) => {
@@ -541,6 +547,13 @@ export function useWorkstationChat({
       setStreamingState(false);
       setLiveStatus(null);
       const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
+      const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
+      if (thoughtPart && thoughtPart.type === "thought") {
+        thoughtPart.durationSec = elapsedSec;
+        if (accumulatedReasoningText) {
+          thoughtPart.text = accumulatedReasoningText;
+        }
+      }
 
       setOptimisticMessages((prev) =>
         prev.map((m) =>
@@ -551,6 +564,7 @@ export function useWorkstationChat({
                 reasoning: accumulatedReasoningText || m.reasoning,
                 executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
                 thoughtSec: elapsedSec,
+                parts: [...accumulatedParts],
               }
             : m
         )
@@ -893,6 +907,13 @@ export function useWorkstationChat({
             if (extractedReasoning) {
               displayReasoning = extractedReasoning;
               displayText = cleanedText;
+              const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
+              if (thoughtPart && thoughtPart.type === "thought") {
+                thoughtPart.text = extractedReasoning;
+              }
+              if (lastTextPart && lastTextPart.type === "text") {
+                lastTextPart.text = displayText;
+              }
             }
           }
 

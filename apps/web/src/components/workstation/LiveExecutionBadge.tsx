@@ -300,13 +300,13 @@ export function MessageThoughtBadge({
     if (thoughtSec && thoughtSec > 0) {
       return `${thoughtSec}s`;
     }
-    if (isStreaming && liveSec > 0) {
-      return `${liveSec}s`;
+    if (isStreaming) {
+      return `${Math.max(1, liveSec)}s`;
     }
     return undefined;
   }, [thoughtMs, thoughtSec, isStreaming, liveSec]);
 
-  if (!hasToolExecution && (!showThinking || (!hasReasoning && !hasThoughtTime))) {
+  if (!hasToolExecution && (!showThinking || (!hasReasoning && !hasThoughtTime && !isStreaming))) {
     return null;
   }
 
@@ -374,7 +374,7 @@ export function MessageThoughtBadge({
       )}
 
       {/* 2. Opencode / Antigravity Parity: Live or Completed Thought Block */}
-      {showThinking && (hasReasoning || hasThoughtTime) && (
+      {showThinking && (hasReasoning || hasThoughtTime || isStreaming) && (
         <div className="w-full min-w-0 text-[11px] font-mono leading-relaxed select-text py-0.5 mb-1 whitespace-pre-wrap">
           <button
             type="button"

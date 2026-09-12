@@ -116,15 +116,24 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     >
       {!isUser && msg?.parts && msg.parts.length > 0 ? (
         <div className="flex flex-col gap-1.5 w-full min-w-0">
+          {showThinking && !msg.parts.some((p) => p.type === "thought") && (
+            <MessageThoughtBadge
+              thoughtSec={thoughtSec || 1}
+              thoughtMs={thoughtMs || 500}
+              reasoning={msg.reasoning}
+              showThinking={showThinking}
+              isStreaming={isStreaming}
+            />
+          )}
           {msg.parts.map((part, pIdx) => {
             const isLastPart = pIdx === msg.parts!.length - 1;
             if (part.type === "thought") {
               return (
                 <MessageThoughtBadge
                   key={`part-${pIdx}`}
-                  thoughtSec={part.durationSec || thoughtSec}
-                  thoughtMs={part.durationMs || thoughtMs}
-                  reasoning={part.text}
+                  thoughtSec={part.durationSec || thoughtSec || 1}
+                  thoughtMs={part.durationMs || thoughtMs || 500}
+                  reasoning={part.text || msg.reasoning}
                   showThinking={showThinking}
                   isStreaming={isStreaming && isLastPart}
                 />

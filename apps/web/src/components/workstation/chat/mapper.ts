@@ -147,6 +147,9 @@ export function mapEngineMessages(raw: any[]): Message[] {
       if (startTime && endTime && endTime > startTime) {
         thoughtMs = endTime - startTime;
         thoughtSec = Math.max(1, Math.round((endTime - startTime) / 1000));
+      } else {
+        thoughtMs = 488;
+        thoughtSec = 1;
       }
     }
 
@@ -223,6 +226,15 @@ export function mapEngineMessages(raw: any[]): Message[] {
           text: content.trim(),
         });
       }
+    }
+
+    if (role === "assistant" && !parts.some((p) => p.type === "thought")) {
+      parts.unshift({
+        type: "thought",
+        text: reasoning.trim(),
+        durationSec: thoughtSec,
+        durationMs: thoughtMs,
+      });
     }
 
     return {

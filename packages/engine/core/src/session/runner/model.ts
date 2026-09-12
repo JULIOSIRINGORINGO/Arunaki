@@ -205,8 +205,7 @@ export const locationLayer = Layer.effect(
         // Sanitize requested model ID in case it contains commas or is a pool
         let requestedID = session.model?.id
         if (requestedID && requestedID.includes(",")) {
-          const parts = requestedID.split(",").map((s) => s.trim()).filter(Boolean)
-          requestedID = parts.find((m) => m !== "mistral-large:free" && !m.includes("muse-spark")) || parts[0]
+          requestedID = requestedID.split(",")[0].trim()
         }
 
         const selected = session.model

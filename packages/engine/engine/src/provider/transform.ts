@@ -1274,11 +1274,10 @@ export function options(input: {
   // Kenari requires `reasoning_effort` in the request body for models like deepseek-v4-flash
   // to return reasoning_content in the stream.
   if (
-    (input.model.providerID === "kenari" ||
-      input.model.providerID.includes("kenari") ||
-      input.providerOptions?.baseURL?.includes("kenari.id") ||
-      input.model.api.npm === "@ai-sdk/openai-compatible") &&
-    input.model.capabilities.reasoning
+    input.model.providerID === "kenari" ||
+    input.model.providerID.includes("kenari") ||
+    input.providerOptions?.baseURL?.includes("kenari.id") ||
+    input.model.api.npm === "@ai-sdk/openai-compatible"
   ) {
     result["reasoningEffort"] = result["reasoningEffort"] ?? "medium"
     result["reasoning_effort"] = result["reasoning_effort"] ?? "medium"

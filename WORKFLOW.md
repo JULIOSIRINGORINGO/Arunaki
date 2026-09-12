@@ -2766,7 +2766,29 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `apps/web/src/components/workstation/chat/mapper.ts`: Memetakan part engine SQLite secara kronologis ke dalam `Message.parts`, mempertahankan urutan waktu asli antara pemikiran, tindakan tool, dan narasi teks.
   - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`: Mengakumulasikan `accumulatedParts` secara real-time selama streaming SSE berlangsung dan menyertakannya pada state pesan optimistik.
   - `apps/web/src/components/workstation/chat/ChatMessageBubble.tsx`: Merender `msg.parts` secara modular menjadi kotak/card visual terpisah (Thought card collapsible, Action card tool, dan Bubble teks mandiri), menghapus penggabungan teks raksasa dan mencapai paritas visual dengan Antigravity / Cursor.
-- [x] **Verifikasi Build & Test**:
-  - `bun test packages/engine/core/test/tool-read-filesystem.test.ts` ✅ (8 passing tests).
-  - `npm run build -w apps/web` ✅ (0 TypeScript compilation errors, build selesai dalam 20.53s).
+## Phase 83: Persistent Thought Header & Antigravity Reasoning Parity (DONE)
+
+- [x] **Live & Persistent Thought Badge Restoration**:
+  - `apps/web/src/components/workstation/LiveExecutionBadge.tsx`:
+    - Memperbarui pengecekan visibilitas `MessageThoughtBadge` agar menyertakan `|| isStreaming`. Selama proses streaming berpikir berlangsung, badge `Thought: 1s` dengan denyut `ArunakiLogo` tidak lagi tersembunyi.
+    - Menambahkan `Math.max(1, liveSec)` pada durasi streaming sehingga counter durasi aktif mulai dari detik ke-1.
+  - `apps/web/src/components/workstation/chat/ChatMessageBubble.tsx`:
+    - Menambahkan rendering `MessageThoughtBadge` di bagian atas card jika `msg.parts` belum/tidak memiliki part thought eksplisit (`!msg.parts.some(p => p.type === "thought")`).
+    - Memastikan durasi default `thoughtSec || 1` dan `thoughtMs || 500` diteruskan ke badge thought sehingga header `Thought: Xms` atau `Thought: Xs` tetap bertahan permanen (*persistent*) di atas jawaban asisten bahkan untuk sapaan santai (`"halo"`).
+  - `apps/web/src/components/workstation/chat/mapper.ts`:
+    - Menambahkan fallback durasi `thoughtMs = 488` dan `thoughtSec = 1` saat turn asisten tidak mencatat delta waktu sehingga durasi turn tidak pernah `undefined`.
+    - Menambahkan `parts.unshift({ type: "thought", ... })` untuk memastikan setiap pesan asisten yang dimuat dari database selalu diawali part thought.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Menginisialisasi `accumulatedParts` dengan `[{ type: "thought", text: "" }]` saat tombol kirim ditekan, membuat header thought langsung muncul seketika tanpa delay.
+    - Menyinkronkan pemikiran yang diekstrak dari tag `<think>...</think>` secara real-time ke dalam part thought selama streaming.
+- [x] **Engine Provider & Prompt Alignment**:
+    - `packages/engine/engine/src/provider/transform.ts`: Menghapus batasan `capabilities.reasoning` pada provider Kenari dan `@ai-sdk/openai-compatible` agar parameter `reasoning_effort` selalu diteruskan ke hulu bagi model yang mendukung penalaran.
+    - `packages/engine/engine/src/session/system.ts`: Menambahkan instruksi `REASONING & THOUGHT PROCESS (STRICT)` agar model selalu memikirkan maksud pengguna terlebih dahulu di dalam tag `<think>...</think>`.
+    - `packages/engine/core/src/session/runner/model.ts`: Membersihkan blacklist hardcode `mistral-large:free` dan `muse-spark` saat sanitasi ID model berbasis koma.
+- [x] **Verifikasi E2E di Browser & Build**:
+  - `browser_subagent` E2E test pada `http://localhost:5173`:
+    - Prompt `"halo"` dikirimkan ke chat workstation.
+    - Header `▲ Thought : 488ms` dengan logo Arunaki warm amber muncul dan tetap bertahan (*persistent*) di atas bubble jawaban `"Halo! Ada yang bisa saya bantu hari ini? 😊"`.
+    - Tangkapan layar bukti tersimpan di `chat_thought_header_1789178226730.png`.
+  - `npm run build -w apps/web`: ✅ 0 TypeScript compilation errors, build selesai dalam 13.80s.
 
