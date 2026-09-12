@@ -2908,6 +2908,26 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi Build**:
   - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 26.02s.
 
+---
+
+### Phase 90: Canvas Session Isolation & Automatic Reset on Session Switch ✅
+- [x] **Investigasi Masalah Canvas Sidebar Tidak Reset Saat Ganti Session**:
+  - Sebelumnya, daftar recent canvas (`recentCanvases`) di hook `useTabs.ts` disimpan menggunakan satu key global `arunaki_recent_canvases`.
+  - Akibatnya, canvas dari sesi chat sebelumnya terus terbawa ke sesi obrolan baru maupun saat berpindah sesi (tetap muncul "Canvas 5").
+- [x] **Implementasi Isolasi Canvas per Sesi (`activeChatId`)**:
+  - `apps/web/src/components/workstation/tabs/useTabs.ts`:
+    - Mengikat status `recentCanvases` secara eksklusif ke `activeChatId` (`arunaki_recent_canvases_${activeChatId}`).
+    - Saat berpindah sesi atau membuka sesi baru, `recentCanvases` otomatis di-reset ke `[]` (0 canvas) atau memuat hanya canvas milik sesi tersebut.
+    - Tab canvas dari sesi sebelumnya yang masih terbuka di panel tengah otomatis ditutup saat berpindah sesi.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Pada `handleNewChat` (tombol New Chat), daftar canvas langsung di-reset ke `[]` secara instan.
+    - Saat membuka sesi lama yang memiliki riwayat pesan, canvas dipulihkan dan diekstrak secara otomatis hanya dari pesan asisten sesi tersebut.
+  - `apps/web/src/pages/UnifiedWorkstationPage.tsx`:
+    - Menghubungkan `activeChatId` dan setter `setRecentCanvases` antara `useTabs` dan `useWorkstationChat`.
+- [x] **Verifikasi Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, tuntas dalam 21.91s.
+
+
 
 
 

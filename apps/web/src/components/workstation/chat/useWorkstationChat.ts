@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import { Message, MessagePart } from "./types";
 import { mapEngineMessages } from "./mapper";
 import { LiveStatusData, StepItem, formatToolStepLabel } from "../LiveExecutionBadge";
-import { extractCanvasContent } from "../canvas/canvas";
+import { extractCanvasContent, extractCanvasTitle } from "../canvas/canvas";
+import { CanvasItem } from "../canvas/types";
 import { isDocumentPath } from "../tabs/utils";
 import {
   createSession,
@@ -24,6 +25,7 @@ interface UseWorkstationChatOptions {
   reloadOpenTabsContent: () => void;
   onOpenFileTab: (filePath: string, fileName: string, content?: string, silent?: boolean) => Promise<void>;
   upsertCanvasTab: (canvasText: string, isStreamingDone?: boolean) => void;
+  setRecentCanvases?: React.Dispatch<React.SetStateAction<CanvasItem[]>>;
 }
 
 const EDIT_FILE_TOOLS = new Set([
@@ -77,6 +79,7 @@ export function useWorkstationChat({
   reloadOpenTabsContent,
   onOpenFileTab,
   upsertCanvasTab,
+  setRecentCanvases,
 }: UseWorkstationChatOptions) {
   const queryClient = useQueryClient();
 
@@ -214,17 +217,45 @@ export function useWorkstationChat({
     if (hasRestoredCanvasRef.current === activeChatId) return;
     hasRestoredCanvasRef.current = activeChatId;
 
+    const sessionCanvases: CanvasItem[] = [];
+    let latestCanvasText = "";
+
     for (let i = chatMessages.length - 1; i >= 0; i--) {
       const msg = chatMessages[i];
       if (msg.role === "assistant" && msg.content) {
         const canvasContent = extractCanvasContent(msg.content);
         if (canvasContent) {
-          upsertCanvasTab(canvasContent, false);
-          break;
+          if (!latestCanvasText) {
+            latestCanvasText = canvasContent;
+          }
+          if (!sessionCanvases.some((c) => c.content.trim() === canvasContent.trim())) {
+            const title = extractCanvasTitle(canvasContent);
+            const createdAt = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
+            const timeStr = new Date(createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            sessionCanvases.push({
+              id: `canvas-${createdAt}-${sessionCanvases.length}`,
+              title,
+              content: canvasContent,
+              createdAt: msg.createdAt || new Date(createdAt).toISOString(),
+              timeStr,
+            });
+          }
         }
       }
     }
-  }, [activeChatId, chatMessages, isStreaming, upsertCanvasTab]);
+
+    if (sessionCanvases.length > 0 && setRecentCanvases) {
+      const top5 = sessionCanvases.slice(0, 5);
+      setRecentCanvases(top5);
+      try {
+        localStorage.setItem(`arunaki_recent_canvases_${activeChatId}`, JSON.stringify(top5));
+      } catch {}
+    }
+
+    if (latestCanvasText) {
+      upsertCanvasTab(latestCanvasText, false);
+    }
+  }, [activeChatId, chatMessages, isStreaming, upsertCanvasTab, setRecentCanvases]);
 
   const handleRemoveQueuedPrompt = useCallback((index: number) => {
     queuedPromptsRef.current = queuedPromptsRef.current.filter((_, i) => i !== index);
@@ -253,6 +284,7 @@ export function useWorkstationChat({
     setLiveStatus(null);
     setOptimisticMessages([]);
     hasRestoredCanvasRef.current = null;
+    setRecentCanvases?.([]);
 
     // Immediately clear chat to blank state for instant feedback with 0 flicker
     setActiveChatId("");

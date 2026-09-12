@@ -7,16 +7,23 @@ import { engineFetch } from "../../../lib/engine";
 
 interface UseTabsOptions {
   activeFolder: string;
+  activeChatId?: string;
   refetchFiles?: () => void;
 }
 
-export function useTabs({ activeFolder, refetchFiles }: UseTabsOptions) {
+export function useTabs({ activeFolder, activeChatId, refetchFiles }: UseTabsOptions) {
   const [tabs, setTabs] = useState<CenterTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
+  const activeChatIdRef = useRef<string>(activeChatId || "");
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId || "";
+  }, [activeChatId]);
+
   const [recentCanvases, setRecentCanvases] = useState<CanvasItem[]>(() => {
     try {
-      const saved = localStorage.getItem("arunaki_recent_canvases");
+      if (!activeChatId) return [];
+      const saved = localStorage.getItem(`arunaki_recent_canvases_${activeChatId}`);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -25,15 +32,38 @@ export function useTabs({ activeFolder, refetchFiles }: UseTabsOptions) {
 
   const openingTabsRef = useRef<Set<string>>(new Set());
   const prevFolderRef = useRef<string>(activeFolder);
+  const prevChatIdRef = useRef<string>(activeChatId || "");
 
-  // Workspace folder isolation: when active folder changes, close previous folder's tabs
+  // Workspace folder isolation: when active folder changes, close previous folder's tabs and reset canvases
   useEffect(() => {
     if (prevFolderRef.current && prevFolderRef.current !== activeFolder) {
       setTabs([]);
       setActiveTabId(null);
+      setRecentCanvases([]);
     }
     prevFolderRef.current = activeFolder;
   }, [activeFolder]);
+
+  // Session isolation: when active chat session changes, load this session's canvases and close previous session's canvas tabs
+  useEffect(() => {
+    if (prevChatIdRef.current !== (activeChatId || "")) {
+      prevChatIdRef.current = activeChatId || "";
+      if (activeChatId) {
+        try {
+          const saved = localStorage.getItem(`arunaki_recent_canvases_${activeChatId}`);
+          setRecentCanvases(saved ? JSON.parse(saved) : []);
+        } catch {
+          setRecentCanvases([]);
+        }
+      } else {
+        setRecentCanvases([]);
+      }
+
+      // Close canvas tabs from previous session
+      setTabs((prev) => prev.filter((t) => t.type !== "canvas"));
+      setActiveTabId((current) => (current && current.startsWith("tab-canvas") ? null : current));
+    }
+  }, [activeChatId]);
 
   // Auto-deduplicate tabs by title/path to purge any duplicate tabs from state
   useEffect(() => {
@@ -325,9 +355,12 @@ export function useTabs({ activeFolder, refetchFiles }: UseTabsOptions) {
           },
           ...filtered,
         ].slice(0, 5);
-        try {
-          localStorage.setItem("arunaki_recent_canvases", JSON.stringify(top5));
-        } catch {}
+        const chatId = activeChatIdRef.current;
+        if (chatId) {
+          try {
+            localStorage.setItem(`arunaki_recent_canvases_${chatId}`, JSON.stringify(top5));
+          } catch {}
+        }
         return top5;
       });
     } else {

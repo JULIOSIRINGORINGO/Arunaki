@@ -219,7 +219,7 @@ export function UnifiedWorkstationPage() {
   );
 
   // 3. Modular domain hooks
-  const tabs = useTabs({ activeFolder, refetchFiles });
+  const tabs = useTabs({ activeFolder, activeChatId, refetchFiles });
 
   const chat = useWorkstationChat({
     activeFolder,
@@ -229,6 +229,7 @@ export function UnifiedWorkstationPage() {
     reloadOpenTabsContent: tabs.reloadOpenTabsContent,
     onOpenFileTab: tabs.handleOpenFileTab,
     upsertCanvasTab: tabs.upsertCanvasTab,
+    setRecentCanvases: tabs.setRecentCanvases,
   });
 
   // 4. Panel UI layout & resize controls
