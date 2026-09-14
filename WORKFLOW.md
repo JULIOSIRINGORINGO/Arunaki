@@ -2940,6 +2940,22 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [ ] **Verifikasi & Build**:
   - Memastikan 0 TypeScript error pada `apps/web`.
 
+---
+
+### Phase 92: Fix Active Model Routing Pool Flooding on App Launch ✅
+- [x] **Investigasi Masalah 87 Model Terpilih di Routing Pool**:
+  - Pada commit sebelumnya (`b9218ef6`), fungsi `refreshModelCatalog()` di `apps/web/src/App.tsx` mengambil seluruh katalog live model dari API (`POST /api/providers/fetch-models`).
+  - Hasil fetch (seluruh 87 model) secara keliru disimpan langsung ke `localStorage.setItem('arunaki_provider_models_${p.id}', models.join(', '))`, menimpa antrean model aktif pengguna dengan seluruh isi katalog model.
+  - Akibatnya, UI pengaturan selalu menampilkan *"Active Model Routing Priority (87 selected)"* dengan 86 tingkat fallback setiap kali aplikasi dibuka.
+- [x] **Perbaikan Logika Sinkronisasi di `apps/web/src/App.tsx`**:
+  - Memisahkan konsep katalog model dari pool antrean model aktif pengguna.
+  - Jika pengguna belum memiliki konfigurasi, inisialisasi hanya dengan 5 model kurasi default (`DEFAULT_MODELS[p.id]`).
+  - Jika pengguna sudah memiliki pilihan, pertahankan model yang dipilih dan hanya buang model yang sudah mati/dihapus dari API provider.
+  - Menambahkan *self-healing* otomatis: jika `localStorage` terdeteksi mengalami *flooding* (> 10 model aktif), langsung pangkas kembali ke 5 model kurasi default secara instan.
+- [x] **Verifikasi & Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 25.41s.
+
+
 
 
 

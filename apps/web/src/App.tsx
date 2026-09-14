@@ -24,7 +24,7 @@ const isFileProtocol = typeof window !== 'undefined' && window.location.protocol
 const RouterComponent = isFileProtocol ? HashRouter : BrowserRouter;
 
 // Auto-refresh model catalog from API on app launch (fire-and-forget, non-blocking).
-// Dead/discontinued models automatically disappear because the API only returns live models.
+// Dead/discontinued models automatically disappear, while preserving the user's curated active routing pool (never bloated with all 80+ models).
 async function refreshModelCatalog() {
   try {
     const res = await apiFetch(`${API_BASE}/providers${directoryQuery()}`);
@@ -40,20 +40,42 @@ async function refreshModelCatalog() {
           body: JSON.stringify({ baseUrl: p.baseUrl, apiKey: p.apiKey }),
         });
         const modelsData = await modelsRes.json();
-        const models: string[] = (modelsData?.data?.models || []).filter(Boolean);
-        if (models.length > 0) {
-          localStorage.setItem(`arunaki_provider_models_${p.id}`, models.join(", "));
+        const liveModels: string[] = (modelsData?.data?.models || []).filter(Boolean);
+        if (liveModels.length === 0) continue;
+
+        const poolKey = `arunaki_provider_models_${p.id}`;
+        const currentPoolStr = localStorage.getItem(poolKey);
+        const defaultList = DEFAULT_MODELS[p.id] || DEFAULT_MODELS["openai-compatible"] || [];
+        const curatedDefaults = defaultList.filter((m) => liveModels.includes(m));
+        const fallbackDefaults = curatedDefaults.length > 0 ? curatedDefaults : liveModels.slice(0, 5);
+
+        if (!currentPoolStr) {
+          // Initialize new pool with curated defaults (max 5)
+          localStorage.setItem(poolKey, fallbackDefaults.join(", "));
+        } else {
+          const currentList = currentPoolStr.split(",").map((s) => s.trim()).filter(Boolean);
+          // Self-heal: if pool was previously bloated with all 80+ models from catalog, trim back to curated defaults
+          if (currentList.length > 10) {
+            localStorage.setItem(poolKey, fallbackDefaults.join(", "));
+          } else {
+            // Keep user's active choices, but remove discontinued models that no longer exist in live API catalog
+            const valid = currentList.filter((m) => liveModels.includes(m));
+            const updated = valid.length > 0 ? valid : fallbackDefaults;
+            localStorage.setItem(poolKey, updated.join(", "));
+          }
         }
       } catch { /* single provider fail — skip, don't break loop */ }
     }
 
-    // Validate active model still exists in its provider's catalog
+    // Validate active model still exists in its provider's pool
     const activeProvider = localStorage.getItem("arunaki_active_provider") || "kenari";
     const activeModel = localStorage.getItem("arunaki_active_model");
     const pool = localStorage.getItem(`arunaki_provider_models_${activeProvider}`);
-    if (activeModel && pool && !pool.split(",").map((s) => s.trim()).includes(activeModel.trim())) {
-      const first = pool.split(",").map((s) => s.trim()).filter(Boolean)[0];
-      if (first) localStorage.setItem("arunaki_active_model", first);
+    if (pool) {
+      const poolList = pool.split(",").map((s) => s.trim()).filter(Boolean);
+      if (!activeModel || !poolList.includes(activeModel.trim())) {
+        if (poolList[0]) localStorage.setItem("arunaki_active_model", poolList[0]);
+      }
     }
   } catch { /* offline or API unavailable — keep cached localStorage values */ }
 }
@@ -63,6 +85,16 @@ if (typeof window !== "undefined") {
   if (!localStorage.getItem("arunaki_active_provider")) {
     localStorage.setItem("arunaki_active_provider", "kenari");
   }
+  // Immediate self-healing: if localStorage has bloated pool (> 10 models), trim back to curated defaults
+  try {
+    const kenariPool = localStorage.getItem("arunaki_provider_models_kenari");
+    if (kenariPool) {
+      const count = kenariPool.split(",").map((s) => s.trim()).filter(Boolean).length;
+      if (count > 10) {
+        localStorage.setItem("arunaki_provider_models_kenari", (DEFAULT_MODELS.kenari || []).join(", "));
+      }
+    }
+  } catch {}
   // Ensure default active model for first-time users
   if (!localStorage.getItem("arunaki_active_model")) {
     localStorage.setItem("arunaki_active_model", (DEFAULT_MODELS.kenari || [])[0] || "deepseek-v4-flash");
