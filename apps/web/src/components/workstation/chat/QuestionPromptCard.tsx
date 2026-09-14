@@ -71,7 +71,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
             isAnswered ? "text-emerald-400" : "text-amber-400"
           )}
         >
-          {firstQuestion.header || (isAnswered ? "Klarifikasi Terjawab" : "Klarifikasi Diperlukan")}
+          {firstQuestion.header || (isAnswered ? "Clarification Resolved" : "Clarification Needed")}
         </span>
       </div>
 
@@ -85,7 +85,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
         <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-400">
           <Check className="h-4 w-4 shrink-0" />
           <span>
-            Pilihan Anda: <strong className="text-foreground">{selected || questionData.selectedAnswer}</strong>
+            Selected Choice: <strong className="text-foreground">{selected || questionData.selectedAnswer}</strong>
           </span>
         </div>
       ) : (
@@ -118,7 +118,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
                     {isRecommended && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
                         <Sparkles className="h-2.5 w-2.5" />
-                        Rekomendasi
+                        Recommended
                       </span>
                     )}
                   </div>
@@ -140,7 +140,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
                   type="text"
                   value={customText}
                   onChange={(e) => setCustomText(e.target.value)}
-                  placeholder="Atau ketik jawaban lain..."
+                  placeholder="Or type a custom response..."
                   disabled={disabled || isSubmitting}
                   className="flex-1 rounded-lg border border-border/60 bg-background/80 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-amber-400 focus:outline-hidden focus:ring-1 focus:ring-amber-400"
                 />
