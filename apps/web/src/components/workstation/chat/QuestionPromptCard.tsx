@@ -46,10 +46,10 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
   return (
     <div
       className={cn(
-        "my-3 w-full max-w-xl rounded-xl border p-4 text-left transition-all duration-200 shadow-sm",
+        "my-3 w-full max-w-xl rounded-xl border p-4 text-left transition-all duration-200 shadow-xs",
         isAnswered
-          ? "border-emerald-500/30 bg-emerald-950/10 dark:bg-emerald-950/20"
-          : "border-amber-500/35 bg-gradient-to-b from-amber-500/5 to-amber-500/10 dark:from-amber-500/[0.03] dark:to-amber-500/[0.08]"
+          ? "border-border/60 bg-muted/10 dark:bg-zinc-900/40"
+          : "border-border/80 dark:border-zinc-800 bg-card/60 dark:bg-zinc-900/60"
       )}
       data-testid="question-prompt-card"
     >
@@ -57,10 +57,10 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
       <div className="flex items-center gap-2 mb-2">
         <div
           className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-md text-xs font-bold",
+            "flex h-6 w-6 items-center justify-center rounded-md border text-xs font-bold",
             isAnswered
-              ? "bg-emerald-500/20 text-emerald-400"
-              : "bg-amber-500/20 text-amber-400"
+              ? "border-border/50 bg-muted text-muted-foreground"
+              : "border-border/60 bg-muted/70 text-foreground"
           )}
         >
           {isAnswered ? <Check className="h-3.5 w-3.5" /> : <HelpCircle className="h-3.5 w-3.5" />}
@@ -68,7 +68,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
         <span
           className={cn(
             "text-xs font-semibold uppercase tracking-wider",
-            isAnswered ? "text-emerald-400" : "text-amber-400"
+            isAnswered ? "text-muted-foreground" : "text-foreground/80"
           )}
         >
           {firstQuestion.header || (isAnswered ? "Clarification Resolved" : "Clarification Needed")}
@@ -82,10 +82,10 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
 
       {/* Answered View */}
       {isAnswered ? (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-400">
-          <Check className="h-4 w-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/80 dark:bg-zinc-800/40 px-3 py-2 text-xs font-medium text-foreground">
+          <Check className="h-3.5 w-3.5 shrink-0 text-foreground/70" />
           <span>
-            Selected Choice: <strong className="text-foreground">{selected || questionData.selectedAnswer}</strong>
+            Selected Choice: <strong className="text-foreground font-semibold">{selected || questionData.selectedAnswer}</strong>
           </span>
         </div>
       ) : (
@@ -106,17 +106,17 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
                   onClick={() => handleSelect(opt.label)}
                   className={cn(
                     "group flex flex-col items-start rounded-lg border px-3.5 py-2.5 text-left transition-all duration-150 active:scale-[0.99]",
-                    "hover:border-amber-400/80 hover:bg-amber-500/10 hover:shadow-xs",
-                    "border-border/60 bg-background/80 dark:bg-card/70",
+                    "hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/60 hover:shadow-xs",
+                    "border-border/70 bg-background/80 dark:bg-zinc-900/40",
                     isSubmitting && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <div className="flex w-full items-center justify-between gap-2">
-                    <span className="text-xs sm:text-sm font-medium text-foreground group-hover:text-amber-400">
+                    <span className="text-xs sm:text-sm font-medium text-foreground">
                       {opt.label}
                     </span>
                     {isRecommended && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                         <Sparkles className="h-2.5 w-2.5" />
                         Recommended
                       </span>
@@ -142,12 +142,12 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
                   onChange={(e) => setCustomText(e.target.value)}
                   placeholder="Or type a custom response..."
                   disabled={disabled || isSubmitting}
-                  className="flex-1 rounded-lg border border-border/60 bg-background/80 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-amber-400 focus:outline-hidden focus:ring-1 focus:ring-amber-400"
+                  className="flex-1 rounded-lg border border-border/70 bg-background/80 dark:bg-zinc-900/50 px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-zinc-400 dark:focus:border-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-zinc-400"
                 />
                 <button
                   type="submit"
                   disabled={!customText.trim() || disabled || isSubmitting}
-                  className="inline-flex items-center justify-center rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="inline-flex items-center justify-center rounded-lg bg-foreground text-background px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>

@@ -43,9 +43,12 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
   const specific =
     localStorage.getItem("arunaki_active_model") ||
     localStorage.getItem(`arunaki_provider_model_${p}`);
-  if (specific && specific.trim() && !specific.includes(",")) {
+  if (specific && specific.trim()) {
     const trimmed = specific.trim();
-    return { providerID: p, id: trimmed };
+    const firstModel = trimmed.includes(",") ? trimmed.split(",")[0].trim() : trimmed;
+    if (firstModel) {
+      return { providerID: p, id: firstModel };
+    }
   }
   const pool = localStorage.getItem(`arunaki_provider_models_${p}`);
   if (pool && pool.trim()) {
@@ -53,16 +56,9 @@ export function resolveActiveSingleModel(): { providerID: string; id: string } {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    const valid =
-      list.find((m) => m === "deepseek-v4-flash") ||
-      list.find((m) => m === "mistral-medium-3-5:free") ||
-      list.find((m) => m === "mimo-v2-5:free") ||
-      list.find((m) => m === "agnes-2-0-flash:free") ||
-      list.find((m) => m.endsWith(":free")) ||
-      list[0];
-    if (valid) {
-      localStorage.setItem("arunaki_active_model", valid);
-      return { providerID: p, id: valid };
+    if (list.length > 0) {
+      localStorage.setItem("arunaki_active_model", list[0]);
+      return { providerID: p, id: list[0] };
     }
   }
   return {
@@ -869,6 +865,9 @@ export function useWorkstationChat({
           }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
+          if (toolName.toLowerCase() === "question") {
+            return;
+          }
           const callId = event.data?.callID;
           const label = formatToolStepLabel(toolName, event.data?.args || event.data?.input, false);
           setLiveStatus({ type: "tool_preparing", toolName, preview: label });
@@ -929,6 +928,9 @@ export function useWorkstationChat({
           }
           resetWatchdog(120000);
           const toolName = event.data?.toolName || "action";
+          if (toolName.toLowerCase() === "question") {
+            return;
+          }
           const callId = event.data?.callID;
           const isFinished = event.data?.status === "completed" || event.data?.status === "failed";
           const args = event.data?.args || event.data?.input || event.data?.preview;

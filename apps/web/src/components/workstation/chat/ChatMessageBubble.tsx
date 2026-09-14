@@ -75,6 +75,10 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
       if (meta?.thoughtMs) thoughtMs = meta.thoughtMs;
     } catch {}
   }
+  if (steps) {
+    steps = steps.filter((s) => s.toolName?.toLowerCase() !== "question" && !s.label.toLowerCase().includes("question"));
+    if (steps.length === 0) steps = undefined;
+  }
 
   type PartGroup =
     | { type: "thought"; id: string; text: string; durationSec?: number; durationMs?: number; isLast: boolean }
@@ -101,6 +105,9 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
           });
         }
       } else if (part.type === "tool") {
+        if (part.step.toolName?.toLowerCase() === "question" || part.step.label.toLowerCase().includes("question")) {
+          continue;
+        }
         const lastGroup = groups[groups.length - 1];
         if (lastGroup && lastGroup.type === "tools") {
           lastGroup.steps.push(part.step);
