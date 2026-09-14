@@ -78,7 +78,7 @@ const layer = Layer.effectDiscard(
                       tool: { messageID: context.assistantMessageID, callID: context.toolCallID },
                     })
                     .pipe(
-                      Effect.timeout("15 seconds"),
+                      Effect.timeout("60 seconds"),
                       Effect.catchTag("TimeoutException", () =>
                         Effect.succeed(
                           input.questions.map((q) =>

@@ -301,6 +301,18 @@ export function mapEngineEvent(
       const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
       if (callID) toolCallNameMap.set(callID, toolName);
       const input = payload.input || event.input || {};
+
+      if (toolName === "question" && Array.isArray(input.questions)) {
+        return {
+          type: "question_asked",
+          data: {
+            id: callID,
+            sessionID,
+            questions: input.questions,
+          },
+        };
+      }
+
       const target =
         input.path ||
         input.TargetFile ||
@@ -317,6 +329,19 @@ export function mapEngineEvent(
           args: input,
           preview: filePreview || (typeof target === "string" ? target : undefined),
         },
+      };
+    }
+    case "question.v2.asked": {
+      return {
+        type: "question_asked",
+        data: payload,
+      };
+    }
+    case "question.v2.replied":
+    case "question.v2.rejected": {
+      return {
+        type: "question_settled",
+        data: payload,
       };
     }
     case "session.next.tool.progress": {
@@ -397,3 +422,34 @@ export async function listModels() {
   const json = await res.json();
   return json.data;
 }
+
+// --- Question API ---
+
+export async function fetchSessionQuestions(sessionId: string) {
+  try {
+    const res = await engineFetch(`/api/session/${sessionId}/question`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function replySessionQuestion(
+  sessionId: string,
+  requestId: string,
+  answers: string[][]
+): Promise<boolean> {
+  try {
+    const res = await engineFetch(`/api/session/${sessionId}/question/${requestId}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+

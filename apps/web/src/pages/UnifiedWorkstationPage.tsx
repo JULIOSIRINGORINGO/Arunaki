@@ -418,6 +418,7 @@ export function UnifiedWorkstationPage() {
             setReasoningEffort={chat.setReasoningEffort}
             onNewChat={chat.handleNewChat}
             onCancelStream={chat.handleCancelStream}
+            onAnswerQuestion={chat.handleAnswerQuestion}
           />
         </ErrorBoundary>
       </div>

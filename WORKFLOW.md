@@ -2926,18 +2926,18 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
     - Menghubungkan `activeChatId` dan setter `setRecentCanvases` antara `useTabs` dan `useWorkstationChat`.
 ---
 
-### Phase 91: Thought Slicing, Tool Card Unification & Office Scripting Loop Prevention 🔄 [AI]
-- [ ] **Investigasi Akar Masalah Thought Memanjang & Multi-Card Tool**:
+### Phase 91: Thought Slicing, Tool Card Unification & Office Scripting Loop Prevention ✅ DONE
+- [x] **Investigasi Akar Masalah Thought Memanjang & Multi-Card Tool**:
   - Semua reasoning lintas-turn digabungkan menjadi 1 kolom thought raksasa (`Thought: 287.8s`) di UI alih-alih dipotong per langkah.
   - Setiap pemanggilan tool dirender sebagai kartu terpisah bertumpuk (`Executed 1 document task`) alih-alih disatukan dalam satu collapsible card.
   - AI terjebak dalam loop bash menjalankan skrip Python untuk membaca dokumen Excel yang mengembalikan output kosong.
-- [ ] **Perbaikan Prompt & Kebijakan Dokumen (`packages/engine/engine/src/session/prompt/default.txt`)**:
+- [x] **Perbaikan Prompt & Kebijakan Dokumen (`packages/engine/engine/src/session/prompt/default.txt`)**:
   - Melarang keras eksekusi skrip Python / PowerShell / bash untuk dokumen Office.
   - Mengarahkan AI menggunakan tool dokumen resmi (`excelRead`, `excelCom`, `read`, `edit`) dan melarang perulangan jika perintah menghasilkan output kosong.
-- [ ] **Perbaikan UI Grouping di Frontend (`ChatMessageBubble.tsx`, `useWorkstationChat.ts`, `mapper.ts`)**:
+- [x] **Perbaikan UI Grouping di Frontend (`ChatMessageBubble.tsx`, `useWorkstationChat.ts`, `mapper.ts`)**:
   - Menyatukan eksekusi tool berurutan ke dalam 1 kartu badge (`✓ Executed N document tasks`).
   - Memisahkan blok thought per putaran/langkah sehingga tidak menumpuk menjadi 1 kolom panjang dan durasi waktunya terukur secara akurat per segmen.
-- [ ] **Verifikasi & Build**:
+- [x] **Verifikasi & Build**:
   - Memastikan 0 TypeScript error pada `apps/web`.
 
 ---
@@ -2975,6 +2975,28 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - Memverifikasi sesi aktif kembali berstatus idle (`Active sessions: {}`) dan siap menerima input berikutnya.
 - [x] **Verifikasi & Build**:
   - `npm run build -w apps/web`: ✅ 0 error TypeScript.
+
+---
+
+### Phase 94: Interactive Quick-Choice Clarification Chips in Chat Area ✅ DONE
+- [x] **Re-Enable `QuestionTool` dengan Fail-Safe Timeout**:
+  - Mengaktifkan kembali `QuestionTool.node` pada `BuiltInTools` (`packages/engine/core/src/tool/builtins.ts`).
+  - Menambahkan fail-safe timeout 60 detik dengan fallback otomatis opsi pertama pada `packages/engine/core/src/tool/question.ts`, menjamin backend fiber tidak akan pernah deadlock.
+- [x] **Desain & Implementasi UI `QuestionPromptCard`**:
+  - Dibuat di `apps/web/src/components/workstation/chat/QuestionPromptCard.tsx`.
+  - Terintegrasi 100% di dalam Chat Area (inline bubble) tanpa modal kuesioner yang memblokir layar, sepenuhnya mematuhi prinsip *Minimal Typing, Maximum Automation*.
+  - Menampilkan kartu pilihan interaktif dengan styling premium, badge `✨ Rekomendasi`, deskripsi tiap opsi, dan input custom fallback.
+  - Menyediakan state terkonfirmasi yang jelas (`Pilihan Anda: ✅ [Label]`) segera setelah opsi dipilih.
+- [x] **Integrasi Engine Event & Two-Way Answering Lifecycle**:
+  - `apps/web/src/lib/engine.ts`: Mapping event `question.v2.asked`, `question.v2.replied`, `session.next.tool.called` ke `question_asked` dan `question_settled`. Menambahkan helper `fetchSessionQuestions()` dan `replySessionQuestion()`.
+  - `apps/web/src/components/workstation/chat/useWorkstationChat.ts`:
+    - Mengelola state `pendingQuestion` dan mendengarkan event streaming `question_asked`.
+    - Menghubungkan klik kartu pilihan ke `handleAnswerQuestion(requestId, selectedAnswer)`, mengirim `POST /api/session/:sessionID/question/:requestID/reply` ke engine.
+    - Menghubungkan input teks chat biasa: jika ada pertanyaan aktif dan pengguna mengetik pesan di box bawah, teks otomatis dialirkan sebagai jawaban ke `handleAnswerQuestion`.
+- [x] **Zero TypeScript Errors & E2E Testing**:
+  - `npm run build -w apps/web`: ✅ Build sukses dalam 14.64s tanpa error TypeScript.
+  - E2E Playwright Browser Testing via `browser_subagent`: Berhasil memicu prompt klarifikasi, merender 4 kartu pilihan berbadge `✨ Rekomendasi`, memilih `Tabel Excel (.xlsx)` via 1-klik, dan engine melanjutkan generasi respons hingga tuntas tanpa deadlock atau timeout.
+
 
 
 

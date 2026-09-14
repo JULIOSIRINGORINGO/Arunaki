@@ -5,7 +5,8 @@ import { cn } from "../../../lib/utils";
 import { API_BASE } from "../../../lib/api";
 import { MessageThoughtBadge, StepItem, LiveActionIndicator, getActiveActionText } from "../LiveExecutionBadge";
 import { ChatMessageContent } from "./ChatMessageContent";
-import { Message } from "./types";
+import { QuestionPromptCard } from "./QuestionPromptCard";
+import { Message, QuestionData } from "./types";
 
 interface ChatMessageBubbleProps {
   msg: Message;
@@ -14,6 +15,7 @@ interface ChatMessageBubbleProps {
   showThinking?: boolean;
   onPreviewImage?: (url: string) => void;
   onResend?: (content: string) => void;
+  onAnswerQuestion?: (requestId: string, selectedAnswer: string) => void;
 }
 
 export const ChatMessageBubble = memo(function ChatMessageBubble({
@@ -23,6 +25,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   showThinking = true,
   onPreviewImage,
   onResend,
+  onAnswerQuestion,
 }: ChatMessageBubbleProps) {
   // CRITICAL: React Rules of Hooks - all hooks unconditionally declared at the top before any condition or early return!
   const [copied, setCopied] = useState(false);
@@ -76,7 +79,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   type PartGroup =
     | { type: "thought"; id: string; text: string; durationSec?: number; durationMs?: number; isLast: boolean }
     | { type: "tools"; id: string; steps: StepItem[]; isRunning: boolean; isLast: boolean }
-    | { type: "text"; id: string; text: string; isLast: boolean };
+    | { type: "text"; id: string; text: string; isLast: boolean }
+    | { type: "question"; id: string; data: QuestionData; isLast: boolean };
 
   const partGroups = useMemo<PartGroup[]>(() => {
     if (!msg?.parts || msg.parts.length === 0) return [];
@@ -111,6 +115,13 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             isLast,
           });
         }
+      } else if (part.type === "question") {
+        groups.push({
+          type: "question",
+          id: `question-${i}`,
+          data: part.data,
+          isLast,
+        });
       } else if (part.type === "text" && part.text.trim().length > 0) {
         groups.push({
           type: "text",
@@ -124,7 +135,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }, [msg?.parts, isStreaming]);
 
   const hasPartsContent = !isUser && Boolean(partGroups.length > 0);
-  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || imageMentions.length > 0;
+  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || imageMentions.length > 0 || Boolean(msg?.question);
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
 
   const activeActionText = useMemo(() => {
@@ -206,11 +217,26 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                 </div>
               );
             }
+            if (group.type === "question") {
+              return (
+                <QuestionPromptCard
+                  key={group.id}
+                  questionData={group.data}
+                  onAnswer={(reqId, ans) => onAnswerQuestion?.(reqId, ans)}
+                />
+              );
+            }
             return null;
           })}
         </div>
       ) : (
         <>
+          {msg.question && (
+            <QuestionPromptCard
+              questionData={msg.question}
+              onAnswer={(reqId, ans) => onAnswerQuestion?.(reqId, ans)}
+            />
+          )}
           {!isUser && ((msg.reasoning && msg.reasoning.trim().length > 0) || (steps && steps.length > 0)) && (
             <MessageThoughtBadge
               steps={steps}

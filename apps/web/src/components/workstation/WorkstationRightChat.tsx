@@ -40,6 +40,7 @@ export interface WorkstationRightChatProps {
   setReasoningEffort?: (val: string) => void;
   onNewChat?: () => void;
   onCancelStream?: () => void;
+  onAnswerQuestion?: (requestId: string, selectedAnswer: string) => void;
   activeChatId?: string;
 }
 
@@ -61,6 +62,7 @@ function WorkstationRightChatComponent({
   setReasoningEffort,
   onNewChat,
   onCancelStream,
+  onAnswerQuestion,
   activeChatId,
 }: WorkstationRightChatProps) {
   // CRITICAL: React Rules of Hooks - all hooks declared unconditionally at top
@@ -169,6 +171,7 @@ function WorkstationRightChatComponent({
                 showThinking={showThinking}
                 onPreviewImage={(url) => setLightboxUrl(url)}
                 onResend={(content) => onSendMessage(content)}
+                onAnswerQuestion={onAnswerQuestion}
               />
             );
           })

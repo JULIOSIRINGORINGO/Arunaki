@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Message, MessagePart } from "./types";
+import { Message, MessagePart, QuestionData } from "./types";
 import { mapEngineMessages } from "./mapper";
 import { LiveStatusData, StepItem, formatToolStepLabel } from "../LiveExecutionBadge";
 import { extractCanvasContent, extractCanvasTitle } from "../canvas/canvas";
@@ -14,6 +14,7 @@ import {
   mapEngineEvent,
   getMessages,
   switchSessionModel,
+  replySessionQuestion,
 } from "../../../lib/engine";
 import { API_BASE, apiFetch } from "../../../lib/api";
 
@@ -98,6 +99,12 @@ export function useWorkstationChat({
     setIsStreaming(val);
   }, []);
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
+  const [pendingQuestion, setPendingQuestion] = useState<QuestionData | null>(null);
+  const pendingQuestionRef = useRef<QuestionData | null>(null);
+  const updatePendingQuestion = useCallback((q: QuestionData | null) => {
+    pendingQuestionRef.current = q;
+    setPendingQuestion(q);
+  }, []);
   const [liveStatus, setLiveStatus] = useState<LiveStatusData | null>(null);
   const [queuedPrompts, setQueuedPrompts] = useState<string[]>([]);
   const queuedPromptsRef = useRef<string[]>([]);
@@ -146,6 +153,7 @@ export function useWorkstationChat({
 
     if ((chatChanged || folderChanged) && !isStreaming) {
       setOptimisticMessages([]);
+      updatePendingQuestion(null);
     }
   }, [activeFolder, activeChatId, isStreaming]);
 
@@ -263,6 +271,7 @@ export function useWorkstationChat({
 
   const handleCancelStream = useCallback(() => {
     clearWatchdog();
+    updatePendingQuestion(null);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -271,10 +280,11 @@ export function useWorkstationChat({
     setStreamingState(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
-  }, [clearWatchdog, setStreamingState]);
+  }, [clearWatchdog, setStreamingState, updatePendingQuestion]);
 
   const handleNewChat = useCallback(async () => {
     clearWatchdog();
+    updatePendingQuestion(null);
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -316,6 +326,62 @@ export function useWorkstationChat({
     toast.info("New conversation session ready");
   }, [activeFolder, setActiveChatId, queryClient]);
 
+  const handleAnswerQuestion = useCallback(
+    async (requestId: string, selectedAnswer: string) => {
+      updatePendingQuestion(null);
+
+      // Optimistically mark question as answered
+      setOptimisticMessages((prev) =>
+        prev.map((m) => {
+          const hasQPart = m.parts?.some(
+            (p) => p.type === "question" && p.data.id === requestId
+          );
+          const hasQDirect = m.question?.id === requestId;
+          if (!hasQPart && !hasQDirect) return m;
+
+          const updatedParts = m.parts?.map((p) => {
+            if (p.type === "question" && p.data.id === requestId) {
+              return {
+                ...p,
+                data: {
+                  ...p.data,
+                  answered: true,
+                  selectedAnswer,
+                },
+              };
+            }
+            return p;
+          });
+
+          return {
+            ...m,
+            parts: updatedParts,
+            question: hasQDirect
+              ? { ...m.question!, answered: true, selectedAnswer }
+              : m.question,
+          };
+        })
+      );
+
+      const targetChatId = activeChatId;
+      if (!targetChatId) return;
+
+      resetWatchdogRef.current?.(90000);
+      setLiveStatus({
+        type: "thinking",
+        preview: "Resuming with your choice...",
+      });
+
+      try {
+        await replySessionQuestion(targetChatId, requestId, [[selectedAnswer]]);
+      } catch (err: any) {
+        console.error("[useWorkstationChat] replySessionQuestion error:", err);
+        toast.error(`Failed to submit answer: ${err?.message || err}`);
+      }
+    },
+    [activeChatId, updatePendingQuestion]
+  );
+
   const handleSendMessage = async (textToSend?: string) => {
     const userText = (textToSend !== undefined ? textToSend : "").trim();
     if (!userText || isStreamingRef.current) {
@@ -324,6 +390,14 @@ export function useWorkstationChat({
         setQueuedPrompts([...queuedPromptsRef.current]);
         toast.info("Message queued and will be processed automatically");
       }
+      return;
+    }
+
+    // If there is an active pending clarification question, route normal chat input as the answer
+    if (pendingQuestionRef.current) {
+      const activeQ = pendingQuestionRef.current;
+      updatePendingQuestion(null);
+      await handleAnswerQuestion(activeQ.id, userText);
       return;
     }
 
@@ -937,6 +1011,83 @@ export function useWorkstationChat({
               }
             }
           }
+        } else if (event.type === "question_asked" && event.data) {
+          resetWatchdog(120000);
+          const qData: QuestionData = {
+            id: event.data?.id || `que_${Date.now()}`,
+            sessionID: chatIdToUse,
+            questions: event.data?.questions || [],
+            answered: false,
+          };
+          updatePendingQuestion(qData);
+
+          const existingQIdx = accumulatedParts.findIndex((p) => p.type === "question");
+          if (existingQIdx >= 0) {
+            accumulatedParts[existingQIdx] = { type: "question", data: qData };
+          } else {
+            accumulatedParts.push({ type: "question", data: qData });
+          }
+
+          setLiveStatus({
+            type: "thinking",
+            preview: "Waiting for your choice or input...",
+          });
+
+          setOptimisticMessages((prev) => {
+            const exists = prev.some((m) => m.id === assistantMessageId);
+            if (!exists) {
+              return [
+                ...prev,
+                {
+                  id: assistantMessageId,
+                  role: "assistant",
+                  content: accumulatedResponseText,
+                  reasoning: accumulatedReasoningText || undefined,
+                  createdAt: new Date().toISOString(),
+                  executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+                  parts: [...accumulatedParts],
+                  question: qData,
+                },
+              ];
+            }
+            return prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    parts: [...accumulatedParts],
+                    question: qData,
+                  }
+                : m
+            );
+          });
+        } else if (event.type === "question_settled") {
+          resetWatchdog(90000);
+          updatePendingQuestion(null);
+          const reqId = event.data?.id;
+          const answer = event.data?.answers?.[0]?.[0];
+          for (const p of accumulatedParts) {
+            if (p.type === "question" && (!reqId || p.data.id === reqId)) {
+              p.data.answered = true;
+              if (answer) p.data.selectedAnswer = answer;
+            }
+          }
+          setOptimisticMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    parts: [...accumulatedParts],
+                    question: m.question
+                      ? {
+                          ...m.question,
+                          answered: true,
+                          selectedAnswer: answer || m.question.selectedAnswer,
+                        }
+                      : undefined,
+                  }
+                : m
+            )
+          );
         } else if (event.type === "text_delta" && event.data) {
           resetWatchdog(90000);
           if (textEndFinalizeTimeout) {
@@ -1141,7 +1292,9 @@ export function useWorkstationChat({
     setReasoningEffort,
     queuedPrompts,
     messagesEndRef,
+    pendingQuestion,
     handleSendMessage,
+    handleAnswerQuestion,
     handleCancelStream,
     handleNewChat,
     handleRemoveQueuedPrompt,

@@ -37,9 +37,8 @@ export const node = makeLocationNode({
     EditTool.node,
     GlobTool.node,
     GrepTool.node,
-    // QuestionTool is disabled for Web UI/Desktop app because interactive question modals
-    // are not supported and cause indefinite engine fiber deadlocks (timeout 90s).
-    // QuestionTool.node,
+    // Interactive clarification chips in chat area with fail-safe timeout
+    QuestionTool.node,
     ReadTool.node,
     SkillTool.node,
     TodoWriteTool.node,
