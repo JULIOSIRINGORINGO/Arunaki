@@ -2955,6 +2955,28 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Verifikasi & Build**:
   - `npm run build -w apps/web`: ✅ 0 error TypeScript, build tuntas dalam 25.41s.
 
+---
+
+### Phase 93: Fix Question Tool Session Deadlock & Kenari Model Upstream Timeout ✅
+- [x] **Investigasi Akar Masalah 90s Timeout & "Ga Bisa Jawab"**:
+  - **Penyebab 1 (Question Tool Deadlock)**: Saat pengguna mengirim instruksi yang memiliki ambiguitas (misalnya rincian reseller dalam satuan `cm` sementara baris Excel bertuliskan `DTF (RP)`), model LLM memanggil builtin tool `question`.
+    - Pada `packages/engine/core/src/tool/question.ts` dan `packages/engine/core/src/question.ts`, `QuestionV2.ask()` memanggil `Deferred.await(deferred)` tanpa batas waktu, menunggu input pengguna melalui modal dialog pertanyaan.
+    - Pada Web UI Arunaki (`apps/web`), modal dialog interaktif untuk `question` tidak ada (sesuai filosofi *Minimal Typing, Maximum Automation*).
+    - Akibatnya, backend fiber mengalami *deadlock* permanen menunggu respon modal, memicu watchdog timeout 90 detik di frontend (*Upstream Provider Timeout*), dan membuat seluruh pesan berikutnya tersangkut di antrean inbox (`session_input.promoted_seq = null`) tanpa pernah dieksekusi.
+  - **Penyebab 2 (Upstream Kenari Timeout pada Model nemotron-3-ultra-550b-a55b:free)**:
+    - Pengujian benchmark langsung ke endpoint Kenari (`https://kenari.id/v1/chat/completions`) membuktikan bahwa model `nemotron-3-ultra-550b-a55b:free` sedang mengalami *high latency/outage* di server Kenari (>30s tidak ada first token sama sekali / timeout).
+    - Sebaliknya, model alternatif seperti `nemotron-3-super-120b-a12b:free` (1.99s), `deepseek-v4-flash` (1.80s), dan `glm-4-7-flash:free` (0.69s) merespon secara sangat cepat dan stabil.
+- [x] **Perbaikan di `packages/engine/core/src/tool/builtins.ts` & `question.ts`**:
+  - Menonaktifkan registrasi `QuestionTool.node` pada `built-in-tools` di `packages/engine/core/src/tool/builtins.ts`. Model LLM tidak lagi diberikan tool `question` sehingga tidak akan memicu pemanggilan modal interaktif, melainkan langsung bertanya/berpikir di teks obrolan biasa.
+  - Menambahkan fail-safe timeout 15 detik dengan fallback otomatis pilihan pertama pada `packages/engine/core/src/tool/question.ts` dan `packages/engine/engine/src/tool/question.ts`.
+  - Menonaktifkan `enableQuestionTool` di `packages/engine/engine/src/tool/registry.ts`.
+- [x] **Unblock Sesi Tersangkut**:
+  - Mengirim sinyal `POST /api/session/:sessionID/interrupt` untuk membebaskan fiber yang sebelumnya terkunci pada pemanggilan tool lama.
+  - Memverifikasi sesi aktif kembali berstatus idle (`Active sessions: {}`) dan siap menerima input berikutnya.
+- [x] **Verifikasi & Build**:
+  - `npm run build -w apps/web`: ✅ 0 error TypeScript.
+
+
 
 
 

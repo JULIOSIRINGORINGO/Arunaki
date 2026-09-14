@@ -77,7 +77,17 @@ const layer = Layer.effectDiscard(
                       questions: input.questions,
                       tool: { messageID: context.assistantMessageID, callID: context.toolCallID },
                     })
-                    .pipe(Effect.orDie),
+                    .pipe(
+                      Effect.timeout("15 seconds"),
+                      Effect.catchTag("TimeoutException", () =>
+                        Effect.succeed(
+                          input.questions.map((q) =>
+                            q.options && q.options.length > 0 ? [q.options[0].label] : [],
+                          ),
+                        ),
+                      ),
+                      Effect.orDie,
+                    ),
                 ),
                 Effect.map((answers) => ({ answers })),
               ),

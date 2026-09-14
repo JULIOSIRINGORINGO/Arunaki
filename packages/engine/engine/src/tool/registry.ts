@@ -214,7 +214,9 @@ const layer = Layer.effect(
         }
 
         yield* config.get()
-        const questionEnabled = ["app", "cli", "desktop"].includes(flags.client) || flags.enableQuestionTool
+        // In Arunaki (Web UI + Electron desktop shell), the interactive question modal is not implemented in Web UI.
+        // Enabling question tool causes the agent to block indefinitely waiting for modal response, triggering 90s watchdog timeouts.
+        const questionEnabled = flags.enableQuestionTool
 
         const tool = yield* Effect.all({
           invalid: Tool.init(invalid),
