@@ -362,6 +362,7 @@ export function useWorkstationChat({
       const targetChatId = activeChatId;
       if (!targetChatId) return;
 
+      setStreamingState(true);
       resetWatchdogRef.current?.(90000);
       setLiveStatus({
         type: "thinking",
@@ -373,12 +374,48 @@ export function useWorkstationChat({
         if (!ok) {
           console.warn("[handleAnswerQuestion] replySessionQuestion could not deliver reply:", targetChatId, requestId);
         }
+
+        // Active poll for continuation response so the assistant's answer appears immediately
+        let pollCount = 0;
+        const intervalId = setInterval(async () => {
+          pollCount++;
+          try {
+            const raw = await getMessages(targetChatId);
+            const mapped = mapEngineMessages(raw || []);
+
+            // Check if continuation message exists (assistant message after the question)
+            const questionMsgIdx = mapped.findIndex((m) =>
+              m.parts?.some((p) => p.type === "question") || Boolean(m.question)
+            );
+            const hasContinuation = questionMsgIdx >= 0 && mapped.length > questionMsgIdx + 1;
+
+            if (mapped.length > 0) {
+              queryClient.setQueryData(["chat-messages", targetChatId], mapped);
+            }
+
+            if (hasContinuation || pollCount >= 15) {
+              clearInterval(intervalId);
+              setLiveStatus(null);
+              setStreamingState(false);
+              setOptimisticMessages([]);
+              queryClient.invalidateQueries({ queryKey: ["chat-messages", targetChatId] });
+            }
+          } catch {
+            if (pollCount >= 15) {
+              clearInterval(intervalId);
+              setLiveStatus(null);
+              setStreamingState(false);
+            }
+          }
+        }, 800);
       } catch (err: any) {
         console.error("[useWorkstationChat] replySessionQuestion error:", err);
         toast.error(`Failed to submit answer: ${err?.message || err}`);
+        setLiveStatus(null);
+        setStreamingState(false);
       }
     },
-    [activeChatId, updatePendingQuestion]
+    [activeChatId, updatePendingQuestion, queryClient]
   );
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -1017,6 +1054,10 @@ export function useWorkstationChat({
             }
           }
         } else if (event.type === "question_asked" && event.data) {
+          if (textEndFinalizeTimeout) {
+            clearTimeout(textEndFinalizeTimeout);
+            textEndFinalizeTimeout = null;
+          }
           resetWatchdog(120000);
           const qData: QuestionData = {
             id: event.data?.id || `que_${Date.now()}`,
@@ -1218,21 +1259,24 @@ export function useWorkstationChat({
           }
           const hasToolSteps = accumulatedSteps.some((s) => s.iconType === "tool");
           const hasRunningTool = accumulatedSteps.some((s) => s.status === "running");
-          if (!hasToolSteps && !hasRunningTool) {
+          const hasQuestionPart = accumulatedParts.some((p) => p.type === "question");
+          if (!hasToolSteps && !hasRunningTool && !hasQuestionPart) {
             // For simple conversation without tools, finalize if 'done' hasn't arrived
             if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = setTimeout(() => {
               finalizeDone();
             }, 800);
           } else {
-            // In a tool-based turn, intermediate text has finished; engine is now running tools
-            // or preparing the next turn. Keep live status active so the user sees progress!
+            // In a tool-based or question turn, intermediate text has finished; engine is now running tools
+            // or waiting for question choice. Keep live status active so the user sees progress!
             needsTextSeparator = true;
             needsReasoningSeparator = true;
-            setLiveStatus({
-              type: "thinking",
-              preview: "Analyzing data & preparing next response...",
-            });
+            if (!hasQuestionPart) {
+              setLiveStatus({
+                type: "thinking",
+                preview: "Analyzing data & preparing next response...",
+              });
+            }
           }
         } else if (event.type === "done") {
           // Finalize all remaining tool steps to completed when engine turn finishes
