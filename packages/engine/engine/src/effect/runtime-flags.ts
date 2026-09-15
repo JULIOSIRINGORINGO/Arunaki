@@ -36,7 +36,7 @@ export class Service extends ConfigService.Service<Service>()("@arunaki/RuntimeF
     legacy: bool("Arunaki_EXPERIMENTAL_PARALLEL"),
   }).pipe(Config.map((flags) => flags.enabled || flags.legacy)),
   enableExperimentalModels: bool("Arunaki_ENABLE_EXPERIMENTAL_MODELS"),
-  enableQuestionTool: bool("Arunaki_ENABLE_QUESTION_TOOL"),
+  enableQuestionTool: Config.boolean("Arunaki_ENABLE_QUESTION_TOOL").pipe(Config.withDefault(true)),
   experimentalReferences: enabledByExperimental("Arunaki_EXPERIMENTAL_REFERENCES"),
   experimentalBackgroundSubagents: enabledByExperimental("Arunaki_EXPERIMENTAL_BACKGROUND_SUBAGENTS"),
   experimentalOxfmt: enabledByExperimental("Arunaki_EXPERIMENTAL_OXFMT"),

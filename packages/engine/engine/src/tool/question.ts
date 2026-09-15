@@ -28,7 +28,14 @@ export const QuestionTool = Tool.define<typeof Parameters, Metadata, Question.Se
               tool: ctx.callID ? { messageID: ctx.messageID, callID: ctx.callID } : undefined,
             })
             .pipe(
-              Effect.timeout("15 seconds"),
+              Effect.timeout("60 seconds"),
+              Effect.catchTag("TimeoutException", () =>
+                Effect.succeed(
+                  params.questions.map((q) =>
+                    q.options && q.options.length > 0 ? [q.options[0].label] : [],
+                  ),
+                ),
+              ),
               Effect.catchAll(() => Effect.succeed([] as ReadonlyArray<Question.Answer>)),
             )
 

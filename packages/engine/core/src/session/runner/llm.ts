@@ -342,7 +342,7 @@ const layer = Layer.effect(
           }
           if (settled._tag === "Failure" && !Cause.hasInterrupts(settled.cause)) {
             const failure = Cause.squash(settled.cause)
-            const message = failure instanceof Error ? failure.message : String(failure)
+            const message = failure instanceof Error ? (failure.message || failure.name || "Unknown error") : String(failure)
             yield* withPublication(publisher.failUnsettledTools(`Tool execution failed: ${message}`))
           }
           const stepSettlement = publisher.stepSettlement()

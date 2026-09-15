@@ -214,9 +214,8 @@ const layer = Layer.effect(
         }
 
         yield* config.get()
-        // In Arunaki (Web UI + Electron desktop shell), the interactive question modal is not implemented in Web UI.
-        // Enabling question tool causes the agent to block indefinitely waiting for modal response, triggering 90s watchdog timeouts.
-        const questionEnabled = flags.enableQuestionTool
+        // In Arunaki (Web UI + Electron desktop shell), interactive question cards are fully implemented in the Workstation Chat UI.
+        const questionEnabled = flags.enableQuestionTool ?? true
 
         const tool = yield* Effect.all({
           invalid: Tool.init(invalid),
