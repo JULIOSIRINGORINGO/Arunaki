@@ -482,10 +482,12 @@ export const ChatInputBox = memo(function ChatInputBox({
               <button
                 type="button"
                 onClick={onCancelStream}
-                className="w-7 h-7 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm animate-pulse shrink-0"
+                className="relative w-7 h-7 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0 group"
                 title="Stop generation"
               >
-                <Square className="w-2.5 h-2.5 fill-white text-white" />
+                {/* Active spinning border indicator so user clearly sees it is actively processing */}
+                <span className="absolute -inset-[1.5px] rounded-full border-2 border-red-400 border-t-transparent animate-spin pointer-events-none" />
+                <Square className="w-2.5 h-2.5 fill-white text-white transition-transform group-hover:scale-110" />
               </button>
             </>
           ) : (

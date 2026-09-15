@@ -15,6 +15,8 @@ import {
   getMessages,
   switchSessionModel,
   replySessionQuestion,
+  isSessionActive,
+  interruptSession,
 } from "../../../lib/engine";
 import { API_BASE, apiFetch } from "../../../lib/api";
 
@@ -272,11 +274,14 @@ export function useWorkstationChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    if (activeChatId) {
+      interruptSession(activeChatId).catch(() => {});
+    }
     currentTurnIdRef.current = "";
     setStreamingState(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
-  }, [clearWatchdog, setStreamingState, updatePendingQuestion]);
+  }, [clearWatchdog, setStreamingState, updatePendingQuestion, activeChatId]);
 
   const handleNewChat = useCallback(async () => {
     clearWatchdog();
@@ -326,7 +331,10 @@ export function useWorkstationChat({
     async (requestId: string, selectedAnswer: string) => {
       updatePendingQuestion(null);
 
-      // Optimistically mark question as answered
+      const targetChatId = activeChatId;
+      if (!targetChatId) return;
+
+      // Optimistically mark question as answered in existing messages
       setOptimisticMessages((prev) =>
         prev.map((m) => {
           const hasQPart = m.parts?.some(
@@ -359,63 +367,207 @@ export function useWorkstationChat({
         })
       );
 
-      const targetChatId = activeChatId;
-      if (!targetChatId) return;
+      // Create continuation optimistic assistant message so LiveActionIndicator ('Thinking...')
+      // and live streamed tokens display immediately below the question card
+      const continuationAssistantId = `asst-cont-${Date.now()}`;
+      currentTurnIdRef.current = continuationAssistantId;
+
+      setOptimisticMessages((prev) => [
+        ...prev,
+        {
+          id: continuationAssistantId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+
+      clearWatchdog();
+      if (abortControllerRef.current) {
+        try {
+          abortControllerRef.current.abort();
+        } catch {}
+      }
+      const abortCtrl = new AbortController();
+      abortControllerRef.current = abortCtrl;
 
       setStreamingState(true);
-      resetWatchdogRef.current?.(90000);
+      resetWatchdogRef.current?.(120000);
       setLiveStatus({
         type: "thinking",
-        preview: "Resuming with your choice...",
+        preview: "Thinking...",
       });
 
+      let accumulatedResponseText = "";
+      let accumulatedReasoningText = "";
+      let isFinalized = false;
+
+      const finalizeContinuation = async () => {
+        if (isFinalized) return;
+        isFinalized = true;
+        clearWatchdog();
+        setStreamingState(false);
+        setLiveStatus(null);
+        try {
+          abortCtrl.abort();
+        } catch {}
+        try {
+          const raw = await getMessages(targetChatId);
+          if (raw && raw.length > 0) {
+            const mapped = mapEngineMessages(raw);
+            queryClient.setQueryData(["chat-messages", targetChatId], mapped);
+          }
+        } catch {}
+        setOptimisticMessages([]);
+        queryClient.invalidateQueries({ queryKey: ["chat-messages", targetChatId] });
+        refetchFiles();
+        reloadOpenTabsContent();
+      };
+
       try {
+        // 1. Subscribe to SSE events for real-time deltas during continuation
+        subscribeEvents(
+          (rawEvent) => {
+            if (currentTurnIdRef.current !== continuationAssistantId) return;
+            const event = mapEngineEvent(rawEvent, targetChatId);
+            if (!event) return;
+
+            if (event.type === "reasoning_delta" && event.data) {
+              resetWatchdogRef.current?.(120000);
+              accumulatedReasoningText += event.data;
+              setLiveStatus({ type: "thinking", preview: "Thinking..." });
+              setOptimisticMessages((prev) =>
+                prev.map((m) =>
+                  m.id === continuationAssistantId
+                    ? {
+                        ...m,
+                        reasoning: accumulatedReasoningText,
+                      }
+                    : m
+                )
+              );
+            } else if (event.type === "thinking") {
+              resetWatchdogRef.current?.(120000);
+              setLiveStatus({ type: "thinking", preview: event.data || "Thinking..." });
+            } else if (
+              event.type === "tool_start" ||
+              event.type === "tool_preparing" ||
+              event.type === "tool_live_status"
+            ) {
+              resetWatchdogRef.current?.(120000);
+              const toolName = event.data?.toolName || "action";
+              const label = formatToolStepLabel(
+                toolName,
+                event.data?.args || event.data?.input,
+                event.data?.status === "completed"
+              );
+              setLiveStatus({
+                type: "tool_start",
+                toolName,
+                preview: label,
+              });
+              refetchFiles();
+              reloadOpenTabsContent();
+            } else if (event.type === "text_delta" && event.data) {
+              resetWatchdogRef.current?.(120000);
+              accumulatedResponseText += event.data;
+              setLiveStatus({ type: "text_delta", preview: "Generating response" });
+              setOptimisticMessages((prev) =>
+                prev.map((m) =>
+                  m.id === continuationAssistantId
+                    ? {
+                        ...m,
+                        content: accumulatedResponseText,
+                      }
+                    : m
+                )
+              );
+            } else if (event.type === "question_asked" && event.data) {
+              const qData: QuestionData = {
+                id: event.data?.id || `que_${Date.now()}`,
+                sessionID: targetChatId,
+                questions: event.data?.questions || [],
+                answered: false,
+              };
+              updatePendingQuestion(qData);
+              setLiveStatus({ type: "thinking", preview: "Waiting for your choice or input..." });
+            } else if (event.type === "done") {
+              finalizeContinuation();
+            } else if (event.type === "error") {
+              finalizeContinuation();
+            }
+          },
+          abortCtrl.signal,
+          activeFolder
+        );
+
+        // 2. Deliver the user's answer to the engine
         const ok = await replySessionQuestion(targetChatId, requestId, [[selectedAnswer]]);
         if (!ok) {
           console.warn("[handleAnswerQuestion] replySessionQuestion could not deliver reply:", targetChatId, requestId);
         }
 
-        // Active poll for continuation response so the assistant's answer appears immediately
+        // 3. Fallback active session status poller:
+        // Ensures that even if SSE connection drops or is delayed, we track when the engine
+        // transitions from running -> idle and immediately finalize without hanging.
         let pollCount = 0;
-        const intervalId = setInterval(async () => {
+        let hasSeenRunning = false;
+        const pollInterval = setInterval(async () => {
+          if (isFinalized) {
+            clearInterval(pollInterval);
+            return;
+          }
           pollCount++;
           try {
-            const raw = await getMessages(targetChatId);
-            const mapped = mapEngineMessages(raw || []);
-
-            // Check if continuation message exists (assistant message after the question)
-            const questionMsgIdx = mapped.findIndex((m) =>
-              m.parts?.some((p) => p.type === "question") || Boolean(m.question)
-            );
-            const hasContinuation = questionMsgIdx >= 0 && mapped.length > questionMsgIdx + 1;
-
-            if (mapped.length > 0) {
-              queryClient.setQueryData(["chat-messages", targetChatId], mapped);
+            const active = await isSessionActive(targetChatId);
+            if (active) {
+              hasSeenRunning = true;
             }
 
-            if (hasContinuation || pollCount >= 15) {
-              clearInterval(intervalId);
-              setLiveStatus(null);
-              setStreamingState(false);
-              setOptimisticMessages([]);
-              queryClient.invalidateQueries({ queryKey: ["chat-messages", targetChatId] });
+            // Once the session was confirmed running and now becomes inactive, the continuation turn finished!
+            if (hasSeenRunning && !active) {
+              clearInterval(pollInterval);
+              finalizeContinuation();
+              return;
+            }
+
+            // Periodic message refresh so partial progress is visible if stored in DB
+            if (pollCount % 2 === 0) {
+              const raw = await getMessages(targetChatId);
+              if (raw && raw.length > 0) {
+                const mapped = mapEngineMessages(raw);
+                queryClient.setQueryData(["chat-messages", targetChatId], mapped);
+              }
+            }
+
+            // Safety limit (180s)
+            if (pollCount >= 180) {
+              clearInterval(pollInterval);
+              finalizeContinuation();
             }
           } catch {
-            if (pollCount >= 15) {
-              clearInterval(intervalId);
-              setLiveStatus(null);
-              setStreamingState(false);
+            if (pollCount >= 180) {
+              clearInterval(pollInterval);
+              finalizeContinuation();
             }
           }
-        }, 800);
+        }, 1000);
       } catch (err: any) {
         console.error("[useWorkstationChat] replySessionQuestion error:", err);
         toast.error(`Failed to submit answer: ${err?.message || err}`);
-        setLiveStatus(null);
-        setStreamingState(false);
+        finalizeContinuation();
       }
     },
-    [activeChatId, updatePendingQuestion, queryClient]
+    [
+      activeChatId,
+      activeFolder,
+      clearWatchdog,
+      setStreamingState,
+      updatePendingQuestion,
+      queryClient,
+      refetchFiles,
+      reloadOpenTabsContent,
+    ]
   );
 
   const handleSendMessage = async (textToSend?: string) => {

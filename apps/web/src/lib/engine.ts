@@ -498,3 +498,26 @@ export async function replySessionQuestion(
   }
 }
 
+export async function isSessionActive(sessionId: string): Promise<boolean> {
+  try {
+    const res = await engineFetch("/api/session/active");
+    if (!res.ok) return false;
+    const json = await res.json();
+    const data = json.data || {};
+    return Boolean(data[sessionId]);
+  } catch {
+    return false;
+  }
+}
+
+export async function interruptSession(sessionId: string): Promise<boolean> {
+  try {
+    const res = await engineFetch(`/api/session/${sessionId}/interrupt`, {
+      method: "POST",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+

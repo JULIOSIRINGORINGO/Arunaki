@@ -1,5 +1,5 @@
 import React, { useState, memo } from "react";
-import { Check, ArrowRight, Sparkles, ChevronRight } from "lucide-react";
+import { Check, ArrowRight, Sparkles, ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { QuestionData, QuestionInfo, QuestionOption } from "./types";
 
@@ -20,12 +20,14 @@ interface QuestionPromptCardProps {
   questionData: QuestionData;
   onAnswer: (requestId: string, selectedAnswer: string) => void;
   disabled?: boolean;
+  isStreaming?: boolean;
 }
 
 export const QuestionPromptCard = memo(function QuestionPromptCard({
   questionData,
   onAnswer,
   disabled = false,
+  isStreaming = false,
 }: QuestionPromptCardProps) {
   const [selected, setSelected] = useState<string | null>(
     typeof questionData.selectedAnswer === "string" ? questionData.selectedAnswer : null
@@ -78,7 +80,14 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
               {formatHeader(firstQuestion.header) || "Clarification Resolved"}
             </span>
           </div>
-          <span className="text-[10px] text-[var(--text-dim)] font-mono">Answered</span>
+          {isStreaming ? (
+            <span className="inline-flex items-center gap-1.5 text-[10px] text-[var(--text-primary)] font-mono">
+              <Loader2 className="h-3 w-3 animate-spin text-[var(--text-secondary)]" />
+              Processing...
+            </span>
+          ) : (
+            <span className="text-[10px] text-[var(--text-dim)] font-mono">Answered</span>
+          )}
         </div>
         <div className="px-3.5 py-2.5 bg-[var(--bg-panel)] flex flex-col gap-2 min-w-0">
           {firstQuestion.question && (

@@ -230,6 +230,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                   key={group.id}
                   questionData={group.data}
                   onAnswer={(reqId, ans) => onAnswerQuestion?.(reqId, ans)}
+                  isStreaming={isStreaming}
                 />
               );
             }
@@ -242,6 +243,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
             <QuestionPromptCard
               questionData={msg.question}
               onAnswer={(reqId, ans) => onAnswerQuestion?.(reqId, ans)}
+              isStreaming={isStreaming}
             />
           )}
           {!isUser && ((msg.reasoning && msg.reasoning.trim().length > 0) || (steps && steps.length > 0)) && (
