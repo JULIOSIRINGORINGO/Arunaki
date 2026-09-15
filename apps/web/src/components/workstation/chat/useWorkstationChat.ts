@@ -330,13 +330,13 @@ export function useWorkstationChat({
       setOptimisticMessages((prev) =>
         prev.map((m) => {
           const hasQPart = m.parts?.some(
-            (p) => p.type === "question" && p.data.id === requestId
+            (p) => p.type === "question" && (p.data.id === requestId || !p.data.answered)
           );
-          const hasQDirect = m.question?.id === requestId;
+          const hasQDirect = m.question && (m.question.id === requestId || !m.question.answered);
           if (!hasQPart && !hasQDirect) return m;
 
           const updatedParts = m.parts?.map((p) => {
-            if (p.type === "question" && p.data.id === requestId) {
+            if (p.type === "question" && (p.data.id === requestId || !p.data.answered)) {
               return {
                 ...p,
                 data: {
@@ -369,7 +369,10 @@ export function useWorkstationChat({
       });
 
       try {
-        await replySessionQuestion(targetChatId, requestId, [[selectedAnswer]]);
+        const ok = await replySessionQuestion(targetChatId, requestId, [[selectedAnswer]]);
+        if (!ok) {
+          console.warn("[handleAnswerQuestion] replySessionQuestion could not deliver reply:", targetChatId, requestId);
+        }
       } catch (err: any) {
         console.error("[useWorkstationChat] replySessionQuestion error:", err);
         toast.error(`Failed to submit answer: ${err?.message || err}`);
@@ -1025,7 +1028,14 @@ export function useWorkstationChat({
 
           const existingQIdx = accumulatedParts.findIndex((p) => p.type === "question");
           if (existingQIdx >= 0) {
-            accumulatedParts[existingQIdx] = { type: "question", data: qData };
+            const prevQ = accumulatedParts[existingQIdx] as { type: "question"; data: QuestionData };
+            const finalId =
+              qData.id.startsWith("que_")
+                ? qData.id
+                : prevQ.data?.id?.startsWith("que_")
+                ? prevQ.data.id
+                : qData.id;
+            accumulatedParts[existingQIdx] = { type: "question", data: { ...qData, id: finalId } };
           } else {
             accumulatedParts.push({ type: "question", data: qData });
           }

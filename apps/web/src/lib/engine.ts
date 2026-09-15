@@ -296,6 +296,17 @@ export function mapEngineEvent(
         },
       };
     }
+    case "question.asked": {
+      return {
+        type: "question_asked",
+        data: {
+          id: payload.id || event.id,
+          sessionID: payload.sessionID || sessionID,
+          questions: payload.questions || [],
+          tool: payload.tool,
+        },
+      };
+    }
     case "session.next.tool.called": {
       const callID = payload.callID || event.callID || payload.id || event.id;
       const toolName = payload.tool || event.tool || (callID ? toolCallNameMap.get(callID) : undefined) || "action";
@@ -442,13 +453,47 @@ export async function replySessionQuestion(
   answers: string[][]
 ): Promise<boolean> {
   try {
-    const res = await engineFetch(`/api/session/${sessionId}/question/${requestId}/reply`, {
+    let targetQueId = requestId.startsWith("que_") ? requestId : "";
+
+    // If not a valid que_ ID, query active pending questions for the session
+    if (!targetQueId) {
+      const pending = await fetchSessionQuestions(sessionId);
+      const match =
+        pending.find((p: any) => p.id === requestId || p.tool?.callID === requestId) ||
+        pending[0];
+      if (match?.id) {
+        targetQueId = match.id;
+      }
+    }
+
+    if (!targetQueId) {
+      console.warn("[replySessionQuestion] No matching question found for session:", sessionId, requestId);
+      return false;
+    }
+
+    const res = await engineFetch(`/api/session/${sessionId}/question/${targetQueId}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ answers }),
     });
-    return res.ok;
-  } catch {
+
+    if (res.ok) return true;
+
+    // Fallback if targetQueId failed (e.g. stale): refetch pending and retry with first pending
+    const retryPending = await fetchSessionQuestions(sessionId);
+    const retryMatch = retryPending.find((p: any) => p.id !== targetQueId) || retryPending[0];
+    if (retryMatch?.id) {
+      const retryRes = await engineFetch(`/api/session/${sessionId}/question/${retryMatch.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
+      return retryRes.ok;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("[replySessionQuestion] Failed:", err);
     return false;
   }
 }

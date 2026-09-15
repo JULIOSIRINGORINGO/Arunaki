@@ -29,7 +29,7 @@ export const QuestionTool = Tool.define<typeof Parameters, Metadata, Question.Se
             })
             .pipe(
               Effect.timeout("60 seconds"),
-              Effect.catchTag("TimeoutException", () =>
+              Effect.catchTag("TimeoutError", () =>
                 Effect.succeed(
                   params.questions.map((q) =>
                     q.options && q.options.length > 0 ? [q.options[0].label] : [],

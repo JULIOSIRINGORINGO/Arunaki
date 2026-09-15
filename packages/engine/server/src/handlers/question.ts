@@ -14,12 +14,14 @@ export const QuestionHandler = HttpApiBuilder.group(Api, "server.question", (han
     const withOwnedQuestion = Effect.fnUntraced(function* <A, E>(
       sessionID: QuestionV2.Request["sessionID"],
       requestID: QuestionV2.ID,
-      use: (question: QuestionV2.Interface) => Effect.Effect<A, E>,
+      use: (question: QuestionV2.Interface, request: QuestionV2.Request) => Effect.Effect<A, E>,
     ) {
       const question = yield* QuestionV2.Service
-      const request = (yield* question.list()).find((request) => request.id === requestID)
+      const request = (yield* question.list()).find(
+        (request) => request.id === requestID || request.tool?.callID === requestID,
+      )
       if (!request || request.sessionID !== sessionID) return yield* missingRequest(requestID)
-      return yield* use(question)
+      return yield* use(question, request)
     })
 
     return handlers
@@ -39,9 +41,9 @@ export const QuestionHandler = HttpApiBuilder.group(Api, "server.question", (han
       .handle(
         "session.question.reply",
         Effect.fn(function* (ctx) {
-          yield* withOwnedQuestion(ctx.params.sessionID, ctx.params.requestID, (question) =>
+          yield* withOwnedQuestion(ctx.params.sessionID, ctx.params.requestID, (question, request) =>
             question
-              .reply({ requestID: ctx.params.requestID, answers: ctx.payload.answers })
+              .reply({ requestID: request.id, answers: ctx.payload.answers })
               .pipe(Effect.catchTag("QuestionV2.NotFoundError", () => missingRequest(ctx.params.requestID))),
           )
           return HttpApiSchema.NoContent.make()
@@ -50,9 +52,9 @@ export const QuestionHandler = HttpApiBuilder.group(Api, "server.question", (han
       .handle(
         "session.question.reject",
         Effect.fn(function* (ctx) {
-          yield* withOwnedQuestion(ctx.params.sessionID, ctx.params.requestID, (question) =>
+          yield* withOwnedQuestion(ctx.params.sessionID, ctx.params.requestID, (question, request) =>
             question
-              .reject(ctx.params.requestID)
+              .reject(request.id)
               .pipe(Effect.catchTag("QuestionV2.NotFoundError", () => missingRequest(ctx.params.requestID))),
           )
           return HttpApiSchema.NoContent.make()

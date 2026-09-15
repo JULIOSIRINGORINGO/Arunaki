@@ -1,7 +1,20 @@
 import React, { useState, memo } from "react";
-import { HelpCircle, Check, ArrowRight, Sparkles, ChevronRight } from "lucide-react";
+import { Check, ArrowRight, Sparkles, ChevronRight } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { QuestionData, QuestionInfo, QuestionOption } from "./types";
+
+function formatHeader(header?: string): string {
+  if (!header) return "";
+  const trimmed = header.trim();
+  if (trimmed.length > 2 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)) {
+    return trimmed
+      .toLowerCase()
+      .split(" ")
+      .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ");
+  }
+  return trimmed;
+}
 
 interface QuestionPromptCardProps {
   questionData: QuestionData;
@@ -50,10 +63,12 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
         data-testid="question-prompt-card-answered"
       >
         <div className="flex items-center justify-between px-3.5 py-2 bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)] text-[11px] select-none">
-          <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
-            <Check className="h-3.5 w-3.5 text-[var(--text-secondary)]" />
-            <span className="font-medium uppercase tracking-wider text-[10px]">
-              {firstQuestion.header || "Clarification Resolved"}
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white shrink-0 select-none shadow-xs">
+              <Check className="h-2.5 w-2.5 text-black stroke-[3.5]" />
+            </span>
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">
+              {formatHeader(firstQuestion.header) || "Clarification Resolved"}
             </span>
           </div>
           <span className="text-[10px] text-[var(--text-dim)] font-mono">Answered</span>
@@ -75,10 +90,23 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
     >
       {/* Table Header Bar */}
       <div className="flex items-center justify-between px-3.5 py-2 bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)] text-[11px] select-none">
-        <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
-          <HelpCircle className="h-3.5 w-3.5 text-[var(--text-muted)]" />
-          <span className="font-medium uppercase tracking-wider text-[10px] text-[var(--text-muted)]">
-            {firstQuestion.header || "Clarification Needed"}
+        <div className="flex items-center gap-2 text-[var(--text-primary)]">
+          <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white shrink-0 select-none shadow-xs">
+            <svg
+              className="h-2.5 w-2.5 text-black"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </span>
+          <span className="text-xs font-semibold text-[var(--text-primary)]">
+            {formatHeader(firstQuestion.header) || "Clarification Needed"}
           </span>
         </div>
         <span className="text-[10px] text-[var(--text-dim)]">

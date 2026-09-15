@@ -79,7 +79,7 @@ const layer = Layer.effectDiscard(
                     })
                     .pipe(
                       Effect.timeout("60 seconds"),
-                      Effect.catchTag("TimeoutException", () =>
+                      Effect.catchTag("TimeoutError", () =>
                         Effect.succeed(
                           input.questions.map((q) =>
                             q.options && q.options.length > 0 ? [q.options[0].label] : [],
