@@ -2997,6 +2997,33 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web`: ✅ Build sukses dalam 14.64s tanpa error TypeScript.
   - E2E Playwright Browser Testing via `browser_subagent`: Berhasil memicu prompt klarifikasi, merender 4 kartu pilihan berbadge `✨ Rekomendasi`, memilih `Tabel Excel (.xlsx)` via 1-klik, dan engine melanjutkan generasi respons hingga tuntas tanpa deadlock atau timeout.
 
+---
+
+### Phase 95: Fix Model Syncing from API, Paid Model Route Leak & Model Pool Persistence ✅ DONE
+- [x] **Investigasi Akar Masalah Tombol "Sync from API" & Tagihan Model Berbayar**:
+  - **Penyebab 1 (Sync from API Tidak Menyaring Model Mati)**: Di `ModelProviderSettings.tsx`, tombol "Sync from API" sebelumnya menggabungkan seluruh pilihan lama (`existingSelected`) ke dalam `fetchedModels` via `new Set([...existingSelected, ...fetchedModels])`. Akibatnya, model mati / discontinued (`kimi-k2-7-code:free`, `mistral-large:free`, dll.) tetap tersimpan di katalog (menampilkan 92 model bukan 81 live model) dan tetap tersangkut di routing pool.
+  - **Penyebab 2 (Paid Model Charge Leak - CRITICAL)**: Di `packages/engine/core/src/session/runner/model.ts`, pencarian model menggunakan `(model.id === requestedID || requestedID.includes(model.id))`. Saat pengguna memilih `nemotron-3-ultra-550b-a55b:free`, `requestedID.includes(model.id)` mengevaluasi `true` untuk model berbayar `nemotron-3-ultra-550b-a55b` yang muncul lebih dulu di katalog, sehingga engine memanggil versi berbayar dan memotong saldo Kenari.
+  - **Penyebab 3 (Setting Model Reset Otomatis)**: Di `apps/web/src/App.tsx`, terdapat logika `if (count > 10)` yang memangkas kembali pool model ke 5 default jika pengguna memilih lebih dari 10 model. Setiap kali pengguna memilih seluruh 15 model gratis, setting direset kembali ke default `deepseek-v4-flash` pada reload berikutnya.
+  - **Penyebab 4 (Default Kenari Berisi Model Berbayar)**: `DEFAULT_MODELS.kenari` di `constants.ts` mendaftarkan `deepseek-v4-flash` (model berbayar) di urutan pertama.
+- [x] **Perbaikan Resolusi Model Engine (`packages/engine/core/src/session/runner/model.ts`)**:
+  - Menghapus pencocokan substring `requestedID.includes(model.id)`. Menggantinya dengan pencocokan identitas ketat (exact match & short ID).
+  - Menambahkan aturan ketat: Jika pengguna meminta model `:free`, candidate **WAJIB** berakhiran `:free`.
+  - Membatasi fallback hanya ke model-model `:free` jika model yang diminta adalah model gratis, menjamin 0% kemungkinan kebocoran ke model berbayar.
+- [x] **Perbaikan Tombol "Sync from API" di `ModelProviderSettings.tsx` & `ProviderForm.tsx`**:
+  - Menimpa `formAvailableModels` langsung dengan katalog live dari API (81 model aktif Kenari).
+  - Memperbarui cache `customModelsMap` sehingga katalog model lama yang sudah mati tidak dimuat kembali.
+  - Secara otomatis memangkas (*pruning*) model-model yang sudah mati dari antrean terpilih (`form.model`), dan menyinkronkannya langsung ke `localStorage`.
+  - Pada tombol "Select All Free", memastikan hanya model valid dari live API yang ditambahkan ke pool.
+- [x] **Perbaikan Model Pool Persistence & Default Models (`App.tsx` & `constants.ts`)**:
+  - Menghapus aturan `count > 10` trim di `App.tsx` saat startup dan refresh. Pilihan 15+ model gratis pengguna kini disimpan permanen tanpa direset.
+  - Memperbarui `DEFAULT_MODELS.kenari` dengan model gratis tercepat dan stabil: `nemotron-3-super-120b-a12b:free` (1.06s), `glm-4-7-flash:free` (0.69s), `mistral-medium-3-5:free`, `mimo-v2-5:free`, `agnes-2-0-flash:free`, `step-3-7-flash:free`.
+- [x] **Sinkronisasi Langsung ke Engine Database**:
+  - Mengirim `PUT /api/providers/kenari` untuk membersihkan model-model mati di konfigurasi engine, menyisakan 15 model gratis aktif resmi Kenari.
+- [x] **Verifikasi & Build**:
+  - `npm run build -w apps/web`: ✅ 0 TypeScript errors (build selesai dalam 25.71s).
+  - `bun test packages/engine/core/test/models.test.ts`: ✅ 9 tests passed.
+
+
 
 
 

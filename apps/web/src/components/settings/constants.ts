@@ -41,7 +41,8 @@ export const DEFAULT_MODELS: Record<string, string[]> = {
     "meta-llama/llama-4-maverick:free",
   ],
   kenari: [
-    "deepseek-v4-flash",
+    "nemotron-3-super-120b-a12b:free",
+    "glm-4-7-flash:free",
     "mistral-medium-3-5:free",
     "mimo-v2-5:free",
     "agnes-2-0-flash:free",

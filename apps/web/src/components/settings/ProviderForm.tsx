@@ -150,9 +150,11 @@ export function ProviderForm({
       toast.info("No free models found in current list.");
       return;
     }
-    const combined = Array.from(new Set([...selectedModels, ...freeModels]));
+    // Only retain existing models that are still valid in formAvailableModels
+    const validCurrent = selectedModels.filter((m) => formAvailableModels.includes(m));
+    const combined = Array.from(new Set([...validCurrent, ...freeModels]));
     onReorderModels(combined);
-    toast.success(`Added ${freeModels.length} free models to routing pool!`);
+    toast.success(`Selected all ${freeModels.length} free models in routing pool!`);
   };
 
   const moveModelPriority = (index: number, direction: "up" | "down") => {

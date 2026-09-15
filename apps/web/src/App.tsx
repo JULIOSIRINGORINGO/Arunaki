@@ -54,15 +54,10 @@ async function refreshModelCatalog() {
           localStorage.setItem(poolKey, fallbackDefaults.join(", "));
         } else {
           const currentList = currentPoolStr.split(",").map((s) => s.trim()).filter(Boolean);
-          // Self-heal: if pool was previously bloated with all 80+ models from catalog, trim back to curated defaults
-          if (currentList.length > 10) {
-            localStorage.setItem(poolKey, fallbackDefaults.join(", "));
-          } else {
-            // Keep user's active choices, but remove discontinued models that no longer exist in live API catalog
-            const valid = currentList.filter((m) => liveModels.includes(m));
-            const updated = valid.length > 0 ? valid : fallbackDefaults;
-            localStorage.setItem(poolKey, updated.join(", "));
-          }
+          // Keep user's active choices, but remove discontinued models that no longer exist in live API catalog
+          const valid = currentList.filter((m) => liveModels.includes(m));
+          const updated = valid.length > 0 ? valid : fallbackDefaults;
+          localStorage.setItem(poolKey, updated.join(", "));
         }
       } catch { /* single provider fail — skip, don't break loop */ }
     }
@@ -85,19 +80,9 @@ if (typeof window !== "undefined") {
   if (!localStorage.getItem("arunaki_active_provider")) {
     localStorage.setItem("arunaki_active_provider", "kenari");
   }
-  // Immediate self-healing: if localStorage has bloated pool (> 10 models), trim back to curated defaults
-  try {
-    const kenariPool = localStorage.getItem("arunaki_provider_models_kenari");
-    if (kenariPool) {
-      const count = kenariPool.split(",").map((s) => s.trim()).filter(Boolean).length;
-      if (count > 10) {
-        localStorage.setItem("arunaki_provider_models_kenari", (DEFAULT_MODELS.kenari || []).join(", "));
-      }
-    }
-  } catch {}
   // Ensure default active model for first-time users
   if (!localStorage.getItem("arunaki_active_model")) {
-    localStorage.setItem("arunaki_active_model", (DEFAULT_MODELS.kenari || [])[0] || "deepseek-v4-flash");
+    localStorage.setItem("arunaki_active_model", (DEFAULT_MODELS.kenari || [])[0] || "nemotron-3-super-120b-a12b:free");
   }
   // Fire-and-forget: refresh catalog from API (non-blocking)
   refreshModelCatalog();

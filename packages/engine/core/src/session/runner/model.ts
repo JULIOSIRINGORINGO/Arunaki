@@ -211,19 +211,39 @@ export const locationLayer = Layer.effect(
           requestedID = requestedID.split(",")[0].trim() as typeof requestedID
         }
 
+        const isFreeRequested = requestedID?.endsWith(":free") ?? false
+        const matchesModel = (candidate: (typeof allAvailable)[number]) => {
+          if (candidate.providerID !== session.model?.providerID) return false
+          // CRITICAL: If user requested a :free model, NEVER match a non-free model!
+          if (isFreeRequested && !candidate.id.endsWith(":free")) return false
+          const cId = candidate.id
+          const rId = requestedID!
+          if (cId === rId || cId.toLowerCase() === rId.toLowerCase()) return true
+          const cShort = cId.includes("/") ? cId.split("/").pop()! : cId
+          const rShort = rId.includes("/") ? rId.split("/").pop()! : rId
+          if (cShort === rShort || cShort.toLowerCase() === rShort.toLowerCase()) return true
+          return false
+        }
+
+        // Filter fallback pools strictly if a :free model was requested to prevent accidental paid charges
+        const candidateWithKey = isFreeRequested ? withKey.filter((m) => m.id.endsWith(":free")) : withKey
+        const candidateAllAvailable = isFreeRequested
+          ? allAvailable.filter((m) => m.id.endsWith(":free"))
+          : allAvailable
+
         const selected = session.model && requestedID
-          ? allAvailable.find(
-              (model) =>
-                model.providerID === session.model?.providerID &&
-                (model.id === requestedID || requestedID.includes(model.id)),
-            ) ??
-            withKey.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
-            withKey.find(supported) ??
-            allAvailable.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
-            (defaultModel && supported(defaultModel) ? defaultModel : allAvailable.find(supported))
+          ? allAvailable.find(matchesModel) ??
+            candidateWithKey.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
+            candidateWithKey.find(supported) ??
+            candidateAllAvailable.find((m) => m.providerID === session.model?.providerID && supported(m)) ??
+            (isFreeRequested
+              ? candidateAllAvailable.find(supported)
+              : (defaultModel && supported(defaultModel) ? defaultModel : allAvailable.find(supported)))
           : defaultModel && supported(defaultModel)
             ? defaultModel
-            : withKey.find((m) => session.model?.providerID ? m.providerID === session.model.providerID && supported(m) : supported(m)) ??
+            : withKey.find((m) =>
+                session.model?.providerID ? m.providerID === session.model.providerID && supported(m) : supported(m),
+              ) ??
               withKey.find(supported) ??
               allAvailable.find(supported)
         if (!selected) return yield* new ModelNotSelectedError({ sessionID: session.id })

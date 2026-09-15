@@ -293,10 +293,35 @@ export function ModelProviderSettings({
         return;
       }
 
+      const providerKey = editingId || form.type;
+      // Overwrite available models with fresh fetched catalog from live endpoint
+      setFormAvailableModels(fetchedModels);
+      setCustomModelsMap((prev) => ({
+        ...prev,
+        [providerKey]: fetchedModels,
+      }));
+
+      // Prune dead / discontinued models from user's current selection
       const existingSelected = getSelectedModels(form.model);
-      const combined = Array.from(new Set([...existingSelected, ...fetchedModels]));
-      setFormAvailableModels(combined);
-      toast.success(`Discovered ${fetchedModels.length} models from endpoint!`);
+      const prunedSelected = existingSelected.filter((m) => fetchedModels.includes(m));
+      const finalSelected = prunedSelected.length > 0 ? prunedSelected : fetchedModels.slice(0, 5);
+      const newModelStr = finalSelected.join(", ");
+      setForm((f) => ({ ...f, model: newModelStr }));
+
+      if (editingId) {
+        localStorage.setItem("arunaki_provider_models_" + editingId, newModelStr);
+        if (finalSelected[0]) {
+          localStorage.setItem("arunaki_active_model", finalSelected[0]);
+        }
+      }
+
+      const freeCount = fetchedModels.filter((m) => m.endsWith(":free")).length;
+      const prunedCount = existingSelected.length - prunedSelected.length;
+      if (prunedCount > 0) {
+        toast.success(`Discovered ${fetchedModels.length} models (${freeCount} free)! Pruned ${prunedCount} discontinued models.`);
+      } else {
+        toast.success(`Discovered ${fetchedModels.length} live models (${freeCount} free) from endpoint!`);
+      }
     } catch (err: any) {
       toast.error(`Sync models failed: ${err.message}`);
     } finally {
