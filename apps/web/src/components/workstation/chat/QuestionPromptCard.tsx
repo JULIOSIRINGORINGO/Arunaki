@@ -57,9 +57,16 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
   if (!firstQuestion) return null;
 
   if (isAnswered) {
+    const rawAnswer = selected || questionData.selectedAnswer;
+    const displayAnswer = Array.isArray(rawAnswer)
+      ? rawAnswer.join(", ")
+      : rawAnswer != null
+      ? String(rawAnswer)
+      : "";
+
     return (
       <div
-        className="my-2.5 w-full max-w-xl overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-xs text-left"
+        className="my-2.5 w-full max-w-xl min-w-0 overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-xs text-left"
         data-testid="question-prompt-card-answered"
       >
         <div className="flex items-center justify-between px-3.5 py-2 bg-[var(--bg-panel-sub)] border-b border-[var(--border-color)] text-[11px] select-none">
@@ -73,11 +80,19 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
           </div>
           <span className="text-[10px] text-[var(--text-dim)] font-mono">Answered</span>
         </div>
-        <div className="px-3.5 py-2.5 bg-[var(--bg-panel)] flex items-center justify-between gap-3 text-xs">
-          <span className="text-[var(--text-muted)] truncate">{firstQuestion.question}</span>
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--bg-panel-sub)] px-2.5 py-1 text-xs font-semibold text-[var(--text-primary)] shrink-0">
-            {selected || questionData.selectedAnswer}
-          </span>
+        <div className="px-3.5 py-2.5 bg-[var(--bg-panel)] flex flex-col gap-2 min-w-0">
+          {firstQuestion.question && (
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed break-words [overflow-wrap:anywhere]">
+              {firstQuestion.question}
+            </p>
+          )}
+          {displayAnswer && (
+            <div className="flex items-start min-w-0">
+              <div className="inline-block max-w-full rounded-md border border-[var(--border-color)] bg-[var(--bg-panel-sub)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-primary)] break-words whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">
+                {displayAnswer}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -85,7 +100,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
 
   return (
     <div
-      className="my-2.5 w-full max-w-xl overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-xs text-left transition-all duration-200"
+      className="my-2.5 w-full max-w-xl min-w-0 overflow-hidden rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-xs text-left transition-all duration-200"
       data-testid="question-prompt-card"
     >
       {/* Table Header Bar */}
@@ -116,7 +131,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
 
       {/* Question Prompt */}
       <div className="px-3.5 py-2.5 bg-[var(--bg-panel)] border-b border-[var(--border-color)]">
-        <p className="text-xs sm:text-[13px] font-medium text-[var(--text-primary)] leading-relaxed">
+        <p className="text-xs sm:text-[13px] font-medium text-[var(--text-primary)] leading-relaxed break-words [overflow-wrap:anywhere]">
           {firstQuestion.question}
         </p>
       </div>
@@ -142,11 +157,11 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
               )}
             >
               <div className="flex-1 min-w-0">
-                <div className="text-xs sm:text-[13px] font-medium text-[var(--text-primary)]">
+                <div className="text-xs sm:text-[13px] font-medium text-[var(--text-primary)] break-words">
                   {opt.label}
                 </div>
                 {opt.description && (
-                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)] leading-normal line-clamp-2">
+                  <p className="mt-0.5 text-[11px] text-[var(--text-muted)] leading-normal line-clamp-2 break-words">
                     {opt.description}
                   </p>
                 )}
@@ -170,7 +185,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
       {firstQuestion.custom !== false && (
         <form
           onSubmit={handleCustomSubmit}
-          className="px-3 py-2 bg-[var(--bg-panel-sub)] border-t border-[var(--border-color)] flex items-center gap-2"
+          className="px-3 py-2 bg-[var(--bg-panel-sub)] border-t border-[var(--border-color)] flex items-center gap-2 min-w-0"
         >
           <input
             type="text"
@@ -178,7 +193,7 @@ export const QuestionPromptCard = memo(function QuestionPromptCard({
             onChange={(e) => setCustomText(e.target.value)}
             placeholder="Or type a custom response..."
             disabled={disabled || isSubmitting}
-            className="flex-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-strong)] focus:outline-none transition-colors"
+            className="flex-1 min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-strong)] focus:outline-none transition-colors"
           />
           <button
             type="submit"
