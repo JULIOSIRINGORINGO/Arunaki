@@ -122,7 +122,15 @@ export function useWorkstationChat({
   }, []);
 
   useEffect(() => {
-    return () => clearWatchdog();
+    return () => {
+      clearWatchdog();
+      if (abortControllerRef.current) {
+        try {
+          abortControllerRef.current.abort();
+        } catch {}
+        abortControllerRef.current = null;
+      }
+    };
   }, [clearWatchdog]);
 
   // 1. Fetch chat messages from engine
@@ -140,7 +148,7 @@ export function useWorkstationChat({
     enabled: !!activeChatId,
   });
 
-  // 2. Clear optimistic messages only on explicit folder/chat navigation changes
+  // 2. Clear optimistic messages and abort any in-flight stream on folder/chat navigation changes
   const prevChatIdRef = useRef(activeChatId);
   const prevFolderRef = useRef(activeFolder);
   useEffect(() => {
@@ -149,16 +157,44 @@ export function useWorkstationChat({
     prevChatIdRef.current = activeChatId;
     prevFolderRef.current = activeFolder;
 
-    if ((chatChanged || folderChanged) && !isStreaming) {
+    if (chatChanged || folderChanged) {
+      if (abortControllerRef.current) {
+        try {
+          abortControllerRef.current.abort();
+        } catch {}
+        abortControllerRef.current = null;
+      }
+      currentTurnIdRef.current = "";
+      setStreamingState(false);
+      clearWatchdog();
+      setLiveStatus(null);
       setOptimisticMessages([]);
       updatePendingQuestion(null);
     }
-  }, [activeFolder, activeChatId, isStreaming]);
+  }, [activeFolder, activeChatId, clearWatchdog, setStreamingState, updatePendingQuestion]);
 
-  // 3. Auto-scroll on new messages
+  // 3. Smart, throttled auto-scroll on new messages (does not fight user scrolling up)
+  const isAutoScrollScheduledRef = useRef(false);
   useEffect(() => {
+    if (isAutoScrollScheduledRef.current) return;
+    isAutoScrollScheduledRef.current = true;
+
     requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      isAutoScrollScheduledRef.current = false;
+      const el = messagesEndRef.current;
+      if (!el) return;
+
+      const container = el.parentElement;
+      if (!container) {
+        el.scrollIntoView({ behavior: "auto" });
+        return;
+      }
+
+      // If user is near bottom (< 160px) or user just sent a prompt / streaming ended, auto-scroll smoothly
+      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+      if (distanceFromBottom < 160 || !isStreaming) {
+        el.scrollIntoView({ behavior: "auto" });
+      }
     });
   }, [chatMessages, optimisticMessages, isStreaming]);
 
@@ -401,10 +437,47 @@ export function useWorkstationChat({
       let accumulatedResponseText = "";
       let accumulatedReasoningText = "";
       let isFinalized = false;
+      let answerRafId: number | null = null;
+
+      const flushAnswerUi = () => {
+        if (answerRafId !== null) {
+          cancelAnimationFrame(answerRafId);
+          answerRafId = null;
+        }
+        setLiveStatus({
+          type: accumulatedReasoningText && !accumulatedResponseText ? "thinking" : "text_delta",
+          preview: accumulatedReasoningText && !accumulatedResponseText ? "Thinking..." : "Generating response",
+        });
+        setOptimisticMessages((prev) =>
+          prev.map((m) =>
+            m.id === continuationAssistantId
+              ? {
+                  ...m,
+                  content: accumulatedResponseText,
+                  reasoning: accumulatedReasoningText || m.reasoning,
+                }
+              : m
+          )
+        );
+      };
+
+      const scheduleAnswerUi = () => {
+        if (answerRafId === null) {
+          answerRafId = requestAnimationFrame(() => {
+            answerRafId = null;
+            flushAnswerUi();
+          });
+        }
+      };
 
       const finalizeContinuation = async () => {
         if (isFinalized) return;
         isFinalized = true;
+        if (answerRafId !== null) {
+          cancelAnimationFrame(answerRafId);
+          answerRafId = null;
+        }
+        flushAnswerUi();
         clearWatchdog();
         setStreamingState(false);
         setLiveStatus(null);
@@ -435,18 +508,9 @@ export function useWorkstationChat({
             if (event.type === "reasoning_delta" && event.data) {
               resetWatchdogRef.current?.(120000);
               accumulatedReasoningText += event.data;
-              setLiveStatus({ type: "thinking", preview: "Thinking..." });
-              setOptimisticMessages((prev) =>
-                prev.map((m) =>
-                  m.id === continuationAssistantId
-                    ? {
-                        ...m,
-                        reasoning: accumulatedReasoningText,
-                      }
-                    : m
-                )
-              );
+              scheduleAnswerUi();
             } else if (event.type === "thinking") {
+              flushAnswerUi();
               resetWatchdogRef.current?.(120000);
               setLiveStatus({ type: "thinking", preview: event.data || "Thinking..." });
             } else if (
@@ -454,6 +518,7 @@ export function useWorkstationChat({
               event.type === "tool_preparing" ||
               event.type === "tool_live_status"
             ) {
+              flushAnswerUi();
               resetWatchdogRef.current?.(120000);
               const toolName = event.data?.toolName || "action";
               const label = formatToolStepLabel(
@@ -471,18 +536,9 @@ export function useWorkstationChat({
             } else if (event.type === "text_delta" && event.data) {
               resetWatchdogRef.current?.(120000);
               accumulatedResponseText += event.data;
-              setLiveStatus({ type: "text_delta", preview: "Generating response" });
-              setOptimisticMessages((prev) =>
-                prev.map((m) =>
-                  m.id === continuationAssistantId
-                    ? {
-                        ...m,
-                        content: accumulatedResponseText,
-                      }
-                    : m
-                )
-              );
+              scheduleAnswerUi();
             } else if (event.type === "question_asked" && event.data) {
+              flushAnswerUi();
               const qData: QuestionData = {
                 id: event.data?.id || `que_${Date.now()}`,
                 sessionID: targetChatId,
@@ -829,10 +885,105 @@ export function useWorkstationChat({
     resetWatchdog(90000);
 
     let textEndFinalizeTimeout: any = null;
+    let rafUpdateId: number | null = null;
+
+    const flushThrottledUpdate = () => {
+      if (rafUpdateId !== null) {
+        cancelAnimationFrame(rafUpdateId);
+        rafUpdateId = null;
+      }
+
+      let displayReasoning = accumulatedReasoningText;
+      let displayText = accumulatedResponseText;
+
+      // Extract <think> blocks from inline content when <think> tag is present.
+      if (displayText.includes("<think>")) {
+        const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+        let extractedReasoning = "";
+        let cleanedText = displayText;
+        let match;
+        while ((match = thinkRegex.exec(displayText)) !== null) {
+          extractedReasoning += (extractedReasoning ? "\n\n" : "") + match[1].trim();
+        }
+        cleanedText = displayText.replace(thinkRegex, "").trim();
+
+        const lastOpenThink = cleanedText.lastIndexOf("<think>");
+        if (lastOpenThink >= 0) {
+          const beforeThink = cleanedText.substring(0, lastOpenThink).trim();
+          const afterThink = cleanedText.substring(lastOpenThink + 7).trim();
+          extractedReasoning += (extractedReasoning ? "\n\n" : "") + afterThink;
+          cleanedText = beforeThink;
+        }
+
+        if (extractedReasoning) {
+          accumulatedReasoningText = extractedReasoning;
+          displayReasoning = extractedReasoning;
+          displayText = cleanedText;
+          const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
+          if (thoughtPart && thoughtPart.type === "thought") {
+            thoughtPart.text = extractedReasoning;
+          } else {
+            accumulatedParts.unshift({ type: "thought", text: extractedReasoning });
+          }
+          const lastTextPart = accumulatedParts[accumulatedParts.length - 1];
+          if (lastTextPart && lastTextPart.type === "text") {
+            lastTextPart.text = displayText;
+          }
+        }
+      }
+
+      setLiveStatus({
+        type: displayReasoning && !displayText ? "thinking" : "text_delta",
+        preview: displayReasoning && !displayText ? "Thinking..." : "Generating response",
+      });
+
+      setOptimisticMessages((prev) => {
+        const exists = prev.some((m) => m.id === assistantMessageId);
+        if (!exists) {
+          return [
+            ...prev,
+            {
+              id: assistantMessageId,
+              role: "assistant",
+              content: displayText,
+              reasoning: displayReasoning || undefined,
+              createdAt: new Date().toISOString(),
+              executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
+              parts: [...accumulatedParts],
+            },
+          ];
+        }
+        return prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content: displayText,
+                reasoning: displayReasoning || m.reasoning,
+                executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
+                parts: [...accumulatedParts],
+              }
+            : m
+        );
+      });
+    };
+
+    const scheduleThrottledUpdate = () => {
+      if (rafUpdateId === null) {
+        rafUpdateId = requestAnimationFrame(() => {
+          rafUpdateId = null;
+          flushThrottledUpdate();
+        });
+      }
+    };
 
     const finalizeDone = (doneData?: any) => {
       if (currentTurnIdRef.current !== assistantMessageId) return;
       if (!isStreamingRef.current) return;
+      if (rafUpdateId !== null) {
+        cancelAnimationFrame(rafUpdateId);
+        rafUpdateId = null;
+      }
+      flushThrottledUpdate();
       clearWatchdog();
       if (textEndFinalizeTimeout) {
         clearTimeout(textEndFinalizeTimeout);
@@ -969,35 +1120,9 @@ export function useWorkstationChat({
             });
           }
 
-          setLiveStatus({ type: "thinking", preview: "Thinking..." });
-          setOptimisticMessages((prev) => {
-            const exists = prev.some((m) => m.id === assistantMessageId);
-            if (!exists) {
-              return [
-                ...prev,
-                {
-                  id: assistantMessageId,
-                  role: "assistant",
-                  content: accumulatedResponseText,
-                  reasoning: accumulatedReasoningText,
-                  createdAt: new Date().toISOString(),
-                  executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
-                  parts: [...accumulatedParts],
-                },
-              ];
-            }
-            return prev.map((m) =>
-              m.id === assistantMessageId
-                ? {
-                    ...m,
-                    reasoning: accumulatedReasoningText,
-                    executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
-                    parts: [...accumulatedParts],
-                  }
-                : m
-            );
-          });
+          scheduleThrottledUpdate();
         } else if (event.type === "reasoning_end") {
+          flushThrottledUpdate();
           resetWatchdog(90000);
           if (event.data && typeof event.data === "string") {
             if (needsReasoningSeparator && accumulatedReasoningText.trim().length > 0) {
@@ -1029,6 +1154,7 @@ export function useWorkstationChat({
             )
           );
         } else if (event.type === "step_continuation") {
+          flushThrottledUpdate();
           resetWatchdog(120000);
           needsReasoningSeparator = true;
           needsTextSeparator = true;
@@ -1043,6 +1169,7 @@ export function useWorkstationChat({
             preview: "Thinking...",
           });
         } else if (event.type === "thinking") {
+          flushThrottledUpdate();
           resetWatchdog(90000);
           const label = event.data || "Analyzing request & context";
           setLiveStatus({ type: "thinking", preview: label });
@@ -1055,6 +1182,7 @@ export function useWorkstationChat({
             });
           }
         } else if (event.type === "tool_preparing") {
+          flushThrottledUpdate();
           if (textEndFinalizeTimeout) {
             clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = null;
@@ -1118,6 +1246,7 @@ export function useWorkstationChat({
             )
           );
         } else if (event.type === "tool_live_status" || event.type === "tool_start" || event.type === "tool_progress") {
+          flushThrottledUpdate();
           if (textEndFinalizeTimeout) {
             clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = null;
@@ -1210,6 +1339,7 @@ export function useWorkstationChat({
             }
           }
         } else if (event.type === "question_asked" && event.data) {
+          flushThrottledUpdate();
           if (textEndFinalizeTimeout) {
             clearTimeout(textEndFinalizeTimeout);
             textEndFinalizeTimeout = null;
@@ -1270,6 +1400,7 @@ export function useWorkstationChat({
             );
           });
         } else if (event.type === "question_settled") {
+          flushThrottledUpdate();
           resetWatchdog(90000);
           updatePendingQuestion(null);
           const reqId = event.data?.id;
@@ -1316,85 +1447,14 @@ export function useWorkstationChat({
           }
           lastTextPart.text += event.data;
 
-          let displayReasoning = accumulatedReasoningText;
-          let displayText = accumulatedResponseText;
-
-          // Extract <think> blocks from inline content when <think> tag is present.
-          // Keeps reasoning inside the thought part and cleans the response text.
-          if (displayText.includes("<think>")) {
-            const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
-            let extractedReasoning = "";
-            let cleanedText = displayText;
-            let match;
-            while ((match = thinkRegex.exec(displayText)) !== null) {
-              extractedReasoning += (extractedReasoning ? "\n\n" : "") + match[1].trim();
-            }
-            cleanedText = displayText.replace(thinkRegex, "").trim();
-
-            // Check if there's still an unclosed <think> tag (streaming in progress)
-            const lastOpenThink = cleanedText.lastIndexOf("<think>");
-            if (lastOpenThink >= 0) {
-              const beforeThink = cleanedText.substring(0, lastOpenThink).trim();
-              const afterThink = cleanedText.substring(lastOpenThink + 7).trim();
-              extractedReasoning += (extractedReasoning ? "\n\n" : "") + afterThink;
-              cleanedText = beforeThink;
-            }
-
-            if (extractedReasoning) {
-              accumulatedReasoningText = extractedReasoning;
-              displayReasoning = extractedReasoning;
-              displayText = cleanedText;
-              const thoughtPart = accumulatedParts.find((p) => p.type === "thought");
-              if (thoughtPart && thoughtPart.type === "thought") {
-                thoughtPart.text = extractedReasoning;
-              } else {
-                accumulatedParts.unshift({ type: "thought", text: extractedReasoning });
-              }
-              if (lastTextPart && lastTextPart.type === "text") {
-                lastTextPart.text = displayText;
-              }
-            }
-          }
-
-          setLiveStatus({
-            type: displayReasoning && !displayText ? "thinking" : "text_delta",
-            preview: displayReasoning && !displayText ? "Thinking..." : "Generating response",
-          });
-
-          setOptimisticMessages((prev) => {
-            const exists = prev.some((m) => m.id === assistantMessageId);
-            if (!exists) {
-              return [
-                ...prev,
-                {
-                  id: assistantMessageId,
-                  role: "assistant",
-                  content: displayText,
-                  reasoning: displayReasoning || undefined,
-                  createdAt: new Date().toISOString(),
-                  executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : undefined,
-                  parts: [...accumulatedParts],
-                },
-              ];
-            }
-            return prev.map((m) =>
-              m.id === assistantMessageId
-                ? {
-                    ...m,
-                    content: displayText,
-                    reasoning: displayReasoning || m.reasoning,
-                    executionSteps: accumulatedSteps.length > 0 ? [...accumulatedSteps] : m.executionSteps,
-                    parts: [...accumulatedParts],
-                  }
-                : m
-            );
-          });
-
-          const canvasText = extractCanvasContent(displayText);
+          const canvasText = extractCanvasContent(accumulatedResponseText);
           if (canvasText) {
             upsertCanvasTab(canvasText, false);
           }
+
+          scheduleThrottledUpdate();
         } else if (event.type === "text_end") {
+          flushThrottledUpdate();
           if (event.data && typeof event.data === "string") {
             if (needsTextSeparator && accumulatedResponseText.trim().length > 0) {
               accumulatedResponseText += "\n\n" + event.data;
@@ -1402,16 +1462,7 @@ export function useWorkstationChat({
             } else if (!accumulatedResponseText) {
               accumulatedResponseText = event.data;
             }
-            setOptimisticMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMessageId
-                  ? {
-                      ...m,
-                      content: accumulatedResponseText,
-                    }
-                  : m
-              )
-            );
+            flushThrottledUpdate();
           }
           const hasToolSteps = accumulatedSteps.some((s) => s.iconType === "tool");
           const hasRunningTool = accumulatedSteps.some((s) => s.status === "running");
@@ -1482,6 +1533,10 @@ export function useWorkstationChat({
       // Prompt was accepted by the engine. Streaming is now in progress over SSE.
       // Finalization is handled by the SSE listener (done / error events) or watchdog.
     } catch (err: any) {
+      if (rafUpdateId !== null) {
+        cancelAnimationFrame(rafUpdateId);
+        rafUpdateId = null;
+      }
       if (currentTurnIdRef.current !== assistantMessageId) return;
       clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);

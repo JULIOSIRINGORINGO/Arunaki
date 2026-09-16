@@ -1,4 +1,4 @@
-import { RefObject, useState, useMemo, memo } from "react";
+import { RefObject, useState, useMemo, useCallback, memo } from "react";
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import {
   Bot,
@@ -30,21 +30,24 @@ export interface WorkstationRightChatProps {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   activeWorkspace: Workspace | null;
   isStreaming: boolean;
-  onSendMessage: (text: string, files?: Array<{ name: string; uri: string; mime?: string }>) => void;
-  width?: number | string;
-  files?: { name: string }[];
+  onSendMessage: (
+    prompt?: string,
+    files?: Array<{ name: string; uri: string; mime?: string }>
+  ) => void;
+  width?: string | number;
+  files?: Array<{ name: string }>;
   queuedPrompts?: string[];
   onRemoveQueuedPrompt?: (index: number) => void;
   onSearchSection?: () => void;
   reasoningEffort?: string;
-  setReasoningEffort?: (val: string) => void;
+  setReasoningEffort?: (effort: string) => void;
   onNewChat?: () => void;
   onCancelStream?: () => void;
   onAnswerQuestion?: (requestId: string, selectedAnswer: string) => void;
   activeChatId?: string;
 }
 
-function WorkstationRightChatComponent({
+export const WorkstationRightChat = memo(function WorkstationRightChat({
   collapsed,
   onClose,
   chatMessages,
@@ -72,6 +75,17 @@ function WorkstationRightChatComponent({
     if (saved !== null) return saved === "true";
     return true;
   });
+
+  const handlePreviewImage = useCallback((url: string) => {
+    setLightboxUrl(url);
+  }, []);
+
+  const handleResend = useCallback(
+    (content: string) => {
+      onSendMessage(content);
+    },
+    [onSendMessage]
+  );
 
   const allMessages = useMemo(() => {
     if (!optimisticMessages || optimisticMessages.length === 0) {
@@ -169,8 +183,8 @@ function WorkstationRightChatComponent({
                 isUser={isUser}
                 isStreaming={isMsgStreaming}
                 showThinking={showThinking}
-                onPreviewImage={(url) => setLightboxUrl(url)}
-                onResend={(content) => onSendMessage(content)}
+                onPreviewImage={handlePreviewImage}
+                onResend={handleResend}
                 onAnswerQuestion={onAnswerQuestion}
               />
             );
@@ -210,7 +224,7 @@ function WorkstationRightChatComponent({
           setReasoningEffort={setReasoningEffort}
           showThinking={showThinking}
           setShowThinking={setShowThinking}
-          onPreviewImage={(url) => setLightboxUrl(url)}
+          onPreviewImage={handlePreviewImage}
         />
       </div>
 
@@ -218,6 +232,4 @@ function WorkstationRightChatComponent({
       <ChatImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </aside>
   );
-}
-
-export const WorkstationRightChat = memo(WorkstationRightChatComponent);
+});

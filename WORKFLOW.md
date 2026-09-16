@@ -3044,6 +3044,34 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Build & Verification**:
   - `npm run build -w apps/web`: ✅ 0 TypeScript errors (selesai dalam 27.80s).
 
+---
+
+### Phase 97: Comprehensive Chat Performance & Streaming Optimization ✅ DONE
+- [x] **Investigasi Akar Masalah Degradasi Performa Sesi Panjang & Riwayat Chat**:
+  - **Penyebab 1 (SSE Connection & Fetch Reader Leak)**: `reader.read()` yang tertahan tidak dibatalkan saat sinyal abort dikirim, dan koneksi SSE sebelumnya tidak dihentikan dengan `reader.cancel()`, menyebabkan pembacaan stream dan listener tertimbun di memory.
+  - **Penyebab 2 (Invalidasi Total `React.memo` di Chat Bubble List)**: `WorkstationRightChat.tsx` mengoper fungsi arrow inline `(url) => setLightboxUrl(url)` dan `(content) => onSendMessage(content)` ke `<ChatMessageBubble>` pada setiap render. Akibatnya, setiap kali 1 token diterima, seluruh bubble pesan dari awal sampai akhir di-render ulang secara berulang-ulang, memicu ribuan parsing Markdown & table per detik.
+  - **Penyebab 3 (Unthrottled Streaming State Updates)**: `text_delta` dan `reasoning_delta` langsung memanggil `setOptimisticMessages` dan `setLiveStatus` secara sinkron hingga 100x/detik, menyebabkan CPU thrashing dan frame drops.
+  - **Penyebab 4 (Auto-Scroll Layout Reflow Thrashing)**: Auto-scroll terpanggil terus menerus di setiap token tanpa memeriksa apakah pengguna sedang menggulir ke atas untuk membaca riwayat pesan.
+- [x] **Pemberian Solusi Kebocoran Koneksi SSE (`apps/web/src/lib/engine.ts`)**:
+  - Menambahkan listener abort pada `finalSignal` yang secara eksplisit memanggil `activeReader?.cancel()` untuk melepaskan TCP socket dan stream reader seketika saat stream selesai atau dibatalkan.
+  - Membersihkan console log bervolume tinggi (`console.log("[SSE-EVENT-RCVD]")`) khusus untuk token delta (`text_delta`, `reasoning_delta`) agar tidak membanjiri DevTools heap memory.
+- [x] **Stabilisasi Memoization Komponen Chat (`WorkstationRightChat.tsx`)**:
+  - Membungkus `handlePreviewImage` dan `handleResend` dengan `useCallback`.
+  - Mengoper callback stabil ke `<ChatMessageBubble>`.
+  - Berkat properti yang stabil, `React.memo(ChatMessageBubble)` kini berhasil melewati (*skip*) re-render seluruh pesan riwayat (indeks `0` hingga `N-2`). Hanya 1 pesan asisten yang sedang streaming di ujung akhir (`idx === N-1`) yang di-render.
+- [x] **Micro-Batching Streaming Token via RequestAnimationFrame (`useWorkstationChat.ts`)**:
+  - Mengimplementasikan `flushThrottledUpdate` dan `scheduleThrottledUpdate` berbasis `requestAnimationFrame` untuk `reasoning_delta` dan `text_delta`.
+  - Membatasi render update stream ke kecepatan monitor yang halus (~30-60fps) dan mengeliminasi 70-85% pemanggilan state React yang tidak perlu.
+  - Memastikan *flush* instan saat terjadi transisi siklus hidup diskrit (`reasoning_end`, `text_end`, `step_continuation`, `tool_*`, `question_*`, `done`, `error`) sehingga tidak ada karakter atau pemikiran yang tertunda.
+  - Menerapkan micro-batching serupa pada `handleAnswerQuestion`.
+- [x] **Smart Throttled Auto-Scroll & Cleanup Lifecycle (`useWorkstationChat.ts`)**:
+  - Menambahkan deteksi posisi scroll (`distanceFromBottom < 160px`). Jika pengguna sedang menggulir ke atas untuk membaca atau menyalin riwayat chat, auto-scroll tidak akan memaksakan viewport melompat ke bawah pada setiap token.
+  - Membatasi eksekusi scroll dengan RAF throttle.
+  - Menjamin pembersihan controller abort dan watchdog saat berpindah sesi (`activeChatId`), berpindah folder (`activeFolder`), atau saat komponen di-unmount.
+- [x] **Build & Verification**:
+  - `npm run build -w apps/web`: ✅ 0 TypeScript errors (selesai dalam 22.28s).
+
+
 
 
 

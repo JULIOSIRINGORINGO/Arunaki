@@ -181,14 +181,32 @@ export function subscribeEvents(
   const finalSignal = signal
     ? (() => {
         const c = new AbortController();
-        signal.addEventListener("abort", () => c.abort());
-        controller.signal.addEventListener("abort", () => c.abort());
+        const onAbort = () => {
+          c.abort();
+          try {
+            controller.abort();
+          } catch {}
+        };
+        if (signal.aborted || controller.signal.aborted) {
+          c.abort();
+        } else {
+          signal.addEventListener("abort", onAbort, { once: true });
+          controller.signal.addEventListener("abort", onAbort, { once: true });
+        }
         return c.signal;
       })()
     : controller.signal;
 
   (async () => {
     while (!finalSignal.aborted) {
+      let activeReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+      const onSignalAbort = () => {
+        try {
+          activeReader?.cancel().catch(() => {});
+        } catch {}
+      };
+      finalSignal.addEventListener("abort", onSignalAbort, { once: true });
+
       try {
         const query = directory ? `?directory=${encodeURIComponent(directory)}` : "";
         const res = await fetch(`${ENGINE_BASE}/api/event${query}`, {
@@ -200,9 +218,11 @@ export function subscribeEvents(
         });
         const reader = res.body?.getReader();
         if (!reader) {
+          finalSignal.removeEventListener("abort", onSignalAbort);
           if (!finalSignal.aborted) await new Promise((r) => setTimeout(r, 1500));
           continue;
         }
+        activeReader = reader;
         const decoder = new TextDecoder();
         let buffer = "";
 
@@ -235,7 +255,10 @@ export function subscribeEvents(
               try {
                 const parsed = JSON.parse(eventData);
                 if (eventType && !parsed.type) parsed.type = eventType;
-                console.log("[SSE-EVENT-RCVD]", parsed.type, parsed.data?.sessionID || parsed.sessionID);
+                // Avoid flooding devtools console with hundreds of token deltas per second
+                if (parsed.type !== "text_delta" && parsed.type !== "reasoning_delta") {
+                  console.log("[SSE-EVENT-RCVD]", parsed.type, parsed.data?.sessionID || parsed.sessionID);
+                }
                 onEvent(parsed);
               } catch {
                 // Fallback for single data line parse
@@ -253,7 +276,12 @@ export function subscribeEvents(
           }
         }
       } catch {
-        // SSE connection dropped or fetch failed
+        // SSE connection dropped, canceled, or fetch failed
+      } finally {
+        finalSignal.removeEventListener("abort", onSignalAbort);
+        try {
+          activeReader?.cancel().catch(() => {});
+        } catch {}
       }
 
       // If disconnected due to network drop and not explicitly aborted, wait and retry
