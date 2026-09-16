@@ -3098,6 +3098,22 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 TypeScript errors.
   - `npm run build -w apps/web`: ✅ 0 errors (Vite build 11.12s).
 
+---
+
+### Phase 100: Optimize Center Window Plaintext/File Editor Typing Performance ✅ DONE
+- [x] **Eliminasi Re-render Seluruh Halaman pada Pengetikan File (`WorkstationCenterPanel.tsx`)**:
+  - Mengimplementasikan *debouncing* (500ms) pada pemanggilan `onUpdateTabContent`. Pengetikan di editor file sekarang tetap berada di state lokal editor tanpa memicu re-render sinkron pada `UnifiedWorkstationPage`, File Tree Explorer, dan Chat Panel.
+  - Mengganti `currentContent.split("\n")` yang memakan alokasi array besar dengan algoritma inline charCode loop (`currentContent.charCodeAt(i) === 10`) untuk menghitung `lineCount` secara instan tanpa alokasi memori.
+  - Memasang guard `!unsavedTabs[activeTab.id]` pada `useEffect` sinkronisasi agar algoritma $O(N \times M)$ `computeLineDiff` tidak dieksekusi saat pengguna sedang aktif mengetik di file.
+- [x] **Virtualisasi / Memoized Line Number Gutter (`CenterEditorView.tsx`)**:
+  - Mengekstrak gutter nomor baris ke dalam komponen ter-memoize `CenterEditorGutter` yang hanya menerima `lineCount: number`, `cursorLine: number`, dan `addedLineNums`.
+  - Saat pengguna mengetik teks secara horizontal di baris yang sama, gutter nomor baris sama sekali tidak di-re-render (0 operasi DOM).
+  - Menambahkan `spellCheck={false}`, `autoComplete="off"`, `autoCorrect="off"`, dan `autoCapitalize="off"` pada `<textarea>` editor dokumen.
+- [x] **Build & Verification**:
+  - `npm run typecheck`: ✅ 0 TypeScript errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (Vite build 9.83s).
+
+
 
 
 

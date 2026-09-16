@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useCallback, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { CenterTab } from "./tabs/types";
 import { DiffLine, computeLineDiff } from "./tabs/diffUtils";
 import { CenterTabHeader } from "./tabs/CenterTabHeader";
@@ -54,8 +54,15 @@ function WorkstationCenterPanelComponent({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync tab content when parent updates tab.content
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [activeTab?.id]);
+
+  // Sync tab content when parent updates tab.content (only when user does not have local unsaved edits)
   useEffect(() => {
     if (!activeTab?.id) return;
     const incomingContent = activeTab.content ?? "";
@@ -64,7 +71,11 @@ function WorkstationCenterPanelComponent({
     if (existingContent === undefined) {
       setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
       setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
-    } else if (incomingContent !== existingContent && incomingContent !== previousContents[activeTab.id]) {
+    } else if (
+      !unsavedTabs[activeTab.id] &&
+      incomingContent !== existingContent &&
+      incomingContent !== previousContents[activeTab.id]
+    ) {
       if (activeTab.type === "file") {
         const prevText = previousContents[activeTab.id] ?? existingContent;
         const diffLines = computeLineDiff(prevText, incomingContent);
@@ -97,29 +108,34 @@ function WorkstationCenterPanelComponent({
       setEditedContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
       setPreviousContents((prev) => ({ ...prev, [activeTab.id]: incomingContent }));
     }
-  }, [activeTab?.id, activeTab?.content, activeTab?.type]);
+  }, [activeTab?.id, activeTab?.content, activeTab?.type, unsavedTabs]);
 
   const currentContent = activeTab ? (editedContents[activeTab.id] ?? activeTab.content ?? "") : "";
   const activeDiff = activeTab ? activeDiffs[activeTab.id] : null;
   const isUnsaved = activeTab ? !!unsavedTabs[activeTab.id] : false;
 
-  const updateCursorPos = () => {
+  const updateCursorPos = useCallback(() => {
     if (!textareaRef.current) return;
     const pos = textareaRef.current.selectionStart || 0;
     const val = textareaRef.current.value || "";
     const linesUpToPos = val.substring(0, pos).split("\n");
     const line = linesUpToPos.length;
     const col = linesUpToPos[linesUpToPos.length - 1].length + 1;
-    setCursorPos({ line, col });
-  };
+    setCursorPos((prev) => (prev.line === line && prev.col === col ? prev : { line, col }));
+  }, []);
 
   const handleTextChange = useCallback(
     (newText: string) => {
       if (!activeTab?.id) return;
       setEditedContents((prev) => ({ ...prev, [activeTab.id]: newText }));
       setUnsavedTabs((prev) => ({ ...prev, [activeTab.id]: true }));
+
+      // Debounce notifying parent tabs state so live keystrokes never trigger full-page re-renders
       if (onUpdateTabContent) {
-        onUpdateTabContent(activeTab.id, newText);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          onUpdateTabContent(activeTab.id, newText);
+        }, 500);
       }
     },
     [activeTab?.id, onUpdateTabContent]
@@ -127,12 +143,18 @@ function WorkstationCenterPanelComponent({
 
   const handleSave = useCallback(async () => {
     if (!activeTab?.id) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    if (onUpdateTabContent) {
+      onUpdateTabContent(activeTab.id, currentContent);
+    }
     if (onSaveTabContent) {
       await onSaveTabContent(activeTab.id, currentContent);
     }
     setUnsavedTabs((prev) => ({ ...prev, [activeTab.id]: false }));
     setPreviousContents((prev) => ({ ...prev, [activeTab.id]: currentContent }));
-  }, [activeTab?.id, currentContent, onSaveTabContent]);
+  }, [activeTab?.id, currentContent, onSaveTabContent, onUpdateTabContent]);
 
   const handleScroll = () => {
     if (textareaRef.current && gutterRef.current) {
@@ -179,16 +201,27 @@ function WorkstationCenterPanelComponent({
     setTimeout(() => URL.revokeObjectURL(element.href), 1000);
   };
 
-  // Build line gutter metadata
-  const lines = currentContent.split("\n");
-  const addedLineNums = new Set<number>();
-  if (activeDiff?.diffLines) {
-    for (const dl of activeDiff.diffLines) {
-      if (dl.type === "added" && dl.newLineNumber) {
-        addedLineNums.add(dl.newLineNumber);
+  // Build line gutter metadata efficiently without array allocations
+  const lineCount = useMemo(() => {
+    if (!currentContent) return 1;
+    let count = 1;
+    for (let i = 0; i < currentContent.length; i++) {
+      if (currentContent.charCodeAt(i) === 10) count++;
+    }
+    return count;
+  }, [currentContent]);
+
+  const addedLineNums = useMemo(() => {
+    const set = new Set<number>();
+    if (activeDiff?.diffLines) {
+      for (const dl of activeDiff.diffLines) {
+        if (dl.type === "added" && dl.newLineNumber) {
+          set.add(dl.newLineNumber);
+        }
       }
     }
-  }
+    return set;
+  }, [activeDiff]);
 
   // Detect language mode for VSCode status bar
   const langMode = activeTab
@@ -255,7 +288,7 @@ function WorkstationCenterPanelComponent({
           ) : (
             <CenterEditorView
               currentContent={currentContent}
-              lines={lines}
+              lineCount={lineCount}
               addedLineNums={addedLineNums}
               cursorPos={cursorPos}
               textareaRef={textareaRef}
