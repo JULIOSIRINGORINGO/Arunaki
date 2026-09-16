@@ -347,7 +347,10 @@ export const providerSettingsHandlers = HttpApiBuilder.group(InstanceHttpApi, "p
     )
 
     const testProvider = Effect.fn("ProviderSettings.testProvider")(
-      function* (ctx: { params: { providerID: string } }) {
+      function* (ctx: {
+        params: { providerID: string }
+        query: { directory?: string; workspace?: string; model?: string }
+      }) {
         const config = yield* cfg.get()
         const info = config.provider?.[ctx.params.providerID]
         if (!info) {
@@ -367,7 +370,16 @@ export const providerSettingsHandlers = HttpApiBuilder.group(InstanceHttpApi, "p
             },
           })
         }
-        const model = Object.keys(info.models ?? {})[0]
+        let model = ctx.query?.model?.trim()
+        if (!model && config.model && typeof config.model === "string") {
+          const [prov, m] = config.model.split("/")
+          if (prov === ctx.params.providerID && m) {
+            model = m
+          }
+        }
+        if (!model) {
+          model = Object.keys(info.models ?? {})[0]
+        }
         return yield* testRequest(info.options?.baseURL ?? "", apiKey, model)
       },
     )

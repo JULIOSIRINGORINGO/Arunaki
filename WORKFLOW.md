@@ -3071,6 +3071,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
 - [x] **Build & Verification**:
   - `npm run build -w apps/web`: ✅ 0 TypeScript errors (selesai dalam 22.28s).
 
+---
+
+### Phase 98: Fix Test Ping Active Model Routing & Provider Selection ✅ DONE
+- [x] **Investigasi Panggilan ke `mimo-v2-5:free` pada Kenari API**:
+  - Mengonfirmasi bahwa chat dokumen pengguna (18:49–18:52 WIB) berjalan normal pada `agnes-2-5-flash:free` (136k token/turn).
+  - Panggilan 260 token pada 19:15–19:16 WIB ke `mimo-v2-5:free` berasal dari tombol **"Test Ping"** di Settings (`prompt: "Hello, connection test."`, `max_tokens: 8`).
+  - Ditemukan bahwa backend `testProvider` mengambil `Object.keys(info.models)[0]`, yang secara default mengambil `mimo-v2-5:free` dari `arunaki.json` tanpa melihat model utama pilihan pengguna di UI.
+- [x] **Perbaikan Dynamic Model Ping Routing**:
+  - Menambahkan schema `ProviderPingQuery` dengan query parameter `model` di `packages/engine/engine/src/server/routes/instance/httpapi/groups/provider.ts`.
+  - Memperbarui `testProvider` di `packages/engine/engine/src/server/routes/instance/httpapi/handlers/provider.ts` untuk memprioritaskan `ctx.query.model` dan `config.model` sebelum fallback ke dictionary keys.
+  - Memperbarui `ModelProviderSettings.tsx` agar mengirim model utama dari provider (`agnes-2-5-flash:free`) saat tombol "Test Ping" diklik.
+  - Memperbarui `arunaki.json` lokal dengan urutan model gratis yang memprioritaskan `agnes-2-5-flash:free`.
+- [x] **Build & Verification**:
+  - `npm run typecheck`: ✅ 0 TypeScript errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (Vite build 12.11s).
+
+
 
 
 

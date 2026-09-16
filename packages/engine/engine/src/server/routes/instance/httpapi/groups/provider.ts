@@ -5,7 +5,11 @@ import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "../middleware/authorization"
 import { InstanceContextMiddleware } from "../middleware/instance-context"
-import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery } from "../middleware/workspace-routing"
+import {
+  WorkspaceRoutingMiddleware,
+  WorkspaceRoutingQuery,
+  WorkspaceRoutingQueryFields,
+} from "../middleware/workspace-routing"
 import { described } from "./metadata"
 import { ProviderV2 } from "@arunaki/core/provider"
 
@@ -86,6 +90,10 @@ export const ProviderWriteResult = Schema.Struct({ data: ProviderUI })
 export const ProviderDeleteResult = Schema.Struct({ data: Schema.Struct({ id: Schema.String }) })
 export const ProviderModelsResult = Schema.Struct({ data: Schema.Struct({ models: Schema.Array(Schema.String) }) })
 export const ProviderTestEnvelope = Schema.Struct({ data: ProviderTestResult })
+export const ProviderPingQuery = Schema.Struct({
+  ...WorkspaceRoutingQueryFields,
+  model: Schema.optional(Schema.String),
+})
 
 export const ProviderApi = HttpApi.make("provider")
   .add(
@@ -223,7 +231,7 @@ export const ProviderApi = HttpApi.make("provider")
         ),
         HttpApiEndpoint.post("testProvider", `${uiRoot}/:providerID/test`, {
           params: { providerID: Schema.String },
-          query: WorkspaceRoutingQuery,
+          query: ProviderPingQuery,
           success: described(ProviderTestEnvelope, "Connection test result"),
           error: HttpApiError.BadRequest,
         }).annotateMerge(

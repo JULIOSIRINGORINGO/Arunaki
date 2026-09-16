@@ -345,7 +345,17 @@ export function ModelProviderSettings({
     setTestingId(id);
     const startMs = Date.now();
     try {
-      const res = await apiFetch(`${API_BASE}/providers/${id}/test${directoryQuery()}`, { method: "POST" });
+      const provider = providers.find((p) => p.id === id);
+      const selectedModels = provider?.model
+        ? provider.model.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
+      const primaryModel =
+        selectedModels[0] ||
+        (id === "kenari"
+          ? localStorage.getItem("arunaki_active_model") || "agnes-2-5-flash:free"
+          : "");
+      const modelQuery = primaryModel ? `&model=${encodeURIComponent(primaryModel)}` : "";
+      const res = await apiFetch(`${API_BASE}/providers/${id}/test${directoryQuery()}${modelQuery}`, { method: "POST" });
       const data = await res.json();
       const elapsed = Date.now() - startMs;
       const isOk = data.data?.success;
