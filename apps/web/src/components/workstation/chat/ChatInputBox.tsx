@@ -38,7 +38,7 @@ const EFFORT_OPTIONS = [
 interface ChatInputBoxProps {
   files?: { name: string }[];
   isStreaming: boolean;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, files?: Array<{ name: string; uri: string; mime?: string }>) => void;
   onCancelStream?: () => void;
   onSearchSection?: () => void;
   onNewChat?: () => void;
@@ -176,11 +176,17 @@ export const ChatInputBox = memo(function ChatInputBox({
       return;
     }
 
-    const imageTags = attachedImages.map((img) => `@${img.name}`).join(" ");
-    const fullText = [promptTrimmed, imageTags].filter(Boolean).join(" ");
-    if (!fullText) return;
+    if (!promptTrimmed && attachedImages.length === 0) return;
 
-    onSendMessage(fullText);
+    const filesToSend = attachedImages.map((img) => ({
+      name: img.name,
+      uri: img.dataUrl,
+      mime: img.mime,
+    }));
+
+    const finalPrompt = promptTrimmed || "Please review and analyze this attached image.";
+
+    onSendMessage(finalPrompt, filesToSend.length > 0 ? filesToSend : undefined);
     setLocalPrompt("");
     setAttachedImages([]);
     if (textareaRef.current) {
@@ -278,8 +284,18 @@ export const ChatInputBox = memo(function ChatInputBox({
     }
   };
 
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData.items;
+    const items = e.clipboardData?.items;
+    if (!items) return;
     const imageItems = Array.from(items).filter((item) => item.type.indexOf("image/") === 0);
 
     if (imageItems.length === 0) return;
@@ -288,19 +304,26 @@ export const ChatInputBox = memo(function ChatInputBox({
       const file = item.getAsFile();
       if (!file) continue;
 
-      const localPreviewUrl = URL.createObjectURL(file);
-      const timestamp = new Date().getTime();
-      const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
-      const fileName = `pasted_image_${timestamp}.${ext}`;
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const localPreviewUrl = URL.createObjectURL(file);
+        const timestamp = Date.now();
+        const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
+        const fileName = `pasted_image_${timestamp}.${ext}`;
 
-      setAttachedImages((prev) => [
-        ...prev,
-        {
-          id: fileName,
-          name: fileName,
-          url: localPreviewUrl,
-        },
-      ]);
+        setAttachedImages((prev) => [
+          ...prev,
+          {
+            id: fileName,
+            name: fileName,
+            url: localPreviewUrl,
+            dataUrl,
+            mime: file.type || "image/png",
+          },
+        ]);
+      } catch (err) {
+        console.warn("[ChatInputBox] Failed to read pasted image:", err);
+      }
     }
   };
 

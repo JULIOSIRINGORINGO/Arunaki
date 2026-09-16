@@ -570,9 +570,12 @@ export function useWorkstationChat({
     ]
   );
 
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (
+    textToSend?: string,
+    filesToSend?: Array<{ name: string; uri: string; mime?: string }>
+  ) => {
     const userText = (textToSend !== undefined ? textToSend : "").trim();
-    if (!userText || isStreamingRef.current) {
+    if ((!userText && (!filesToSend || filesToSend.length === 0)) || isStreamingRef.current) {
       if (textToSend) {
         queuedPromptsRef.current.push(userText);
         setQueuedPrompts([...queuedPromptsRef.current]);
@@ -613,6 +616,7 @@ export function useWorkstationChat({
       id: userMessageId,
       role: "user",
       content: userText,
+      files: filesToSend && filesToSend.length > 0 ? filesToSend : undefined,
       createdAt: new Date().toISOString(),
     };
 
@@ -1471,6 +1475,7 @@ export function useWorkstationChat({
       }, abortCtrl.signal, activeFolder);
 
       await sendPrompt(chatIdToUse, userText, {
+        files: filesToSend,
         variant: reasoningEffort || "medium",
         signal: abortCtrl.signal,
       });

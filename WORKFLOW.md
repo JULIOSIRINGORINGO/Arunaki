@@ -3023,6 +3023,28 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web`: ✅ 0 TypeScript errors (build selesai dalam 25.71s).
   - `bun test packages/engine/core/test/models.test.ts`: ✅ 9 tests passed.
 
+---
+
+### Phase 96: Full Multimodal Pasted Image Support & Visual Chat Bubble Thumbnails ✅ DONE
+- [x] **Frontend Data Capture & Base64 Conversion (`ChatInputBox.tsx`)**:
+  - Membaca file clipboard hasil paste secara asinkron menggunakan `FileReader.readAsDataURL(file)`.
+  - Menyimpan Base64 Data URL, mime type, nama file, dan object URL lokal ke dalam state `attachedImages`.
+- [x] **Clean Prompt & File Attachment Decoupling (`ChatInputBox.tsx`)**:
+  - Menghapus injeksi teks sintetis `@pasted_image_...` ke dalam teks prompt pengguna.
+  - Memisahkan prompt teks murni dari array lampiran file (`filesToSend: [{ name, uri: dataUrl, mime }]`).
+- [x] **Multimodal Engine API Transmission (`engine.ts` & `useWorkstationChat.ts`)**:
+  - Memperbarui `sendPrompt` untuk menerima array `files` dan menyertakannya di dalam payload `{ prompt: { text, files } }` sesuai skema `PromptInput.Prompt`.
+  - Menerima `filesToSend` pada `handleSendMessage` di `useWorkstationChat.ts` dan menyimpannya ke `newUserMsg.files` (optimistic message) serta mengirimkannya ke engine backend.
+- [x] **Visual Chat Bubble Thumbnails & Antigravity Parity (`ChatMessageBubble.tsx`)**:
+  - Menambahkan hook `attachedImages` untuk mengekstrak gambar dari `msg.files` atau fallback legacy.
+  - Memperbarui `hasVisibleContent` agar mendeteksi keberadaan gambar terlampir.
+  - Merender kartu thumbnail gambar elegan dengan border, bayangan halus, animasi zoom saat hover, dan dukungan klik untuk membuka pratinjau penuh di `ChatImageLightbox`.
+- [x] **Historical Message Mapping (`mapper.ts`)**:
+  - Memetakan `msg.files || msg.data?.files` ke `Message.files` sehingga riwayat chat yang dimuat ulang tetap menampilkan visual gambar.
+- [x] **Build & Verification**:
+  - `npm run build -w apps/web`: ✅ 0 TypeScript errors (selesai dalam 27.80s).
+
+
 
 
 

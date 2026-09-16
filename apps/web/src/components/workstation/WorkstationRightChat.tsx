@@ -30,7 +30,7 @@ export interface WorkstationRightChatProps {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   activeWorkspace: Workspace | null;
   isStreaming: boolean;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, files?: Array<{ name: string; uri: string; mime?: string }>) => void;
   width?: number | string;
   files?: { name: string }[];
   queuedPrompts?: string[];

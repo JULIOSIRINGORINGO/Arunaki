@@ -300,6 +300,16 @@ export function mapEngineMessages(raw: any[]): Message[] {
       }
     }
 
+    const rawFiles = msg.files || msg.data?.files || msg.attachments;
+    const mappedFiles = Array.isArray(rawFiles) && rawFiles.length > 0
+      ? rawFiles.map((f: any) => ({
+          name: f.name || f.filename,
+          uri: f.uri || f.url,
+          mime: f.mime || f.mediaType,
+          description: f.description,
+        }))
+      : undefined;
+
     return {
       id: msg.id || `${role}-${idx}-${Date.now()}`,
       role,
@@ -310,6 +320,7 @@ export function mapEngineMessages(raw: any[]): Message[] {
       thoughtMs: thoughtMs,
       parts: parts.length > 0 ? parts : undefined,
       question: (parts.find((p) => p.type === "question") as any)?.data,
+      files: mappedFiles,
       createdAt: msg.createdAt || msg.time?.created || (msg.time?.start ? msg.time.start : undefined),
     };
   });

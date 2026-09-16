@@ -47,6 +47,37 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     return Array.from(new Set(matches.map((m) => m.replace(/^@/, ""))));
   }, [msg?.content]);
 
+  const attachedImages = useMemo(() => {
+    const fromFiles: Array<{ name: string; url: string }> = [];
+    if (msg?.files && Array.isArray(msg.files)) {
+      for (const f of msg.files) {
+        if (f && f.uri) {
+          const isImg =
+            f.uri.startsWith("data:image/") ||
+            f.mime?.startsWith("image/") ||
+            /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name || "") ||
+            /\.(png|jpg|jpeg|webp|gif)$/i.test(f.uri);
+          if (isImg) {
+            fromFiles.push({
+              name: f.name || "Attached image",
+              url: f.uri,
+            });
+          }
+        }
+      }
+    }
+    // Fallback to legacy parsed @filename mentions if no structured files
+    if (fromFiles.length === 0 && imageMentions.length > 0) {
+      for (const imgName of imageMentions) {
+        fromFiles.push({
+          name: imgName,
+          url: `${API_BASE}/files/raw/${encodeURIComponent(imgName)}`,
+        });
+      }
+    }
+    return fromFiles;
+  }, [msg?.files, imageMentions]);
+
   const displayContent = useMemo(() => {
     const raw = msg?.content || "";
     if (imageMentions.length === 0) return isStreaming ? raw : raw.trim();
@@ -142,7 +173,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }, [msg?.parts, isStreaming]);
 
   const hasPartsContent = !isUser && Boolean(partGroups.length > 0);
-  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || imageMentions.length > 0 || Boolean(msg?.question);
+  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || attachedImages.length > 0 || Boolean(msg?.question);
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
 
   const activeActionText = useMemo(() => {
@@ -266,29 +297,29 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                   : "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
               )}
             >
-              {imageMentions.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {imageMentions.map((imgName, i) => (
+              {attachedImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2.5">
+                  {attachedImages.map((img, i) => (
                     <div
                       key={i}
-                      className="group/img relative rounded-xl overflow-hidden border border-[var(--border-color)] bg-black/15 shadow-xs cursor-pointer hover:border-[var(--border-strong)] transition-all p-1"
-                      onClick={() => onPreviewImage?.(`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`)}
+                      className="group/img relative rounded-xl overflow-hidden border border-[var(--border-strong)] bg-black/25 shadow-xs cursor-pointer hover:border-[var(--border-primary)] transition-all p-1"
+                      onClick={() => onPreviewImage?.(img.url)}
                       title="Click to view full image"
                     >
                       <img
-                        src={`${API_BASE}/files/raw/${encodeURIComponent(imgName)}`}
-                        alt={imgName}
-                        className="max-w-[220px] max-h-[160px] rounded-lg object-contain group-hover/img:scale-102 transition-transform duration-150"
+                        src={img.url}
+                        alt={img.name}
+                        className="max-w-[240px] max-h-[170px] rounded-lg object-contain group-hover/img:scale-[1.02] transition-transform duration-150 block"
                         onError={(e) => {
                           const parent = (e.target as HTMLElement).parentElement;
                           if (parent) {
-                            parent.innerHTML = `<div class="flex items-center gap-1.5 px-2 py-1 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${imgName}</span></div>`;
+                            parent.innerHTML = `<div class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${img.name}</span></div>`;
                           }
                         }}
                       />
-                      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/25 transition-colors flex items-end p-1.5 pointer-events-none">
-                        <span className="text-[10px] text-white bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                          {imgName}
+                      <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-colors flex items-end p-2 pointer-events-none">
+                        <span className="text-[10px] font-medium text-white bg-black/75 backdrop-blur-xs px-2 py-0.5 rounded-md truncate max-w-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                          {img.name}
                         </span>
                       </div>
                     </div>

@@ -27,6 +27,13 @@ export type MessagePart =
   | { type: "tool"; step: StepItem }
   | { type: "question"; data: QuestionData };
 
+export interface MessageFileAttachment {
+  name?: string;
+  uri: string;
+  mime?: string;
+  description?: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -39,12 +46,15 @@ export interface Message {
   reasoning?: string;
   parts?: MessagePart[];
   question?: QuestionData;
+  files?: MessageFileAttachment[];
 }
 
 export interface AttachedImage {
   id: string;
   name: string;
   url: string;
+  dataUrl: string;
+  mime: string;
 }
 
 export interface WorkspaceFile {
