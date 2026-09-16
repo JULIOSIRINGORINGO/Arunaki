@@ -3087,6 +3087,18 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 TypeScript errors.
   - `npm run build -w apps/web`: ✅ 0 errors (Vite build 12.11s).
 
+---
+
+### Phase 99: Optimize Chat Input Typing Responsiveness & Layout Thrashing Fix ✅ DONE
+- [x] **Eliminasi Layout Thrashing pada Textarea (`ChatInputBox.tsx`)**:
+  - Menambahkan fast path pada `useLayoutEffect` agar pengetikan 1 baris standar tidak memicu reset `style.height = "auto"` dan `scrollHeight` reflow di setiap ketukan tombol.
+  - Menambahkan `spellCheck={false}`, `autoComplete="off"`, dan `autoCapitalize="off"` guna mematikan Chromium spellchecker background worker pada teks bahasa Indonesia.
+  - Memasang guard pada `setShowMentions` dan `setShowCommands` agar tidak memicu re-render ganda saat mengetik kalimat normal.
+- [x] **Build & Verification**:
+  - `npm run typecheck`: ✅ 0 TypeScript errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (Vite build 11.12s).
+
+
 
 
 

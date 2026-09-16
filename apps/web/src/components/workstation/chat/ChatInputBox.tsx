@@ -94,11 +94,20 @@ export const ChatInputBox = memo(function ChatInputBox({
   }, []);
 
   useLayoutEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 24), 160);
-      textareaRef.current.style.height = `${nextHeight}px`;
+    const el = textareaRef.current;
+    if (!el) return;
+    if (!localPrompt) {
+      if (el.style.height !== "24px") el.style.height = "24px";
+      return;
     }
+    // Fast path: single-line without linebreaks that hasn't overflowed
+    if (!localPrompt.includes("\n") && el.scrollHeight <= 28) {
+      if (el.style.height !== "24px") el.style.height = "24px";
+      return;
+    }
+    el.style.height = "auto";
+    const nextHeight = Math.min(Math.max(el.scrollHeight, 24), 160);
+    el.style.height = `${nextHeight}px`;
   }, [localPrompt]);
 
   const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
@@ -139,9 +148,9 @@ export const ChatInputBox = memo(function ChatInputBox({
       setShowMentions(true);
       setMentionQuery(mentionMatch[1] || "");
       setMentionIndex(0);
-      setShowCommands(false);
+      if (showCommands) setShowCommands(false);
       return;
-    } else {
+    } else if (showMentions) {
       setShowMentions(false);
     }
 
@@ -151,7 +160,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       setCommandQuery(commandMatch[1] || "");
       setSelectedCommandIndex(0);
       return;
-    } else {
+    } else if (showCommands) {
       setShowCommands(false);
     }
   };
@@ -429,6 +438,9 @@ export const ChatInputBox = memo(function ChatInputBox({
         onChange={(e) => handleInputChange(e.target.value)}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
+        spellCheck={false}
+        autoComplete="off"
+        autoCapitalize="off"
         placeholder="Ask anything, type @ to mention files, / for commands..."
         rows={1}
         className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
