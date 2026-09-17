@@ -33,9 +33,18 @@ Berikut rekap pesanan yang sudah dirapikan:
 | Warna | Size | Qty |
 |-------|------|-----|
 | Putih | S | 2 |
-| Sport Grey | S | 1 |
 [/CANVAS]
-`;
+`
+
+function toGoogleSheetsCsvUrl(url: string): string | undefined {
+  if (!url.includes("docs.google.com/spreadsheets/d/")) return undefined
+  const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
+  if (!match) return undefined
+  const id = match[1]
+  const gidMatch = url.match(/[#&?]gid=([0-9]+)/)
+  const gid = gidMatch ? `&gid=${gidMatch[1]}` : ""
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv${gid}`
+}
 
 export function provider(model: Provider.Model) {
   let prompt = PROMPT_DEFAULT
@@ -152,9 +161,10 @@ const layer = Layer.effect(
             }
           }
 
+          let activeNodes: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> = []
           if (raw) {
             const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> }
-            const activeNodes = (store.nodes || []).filter(
+            activeNodes = (store.nodes || []).filter(
               (n) =>
                 n.active &&
                 n.id !== "main-ai-node" &&
@@ -164,42 +174,65 @@ const layer = Layer.effect(
                 ((n.content && n.content.trim().length > 0 && n.content.trim() !== "Enter knowledge content here...") ||
                   (n.urls && n.urls !== "[]" && n.urls.length > 2)),
             )
+          }
 
-            if (activeNodes.length > 0) {
-              const knowledgeLines = [
-                "<knowledge_base>",
-                "The following external data sources are connected to the workspace:",
-                ...activeNodes.flatMap((node) => {
-                  const lines = [
-                    `  <data_source name="${node.title}">`,
-                  ]
-                  const hasRealContent = node.content && node.content.trim().length > 0 && node.content.trim() !== "Enter knowledge content here..."
-                  if (hasRealContent) {
-                    lines.push(`    ${node.content}`)
-                  }
-                  if (node.urls) {
-                    try {
-                      const urls = JSON.parse(node.urls) as string[]
-                      if (urls.length > 0) {
-                        lines.push(`    Source URL: ${urls.join(", ")}`)
+          if (activeNodes.length > 0) {
+            const knowledgeLines = [
+              "<knowledge_base>",
+              "The following external data sources are connected to the workspace via the Arunaki Knowledge menu:",
+              ...activeNodes.flatMap((node) => {
+                const lines = [
+                  `  <data_source name="${node.title}" type="${node.type || "catalog"}">`,
+                ]
+                const hasRealContent = node.content && node.content.trim().length > 0 && node.content.trim() !== "Enter knowledge content here..."
+                if (hasRealContent) {
+                  lines.push(`    Content: ${node.content}`)
+                }
+                if (node.urls) {
+                  try {
+                    const urls = JSON.parse(node.urls) as string[]
+                    if (urls.length > 0) {
+                      for (const u of urls) {
+                        lines.push(`    Source URL: ${u}`)
+                        const csv = toGoogleSheetsCsvUrl(u)
+                        if (csv) {
+                          lines.push(`    Direct CSV Export URL: ${csv}`)
+                          lines.push(`    Fetch Instruction: To read data from this Google Sheet catalog, invoke webfetch on "${csv}"`)
+                        }
                       }
-                    } catch {}
-                  }
-                  lines.push(`  </data_source>`)
-                  return lines
-                }),
-                "</knowledge_base>",
-                "",
-                "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
-                "- The user has connected external business data sources (e.g. Google Sheets, product catalog, price lists).",
-                "- When the user asks about stock, inventory, products, catalog items, or prices (even without mentioning 'knowledge' or 'link'):",
-                "  1. IMMEDIATELY check the <knowledge_base> first! If the item or data exists in a connected data source above, use it directly without scanning unrelated transaction files.",
-                "  2. If a data source has a Source URL (such as a Google Sheets link) and live verification is needed, USE browse_website or webfetch on that URL directly.",
-                "  3. NEVER claim that data or stock is missing without checking these connected data sources first!",
-                "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Google Sheets Product Catalog' or 'Product Catalog').",
-              ]
-              knowledgeContext = knowledgeLines.join("\n")
-            }
+                    }
+                  } catch {}
+                }
+                lines.push(`  </data_source>`)
+                return lines
+              }),
+              "</knowledge_base>",
+              "",
+              "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
+              "- The user has connected external business data sources via the Arunaki Knowledge menu (/knowledge) (e.g. Google Sheets, product catalog, price lists).",
+              "- 'Knowledge' is an Arunaki UI menu/feature — it is NEVER a directory or folder in the filesystem! NEVER run bash/dir/ls or glob looking for a 'knowledge folder'.",
+              "- When the user asks about stock, inventory, products, catalog items, prices, or refers to 'katalog di knowledge':",
+              "  1. IMMEDIATELY check the <knowledge_base> first! If the item or data exists in a connected data source above, use it directly without scanning unrelated transaction files.",
+              "  2. If a data source has a Direct CSV Export URL or Source URL, USE webfetch on that URL directly to retrieve the live catalog or data.",
+              "  3. Respond warmly and politely: 'Katalog sudah terhubung di menu Knowledge — saya bisa akses dan analisis data produk/harganya.'",
+              "  4. NEVER claim that data or stock is missing without checking these connected data sources first!",
+              "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Katalog' or 'Product Catalog' or 'menu Knowledge').",
+            ]
+            knowledgeContext = knowledgeLines.join("\n")
+          } else {
+            knowledgeContext = [
+              "<knowledge_base>",
+              "No external data sources are currently connected to this workspace.",
+              "</knowledge_base>",
+              "",
+              "KNOWLEDGE MENU AWARENESS:",
+              "- Arunaki features a dedicated 'Knowledge' menu in the user interface (accessible via the top navigation bar at /knowledge).",
+              "- In the Knowledge menu, users connect external Google Sheets (e.g. product catalogs, price lists), external documents, and notes.",
+              "- If the user mentions 'katalog di knowledge', 'data di knowledge', or asks about knowledge:",
+              "  * 'Knowledge' refers to this UI Knowledge menu — it is NEVER a folder or directory on disk!",
+              "  * NEVER use bash, dir, ls, glob, or file tools to look for a 'knowledge folder' or search outside the workspace.",
+              "  * Inform the user politely: 'Data katalog belum terhubung di menu Knowledge. Anda dapat menghubungkannya melalui menu Knowledge di navigasi atas.'",
+            ].join("\n")
           }
         } catch {}
 

@@ -103,7 +103,10 @@ function planRequest(
   if (workspaceID === InvalidWorkspaceID) return Effect.succeed(RequestPlan.InvalidWorkspace())
   return Effect.succeed(
     RequestPlan.Local({
-      directory: session?.directory || defaultDirectory(request, url),
+      directory:
+        (session?.location as { directory?: string } | undefined)?.directory ||
+        (session as { directory?: string } | undefined)?.directory ||
+        defaultDirectory(request, url),
       workspaceID: envWorkspaceID ?? workspaceID,
     }),
   )

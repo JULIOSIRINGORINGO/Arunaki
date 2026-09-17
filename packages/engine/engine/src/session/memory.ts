@@ -330,7 +330,8 @@ const layer = Layer.effect(
       const session = yield* sessions.get(sid).pipe(Effect.orElseSucceed(() => undefined))
       const directory =
         dir ??
-        session?.directory ??
+        (session?.location as { directory?: string } | undefined)?.directory ??
+        (session as { directory?: string } | undefined)?.directory ??
         (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined))) ??
         process.cwd()
       const msgs = yield* sessions
@@ -421,7 +422,8 @@ const layer = Layer.effect(
       const session = yield* sessions.get(sid).pipe(Effect.orElseSucceed(() => undefined))
       const directory =
         dir ??
-        session?.directory ??
+        (session?.location as { directory?: string } | undefined)?.directory ??
+        (session as { directory?: string } | undefined)?.directory ??
         (yield* InstanceState.directory.pipe(Effect.orElseSucceed(() => undefined)))
       if (!directory) return
 

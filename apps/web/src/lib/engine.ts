@@ -4,10 +4,13 @@ const ENGINE_BASE = "";
 
 export async function engineFetch(path: string, init?: RequestInit) {
   const url = `${ENGINE_BASE}${path}`;
+  const activeFolder =
+    (typeof localStorage !== "undefined" && localStorage.getItem("arunaki_active_folder")) || undefined;
   return fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(activeFolder ? { "x-arunaki-directory": activeFolder } : {}),
       ...init?.headers,
     },
   });
@@ -141,6 +144,7 @@ export async function sendPrompt(
     files?: Array<{ name?: string; uri: string; mime?: string; description?: string }>;
     variant?: string;
     signal?: AbortSignal;
+    directory?: string;
   }
 ) {
   const promptPayload: {
@@ -153,9 +157,13 @@ export async function sendPrompt(
     promptPayload.files = opts.files;
   }
 
-  const res = await engineFetch(`/api/session/${sessionID}/prompt`, {
+  const query = opts?.directory ? `?directory=${encodeURIComponent(opts.directory)}` : "";
+  const res = await engineFetch(`/api/session/${sessionID}/prompt${query}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(opts?.directory ? { "x-arunaki-directory": opts.directory } : {}),
+    },
     body: JSON.stringify({
       prompt: promptPayload,
       ...(opts?.variant ? { variant: opts.variant } : {}),
