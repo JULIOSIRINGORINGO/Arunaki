@@ -25,6 +25,8 @@ export const KnowledgeNodeSchema = Schema.Struct({
   city: Schema.String,
   urls: Schema.String,
   createdAt: Schema.String,
+  lastSyncedAt: Schema.optional(Schema.String),
+  syncStatus: Schema.optional(Schema.String),
 }).annotate({ identifier: "KnowledgeNode" })
 
 export const KnowledgeEdgeSchema = Schema.Struct({
@@ -39,6 +41,15 @@ export const KnowledgeNodeListData = Schema.Struct({ data: Schema.Array(Knowledg
 export const KnowledgeEdgeData = Schema.Struct({ data: KnowledgeEdgeSchema })
 export const KnowledgeEdgeListData = Schema.Struct({ data: Schema.Array(KnowledgeEdgeSchema) })
 export const EmptyData = Schema.Struct({ data: Schema.Struct({}) })
+
+export const SyncKnowledgeResponse = Schema.Struct({
+  data: Schema.Struct({
+    success: Schema.Boolean,
+    syncedCount: Schema.Number,
+    timestamp: Schema.String,
+    errors: Schema.Array(Schema.String),
+  }),
+})
 
 export const KnowledgeParams = Schema.Struct({ id: Schema.String })
 export const KnowledgeEdgeParams = Schema.Struct({ edgeId: Schema.String })
@@ -205,6 +216,17 @@ export const KnowledgeApi = HttpApi.make("knowledge")
             identifier: "knowledge.edges.remove",
             summary: "Delete knowledge edge",
             description: "Delete an edge from the knowledge graph.",
+          }),
+        ),
+        HttpApiEndpoint.post("sync", `${uiRoot}/sync`, {
+          query: WorkspaceRoutingQuery,
+          success: described(SyncKnowledgeResponse, "Sync knowledge sources"),
+          error: KnowledgeError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "knowledge.sync",
+            summary: "Auto-sync knowledge sources",
+            description: "Automatically fetch and update local cache for external URLs (e.g. Google Sheets CSV).",
           }),
         ),
       )

@@ -4,6 +4,7 @@ import { Effect, Layer, Option, Schema } from "effect"
 import { HttpClient, HttpServerRequest } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import * as path from "node:path"
+import * as fsPromises from "node:fs/promises"
 import { InstanceHttpApi } from "../api"
 import { instanceContextLayer } from "../middleware/instance-context"
 import { workspaceRoutingLayer } from "../middleware/workspace-routing"
@@ -14,6 +15,16 @@ import {
   PositionInput,
   UpdateNodeInput,
 } from "../groups/knowledge"
+
+export function toGoogleSheetsCsvUrl(url: string): string | undefined {
+  if (!url.includes("docs.google.com/spreadsheets/d/")) return undefined
+  const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
+  if (!match) return undefined
+  const id = match[1]
+  const gidMatch = url.match(/[#&?]gid=([0-9]+)/)
+  const gid = gidMatch ? `&gid=${gidMatch[1]}` : ""
+  return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv${gid}`
+}
 
 interface NodeRecord {
   id: string
@@ -28,6 +39,8 @@ interface NodeRecord {
   city: string
   urls: string
   createdAt: string
+  lastSyncedAt?: string
+  syncStatus?: string
 }
 
 interface EdgeRecord {
@@ -80,6 +93,8 @@ function toNodeSchema(n: NodeRecord) {
     city: n.city,
     urls: n.urls,
     createdAt: n.createdAt,
+    lastSyncedAt: n.lastSyncedAt,
+    syncStatus: n.syncStatus,
   }
 }
 
@@ -272,6 +287,91 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       return { data: {} }
     })
 
+    const syncImpl = Effect.fn("Knowledge.sync")(function* () {
+      const directory = (yield* InstanceState.context).directory
+      const store = yield* load()
+      const cacheDir = path.join(directory, ".arunaki", "cache")
+      yield* Effect.promise(() => fsPromises.mkdir(cacheDir, { recursive: true })).pipe(Effect.orDie)
+
+      let syncedCount = 0
+      const errors: string[] = []
+
+      for (const node of store.nodes) {
+        if (!node.active) continue
+        if (!node.urls || node.urls === "[]") continue
+
+        let urls: string[] = []
+        try {
+          urls = JSON.parse(node.urls)
+        } catch {
+          continue
+        }
+
+        if (!Array.isArray(urls) || urls.length === 0) continue
+
+        for (const rawUrl of urls) {
+          const trimmed = typeof rawUrl === "string" ? rawUrl.trim() : ""
+          if (!trimmed) continue
+
+          const targetUrl = toGoogleSheetsCsvUrl(trimmed) || trimmed
+          try {
+            const controller = new AbortController()
+            const timer = setTimeout(() => controller.abort(), 8000)
+            const res = yield* Effect.tryPromise({
+              try: () =>
+                fetch(targetUrl, {
+                  signal: controller.signal,
+                  headers: {
+                    "User-Agent": "Arunaki-Desktop/1.0",
+                    Accept: "text/csv, text/plain, */*",
+                  },
+                }),
+              catch: (err) => new Error(String(err)),
+            })
+            clearTimeout(timer)
+
+            if (res.ok) {
+              const body = yield* Effect.tryPromise({
+                try: () => res.text(),
+                catch: (err) => new Error(String(err)),
+              })
+
+              // Avoid saving Google accounts login page if sheet is private
+              if (body && !body.includes("accounts.google.com/ServiceLogin")) {
+                const cacheFile = path.join(cacheDir, `${node.id}.csv`)
+                yield* Effect.promise(() => fsPromises.writeFile(cacheFile, body, "utf-8")).pipe(Effect.orDie)
+                node.lastSyncedAt = new Date().toISOString()
+                node.syncStatus = "success"
+                syncedCount++
+              } else {
+                errors.push(`${node.title}: sheet is private or requires Google login`)
+                node.syncStatus = "failed"
+              }
+            } else {
+              errors.push(`${node.title}: HTTP status ${res.status}`)
+              node.syncStatus = "failed"
+            }
+          } catch (e: any) {
+            errors.push(`${node.title}: ${e.message || String(e)}`)
+            node.syncStatus = "failed"
+          }
+        }
+      }
+
+      if (syncedCount > 0 || errors.length > 0) {
+        yield* save(store)
+      }
+
+      return {
+        data: {
+          success: errors.length === 0 || syncedCount > 0,
+          syncedCount,
+          timestamp: new Date().toISOString(),
+          errors,
+        },
+      }
+    })
+
     return handlers
       .handle("list", listimpl)
       .handle("create", createImpl)
@@ -284,6 +384,7 @@ export const knowledgeHandlers = HttpApiBuilder.group(InstanceHttpApi, "knowledg
       .handle("listEdges", listEdgesImpl)
       .handle("createEdge", createEdgeImpl)
       .handle("removeEdge", removeEdgeImpl)
+      .handle("sync", syncImpl)
   }),
 ).pipe(Layer.provide(instanceContextLayer), Layer.provide(workspaceRoutingLayer))
 

@@ -3168,6 +3168,28 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - Menghapus file bocor `Pemasukan-2026-09-18.xlsx` dari root folder kode.
   - `npm run build -w apps/web`: ✅ 0 errors (built in 23.44s).
 
+---
+
+### Phase 104: Knowledge Auto-Refresh & Local Snapshot Caching (Zero-Friction Multi-Trigger Sync) ✅ DONE
+- [x] **Backend Route & Schema (`groups/knowledge.ts`)**:
+  - Menambahkan endpoint `POST /knowledge/sync` pada HttpApi group dengan schema `SyncKnowledgeResponse`.
+  - Menambahkan field `lastSyncedAt` dan `syncStatus` pada `KnowledgeNodeSchema`.
+- [x] **Backend Handler Sync Implementation (`handlers/knowledge.ts`)**:
+  - Mengimplementasikan `syncImpl` untuk mengekstrak URL (khususnya Google Sheets CSV export), melakukan HTTP fetch dengan timeout aman, menyimpan snapshot ke `.arunaki/cache/<nodeId>.csv`, dan memperbarui timestamp sinkronisasi.
+- [x] **Engine Context Pre-loading (`system.ts`)**:
+  - Menginjeksi data snapshot cache langsung ke dalam `<knowledge_base>` tag saat prompt dibentuk, sehingga AI dapat membaca katalog langsung tanpa perlu memanggil tool `webfetch`.
+- [x] **Frontend Multi-Trigger Orchestration (`knowledgeSync.ts`, `App.tsx`, `AppLayout.tsx`)**:
+  - Implementasi 3 pemicu otomatis tanpa intervensi user: (1) App Launch, (2) Workspace Switch, dan (3) Periodic Background Sync (tiap 30 menit & window focus).
+- [x] **UI Feedback di Node Panel (`KnowledgeNodePanel.tsx`)**:
+  - Menampilkan status & timestamp sinkronisasi otomatis ("Auto-Synced Catalog") secara elegan.
+- [x] **Build Verification & Dev Log**:
+  - `bun test packages/engine/engine/test/server/httpapi-knowledge.test.ts`: ✅ 4 pass (CRUD, upload, sync, cached snapshot).
+  - `npm run typecheck`: ✅ 0 errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (built in 11.06s).
+  - Dev-log di `docs/dev-logs/dev-log-2026-09-18-knowledge-auto-refresh-cache.md`.
+
+
+
 
 
 

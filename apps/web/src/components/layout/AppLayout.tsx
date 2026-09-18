@@ -19,6 +19,7 @@ import { UnifiedWorkstationPage } from "../../pages/UnifiedWorkstationPage";
 import { KnowledgePage } from "../../pages/KnowledgePage";
 import { HistoryPage } from "../../pages/HistoryPage";
 import { SettingsPage } from "../../pages/SettingsPage";
+import { triggerKnowledgeSync, triggerKnowledgeSyncIfStale } from "../../lib/knowledgeSync";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -70,6 +71,34 @@ export function AppLayout() {
       window.removeEventListener("storage", loadActiveFolder);
     };
   }, []);
+
+  // Trigger 2: Workspace Switch — auto-sync knowledge sources on folder change
+  useEffect(() => {
+    if (activeFolder) {
+      triggerKnowledgeSync(activeFolder);
+    }
+  }, [activeFolder]);
+
+  // Trigger 3: Periodic Background Interval & Window Focus
+  useEffect(() => {
+    if (!activeFolder) return;
+
+    // Periodic sync every 30 minutes
+    const interval = setInterval(() => {
+      triggerKnowledgeSync(activeFolder);
+    }, 30 * 60 * 1000);
+
+    // Auto-sync on window focus if last sync was > 15 minutes ago
+    const handleFocus = () => {
+      triggerKnowledgeSyncIfStale(15 * 60 * 1000, activeFolder);
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [activeFolder]);
 
   const handleOpenFolder = async () => {
     const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;

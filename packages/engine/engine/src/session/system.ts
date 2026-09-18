@@ -161,9 +161,9 @@ const layer = Layer.effect(
             }
           }
 
-          let activeNodes: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> = []
+          let activeNodes: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string; lastSyncedAt?: string }> = []
           if (raw) {
-            const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string }> }
+            const store = JSON.parse(raw) as { nodes?: Array<{ id: string; title: string; content: string; active: boolean; type: string; urls?: string; lastSyncedAt?: string }> }
             activeNodes = (store.nodes || []).filter(
               (n) =>
                 n.active &&
@@ -186,8 +186,39 @@ const layer = Layer.effect(
                 ]
                 const hasRealContent = node.content && node.content.trim().length > 0 && node.content.trim() !== "Enter knowledge content here..."
                 if (hasRealContent) {
-                  lines.push(`    Content: ${node.content}`)
+                  lines.push(`    Notes: ${node.content}`)
                 }
+
+                // Check local cached snapshot
+                const cachePaths = [
+                  path.join(ctx.directory, ".arunaki", "cache", `${node.id}.csv`),
+                  path.join(ctx.worktree, ".arunaki", "cache", `${node.id}.csv`),
+                ]
+                let cachedData: string | undefined = undefined
+                for (const cp of cachePaths) {
+                  if (fsSync.existsSync(cp)) {
+                    try {
+                      const rawCache = fsSync.readFileSync(cp, "utf-8")
+                      if (rawCache && rawCache.trim().length > 0) {
+                        const splitLines = rawCache.split("\n")
+                        if (splitLines.length > 250) {
+                          cachedData = splitLines.slice(0, 250).join("\n") + "\n... [truncated for context length, full data stored locally]"
+                        } else {
+                          cachedData = rawCache
+                        }
+                        break
+                      }
+                    } catch {}
+                  }
+                }
+
+                if (cachedData) {
+                  lines.push(`    Cached Live Data (${node.lastSyncedAt ? "Last synced: " + node.lastSyncedAt : "Auto-synced snapshot"}):`)
+                  lines.push(`\`\`\`csv`)
+                  lines.push(cachedData)
+                  lines.push(`\`\`\``)
+                }
+
                 if (node.urls) {
                   try {
                     const urls = JSON.parse(node.urls) as string[]
@@ -197,7 +228,9 @@ const layer = Layer.effect(
                         const csv = toGoogleSheetsCsvUrl(u)
                         if (csv) {
                           lines.push(`    Direct CSV Export URL: ${csv}`)
-                          lines.push(`    Fetch Instruction: To read data from this Google Sheet catalog, invoke webfetch on "${csv}"`)
+                          if (!cachedData) {
+                            lines.push(`    Fetch Instruction: To read data from this Google Sheet catalog, invoke webfetch on "${csv}"`)
+                          }
                         }
                       }
                     }
@@ -211,12 +244,12 @@ const layer = Layer.effect(
               "CRITICAL KNOWLEDGE BASE INSTRUCTIONS:",
               "- The user has connected external business data sources via the Arunaki Knowledge menu (/knowledge) (e.g. Google Sheets, product catalog, price lists).",
               "- 'Knowledge' is an Arunaki UI menu/feature — it is NEVER a directory or folder in the filesystem! NEVER run bash/dir/ls or glob looking for a 'knowledge folder'.",
-              "- When the user asks about stock, inventory, products, catalog items, prices, or refers to 'katalog di knowledge':",
-              "  1. IMMEDIATELY check the <knowledge_base> first! If the item or data exists in a connected data source above, use it directly without scanning unrelated transaction files.",
-              "  2. If a data source has a Direct CSV Export URL or Source URL, USE webfetch on that URL directly to retrieve the live catalog or data.",
+              "- When the user asks about stock, inventory, products, catalog items, prices, or refers to 'katalog di knowledge' / 'rekap ke excel':",
+              "  1. If 'Cached Live Data' is present in <knowledge_base> above, USE IT DIRECTLY! It is pre-loaded into your context. DO NOT execute webfetch, bash, or file search tools to re-fetch it.",
+              "  2. If Cached Live Data is not present but a Direct CSV Export URL exists, use webfetch on that URL.",
               "  3. Respond warmly and politely: 'Katalog sudah terhubung di menu Knowledge — saya bisa akses dan analisis data produk/harganya.'",
               "  4. NEVER claim that data or stock is missing without checking these connected data sources first!",
-              "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Katalog' or 'Product Catalog' or 'menu Knowledge').",
+              "- STRICT PRIVACY & ARCHITECTURE RULE FOR ALL RESPONSES: NEVER mention internal backend filenames (such as knowledge.json, ARUNAKI.md, cache files), internal node IDs (such as main-ai-node, arunaki-rulebook, node-1), graph edges/relations (such as edge-5), or internal system concepts (such as Agent Core, Living Rules). Always refer to connected data sources by their natural business name (e.g. 'Katalog' or 'Product Catalog' or 'menu Knowledge').",
             ]
             knowledgeContext = knowledgeLines.join("\n")
           } else {

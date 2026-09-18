@@ -8,7 +8,8 @@ import { disposeAllInstances, tmpdir } from "../fixture/fixture"
 const context = Context.empty() as Context.Context<unknown>
 
 function request(route: string, directory: string, query?: Record<string, string>, init?: RequestInit) {
-  const url = new URL(`http://localhost${route}`)
+  const normalizedRoute = route.startsWith("/api") ? route : `/api${route}`
+  const url = new URL(`http://localhost${normalizedRoute}`)
   for (const [key, value] of Object.entries(query ?? {})) {
     url.searchParams.set(key, value)
   }
@@ -49,7 +50,7 @@ describe("knowledge HttpApi", () => {
     const create = await jsonRequest("/knowledge", tmp.path, "POST", {
       title: "Format Rekap",
       content: "Header wajib berisi tanggal terbaru.",
-      type: "rules",
+      type: "document",
       positionX: 100,
       positionY: 200,
       nodeColor: "#10B981",
@@ -139,5 +140,71 @@ describe("knowledge HttpApi", () => {
     // upload persisted to graph store (auto-connected edge created)
     const edges = (await (await request("/knowledge/edges", tmp.path)).json()) as { data: { targetId: string }[] }
     expect(edges.data.some((e) => e.targetId === "main-ai-node")).toBe(true)
+  }, { timeout: 30000 })
+
+  test("serves sync endpoint cleanly even if empty or offline", async () => {
+    await using tmp = await tmpdir()
+
+    const syncRes = await jsonRequest("/knowledge/sync", tmp.path, "POST", {})
+    expect(syncRes.status).toBe(200)
+    const syncData = (await syncRes.json()) as { data: { success: boolean; syncedCount: number } }
+    expect(syncData.data.success).toBe(true)
+    expect(syncData.data.syncedCount).toBe(0)
+  }, { timeout: 30000 })
+
+  test("syncs connected URL into .arunaki/cache/<id>.csv and records lastSyncedAt", async () => {
+    await using tmp = await tmpdir()
+
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return new Response("Product,Price\nKaos Polo,62000\nNSA,52000", {
+          headers: { "content-type": "text/csv" },
+        })
+      },
+    })
+
+    try {
+      // Create node with the server URL
+      const create = await jsonRequest("/knowledge", tmp.path, "POST", {
+        title: "Katalog Test",
+        content: "",
+        type: "catalog",
+        positionX: 100,
+        positionY: 200,
+        nodeColor: "#10B981",
+        icon: "shopping-bag",
+      })
+      const created = ((await create.json()) as { data: { id: string } }).data
+
+      await jsonRequest(`/knowledge/${created.id}`, tmp.path, "PATCH", {
+        title: "Katalog Test",
+        content: "",
+        urls: [`http://localhost:${server.port}/catalog.csv`],
+        city: "Jakarta",
+      })
+
+      // Run sync
+      const syncRes = await jsonRequest("/knowledge/sync", tmp.path, "POST", {})
+      expect(syncRes.status).toBe(200)
+      const syncData = (await syncRes.json()) as { data: { success: boolean; syncedCount: number } }
+      expect(syncData.data.success).toBe(true)
+      expect(syncData.data.syncedCount).toBe(1)
+
+      // Verify cached file exists on disk
+      const cacheFile = path.join(tmp.path, ".arunaki", "cache", `${created.id}.csv`)
+      const exists = await Bun.file(cacheFile).exists()
+      expect(exists).toBe(true)
+      const cachedText = await Bun.file(cacheFile).text()
+      expect(cachedText).toContain("Kaos Polo,62000")
+
+      // Verify node metadata has lastSyncedAt
+      const nodeRes = await request(`/knowledge/${created.id}`, tmp.path)
+      const nodeData = ((await nodeRes.json()) as { data: { lastSyncedAt?: string; syncStatus?: string } }).data
+      expect(nodeData.syncStatus).toBe("success")
+      expect(nodeData.lastSyncedAt).toBeDefined()
+    } finally {
+      server.stop()
+    }
   }, { timeout: 30000 })
 })

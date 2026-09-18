@@ -10,6 +10,7 @@ import { KnowledgePage } from "./pages/KnowledgePage";
 import { useTheme, getSystemTheme } from "./lib/theme";
 import { DEFAULT_MODELS } from "./components/settings/constants";
 import { API_BASE, apiFetch, directoryQuery } from "./lib/api";
+import { triggerKnowledgeSync } from "./lib/knowledgeSync";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,8 @@ if (typeof window !== "undefined") {
   }
   // Fire-and-forget: refresh catalog from API (non-blocking)
   refreshModelCatalog();
+  // Fire-and-forget: auto-sync external knowledge sources on app launch (non-blocking)
+  triggerKnowledgeSync();
 }
 
 export default function App() {

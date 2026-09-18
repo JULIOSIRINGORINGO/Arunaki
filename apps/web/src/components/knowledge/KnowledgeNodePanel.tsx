@@ -4,6 +4,7 @@ import { X, Save, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { apiFetch, API_BASE } from '../../lib/api';
+import { subscribeKnowledgeSync } from '../../lib/knowledgeSync';
 import { City } from 'country-state-city';
 
 // Pre-calculate a lightweight list of all global cities (names only) to prevent re-evaluation on every keystroke
@@ -93,6 +94,21 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
     };
 
     fetchNode();
+  }, [nodeId]);
+
+  useEffect(() => {
+    if (!nodeId || nodeId === 'main-ai-node') return;
+    const unsubscribe = subscribeKnowledgeSync(() => {
+      apiFetch(`${API_BASE}/knowledge/${nodeId}`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json?.data) {
+            setNodeData(json.data);
+          }
+        })
+        .catch(() => {});
+    });
+    return unsubscribe;
   }, [nodeId]);
 
   const filteredCities = useMemo(() => {
@@ -264,14 +280,32 @@ export function KnowledgeNodePanel({ nodeId, onClose, onUpdate, onDelete }: Know
                 />
                 
                 {urls[0]?.trim() ? (
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] shrink-0 animate-pulse" />
-                    <span className="font-medium text-[var(--text-primary)]">Live URL Connected</span>
-                    <span className="text-[10px] text-[var(--text-muted)] truncate">— LLM reads automatically</span>
+                  <div className="flex flex-col gap-1 p-2.5 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "w-1.5 h-1.5 rounded-full shrink-0",
+                            nodeData?.syncStatus === "failed" ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
+                          )}
+                        />
+                        <span className="font-medium text-[var(--text-primary)]">
+                          {nodeData?.syncStatus === "failed" ? "Sync Warning (Using Cache)" : "Auto-Synced Catalog"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {nodeData?.lastSyncedAt
+                          ? new Date(nodeData.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : "Auto-Refresh Active"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] leading-tight">
+                      Pre-loaded locally in background. AI reads prices & stock instantly without manual refresh.
+                    </span>
                   </div>
                 ) : (
                   <div className="text-[10px] text-[var(--text-dim)]">
-                    Supports Google Sheets & Web Pages (read live by LLM in real-time)
+                    Supports Google Sheets & Web Pages (auto-refreshed in background on launch)
                   </div>
                 )}
 
