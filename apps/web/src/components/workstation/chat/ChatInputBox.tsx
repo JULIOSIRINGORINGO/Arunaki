@@ -92,28 +92,7 @@ export const ChatInputBox = memo(function ChatInputBox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    if (!localPrompt) {
-      if (el.style.height !== "24px") el.style.height = "24px";
-      return;
-    }
-    // Zero-reflow fast path: single-line without linebreaks that hasn't wrapped
-    // Avoids accessing scrollHeight (which forces synchronous layout reflow) on every keystroke
-    if (!localPrompt.includes("\n") && localPrompt.length < 40) {
-      if (el.style.height !== "24px") el.style.height = "24px";
-      return;
-    }
-    // Measure only when multiline or wrapping to eliminate layout thrashing
-    requestAnimationFrame(() => {
-      const target = textareaRef.current;
-      if (!target) return;
-      target.style.height = "auto";
-      const nextHeight = Math.min(Math.max(target.scrollHeight, 24), 160);
-      target.style.height = `${nextHeight}px`;
-    });
-  }, [localPrompt]);
+
 
   const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
   const currentEffortLabel = currentEffortObj ? currentEffortObj.label : "Default";
@@ -192,9 +171,6 @@ export const ChatInputBox = memo(function ChatInputBox({
       toast.info(next ? "Thinking expanded" : "Thinking collapsed");
       setLocalPrompt("");
       setAttachedImages([]);
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
       return;
     }
 
@@ -211,9 +187,6 @@ export const ChatInputBox = memo(function ChatInputBox({
     onSendMessage(finalPrompt, filesToSend.length > 0 ? filesToSend : undefined);
     setLocalPrompt("");
     setAttachedImages([]);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
   };
 
   const insertMention = (filename: string) => {
@@ -445,20 +418,33 @@ export const ChatInputBox = memo(function ChatInputBox({
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        value={localPrompt}
-        onChange={(e) => handleInputChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
-        spellCheck={false}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        placeholder="Ask anything, type @ to mention files, / for commands..."
-        rows={1}
-        className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
-      />
+      {/* Zero-JS Auto-Sizing Input Container: CSS Grid Ghost Mirror + Native field-sizing: content */}
+      <div className="grid grid-cols-1 relative min-h-[24px] max-h-[160px] overflow-hidden">
+        {/* Invisible Ghost Sizer: sizes the grid row purely via browser layout engine with 0 JS */}
+        <div
+          aria-hidden="true"
+          className="col-start-1 row-start-1 invisible whitespace-pre-wrap break-words text-xs leading-[20px] min-h-[24px] max-h-[160px] pointer-events-none select-none py-0.5 overflow-hidden"
+        >
+          {localPrompt ? localPrompt + "\n" : " "}
+        </div>
+
+        {/* Textarea with native Chromium field-sizing: content for 120 FPS C++ auto-expansion */}
+        <textarea
+          ref={textareaRef}
+          value={localPrompt}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          spellCheck={false}
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          placeholder="Ask anything, type @ to mention files, / for commands..."
+          rows={1}
+          style={{ fieldSizing: "content" } as React.CSSProperties}
+          className="col-start-1 row-start-1 w-full h-full bg-transparent text-xs leading-[20px] py-0.5 text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
+        />
+      </div>
 
       <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
         <div className="flex items-center gap-1.5 flex-wrap">
