@@ -22,6 +22,7 @@ export function HistoryPage() {
             title: s.title || "",
             createdAt: s.time?.created || "",
             updatedAt: s.time?.updated || s.time?.created || "",
+            directory: s.directory || s.location?.directory || "",
           }))
         );
       } catch (err) {
@@ -124,12 +125,20 @@ export function HistoryPage() {
                           key={session.id}
                           session={session}
                           onClick={() => {
+                            const sessionFolder = session.directory || "";
+                            if (sessionFolder) {
+                              localStorage.setItem("arunaki_active_folder", sessionFolder);
+                              localStorage.setItem(`arunaki_active_chat_id_${sessionFolder}`, session.id);
+                            } else {
+                              localStorage.removeItem("arunaki_active_folder");
+                            }
                             localStorage.setItem("arunaki_active_chat_id", session.id);
-                            const activeFolder = localStorage.getItem("arunaki_active_folder") || "";
+
                             const params = new URLSearchParams();
                             params.set("chatId", session.id);
-                            if (activeFolder) params.set("folder", activeFolder);
+                            if (sessionFolder) params.set("folder", sessionFolder);
                             navigate(`/?${params.toString()}`);
+                            window.dispatchEvent(new Event("arunaki-folder-change"));
                             window.dispatchEvent(new Event("arunaki-session-change"));
                           }}
                         />

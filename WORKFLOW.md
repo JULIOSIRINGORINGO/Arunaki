@@ -3148,6 +3148,27 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 TypeScript errors.
   - `npm run build -w apps/web`: ✅ 0 errors (built in 11.46s).
 
+---
+
+### Phase 103: Strict Folder-Session Isolation & Cross-Folder Leak Elimination ✅ DONE
+- [x] **Eliminasi Cross-Folder Fallback (`UnifiedWorkstationPage.tsx`)**:
+  - Menghapus fallback berbahaya dari `arunaki_active_chat_id` lintas-folder saat membuka folder baru.
+  - Memasang `Folder-Session Isolation Guard` effect untuk memverifikasi direktori backend session dengan direktori aktif; otomatis mereset `activeChatId` jika terjadi mismatch.
+- [x] **Pre-flight Check Pengiriman Pesan (`useWorkstationChat.ts`)**:
+  - Memasang guard pra-eksekusi di `handleSendMessage`: mengecek direktori session di database backend (`getSession`). Jika `session.directory !== activeFolder`, session lama langsung dilepas (`chatIdToUse = ""`) dan dibuatkan session baru yang terikat secara eksklusif ke `activeFolder`.
+- [x] **Koreksi Payload `createSession` (`engine.ts`)**:
+  - Memperbaiki struktur payload dari `{ location: { type: "directory", directory } }` menjadi `{ location: { directory } }` sesuai skema Engine, menyertakan query params `directory` & `location[directory]`, serta header `x-arunaki-directory`.
+- [x] **Perlindungan History Session (`HistoryPage.tsx` & `historyUtils.ts`)**:
+  - Mempertahankan field `directory` pada `ChatSession`.
+  - Mengubah aksi klik riwayat sesi agar mengarahkan active folder ke direktori asli sesi tersebut (`session.directory`), bukan menimpa sesi lama dengan folder yang sedang aktif di localStorage.
+  - Menambahkan badge nama folder di `HistorySessionItem.tsx`.
+- [x] **Isolasi Folder Handlers (`AppLayout.tsx`)**:
+  - Menjaga state `arunaki_active_chat_id` tetap terisolasi per folder saat `handleOpenFolder`, `handleCloseFolder`, maupun navigasi top menu.
+- [x] **Pembersihan & Verifikasi**:
+  - Menghapus file bocor `Pemasukan-2026-09-18.xlsx` dari root folder kode.
+  - `npm run build -w apps/web`: ✅ 0 errors (built in 23.44s).
+
+
 
 
 

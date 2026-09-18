@@ -13,6 +13,7 @@ import {
   subscribeEvents,
   mapEngineEvent,
   getMessages,
+  getSession,
   switchSessionModel,
   replySessionQuestion,
   isSessionActive,
@@ -703,6 +704,22 @@ export function useWorkstationChat({
 
     let chatIdToUse = activeChatId;
     const effectiveVariant = reasoningEffort || "medium";
+
+    // Strict Folder-Session Isolation Guard: verify that existing session matches activeFolder
+    if (chatIdToUse && activeFolder) {
+      try {
+        const sess = await getSession(chatIdToUse);
+        const sessDir = (sess?.directory || (sess as any)?.location?.directory || "").toLowerCase().replace(/\\/g, "/");
+        const curDir = activeFolder.toLowerCase().replace(/\\/g, "/");
+        if (sessDir && curDir && sessDir !== curDir) {
+          console.warn(`[useWorkstationChat] Session ${chatIdToUse} (${sessDir}) does not match active folder (${curDir}). Creating fresh session for folder.`);
+          chatIdToUse = "";
+        }
+      } catch {
+        chatIdToUse = "";
+      }
+    }
+
     if (!chatIdToUse || !chatIdToUse.startsWith("ses_")) {
       try {
         const session = await createSession({

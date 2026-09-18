@@ -79,7 +79,22 @@ export function AppLayout() {
         if (result?.path) {
           localStorage.setItem("arunaki_active_folder", result.path);
           setActiveFolder(result.path);
+
+          // Strictly isolate active chat per folder
+          const folderChatId = localStorage.getItem(`arunaki_active_chat_id_${result.path}`) || "";
+          if (folderChatId) {
+            localStorage.setItem("arunaki_active_chat_id", folderChatId);
+          } else {
+            localStorage.removeItem("arunaki_active_chat_id");
+          }
+
           window.dispatchEvent(new Event("arunaki-folder-change"));
+          window.dispatchEvent(new Event("arunaki-session-change"));
+
+          const params = new URLSearchParams();
+          params.set("folder", result.path);
+          if (folderChatId) params.set("chatId", folderChatId);
+          navigate(`/?${params.toString()}`);
         }
       } catch (err) {
         console.error("Open folder error:", err);
@@ -89,8 +104,11 @@ export function AppLayout() {
 
   const handleCloseFolder = () => {
     localStorage.removeItem("arunaki_active_folder");
+    localStorage.removeItem("arunaki_active_chat_id");
     setActiveFolder("");
     window.dispatchEvent(new Event("arunaki-folder-change"));
+    window.dispatchEvent(new Event("arunaki-session-change"));
+    navigate("/");
     toast.info("Folder closed. Agent is now in sandbox mode.");
   };
 
@@ -111,7 +129,9 @@ export function AppLayout() {
 
   const handleNavigateWorkstation = useCallback(() => {
     const savedFolder = localStorage.getItem("arunaki_active_folder") || "";
-    const savedChatId = localStorage.getItem("arunaki_active_chat_id") || "";
+    const savedChatId = savedFolder
+      ? (localStorage.getItem(`arunaki_active_chat_id_${savedFolder}`) || "")
+      : (localStorage.getItem("arunaki_active_chat_id") || "");
     const params = new URLSearchParams();
     if (savedFolder) params.set("folder", savedFolder);
     if (savedChatId) params.set("chatId", savedChatId);

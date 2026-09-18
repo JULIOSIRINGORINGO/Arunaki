@@ -48,8 +48,13 @@ export async function createSession(opts?: {
     }
   }
 
-  const query = opts?.directory ? `?directory=${encodeURIComponent(opts.directory)}` : "";
-  const res = await engineFetch(`/api/session${query}`, {
+  const params = new URLSearchParams();
+  if (opts?.directory) {
+    params.set("directory", opts.directory);
+    params.set("location[directory]", opts.directory);
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : "";
+  const res = await engineFetch(`/api/session${queryString}`, {
     method: "POST",
     headers: {
       ...(opts?.directory && { "x-arunaki-directory": opts.directory }),
@@ -57,7 +62,7 @@ export async function createSession(opts?: {
     body: JSON.stringify({
       ...(opts?.agent && { agent: opts.agent }),
       ...(modelPayload && { model: modelPayload }),
-      ...(opts?.directory && { location: { type: "directory", directory: opts.directory } }),
+      ...(opts?.directory && { location: { directory: opts.directory } }),
     }),
   });
   if (!res.ok) throw new Error(`createSession failed: ${res.status}`);

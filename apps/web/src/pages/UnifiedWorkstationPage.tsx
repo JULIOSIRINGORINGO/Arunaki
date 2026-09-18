@@ -11,7 +11,7 @@ import { useTabs } from "../components/workstation/tabs/useTabs";
 import { useWorkstationChat } from "../components/workstation/chat/useWorkstationChat";
 import { WorkspaceFile } from "../components/workstation/chat/types";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
-import { engineFetch } from "../lib/engine";
+import { engineFetch, getSession } from "../lib/engine";
 
 export function UnifiedWorkstationPage() {
   const location = useLocation();
@@ -50,10 +50,31 @@ export function UnifiedWorkstationPage() {
     if (initialFolder) {
       const folderChat = localStorage.getItem(`arunaki_active_chat_id_${initialFolder}`) || "";
       if (folderChat.startsWith("ses_")) return folderChat;
+      // CRITICAL ISOLATION: Never fall back to another folder's global chat when a specific folder is open!
+      return "";
     }
     const globalChat = localStorage.getItem("arunaki_active_chat_id") || "";
     return globalChat.startsWith("ses_") ? globalChat : "";
   });
+
+  // Folder-Session Isolation Guard: verify that active session belongs to activeFolder
+  useEffect(() => {
+    if (!activeChatId || !activeFolder) return;
+    let isCancelled = false;
+    getSession(activeChatId).then((sess) => {
+      if (isCancelled) return;
+      const sessDir = (sess?.directory || (sess as any)?.location?.directory || "").toLowerCase().replace(/\\/g, "/");
+      const curDir = activeFolder.toLowerCase().replace(/\\/g, "/");
+      if (sessDir && curDir && sessDir !== curDir) {
+        console.warn(`[UnifiedWorkstationPage] Isolation mismatch: Session ${activeChatId} (${sessDir}) does not belong to active folder (${curDir}). Resetting.`);
+        setActiveChatId("");
+        localStorage.removeItem("arunaki_active_chat_id");
+      }
+    }).catch(() => {});
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeChatId, activeFolder]);
 
   const isUpdatingUrlFromStateRef = useRef(false);
 

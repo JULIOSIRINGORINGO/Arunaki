@@ -3,6 +3,7 @@ export interface ChatSession {
   title: string;
   createdAt: string;
   updatedAt?: string;
+  directory?: string;
 }
 
 export interface SessionGroup {

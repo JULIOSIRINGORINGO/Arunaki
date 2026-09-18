@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { MessageSquare, Clock } from "lucide-react";
+import { MessageSquare, Clock, Folder } from "lucide-react";
 import { ChatSession } from "./historyUtils";
 
 interface HistorySessionItemProps {
@@ -20,6 +20,10 @@ export const HistorySessionItem = memo(function HistorySessionItem({
       })
     : "";
 
+  const folderName = session.directory
+    ? session.directory.replace(/\\/g, "/").split("/").filter(Boolean).pop() || session.directory
+    : "";
+
   return (
     <div
       onClick={onClick}
@@ -36,10 +40,21 @@ export const HistorySessionItem = memo(function HistorySessionItem({
           <p className="text-xs font-semibold text-[var(--text-primary)] truncate">
             {session.title || "Untitled Conversation"}
           </p>
-          <p className="text-[11px] text-[var(--text-dim)] flex items-center gap-1 mt-0.5">
-            <Clock className="w-3 h-3" strokeWidth={1.5} />
-            <span>{dateStr || "Just now"}</span>
-          </p>
+          <div className="text-[11px] text-[var(--text-dim)] flex items-center gap-1.5 mt-0.5">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" strokeWidth={1.5} />
+              <span>{dateStr || "Just now"}</span>
+            </span>
+            {folderName && (
+              <>
+                <span>•</span>
+                <span className="flex items-center gap-1 text-[var(--text-muted)] font-medium" title={session.directory}>
+                  <Folder className="w-3 h-3" strokeWidth={1.5} />
+                  <span>{folderName}</span>
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
