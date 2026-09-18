@@ -52,16 +52,9 @@ export function AppLayout() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    const interval = setInterval(() => {
-      if (typeof navigator !== "undefined") {
-        setIsOnline(navigator.onLine);
-      }
-    }, 5000);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      clearInterval(interval);
     };
   }, []);
 

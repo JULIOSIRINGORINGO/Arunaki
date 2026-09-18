@@ -3130,6 +3130,24 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 TypeScript errors.
   - `npm run build -w apps/web`: ✅ 0 errors (built in 27.81s).
 
+---
+
+### Phase 102: Global Workstation UI Lightweight Hardening ✅ DONE
+- [x] **Optimasi Chat Markdown & Data Table Rendering (`ChatMessageContent.tsx`)**:
+  - Meng-hoist objek `MARKDOWN_COMPONENTS` dan `CELL_MARKDOWN_COMPONENTS` ke scope modul statis, mencegah invalidasi cache AST parser `react-markdown` pada setiap render.
+  - Menambahkan fast-path untuk cell tabel biasa (angka/teks tanpa sintaks markdown) agar langsung di-render tanpa memuat instance React-Markdown.
+- [x] **Memoized File Transform pada Explorer (`WorkstationLeftExplorer.tsx`)**:
+  - Memasang `useMemo` pada pemetaan `apiFiles` dari `workspaceFiles`.
+- [x] **Memoization Top Navigation Menu (`TopMenuBar.tsx`)**:
+  - Membungkus `TopMenuBar` dengan `React.memo` agar terisolasi dari pergantian layout/state di `AppLayout`.
+- [x] **Eliminasi Poller Interval Jaringan (`AppLayout.tsx`)**:
+  - Menghapus timer 5 detik `setInterval` pengecekan `navigator.onLine` yang membebani event loop dan beralih ke native browser events (`online`, `offline`).
+- [x] **Isolasi Re-render Antar-Panel (`UnifiedWorkstationPage.tsx`)**:
+  - Mengisolasi semua callback panel dengan `useCallback` agar interaksi pada Explorer/Chat tidak memicu cascade re-render ke panel saudaranya.
+- [x] **Build & Verification**:
+  - `npm run typecheck`: ✅ 0 TypeScript errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (built in 11.46s).
+
 
 
 

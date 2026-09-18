@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileMenu,
@@ -17,7 +17,7 @@ interface TopMenuBarProps {
   onCloseFolder: () => void;
 }
 
-export function TopMenuBar({
+export const TopMenuBar = memo(function TopMenuBar({
   activeFolder,
   onOpenFolder,
   onCloseFolder,
@@ -163,4 +163,4 @@ export function TopMenuBar({
       />
     </>
   );
-}
+});

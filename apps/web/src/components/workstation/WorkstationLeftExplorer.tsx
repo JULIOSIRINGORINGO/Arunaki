@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState, useMemo, memo } from "react";
 import { Folder, FolderX, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import FileTree from "../workspace/FileTree";
 import { CanvasItem, WorkspaceFile, Workspace } from "./explorer/types";
@@ -81,12 +81,16 @@ function WorkstationLeftExplorerComponent({
   }
 
   const hasNative = nativeTree.length > 0;
-  const apiFiles = workspaceFiles.map((f) => ({
-    id: f.id,
-    name: f.name,
-    type: f.type,
-    size: f.size,
-  }));
+  const apiFiles = useMemo(
+    () =>
+      workspaceFiles.map((f) => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        size: f.size,
+      })),
+    [workspaceFiles]
+  );
 
   return (
     <aside

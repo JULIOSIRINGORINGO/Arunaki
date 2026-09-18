@@ -85,6 +85,63 @@ export function parseContentBlocks(rawContent: string): ContentBlock[] {
   return blocks.length > 0 ? blocks : [{ type: "text", content }];
 }
 
+const MARKDOWN_COMPONENTS = {
+  p: ({ children }: any) => (
+    <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">
+      {children}
+    </p>
+  ),
+  hr: () => <hr className="my-2.5 border-t border-[var(--border-color)] w-full" />,
+  strong: ({ children }: any) => (
+    <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
+  ),
+  ul: ({ children }: any) => (
+    <ul className="list-disc ml-4 my-1 space-y-1 break-words [word-break:break-word]">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: any) => (
+    <ol className="list-decimal ml-4 my-1 space-y-1 break-words [word-break:break-word]">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: any) => (
+    <li className="leading-snug break-words [word-break:break-word]">{children}</li>
+  ),
+  code: ({ children }: any) => (
+    <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
+      {children}
+    </code>
+  ),
+  pre: ({ children }: any) => (
+    <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto max-w-full my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
+      {children}
+    </pre>
+  ),
+};
+
+const CELL_MARKDOWN_COMPONENTS = {
+  p: ({ children }: any) => <>{children}</>,
+  strong: ({ children }: any) => (
+    <strong className="font-semibold text-[var(--text-primary)]">
+      {children}
+    </strong>
+  ),
+  code: ({ children }: any) => (
+    <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
+      {children}
+    </code>
+  ),
+};
+
+function renderMarkdownCell(text: string) {
+  // Fast path: plain text without markdown syntax skips mounting React-Markdown completely
+  if (!text.includes("*") && !text.includes("`") && !text.includes("_") && !text.includes("[")) {
+    return text;
+  }
+  return <Markdown components={CELL_MARKDOWN_COMPONENTS}>{text}</Markdown>;
+}
+
 export const ChatMessageContent = memo(function ChatMessageContent({
   content,
 }: {
@@ -137,23 +194,7 @@ export const ChatMessageContent = memo(function ChatMessageContent({
                           key={hIdx}
                           className="px-3 py-2 font-semibold text-[var(--text-primary)] border-r last:border-r-0 border-[var(--border-color)] text-[11px] tracking-wide whitespace-nowrap"
                         >
-                          <Markdown
-                            components={{
-                              p: ({ children }) => <>{children}</>,
-                              strong: ({ children }) => (
-                                <strong className="font-semibold text-[var(--text-primary)]">
-                                  {children}
-                                </strong>
-                              ),
-                              code: ({ children }) => (
-                                <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
-                                  {children}
-                                </code>
-                              ),
-                            }}
-                          >
-                            {h}
-                          </Markdown>
+                          {renderMarkdownCell(h)}
                         </th>
                       ))}
                     </tr>
@@ -176,23 +217,7 @@ export const ChatMessageContent = memo(function ChatMessageContent({
                               key={cIdx}
                               className="px-3 py-1.5 border-r last:border-r-0 border-[var(--border-color)] text-xs font-normal"
                             >
-                              <Markdown
-                                components={{
-                                  p: ({ children }) => <>{children}</>,
-                                  strong: ({ children }) => (
-                                    <strong className="font-semibold text-[var(--text-primary)]">
-                                      {children}
-                                    </strong>
-                                  ),
-                                  code: ({ children }) => (
-                                    <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
-                                      {children}
-                                    </code>
-                                  ),
-                                }}
-                              >
-                                {cell}
-                              </Markdown>
+                              {renderMarkdownCell(cell)}
                             </td>
                           ))}
                         </tr>
@@ -206,43 +231,7 @@ export const ChatMessageContent = memo(function ChatMessageContent({
         }
 
         return (
-          <Markdown
-            key={bIdx}
-            components={{
-              p: ({ children }) => (
-                <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">
-                  {children}
-                </p>
-              ),
-              hr: () => <hr className="my-2.5 border-t border-[var(--border-color)] w-full" />,
-              strong: ({ children }) => (
-                <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>
-              ),
-              ul: ({ children }) => (
-                <ul className="list-disc ml-4 my-1 space-y-1 break-words [word-break:break-word]">
-                  {children}
-                </ul>
-              ),
-              ol: ({ children }) => (
-                <ol className="list-decimal ml-4 my-1 space-y-1 break-words [word-break:break-word]">
-                  {children}
-                </ol>
-              ),
-              li: ({ children }) => (
-                <li className="leading-snug break-words [word-break:break-word]">{children}</li>
-              ),
-              code: ({ children }) => (
-                <code className="bg-[var(--bg-panel)] text-[var(--text-primary)] px-1.5 py-0.5 rounded font-mono text-[11px] border border-[var(--border-color)] break-words [word-break:break-word]">
-                  {children}
-                </code>
-              ),
-              pre: ({ children }) => (
-                <pre className="bg-[var(--bg-panel)] p-2.5 rounded-lg overflow-x-auto max-w-full my-2 font-mono text-[11px] border border-[var(--border-color)] text-[var(--text-primary)]">
-                  {children}
-                </pre>
-              ),
-            }}
-          >
+          <Markdown key={bIdx} components={MARKDOWN_COMPONENTS}>
             {block.content}
           </Markdown>
         );

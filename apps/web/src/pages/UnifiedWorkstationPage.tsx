@@ -278,6 +278,26 @@ export function UnifiedWorkstationPage() {
     []
   );
 
+  const handleCloseLeft = useCallback(() => setLeftCollapsed(true), []);
+  const handleToggleLeft = useCallback(() => setLeftCollapsed((prev) => !prev), []);
+  const handleToggleRight = useCallback(() => setRightCollapsed((prev) => !prev), []);
+  const handleOpenFolderModal = useCallback(() => setShowFolderModal(true), []);
+  const handleCloseFolderModal = useCallback(() => setShowFolderModal(false), []);
+  const handleOpenSearchModal = useCallback(() => setShowSearchSectionModal(true), []);
+  const handleCloseSearchModal = useCallback(() => setShowSearchSectionModal(false), []);
+  const handleCloseFolderAction = useCallback(() => {
+    setActiveFolder("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("folder");
+      return next;
+    }, { replace: true });
+    toast.info("Folder closed. Agent is now in sandbox mode.");
+  }, [setSearchParams]);
+  const handleSelectSessionAction = useCallback((chatId: string) => {
+    setActiveChatId(chatId);
+  }, []);
+
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const chatRef = useRef(chat);
@@ -352,21 +372,13 @@ export function UnifiedWorkstationPage() {
       >
         <WorkstationLeftExplorer
           collapsed={leftCollapsed}
-          onClose={() => setLeftCollapsed(true)}
-          onToggle={() => setLeftCollapsed((prev) => !prev)}
+          onClose={handleCloseLeft}
+          onToggle={handleToggleLeft}
           activeWorkspace={activeWorkspace}
           workspaceFiles={workspaceFiles}
           onOpenFileTab={tabs.handleOpenFileTab}
-          onOpenFolderModal={() => setShowFolderModal(true)}
-          onCloseFolder={() => {
-            setActiveFolder("");
-            setSearchParams((prev) => {
-              const next = new URLSearchParams(prev);
-              next.delete("folder");
-              return next;
-            }, { replace: true });
-            toast.info("Folder closed. Agent is now in sandbox mode.");
-          }}
+          onOpenFolderModal={handleOpenFolderModal}
+          onCloseFolder={handleCloseFolderAction}
           width="var(--left-panel-width)"
           onNativeFilesChange={setNativeFileNames}
           recentCanvases={tabs.recentCanvases}
@@ -401,7 +413,7 @@ export function UnifiedWorkstationPage() {
           <WorkstationRightChat
             activeChatId={activeChatId}
             collapsed={rightCollapsed}
-            onClose={() => setRightCollapsed(!rightCollapsed)}
+            onClose={handleToggleRight}
             chatMessages={chat.chatMessages}
             optimisticMessages={chat.optimisticMessages}
             liveStatus={chat.liveStatus}
@@ -413,7 +425,7 @@ export function UnifiedWorkstationPage() {
             files={mentionFiles}
             queuedPrompts={chat.queuedPrompts}
             onRemoveQueuedPrompt={chat.handleRemoveQueuedPrompt}
-            onSearchSection={() => setShowSearchSectionModal(true)}
+            onSearchSection={handleOpenSearchModal}
             reasoningEffort={chat.reasoningEffort}
             setReasoningEffort={chat.setReasoningEffort}
             onNewChat={chat.handleNewChat}
@@ -425,17 +437,15 @@ export function UnifiedWorkstationPage() {
 
       <ConnectFolderModal
         isOpen={showFolderModal}
-        onClose={() => setShowFolderModal(false)}
+        onClose={handleCloseFolderModal}
         onOpenFolder={openFolder}
       />
 
       <SearchSectionModal
         isOpen={showSearchSectionModal}
         activeFolder={activeFolder}
-        onClose={() => setShowSearchSectionModal(false)}
-        onSelectSession={(chatId) => {
-          setActiveChatId(chatId);
-        }}
+        onClose={handleCloseSearchModal}
+        onSelectSession={handleSelectSessionAction}
       />
     </div>
   );
