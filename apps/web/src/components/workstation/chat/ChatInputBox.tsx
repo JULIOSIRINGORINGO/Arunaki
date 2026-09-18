@@ -1,6 +1,5 @@
 import {
   useRef,
-  useLayoutEffect,
   useState,
   useMemo,
   useEffect,
@@ -93,21 +92,27 @@ export const ChatInputBox = memo(function ChatInputBox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     if (!localPrompt) {
       if (el.style.height !== "24px") el.style.height = "24px";
       return;
     }
-    // Fast path: single-line without linebreaks that hasn't overflowed
-    if (!localPrompt.includes("\n") && el.scrollHeight <= 28) {
+    // Zero-reflow fast path: single-line without linebreaks that hasn't wrapped
+    // Avoids accessing scrollHeight (which forces synchronous layout reflow) on every keystroke
+    if (!localPrompt.includes("\n") && localPrompt.length < 40) {
       if (el.style.height !== "24px") el.style.height = "24px";
       return;
     }
-    el.style.height = "auto";
-    const nextHeight = Math.min(Math.max(el.scrollHeight, 24), 160);
-    el.style.height = `${nextHeight}px`;
+    // Measure only when multiline or wrapping to eliminate layout thrashing
+    requestAnimationFrame(() => {
+      const target = textareaRef.current;
+      if (!target) return;
+      target.style.height = "auto";
+      const nextHeight = Math.min(Math.max(target.scrollHeight, 24), 160);
+      target.style.height = `${nextHeight}px`;
+    });
   }, [localPrompt]);
 
   const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
@@ -143,24 +148,32 @@ export const ChatInputBox = memo(function ChatInputBox({
   const handleInputChange = (val: string) => {
     setLocalPrompt(val);
 
-    const mentionMatch = val.match(/@(\w*)$/);
-    if (mentionMatch) {
-      setShowMentions(true);
-      setMentionQuery(mentionMatch[1] || "");
-      setMentionIndex(0);
-      if (showCommands) setShowCommands(false);
-      return;
-    } else if (showMentions) {
+    // Fast-path guard: only run regex if text contains '@'
+    if (val.includes("@")) {
+      const mentionMatch = val.match(/@(\w*)$/);
+      if (mentionMatch) {
+        setShowMentions(true);
+        setMentionQuery(mentionMatch[1] || "");
+        setMentionIndex(0);
+        if (showCommands) setShowCommands(false);
+        return;
+      }
+    }
+    if (showMentions) {
       setShowMentions(false);
     }
 
-    const commandMatch = val.match(/^\/([\w-]*)$/);
-    if (commandMatch) {
-      setShowCommands(true);
-      setCommandQuery(commandMatch[1] || "");
-      setSelectedCommandIndex(0);
-      return;
-    } else if (showCommands) {
+    // Fast-path guard: only run regex if text starts with '/'
+    if (val.startsWith("/")) {
+      const commandMatch = val.match(/^\/([\w-]*)$/);
+      if (commandMatch) {
+        setShowCommands(true);
+        setCommandQuery(commandMatch[1] || "");
+        setSelectedCommandIndex(0);
+        return;
+      }
+    }
+    if (showCommands) {
       setShowCommands(false);
     }
   };
@@ -337,7 +350,7 @@ export const ChatInputBox = memo(function ChatInputBox({
   };
 
   return (
-    <div className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-colors">
+    <div className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-[border-color] duration-150">
       {/* File Mentions Popup */}
       {showMentions && mentionResults.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
@@ -440,6 +453,7 @@ export const ChatInputBox = memo(function ChatInputBox({
         onPaste={handlePaste}
         spellCheck={false}
         autoComplete="off"
+        autoCorrect="off"
         autoCapitalize="off"
         placeholder="Ask anything, type @ to mention files, / for commands..."
         rows={1}

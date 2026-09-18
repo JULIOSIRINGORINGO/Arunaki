@@ -3113,6 +3113,23 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 TypeScript errors.
   - `npm run build -w apps/web`: ✅ 0 errors (Vite build 9.83s).
 
+---
+
+### Phase 101: Enable GPU Hardware Acceleration & Eliminate Textbox Layout Thrashing ✅ DONE
+- [x] **Re-enable Native GPU Hardware Acceleration (`apps/desktop/main.cjs`)**:
+  - Menghapus `app.disableHardwareAcceleration()` dan `app.commandLine.appendSwitch('disable-gpu-compositing')` yang sebelumnya membebani CPU dengan software rasterization 100%.
+  - Mengaktifkan `enable-gpu-rasterization` dan `enable-zero-copy` agar UI Electron langsung diproses oleh GPU (AMD Radeon Vega).
+  - Menambahkan `app.requestSingleInstanceLock()` dan listener `second-instance` agar tidak terjadi tabrakan lock disk cache.
+  - Menetapkan `backgroundThrottling: false` untuk mencegah stutter saat fokus berpindah.
+- [x] **Eliminasi Synchronous Layout Thrashing (`ChatInputBox.tsx`)**:
+  - Mengganti `useLayoutEffect` dengan `useEffect` + `requestAnimationFrame` non-blocking.
+  - Memasang zero-reflow fast-path untuk teks 1 baris di bawah 40 karakter: langsung mengeset `height = 24px` tanpa membaca `el.scrollHeight` (0 forced reflow).
+  - Memasang fast guards `val.includes("@")` dan `val.startsWith("/")` untuk menghindari eksekusi regex pada kalimat biasa.
+  - Membatasi CSS transition wrapper ke `transition-[border-color]` dan menambahkan `autoCorrect="off"`.
+- [x] **Build & Verification**:
+  - `npm run typecheck`: ✅ 0 TypeScript errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (built in 27.81s).
+
 
 
 

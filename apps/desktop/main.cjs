@@ -4,9 +4,16 @@ const path = require('node:path');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 
-// Disable GPU hardware acceleration and GPU compositing to prevent white screen hang on Windows
-app.disableHardwareAcceleration();
-app.commandLine.appendSwitch('disable-gpu-compositing');
+// Single instance lock to prevent multi-process cache collisions and network service crashes
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+// Enable GPU hardware acceleration & zero-copy rasterization for smooth UI rendering
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
 
 // Windows requires explicit AppUserModelId for desktop notifications in Action Center
 if (process.platform === 'win32') {
@@ -108,7 +115,7 @@ function createWindow() {
       height: 35,
     },
     webPreferences: {
-      backgroundThrottling: true,
+      backgroundThrottling: false,
       spellcheck: false,
       contextIsolation: true,
       sandbox: false,
@@ -507,6 +514,13 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
