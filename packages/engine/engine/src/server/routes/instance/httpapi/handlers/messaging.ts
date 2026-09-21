@@ -26,10 +26,18 @@ export const messagingHandlers = HttpApiBuilder.group(InstanceHttpApi, "messagin
       return yield* Effect.promise(() => telegramService.testToken(ctx.payload.botToken));
     });
 
+    const setActiveSession = Effect.fn("MessagingHttpApi.setActiveSession")(function* (ctx: {
+      payload: { sessionID: string; directory: string };
+    }) {
+      telegramService.setActiveSession(ctx.payload.directory, ctx.payload.sessionID);
+      return true;
+    });
+
     return handlers
       .handle("getConfig", getConfig)
       .handle("updateConfig", updateConfig)
       .handle("getStatus", getStatus)
-      .handle("testConnection", testConnection);
+      .handle("testConnection", testConnection)
+      .handle("setActiveSession", setActiveSession);
   })
 );

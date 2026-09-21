@@ -146,6 +146,7 @@ export class TelegramService {
   private running = false;
   private abortController: AbortController | null = null;
   private chatSessionMap = new Map<number, string>();
+  private activeFolderSessionMap = new Map<string, string>();
   private status: TelegramStatus = {
     connected: false,
     botUsername: null,
@@ -161,6 +162,12 @@ export class TelegramService {
       TelegramService.instance = new TelegramService();
     }
     return TelegramService.instance;
+  }
+
+  public setActiveSession(directory: string, sessionID: string): void {
+    if (!directory || !sessionID) return;
+    const clean = normalizeFolderPath(directory);
+    this.activeFolderSessionMap.set(clean, sessionID);
   }
 
   private getConfigFilePath(): string {
@@ -523,7 +530,12 @@ export class TelegramService {
     const targetDir = normalizeFolderPath(rawTargetDir);
     const authHeaders = ServerAuth.headers() || {};
 
-    let sessionID = this.chatSessionMap.get(chatId);
+    // 1. Session Discovery: Prefer active desktop workstation session for this folder
+    let sessionID = this.activeFolderSessionMap.get(targetDir);
+
+    if (!sessionID) {
+      sessionID = this.chatSessionMap.get(chatId);
+    }
 
     // Verify cached session is still active and valid in the engine
     if (sessionID) {
@@ -541,7 +553,7 @@ export class TelegramService {
       }
     }
 
-    // If no session bound to this chat, connect to the active / most recent session of targetDir
+    // If still no session, connect to the most recently active session of targetDir
     if (!sessionID) {
       try {
         const listRes = await fetch(`${serverUrl}/api/session?directory=${encodeURIComponent(targetDir)}&limit=1`, {
@@ -560,7 +572,7 @@ export class TelegramService {
       }
     }
 
-    // If still no session exists (e.g. brand new project), create a new one
+    // If still no session exists (brand new project folder), create a new one
     if (!sessionID) {
       const snippet = promptText.length > 30 ? promptText.slice(0, 30) + "..." : promptText;
       const createRes = await fetch(`${serverUrl}/api/session?directory=${encodeURIComponent(targetDir)}`, {
@@ -590,7 +602,8 @@ export class TelegramService {
       }
     }
 
-    // Send prompt to session
+    // 2. Send prompt to session (engine route is POST /api/session/:sessionID/prompt)
+    const promptStartTime = Date.now();
     let promptRes = await fetch(
       `${serverUrl}/api/session/${sessionID}/prompt?directory=${encodeURIComponent(targetDir)}`,
       {
@@ -609,6 +622,7 @@ export class TelegramService {
     // If session was invalid / 404, retry once with a brand new session
     if (promptRes.status === 404) {
       this.chatSessionMap.delete(chatId);
+      this.activeFolderSessionMap.delete(targetDir);
       return this.executeArunakiPrompt(config, chatId, promptText, senderName);
     }
 
@@ -617,38 +631,60 @@ export class TelegramService {
       throw new Error(`Session execution error: ${promptRes.status} ${errBody}`);
     }
 
-    const promptJson = await promptRes.json();
-    const messageData = promptJson?.data || promptJson;
+    // 3. Poll for Assistant Reply
+    // Arunaki v2 executes the agent loop asynchronously. Wait for completion up to 90 seconds.
+    let reply = "";
+    const pollIntervalMs = 1200;
+    const maxPollAttempts = 75; // ~90 seconds
+    let typingTick = 0;
 
-    // Extract text responses from content or parts
-    let reply = extractAssistantReply(messageData);
+    for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      typingTick++;
+      if (typingTick % 3 === 0) {
+        this.sendChatAction(config.telegram.botToken, chatId, "typing").catch(() => {});
+      }
 
-    // Fallback: If reply is still empty, fetch the latest assistant message directly from the session
-    if (!reply) {
       try {
-        await new Promise((r) => setTimeout(r, 600));
         const msgsRes = await fetch(
-          `${serverUrl}/api/session/${sessionID}/message?limit=6&directory=${encodeURIComponent(targetDir)}`,
+          `${serverUrl}/api/session/${sessionID}/message?limit=10&directory=${encodeURIComponent(targetDir)}`,
           {
             headers: { "x-arunaki-directory": targetDir, ...authHeaders },
           }
         );
-        if (msgsRes.ok) {
-          const msgsJson = await msgsRes.json();
-          const msgs = msgsJson?.data || msgsJson;
-          if (Array.isArray(msgs)) {
-            const lastAssistant = msgs.find(
-              (m: any) => m.type === "assistant" || m.role === "assistant" || m.info?.role === "assistant"
-            );
-            if (lastAssistant) {
-              reply = extractAssistantReply(lastAssistant);
-            }
+        if (!msgsRes.ok) continue;
+
+        const msgsJson = await msgsRes.json();
+        const msgs: any[] = msgsJson?.data || msgsJson;
+        if (!Array.isArray(msgs) || msgs.length === 0) continue;
+
+        // Find the newest assistant message created after our prompt
+        const newest = msgs[0];
+        if (newest && (newest.type === "assistant" || newest.role === "assistant")) {
+          const assistantReply = extractAssistantReply(newest);
+          if (assistantReply && assistantReply.trim().length > 0) {
+            reply = assistantReply;
+            break;
           }
         }
       } catch (err) {
-        console.warn("[TelegramGateway] Failed to fetch assistant fallback message:", err);
+        console.warn("[TelegramGateway] Polling error:", err);
       }
     }
+
+    // Auto-update generic session title to clean snippet if needed
+    try {
+      const snippet = promptText.length > 35 ? promptText.slice(0, 35) + "..." : promptText;
+      fetch(`${serverUrl}/api/session/${sessionID}?directory=${encodeURIComponent(targetDir)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-arunaki-directory": targetDir,
+          ...authHeaders,
+        },
+        body: JSON.stringify({ title: `Telegram: ${snippet}` }),
+      }).catch(() => {});
+    } catch {}
 
     if (!reply) {
       reply = "✅ Permintaan telah diproses oleh Arunaki di komputer Anda.";

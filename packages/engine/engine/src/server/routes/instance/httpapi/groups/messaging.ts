@@ -39,6 +39,11 @@ export const TestTelegramResult = Schema.Struct({
   error: Schema.optional(Schema.String),
 }).annotate({ identifier: "TestTelegramResult" });
 
+export const ActiveSessionPayload = Schema.Struct({
+  sessionID: Schema.String,
+  directory: Schema.String,
+}).annotate({ identifier: "ActiveSessionPayload" });
+
 const root = "/messaging";
 
 export const MessagingApi = HttpApi.make("messaging")
@@ -90,6 +95,19 @@ export const MessagingApi = HttpApi.make("messaging")
             identifier: "messaging.testConnection",
             summary: "Test bot connection",
             description: "Verify a Telegram bot token against the Telegram API without saving.",
+          })
+        ),
+
+        HttpApiEndpoint.post("setActiveSession", `${root}/active-session`, {
+          query: WorkspaceRoutingQuery,
+          payload: ActiveSessionPayload,
+          success: described(Schema.Boolean, "Active session set"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "messaging.setActiveSession",
+            summary: "Set active workstation session",
+            description: "Inform messaging gateways of the active workstation session for a directory.",
           })
         )
       )

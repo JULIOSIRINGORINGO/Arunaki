@@ -142,6 +142,11 @@ export function UnifiedWorkstationPage() {
       localStorage.setItem("arunaki_active_chat_id", activeChatId);
       if (activeFolder) {
         localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, activeChatId);
+        // Sync active session with messaging gateway so incoming Telegram prompts route directly into this desktop chat
+        engineFetch("/api/messaging/active-session", {
+          method: "POST",
+          body: JSON.stringify({ sessionID: activeChatId, directory: activeFolder }),
+        }).catch(() => {});
       }
     } else {
       localStorage.removeItem("arunaki_active_chat_id");
