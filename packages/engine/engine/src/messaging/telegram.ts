@@ -107,37 +107,33 @@ export function normalizeFolderPath(dir: string): string {
 }
 
 /**
- * Robustly extracts assistant response text and tool execution summary from engine message.
+ * Robustly extracts assistant response text from engine message.
+ * Returns only genuine LLM text response. Never returns raw tool names or dummy progress strings.
  */
 export function extractAssistantReply(messageData: any): string {
   if (!messageData) return "";
   const content = messageData.content || messageData.parts || [];
   const texts: string[] = [];
-  const tools: string[] = [];
 
   if (Array.isArray(content)) {
     for (const item of content) {
-      if (item.type === "text" && item.text && typeof item.text === "string") {
-        texts.push(item.text.trim());
-      } else if (item.type === "tool" || item.name) {
-        const name = item.name || item.tool || "action";
-        const file = item.state?.input?.path || item.state?.input?.filepath || "";
-        tools.push(file ? `${name} (${file})` : name);
+      if (item && item.type === "text" && item.text && typeof item.text === "string") {
+        const t = item.text.trim();
+        if (t) texts.push(t);
       }
     }
   } else if (typeof content === "string" && content.trim()) {
     texts.push(content.trim());
   }
 
-  if (texts.length > 0) {
-    return texts.join("\n\n");
+  if (typeof messageData.text === "string" && messageData.text.trim()) {
+    const raw = messageData.text.trim();
+    if (!texts.includes(raw)) {
+      texts.push(raw);
+    }
   }
 
-  if (tools.length > 0) {
-    return "✅ Berhasil memproses dokumen:\n" + tools.map((t) => `• ${t}`).join("\n");
-  }
-
-  return "";
+  return texts.join("\n\n").trim();
 }
 
 export class TelegramService {
@@ -637,15 +633,31 @@ export class TelegramService {
     const pollIntervalMs = 1200;
     const maxPollAttempts = 75; // ~90 seconds
     let typingTick = 0;
+    let hasSeenSessionActive = false;
 
     for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollIntervalMs));
       typingTick++;
-      if (typingTick % 3 === 0) {
+      if (typingTick % 2 === 0) {
         this.sendChatAction(config.telegram.botToken, chatId, "typing").catch(() => {});
       }
 
       try {
+        // 1. Check if the engine session is actively executing in the agent loop
+        let isSessionBusy = false;
+        try {
+          const activeRes = await fetch(`${serverUrl}/api/session/active`, {
+            headers: authHeaders,
+          });
+          if (activeRes.ok) {
+            const activeJson = await activeRes.json();
+            const activeMap = activeJson?.data || activeJson || {};
+            isSessionBusy = Boolean(activeMap[sessionID]);
+            if (isSessionBusy) hasSeenSessionActive = true;
+          }
+        } catch {}
+
+        // 2. Fetch recent messages
         const msgsRes = await fetch(
           `${serverUrl}/api/session/${sessionID}/message?limit=10&directory=${encodeURIComponent(targetDir)}`,
           {
@@ -658,12 +670,50 @@ export class TelegramService {
         const msgs: any[] = msgsJson?.data || msgsJson;
         if (!Array.isArray(msgs) || msgs.length === 0) continue;
 
-        // Find the newest assistant message created after our prompt
+        // Find assistant messages created after our prompt
+        const turnAssistantMsgs = msgs.filter((m) => {
+          if (!m) return false;
+          const role = m.role || m.type;
+          if (role !== "assistant") return false;
+          const timeCreated = Number(m.time?.created ?? m.time_created ?? m.time?.start ?? 0);
+          return timeCreated >= promptStartTime - 3000;
+        });
+
+        // Extract assistant text
+        const assistantTexts: string[] = [];
+        for (const asstMsg of turnAssistantMsgs) {
+          const t = extractAssistantReply(asstMsg);
+          if (t && !assistantTexts.includes(t)) {
+            assistantTexts.push(t);
+          }
+        }
+
+        // If turnAssistantMsgs is empty due to clock skew, check newest message
+        if (assistantTexts.length === 0 && msgs.length > 0) {
+          const newest = msgs[0];
+          if (newest && (newest.role === "assistant" || newest.type === "assistant")) {
+            const t = extractAssistantReply(newest);
+            if (t) assistantTexts.push(t);
+          }
+        }
+
+        const combinedText = assistantTexts.join("\n\n").trim();
         const newest = msgs[0];
-        if (newest && (newest.type === "assistant" || newest.role === "assistant")) {
-          const assistantReply = extractAssistantReply(newest);
-          if (assistantReply && assistantReply.trim().length > 0) {
-            reply = assistantReply;
+        const isStopFinished =
+          newest &&
+          (newest.role === "assistant" || newest.type === "assistant") &&
+          newest.finish === "stop";
+
+        // ONLY finalize when we actually have the LLM text answer AND execution has finished!
+        if (combinedText.length > 0) {
+          if (!isSessionBusy || isStopFinished) {
+            reply = combinedText;
+            break;
+          }
+        } else if (hasSeenSessionActive && !isSessionBusy && attempt > 3) {
+          // Session was active and finished, check one more time if text appeared
+          if (combinedText.length > 0) {
+            reply = combinedText;
             break;
           }
         }
@@ -687,7 +737,7 @@ export class TelegramService {
     } catch {}
 
     if (!reply) {
-      reply = "✅ Permintaan telah diproses oleh Arunaki di komputer Anda.";
+      reply = "Permintaan selesai diproses.";
     }
 
     return reply;
