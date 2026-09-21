@@ -1,5 +1,5 @@
 import { useState, memo, type FormEvent } from "react";
-import { LogIn, LogOut, ShieldCheck, Mail, Camera, Check, Key } from "lucide-react";
+import { LogIn, LogOut, ShieldCheck, Mail, Camera, Check, Key, User } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE, apiFetch } from "../../lib/api";
 
@@ -76,7 +76,8 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h3 className="font-bold text-[var(--text-primary)] text-base">
+        <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+          <User className="w-4 h-4 text-[var(--text-primary)]" />
           User Account & License
         </h3>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">

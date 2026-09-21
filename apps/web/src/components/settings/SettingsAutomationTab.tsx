@@ -4,6 +4,7 @@ import {
   Layers,
   ShieldCheck,
   Bell,
+  Sliders,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
@@ -24,7 +25,8 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <h3 className="font-bold text-[var(--text-primary)] text-base">
+        <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
+          <Sliders className="w-4 h-4 text-[var(--text-primary)]" />
           Desktop Automation & OS Behavior
         </h3>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">

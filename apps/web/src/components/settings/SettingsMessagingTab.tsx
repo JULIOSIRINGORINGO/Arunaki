@@ -11,7 +11,6 @@ import {
   RefreshCw,
   HelpCircle,
   Send,
-  Sparkles,
   Info,
   BookOpen,
   Copy,
@@ -113,13 +112,13 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(id);
-    toast.success(`Disalin: ${text}`);
+    toast.success(`Copied to clipboard: ${text}`);
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
   const handleTestToken = async () => {
     if (!botToken.trim()) {
-      toast.error("Masukkan token Telegram Bot terlebih dahulu.");
+      toast.error("Please enter a Telegram Bot Token first.");
       return;
     }
 
@@ -137,17 +136,17 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
       if (res.ok && result?.success) {
         setTestResult(result);
         toast.success(
-          `Token valid! Terhubung ke @${result.botUsername || "Telegram Bot"}`
+          `Token verified! Connected to @${result.botUsername || "Telegram Bot"}`
         );
       } else {
         setTestResult({
           success: false,
-          error: result?.error || "Gagal memverifikasi bot token ke Telegram.",
+          error: result?.error || "Failed to verify bot token with Telegram.",
         });
-        toast.error(result?.error || "Bot token tidak valid.");
+        toast.error(result?.error || "Invalid bot token.");
       }
     } catch (err: any) {
-      const errorMsg = err?.message || "Gagal menghubungi layanan verifikasi.";
+      const errorMsg = err?.message || "Failed to connect to verification service.";
       setTestResult({ success: false, error: errorMsg });
       toast.error(errorMsg);
     } finally {
@@ -176,19 +175,19 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
 
       if (!res.ok) {
         const errorText = await res.text().catch(() => "");
-        throw new Error(`Gagal menyimpan: ${res.status} ${errorText}`);
+        throw new Error(`Failed to save: ${res.status} ${errorText}`);
       }
 
       toast.success(
         enabled
-          ? "Gateway Telegram tersimpan dan otomatis terhubung!"
-          : "Pengaturan gateway disimpan (status nonaktif)."
+          ? "Messaging gateway saved and connected."
+          : "Messaging gateway saved (inactive)."
       );
 
       // Refresh status after save
       setTimeout(fetchConfigAndStatus, 1000);
     } catch (err: any) {
-      toast.error(err?.message || "Gagal menyimpan konfigurasi.");
+      toast.error(err?.message || "Failed to save configuration.");
     } finally {
       setSaving(false);
     }
@@ -198,9 +197,9 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
     const active = localStorage.getItem("arunaki_active_folder");
     if (active) {
       setTargetFolder(active);
-      toast.info(`Target folder diatur ke: ${active}`);
+      toast.info(`Target folder set to: ${active}`);
     } else {
-      toast.error("Belum ada folder aktif yang terbuka di workspace.");
+      toast.error("No active folder currently loaded in workspace.");
     }
   };
 
@@ -213,12 +212,12 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             <MessageSquare className="w-4 h-4 text-[var(--text-primary)]" />
             Messaging Apps
           </h3>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-            Kendalikan Arunaki langsung dari Telegram di HP Anda. Kirim rekapan, forward pesan WhatsApp, atau catatan mentah ke bot Telegram Anda, dan Arunaki di laptop akan mengeksekusinya otomatis.
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
+            Control Arunaki remotely from Telegram. Forward WhatsApp messages, raw notes, or document tasks to your bot, and Arunaki executes them locally on this computer.
           </p>
         </div>
 
-        {/* Action buttons: Guide & Refresh */}
+        {/* Single Setup Guide Action Button & Refresh (Monochrome) */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
@@ -226,10 +225,10 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               setGuideStep(1);
               setShowGuideModal(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-hover)] text-[var(--text-primary)] hover:bg-[var(--border-strong)] text-xs font-semibold transition-all cursor-pointer shadow-xs"
           >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>📖 Panduan Pemula (3 Menit)</span>
+            <BookOpen className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <span>Setup Guide</span>
           </button>
 
           <button
@@ -237,48 +236,48 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             onClick={() => fetchConfigAndStatus()}
             disabled={loading}
             className="p-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all cursor-pointer"
-            title="Muat ulang status"
+            title="Refresh status"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
           </button>
         </div>
       </div>
 
-      {/* Main Telegram Gateway Card */}
+      {/* Main Telegram Gateway Card (Monochrome) */}
       <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-6 shadow-xs">
         {/* Top bar with Channel Info & Status */}
         <div className="flex items-center justify-between pb-4 border-b border-[var(--border-color)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] text-[var(--text-primary)]">
-              <Send className="w-5 h-5 text-sky-400" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-xl bg-[var(--bg-hover)] flex items-center justify-center border border-[var(--border-strong)] text-[var(--text-primary)]">
+              <Send className="w-4 h-4 text-[var(--text-muted)]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                  Telegram Bot Pribadi (BYOB)
+                <h4 className="text-xs font-bold text-[var(--text-primary)]">
+                  Telegram BYOB Gateway
                 </h4>
                 {/* Live Status Badge */}
                 {enabled ? (
                   status.connected ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Terhubung {status.botUsername ? `@${status.botUsername}` : ""}
+                      Connected {status.botUsername ? `@${status.botUsername}` : ""}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      {status.lastError ? "Perlu Pengecekan" : "Menghubungkan..."}
+                      {status.lastError ? "Connection Warning" : "Connecting..."}
                     </span>
                   )
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-color)]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
-                    Nonaktif
+                    Inactive
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                Koneksi langsung dari PC ke Telegram. 100% aman, gratis, dan tidak butuh sewa server VPS.
+                Direct outward long-polling connection from your PC to Telegram. Free, private, and zero VPS hosting required.
               </p>
             </div>
           </div>
@@ -291,7 +290,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border border-[var(--border-strong)] items-center p-0.5 transition-colors duration-200 ease-in-out focus:outline-none",
               enabled ? "bg-[var(--text-primary)]" : "bg-[var(--bg-panel)]"
             )}
-            title={enabled ? "Nonaktifkan Gateway Telegram" : "Aktifkan Gateway Telegram"}
+            title={enabled ? "Disable Telegram Gateway" : "Enable Telegram Gateway"}
           >
             <span
               className={cn(
@@ -307,7 +306,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
           <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2.5">
             <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Catatan Koneksi Gateway</p>
+              <p className="font-semibold">Gateway Notice</p>
               <p className="text-[11px] opacity-90 mt-0.5 font-mono">{status.lastError}</p>
             </div>
           </div>
@@ -320,7 +319,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                Token Bot Telegram
+                Telegram Bot Token
               </label>
               <button
                 type="button"
@@ -328,10 +327,10 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                   setGuideStep(1);
                   setShowGuideModal(true);
                 }}
-                className="text-[11px] text-sky-400 hover:underline cursor-pointer flex items-center gap-1"
+                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline cursor-pointer flex items-center gap-1"
               >
                 <HelpCircle className="w-3 h-3" />
-                Belum punya token? Lihat caranya
+                Need a token? View guide
               </button>
             </div>
             <div className="flex gap-2">
@@ -343,7 +342,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                     setBotToken(e.target.value);
                     setTestResult(null);
                   }}
-                  placeholder="Contoh: 1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                  placeholder="e.g. 1234567890:ABCdefGhIJKlmNoPQRsTUVwxyZ"
                   className="w-full px-3.5 py-2 pr-10 text-xs font-mono rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
                 />
                 <button
@@ -364,7 +363,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                 {testing ? (
                   <>
                     <RefreshCw className="w-3 h-3 animate-spin" />
-                    Memeriksa...
+                    Testing...
                   </>
                 ) : (
                   "Test Token"
@@ -386,13 +385,13 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                     <span>
-                      Token valid! Terhubung ke <b>@{testResult.botUsername}</b> ({testResult.botFirstName}).
+                      Token is valid! Connected to <b>@{testResult.botUsername}</b> ({testResult.botFirstName}).
                     </span>
                   </>
                 ) : (
                   <>
                     <XCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{testResult.error || "Gagal memverifikasi token."}</span>
+                    <span>{testResult.error || "Failed to verify token."}</span>
                   </>
                 )}
               </div>
@@ -404,7 +403,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                ID Pengguna Telegram yang Diizinkan (Keamanan)
+                Allowed Sender Whitelist (Security)
               </label>
               <button
                 type="button"
@@ -412,22 +411,22 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                   setGuideStep(3);
                   setShowGuideModal(true);
                 }}
-                className="text-[11px] text-sky-400 hover:underline cursor-pointer flex items-center gap-1"
+                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline cursor-pointer flex items-center gap-1"
               >
                 <HelpCircle className="w-3 h-3" />
-                Cara cek ID Telegram saya
+                How to check my Telegram ID
               </button>
             </div>
             <input
               type="text"
               value={allowedUserId}
               onChange={(e) => setAllowedUserId(e.target.value)}
-              placeholder="Contoh: 123456789, @juliosiringo (atau * untuk semua)"
+              placeholder="e.g. 123456789, @username (or * for all)"
               className="w-full px-3.5 py-2 text-xs font-mono rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
             />
             <p className="text-[11px] text-[var(--text-muted)] flex items-center gap-1 leading-relaxed">
-              <Info className="w-3 h-3 shrink-0 text-sky-400" />
-              Mencegah orang asing mengendalikan PC Anda. Hanya akun Telegram di daftar ini yang direspon oleh Arunaki.
+              <Info className="w-3 h-3 shrink-0 text-[var(--text-muted)]" />
+              Protects your computer. Only Telegram accounts registered in this whitelist can execute document instructions.
             </p>
           </div>
 
@@ -436,25 +435,25 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                 <Folder className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                Folder Proyek Tujuan di Komputer
+                Target Project Folder
               </label>
               <button
                 type="button"
                 onClick={handleUseCurrentFolder}
-                className="text-[11px] text-sky-400 hover:underline cursor-pointer font-medium"
+                className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline cursor-pointer font-medium"
               >
-                Gunakan Folder yang Sedang Aktif
+                Use Active Workspace Folder
               </button>
             </div>
             <input
               type="text"
               value={targetFolder}
               onChange={(e) => setTargetFolder(e.target.value)}
-              placeholder="Contoh: E:\JS\Arunika atau C:\Users\Nama\Documents"
+              placeholder="e.g. E:\JS\Arunika or C:\Users\Name\Documents"
               className="w-full px-3.5 py-2 text-xs font-mono rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--text-primary)] transition-colors"
             />
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-              Folder tempat Arunaki akan membaca, membuat, dan mengedit berkas (Excel, Word, catatan) saat menerima perintah dari Telegram.
+              The directory on this computer where Arunaki will read, modify, and create document files when receiving instructions from Telegram.
             </p>
           </div>
 
@@ -463,70 +462,37 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer flex items-center gap-2 shadow-xs"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer flex items-center gap-1.5 shadow-xs"
             >
               {saving ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Menyimpan Pengaturan...
+                  Saving...
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Simpan & Hubungkan Gateway
-                </>
+                "Save Changes"
               )}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Clickable Banner to Open Setup Guide Popup */}
-      <div
-        onClick={() => {
-          setGuideStep(1);
-          setShowGuideModal(true);
-        }}
-        className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-sky-500/40 hover:bg-[var(--bg-hover)] transition-all cursor-pointer flex items-center justify-between group shadow-xs"
-      >
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center group-hover:scale-105 transition-transform border border-sky-500/20 shrink-0">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
-              Panduan Bergambar: Cara Setup Bot Telegram (4 Langkah Cepat)
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-semibold">
-                Mudah & Cepat
-              </span>
-            </h4>
-            <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-              Klik di sini untuk membuka panduan langkah demi langkah cara membuat bot gratis di @BotFather dan mengambil Token API.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-xs font-semibold text-sky-400 group-hover:translate-x-1 transition-transform shrink-0 pl-2">
-          <span>Buka Panduan</span>
-          <ChevronRight className="w-4 h-4" />
-        </div>
-      </div>
-
-      {/* Interactive Setup Wizard Modal (Popup Dokumentasi Ramah Pengguna Awam) */}
+      {/* Interactive Setup Wizard Modal (Monochrome) */}
       {showGuideModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="max-w-xl w-full bg-[var(--bg-panel)] rounded-2xl border border-[var(--border-strong)] shadow-2xl p-6 space-y-5 select-none relative animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-[var(--border-color)] pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
-                  <BookOpen className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)] flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-[var(--text-muted)]" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                    Panduan Cepat: Menghubungkan Telegram ke Arunaki
+                    Telegram Bot Setup Guide
                   </h4>
                   <p className="text-[11px] text-[var(--text-muted)]">
-                    Ikuti 3 langkah mudah ini (hanya butuh 2-3 menit sekali saja)
+                    Connect your Telegram bot in 4 simple steps (takes 2-3 minutes)
                   </p>
                 </div>
               </div>
@@ -543,10 +509,10 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
             {/* Stepper Tabs */}
             <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-app)] rounded-xl border border-[var(--border-color)]">
               {[
-                { step: 1, label: "1. Buat Bot" },
-                { step: 2, label: "2. Salin Token" },
-                { step: 3, label: "3. Cek ID Saya" },
-                { step: 4, label: "4. Selesai" },
+                { step: 1, label: "1. Create Bot" },
+                { step: 2, label: "2. Copy Token" },
+                { step: 3, label: "3. Whitelist ID" },
+                { step: 4, label: "4. Ready" },
               ].map((s) => (
                 <button
                   key={s.step}
@@ -569,39 +535,39 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 1 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-400">Langkah 1 dari 4</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 1 of 4</span>
                     <a
                       href="https://t.me/BotFather"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-sky-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline inline-flex items-center gap-1 font-semibold"
                     >
-                      Buka @BotFather di Telegram <ExternalLink className="w-3 h-3" />
+                      Open @BotFather on Telegram <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Buat Bot Baru di @BotFather
+                    Create a New Bot via @BotFather
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Buka aplikasi Telegram di HP/laptop Anda, cari bot resmi pembuat bot bernama{" "}
-                    <b>@BotFather</b> (atau klik link biru di atas).
+                    1. Open Telegram on your phone or desktop, and search for the official bot creator:{" "}
+                    <b className="text-[var(--text-primary)]">@BotFather</b> (or click the link above).
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Ketik perintah:{" "}
-                    <span className="inline-flex items-center gap-1 font-mono bg-[var(--bg-panel)] px-2 py-0.5 rounded text-sky-400">
+                    2. Send the command:{" "}
+                    <span className="inline-flex items-center gap-1 font-mono bg-[var(--bg-panel)] px-2 py-0.5 rounded text-[var(--text-primary)] border border-[var(--border-strong)]">
                       /newbot
                       <button
                         type="button"
                         onClick={() => handleCopy("/newbot", "newbot")}
                         className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                        title="Salin perintah"
+                        title="Copy command"
                       >
                         {copiedCode === "newbot" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       </button>
                     </span>
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Beri nama bebas (misal: <i>Asisten Dokumen Saya</i>), lalu beri username yang diakhiri kata <b>bot</b> (contoh: <code>budi_arunaki_bot</code>).
+                    3. Give your bot any display name (e.g. <i>My Document Assistant</i>), then enter a username ending in <b>bot</b> (e.g. <code>arunaki_work_bot</code>).
                   </p>
                 </div>
               )}
@@ -609,24 +575,24 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 2 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-400">Langkah 2 dari 4</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">Token Rahasia Bot</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 2 of 4</span>
+                    <span className="text-[10px] text-[var(--text-muted)]">API Token</span>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Salin Token API dari Balasan BotFather
+                    Copy the HTTP API Token
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Setelah memberi username bot, BotFather akan membalas pesan selamat beserta sebuah <b>HTTP API Token</b> yang panjang.
+                    After you specify a username, @BotFather will reply with your bot token:
                   </p>
                   <div className="p-3 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-strong)] font-mono text-[11px] text-[var(--text-muted)] space-y-1">
-                    <p className="text-[10px] text-emerald-400 font-sans font-semibold">Contoh pesan dari BotFather:</p>
+                    <p className="text-[10px] text-[var(--text-primary)] font-sans font-semibold">Example message from BotFather:</p>
                     <p className="text-[10px] opacity-75">Use this token to access the HTTP API:</p>
-                    <p className="text-amber-300 font-bold bg-amber-500/10 p-1 rounded">
+                    <p className="text-[var(--text-primary)] font-bold bg-[var(--bg-hover)] p-1 rounded border border-[var(--border-strong)]">
                       7821938210:AAEtvL2_xPQrstUVwXyZ1234
                     </p>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Salin teks token tersebut dan tempelkan ke kolom <b>Token Bot Telegram</b> di halaman pengaturan ini.
+                    Copy the entire token string and paste it into the <b>Telegram Bot Token</b> field on the settings page.
                   </p>
                 </div>
               )}
@@ -634,30 +600,30 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 3 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-400">Langkah 3 dari 4</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 3 of 4</span>
                     <a
                       href="https://t.me/userinfobot"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-sky-400 hover:underline inline-flex items-center gap-1 font-semibold"
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline inline-flex items-center gap-1 font-semibold"
                     >
-                      Buka @userinfobot di Telegram <ExternalLink className="w-3 h-3" />
+                      Open @userinfobot on Telegram <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Cek Angka ID Telegram Anda (Keamanan)
+                    Whitelist Your Telegram Account (Security)
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Untuk memastikan <b>hanya akun Telegram Anda</b> yang boleh menyuruh Arunaki mengolah dokumen di komputer:
+                    To make sure <b>only you</b> can control Arunaki on your PC:
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Buka <b>@userinfobot</b> di Telegram (klik link di atas).
+                    1. Open <b>@userinfobot</b> on Telegram (click the link above).
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Begitu Anda kirim pesan apa saja atau klik <code>/start</code>, bot tersebut akan membalas dengan angka ID Anda (contoh: <code>123456789</code>).
+                    2. Send any message or click <code>/start</code>. The bot will reply with your numeric User ID (e.g. <code>123456789</code>).
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Salin angka tersebut ke kolom <b>ID Pengguna Telegram yang Diizinkan</b>.
+                    3. Copy this number and paste it into the <b>Allowed Sender Whitelist</b> field.
                   </p>
                 </div>
               )}
@@ -665,27 +631,27 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 4 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-400">Langkah Terakhir</span>
-                    <span className="text-[10px] text-emerald-400 font-semibold">Siap Digunakan!</span>
+                    <span className="text-xs font-bold text-emerald-400">Final Step</span>
+                    <span className="text-[10px] text-emerald-400 font-semibold">Ready to Use!</span>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Simpan & Mulai Chat dari HP!
+                    Save & Start Messaging
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Pastikan tombol switch di atas berwarna aktif, lalu klik tombol <b>"Simpan & Hubungkan Gateway"</b>.
+                    1. Make sure the toggle switch is ON, then click <b>Save & Connect Gateway</b>.
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Buka bot baru yang Anda buat di Telegram di HP Anda, lalu ketik <code>/start</code>.
+                    2. Open your new bot on Telegram from your phone, and send <code>/start</code>.
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Sekarang Anda bisa langsung forward pesan WhatsApp atau mengetik:
+                    3. Forward any WhatsApp note or type a document instruction, such as:
                     <br />
-                    <span className="font-mono text-[11px] text-sky-400 bg-[var(--bg-panel)] px-2 py-1 rounded inline-block mt-1">
+                    <span className="font-mono text-[11px] text-[var(--text-primary)] bg-[var(--bg-panel)] px-2 py-1 rounded inline-block mt-1 border border-[var(--border-strong)]">
                       "rekap catatan penjualan ini ke file rekap.xlsx"
                     </span>
                   </p>
                   <p className="text-[11px] text-emerald-400 font-semibold">
-                    ✓ Arunaki di laptop Anda akan otomatis membuka file, menghitung, dan membalas laporannya ke HP Anda!
+                    ✓ Arunaki on your PC will automatically process the document and reply back to your phone.
                   </p>
                 </div>
               )}
@@ -698,7 +664,7 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                     onClick={() => setGuideStep(guideStep - 1)}
                     className="px-3 py-1.5 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-hover)] text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" /> Sebelumnya
+                    <ChevronLeft className="w-3.5 h-3.5" /> Previous
                   </button>
                 ) : (
                   <div />
@@ -710,15 +676,15 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                     onClick={() => setGuideStep(guideStep + 1)}
                     className="px-4 py-1.5 rounded-lg bg-[var(--text-primary)] text-[var(--bg-app)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1"
                   >
-                    Lanjut <ChevronRight className="w-3.5 h-3.5" />
+                    Next <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setShowGuideModal(false)}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-[var(--text-primary)] text-[var(--bg-app)] text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
                   >
-                    Selesai & Tutup Panduan
+                    Done & Close Guide
                   </button>
                 )}
               </div>
