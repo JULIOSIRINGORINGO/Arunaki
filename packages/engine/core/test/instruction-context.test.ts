@@ -248,7 +248,7 @@ describe("InstructionContext", () => {
       )
 
       expect(observed).toEqual({
-        targets: ["AGENTS.md"],
+        targets: [".arunaki/ARUNAKI.md", "ARUNAKI.md", "AGENTS.md"],
         start: FSUtil.resolve("/repo"),
         stop: FSUtil.resolve("/repo"),
       })
@@ -319,5 +319,49 @@ describe("InstructionContext", () => {
 
       expect(scanned).toBe(false)
     }),
+  )
+
+  it.live("loads .arunaki/ARUNAKI.md living memory into system context", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const project = path.join(tmp.path, "project")
+          const dotArunaki = path.join(project, ".arunaki")
+          const arunakiFile = path.join(dotArunaki, "ARUNAKI.md")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(dotArunaki, { recursive: true })
+            await fs.writeFile(
+              arunakiFile,
+              "# LOCAL WORKSPACE OPERATING RULES\n\n## User Preferences & Learned Corrections\n- Test Rule 1",
+            )
+          })
+
+          const load = SystemContextRegistry.Service.pipe(
+            Effect.flatMap((service) => service.load()),
+            Effect.provide(
+              instructionLayer({
+                config: path.join(tmp.path, "global"),
+                locationServiceLayer: Layer.succeed(
+                  Location.Service,
+                  Location.Service.of(
+                    location(
+                      { directory: AbsolutePath.make(project) },
+                      { projectDirectory: AbsolutePath.make(project) },
+                    ),
+                  ),
+                ),
+              }),
+            ),
+          )
+
+          const initialized = yield* SystemContext.initialize(yield* load)
+          expect(initialized.baseline).toContain("Test Rule 1")
+          expect(initialized.baseline).toContain("LOCAL WORKSPACE OPERATING RULES")
+        }),
+      ),
+    ),
   )
 })

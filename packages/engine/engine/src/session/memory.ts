@@ -62,15 +62,15 @@ function isSkipped(pathSegments: string[]): boolean {
 
 function extractExistingCorrections(doc?: string): string[] {
   if (!doc) return []
-  const matches = Array.from(
-    doc.matchAll(/## User Preferences & Learned Corrections[\s\S]*?### Learned by the Sentinel\s*\n([\s\S]*?)(?=\n## |\n---|$)/g),
-    (m) =>
-      m[1]
-        .split("\n")
-        .map((l) => l.trim().replace(/^[-\*#\s]+/, ""))
-        .filter(Boolean),
-  ).flat()
-  return Array.from(new Set(matches))
+  const sectionMatch = doc.match(/## User Preferences & Learned Corrections[\s\S]*?(?=\n## |\n---|$)/)
+  if (!sectionMatch) return []
+  const section = sectionMatch[0]
+  const lines = section.split("\n")
+  const rules = lines
+    .filter((line) => /^\s*[-*]\s+/.test(line))
+    .map((line) => line.trim().replace(/^[-*]\s+/, ""))
+    .filter((line) => Boolean(line) && !line.toLowerCase().includes("no learned preferences yet"))
+  return Array.from(new Set(rules))
 }
 
 export function inferDomain(topLevel: string[], extensions: string[]): string {

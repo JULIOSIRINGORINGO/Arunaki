@@ -26,7 +26,7 @@ import { inArray } from "drizzle-orm"
 import { lt } from "drizzle-orm"
 import { or } from "drizzle-orm"
 import type { SQL } from "drizzle-orm"
-import { PartTable, SessionTable } from "@arunaki/core/session/sql"
+import { PartTable, SessionTable, SessionMessageTable } from "@arunaki/core/session/sql"
 import { ProjectTable } from "@arunaki/core/project/sql"
 import { MessageV2 } from "./message-v2"
 import type { InstanceContext } from "../project/instance-context"
@@ -810,11 +810,75 @@ const layer: Layer.Layer<
       return [] as Snapshot.FileDiff[]
     })
 
+    function mapV2ToWithParts(rows: (typeof SessionMessageTable.$inferSelect)[]): SessionV1.WithParts[] {
+      const chron = [...rows].reverse()
+      return chron.map((r): SessionV1.WithParts => {
+        const d = (typeof r.data === "string" ? JSON.parse(r.data) : r.data) as any
+        if (r.type === "user") {
+          return {
+            info: {
+              id: r.id as MessageID,
+              sessionID: r.session_id as SessionID,
+              role: "user",
+              time: d?.time ?? { created: r.time_created },
+            } as SessionV1.User,
+            parts: [
+              {
+                id: `${r.id}_part_0` as PartID,
+                messageID: r.id as MessageID,
+                sessionID: r.session_id as SessionID,
+                type: "text",
+                text: d?.text ?? "",
+              } as SessionV1.TextPart,
+            ],
+          }
+        } else {
+          const parts = Array.isArray(d?.content)
+            ? d.content.map((c: any, i: number) => ({
+                id: (c.id || `${r.id}_part_${i}`) as PartID,
+                messageID: r.id as MessageID,
+                sessionID: r.session_id as SessionID,
+                type: c.type === "tool" ? "tool" : c.type === "reasoning" ? "reasoning" : "text",
+                ...(c.type === "text" ? { text: c.text ?? "" } : {}),
+                ...(c.type === "tool" ? { tool: c.name ?? "", state: c.state ?? { status: "completed" } } : {}),
+                ...(c.type === "reasoning" ? { text: c.text ?? "" } : {}),
+              }))
+            : []
+          return {
+            info: {
+              id: r.id as MessageID,
+              sessionID: r.session_id as SessionID,
+              role: "assistant",
+              time: d?.time ?? { created: r.time_created, completed: r.time_updated },
+              agent: d?.agent ?? "build",
+              model: d?.model ?? { providerID: "local", modelID: "default" },
+            } as SessionV1.Assistant,
+            parts,
+          }
+        }
+      })
+    }
+
     const messages: Interface["messages"] = Effect.fn("Session.messages")(function* (input) {
       if (input.limit) {
-        return (yield* MessageV2.page({ sessionID: input.sessionID, limit: input.limit }).pipe(
+        const v1 = (yield* MessageV2.page({ sessionID: input.sessionID, limit: input.limit }).pipe(
           Effect.provideService(Database.Service, database),
         )).items
+        if (v1.length > 0) return v1
+
+        const v2Rows = yield* db
+          .select()
+          .from(SessionMessageTable)
+          .where(eq(SessionMessageTable.session_id, input.sessionID))
+          .orderBy(desc(SessionMessageTable.seq))
+          .limit(input.limit)
+          .all()
+          .pipe(Effect.orDie)
+
+        if (v2Rows.length > 0) {
+          return mapV2ToWithParts(v2Rows)
+        }
+        return []
       }
 
       const size = 50
@@ -832,7 +896,18 @@ const layer: Layer.Layer<
         if (!page.more || !page.cursor) break
         before = page.cursor
       }
-      return result.reverse()
+      if (result.length > 0) return result.reverse()
+
+      const allV2 = yield* db
+        .select()
+        .from(SessionMessageTable)
+        .where(eq(SessionMessageTable.session_id, input.sessionID))
+        .orderBy(desc(SessionMessageTable.seq))
+        .limit(100)
+        .all()
+        .pipe(Effect.orDie)
+
+      return mapV2ToWithParts(allV2)
     })
 
     const removeMessage = Effect.fn("Session.removeMessage")(function* (input: {

@@ -3188,6 +3188,32 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web`: ✅ 0 errors (built in 11.06s).
   - Dev-log di `docs/dev-logs/dev-log-2026-09-18-knowledge-auto-refresh-cache.md`.
 
+---
+
+### Phase 105: Fix Living Memory Persistence Across New Sessions ✅ DONE
+- [x] **Investigasi Akar Masalah Hilangnya Memori Hidup Antar-Sesi**:
+  - File fisik `.arunaki/ARUNAKI.md` terbukti **tidak pernah terhapus** di disk (seluruh 6 aturan pengguna tetap aman di `E:\REKAPAN\.arunaki\ARUNAKI.md`).
+  - **Penyebab 1 (System Prompt Missing Rulebook)**: Runner LLM (`packages/engine/core/src/session/runner/llm.ts`) memuat instruksi ambient via `InstructionContext` (`packages/engine/core/src/instruction-context.ts`), namun `InstructionContext` hanya mencari berkas `"AGENTS.md"`. Akibatnya, berkas `.arunaki/ARUNAKI.md` tidak pernah disuntikkan ke dalam system prompt saat sesi baru dibuat, sehingga AI bertindak seolah-olah memorinya "direset".
+  - **Penyebab 2 (Message Table Desync pada Sentinel Background Learner)**: `learnCorrection` di `packages/engine/engine/src/session/memory.ts` memanggil `Session.messages` yang sebelumnya hanya membaca tabel usang `message` (`MessageTable`), padahal runtime Arunaki V2 menyimpan seluruh pesan percakapan di tabel `session_message` (`SessionMessageTable`). Akibatnya, `Session.messages` selalu mengembalikan array kosong `[]`, sehingga Sentinel tidak pernah menjalankan auto-learn di background.
+  - **Penyebab 3 (Regex Kerapuhan pada Sintesis Rulebook)**: Fungsi `extractExistingCorrections` sebelumnya menggunakan regex kaku yang rentan kehilangan aturan jika sub-header atau format baris sedikit berbeda.
+- [x] **Perbaikan `InstructionContext` (`packages/engine/core/src/instruction-context.ts`)**:
+  - Menambahkan `.arunaki/ARUNAKI.md` dan `ARUNAKI.md` ke dalam target pencarian upward direktori proyek bersama `AGENTS.md`.
+  - Menambahkan deduplikasi cerdas agar jika `.arunaki/ARUNAKI.md` ditemukan pada direktori aktif, berkas duplikat `ARUNAKI.md` di root tidak dimuat dua kali.
+  - Menambahkan `join(global.config, "ARUNAKI.md")` ke dalam path global.
+  - Memastikan aturan living memory disuntikkan secara otomatis dan permanen ke `system.baseline` pada setiap sesi baru tanpa perlu tool call manual.
+- [x] **Perbaikan `Session.messages` Fallback (`packages/engine/engine/src/session/session.ts`)**:
+  - Mengimpor `SessionMessageTable` dari `@arunaki/core/session/sql`.
+  - Mengimplementasikan `mapV2ToWithParts` dan menambahkan fallback otomatis ke `SessionMessageTable` saat `MessageV2.page` bernilai kosong, sehingga pembacaan pesan selalu akurat untuk percakapan V2.
+- [x] **Perbaikan `extractExistingCorrections` (`packages/engine/engine/src/session/memory.ts`)**:
+  - Mengekstrak seluruh baris poin (`- ` / `* `) di bawah `## User Preferences & Learned Corrections` secara fleksibel.
+  - Menyaring string placeholder `_No learned preferences yet._` agar tidak dipertahankan sebagai aturan nyata.
+- [x] **Verifikasi & Pengujian Otomatis**:
+  - `bun test packages/engine/core/test/instruction-context.test.ts`: ✅ 8 pass, 0 fail (termasuk unit test baru pemuatan `.arunaki/ARUNAKI.md`).
+  - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 9 pass, 0 fail (termasuk unit test baru preservasi aturan pada sintesis).
+  - `npm run typecheck`: ✅ 0 errors.
+  - `npm run build -w apps/web`: ✅ 0 errors (built in 30.57s).
+
+
 
 
 

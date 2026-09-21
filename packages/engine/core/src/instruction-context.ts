@@ -1,7 +1,7 @@
 export * as InstructionContext from "./instruction-context"
 
 import { Array, Effect, Layer, Schema } from "effect"
-import { isAbsolute, join, relative, sep } from "path"
+import { dirname, isAbsolute, join, relative, sep } from "path"
 import { FSUtil } from "./fs-util"
 import { Flag } from "./flag/flag"
 import { Global } from "./global"
@@ -43,19 +43,37 @@ const layer = Layer.effectDiscard(
       const fromProject = relative(stop, start)
       const insideProject =
         fromProject === "" || (fromProject !== ".." && !fromProject.startsWith(`..${sep}`) && !isAbsolute(fromProject))
-      const discovered = new Set(
-        yield* Effect.forEach(
-          Flag.Arunaki_DISABLE_PROJECT_CONFIG || !insideProject
-            ? []
-            : yield* fs.up({
-                targets: ["AGENTS.md"],
-                start,
-                stop,
-              }),
-          fs.resolve,
-        ),
+      const rawDiscovered = yield* Effect.forEach(
+        Flag.Arunaki_DISABLE_PROJECT_CONFIG || !insideProject
+          ? []
+          : yield* fs.up({
+              targets: [".arunaki/ARUNAKI.md", "ARUNAKI.md", "AGENTS.md"],
+              start,
+              stop,
+            }),
+        fs.resolve,
       )
-      const paths = Array.dedupe([yield* fs.resolve(join(global.config, "AGENTS.md")), ...discovered])
+      const discovered = new Set<string>()
+      for (const item of rawDiscovered) {
+        const lower = item.toLowerCase().replace(/\\/g, "/")
+        if (
+          lower.endsWith("/arunaki.md") &&
+          !lower.includes("/.arunaki/") &&
+          Array.from(discovered).some(
+            (d) =>
+              d.toLowerCase().replace(/\\/g, "/").includes("/.arunaki/arunaki.md") &&
+              dirname(dirname(d.replace(/\\/g, "/"))) === dirname(item.replace(/\\/g, "/")),
+          )
+        ) {
+          continue
+        }
+        discovered.add(item)
+      }
+      const paths = Array.dedupe([
+        yield* fs.resolve(join(global.config, "ARUNAKI.md")),
+        yield* fs.resolve(join(global.config, "AGENTS.md")),
+        ...discovered,
+      ])
       const files = yield* Effect.forEach(
         paths,
         (path) =>
