@@ -461,6 +461,17 @@ export function mapEngineEvent(
           message: payload.error?.message || event.error?.message || "An error occurred while processing your request.",
         },
       };
+    case "session.status": {
+      const statusType = payload.status?.type;
+      if (statusType === "busy") {
+        return { type: "session_busy", data: payload };
+      } else if (statusType === "idle") {
+        return { type: "done", data: payload };
+      }
+      return null;
+    }
+    case "session.idle":
+      return { type: "done", data: payload };
     default:
       return null;
   }

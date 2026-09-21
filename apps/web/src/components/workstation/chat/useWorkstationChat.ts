@@ -114,6 +114,7 @@ export function useWorkstationChat({
   const watchdogRef = useRef<NodeJS.Timeout | null>(null);
   const resetWatchdogRef = useRef<((timeoutMs?: number) => void) | null>(null);
   const currentTurnIdRef = useRef<string>("");
+  const isLocalSendingRef = useRef(false);
 
   const clearWatchdog = useCallback(() => {
     if (watchdogRef.current) {
@@ -181,6 +182,7 @@ export function useWorkstationChat({
         abortControllerRef.current = null;
       }
       currentTurnIdRef.current = "";
+      isLocalSendingRef.current = false;
       setStreamingState(false);
       clearWatchdog();
       setLiveStatus(null);
@@ -314,6 +316,227 @@ export function useWorkstationChat({
     }
   }, [activeChatId, chatMessages, isStreaming, upsertCanvasTab, setRecentCanvases]);
 
+  // 6. Persistent background SSE event listener for the active session (captures Telegram & external prompts)
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    const abortCtrl = new AbortController();
+    let extSteps: StepItem[] = [];
+    let extReasoning = "";
+    let extText = "";
+    let extStartTime = 0;
+    const extAssistantId = `ext-asst-${activeChatId}`;
+
+    subscribeEvents(
+      (rawEvent) => {
+        // If local user is actively driving the stream via desktop input box, let handleSendMessage manage it
+        if (isLocalSendingRef.current) return;
+
+        const event = mapEngineEvent(rawEvent, activeChatId);
+        if (!event) return;
+
+        if (event.type === "session_busy" || event.type === "thinking") {
+          if (!isStreamingRef.current) {
+            setStreamingState(true);
+            extStartTime = Date.now();
+            extSteps = [];
+            extReasoning = "";
+            extText = "";
+            queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] });
+          }
+          setLiveStatus({
+            type: "thinking",
+            preview: typeof event.data === "string" ? event.data : "Analyzing request & documents...",
+          });
+        } else if (event.type === "reasoning_delta" && event.data) {
+          if (!isStreamingRef.current) {
+            setStreamingState(true);
+            if (!extStartTime) extStartTime = Date.now();
+            queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] });
+          }
+          extReasoning += event.data;
+          const elapsed = extStartTime ? Math.max(1, Math.round((Date.now() - extStartTime) / 1000)) : 1;
+          setOptimisticMessages([
+            {
+              id: extAssistantId,
+              role: "assistant",
+              content: extText,
+              reasoning: extReasoning,
+              executionSteps: extSteps.length > 0 ? [...extSteps] : undefined,
+              thoughtSec: elapsed,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        } else if (event.type === "tool_start" || event.type === "tool_preparing") {
+          if (!isStreamingRef.current) {
+            setStreamingState(true);
+            if (!extStartTime) extStartTime = Date.now();
+            queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] });
+          }
+          const toolName = event.data?.toolName || "action";
+          const label = formatToolStepLabel(
+            toolName,
+            event.data?.args || event.data?.input,
+            false
+          );
+          setLiveStatus({
+            type: "tool_start",
+            toolName,
+            preview: label,
+          });
+
+          const stepId = event.data?.callID || `ext-tool-${extSteps.length}`;
+          const existingStep = extSteps.find((s) => s.id === stepId);
+          if (!existingStep) {
+            extSteps.push({
+              id: stepId,
+              label,
+              status: "running",
+              iconType: "tool",
+              toolName,
+            });
+          }
+
+          const elapsed = extStartTime ? Math.max(1, Math.round((Date.now() - extStartTime) / 1000)) : 1;
+          setOptimisticMessages([
+            {
+              id: extAssistantId,
+              role: "assistant",
+              content: extText,
+              reasoning: extReasoning,
+              executionSteps: [...extSteps],
+              thoughtSec: elapsed,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        } else if (event.type === "tool_live_status") {
+          const stepId = event.data?.callID;
+          if (stepId) {
+            const st = extSteps.find((s) => s.id === stepId);
+            if (st) {
+              st.status = "completed";
+              st.label = formatToolStepLabel(
+                st.toolName || event.data?.toolName || "action",
+                event.data?.args || event.data?.input,
+                true
+              );
+            }
+          }
+          const toolName = event.data?.toolName || "action";
+          setLiveStatus({
+            type: "tool_live_status",
+            toolName,
+            preview: event.data?.preview || `Completed ${toolName}`,
+          });
+
+          const elapsed = extStartTime ? Math.max(1, Math.round((Date.now() - extStartTime) / 1000)) : 1;
+          setOptimisticMessages([
+            {
+              id: extAssistantId,
+              role: "assistant",
+              content: extText,
+              reasoning: extReasoning,
+              executionSteps: [...extSteps],
+              thoughtSec: elapsed,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+          refetchFiles();
+          reloadOpenTabsContent();
+        } else if (event.type === "text_delta" && event.data) {
+          if (!isStreamingRef.current) {
+            setStreamingState(true);
+            if (!extStartTime) extStartTime = Date.now();
+          }
+          extText += event.data;
+          const elapsed = extStartTime ? Math.max(1, Math.round((Date.now() - extStartTime) / 1000)) : 1;
+          setOptimisticMessages([
+            {
+              id: extAssistantId,
+              role: "assistant",
+              content: extText,
+              reasoning: extReasoning,
+              executionSteps: extSteps.length > 0 ? [...extSteps] : undefined,
+              thoughtSec: elapsed,
+              createdAt: new Date().toISOString(),
+            },
+          ]);
+        } else if (event.type === "done" || event.type === "error") {
+          setStreamingState(false);
+          setLiveStatus(null);
+          setOptimisticMessages([]);
+          extSteps = [];
+          extReasoning = "";
+          extText = "";
+          extStartTime = 0;
+          queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] });
+          refetchFiles();
+          reloadOpenTabsContent();
+        }
+      },
+      abortCtrl.signal,
+      activeFolder || undefined
+    );
+
+    // Initial check: if session is already running when component mounts or switches chats
+    isSessionActive(activeChatId).then((active) => {
+      if (active && !isStreamingRef.current && !isLocalSendingRef.current) {
+        setStreamingState(true);
+        extStartTime = Date.now();
+        setLiveStatus({
+          type: "thinking",
+          preview: "Processing document tasks...",
+        });
+      }
+    }).catch(() => {});
+
+    return () => {
+      abortCtrl.abort();
+    };
+  }, [activeChatId, activeFolder, queryClient, refetchFiles, reloadOpenTabsContent, setStreamingState]);
+
+  // 7. External stream watchdog & fallback poller (ensures UI doesn't remain stuck if disconnected)
+  useEffect(() => {
+    if (!isStreaming || isLocalSendingRef.current || !activeChatId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const active = await isSessionActive(activeChatId);
+        if (!active && isStreamingRef.current && !isLocalSendingRef.current) {
+          setStreamingState(false);
+          setLiveStatus(null);
+          setOptimisticMessages([]);
+          queryClient.invalidateQueries({ queryKey: ["chat-messages", activeChatId] });
+          refetchFiles();
+          reloadOpenTabsContent();
+        }
+      } catch {}
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [isStreaming, activeChatId, queryClient, refetchFiles, reloadOpenTabsContent, setStreamingState]);
+
+  // 8. Auto-detect in-flight prompt if last message is a recent user message without assistant reply
+  useEffect(() => {
+    if (isStreaming || isLocalSendingRef.current || !activeChatId || chatMessages.length === 0) return;
+    const lastMsg = chatMessages[chatMessages.length - 1];
+    if (lastMsg && lastMsg.role === "user") {
+      const now = Date.now();
+      const msgTime = lastMsg.createdAt ? new Date(lastMsg.createdAt).getTime() : 0;
+      if (msgTime && now - msgTime < 120000) {
+        isSessionActive(activeChatId).then((active) => {
+          if (active && !isStreamingRef.current && !isLocalSendingRef.current) {
+            setStreamingState(true);
+            setLiveStatus({
+              type: "thinking",
+              preview: "Arunaki is processing...",
+            });
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [chatMessages, isStreaming, activeChatId, setStreamingState]);
+
   const handleRemoveQueuedPrompt = useCallback((index: number) => {
     queuedPromptsRef.current = queuedPromptsRef.current.filter((_, i) => i !== index);
     setQueuedPrompts([...queuedPromptsRef.current]);
@@ -330,6 +553,7 @@ export function useWorkstationChat({
       interruptSession(activeChatId).catch(() => {});
     }
     currentTurnIdRef.current = "";
+    isLocalSendingRef.current = false;
     setStreamingState(false);
     setLiveStatus(null);
     toast.info("Generation stopped");
@@ -342,6 +566,7 @@ export function useWorkstationChat({
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    isLocalSendingRef.current = false;
     setStreamingState(false);
     setLiveStatus(null);
     setOptimisticMessages([]);
@@ -443,6 +668,7 @@ export function useWorkstationChat({
       const abortCtrl = new AbortController();
       abortControllerRef.current = abortCtrl;
 
+      isLocalSendingRef.current = true;
       setStreamingState(true);
       resetWatchdogRef.current?.(120000);
       setLiveStatus({
@@ -495,6 +721,7 @@ export function useWorkstationChat({
         }
         flushAnswerUi();
         clearWatchdog();
+        isLocalSendingRef.current = false;
         setStreamingState(false);
         setLiveStatus(null);
         try {
@@ -711,6 +938,7 @@ export function useWorkstationChat({
     };
 
     setOptimisticMessages([newUserMsg, newAssistantMsg]);
+    isLocalSendingRef.current = true;
     setStreamingState(true);
     producedFilesRef.current = [];
     setLiveStatus({ type: "thinking", preview: "Analyzing request & context" });
@@ -749,6 +977,7 @@ export function useWorkstationChat({
           localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, chatIdToUse);
         }
       } catch {
+        isLocalSendingRef.current = false;
         setStreamingState(false);
         setLiveStatus(null);
         toast.error("Failed to create a new conversation");
@@ -856,6 +1085,7 @@ export function useWorkstationChat({
         }
 
         abortCtrl.abort();
+        isLocalSendingRef.current = false;
         setStreamingState(false);
         setLiveStatus(null);
 
@@ -1021,6 +1251,7 @@ export function useWorkstationChat({
         clearTimeout(textEndFinalizeTimeout);
         textEndFinalizeTimeout = null;
       }
+      isLocalSendingRef.current = false;
       setStreamingState(false);
       setLiveStatus(null);
       const elapsedSec = Math.max(1, Math.round((Date.now() - streamStartTime) / 1000));
@@ -1536,6 +1767,7 @@ export function useWorkstationChat({
           if (currentTurnIdRef.current !== assistantMessageId) return;
           if (textEndFinalizeTimeout) clearTimeout(textEndFinalizeTimeout);
           clearWatchdog();
+          isLocalSendingRef.current = false;
           setStreamingState(false);
           setLiveStatus(null);
           try {
@@ -1573,6 +1805,7 @@ export function useWorkstationChat({
       clearWatchdog();
       console.error("[useWorkstationChat] sendPrompt error:", err);
       toast.error(`Error sending message: ${err?.message || err}`);
+      isLocalSendingRef.current = false;
       setStreamingState(false);
       setLiveStatus(null);
       setOptimisticMessages([]);

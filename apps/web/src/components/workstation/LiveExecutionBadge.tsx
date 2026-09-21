@@ -298,12 +298,12 @@ export function MessageThoughtBadge({
   const hasReasoning = Boolean(displayReasoning && displayReasoning.length > 0);
 
   const durationLabel = useMemo(() => {
-    if (thoughtMs && thoughtMs > 0) {
-      if (thoughtMs < 1000) return `${thoughtMs}ms`;
-      return `${(thoughtMs / 1000).toFixed(1).replace(/\.0$/, "")}s`;
-    }
     if (thoughtSec && thoughtSec > 0) {
-      return `${thoughtSec}s`;
+      return `${thoughtSec.toFixed(1).replace(/\.0$/, "")}s`;
+    }
+    if (thoughtMs && thoughtMs > 0) {
+      const sec = (thoughtMs / 1000).toFixed(1).replace(/\.0$/, "");
+      return `${sec === "0" ? "0.1" : sec}s`;
     }
     if (isStreaming && liveSec > 0) {
       return `${liveSec}s`;

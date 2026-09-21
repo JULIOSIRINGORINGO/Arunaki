@@ -119,58 +119,113 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
 
   const partGroups = useMemo<PartGroup[]>(() => {
     if (!msg?.parts || msg.parts.length === 0) return [];
-    const groups: PartGroup[] = [];
+
+    const thoughtItems: Array<{ text: string; durSec?: number; durMs?: number }> = [];
+    const toolSteps: StepItem[] = [];
+    const questionParts: QuestionData[] = [];
+    const textChunks: string[] = [];
+
     for (let i = 0; i < msg.parts.length; i++) {
       const part = msg.parts[i];
-      const isLast = i === msg.parts.length - 1;
       if (part.type === "thought") {
         const text = (part.text || "").trim();
         if (text || isStreaming) {
-          groups.push({
-            type: "thought",
-            id: `thought-${i}`,
+          thoughtItems.push({
             text,
-            durationSec: part.durationSec,
-            durationMs: part.durationMs,
-            isLast,
+            durSec: part.durationSec,
+            durMs: part.durationMs,
           });
         }
       } else if (part.type === "tool") {
-        if (part.step.toolName?.toLowerCase() === "question" || part.step.label.toLowerCase().includes("question")) {
+        if (
+          part.step.toolName?.toLowerCase() === "question" ||
+          part.step.label.toLowerCase().includes("question")
+        ) {
           continue;
         }
-        const lastGroup = groups[groups.length - 1];
-        if (lastGroup && lastGroup.type === "tools") {
-          lastGroup.steps.push(part.step);
-          if (part.step.status === "running") lastGroup.isRunning = true;
-          if (isLast) lastGroup.isLast = true;
-        } else {
-          groups.push({
-            type: "tools",
-            id: `tools-${i}`,
-            steps: [part.step],
-            isRunning: part.step.status === "running",
-            isLast,
-          });
+        if (!toolSteps.some((s) => s.id === part.step.id)) {
+          toolSteps.push(part.step);
         }
       } else if (part.type === "question") {
-        groups.push({
-          type: "question",
-          id: `question-${i}`,
-          data: part.data,
-          isLast,
-        });
-      } else if (part.type === "text" && part.text.trim().length > 0) {
-        groups.push({
-          type: "text",
-          id: `text-${i}`,
-          text: part.text,
-          isLast,
-        });
+        questionParts.push(part.data);
+      } else if (part.type === "text" && part.text && part.text.trim().length > 0) {
+        textChunks.push(part.text);
       }
     }
+
+    const groups: PartGroup[] = [];
+
+    // 1. Consolidated Thought Stream
+    const combinedThoughtText =
+      thoughtItems.map((t) => t.text).filter(Boolean).join("\n\n") || (msg.reasoning || "").trim();
+    if (combinedThoughtText || (isStreaming && showThinking)) {
+      let totalDurSec = thoughtSec || msg.thoughtSec;
+      let totalDurMs = thoughtMs || msg.thoughtMs;
+      if (!totalDurSec && thoughtItems.length > 0) {
+        const sumSec = thoughtItems.reduce((acc, t) => acc + (t.durSec || 0), 0);
+        if (sumSec > 0) totalDurSec = sumSec;
+      }
+      if (!totalDurMs && thoughtItems.length > 0) {
+        const sumMs = thoughtItems.reduce((acc, t) => acc + (t.durMs || 0), 0);
+        if (sumMs > 0) totalDurMs = sumMs;
+      }
+
+      groups.push({
+        type: "thought",
+        id: "thought-unified",
+        text: combinedThoughtText,
+        durationSec: totalDurSec,
+        durationMs: totalDurMs,
+        isLast: toolSteps.length === 0 && questionParts.length === 0 && textChunks.length === 0,
+      });
+    }
+
+    // 2. Consolidated Tool Tasks Card
+    const allSteps = toolSteps.length > 0 ? toolSteps : (steps || []);
+    if (allSteps.length > 0) {
+      groups.push({
+        type: "tools",
+        id: "tools-unified",
+        steps: allSteps,
+        isRunning: allSteps.some((s) => s.status === "running"),
+        isLast: questionParts.length === 0 && textChunks.length === 0,
+      });
+    }
+
+    // 3. Question Cards
+    questionParts.forEach((q, idx) => {
+      groups.push({
+        type: "question",
+        id: `question-${idx}`,
+        data: q,
+        isLast: idx === questionParts.length - 1 && textChunks.length === 0,
+      });
+    });
+
+    // 4. Text Content
+    const fullText = textChunks.join("") || displayContent;
+    if (fullText.trim()) {
+      groups.push({
+        type: "text",
+        id: "text-unified",
+        text: fullText,
+        isLast: true,
+      });
+    }
+
     return groups;
-  }, [msg?.parts, isStreaming]);
+  }, [
+    msg?.parts,
+    msg?.reasoning,
+    msg?.thoughtSec,
+    msg?.thoughtMs,
+    isStreaming,
+    showThinking,
+    thoughtSec,
+    thoughtMs,
+    steps,
+    displayContent,
+  ]);
 
   const hasPartsContent = !isUser && Boolean(partGroups.length > 0);
   const hasVisibleContent = hasPartsContent || displayContent.length > 0 || attachedImages.length > 0 || Boolean(msg?.question);
@@ -248,6 +303,30 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                     "bg-[var(--bg-card)] text-[var(--text-secondary)] rounded-bl-xs border border-[var(--border-color)]"
                   )}
                 >
+                  {attachedImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2.5">
+                      {attachedImages.map((img, i) => (
+                        <div
+                          key={i}
+                          className="group/img relative rounded-xl overflow-hidden border border-[var(--border-strong)] bg-black/25 shadow-xs cursor-pointer hover:border-[var(--border-primary)] transition-all p-1"
+                          onClick={() => onPreviewImage?.(img.url)}
+                          title="Click to view full image"
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="max-w-[240px] max-h-[170px] rounded-lg object-contain group-hover/img:scale-[1.02] transition-transform duration-150 block"
+                            onError={(e) => {
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[var(--text-primary)] bg-[var(--bg-panel)] rounded-lg"><span class="text-[11px] font-medium">📎 ${img.name}</span></div>`;
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <ChatMessageContent content={group.text} isUser={false} />
                   {isStreaming && group.isLast && (
                     <span className="inline-block w-1.5 h-3.5 bg-[var(--text-primary)]/80 ml-0.5 animate-pulse align-middle" />
