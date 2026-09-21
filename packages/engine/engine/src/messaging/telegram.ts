@@ -96,6 +96,50 @@ export function splitTelegramMessage(text: string, maxLength = 4000): string[] {
   return chunks.filter(Boolean);
 }
 
+export function normalizeFolderPath(dir: string): string {
+  if (!dir) return "";
+  let normalized = path.normalize(dir).replace(/\\/g, "/");
+  normalized = normalized.replace(/\/+/g, "/");
+  if (normalized.length > 3 && normalized.endsWith("/")) {
+    normalized = normalized.slice(0, -1);
+  }
+  return normalized;
+}
+
+/**
+ * Robustly extracts assistant response text and tool execution summary from engine message.
+ */
+export function extractAssistantReply(messageData: any): string {
+  if (!messageData) return "";
+  const content = messageData.content || messageData.parts || [];
+  const texts: string[] = [];
+  const tools: string[] = [];
+
+  if (Array.isArray(content)) {
+    for (const item of content) {
+      if (item.type === "text" && item.text && typeof item.text === "string") {
+        texts.push(item.text.trim());
+      } else if (item.type === "tool" || item.name) {
+        const name = item.name || item.tool || "action";
+        const file = item.state?.input?.path || item.state?.input?.filepath || "";
+        tools.push(file ? `${name} (${file})` : name);
+      }
+    }
+  } else if (typeof content === "string" && content.trim()) {
+    texts.push(content.trim());
+  }
+
+  if (texts.length > 0) {
+    return texts.join("\n\n");
+  }
+
+  if (tools.length > 0) {
+    return "✅ Berhasil memproses dokumen:\n" + tools.map((t) => `• ${t}`).join("\n");
+  }
+
+  return "";
+}
+
 export class TelegramService {
   private static instance: TelegramService | null = null;
 
@@ -133,7 +177,7 @@ export class TelegramService {
           enabled: Boolean(parsed?.telegram?.enabled),
           botToken: String(parsed?.telegram?.botToken || ""),
           allowedUserId: String(parsed?.telegram?.allowedUserId || ""),
-          targetFolder: parsed?.telegram?.targetFolder ? String(parsed?.telegram?.targetFolder) : "",
+          targetFolder: parsed?.telegram?.targetFolder ? normalizeFolderPath(String(parsed.telegram.targetFolder)) : "",
         },
       };
     } catch {
@@ -147,7 +191,7 @@ export class TelegramService {
         enabled: Boolean(newConfig.telegram?.enabled),
         botToken: String(newConfig.telegram?.botToken || "").trim(),
         allowedUserId: String(newConfig.telegram?.allowedUserId || "").trim(),
-        targetFolder: newConfig.telegram?.targetFolder ? String(newConfig.telegram.targetFolder).trim() : "",
+        targetFolder: newConfig.telegram?.targetFolder ? normalizeFolderPath(String(newConfig.telegram.targetFolder)) : "",
       },
     };
 
@@ -161,7 +205,13 @@ export class TelegramService {
 
   public getStatus(): MessagingStatus {
     return {
-      telegram: { ...this.status },
+      telegram: {
+        connected: Boolean(this.status.connected),
+        botUsername: this.status.botUsername ?? null,
+        botFirstName: this.status.botFirstName ?? null,
+        lastActive: this.status.lastActive ?? null,
+        lastError: this.status.lastError ?? null,
+      },
     };
   }
 
@@ -416,7 +466,8 @@ export class TelegramService {
     }
 
     if (text === "/status") {
-      const targetDir = config.telegram.targetFolder || "Default Project Workspace";
+      const rawTargetDir = config.telegram.targetFolder || process.cwd();
+      const targetDir = normalizeFolderPath(rawTargetDir);
       const statusMsg =
         `🟢 *Arunaki Gateway Status: Online*\n\n` +
         `💻 *Host:* PC Desktop Aktif\n` +
@@ -468,12 +519,48 @@ export class TelegramService {
     senderName: string
   ): Promise<string> {
     const serverUrl = this.getLocalServerUrl();
-    const targetDir = config.telegram.targetFolder || process.cwd();
+    const rawTargetDir = config.telegram.targetFolder || process.cwd();
+    const targetDir = normalizeFolderPath(rawTargetDir);
     const authHeaders = ServerAuth.headers() || {};
 
     let sessionID = this.chatSessionMap.get(chatId);
 
-    // If no session exists, create one
+    // Verify cached session is still active and valid in the engine
+    if (sessionID) {
+      try {
+        const checkRes = await fetch(`${serverUrl}/api/session/${sessionID}?directory=${encodeURIComponent(targetDir)}`, {
+          headers: { "x-arunaki-directory": targetDir, ...authHeaders },
+        });
+        if (!checkRes.ok) {
+          sessionID = undefined;
+          this.chatSessionMap.delete(chatId);
+        }
+      } catch {
+        sessionID = undefined;
+        this.chatSessionMap.delete(chatId);
+      }
+    }
+
+    // If no session bound to this chat, connect to the active / most recent session of targetDir
+    if (!sessionID) {
+      try {
+        const listRes = await fetch(`${serverUrl}/api/session?directory=${encodeURIComponent(targetDir)}&limit=1`, {
+          headers: { "x-arunaki-directory": targetDir, ...authHeaders },
+        });
+        if (listRes.ok) {
+          const listJson = await listRes.json();
+          const sessions = listJson?.data || listJson;
+          if (Array.isArray(sessions) && sessions.length > 0 && sessions[0]?.id) {
+            sessionID = sessions[0].id;
+            this.chatSessionMap.set(chatId, sessionID);
+          }
+        }
+      } catch (err) {
+        console.warn("[TelegramGateway] Could not check existing sessions:", err);
+      }
+    }
+
+    // If still no session exists (e.g. brand new project), create a new one
     if (!sessionID) {
       const snippet = promptText.length > 30 ? promptText.slice(0, 30) + "..." : promptText;
       const createRes = await fetch(`${serverUrl}/api/session?directory=${encodeURIComponent(targetDir)}`, {
@@ -533,21 +620,38 @@ export class TelegramService {
     const promptJson = await promptRes.json();
     const messageData = promptJson?.data || promptJson;
 
-    // Extract text responses from parts
-    let reply = "";
-    if (messageData && Array.isArray(messageData.parts)) {
-      const texts = messageData.parts
-        .filter((p: any) => p.type === "text" && p.text)
-        .map((p: any) => p.text);
-      reply = texts.join("\n\n");
-    }
+    // Extract text responses from content or parts
+    let reply = extractAssistantReply(messageData);
 
-    if (!reply && typeof messageData?.content === "string") {
-      reply = messageData.content;
+    // Fallback: If reply is still empty, fetch the latest assistant message directly from the session
+    if (!reply) {
+      try {
+        await new Promise((r) => setTimeout(r, 600));
+        const msgsRes = await fetch(
+          `${serverUrl}/api/session/${sessionID}/message?limit=6&directory=${encodeURIComponent(targetDir)}`,
+          {
+            headers: { "x-arunaki-directory": targetDir, ...authHeaders },
+          }
+        );
+        if (msgsRes.ok) {
+          const msgsJson = await msgsRes.json();
+          const msgs = msgsJson?.data || msgsJson;
+          if (Array.isArray(msgs)) {
+            const lastAssistant = msgs.find(
+              (m: any) => m.type === "assistant" || m.role === "assistant" || m.info?.role === "assistant"
+            );
+            if (lastAssistant) {
+              reply = extractAssistantReply(lastAssistant);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("[TelegramGateway] Failed to fetch assistant fallback message:", err);
+      }
     }
 
     if (!reply) {
-      reply = "✅ Tugas dokumen telah selesai diproses oleh Arunaki di komputer Anda.";
+      reply = "✅ Permintaan telah diproses oleh Arunaki di komputer Anda.";
     }
 
     return reply;

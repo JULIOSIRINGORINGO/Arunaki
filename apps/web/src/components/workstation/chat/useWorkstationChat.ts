@@ -147,7 +147,22 @@ export function useWorkstationChat({
       }
     },
     enabled: !!activeChatId,
+    refetchInterval: isStreaming ? false : 2500,
   });
+
+  // Track external message updates (e.g. from Telegram gateway or external prompts)
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    if (chatMessages.length > prevMsgCountRef.current) {
+      if (prevMsgCountRef.current > 0) {
+        refetchFiles();
+        reloadOpenTabsContent();
+      }
+      prevMsgCountRef.current = chatMessages.length;
+    } else if (chatMessages.length < prevMsgCountRef.current) {
+      prevMsgCountRef.current = chatMessages.length;
+    }
+  }, [chatMessages.length, refetchFiles, reloadOpenTabsContent]);
 
   // 2. Clear optimistic messages and abort any in-flight stream on folder/chat navigation changes
   const prevChatIdRef = useRef(activeChatId);

@@ -11,7 +11,7 @@ import { useTabs } from "../components/workstation/tabs/useTabs";
 import { useWorkstationChat } from "../components/workstation/chat/useWorkstationChat";
 import { WorkspaceFile } from "../components/workstation/chat/types";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
-import { engineFetch, getSession } from "../lib/engine";
+import { engineFetch, getSession, listSessions } from "../lib/engine";
 
 export function UnifiedWorkstationPage() {
   const location = useLocation();
@@ -57,14 +57,32 @@ export function UnifiedWorkstationPage() {
     return globalChat.startsWith("ses_") ? globalChat : "";
   });
 
+  // Auto-connect to the active / most recent session in this folder if none is currently selected
+  useEffect(() => {
+    if (!activeFolder || activeChatId) return;
+    let isCancelled = false;
+    listSessions({ directory: activeFolder, limit: 1 }).then((sessions) => {
+      if (isCancelled || !sessions || sessions.length === 0) return;
+      const latest = sessions[0];
+      if (latest && latest.id && latest.id.startsWith("ses_")) {
+        setActiveChatId(latest.id);
+        localStorage.setItem("arunaki_active_chat_id", latest.id);
+        localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, latest.id);
+      }
+    }).catch(() => {});
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeFolder, activeChatId]);
+
   // Folder-Session Isolation Guard: verify that active session belongs to activeFolder
   useEffect(() => {
     if (!activeChatId || !activeFolder) return;
     let isCancelled = false;
     getSession(activeChatId).then((sess) => {
       if (isCancelled) return;
-      const sessDir = (sess?.directory || (sess as any)?.location?.directory || "").toLowerCase().replace(/\\/g, "/");
-      const curDir = activeFolder.toLowerCase().replace(/\\/g, "/");
+      const sessDir = (sess?.directory || (sess as any)?.location?.directory || "").toLowerCase().replace(/\\/g, "/").replace(/\/+/g, "/");
+      const curDir = activeFolder.toLowerCase().replace(/\\/g, "/").replace(/\/+/g, "/");
       if (sessDir && curDir && sessDir !== curDir) {
         console.warn(`[UnifiedWorkstationPage] Isolation mismatch: Session ${activeChatId} (${sessDir}) does not belong to active folder (${curDir}). Resetting.`);
         setActiveChatId("");

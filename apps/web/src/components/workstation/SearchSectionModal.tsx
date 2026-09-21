@@ -39,7 +39,8 @@ export function SearchSectionModal({
     queryKey: ["chat-sessions-search-section", activeFolder],
     queryFn: async () => {
       try {
-        const data = await listSessions({ directory: activeFolder || undefined, limit: 50 });
+        const cleanDir = activeFolder ? activeFolder.replace(/\\/g, "/").replace(/\/+/g, "/") : undefined;
+        const data = await listSessions({ directory: cleanDir, limit: 50 });
         return (data || []).map((s: any) => ({
           id: s.id,
           title: s.title || "",

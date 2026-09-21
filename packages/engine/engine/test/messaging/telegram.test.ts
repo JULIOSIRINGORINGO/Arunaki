@@ -3,6 +3,8 @@ import {
   isSenderAllowed,
   splitTelegramMessage,
   telegramService,
+  normalizeFolderPath,
+  extractAssistantReply,
 } from "../../src/messaging/telegram";
 
 describe("Telegram BYOB Gateway", () => {
@@ -73,6 +75,54 @@ describe("Telegram BYOB Gateway", () => {
       expect(typeof config.telegram.enabled).toBe("boolean");
       expect(typeof config.telegram.botToken).toBe("string");
       expect(typeof config.telegram.allowedUserId).toBe("string");
+    });
+  });
+
+  describe("normalizeFolderPath", () => {
+    test("normalizes Windows backslashes and double backslashes", () => {
+      expect(normalizeFolderPath("E:\\\\REKAPAN")).toBe("E:/REKAPAN");
+      expect(normalizeFolderPath("E:\\REKAPAN\\")).toBe("E:/REKAPAN");
+      expect(normalizeFolderPath("E:/REKAPAN//")).toBe("E:/REKAPAN");
+      expect(normalizeFolderPath("")).toBe("");
+    });
+  });
+
+  describe("extractAssistantReply", () => {
+    test("extracts text from content array", () => {
+      const msg = {
+        content: [
+          { type: "reasoning", text: "Thinking..." },
+          { type: "text", text: "Halo! Ada yang bisa saya bantu?" },
+        ],
+      };
+      expect(extractAssistantReply(msg)).toBe("Halo! Ada yang bisa saya bantu?");
+    });
+
+    test("extracts text from legacy parts array", () => {
+      const msg = {
+        parts: [
+          { type: "text", text: "Rekap berhasil diselesaikan." },
+        ],
+      };
+      expect(extractAssistantReply(msg)).toBe("Rekap berhasil diselesaikan.");
+    });
+
+    test("extracts tool summary if only tools were executed without text", () => {
+      const msg = {
+        content: [
+          {
+            type: "tool",
+            name: "edit_file",
+            state: { input: { path: "ORDER.txt" } },
+          },
+        ],
+      };
+      expect(extractAssistantReply(msg)).toContain("edit_file (ORDER.txt)");
+    });
+
+    test("handles empty or malformed message safely", () => {
+      expect(extractAssistantReply(null)).toBe("");
+      expect(extractAssistantReply({})).toBe("");
     });
   });
 });
