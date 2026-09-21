@@ -3263,8 +3263,34 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - Memperbaiki regex `applyCorrections` agar hanya mengganti poin-poin bullet aturan belajar, tanpa menimpa divider atau seksi panduan tambahan.
 - [x] **Verifikasi & Pengujian**:
   - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 10 pass, 0 fail (termasuk tes preservasi seksi kustom).
-  - `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 9 pass, 0 fail.
-  - `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 17.87s).
+  - `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 14 pass, 0 fail.
+  - `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 20.04s).
+
+---
+
+## Phase 108: Telegram Live Workstation Sync, Telemetry & Final Response Synthesis ✅ DONE (branch: `feature/messaging-apps-gateway`)
+
+**Goal:** Unify Telegram bot execution with active workstation desktop session, sync live thought/execution indicators between mobile and desktop in realtime, format thought durations in clean seconds, consolidate chat bubble cards, and wait for final synthesized LLM responses before replying to Telegram.
+
+- [x] **Desktop & Mobile Session Unification (`packages/engine/engine/src/messaging/telegram.ts`)**:
+  - Mengarahkan prompt dari Telegram langsung ke session aktif workstation desktop (`/api/session/active/prompt`) jika folder target cocok.
+  - Setiap instruksi dari Telegram langsung muncul di bubble chat desktop secara instan dan dua arah.
+- [x] **Realtime Live Execution Indicator Synchronization (`apps/web/src/components/workstation/chat/useWorkstationChat.ts`)**:
+  - Menambahkan SSE watchdog dan subscriber background yang selalu mendengarkan event stream `/api/session/active/prompt` bahkan saat prompt dipicu secara eksternal lewat Telegram.
+  - Desktop workstation memunculkan indikator status running `✨ Thinking...` dan live execution card secara realtime saat pengguna mengirim prompt dari HP.
+- [x] **Telemetry & Thought Duration Formatting (`apps/web/src/components/workstation/LiveExecutionBadge.tsx`)**:
+  - Mengonversi format durasi pemikiran dari raw millisecond (`182ms`) ke detik standar Antigravity (`Xs` atau `X.Xs`).
+  - Menyatukan kartu tugas dokumen yang terpecah menjadi single card konsisten `Executed N document tasks N/N`.
+- [x] **Final Response Synthesis over Premature Tool Fallbacks (`packages/engine/engine/src/messaging/telegram.ts`)**:
+  - Menghapus fallback pesan prematur `"✅ Berhasil memproses dokumen: • read"` dari `extractAssistantReply`.
+  - Memperbarui loop polling `executeArunakiPrompt` agar menanti hingga session selesai (`busy === false`) dan AI selesai menyintesis teks jawaban akhir sebelum mengirim balasan ke Telegram.
+- [x] **Multilingual Translation & UI Polish (`apps/web/src/lib/i18n.ts`)**:
+  - Menuntaskan lokalisasi dua bahasa (Indonesia & English) untuk semua tab pengaturan, menu View language switch, dan messaging instructions.
+- [x] **Verifikasi & Pengujian**:
+  - `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 14 pass, 0 fail.
+  - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 10 pass, 0 fail.
+  - `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 20.04s).
+
 
 
 

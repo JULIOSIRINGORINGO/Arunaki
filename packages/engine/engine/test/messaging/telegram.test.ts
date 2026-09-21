@@ -107,7 +107,7 @@ describe("Telegram BYOB Gateway", () => {
       expect(extractAssistantReply(msg)).toBe("Rekap berhasil diselesaikan.");
     });
 
-    test("extracts tool summary if only tools were executed without text", () => {
+    test("returns empty string if only tools were executed without text (to wait for final LLM synthesis)", () => {
       const msg = {
         content: [
           {
@@ -117,7 +117,7 @@ describe("Telegram BYOB Gateway", () => {
           },
         ],
       };
-      expect(extractAssistantReply(msg)).toContain("edit_file (ORDER.txt)");
+      expect(extractAssistantReply(msg)).toBe("");
     });
 
     test("handles empty or malformed message safely", () => {
