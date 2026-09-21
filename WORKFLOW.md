@@ -3245,6 +3245,28 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - Unit tests `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 9 pass, 0 fail.
   - Web build `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 11.95s).
 
+---
+
+## Phase 107: Messaging Proxy Fix & Living Memory Custom Sections Preservation ✅ DONE (branch: `feature/messaging-apps-gateway`)
+
+**Goal:** Resolve Vite proxy mismatch for `/api/messaging/*` endpoints, prevent JSON parsing crashes on non-200 responses, and guarantee that custom user sections/guides in living memory (`.arunaki/ARUNAKI.md`) are never stripped or reset across chat turns.
+
+- [x] **Vite Proxy Rewrite (`apps/web/vite.config.ts`)**:
+  - Menambahkan proxy rule khusus `/api/messaging` dengan rewrite ke `/messaging` pada engine port 4096.
+  - Panggilan API dari Web UI (`GET /api/messaging/config`, `GET /api/messaging/status`, `POST /api/messaging/test`, `POST /api/messaging/config`) kini secara sempurna diteruskan ke engine dan merespons dengan HTTP 200 JSON.
+- [x] **Safe JSON Parsing & Clear Error Feedback (`apps/web/src/components/settings/SettingsMessagingTab.tsx`)**:
+  - Membungkus seluruh pemanggilan `res.json()` dengan try/catch fallback guna mengeliminasi error `Failed to execute 'json' on 'Response': Unexpected end of JSON input`.
+  - Menampilkan feedback yang ramah dan spesifik saat verifikasi gagal (misal: `Unauthorized: Invalid bot token` dari Telegram).
+- [x] **Preservasi Konten Kustom Living Memory (`packages/engine/engine/src/session/memory.ts`)**:
+  - Implementasi `updateWorkspaceCatalog(doc, files)`: saat file `.arunaki/ARUNAKI.md` sudah ada, `cartograph()` hanya memperbarui seksi `## Workspace Catalog` secara *in-place*.
+  - Implementasi `extractCustomContent(doc)`: menyalin dan mempertahankan seluruh seksi kustom (seperti `PANDUAN RINGKAS`, format rincian `ORDER.TXT`, tabel ringkasan, dan catatan pengguna) di bawah `## User Preferences & Learned Corrections`.
+  - Memperbaiki regex `applyCorrections` agar hanya mengganti poin-poin bullet aturan belajar, tanpa menimpa divider atau seksi panduan tambahan.
+- [x] **Verifikasi & Pengujian**:
+  - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 10 pass, 0 fail (termasuk tes preservasi seksi kustom).
+  - `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 9 pass, 0 fail.
+  - `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 17.87s).
+
+
 
 
 

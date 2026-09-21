@@ -73,7 +73,10 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
       ]);
 
       if (configRes.ok) {
-        const configJson = await configRes.json();
+        let configJson: any = null;
+        try {
+          configJson = await configRes.json();
+        } catch {}
         const tg = configJson?.data?.telegram || configJson?.telegram;
         if (tg) {
           setEnabled(Boolean(tg.enabled));
@@ -86,7 +89,10 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
       }
 
       if (statusRes.ok) {
-        const statusJson = await statusRes.json();
+        let statusJson: any = null;
+        try {
+          statusJson = await statusRes.json();
+        } catch {}
         const st = statusJson?.data?.telegram || statusJson?.telegram;
         if (st) {
           setStatus({
@@ -132,8 +138,13 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
         body: JSON.stringify({ botToken: botToken.trim() }),
       });
 
-      const json = await res.json();
-      const result = json?.data || json;
+      let result: any = null;
+      try {
+        const json = await res.json();
+        result = json?.data || json;
+      } catch {
+        // Fallback for non-JSON or empty response
+      }
 
       if (res.ok && result?.success) {
         setTestResult(result);
@@ -141,11 +152,16 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
           `Token verified! Connected to @${result.botUsername || "Telegram Bot"}`
         );
       } else {
+        const errorMsg =
+          result?.error ||
+          (res.status === 401
+            ? "Unauthorized: Invalid bot token."
+            : `Failed to verify bot token (HTTP ${res.status}).`);
         setTestResult({
           success: false,
-          error: result?.error || "Failed to verify bot token with Telegram.",
+          error: errorMsg,
         });
-        toast.error(result?.error || "Invalid bot token.");
+        toast.error(errorMsg);
       }
     } catch (err: any) {
       const errorMsg = err?.message || "Failed to connect to verification service.";
@@ -176,8 +192,15 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
       });
 
       if (!res.ok) {
-        const errorText = await res.text().catch(() => "");
-        throw new Error(`Failed to save: ${res.status} ${errorText}`);
+        let errorMsg = `Failed to save (HTTP ${res.status})`;
+        try {
+          const json = await res.json();
+          errorMsg = json?.error || json?.data?.message || json?.message || errorMsg;
+        } catch {
+          const text = await res.text().catch(() => "");
+          if (text) errorMsg = `Failed to save: ${res.status} ${text}`;
+        }
+        throw new Error(errorMsg);
       }
 
       toast.success(

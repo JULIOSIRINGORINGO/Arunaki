@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-import { applyCorrections, deriveSyntaxInvariants, inferDomain, mightBeCorrection, synthesize } from "../../src/arunaki/memory"
+import { applyCorrections, deriveSyntaxInvariants, inferDomain, mightBeCorrection, synthesize, updateWorkspaceCatalog } from "../../src/arunaki/memory"
 
 describe("memory: mightBeCorrection", () => {
   test("accepts substantive messages across all languages (Arabic, Chinese, English, Indonesian, dialects)", () => {
@@ -94,6 +94,50 @@ describe("memory: synthesize rule preservation", () => {
     expect(resynth).toContain("_No learned preferences yet._")
     // Should NOT have rendered "- _No learned preferences yet._" as an actual bullet item
     expect(resynth).not.toContain("- _No learned preferences yet._")
+  })
+
+  test("preserves custom user guides and sections across cartography re-runs and catalog updates", () => {
+    const existingWithCustomSections = [
+      "# LOCAL WORKSPACE OPERATING RULES (REKAPAN)",
+      "",
+      "## Workspace Catalog",
+      "- OLD_FILE.txt",
+      "",
+      "## User Preferences & Learned Corrections",
+      "### Learned by the Sentinel",
+      "- Orderan dicatat di ORDER.txt",
+      "",
+      "========================================",
+      "PANDUAN RINGKAS",
+      "========================================",
+      "",
+      "## 1. ORDER.TXT",
+      "Format: [NAMA BARANG]",
+      "",
+      "---",
+      "_Generated automatically. Arunaki self-corrects and learns from user feedback._",
+    ].join("\n")
+
+    // Test 1: updateWorkspaceCatalog
+    const updated = updateWorkspaceCatalog(existingWithCustomSections, ["NEW_FILE.xlsx", "ORDER.txt"])
+    expect(updated).toContain("- NEW_FILE.xlsx")
+    expect(updated).toContain("- Orderan dicatat di ORDER.txt")
+    expect(updated).toContain("PANDUAN RINGKAS")
+    expect(updated).toContain("## 1. ORDER.TXT")
+
+    // Test 2: synthesize preservation
+    const resynth = synthesize("/test", ["NEW_FILE.xlsx", "ORDER.txt"], existingWithCustomSections)
+    expect(resynth).toContain("- NEW_FILE.xlsx")
+    expect(resynth).toContain("- Orderan dicatat di ORDER.txt")
+    expect(resynth).toContain("PANDUAN RINGKAS")
+    expect(resynth).toContain("## 1. ORDER.TXT")
+
+    // Test 3: applyCorrections preservation
+    const withCorrection = applyCorrections(existingWithCustomSections, ["Rule baru: jangan edit rumus"])
+    expect(withCorrection).toContain("- Rule baru: jangan edit rumus")
+    expect(withCorrection).toContain("- Orderan dicatat di ORDER.txt")
+    expect(withCorrection).toContain("PANDUAN RINGKAS")
+    expect(withCorrection).toContain("## 1. ORDER.TXT")
   })
 })
 
