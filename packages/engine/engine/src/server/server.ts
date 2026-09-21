@@ -88,7 +88,7 @@ const listenEffect: (opts: ListenOptions) => Effect.Effect<EffectListener, unkno
     const listenerUrl = makeURL(opts.hostname, address.port)
     const unpublishMdns = yield* setupMdns(opts, address.port, state.scope)
     url = listenerUrl
-    yield* Effect.promise(() => telegramService.startIfEnabled()).pipe(Effect.ignore, Effect.forkDaemon)
+    telegramService.startIfEnabled().catch(() => {})
 
     return {
       hostname: opts.hostname,
@@ -187,7 +187,7 @@ function makeStop(state: ListenerState, unpublishMdns: Effect.Effect<void>, list
 
     return (close?: boolean) =>
       Effect.gen(function* () {
-        yield* Effect.promise(() => telegramService.stop()).pipe(Effect.ignore)
+        yield* Effect.promise(() => telegramService.stop().catch(() => {}))
         yield* unpublishMdns
         if (close) yield* forceCloseOnce
         yield* closeScopeOnce
