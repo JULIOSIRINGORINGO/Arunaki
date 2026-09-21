@@ -54,7 +54,7 @@ The working directory is the user's project folder — the folder they opened in
 # User Help & Feedback
 - If the user asks for help or wants to give feedback inform them of the following:
   - /help: Get help with using Arunaki
-  - To give feedback, users should report the issue at https://github.com/JULIOSIRINGORINGO/Arunaki/issues
+  - To give feedback, users should report the issue at https://github.com/jlsrngo/Arunaki/issues
 
 # Ultimate Reminders
 

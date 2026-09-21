@@ -79,7 +79,7 @@ export const HelpMenu = memo(function HelpMenu({
             type="button"
             onClick={() => {
               onClose();
-              window.open("https://github.com/JULIOSIRINGORINGO/Arunaki", "_blank");
+              window.open("https://github.com/jlsrngo/Arunaki", "_blank");
             }}
             className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
           >
@@ -93,7 +93,7 @@ export const HelpMenu = memo(function HelpMenu({
             type="button"
             onClick={() => {
               onClose();
-              window.open("https://github.com/JULIOSIRINGORINGO/Arunaki/issues", "_blank");
+              window.open("https://github.com/jlsrngo/Arunaki/issues", "_blank");
             }}
             className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
           >
