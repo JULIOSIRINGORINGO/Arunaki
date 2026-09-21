@@ -25,14 +25,15 @@ import { cn } from "../../../lib/utils";
 import { ArunakiLogo } from "../../common/ArunakiLogo";
 import { getFileIcon } from "../../workspace/tree-utils";
 import { toast } from "sonner";
+import { useI18n } from "../../../lib/i18n";
 import { AttachedImage } from "./types";
 
 const EFFORT_OPTIONS = [
-  { label: "Default", value: "" },
-  { label: "Low", value: "low" },
-  { label: "Medium", value: "medium" },
-  { label: "High", value: "high" },
-];
+  { key: "effortDefault", label: "Default", value: "" },
+  { key: "effortLow", label: "Low", value: "low" },
+  { key: "effortMedium", label: "Medium", value: "medium" },
+  { key: "effortHigh", label: "High", value: "high" },
+] as const;
 
 interface ChatInputBoxProps {
   files?: { name: string }[];
@@ -64,6 +65,7 @@ export const ChatInputBox = memo(function ChatInputBox({
   setCollapseThinking,
   onPreviewImage,
 }: ChatInputBoxProps) {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [localPrompt, setLocalPrompt] = useState("");
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
@@ -92,10 +94,8 @@ export const ChatInputBox = memo(function ChatInputBox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-
   const currentEffortObj = EFFORT_OPTIONS.find((opt) => opt.value === reasoningEffort);
-  const currentEffortLabel = currentEffortObj ? currentEffortObj.label : "Default";
+  const currentEffortLabel = currentEffortObj ? t(currentEffortObj.key as any, currentEffortObj.label) : t("effortDefault", "Default");
 
   const mentionResults = useMemo(() => {
     if (!showMentions) return [];
@@ -328,7 +328,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       {showMentions && mentionResults.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
           <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
-            Select file to attach
+            {t("selectFileToAttach", "Select file to attach")}
           </div>
           <div className="max-h-44 overflow-y-auto">
             {mentionResults.map((name, i) => (
@@ -355,7 +355,7 @@ export const ChatInputBox = memo(function ChatInputBox({
       {showCommands && filteredCommands.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
           <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-muted)] bg-[var(--bg-hover)] border-b border-[var(--border-color)]">
-            Slash Commands
+            {t("slashCommands", "Slash Commands")}
           </div>
           <div className="max-h-64 overflow-y-auto">
             {filteredCommands.map((command, index) => {
@@ -403,7 +403,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                 <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">
                   {img.name}
                 </span>
-                <span className="text-[9px] text-[var(--text-dim)] font-mono">Image attached</span>
+                <span className="text-[9px] text-[var(--text-dim)] font-mono">{t("imageAttached", "Image attached")}</span>
               </div>
               <button
                 type="button"
@@ -439,7 +439,7 @@ export const ChatInputBox = memo(function ChatInputBox({
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
-          placeholder="Ask anything, type @ to mention files, / for commands..."
+          placeholder={t("askPlaceholder", "Ask anything, type @ to mention files, / for commands...")}
           rows={1}
           style={{ fieldSizing: "content" } as React.CSSProperties}
           className="col-start-1 row-start-1 w-full h-full bg-transparent text-xs leading-[20px] py-0.5 text-[var(--text-primary)] placeholder-[var(--text-dim)] resize-none overflow-y-auto no-scrollbar focus:outline-none"
@@ -454,7 +454,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                 type="button"
                 onClick={() => setIsEffortDropdownOpen(!isEffortDropdownOpen)}
                 className="text-[10px] bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-primary)] px-2 py-0.5 rounded-full font-medium border border-[var(--border-color)] hover:border-[var(--border-strong)] flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-                title="Reasoning Effort"
+                title={t("reasoningEffort", "Reasoning Effort")}
               >
                 <span>{currentEffortLabel}</span>
                 <ChevronDown
@@ -468,10 +468,11 @@ export const ChatInputBox = memo(function ChatInputBox({
               {isEffortDropdownOpen && (
                 <div className="absolute bottom-full mb-1.5 left-0 w-28 rounded-xl bg-[var(--bg-card)] border border-[var(--border-strong)] shadow-2xl p-1 space-y-0.5 z-50 animate-in fade-in duration-100">
                   <div className="px-2 py-1 text-[10px] font-medium text-[var(--text-muted)] border-b border-[var(--border-color)] mb-0.5">
-                    Reasoning Effort
+                    {t("reasoningEffort", "Reasoning Effort")}
                   </div>
                   {EFFORT_OPTIONS.map((opt) => {
                     const isSelected = reasoningEffort === opt.value;
+                    const optLabel = t(opt.key as any, opt.label);
                     return (
                       <button
                         key={opt.value || "natural"}
@@ -487,7 +488,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                             : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                         )}
                       >
-                        <span>{opt.label}</span>
+                        <span>{optLabel}</span>
                         {isSelected && (
                           <Check className="w-2.5 h-2.5 text-[var(--text-primary)] shrink-0 stroke-[2.5]" />
                         )}
@@ -508,7 +509,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                   type="button"
                   onClick={submitPrompt}
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]"
-                  title="Add to queue"
+                  title={t("addToQueue", "Add to queue")}
                 >
                   <Clock className="w-3.5 h-3.5" />
                 </button>
@@ -518,7 +519,7 @@ export const ChatInputBox = memo(function ChatInputBox({
                 type="button"
                 onClick={onCancelStream}
                 className="relative w-7 h-7 bg-red-600 hover:bg-red-700 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-sm shrink-0 group"
-                title="Stop generation"
+                title={t("stopGenerating", "Stop generating")}
               >
                 {/* Active spinning border indicator so user clearly sees it is actively processing */}
                 <span className="absolute -inset-[1.5px] rounded-full border-2 border-red-400 border-t-transparent animate-spin pointer-events-none" />

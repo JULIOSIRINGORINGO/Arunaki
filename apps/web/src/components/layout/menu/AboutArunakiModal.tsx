@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Info, X } from "lucide-react";
+import { useI18n } from "../../../lib/i18n";
 
 interface AboutArunakiModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ export const AboutArunakiModal = memo(function AboutArunakiModal({
   isOpen,
   onClose,
 }: AboutArunakiModalProps) {
+  const { t } = useI18n();
+
   if (!isOpen) return null;
 
   return (
@@ -18,7 +21,7 @@ export const AboutArunakiModal = memo(function AboutArunakiModal({
         <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
           <h3 className="font-semibold text-sm text-[var(--text-primary)] flex items-center gap-2">
             <Info className="w-4 h-4 text-[var(--text-primary)]" />
-            About Arunaki
+            {t("aboutArunaki", "About Arunaki")}
           </h3>
           <button
             type="button"
@@ -34,23 +37,27 @@ export const AboutArunakiModal = memo(function AboutArunakiModal({
             A
           </div>
           <div>
-            <h4 className="font-bold text-sm text-[var(--text-primary)]">Arunaki Desktop</h4>
+            <h4 className="font-bold text-sm text-[var(--text-primary)]">
+              {t("aboutDesktopTitle", "Arunaki Desktop")}
+            </h4>
             <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-              Sandboxed Computer Use Agent for Documents
+              {t("aboutSubtitle", "Sandboxed Computer Use Agent for Documents")}
             </p>
           </div>
           <div className="w-full bg-[var(--bg-hover)]/60 rounded-lg p-3 text-[11px] text-left text-[var(--text-muted)] flex flex-col gap-1.5 border border-[var(--border-color)]/50">
             <div className="flex justify-between">
-              <span>Version:</span>
+              <span>{t("version", "Version")}:</span>
               <span className="font-mono text-[var(--text-primary)]">0.1.0 (Phase 68)</span>
             </div>
             <div className="flex justify-between">
-              <span>Environment:</span>
+              <span>{t("environment", "Environment")}:</span>
               <span className="text-[var(--text-primary)]">Desktop (Electron)</span>
             </div>
             <div className="flex justify-between">
-              <span>Isolation:</span>
-              <span className="text-emerald-500 font-medium">Active Folder Sandbox</span>
+              <span>{t("isolation", "Isolation")}:</span>
+              <span className="text-emerald-500 font-medium">
+                {t("activeFolderSandbox", "Active Folder Sandbox")}
+              </span>
             </div>
           </div>
         </div>
@@ -61,7 +68,7 @@ export const AboutArunakiModal = memo(function AboutArunakiModal({
             onClick={onClose}
             className="px-4 py-1.5 bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-primary)] font-medium rounded-lg text-xs transition-colors cursor-pointer border border-[var(--border-color)]"
           >
-            Done
+            {t("done", "Done")}
           </button>
         </div>
       </div>

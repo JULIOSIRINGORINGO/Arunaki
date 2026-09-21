@@ -12,6 +12,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { useI18n } from "../../../lib/i18n";
 import { BaseMenuProps } from "./types";
 import { getEffectiveShortcut } from "./shortcutsConfig";
 
@@ -27,6 +28,7 @@ export const EditMenu = memo(function EditMenu({
   onOpenShortcuts,
 }: EditMenuProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleUndo = () => {
     document.execCommand("undo");
@@ -83,7 +85,7 @@ export const EditMenu = memo(function EditMenu({
           isOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
         )}
       >
-        Edit
+        {t("edit", "Edit")}
       </button>
 
       {isOpen && (
@@ -95,7 +97,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Undo2 className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Undo</span>
+              <span>{t("undo", "Undo")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("undo") || "Ctrl+Z"}
@@ -109,7 +111,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Redo2 className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Redo</span>
+              <span>{t("redo", "Redo")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("redo") || "Ctrl+Y"}
@@ -125,7 +127,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Scissors className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Cut</span>
+              <span>{t("cut", "Cut")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("cut") || "Ctrl+X"}
@@ -139,7 +141,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Copy className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Copy</span>
+              <span>{t("copy", "Copy")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("copy") || "Ctrl+C"}
@@ -153,7 +155,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Clipboard className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Paste</span>
+              <span>{t("paste", "Paste")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("paste") || "Ctrl+V"}
@@ -167,7 +169,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <CheckSquare className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Select All</span>
+              <span>{t("selectAll", "Select All")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("select-all") || "Ctrl+A"}
@@ -183,7 +185,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Search className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Find in Session...</span>
+              <span>{t("findInSession", "Find in Session...")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("find-session") || "Ctrl+F"}
@@ -203,7 +205,7 @@ export const EditMenu = memo(function EditMenu({
             >
               <div className="flex items-center gap-2.5">
                 <Keyboard className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-                <span>Keyboard Shortcuts</span>
+                <span>{t("keyboardShortcuts", "Keyboard Shortcuts")}</span>
               </div>
               <span className="text-[11px] text-[var(--text-muted)] font-mono">
                 {getEffectiveShortcut("shortcuts") || "Ctrl+/"}
@@ -221,7 +223,7 @@ export const EditMenu = memo(function EditMenu({
           >
             <div className="flex items-center gap-2.5">
               <Settings className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Preferences / Settings</span>
+              <span>{t("preferencesSettings", "Preferences / Settings")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("settings") || "Ctrl+,"}

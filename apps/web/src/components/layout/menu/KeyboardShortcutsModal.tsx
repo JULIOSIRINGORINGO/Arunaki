@@ -17,6 +17,7 @@ import {
 } from "./shortcutsConfig";
 import { toast } from "sonner";
 import { cn } from "../../../lib/utils";
+import { useI18n } from "../../../lib/i18n";
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
   isOpen,
   onClose,
 }: KeyboardShortcutsModalProps) {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [customShortcuts, setCustomShortcuts] = useState<Record<string, string>>({});
@@ -123,7 +125,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
             </div>
             <div>
               <h3 className="font-bold text-sm text-[var(--text-primary)]">
-                Keyboard Shortcuts
+                {t("keyboardShortcuts", "Keyboard Shortcuts")}
               </h3>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Click any shortcut badge to reassign key combination.
@@ -147,7 +149,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search shortcuts or key combos..."
+              placeholder={t("searchShortcuts", "Search shortcuts...")}
               className="w-full bg-[var(--bg-panel)] border border-[var(--border-color)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-strong)] transition-colors"
             />
           </div>
@@ -159,7 +161,7 @@ export const KeyboardShortcutsModal = memo(function KeyboardShortcutsModal({
               title="Reset all modified shortcuts to default"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset All</span>
+              <span>{t("resetAllShortcuts", "Reset All")}</span>
             </button>
           )}
         </div>

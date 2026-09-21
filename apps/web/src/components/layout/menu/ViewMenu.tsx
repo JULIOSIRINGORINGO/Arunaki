@@ -8,9 +8,11 @@ import {
   Maximize,
   RotateCcw,
   Check,
+  Languages,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useTheme } from "../../../lib/theme";
+import { useI18n } from "../../../lib/i18n";
 import { BaseMenuProps } from "./types";
 import { getEffectiveShortcut } from "./shortcutsConfig";
 
@@ -21,6 +23,7 @@ export const ViewMenu = memo(function ViewMenu({
   onClose,
 }: BaseMenuProps) {
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage, t } = useI18n();
 
   const handleToggleExplorer = () => {
     window.dispatchEvent(new CustomEvent("arunaki-toggle-explorer"));
@@ -59,7 +62,7 @@ export const ViewMenu = memo(function ViewMenu({
           isOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
         )}
       >
-        View
+        {t("view", "View")}
       </button>
 
       {isOpen && (
@@ -71,7 +74,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <PanelLeft className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Explorer Panel</span>
+              <span>{t("explorerPanel", "Explorer Panel")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("toggle-explorer") || "Ctrl+B"}
@@ -85,7 +88,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <PanelRight className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Chat Panel</span>
+              <span>{t("chatPanel", "Chat Panel")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("toggle-chat") || "Ctrl+J"}
@@ -95,7 +98,7 @@ export const ViewMenu = memo(function ViewMenu({
           <div className="h-px my-1.5 bg-[var(--border-color)]" />
 
           <div className="px-3.5 py-1 text-xs font-medium text-[var(--text-muted)]">
-            Theme
+            {t("theme", "Theme")}
           </div>
 
           <button
@@ -108,7 +111,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <Sun className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Light</span>
+              <span>{t("light", "Light")}</span>
             </div>
             {theme === "light" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
@@ -123,7 +126,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <Moon className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Dark</span>
+              <span>{t("dark", "Dark")}</span>
             </div>
             {theme === "dark" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
@@ -138,9 +141,51 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <Laptop className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>System Theme</span>
+              <span>{t("systemTheme", "System Theme")}</span>
             </div>
             {theme === "system" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
+          </button>
+
+          <div className="h-px my-1.5 bg-[var(--border-color)]" />
+
+          {/* Language Selection */}
+          <div className="px-3.5 py-1 text-xs font-medium text-[var(--text-muted)] flex items-center gap-2">
+            <Languages className="w-3.5 h-3.5" strokeWidth={1.75} />
+            <span>{t("language", "Language")}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLanguage("en");
+              onClose();
+            }}
+            className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                EN
+              </span>
+              <span>{t("english", "English")}</span>
+            </div>
+            {language === "en" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLanguage("id");
+              onClose();
+            }}
+            className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                ID
+              </span>
+              <span>{t("indonesian", "Bahasa Indonesia")}</span>
+            </div>
+            {language === "id" && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
           </button>
 
           <div className="h-px my-1.5 bg-[var(--border-color)]" />
@@ -152,7 +197,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <Maximize className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Toggle Fullscreen</span>
+              <span>{t("toggleFullscreen", "Toggle Fullscreen")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("fullscreen") || "F11"}
@@ -166,7 +211,7 @@ export const ViewMenu = memo(function ViewMenu({
           >
             <div className="flex items-center gap-2.5">
               <RotateCcw className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Reset Zoom</span>
+              <span>{t("resetZoom", "Reset Zoom")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("reset-zoom") || "Ctrl+0"}

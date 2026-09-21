@@ -1,6 +1,7 @@
 import { memo, useState, useEffect, type KeyboardEvent, type FocusEvent } from "react";
 import { Bot, Plus, PanelRightClose } from "lucide-react";
 import { getSession } from "../../../lib/engine";
+import { useI18n } from "../../../lib/i18n";
 
 interface WorkstationRightChatHeaderProps {
   activeChatId?: string;
@@ -13,6 +14,7 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
   onNewChat,
   onClose,
 }: WorkstationRightChatHeaderProps) {
+  const { t } = useI18n();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [chatTitle, setChatTitle] = useState("Chat");
 
@@ -50,6 +52,13 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
     }
   };
 
+  const displayTitle =
+    chatTitle === "Chat"
+      ? t("chat", "Chat")
+      : chatTitle === "New Chat"
+      ? t("newChat", "New Chat")
+      : chatTitle;
+
   return (
     <div className="h-9 px-3 border-b border-[var(--border-color)] flex items-center justify-between bg-[var(--bg-panel)] shrink-0 select-none">
       <div className="flex items-center gap-2 flex-1 min-w-0 pr-4">
@@ -58,7 +67,7 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
           <input
             type="text"
             defaultValue={chatTitle === "Chat" || chatTitle === "New Chat" ? "" : chatTitle}
-            placeholder="Session Name..."
+            placeholder={t("sessionNamePlaceholder", "Session Name...")}
             autoFocus
             onKeyDown={handleTitleSubmit}
             onBlur={handleTitleBlur}
@@ -68,9 +77,9 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
           <span
             onClick={() => setIsEditingTitle(true)}
             className="text-xs font-semibold text-[var(--text-primary)] truncate cursor-pointer hover:bg-[var(--bg-hover)] px-1 py-0.5 -ml-1 rounded transition-colors"
-            title="Click to rename session"
+            title={t("clickToRenameSession", "Click to rename session")}
           >
-            {chatTitle}
+            {displayTitle}
           </span>
         )}
       </div>
@@ -80,7 +89,7 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
             type="button"
             onClick={onNewChat}
             className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-            title="New Chat Session"
+            title={t("newChatSession", "New Chat Session")}
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={1.5} />
           </button>
@@ -89,7 +98,7 @@ export const WorkstationRightChatHeader = memo(function WorkstationRightChatHead
           type="button"
           onClick={onClose}
           className="text-[var(--text-muted)] hover:text-[var(--text-primary)] p-1 rounded hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
-          title="Close Panel"
+          title={t("closePanel", "Close Panel")}
         >
           <PanelRightClose className="w-3.5 h-3.5" />
         </button>

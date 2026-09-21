@@ -13,6 +13,7 @@ import {
 import { ArunakiLogo } from "../common/ArunakiLogo";
 import { cn } from "../../lib/utils";
 import { useTheme } from "../../lib/theme";
+import { useI18n } from "../../lib/i18n";
 import { TopMenuBar } from "./TopMenuBar";
 import { toast } from "sonner";
 import { UnifiedWorkstationPage } from "../../pages/UnifiedWorkstationPage";
@@ -25,6 +26,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setTheme, isLight } = useTheme();
+  const { t } = useI18n();
 
   const [activeFolder, setActiveFolder] = useState<string>(() => {
     return localStorage.getItem("arunaki_active_folder") || "";
@@ -150,10 +152,10 @@ export function AppLayout() {
   };
 
   const navItems = [
-    { label: "Workstation", path: "/", icon: MessageSquare },
-    { label: "Knowledge", path: "/knowledge", icon: BookOpen },
-    { label: "History", path: "/history", icon: History },
-    { label: "Settings", path: "/settings", icon: Settings },
+    { label: t("navWorkstation", "Workstation"), path: "/", icon: MessageSquare },
+    { label: t("navKnowledge", "Knowledge"), path: "/knowledge", icon: BookOpen },
+    { label: t("navHistory", "History"), path: "/history", icon: History },
+    { label: t("navSettings", "Settings"), path: "/settings", icon: Settings },
   ];
 
   const handleNavigateWorkstation = useCallback(() => {
@@ -205,7 +207,7 @@ export function AppLayout() {
           <button
             onClick={toggleQuickTheme}
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            title={isLight ? t("switchToDark", "Switch to Dark Mode") : t("switchToLight", "Switch to Light Mode")}
           >
             {isLight ? (
               <Moon className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={2.25} />
@@ -217,7 +219,7 @@ export function AppLayout() {
           <button
             onClick={() => navigate("/settings")}
             className="w-7 h-7 rounded-full bg-[var(--bg-hover)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] transition-colors cursor-pointer"
-            title="User Profile & Settings"
+            title={t("userProfileSettings", "User Profile & Settings")}
           >
             <User className="w-3.5 h-3.5 text-[var(--text-primary)]" strokeWidth={2.25} />
           </button>
@@ -259,12 +261,12 @@ export function AppLayout() {
         {/* Left: Active Folder Display (Read-Only Info) */}
         <div className="flex items-center gap-2 min-w-0 max-w-[280px] sm:max-w-[380px]">
           <div
-            title={activeFolder ? `Active Folder: ${activeFolder}` : "No folder opened"}
+            title={activeFolder ? `Active Folder: ${activeFolder}` : t("noFolderOpened", "No folder opened")}
             className="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-muted)] truncate max-w-full"
           >
             <Folder className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
             <span className="text-[11px] truncate text-[var(--text-primary)]">
-              {activeFolder ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder : "No folder opened"}
+              {activeFolder ? activeFolder.split(/[\\/]/).filter(Boolean).pop() || activeFolder : t("noFolderOpened", "No folder opened")}
             </span>
           </div>
         </div>
@@ -311,7 +313,7 @@ export function AppLayout() {
                 ? "bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-muted)]"
                 : "bg-rose-500/10 border-rose-500/30 text-rose-400 font-medium"
             )}
-            title={isOnline ? "Computer is connected to the network" : "Computer is offline"}
+            title={isOnline ? t("networkConnected", "Computer is connected to the network") : t("networkOffline", "Computer is offline")}
           >
             <span
               className={cn(
@@ -320,7 +322,7 @@ export function AppLayout() {
               )}
             />
             <span className="text-[11px] font-medium">
-              {isOnline ? "Online" : "Offline"}
+              {isOnline ? t("online", "Online") : t("offline", "Offline")}
             </span>
           </div>
         </div>

@@ -2,20 +2,22 @@ import { useState, useEffect } from "react";
 import { Cpu, User, Sliders, MessageSquare } from "lucide-react";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch, directoryQuery } from "../lib/api";
+import { useI18n } from "../lib/i18n";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
 import { SettingsAccountTab } from "../components/settings/SettingsAccountTab";
 import { SettingsAutomationTab } from "../components/settings/SettingsAutomationTab";
 import { SettingsMessagingTab } from "../components/settings/SettingsMessagingTab";
 
-const tabs = [
-  { id: "models", label: "Model Routing & Providers", icon: Cpu },
-  { id: "integrations", label: "Desktop Automation & Office", icon: Sliders },
-  { id: "messaging", label: "Messaging Apps", icon: MessageSquare },
-  { id: "account", label: "Account & License", icon: User },
-];
-
 export function SettingsPage() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("models");
+
+  const tabs = [
+    { id: "models", label: t("modelRouting", "Model Routing & Providers"), icon: Cpu },
+    { id: "integrations", label: t("desktopAutomation", "Desktop Automation & Office"), icon: Sliders },
+    { id: "messaging", label: t("messagingApps", "Messaging Apps"), icon: MessageSquare },
+    { id: "account", label: t("accountLicense", "Account & License"), icon: User },
+  ];
   const [providers, setProviders] = useState<Provider[]>([]);
   const [availableCatalogModels, setAvailableCatalogModels] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
@@ -106,10 +108,10 @@ export function SettingsPage() {
         {/* Header Title */}
         <div className="mb-4">
           <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-            Workstation System Settings
+            {t("settingsTitle", "Workstation System Settings")}
           </h1>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Configure model routing, desktop office automation behavior, and user account licensing.
+            {t("settingsSubtitle", "Configure model routing, desktop office automation behavior, and user account licensing.")}
           </p>
         </div>
 

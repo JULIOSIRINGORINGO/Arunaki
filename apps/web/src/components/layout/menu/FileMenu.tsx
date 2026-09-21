@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { toast } from "sonner";
+import { useI18n } from "../../../lib/i18n";
 import { BaseMenuProps } from "./types";
 import { getEffectiveShortcut } from "./shortcutsConfig";
 
@@ -30,6 +31,7 @@ export const FileMenu = memo(function FileMenu({
   onCloseFolder,
 }: FileMenuProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleNewChat = () => {
     window.dispatchEvent(new CustomEvent("arunaki-new-chat"));
@@ -78,7 +80,7 @@ export const FileMenu = memo(function FileMenu({
           isOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
         )}
       >
-        File
+        {t("file", "File")}
       </button>
 
       {isOpen && (
@@ -90,7 +92,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <MessageSquarePlus className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>New Session</span>
+              <span>{t("newSession", "New Session")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("new-session") || "Ctrl+N"}
@@ -107,7 +109,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <FolderOpen className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Open Folder...</span>
+              <span>{t("openFolder", "Open Folder...")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("open-folder") || "Ctrl+O"}
@@ -123,7 +125,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <Save className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Save Document</span>
+              <span>{t("saveDocument", "Save Document")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("save-file") || "Ctrl+S"}
@@ -141,7 +143,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <Archive className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Backup Workspace</span>
+              <span>{t("backupWorkspace", "Backup Workspace")}</span>
             </div>
           </button>
 
@@ -161,7 +163,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <FolderX className="w-4 h-4" strokeWidth={1.75} />
-              <span>Close Folder</span>
+              <span>{t("closeFolder", "Close Folder")}</span>
             </div>
           </button>
 
@@ -177,7 +179,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <Settings className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Preferences / Settings</span>
+              <span>{t("preferencesSettings", "Preferences / Settings")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("settings") || "Ctrl+,"}
@@ -193,7 +195,7 @@ export const FileMenu = memo(function FileMenu({
           >
             <div className="flex items-center gap-2.5">
               <LogOut className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Exit Window</span>
+              <span>{t("exitWindow", "Exit Window")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">Alt+F4</span>
           </button>

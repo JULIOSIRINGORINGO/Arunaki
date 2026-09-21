@@ -7,6 +7,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { useI18n } from "../../../lib/i18n";
 import { BaseMenuProps } from "./types";
 import { getEffectiveShortcut } from "./shortcutsConfig";
 
@@ -23,6 +24,8 @@ export const HelpMenu = memo(function HelpMenu({
   onOpenShortcuts,
   onOpenAbout,
 }: HelpMenuProps) {
+  const { t } = useI18n();
+
   return (
     <div className="relative">
       <button
@@ -34,7 +37,7 @@ export const HelpMenu = memo(function HelpMenu({
           isOpen && "bg-[var(--bg-hover)] text-[var(--text-primary)]"
         )}
       >
-        Help
+        {t("help", "Help")}
       </button>
 
       {isOpen && (
@@ -49,7 +52,7 @@ export const HelpMenu = memo(function HelpMenu({
           >
             <div className="flex items-center gap-2.5">
               <BookOpen className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Knowledge & Rules</span>
+              <span>{t("knowledgeRules", "Knowledge & Rules")}</span>
             </div>
           </button>
 
@@ -63,7 +66,7 @@ export const HelpMenu = memo(function HelpMenu({
           >
             <div className="flex items-center gap-2.5">
               <Keyboard className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Keyboard Shortcuts</span>
+              <span>{t("keyboardShortcuts", "Keyboard Shortcuts")}</span>
             </div>
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("shortcuts") || "Ctrl+/"}
@@ -82,7 +85,7 @@ export const HelpMenu = memo(function HelpMenu({
           >
             <div className="flex items-center gap-2.5">
               <ExternalLink className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>GitHub Repository</span>
+              <span>{t("githubRepo", "GitHub Repository")}</span>
             </div>
           </button>
 
@@ -96,7 +99,7 @@ export const HelpMenu = memo(function HelpMenu({
           >
             <div className="flex items-center gap-2.5">
               <Bug className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>Report an Issue</span>
+              <span>{t("reportIssue", "Report an Issue")}</span>
             </div>
           </button>
 
@@ -112,7 +115,7 @@ export const HelpMenu = memo(function HelpMenu({
           >
             <div className="flex items-center gap-2.5">
               <Info className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
-              <span>About Arunaki</span>
+              <span>{t("aboutArunaki", "About Arunaki")}</span>
             </div>
           </button>
         </div>
