@@ -2,8 +2,10 @@ import { useState, memo, type FormEvent } from "react";
 import { LogIn, LogOut, ShieldCheck, Mail, Camera, Check, Key, User } from "lucide-react";
 import { toast } from "sonner";
 import { API_BASE, apiFetch } from "../../lib/api";
+import { useI18n } from "../../lib/i18n";
 
 export const SettingsAccountTab = memo(function SettingsAccountTab() {
+  const { t } = useI18n();
   const [userName, setUserName] = useState(() => localStorage.getItem("arunaki_user_name") || "");
   const [userAvatar, setUserAvatar] = useState(() => localStorage.getItem("arunaki_user_avatar") || "");
   const [userEmail, setUserEmail] = useState(() => localStorage.getItem("arunaki_user_email") || "");
@@ -78,10 +80,10 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
       <div>
         <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
           <User className="w-4 h-4 text-[var(--text-primary)]" />
-          User Account & License
+          {t("userAccountLicenseTitle")}
         </h3>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">
-          Manage your workstation profile, encrypted cloud sync, and multi-device workstation license.
+          {t("userAccountLicenseSubtitle")}
         </p>
       </div>
 
@@ -128,7 +130,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
                     {userName || userEmail.split("@")[0] || "User"}
                   </h4>
                   <span className="px-2.5 py-0.5 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)] flex items-center gap-1 shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[var(--text-muted)]" /> Pro License
+                    <Check className="w-2.5 h-2.5 text-[var(--text-muted)]" /> {t("proLicense")}
                   </span>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-1.5 truncate">
@@ -141,7 +143,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
             {/* Profile Form Field */}
             <div className="pt-4 border-t border-[var(--border-color)]">
               <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1.5">
-                Full Name / Business Identity
+                {t("fullNameBusiness")}
               </label>
               <div className="flex gap-2">
                 <input
@@ -159,7 +161,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
                   }}
                   className="px-5 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                 >
-                  Save
+                  {t("save")}
                 </button>
               </div>
             </div>
@@ -171,7 +173,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
                 className="px-4 py-2 bg-[var(--bg-hover)] hover:bg-[var(--bg-app)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-xl text-xs font-medium border border-[var(--border-color)] transition-all cursor-pointer flex items-center gap-2"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+                <span>{t("signOut")}</span>
               </button>
             </div>
           </div>
@@ -180,19 +182,19 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
           <div className="space-y-4">
             <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-4">
               <h4 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider text-[var(--text-muted)]">
-                License Details
+                {t("licenseDetails")}
               </h4>
               <div className="space-y-3 text-xs">
                 <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
-                  <p className="text-[11px] text-[var(--text-muted)]">Verification Status</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">{t("verificationStatus")}</p>
                   <p className="font-semibold text-[var(--text-primary)] mt-0.5 flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" /> Active & Verified
+                    <ShieldCheck className="w-3.5 h-3.5 text-[var(--text-muted)]" /> {t("activeVerified")}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-[var(--bg-panel)] border border-[var(--border-color)]">
-                  <p className="text-[11px] text-[var(--text-muted)]">Connected Client</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">{t("connectedClient")}</p>
                   <p className="font-semibold text-[var(--text-primary)] mt-0.5">
-                    Windows Desktop Workstation
+                    {t("windowsDesktopWorkstation")}
                   </p>
                 </div>
               </div>
@@ -200,11 +202,11 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
 
             <div className="p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-semibold text-[var(--text-primary)]">Cloud Workspace Sync</h4>
-                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">AES-256 local encryption</p>
+                <h4 className="text-xs font-semibold text-[var(--text-primary)]">{t("cloudWorkspaceSync")}</h4>
+                <p className="text-[11px] text-[var(--text-muted)] mt-0.5">{t("aesEncryption")}</p>
               </div>
               <span className="px-2.5 py-1 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)]">
-                Active
+                {t("active")}
               </span>
             </div>
           </div>
@@ -218,12 +220,10 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
             </div>
             <div>
               <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                {isRegisterMode ? "Create New Arunaki Account" : "Sign In to Arunaki"}
+                {isRegisterMode ? t("createAccount") : t("signInAccount")}
               </h4>
               <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                {isRegisterMode
-                  ? "Register to enable workspace cloud synchronization and multi-device pro licensing."
-                  : "Connect your account to synchronize workspace configurations across devices."}
+                {isRegisterMode ? t("createAccountDesc") : t("signInAccountDesc")}
               </p>
             </div>
           </div>
@@ -236,7 +236,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
               className="flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-panel)] hover:bg-[var(--bg-hover)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
             >
               <Key className="w-4 h-4 text-[var(--text-muted)]" />
-              <span>Continue with Google</span>
+              <span>{t("continueGoogle")}</span>
             </button>
 
             <button
@@ -247,20 +247,20 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
               <svg className="w-4 h-4 fill-current text-[var(--text-primary)]" viewBox="0 0 24 24">
                 <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
               </svg>
-              <span>Continue with GitHub</span>
+              <span>{t("continueGithub")}</span>
             </button>
           </div>
 
           <div className="flex items-center gap-3 w-full">
             <div className="flex-1 h-px bg-[var(--border-color)]" />
-            <span className="text-[11px] text-[var(--text-muted)]">or continue with email</span>
+            <span className="text-[11px] text-[var(--text-muted)]">{t("orContinueEmail")}</span>
             <div className="flex-1 h-px bg-[var(--border-color)]" />
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 w-full">
             <div>
               <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
-                Email Address
+                {t("emailAddress")}
               </label>
               <input
                 type="email"
@@ -274,7 +274,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
 
             <div>
               <label className="block text-[11px] font-medium text-[var(--text-muted)] mb-1">
-                Password
+                {t("password")}
               </label>
               <input
                 type="password"
@@ -292,7 +292,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
                 className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 shadow-xs"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>{isRegisterMode ? "Register & Sign In" : "Sign In"}</span>
+                <span>{isRegisterMode ? t("registerAndSignIn") : t("signIn")}</span>
               </button>
 
               <button
@@ -300,7 +300,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
                 onClick={() => setIsRegisterMode(!isRegisterMode)}
                 className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
-                {isRegisterMode ? "Already have an account? Sign In" : "Don't have an account? Register"}
+                {isRegisterMode ? t("alreadyHaveAccount") : t("dontHaveAccount")}
               </button>
             </div>
           </form>
@@ -309,7 +309,7 @@ export const SettingsAccountTab = memo(function SettingsAccountTab() {
           <div className="pt-4 border-t border-[var(--border-color)] flex items-start gap-2.5 text-[11px] text-[var(--text-muted)] leading-relaxed">
             <ShieldCheck className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
             <span>
-              <strong className="text-[var(--text-primary)]">Privacy & Offline Guarantee:</strong> Arunaki operates fully offline in local mode without requiring an active account or internet login.
+              <strong className="text-[var(--text-primary)]">{t("privacyGuaranteeTitle")}</strong> {t("privacyGuaranteeDesc")}
             </span>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, Wifi, Trash2, Check, ArrowUp, ArrowDown, Settings2, Info, X, Terminal } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useI18n } from "../../lib/i18n";
 import type { Provider } from "./ModelProviderSettings";
 import { formatToastError } from "./constants";
 
@@ -29,6 +30,7 @@ export function ProviderCard({
   onEdit,
   onDelete,
 }: ProviderCardProps) {
+  const { t } = useI18n();
   const [showTestDetails, setShowTestDetails] = useState(false);
 
   const getSelectedModels = (modelStr: string): string[] => {
@@ -58,7 +60,7 @@ export function ProviderCard({
                 disabled={index === 0}
                 onClick={() => onMovePriority(index, "up")}
                 className="p-1 rounded bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-20 cursor-pointer transition-colors"
-                title="Move provider up in routing priority"
+                title={t("moveProviderUp")}
               >
                 <ArrowUp className="w-3 h-3" />
               </button>
@@ -67,7 +69,7 @@ export function ProviderCard({
                 disabled={index === totalProviders - 1}
                 onClick={() => onMovePriority(index, "down")}
                 className="p-1 rounded bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-20 cursor-pointer transition-colors"
-                title="Move provider down in routing priority"
+                title={t("moveProviderDown")}
               >
                 <ArrowDown className="w-3 h-3" />
               </button>
@@ -78,7 +80,7 @@ export function ProviderCard({
           <button
             type="button"
             onClick={() => onToggleActive(p)}
-            title={p.active ? "Primary active provider" : "Set as primary routing provider"}
+            title={p.active ? t("primaryActiveTooltip") : t("setPrimaryTooltip")}
             className={cn(
               "px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border shrink-0 mt-0.5 shadow-xs",
               p.active
@@ -87,7 +89,7 @@ export function ProviderCard({
             )}
           >
             <Check className={cn("w-3.5 h-3.5", p.active && "stroke-[3]")} />
-            <span>{p.active ? "Primary Active" : "Set Primary"}</span>
+            <span>{p.active ? t("primaryActive") : t("setPrimary")}</span>
           </button>
 
           <div className="min-w-0">
@@ -102,7 +104,7 @@ export function ProviderCard({
                 <button
                   type="button"
                   onClick={() => setShowTestDetails(!showTestDetails)}
-                  title="Click to view ping payload & LLM response details"
+                  title={t("clickToViewPing")}
                   className={cn(
                     "text-[10px] font-semibold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 font-mono cursor-pointer transition-all hover:scale-105",
                     result.success
@@ -111,7 +113,7 @@ export function ProviderCard({
                   )}
                 >
                   <span className={cn("w-1.5 h-1.5 rounded-full", result.success ? "bg-[var(--text-primary)]" : "bg-red-400")} />
-                  <span>{result.success ? `Connected (${result.timeMs}ms)` : `Failed: ${formatToastError(result.error) || result.status}`}</span>
+                  <span>{result.success ? `${t("connected")} (${result.timeMs}ms)` : `${t("failed")}: ${formatToastError(result.error) || result.status}`}</span>
                   <Info className="w-2.5 h-2.5 text-[var(--text-muted)]" />
                 </button>
               )}
@@ -119,11 +121,11 @@ export function ProviderCard({
 
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <p className="text-[11px] text-[var(--text-muted)] font-mono truncate max-w-[280px]">
-                {p.baseUrl || "Default Endpoint"}
+                {p.baseUrl || t("defaultEndpoint")}
               </p>
               {p.model && (
                 <span className="text-[10px] text-[var(--text-primary)] font-mono px-2 py-0.5 bg-[var(--bg-app)] border border-[var(--border-color)] rounded-md">
-                  Model Pool ({selectedModels.length}): {p.model}
+                  {t("modelPool")} ({selectedModels.length}): {p.model}
                 </span>
               )}
             </div>
@@ -136,14 +138,14 @@ export function ProviderCard({
             onClick={() => onTestConnection(p.id)}
             disabled={isTesting}
             className="px-3 py-1.5 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 font-medium shadow-xs"
-            title="Send live ping request to provider endpoint"
+            title={t("testPing")}
           >
             {isTesting ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-primary)]" />
             ) : (
               <Wifi className="w-3.5 h-3.5 text-[var(--text-muted)]" />
             )}
-            <span>{isTesting ? "Testing..." : "Test Ping"}</span>
+            <span>{isTesting ? t("testing") : t("testPing")}</span>
           </button>
 
           <button
@@ -151,13 +153,13 @@ export function ProviderCard({
             className="px-3 py-1.5 bg-[var(--bg-hover)] hover:opacity-80 text-[var(--text-primary)] border border-[var(--border-strong)] text-xs rounded-xl transition-colors cursor-pointer font-medium flex items-center gap-1.5 shadow-xs"
           >
             <Settings2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-            <span>Configure</span>
+            <span>{t("configure")}</span>
           </button>
 
           <button
             onClick={() => onDelete(p.id)}
             className="p-2 text-[var(--text-muted)] hover:text-red-400 hover:bg-[var(--bg-hover)] rounded-xl cursor-pointer transition-colors"
-            title="Delete provider"
+            title={t("deleteProvider")}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -170,7 +172,7 @@ export function ProviderCard({
           <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-1.5">
             <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
               <Terminal className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              Live Ping Inspection Details
+              {t("pingInspectionDetails")}
             </span>
             <button
               type="button"
@@ -183,13 +185,13 @@ export function ProviderCard({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
             <div>
-              <span className="text-[var(--text-muted)] block">Prompt Sent:</span>
+              <span className="text-[var(--text-muted)] block">{t("promptSent")}</span>
               <p className="p-1.5 bg-[var(--bg-card)] rounded border border-[var(--border-color)] text-[var(--text-primary)] mt-0.5">
                 {result.prompt ? `"${result.prompt}"` : '"Hello, connection test."'}
               </p>
             </div>
             <div>
-              <span className="text-[var(--text-muted)] block">LLM Reply Received:</span>
+              <span className="text-[var(--text-muted)] block">{t("llmReplyReceived")}</span>
               <p className="p-1.5 bg-[var(--bg-card)] rounded border border-[var(--border-color)] text-[var(--text-primary)] font-semibold mt-0.5">
                 {result.reply ? `"${result.reply}"` : result.error || "No text content"}
               </p>
@@ -197,9 +199,9 @@ export function ProviderCard({
           </div>
 
           <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)] pt-1">
-            <span>Latency: <strong className="text-[var(--text-primary)]">{result.timeMs}ms</strong></span>
-            <span>Status: <strong className="text-[var(--text-primary)]">HTTP {result.status || (result.success ? 200 : 500)}</strong></span>
-            <span>Endpoint: <strong className="text-[var(--text-primary)] truncate">{p.baseUrl}</strong></span>
+            <span>{t("latency")} <strong className="text-[var(--text-primary)]">{result.timeMs}ms</strong></span>
+            <span>{t("status")} <strong className="text-[var(--text-primary)]">HTTP {result.status || (result.success ? 200 : 500)}</strong></span>
+            <span>{t("endpoint")} <strong className="text-[var(--text-primary)] truncate">{p.baseUrl}</strong></span>
           </div>
         </div>
       )}

@@ -8,8 +8,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
+import { useI18n } from "../../lib/i18n";
 
 export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
+  const { t } = useI18n();
   const [autoOpenOffice, setAutoOpenOffice] = useState(
     () =>
       localStorage.getItem("arunaki_pref_auto_open_office") === "true" ||
@@ -27,10 +29,10 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
       <div>
         <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
           <Sliders className="w-4 h-4 text-[var(--text-primary)]" />
-          Desktop Automation & OS Behavior
+          {t("desktopAutomationTitle")}
         </h3>
         <p className="text-xs text-[var(--text-muted)] mt-0.5">
-          Configure desktop Office automation (Word, Excel, PowerPoint), document application interaction, and operating system notifications.
+          {t("desktopAutomationSubtitle")}
         </p>
       </div>
 
@@ -44,10 +46,10 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Launch Microsoft Office on Edit
+                {t("launchOfficeTitle")}
               </h4>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
-                Opens native desktop Office applications (Word, Excel, PowerPoint, etc.) visibly on screen when executing document tasks. If disabled, all document modifications are performed silently in headless background mode.
+                {t("launchOfficeDesc")}
               </p>
             </div>
           </div>
@@ -86,18 +88,10 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Automatic Snapshot Backup Before Modifications
+                {t("autoBackupTitle")}
               </h4>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
-                Creates an immutable local backup (
-                <code className="px-1.5 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px] text-[var(--text-primary)]">
-                  .bak
-                </code>
-                ) in{" "}
-                <code className="px-1.5 py-0.5 rounded bg-[var(--bg-panel)] font-mono text-[10px] text-[var(--text-primary)]">
-                  .arunaki/backups/
-                </code>{" "}
-                before mutating files for 100% data recovery.
+                {t("autoBackupDesc")}
               </p>
             </div>
           </div>
@@ -131,10 +125,10 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-[var(--text-primary)]">
-                Desktop OS Notifications
+                {t("desktopNotificationsTitle")}
               </h4>
               <p className="text-[11px] text-[var(--text-muted)] leading-relaxed mt-0.5">
-                Displays native desktop notifications when document and ledger tasks complete.
+                {t("desktopNotificationsDesc")}
               </p>
               {desktopNotification && (
                 <div className="mt-3">
@@ -173,7 +167,7 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
                     className="px-3 py-1.5 rounded-lg bg-[var(--bg-hover)] text-[var(--text-primary)] text-[11px] font-medium border border-[var(--border-color)] transition-colors cursor-pointer flex items-center gap-1.5"
                   >
                     <Bell className="w-3 h-3 text-[var(--text-muted)]" />
-                    <span>Test Desktop Notification</span>
+                    <span>{t("testDesktopNotification")}</span>
                   </button>
                 </div>
               )}
@@ -217,15 +211,15 @@ export const SettingsAutomationTab = memo(function SettingsAutomationTab() {
           </div>
           <div>
             <h4 className="text-xs font-semibold text-[var(--text-primary)]">
-              Electron Native Desktop Shell
+              {t("electronShellTitle")}
             </h4>
             <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-              Native OS filesystem, window overlay, and IPC bridge
+              {t("electronShellDesc")}
             </p>
           </div>
         </div>
         <span className="px-3 py-1 rounded-full bg-[var(--bg-hover)] text-[var(--text-primary)] text-[10px] font-semibold border border-[var(--border-strong)]">
-          Connected
+          {t("connected")}
         </span>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Loader2, Cpu, Info } from "lucide-react";
 import { API_BASE, apiFetch, directoryQuery } from "../../lib/api";
 import { toast } from "sonner";
+import { useI18n } from "../../lib/i18n";
 import { ProviderCard } from "./ProviderCard";
 import { ProviderForm } from "./ProviderForm";
 import { Provider, ProviderFormData, FormTestResult } from "./types";
@@ -22,6 +23,7 @@ export function ModelProviderSettings({
   loading,
   onRefresh,
 }: ModelProviderSettingsProps) {
+  const { t } = useI18n();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -452,10 +454,10 @@ export function ModelProviderSettings({
         <div>
           <h3 className="font-bold text-[var(--text-primary)] text-base flex items-center gap-2">
             <Cpu className="w-4 h-4 text-[var(--text-primary)]" />
-            Language Model Routing & Provider Catalogs
+            {t("modelRoutingCatalogTitle")}
           </h3>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Manage provider credentials, API endpoints, and fallback model priority order.
+            {t("modelRoutingCatalogSubtitle")}
           </p>
         </div>
 
@@ -468,7 +470,7 @@ export function ModelProviderSettings({
             className="flex items-center gap-1.5 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] hover:opacity-90 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Provider</span>
+            <span>{t("addProvider")}</span>
           </button>
         )}
       </div>
@@ -477,7 +479,7 @@ export function ModelProviderSettings({
       <div className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] flex items-start gap-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
         <div>
-          <strong className="text-[var(--text-primary)] font-semibold">Automatic Fallback Routing:</strong> When executing document tasks, Arunaki routes to the primary active model. If an endpoint encounters rate limits or errors, it automatically falls back sequentially to subsequent models in the pool without interrupting your workflow.
+          <strong className="text-[var(--text-primary)] font-semibold">{t("automaticFallbackTitle")}:</strong> {t("automaticFallbackDesc")}
         </div>
       </div>
 
@@ -511,12 +513,12 @@ export function ModelProviderSettings({
       {loading ? (
         <div className="py-12 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
           <Loader2 className="w-4 h-4 animate-spin text-[var(--text-primary)]" />
-          <span>Loading provider configurations...</span>
+          <span>{t("loadingProviders")}</span>
         </div>
       ) : providers.length === 0 ? (
         <div className="p-8 text-center bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] space-y-3">
           <Cpu className="w-8 h-8 text-[var(--text-muted)] mx-auto opacity-50" />
-          <p className="text-xs text-[var(--text-muted)]">No model providers configured yet.</p>
+          <p className="text-xs text-[var(--text-muted)]">{t("noProvidersConfigured")}</p>
           <button
             onClick={() => {
               resetForm();
@@ -524,7 +526,7 @@ export function ModelProviderSettings({
             }}
             className="px-4 py-2 bg-[var(--text-primary)] text-[var(--bg-app)] rounded-xl text-xs font-semibold cursor-pointer"
           >
-            + Add First Provider
+            {t("addFirstProvider")}
           </button>
         </div>
       ) : (
