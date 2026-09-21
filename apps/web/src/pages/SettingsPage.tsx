@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { Cpu, User, Sliders } from "lucide-react";
+import { Cpu, User, Sliders, MessageSquare } from "lucide-react";
 import { cn } from "../lib/utils";
 import { API_BASE, apiFetch, directoryQuery } from "../lib/api";
 import { ModelProviderSettings, Provider } from "../components/settings/ModelProviderSettings";
 import { SettingsAccountTab } from "../components/settings/SettingsAccountTab";
 import { SettingsAutomationTab } from "../components/settings/SettingsAutomationTab";
+import { SettingsMessagingTab } from "../components/settings/SettingsMessagingTab";
 
 const tabs = [
   { id: "models", label: "Model Routing & Providers", icon: Cpu },
   { id: "integrations", label: "Desktop Automation & Office", icon: Sliders },
+  { id: "messaging", label: "Messaging Apps", icon: MessageSquare },
   { id: "account", label: "Account & License", icon: User },
 ];
 
@@ -147,6 +149,7 @@ export function SettingsPage() {
           )}
 
           {activeTab === "integrations" && <SettingsAutomationTab />}
+          {activeTab === "messaging" && <SettingsMessagingTab />}
 
           {activeTab === "account" && <SettingsAccountTab />}
         </div>

@@ -84,6 +84,7 @@ import { globalHandlers } from "./handlers/global"
 import { instanceHandlers } from "./handlers/instance"
 import { knowledgeHandlers } from "./handlers/knowledge"
 import { mcpHandlers } from "./handlers/mcp"
+import { messagingHandlers } from "./handlers/messaging"
 import { oauthHandlers } from "./handlers/oauth"
 import { permissionHandlers } from "./handlers/permission"
 import { projectHandlers } from "./handlers/project"
@@ -150,6 +151,7 @@ const instanceApiRoutes = HttpApiBuilder.layer(InstanceHttpApi).pipe(
     instanceHandlers,
     knowledgeHandlers,
     mcpHandlers,
+    messagingHandlers,
     oauthHandlers,
     projectHandlers,
     projectCopyHandlers,

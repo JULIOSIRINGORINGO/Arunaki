@@ -13,6 +13,7 @@ import { WebSocketTracker } from "./routes/instance/httpapi/websocket-tracker"
 import { PublicApi } from "./routes/instance/httpapi/public"
 import type { CorsOptions } from "@arunaki/server/cors"
 import { lazy } from "@/util/lazy"
+import { telegramService } from "../messaging/telegram"
 
 // @ts-ignore This global is needed to prevent ai-sdk from logging warnings to stdout https://github.com/vercel/ai/blob/2dc67e0ef538307f21368db32d5a12345d98831b/packages/ai/src/logger/log-warnings.ts#L85
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -87,6 +88,7 @@ const listenEffect: (opts: ListenOptions) => Effect.Effect<EffectListener, unkno
     const listenerUrl = makeURL(opts.hostname, address.port)
     const unpublishMdns = yield* setupMdns(opts, address.port, state.scope)
     url = listenerUrl
+    yield* Effect.promise(() => telegramService.startIfEnabled()).pipe(Effect.ignore, Effect.forkDaemon)
 
     return {
       hostname: opts.hostname,
@@ -185,6 +187,7 @@ function makeStop(state: ListenerState, unpublishMdns: Effect.Effect<void>, list
 
     return (close?: boolean) =>
       Effect.gen(function* () {
+        yield* Effect.promise(() => telegramService.stop()).pipe(Effect.ignore)
         yield* unpublishMdns
         if (close) yield* forceCloseOnce
         yield* closeScopeOnce

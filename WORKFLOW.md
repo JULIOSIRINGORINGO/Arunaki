@@ -3213,6 +3213,39 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run typecheck`: ✅ 0 errors.
   - `npm run build -w apps/web`: ✅ 0 errors (built in 30.57s).
 
+---
+
+## Phase 106: Messaging Apps Gateway (BYOB Telegram Integration) ✅ DONE (branch: `feature/messaging-apps-gateway`)
+
+**Goal:** Implement Bring-Your-Own-Bot (BYOB) messaging gateway integration allowing users to forward document tasks and raw notes from Telegram (or forwarded WhatsApp messages) to Arunaki on PC without port forwarding, domain, or VPS costs.
+
+- [x] **Telegram Long-Polling Background Engine (`packages/engine/engine/src/messaging/telegram.ts`)**:
+  - Implementasi outward long polling via `getUpdates` (no VPS, zero router port forwarding, no public IP needed).
+  - Keamanan Sender Whitelist (`allowedUserId`): hanya ID/username Telegram terdaftar yang dapat memberi instruksi; ID asing otomatis ditolak dengan pesan identitas aman.
+  - Penanganan Perintah Telegram: `/start`, `/help`, `/new` / `/reset`, `/status`.
+  - Integrasi eksekusi session & prompt Arunaki otomatis ke local HTTP API engine dengan `x-arunaki-directory` isolation.
+  - Chunking respons dokumen panjang (>4000 karakter) agar tidak ditolak Telegram.
+  - Persistensi konfigurasi ke `Global.Path.data/messaging.json`.
+- [x] **Engine HttpApi Group & Handlers**:
+  - `packages/engine/engine/src/server/routes/instance/httpapi/groups/messaging.ts` (API routes: `/messaging/config`, `/messaging/status`, `/messaging/test`).
+  - `packages/engine/engine/src/server/routes/instance/httpapi/handlers/messaging.ts` (Effect HttpApi handlers).
+  - Pendaftaran ke `InstanceHttpApi` di `api.ts` dan `server.ts`.
+  - Hook lifecycle `startIfEnabled` dan `stop` di `packages/engine/engine/src/server/server.ts`.
+- [x] **Frontend UI Tab "Messaging Apps" (`apps/web`)**:
+  - Tab baru "Messaging Apps" di `apps/web/src/pages/SettingsPage.tsx` (ikon MessageSquare).
+  - Komponen `apps/web/src/components/settings/SettingsMessagingTab.tsx` dengan desain dark-mode Antigravity:
+    - Card konfigurasi Telegram BYOB dengan toggle enable/disable.
+    - Input token dengan toggle show/hide (Eye/EyeOff) & tombol "Test Token" instan.
+    - Input whitelist sender ID / @username dengan helper `@userinfobot`.
+    - Input target project folder dengan shortcut "Use Active Workspace Folder".
+    - Badge status koneksi langsung (🟢 Connected @Bot / 🔴 Error / ⚪ Inactive).
+    - Panduan bento card 4 langkah cepat pembuatan bot via `@BotFather`.
+  - Kepatuhan total terhadap React Rules of Hooks (semua hooks di baris paling atas).
+- [x] **Verifikasi & Pengujian**:
+  - Unit tests `bun test packages/engine/engine/test/messaging/telegram.test.ts`: ✅ 9 pass, 0 fail.
+  - Web build `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 11.95s).
+
+
 
 
 

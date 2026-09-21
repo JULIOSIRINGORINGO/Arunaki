@@ -1,0 +1,112 @@
+import { Schema } from "effect";
+import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi";
+import { Authorization } from "../middleware/authorization";
+import { InstanceContextMiddleware } from "../middleware/instance-context";
+import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery } from "../middleware/workspace-routing";
+import { described } from "./metadata";
+
+export const TelegramConfigSchema = Schema.Struct({
+  enabled: Schema.Boolean,
+  botToken: Schema.String,
+  allowedUserId: Schema.String,
+  targetFolder: Schema.optional(Schema.String),
+}).annotate({ identifier: "TelegramConfig" });
+
+export const MessagingConfigSchema = Schema.Struct({
+  telegram: TelegramConfigSchema,
+}).annotate({ identifier: "MessagingConfig" });
+
+export const TelegramStatusSchema = Schema.Struct({
+  connected: Schema.Boolean,
+  botUsername: Schema.NullOr(Schema.String),
+  botFirstName: Schema.NullOr(Schema.String),
+  lastActive: Schema.NullOr(Schema.Number),
+  lastError: Schema.NullOr(Schema.String),
+}).annotate({ identifier: "TelegramStatus" });
+
+export const MessagingStatusSchema = Schema.Struct({
+  telegram: TelegramStatusSchema,
+}).annotate({ identifier: "MessagingStatus" });
+
+export const TestTelegramPayload = Schema.Struct({
+  botToken: Schema.String,
+}).annotate({ identifier: "TestTelegramPayload" });
+
+export const TestTelegramResult = Schema.Struct({
+  success: Schema.Boolean,
+  botUsername: Schema.optional(Schema.String),
+  botFirstName: Schema.optional(Schema.String),
+  error: Schema.optional(Schema.String),
+}).annotate({ identifier: "TestTelegramResult" });
+
+const root = "/messaging";
+
+export const MessagingApi = HttpApi.make("messaging")
+  .add(
+    HttpApiGroup.make("messaging")
+      .add(
+        HttpApiEndpoint.get("getConfig", `${root}/config`, {
+          query: WorkspaceRoutingQuery,
+          success: described(MessagingConfigSchema, "Get messaging configuration"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "messaging.getConfig",
+            summary: "Get messaging configuration",
+            description: "Retrieve external messaging apps (e.g. Telegram BYOB) configuration settings.",
+          })
+        ),
+
+        HttpApiEndpoint.post("updateConfig", `${root}/config`, {
+          query: WorkspaceRoutingQuery,
+          payload: MessagingConfigSchema,
+          success: described(MessagingConfigSchema, "Successfully updated messaging configuration"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "messaging.updateConfig",
+            summary: "Update messaging configuration",
+            description: "Update external messaging apps configuration and reload active gateway listeners.",
+          })
+        ),
+
+        HttpApiEndpoint.get("getStatus", `${root}/status`, {
+          query: WorkspaceRoutingQuery,
+          success: described(MessagingStatusSchema, "Get messaging status"),
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "messaging.getStatus",
+            summary: "Get messaging status",
+            description: "Check live connection status and metadata for messaging gateways.",
+          })
+        ),
+
+        HttpApiEndpoint.post("testConnection", `${root}/test`, {
+          query: WorkspaceRoutingQuery,
+          payload: TestTelegramPayload,
+          success: described(TestTelegramResult, "Test bot token connection result"),
+          error: HttpApiError.BadRequest,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "messaging.testConnection",
+            summary: "Test bot connection",
+            description: "Verify a Telegram bot token against the Telegram API without saving.",
+          })
+        )
+      )
+      .annotateMerge(
+        OpenApi.annotations({
+          title: "messaging",
+          description: "HttpApi messaging gateway routes.",
+        })
+      )
+      .middleware(InstanceContextMiddleware)
+      .middleware(WorkspaceRoutingMiddleware)
+      .middleware(Authorization)
+  )
+  .annotateMerge(
+    OpenApi.annotations({
+      title: "Arunaki Messaging HttpApi",
+      version: "0.0.1",
+      description: "Messaging gateway integration surface.",
+    })
+  );
