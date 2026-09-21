@@ -281,16 +281,16 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
                 <h4 className="text-xs font-bold text-[var(--text-primary)]">
                   {t("telegramGateway", "Telegram BYOB Gateway")}
                 </h4>
-                {/* Live Status Badge */}
+                {/* Live Status Badge (Monochrome) */}
                 {enabled ? (
                   status.connected ? (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)] shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)] animate-pulse" />
                       {t("connected", "Connected")} {status.botUsername ? `@${status.botUsername}` : ""}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[var(--bg-hover)] text-[var(--text-muted)] border border-[var(--border-color)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
                       {status.lastError ? t("warning", "Connection Warning") : t("connecting", "Connecting...")}
                     </span>
                   )
@@ -396,27 +396,27 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               </button>
             </div>
 
-            {/* Test result feedback banner */}
+            {/* Test result feedback banner (Monochrome) */}
             {testResult && (
               <div
                 className={cn(
                   "p-2.5 rounded-lg text-xs flex items-center gap-2 mt-1.5",
                   testResult.success
-                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    ? "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-strong)]"
+                    : "bg-[var(--bg-panel)] text-[var(--text-muted)] border border-[var(--border-strong)]"
                 )}
               >
                 {testResult.success ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[var(--text-primary)]" />
                     <span>
-                      Token is valid! Connected to <b>@{testResult.botUsername}</b> ({testResult.botFirstName}).
+                      {t("tokenValidConnected", "Token is valid! Connected to")} <b>@{testResult.botUsername}</b> ({testResult.botFirstName}).
                     </span>
                   </>
                 ) : (
                   <>
-                    <XCircle className="w-3.5 h-3.5 shrink-0" />
-                    <span>{testResult.error || "Failed to verify token."}</span>
+                    <XCircle className="w-3.5 h-3.5 shrink-0 text-[var(--text-muted)]" />
+                    <span>{testResult.error || t("failedVerifyToken", "Failed to verify token.")}</span>
                   </>
                 )}
               </div>
@@ -560,39 +560,41 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 1 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 1 of 4</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">
+                      {t("step1Badge", "Step 1 of 4")}
+                    </span>
                     <a
                       href="https://t.me/BotFather"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline inline-flex items-center gap-1 font-semibold"
                     >
-                      Open @BotFather on Telegram <ExternalLink className="w-3 h-3" />
+                      {t("step1Link", "Open @BotFather on Telegram")} <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Create a New Bot via @BotFather
+                    {t("step1Heading", "Create a New Bot via @BotFather")}
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Open Telegram on your phone or desktop, and search for the official bot creator:{" "}
-                    <b className="text-[var(--text-primary)]">@BotFather</b> (or click the link above).
+                    {t("step1Desc1", "1. Open Telegram on your phone or desktop, and search for the official bot creator: ")}
+                    <b className="text-[var(--text-primary)]">@BotFather</b> {t("step1Desc1Or", "(or click the link above).")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Send the command:{" "}
+                    {t("step1Desc2", "2. Send the command: ")}{" "}
                     <span className="inline-flex items-center gap-1 font-mono bg-[var(--bg-panel)] px-2 py-0.5 rounded text-[var(--text-primary)] border border-[var(--border-strong)]">
                       /newbot
                       <button
                         type="button"
                         onClick={() => handleCopy("/newbot", "newbot")}
                         className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                        title="Copy command"
+                        title={t("copyCommand", "Copy command")}
                       >
-                        {copiedCode === "newbot" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        {copiedCode === "newbot" ? <Check className="w-3 h-3 text-[var(--text-primary)]" /> : <Copy className="w-3 h-3" />}
                       </button>
                     </span>
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Give your bot any display name (e.g. <i>My Document Assistant</i>), then enter a username ending in <b>bot</b> (e.g. <code>arunaki_work_bot</code>).
+                    {t("step1Desc3", "3. Give your bot any display name (e.g. My Document Assistant), then enter a username ending in bot (e.g. arunaki_work_bot).")}
                   </p>
                 </div>
               )}
@@ -600,24 +602,32 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 2 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 2 of 4</span>
-                    <span className="text-[10px] text-[var(--text-muted)]">API Token</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">
+                      {t("step2Badge", "Step 2 of 4")}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      {t("step2Sub", "API Token")}
+                    </span>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Copy the HTTP API Token
+                    {t("step2Heading", "Copy the HTTP API Token")}
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    After you specify a username, @BotFather will reply with your bot token:
+                    {t("step2Desc1", "After you specify a username, @BotFather will reply with your bot token:")}
                   </p>
                   <div className="p-3 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-strong)] font-mono text-[11px] text-[var(--text-muted)] space-y-1">
-                    <p className="text-[10px] text-[var(--text-primary)] font-sans font-semibold">Example message from BotFather:</p>
-                    <p className="text-[10px] opacity-75">Use this token to access the HTTP API:</p>
+                    <p className="text-[10px] text-[var(--text-primary)] font-sans font-semibold">
+                      {t("step2Example", "Example message from BotFather:")}
+                    </p>
+                    <p className="text-[10px] opacity-75">
+                      {t("step2UseToken", "Use this token to access the HTTP API:")}
+                    </p>
                     <p className="text-[var(--text-primary)] font-bold bg-[var(--bg-hover)] p-1 rounded border border-[var(--border-strong)]">
                       7821938210:AAEtvL2_xPQrstUVwXyZ1234
                     </p>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Copy the entire token string and paste it into the <b>Telegram Bot Token</b> field on the settings page.
+                    {t("step2Desc2", "Copy the entire token string and paste it into the Telegram Bot Token field on the settings page.")}
                   </p>
                 </div>
               )}
@@ -625,30 +635,32 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 3 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">Step 3 of 4</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">
+                      {t("step3Badge", "Step 3 of 4")}
+                    </span>
                     <a
                       href="https://t.me/userinfobot"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline inline-flex items-center gap-1 font-semibold"
                     >
-                      Open @userinfobot on Telegram <ExternalLink className="w-3 h-3" />
+                      {t("step3Link", "Open @userinfobot on Telegram")} <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Whitelist Your Telegram Account (Security)
+                    {t("step3Heading", "Whitelist Your Telegram Account (Security)")}
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    To make sure <b>only you</b> can control Arunaki on your PC:
+                    {t("step3DescPrefix", "To make sure only you can control Arunaki on your PC:")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Open <b>@userinfobot</b> on Telegram (click the link above).
+                    {t("step3Desc1", "1. Open @userinfobot on Telegram (click the link above).")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Send any message or click <code>/start</code>. The bot will reply with your numeric User ID (e.g. <code>123456789</code>).
+                    {t("step3Desc2", "2. Send any message or click /start. The bot will reply with your numeric User ID (e.g. 123456789).")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Copy this number and paste it into the <b>Allowed Sender Whitelist</b> field.
+                    {t("step3Desc3", "3. Copy this number and paste it into the Allowed Sender Whitelist field.")}
                   </p>
                 </div>
               )}
@@ -656,27 +668,32 @@ export const SettingsMessagingTab = memo(function SettingsMessagingTab() {
               {guideStep === 4 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-400">Final Step</span>
-                    <span className="text-[10px] text-emerald-400 font-semibold">Ready to Use!</span>
+                    <span className="text-xs font-bold text-[var(--text-primary)]">
+                      {t("step4Badge", "Final Step")}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-semibold">
+                      {t("step4Sub", "Ready to Use!")}
+                    </span>
                   </div>
                   <h5 className="text-sm font-bold text-[var(--text-primary)]">
-                    Save & Start Messaging
+                    {t("step4Heading", "Save & Start Messaging")}
                   </h5>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    1. Make sure the toggle switch is ON, then click <b>Save & Connect Gateway</b>.
+                    {t("step4Desc1", "1. Make sure the toggle switch is ON, then click Save Changes.")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    2. Open your new bot on Telegram from your phone, and send <code>/start</code>.
+                    {t("step4Desc2", "2. Open your new bot on Telegram from your phone, and send /start.")}
                   </p>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    3. Forward any WhatsApp note or type a document instruction, such as:
+                    {t("step4Desc3", "3. Forward any WhatsApp note or type a document instruction, such as:")}
                     <br />
                     <span className="font-mono text-[11px] text-[var(--text-primary)] bg-[var(--bg-panel)] px-2 py-1 rounded inline-block mt-1 border border-[var(--border-strong)]">
-                      "rekap catatan penjualan ini ke file rekap.xlsx"
+                      {t("step4Example", '"rekap catatan penjualan ini ke file rekap.xlsx"')}
                     </span>
                   </p>
-                  <p className="text-[11px] text-emerald-400 font-semibold">
-                    ✓ Arunaki on your PC will automatically process the document and reply back to your phone.
+                  <p className="text-[11px] text-[var(--text-primary)] font-semibold flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5 text-[var(--text-primary)] shrink-0" />
+                    <span>{t("step4Success", "Arunaki on your PC will automatically process the document and reply back to your phone.")}</span>
                   </p>
                 </div>
               )}

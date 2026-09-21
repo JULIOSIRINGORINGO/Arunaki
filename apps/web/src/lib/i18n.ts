@@ -95,6 +95,45 @@ export const translations = {
     next: "Next",
     doneClose: "Done & Close Guide",
 
+    // Setup Guide Steps Content
+    step1Badge: "Step 1 of 4",
+    step1Link: "Open @BotFather on Telegram",
+    step1Heading: "Create a New Bot via @BotFather",
+    step1Desc1: "1. Open Telegram on your phone or desktop, and search for the official bot creator: ",
+    step1Desc1Or: "(or click the link above).",
+    step1Desc2: "2. Send the command: ",
+    step1Desc3: "3. Give your bot any display name (e.g. My Document Assistant), then enter a username ending in bot (e.g. arunaki_work_bot).",
+    copyCommand: "Copy command",
+
+    step2Badge: "Step 2 of 4",
+    step2Sub: "API Token",
+    step2Heading: "Copy the HTTP API Token",
+    step2Desc1: "After you specify a username, @BotFather will reply with your bot token:",
+    step2Example: "Example message from BotFather:",
+    step2UseToken: "Use this token to access the HTTP API:",
+    step2Desc2: "Copy the entire token string and paste it into the Telegram Bot Token field on the settings page.",
+
+    step3Badge: "Step 3 of 4",
+    step3Link: "Open @userinfobot on Telegram",
+    step3Heading: "Whitelist Your Telegram Account (Security)",
+    step3DescPrefix: "To make sure only you can control Arunaki on your PC:",
+    step3Desc1: "1. Open @userinfobot on Telegram (click the link above).",
+    step3Desc2: "2. Send any message or click /start. The bot will reply with your numeric User ID (e.g. 123456789).",
+    step3Desc3: "3. Copy this number and paste it into the Allowed Sender Whitelist field.",
+
+    step4Badge: "Final Step",
+    step4Sub: "Ready to Use!",
+    step4Heading: "Save & Start Messaging",
+    step4Desc1: "1. Make sure the toggle switch is ON, then click Save Changes.",
+    step4Desc2: "2. Open your new bot on Telegram from your phone, and send /start.",
+    step4Desc3: "3. Forward any WhatsApp note or type a document instruction, such as:",
+    step4Example: '"rekap catatan penjualan ini ke file rekap.xlsx"',
+    step4Success: "Arunaki on your PC will automatically process the document and reply back to your phone.",
+
+    // Test Token Messages
+    tokenValidConnected: "Token is valid! Connected to",
+    failedVerifyToken: "Failed to verify token.",
+
     // Main Navigation Tabs
     navWorkstation: "Workstation",
     navKnowledge: "Knowledge",
@@ -355,6 +394,45 @@ export const translations = {
     previous: "Sebelumnya",
     next: "Lanjut",
     doneClose: "Selesai & Tutup Panduan",
+
+    // Setup Guide Steps Content
+    step1Badge: "Langkah 1 dari 4",
+    step1Link: "Buka @BotFather di Telegram",
+    step1Heading: "Buat Bot Baru lewat @BotFather",
+    step1Desc1: "1. Buka aplikasi Telegram di HP atau laptop, lalu cari akun resmi pembuat bot: ",
+    step1Desc1Or: "(atau klik tautan di atas).",
+    step1Desc2: "2. Kirim perintah: ",
+    step1Desc3: "3. Beri nama tampilan bot (contoh: Asisten Dokumen), lalu tentukan username yang berakhiran bot (contoh: arunaki_work_bot).",
+    copyCommand: "Salin perintah",
+
+    step2Badge: "Langkah 2 dari 4",
+    step2Sub: "Token API",
+    step2Heading: "Salin Token HTTP API",
+    step2Desc1: "Setelah username bot ditentukan, @BotFather akan membalas dengan token bot Anda:",
+    step2Example: "Contoh balasan dari BotFather:",
+    step2UseToken: "Gunakan token ini untuk mengakses HTTP API:",
+    step2Desc2: "Salin seluruh baris token tersebut dan tempel (paste) ke kolom Token Bot Telegram di halaman pengaturan ini.",
+
+    step3Badge: "Langkah 3 dari 4",
+    step3Link: "Buka @userinfobot di Telegram",
+    step3Heading: "Daftarkan Akun Telegram Anda (Keamanan)",
+    step3DescPrefix: "Agar hanya Anda yang dapat mengendalikan Arunaki di laptop Anda:",
+    step3Desc1: "1. Buka @userinfobot di Telegram (klik tautan di atas).",
+    step3Desc2: "2. Kirim pesan apa saja atau klik /start. Bot akan membalas dengan nomor ID Telegram Anda (contoh: 123456789).",
+    step3Desc3: "3. Salin angka ID tersebut dan tempel ke kolom ID Pengguna Telegram yang Diizinkan.",
+
+    step4Badge: "Langkah Terakhir",
+    step4Sub: "Siap Digunakan!",
+    step4Heading: "Simpan & Mulai Kirim Pesan",
+    step4Desc1: "1. Pastikan sakelar aktif (ON), lalu klik Simpan Perubahan.",
+    step4Desc2: "2. Buka bot baru Anda di Telegram lewat HP, lalu kirim perintah /start.",
+    step4Desc3: "3. Teruskan (forward) pesan WhatsApp atau ketik instruksi dokumen, seperti:",
+    step4Example: '"rekap catatan penjualan ini ke file rekap.xlsx"',
+    step4Success: "Arunaki di laptop Anda akan otomatis memproses dokumen dan membalas langsung ke HP Anda.",
+
+    // Test Token Messages
+    tokenValidConnected: "Token valid! Terhubung ke",
+    failedVerifyToken: "Gagal memverifikasi token.",
 
     // Main Navigation Tabs
     navWorkstation: "Workstation",
