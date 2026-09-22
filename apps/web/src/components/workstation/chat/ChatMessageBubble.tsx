@@ -79,7 +79,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   }, [msg?.files, imageMentions]);
 
   const displayContent = useMemo(() => {
-    const raw = msg?.content || "";
+    const raw = (msg?.content || "").replace(/<\/?think\??>/gi, "");
     if (imageMentions.length === 0) return isStreaming ? raw : raw.trim();
     return raw.replace(/(?:@)?([a-zA-Z0-9_.-]+\.(?:png|jpg|jpeg|webp|gif))\b/gi, "").trim();
   }, [msg?.content, imageMentions, isStreaming]);
@@ -203,8 +203,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     });
 
     // 4. Text Content
-    const fullText = textChunks.join("") || displayContent;
-    if (fullText.trim()) {
+    const fullText = (textChunks.join("") || displayContent).replace(/<\/?think\??>/gi, "").trim();
+    if (fullText) {
       groups.push({
         type: "text",
         id: "text-unified",

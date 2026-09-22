@@ -138,6 +138,7 @@ const layer = Layer.effect(
               `  * Before answering or executing any tools, always think through the user's intent and your action plan inside <think>...</think> tags.`,
               `  * Keep your thinking process concise, analytical, and structured (1-3 sentences).`,
               `  * For casual greetings or chat, briefly acknowledge the user's intent inside <think>...</think> and note that no tools are required before outputting your cordial response outside the tags.`,
+              `  * All internal calculations, math breakdowns, and intermediate reasoning MUST stay strictly inside <think>...</think> tags. NEVER output stray '</think>' tags or unrequested calculation breakdowns in your final user response.`,
               `- ACTION-FIRST BIAS FOR DOCUMENT UPDATES & RAW DATA (STRICT):`,
               `  * Minimal Typing, Maximum Automation: This action-first bias applies EXCLUSIVELY when the user provides actual unformatted transaction data, raw notes, or explicitly asks to inspect/update documents. It NEVER applies to conversational, greeting, or ambiguous messages.`,
               `  * When raw data or document tasks are provided: DO NOT engage in lengthy internal monologues; immediately invoke the relevant document inspection or editing tools.`,

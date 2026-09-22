@@ -25,6 +25,33 @@ function isInternalToolPart(p: any): boolean {
   return false;
 }
 
+function cleanReasoningTags(text: string): { cleanText: string; extractedThoughts: string[] } {
+  if (!text) return { cleanText: "", extractedThoughts: [] };
+  const thoughts: string[] = [];
+  // 1. Extract complete <think>...</think> blocks
+  const pairedRegex = /<think>([\s\S]*?)<\/think>/gi;
+  let match;
+  while ((match = pairedRegex.exec(text)) !== null) {
+    const thought = match[1].trim();
+    if (thought) thoughts.push(thought);
+  }
+  let clean = text.replace(pairedRegex, "");
+
+  // 2. Extract unclosed <think>... until end if present
+  const unclosedRegex = /<think>([\s\S]*)$/i;
+  const unclosedMatch = clean.match(unclosedRegex);
+  if (unclosedMatch) {
+    const thought = unclosedMatch[1].trim();
+    if (thought) thoughts.push(thought);
+    clean = clean.replace(unclosedRegex, "");
+  }
+
+  // 3. Strip any stray / orphan </think>, </think?, <think>
+  clean = clean.replace(/<\/?think\??>/gi, "").trim();
+
+  return { cleanText: clean, extractedThoughts: thoughts };
+}
+
 export function mapEngineMessages(raw: any[]): Message[] {
   if (!Array.isArray(raw)) return [];
 
@@ -170,21 +197,12 @@ export function mapEngineMessages(raw: any[]): Message[] {
       }
     }
 
-    // Extract <think>...</think> tags if model returns reasoning embedded in content
-    if (!reasoning && content.includes("<think>")) {
-      const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
-      let extractedReasoning = "";
-      let match;
-      while ((match = thinkRegex.exec(content)) !== null) {
-        extractedReasoning += (extractedReasoning ? "\n\n" : "") + match[1].trim();
-      }
-      if (extractedReasoning) {
-        reasoning = extractedReasoning;
-        content = content.replace(thinkRegex, "").trim();
-      }
+    // Extract <think>...</think> tags and strip any stray/orphan thinking tags
+    const { cleanText: cleanedContent, extractedThoughts } = cleanReasoningTags(content);
+    if (extractedThoughts.length > 0) {
+      reasoning = (reasoning ? reasoning + "\n\n" : "") + extractedThoughts.join("\n\n");
     }
-
-    content = content.trim();
+    content = cleanedContent;
 
     // 3. Build chronological parts
     const sourceArray = Array.isArray(msg.parts) ? msg.parts : Array.isArray(msg.content) ? msg.content : [];
@@ -204,19 +222,14 @@ export function mapEngineMessages(raw: any[]): Message[] {
           durationMs: durMs || thoughtMs,
         });
       } else if (p.type === "text" && typeof p.text === "string" && p.text.trim()) {
-        let textVal = p.text.trim();
-        if (textVal.includes("<think>")) {
-          const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
-          let match;
-          while ((match = thinkRegex.exec(textVal)) !== null) {
-            reasoning += (reasoning ? "\n\n" : "") + match[1].trim();
-          }
-          textVal = textVal.replace(thinkRegex, "").trim();
+        const { cleanText: cleanedPartText, extractedThoughts: partThoughts } = cleanReasoningTags(p.text);
+        if (partThoughts.length > 0) {
+          reasoning = (reasoning ? reasoning + "\n\n" : "") + partThoughts.join("\n\n");
         }
-        if (textVal.length > 0) {
+        if (cleanedPartText.length > 0) {
           parts.push({
             type: "text",
-            text: textVal,
+            text: cleanedPartText,
           });
         }
       } else if ((p.type === "tool" || p.type === "tool-invocation") && !isInternalToolPart(p)) {

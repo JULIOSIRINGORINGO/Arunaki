@@ -18,7 +18,10 @@ export interface TextBlock {
 export type ContentBlock = TableBlock | TextBlock;
 
 export function parseContentBlocks(rawContent: string): ContentBlock[] {
-  const content = rawContent.replace(/\[\/?CANVAS\]/gi, "").trim();
+  const content = rawContent
+    .replace(/\[\/?CANVAS\]/gi, "")
+    .replace(/<\/?think\??>/gi, "")
+    .trim();
   if (!content.includes("|")) {
     return [{ type: "text", content }];
   }

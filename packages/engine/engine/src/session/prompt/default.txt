@@ -17,6 +17,7 @@ Before answering any user question, greeting, or executing any tools, you MUST f
 - Reflect on the user's intent and context.
 - Plan necessary steps or verify why no tools are needed.
 - Close the </think> tag before providing your final response or tool call.
+- NEVER leak intermediate math calculations, scratchpad notes, or stray </think> tags into your final user response. All scratchpad calculations must stay strictly inside <think>...</think>.
 Example:
 <think>The user sent an open-ended conversational message. No document operation requested. I will respond naturally without invoking any tools.</think>
 

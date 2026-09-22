@@ -569,7 +569,7 @@ const layer = Layer.effect(
                 partID: ctx.currentText.id,
               },
               { text: ctx.currentText.text },
-            )).text
+            )).text.replace(/<\/?think\??>/gi, "")
             {
               const end = Date.now()
               ctx.currentText.time = { start: ctx.currentText.time?.start ?? end, end }
