@@ -136,6 +136,114 @@ export function extractAssistantReply(messageData: any): string {
   return texts.join("\n\n").trim();
 }
 
+export const TELEGRAM_BOT_COMMANDS = [
+  { command: "files", description: "Daftar file di folder kerja PC" },
+  { command: "rekap", description: "Panduan & format rekap pesanan ke Excel" },
+  { command: "status", description: "Cek status Arunaki & target folder" },
+  { command: "new", description: "Mulai sesi percakapan baru" },
+  { command: "help", description: "Panduan instruksi & contoh format" },
+];
+
+/**
+ * Detects if the user sent ONLY a file mention (e.g. "@ORDER.txt" or "ORDER.txt")
+ * without any accompanying instructions or words.
+ */
+export function isBareFileMention(text: string, filesInFolder: string[]): string | null {
+  if (!text || !Array.isArray(filesInFolder) || filesInFolder.length === 0) return null;
+  const trimmed = text.trim();
+
+  // Matches "@filename", "@\"filename\"", or "filename" with no other words
+  const match = trimmed.match(/^@?(?:["']([^"'\n\r]+)["']|([^\s"'\n\r]+))$/);
+  if (!match) return null;
+
+  const candidate = (match[1] || match[2] || "").trim().toLowerCase();
+  if (!candidate) return null;
+
+  const found = filesInFolder.find((f) => f.toLowerCase() === candidate);
+  return found || null;
+}
+
+/**
+ * Detects @filename mentions or file references in the user's prompt,
+ * verifies whether they exist in the target directory, and provides rich context
+ * so the LLM engine clearly understands the role and purpose of each attached file.
+ */
+export async function enrichPromptWithFileMentions(
+  promptText: string,
+  targetDir: string
+): Promise<{ enrichedPrompt: string; detectedFiles: string[] }> {
+  if (!promptText || !targetDir) {
+    return { enrichedPrompt: promptText, detectedFiles: [] };
+  }
+
+  try {
+    const entries = await fs.readdir(targetDir, { withFileTypes: true }).catch(() => []);
+    if (entries.length === 0) {
+      return { enrichedPrompt: promptText, detectedFiles: [] };
+    }
+
+    const detected: Array<{ name: string; fullPath: string; isDir: boolean; ext: string }> = [];
+
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const fileName = entry.name;
+
+      // Check if fileName or @fileName or @"fileName" is present in promptText (case-insensitive)
+      const atMention = `@${fileName.toLowerCase()}`;
+      const atQuoteMention = `@"${fileName.toLowerCase()}"`;
+      const lowerPrompt = promptText.toLowerCase();
+
+      let isMatch = lowerPrompt.includes(atMention) || lowerPrompt.includes(atQuoteMention);
+      if (!isMatch) {
+        // Also check regex word boundary if prompt contains exact filename
+        const escaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        isMatch = new RegExp("(?:^|\\s|[@\"'`])" + escaped + "(?:$|\\s|[.,!?:;\"'`])", "i").test(promptText);
+      }
+
+      if (isMatch) {
+        detected.push({
+          name: fileName,
+          fullPath: path.join(targetDir, fileName).replace(/\\/g, "/"),
+          isDir: entry.isDirectory(),
+          ext: path.extname(fileName).toLowerCase(),
+        });
+      }
+    }
+
+    if (detected.length === 0) {
+      return { enrichedPrompt: promptText, detectedFiles: [] };
+    }
+
+    const fileDescriptions = detected.map((f) => {
+      const typeDesc = f.isDir
+        ? "Direktori/Folder"
+        : f.ext === ".xlsx" || f.ext === ".xls"
+        ? "Dokumen Spreadsheet Excel"
+        : f.ext === ".csv"
+        ? "File Data CSV"
+        : f.ext === ".docx" || f.ext === ".doc"
+        ? "Dokumen Word"
+        : f.ext === ".pdf"
+        ? "Dokumen PDF"
+        : "File Dokumen / Catatan Teks";
+
+      return `- File: "${f.name}" (${typeDesc}, Path: ${f.fullPath})`;
+    });
+
+    const fileNamesOnly = detected.map((f) => f.name);
+
+    const enrichedPrompt =
+      `[Dokumen Terlampir / Di-mention Pengguna]:\n` +
+      `${fileDescriptions.join("\n")}\n\n` +
+      `[Instruksi dan Peran Dokumen dari Pengguna]:\n` +
+      `${promptText}`;
+
+    return { enrichedPrompt, detectedFiles: fileNamesOnly };
+  } catch {
+    return { enrichedPrompt: promptText, detectedFiles: [] };
+  }
+}
+
 export class TelegramService {
   private static instance: TelegramService | null = null;
 
@@ -281,12 +389,32 @@ export class TelegramService {
     this.status.botFirstName = test.botFirstName || null;
     this.status.lastError = null;
 
+    // Register native Telegram [/ Menu] commands
+    await this.registerBotCommands(config.telegram.botToken).catch(() => {});
+
     // Launch polling loop in background
     this.pollLoop(this.abortController.signal).catch((err) => {
       this.status.connected = false;
       this.status.lastError = err?.message || String(err);
       this.running = false;
     });
+  }
+
+  /**
+   * Registers native Telegram [/ Menu] commands with setMyCommands API.
+   * This displays the blue [/ Menu] button in Telegram mobile & desktop.
+   */
+  public async registerBotCommands(botToken: string): Promise<boolean> {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commands: TELEGRAM_BOT_COMMANDS }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   public async stop(): Promise<void> {
@@ -511,10 +639,12 @@ export class TelegramService {
         `Kirimkan instruksi dokumen, catatan mentah, atau forward pesan WhatsApp ke bot ini. ` +
         `Arunaki di komputer Anda akan otomatis mengeksekusinya langsung di folder proyek aktif.\n\n` +
         `📁 *Target Folder:* \`${targetDir}\`\n\n` +
-        `*Perintah yang tersedia:*\n` +
-        `• Kirim teks langsung (contoh: _"rekap data berikut ke excel: ..."_)\n` +
-        `• \`/new\` — Reset / mulai sesi percakapan baru\n` +
+        `*Menu & Perintah Cepat:*\n` +
+        `• Tekan tombol *[/ Menu]* di samping kolom chat untuk akses instan\n` +
+        `• \`/files\` — Lihat daftar file di folder aktif PC\n` +
+        `• \`/rekap\` — Panduan dan format rekap pesanan ke Excel\n` +
         `• \`/status\` — Cek status Arunaki dan folder kerja saat ini\n` +
+        `• \`/new\` — Reset / mulai sesi percakapan baru\n` +
         `• \`/help\` — Panduan bantuan`;
 
       await this.sendTelegramMessage(botToken, chatId, welcomeMsg, message.message_id);
@@ -546,6 +676,101 @@ export class TelegramService {
       return;
     }
 
+    if (text === "/files" || text === "/file") {
+      const rawTargetDir = config.telegram.targetFolder || process.cwd();
+      const targetDir = normalizeFolderPath(rawTargetDir);
+      try {
+        const entries = await fs.readdir(targetDir, { withFileTypes: true }).catch(() => []);
+        const validFiles = entries
+          .filter((e) => !e.name.startsWith(".") && e.name !== "node_modules")
+          .sort((a, b) => {
+            if (a.isDirectory() && !b.isDirectory()) return -1;
+            if (!a.isDirectory() && b.isDirectory()) return 1;
+            return a.name.localeCompare(b.name);
+          });
+
+        if (validFiles.length === 0) {
+          await this.sendTelegramMessage(
+            botToken,
+            chatId,
+            `📁 *Folder kerja saat ini kosong:*\n\`${targetDir}\`\n\nBelum ada dokumen yang ditemukan.`,
+            message.message_id
+          );
+          return;
+        }
+
+        const fileListLines = validFiles.map((file, idx) => {
+          const isDir = file.isDirectory();
+          const ext = path.extname(file.name).toLowerCase();
+          let icon = "📄";
+          if (isDir) icon = "📁";
+          else if (ext === ".xlsx" || ext === ".xls" || ext === ".csv") icon = "📊";
+          else if (ext === ".docx" || ext === ".doc") icon = "📝";
+          else if (ext === ".pdf") icon = "📑";
+
+          return `${idx + 1}. ${icon} \`@${file.name}\``;
+        });
+
+        const filesMsg =
+          `📁 *Daftar File di Folder Aktif:*\n` +
+          `\`${targetDir}\`\n\n` +
+          `${fileListLines.join("\n")}\n\n` +
+          `💡 *Cara Menggunakan:*\n` +
+          `Sentuh/salin salah satu nama file di atas (contoh: \`@ORDER.txt\`), lalu tambahkan kata-kata instruksi di kolom chat sebelum dikirim.\n\n` +
+          `*Contoh Pesan:*\n` +
+          `• \`@ORDER.txt tolong rekap data pesanan ini ke excel\`\n` +
+          `• \`@REKAP 9-2026.xlsx cek total penjualan bulan ini\``;
+
+        await this.sendTelegramMessage(botToken, chatId, filesMsg, message.message_id);
+        return;
+      } catch (err: any) {
+        await this.sendTelegramMessage(
+          botToken,
+          chatId,
+          `❌ Gagal membaca isi folder:\n${err?.message || String(err)}`,
+          message.message_id
+        );
+        return;
+      }
+    }
+
+    if (text === "/rekap") {
+      const rekapMsg =
+        `📊 *Fitur Rekap Otomatis Arunaki*\n\n` +
+        `Untuk merekap data ke Excel, silakan kirim pesan dengan salah satu format berikut:\n\n` +
+        `1. *Kirim / Paste Teks Mentah (Paling Cepat)*\n` +
+        `   Copy-paste pesan WhatsApp atau catatan pesanan langsung ke chat ini. Arunaki akan otomatis membaca dan memperbarui file Excel Anda.\n\n` +
+        `2. *Gunakan Mention File (@namafile):*\n` +
+        `   • \`@ORDER.txt tolong rekap pesanan baru ke excel\`\n` +
+        `   • \`rekap data berikut ke @REKAP 9-2026.xlsx: [paste catatan]\`\n\n` +
+        `3. *Ketik /files* untuk melihat daftar file dokumen yang tersedia di PC.`;
+
+      await this.sendTelegramMessage(botToken, chatId, rekapMsg, message.message_id);
+      return;
+    }
+
+    // Check if user sent ONLY a bare file mention without any instructions
+    const rawTargetDir = config.telegram.targetFolder || process.cwd();
+    const targetDir = normalizeFolderPath(rawTargetDir);
+    try {
+      const dirEntries = await fs.readdir(targetDir, { withFileTypes: true }).catch(() => []);
+      const fileNames = dirEntries.map((e) => e.name);
+      const bareFile = isBareFileMention(text, fileNames);
+
+      if (bareFile) {
+        const guidanceMsg =
+          `📄 *File Terdeteksi:* \`${bareFile}\`\n\n` +
+          `Silakan sertakan kata-kata instruksi apa yang ingin Arunaki lakukan terhadap file ini agar AI paham fungsinya.\n\n` +
+          `*Ketik pesan seperti ini:*\n` +
+          `• \`@${bareFile} tolong rekap data pesanan ini ke excel\`\n` +
+          `• \`@${bareFile} baca dan tampilkan ringkasan isinya\`\n` +
+          `• \`@${bareFile} masukkan data pembeli berikut: [paste catatan]\``;
+
+        await this.sendTelegramMessage(botToken, chatId, guidanceMsg, message.message_id);
+        return;
+      }
+    } catch {}
+
     // 3. Document / Chat Instruction Execution
     await this.sendChatAction(botToken, chatId, "typing");
 
@@ -573,7 +798,10 @@ export class TelegramService {
         }
       };
 
-      const reply = await this.executeArunakiPrompt(config, chatId, text, senderName, onProgress);
+      // Enrich prompt if files are mentioned with instructions
+      const { enrichedPrompt } = await enrichPromptWithFileMentions(text, targetDir);
+
+      const reply = await this.executeArunakiPrompt(config, chatId, enrichedPrompt, senderName, onProgress, text);
       clearInterval(typingInterval);
 
       // Clean up the transient thinking message so it disappears after finished
@@ -610,7 +838,8 @@ export class TelegramService {
     chatId: number,
     promptText: string,
     senderName: string,
-    onProgress?: (text: string) => Promise<void>
+    onProgress?: (text: string) => Promise<void>,
+    displayPrompt?: string
   ): Promise<string> {
     const serverUrl = this.getLocalServerUrl();
     const rawTargetDir = config.telegram.targetFolder || process.cwd();
@@ -661,7 +890,8 @@ export class TelegramService {
 
     // If still no session exists (brand new project folder), create a new one
     if (!sessionID) {
-      const snippet = promptText.length > 30 ? promptText.slice(0, 30) + "..." : promptText;
+      const titlePrompt = displayPrompt || promptText;
+      const snippet = titlePrompt.length > 30 ? titlePrompt.slice(0, 30) + "..." : titlePrompt;
       const createRes = await fetch(`${serverUrl}/api/session?directory=${encodeURIComponent(targetDir)}`, {
         method: "POST",
         headers: {
@@ -710,7 +940,7 @@ export class TelegramService {
     if (promptRes.status === 404) {
       this.chatSessionMap.delete(chatId);
       this.activeFolderSessionMap.delete(targetDir);
-      return this.executeArunakiPrompt(config, chatId, promptText, senderName);
+      return this.executeArunakiPrompt(config, chatId, promptText, senderName, onProgress, displayPrompt);
     }
 
     if (!promptRes.ok) {

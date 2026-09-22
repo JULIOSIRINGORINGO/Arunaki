@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import path from "path";
+import fs from "fs/promises";
+import os from "os";
 import {
   isSenderAllowed,
   splitTelegramMessage,
   telegramService,
   normalizeFolderPath,
   extractAssistantReply,
+  TELEGRAM_BOT_COMMANDS,
+  isBareFileMention,
+  enrichPromptWithFileMentions,
 } from "../../src/messaging/telegram";
 
 describe("Telegram BYOB Gateway", () => {
@@ -125,4 +131,77 @@ describe("Telegram BYOB Gateway", () => {
       expect(extractAssistantReply({})).toBe("");
     });
   });
+
+  describe("TELEGRAM_BOT_COMMANDS", () => {
+    test("contains essential workflow commands", () => {
+      const cmdNames = TELEGRAM_BOT_COMMANDS.map((c) => c.command);
+      expect(cmdNames).toContain("files");
+      expect(cmdNames).toContain("rekap");
+      expect(cmdNames).toContain("status");
+      expect(cmdNames).toContain("new");
+      expect(cmdNames).toContain("help");
+    });
+  });
+
+  describe("isBareFileMention", () => {
+    const files = ["ORDER.txt", "REKAP 9-2026.xlsx", "LAPORAN-HARIAN.txt"];
+
+    test("detects bare @ORDER.txt without instructions", () => {
+      expect(isBareFileMention("@ORDER.txt", files)).toBe("ORDER.txt");
+      expect(isBareFileMention("@order.txt", files)).toBe("ORDER.txt");
+    });
+
+    test("detects bare quoted filename @'REKAP 9-2026.xlsx'", () => {
+      expect(isBareFileMention('@"REKAP 9-2026.xlsx"', files)).toBe("REKAP 9-2026.xlsx");
+    });
+
+    test("detects plain filename without @ if sent alone", () => {
+      expect(isBareFileMention("ORDER.txt", files)).toBe("ORDER.txt");
+    });
+
+    test("returns null when accompanying instructions are present", () => {
+      expect(isBareFileMention("@ORDER.txt tolong masukkan ke excel", files)).toBeNull();
+      expect(isBareFileMention("rekap data ini ke @REKAP 9-2026.xlsx", files)).toBeNull();
+    });
+
+    test("returns null when no matching file in workspace", () => {
+      expect(isBareFileMention("@UNKNOWN.txt", files)).toBeNull();
+      expect(isBareFileMention("halo apa kabar", files)).toBeNull();
+    });
+  });
+
+  describe("enrichPromptWithFileMentions", () => {
+    test("enriches prompt with file context when file exists in directory", async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "arunaki-test-"));
+      try {
+        await fs.writeFile(path.join(tempDir, "ORDER.txt"), "Order ID: 123", "utf-8");
+        await fs.writeFile(path.join(tempDir, "REKAP.xlsx"), "data", "utf-8");
+
+        const prompt = "@ORDER.txt tolong masukkan data pembeli ini ke rekap excel";
+        const result = await enrichPromptWithFileMentions(prompt, tempDir);
+
+        expect(result.detectedFiles).toContain("ORDER.txt");
+        expect(result.enrichedPrompt).toContain("[Dokumen Terlampir / Di-mention Pengguna]:");
+        expect(result.enrichedPrompt).toContain("ORDER.txt");
+        expect(result.enrichedPrompt).toContain("[Instruksi dan Peran Dokumen dari Pengguna]:");
+        expect(result.enrichedPrompt).toContain("tolong masukkan data pembeli ini ke rekap excel");
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    });
+
+    test("leaves prompt intact if no matching files mentioned", async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "arunaki-test-"));
+      try {
+        const prompt = "halo arunaki apa kabar";
+        const result = await enrichPromptWithFileMentions(prompt, tempDir);
+
+        expect(result.detectedFiles).toEqual([]);
+        expect(result.enrichedPrompt).toBe(prompt);
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    });
+  });
 });
+
