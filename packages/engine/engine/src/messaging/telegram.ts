@@ -318,7 +318,7 @@ export class TelegramService {
     chatId: number | string,
     text: string,
     replyToMessageId?: number
-  ): Promise<boolean> {
+  ): Promise<{ ok: boolean; messageId?: number }> {
     try {
       // First attempt with Markdown formatting
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -332,7 +332,10 @@ export class TelegramService {
         }),
       });
 
-      if (res.ok) return true;
+      if (res.ok) {
+        const json = await res.json().catch(() => ({}));
+        return { ok: true, messageId: json?.result?.message_id };
+      }
 
       // If Markdown parsing fails, fall back to plain text
       const fallbackRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -345,7 +348,68 @@ export class TelegramService {
         }),
       });
 
+      if (fallbackRes.ok) {
+        const json = await fallbackRes.json().catch(() => ({}));
+        return { ok: true, messageId: json?.result?.message_id };
+      }
+
+      return { ok: false };
+    } catch {
+      return { ok: false };
+    }
+  }
+
+  private async editTelegramMessage(
+    botToken: string,
+    chatId: number | string,
+    messageId: number,
+    text: string
+  ): Promise<boolean> {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+          parse_mode: "Markdown",
+        }),
+      });
+
+      if (res.ok) return true;
+
+      const fallbackRes = await fetch(`https://api.telegram.org/bot${botToken}/editMessageText`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+          text,
+        }),
+      });
+
       return fallbackRes.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  private async deleteTelegramMessage(
+    botToken: string,
+    chatId: number | string,
+    messageId: number
+  ): Promise<boolean> {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/deleteMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: messageId,
+        }),
+      });
+      return res.ok;
     } catch {
       return false;
     }
@@ -490,9 +554,32 @@ export class TelegramService {
       this.sendChatAction(botToken, chatId, "typing");
     }, 4000);
 
+    // Send transient thinking status message (just like OpenClaw 2.0)
+    let thinkingMsgId: number | undefined;
+    const initialStatus = await this.sendTelegramMessage(
+      botToken,
+      chatId,
+      "💭 *Thinking...*",
+      message.message_id
+    );
+    if (initialStatus.ok && initialStatus.messageId) {
+      thinkingMsgId = initialStatus.messageId;
+    }
+
     try {
-      const reply = await this.executeArunakiPrompt(config, chatId, text, senderName);
+      const onProgress = async (statusText: string) => {
+        if (thinkingMsgId) {
+          await this.editTelegramMessage(botToken, chatId, thinkingMsgId, statusText);
+        }
+      };
+
+      const reply = await this.executeArunakiPrompt(config, chatId, text, senderName, onProgress);
       clearInterval(typingInterval);
+
+      // Clean up the transient thinking message so it disappears after finished
+      if (thinkingMsgId) {
+        await this.deleteTelegramMessage(botToken, chatId, thinkingMsgId).catch(() => {});
+      }
 
       // Split and send chunks if response exceeds Telegram max message length
       const chunks = splitTelegramMessage(reply);
@@ -506,6 +593,9 @@ export class TelegramService {
       }
     } catch (err: any) {
       clearInterval(typingInterval);
+      if (thinkingMsgId) {
+        await this.deleteTelegramMessage(botToken, chatId, thinkingMsgId).catch(() => {});
+      }
       await this.sendTelegramMessage(
         botToken,
         chatId,
@@ -519,7 +609,8 @@ export class TelegramService {
     config: MessagingConfig,
     chatId: number,
     promptText: string,
-    senderName: string
+    senderName: string,
+    onProgress?: (text: string) => Promise<void>
   ): Promise<string> {
     const serverUrl = this.getLocalServerUrl();
     const rawTargetDir = config.telegram.targetFolder || process.cwd();
@@ -635,6 +726,8 @@ export class TelegramService {
     let typingTick = 0;
     let hasSeenSessionActive = false;
     let idleTicks = 0;
+    let lastProgressText = "";
+    let lastProgressEditTime = 0;
 
     for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollIntervalMs));
@@ -679,6 +772,41 @@ export class TelegramService {
         const msgsJson = await msgsRes.json();
         const msgs: any[] = msgsJson?.data || msgsJson;
         if (!Array.isArray(msgs) || msgs.length === 0) continue;
+
+        // Stream live progress to transient Telegram message
+        if (onProgress && msgs.length > 0) {
+          const newest = msgs[0];
+          let progressText = "";
+          if (newest && (newest.role === "assistant" || newest.type === "assistant")) {
+            const content = newest.content || newest.parts || [];
+            if (Array.isArray(content)) {
+              const toolPart = content.find((c: any) => c && (c.type === "tool" || c.name));
+              const reasoningPart = content.find((c: any) => c && (c.type === "reasoning" || c.type === "thought"));
+
+              if (toolPart) {
+                const toolName = toolPart.name || toolPart.tool || "action";
+                const path =
+                  toolPart.state?.input?.path ||
+                  toolPart.input?.path ||
+                  toolPart.state?.input?.TargetFile ||
+                  toolPart.state?.input?.file ||
+                  "";
+                const cleanFile = path ? String(path).replace(/\\/g, "/").split("/").pop() : "";
+                progressText = cleanFile
+                  ? `⚡ *Executing:* \`${toolName}\` on \`${cleanFile}\`...`
+                  : `⚡ *Executing:* \`${toolName}\`...`;
+              } else if (reasoningPart && typeof reasoningPart.text === "string" && reasoningPart.text.trim()) {
+                const snippet = reasoningPart.text.trim().slice(0, 140).replace(/\n/g, " ");
+                progressText = `💭 *Thinking...*\n\n_${snippet}..._`;
+              }
+            }
+          }
+          if (progressText && progressText !== lastProgressText && Date.now() - lastProgressEditTime > 2500) {
+            lastProgressText = progressText;
+            lastProgressEditTime = Date.now();
+            onProgress(progressText).catch(() => {});
+          }
+        }
 
         // Find assistant messages created after our prompt
         const turnAssistantMsgs = msgs.filter((m) => {
