@@ -153,14 +153,27 @@ export function isBareFileMention(text: string, filesInFolder: string[]): string
   const trimmed = text.trim();
 
   // Matches "@filename", "@\"filename\"", or "filename" with no other words
-  const match = trimmed.match(/^@?(?:["']([^"'\n\r]+)["']|([^\s"'\n\r]+))$/);
+  const match = trimmed.match(/^[@#]?(?:["']([^"'\n\r]+)["']|([^\s"'\n\r]+))$/);
   if (!match) return null;
 
   const candidate = (match[1] || match[2] || "").trim().toLowerCase();
   if (!candidate) return null;
 
+  // 1. Exact match
   const found = filesInFolder.find((f) => f.toLowerCase() === candidate);
-  return found || null;
+  if (found) return found;
+
+  // 2. Numeric match (e.g. "#1" or "@1" -> 1st file)
+  const num = parseInt(candidate, 10);
+  if (!isNaN(num) && num >= 1 && num <= filesInFolder.length) {
+    return filesInFolder[num - 1];
+  }
+
+  // 3. Single-letter / prefix match (e.g. "@o" -> "ORDER.txt")
+  const prefixMatches = filesInFolder.filter((f) => f.toLowerCase().startsWith(candidate));
+  if (prefixMatches.length === 1) return prefixMatches[0];
+
+  return null;
 }
 
 /**
@@ -207,6 +220,41 @@ export async function enrichPromptWithFileMentions(
           isDir: entry.isDirectory(),
           ext: path.extname(fileName).toLowerCase(),
         });
+      }
+    }
+
+    // If no exact filename match was detected, check for 1-letter prefix or numeric shorthand (@o, @r, #1, @1)
+    if (detected.length === 0) {
+      const tokens = Array.from(promptText.matchAll(/[@#]([a-zA-Z0-9_.-]+)/g)).map((m) => m[1].toLowerCase());
+      for (const token of tokens) {
+        // Numeric index (#1 or @1)
+        const num = parseInt(token, 10);
+        if (!isNaN(num) && num >= 1 && num <= entries.length) {
+          const entry = entries[num - 1];
+          if (entry && !detected.some((d) => d.name === entry.name)) {
+            detected.push({
+              name: entry.name,
+              fullPath: path.join(targetDir, entry.name).replace(/\\/g, "/"),
+              isDir: entry.isDirectory(),
+              ext: path.extname(entry.name).toLowerCase(),
+            });
+            continue;
+          }
+        }
+
+        // Prefix match (e.g. token "o" matches "ORDER.txt")
+        const prefixMatches = entries.filter((e) => !e.name.startsWith(".") && e.name.toLowerCase().startsWith(token));
+        if (prefixMatches.length >= 1) {
+          const entry = prefixMatches[0];
+          if (!detected.some((d) => d.name === entry.name)) {
+            detected.push({
+              name: entry.name,
+              fullPath: path.join(targetDir, entry.name).replace(/\\/g, "/"),
+              isDir: entry.isDirectory(),
+              ext: path.extname(entry.name).toLowerCase(),
+            });
+          }
+        }
       }
     }
 
@@ -445,19 +493,23 @@ export class TelegramService {
     botToken: string,
     chatId: number | string,
     text: string,
-    replyToMessageId?: number
+    replyToMessageId?: number,
+    replyMarkup?: any
   ): Promise<{ ok: boolean; messageId?: number }> {
     try {
+      const payload: any = {
+        chat_id: chatId,
+        text,
+        parse_mode: "Markdown",
+        ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      };
+
       // First attempt with Markdown formatting
       const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          parse_mode: "Markdown",
-          ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -466,14 +518,11 @@ export class TelegramService {
       }
 
       // If Markdown parsing fails, fall back to plain text
+      delete payload.parse_mode;
       const fallbackRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          ...(replyToMessageId ? { reply_to_message_id: replyToMessageId } : {}),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (fallbackRes.ok) {
@@ -589,6 +638,13 @@ export class TelegramService {
         for (const update of data.result) {
           offset = Math.max(offset, update.update_id + 1);
 
+          // Handle Telegram Inline Query (@BotUsername query)
+          if (update.inline_query) {
+            this.status.lastActive = Date.now();
+            await this.handleInlineQuery(config, update.inline_query);
+            continue;
+          }
+
           const message = update.message;
           if (!message) continue;
 
@@ -606,6 +662,70 @@ export class TelegramService {
     }
   }
 
+  /**
+   * Handles Telegram Inline Queries (e.g. typing "@BotUsername o").
+   * Displays a floating popup menu of matching workspace files directly above the keyboard.
+   */
+  private async handleInlineQuery(config: MessagingConfig, inlineQuery: any): Promise<void> {
+    const queryId = inlineQuery.id;
+    const senderId = String(inlineQuery.from?.id ?? "");
+    const senderUsername = inlineQuery.from?.username ? String(inlineQuery.from.username).toLowerCase() : "";
+
+    if (!isSenderAllowed(config.telegram.allowedUserId, senderId, senderUsername)) {
+      return;
+    }
+
+    const queryText = (inlineQuery.query || "").trim().toLowerCase().replace(/^[@#]/, "");
+    const rawTargetDir = config.telegram.targetFolder || process.cwd();
+    const targetDir = normalizeFolderPath(rawTargetDir);
+
+    try {
+      const entries = await fs.readdir(targetDir, { withFileTypes: true }).catch(() => []);
+      const validFiles = entries
+        .filter((e) => !e.name.startsWith(".") && e.name !== "node_modules")
+        .filter((e) => {
+          if (!queryText) return true;
+          return e.name.toLowerCase().includes(queryText);
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const results = validFiles.slice(0, 25).map((file, idx) => {
+        const isDir = file.isDirectory();
+        const ext = path.extname(file.name).toLowerCase();
+        let icon = "📄";
+        let typeDesc = "Dokumen Teks";
+        if (isDir) { icon = "📁"; typeDesc = "Folder"; }
+        else if (ext === ".xlsx" || ext === ".xls") { icon = "📊"; typeDesc = "Spreadsheet Excel"; }
+        else if (ext === ".csv") { icon = "📊"; typeDesc = "File CSV"; }
+        else if (ext === ".docx" || ext === ".doc") { icon = "📝"; typeDesc = "Dokumen Word"; }
+        else if (ext === ".pdf") { icon = "📑"; typeDesc = "Dokumen PDF"; }
+
+        return {
+          type: "article",
+          id: `file_${idx}_${file.name}`,
+          title: `${icon} ${file.name}`,
+          description: `${typeDesc} • Ketuk untuk pilih file ini`,
+          input_message_content: {
+            message_text: `@${file.name} `,
+          },
+        };
+      });
+
+      await fetch(`https://api.telegram.org/bot${config.telegram.botToken}/answerInlineQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inline_query_id: queryId,
+          results,
+          cache_time: 1,
+          is_personal: true,
+        }),
+      });
+    } catch (err) {
+      console.warn("[TelegramGateway] handleInlineQuery error:", err);
+    }
+  }
+
   private async handleIncomingMessage(
     config: MessagingConfig,
     message: any,
@@ -616,6 +736,13 @@ export class TelegramService {
     const senderName = message.from?.first_name || senderUsername || senderId;
     const chatId = message.chat.id;
     const botToken = config.telegram.botToken;
+
+    // Strip leading @BotUsername if user sent text through inline query or switch_inline_query_current_chat
+    const botUser = this.status.botUsername ? this.status.botUsername.toLowerCase() : "";
+    let cleanText = text.trim();
+    if (botUser && cleanText.toLowerCase().startsWith(`@${botUser}`)) {
+      cleanText = cleanText.slice(botUser.length + 1).trim();
+    }
 
     // 1. Whitelist Verification
     const isAllowed = isSenderAllowed(config.telegram.allowedUserId, senderId, senderUsername);
@@ -632,7 +759,7 @@ export class TelegramService {
     }
 
     // 2. Command Handling
-    if (text === "/start" || text === "/help") {
+    if (cleanText === "/start" || cleanText === "/help") {
       const targetDir = config.telegram.targetFolder || "Default Project Workspace";
       const welcomeMsg =
         `👋 *Halo ${senderName}! Arunaki Gateway siap melayani.*\n\n` +
@@ -641,7 +768,7 @@ export class TelegramService {
         `📁 *Target Folder:* \`${targetDir}\`\n\n` +
         `*Menu & Perintah Cepat:*\n` +
         `• Tekan tombol *[/ Menu]* di samping kolom chat untuk akses instan\n` +
-        `• \`/files\` — Lihat daftar file di folder aktif PC\n` +
+        `• \`/files\` — Lihat daftar file & tombol interaktif di folder aktif PC\n` +
         `• \`/rekap\` — Panduan dan format rekap pesanan ke Excel\n` +
         `• \`/status\` — Cek status Arunaki dan folder kerja saat ini\n` +
         `• \`/new\` — Reset / mulai sesi percakapan baru\n` +
@@ -651,7 +778,7 @@ export class TelegramService {
       return;
     }
 
-    if (text === "/new" || text === "/reset") {
+    if (cleanText === "/new" || cleanText === "/reset") {
       this.chatSessionMap.delete(chatId);
       await this.sendTelegramMessage(
         botToken,
@@ -662,7 +789,7 @@ export class TelegramService {
       return;
     }
 
-    if (text === "/status") {
+    if (cleanText === "/status") {
       const rawTargetDir = config.telegram.targetFolder || process.cwd();
       const targetDir = normalizeFolderPath(rawTargetDir);
       const statusMsg =
@@ -676,7 +803,7 @@ export class TelegramService {
       return;
     }
 
-    if (text === "/files" || text === "/file") {
+    if (cleanText === "/files" || cleanText === "/file") {
       const rawTargetDir = config.telegram.targetFolder || process.cwd();
       const targetDir = normalizeFolderPath(rawTargetDir);
       try {
@@ -716,12 +843,46 @@ export class TelegramService {
           `\`${targetDir}\`\n\n` +
           `${fileListLines.join("\n")}\n\n` +
           `💡 *Cara Menggunakan:*\n` +
-          `Sentuh/salin salah satu nama file di atas (contoh: \`@ORDER.txt\`), lalu tambahkan kata-kata instruksi di kolom chat sebelum dikirim.\n\n` +
-          `*Contoh Pesan:*\n` +
-          `• \`@ORDER.txt tolong rekap data pesanan ini ke excel\`\n` +
-          `• \`@REKAP 9-2026.xlsx cek total penjualan bulan ini\``;
+          `• *Klik tombol file di bawah* untuk langsung memasukkan nama file ke kolom chat.\n` +
+          `• Atau ketik awalan huruf saja (contoh: \`@o rekap ke excel\` atau \`#1 cek total\`).\n` +
+          `• Atau gunakan tombol *🔍 Cari File* untuk memunculkan popup melayang di atas keyboard.`;
 
-        await this.sendTelegramMessage(botToken, chatId, filesMsg, message.message_id);
+        // Create interactive inline buttons
+        const inlineKeyboard: any[][] = [
+          [
+            {
+              text: "🔍 Cari File (Popup Melayang)",
+              switch_inline_query_current_chat: "",
+            },
+          ],
+        ];
+
+        const row: any[] = [];
+        for (const file of validFiles.slice(0, 6)) {
+          const isDir = file.isDirectory();
+          const ext = path.extname(file.name).toLowerCase();
+          let icon = "📄";
+          if (isDir) icon = "📁";
+          else if (ext === ".xlsx" || ext === ".xls" || ext === ".csv") icon = "📊";
+          else if (ext === ".docx" || ext === ".doc") icon = "📝";
+          else if (ext === ".pdf") icon = "📑";
+
+          row.push({
+            text: `${icon} ${file.name}`,
+            switch_inline_query_current_chat: `@${file.name} `,
+          });
+
+          if (row.length === 2) {
+            inlineKeyboard.push([...row]);
+            row.length = 0;
+          }
+        }
+        if (row.length > 0) {
+          inlineKeyboard.push([...row]);
+        }
+
+        const replyMarkup = { inline_keyboard: inlineKeyboard };
+        await this.sendTelegramMessage(botToken, chatId, filesMsg, message.message_id, replyMarkup);
         return;
       } catch (err: any) {
         await this.sendTelegramMessage(
@@ -734,16 +895,17 @@ export class TelegramService {
       }
     }
 
-    if (text === "/rekap") {
+    if (cleanText === "/rekap") {
       const rekapMsg =
         `📊 *Fitur Rekap Otomatis Arunaki*\n\n` +
         `Untuk merekap data ke Excel, silakan kirim pesan dengan salah satu format berikut:\n\n` +
         `1. *Kirim / Paste Teks Mentah (Paling Cepat)*\n` +
         `   Copy-paste pesan WhatsApp atau catatan pesanan langsung ke chat ini. Arunaki akan otomatis membaca dan memperbarui file Excel Anda.\n\n` +
-        `2. *Gunakan Mention File (@namafile):*\n` +
+        `2. *Gunakan Mention File (@namafile / @huruf):*\n` +
         `   • \`@ORDER.txt tolong rekap pesanan baru ke excel\`\n` +
+        `   • \`@o tolong rekap ke excel\` (cukup 1 huruf awalan!)\n` +
         `   • \`rekap data berikut ke @REKAP 9-2026.xlsx: [paste catatan]\`\n\n` +
-        `3. *Ketik /files* untuk melihat daftar file dokumen yang tersedia di PC.`;
+        `3. *Ketik /files* untuk melihat daftar file dokumen dan tombol interaktif.`;
 
       await this.sendTelegramMessage(botToken, chatId, rekapMsg, message.message_id);
       return;
@@ -755,7 +917,7 @@ export class TelegramService {
     try {
       const dirEntries = await fs.readdir(targetDir, { withFileTypes: true }).catch(() => []);
       const fileNames = dirEntries.map((e) => e.name);
-      const bareFile = isBareFileMention(text, fileNames);
+      const bareFile = isBareFileMention(cleanText, fileNames);
 
       if (bareFile) {
         const guidanceMsg =
@@ -799,9 +961,9 @@ export class TelegramService {
       };
 
       // Enrich prompt if files are mentioned with instructions
-      const { enrichedPrompt } = await enrichPromptWithFileMentions(text, targetDir);
+      const { enrichedPrompt } = await enrichPromptWithFileMentions(cleanText, targetDir);
 
-      const reply = await this.executeArunakiPrompt(config, chatId, enrichedPrompt, senderName, onProgress, text);
+      const reply = await this.executeArunakiPrompt(config, chatId, enrichedPrompt, senderName, onProgress, cleanText);
       clearInterval(typingInterval);
 
       // Clean up the transient thinking message so it disappears after finished

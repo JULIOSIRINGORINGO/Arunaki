@@ -159,9 +159,19 @@ describe("Telegram BYOB Gateway", () => {
       expect(isBareFileMention("ORDER.txt", files)).toBe("ORDER.txt");
     });
 
+    test("detects single-letter prefix @o when it uniquely matches ORDER.txt", () => {
+      expect(isBareFileMention("@o", files)).toBe("ORDER.txt");
+    });
+
+    test("detects numeric shorthand #1 or @1", () => {
+      expect(isBareFileMention("#1", files)).toBe("ORDER.txt");
+      expect(isBareFileMention("@2", files)).toBe("REKAP 9-2026.xlsx");
+    });
+
     test("returns null when accompanying instructions are present", () => {
       expect(isBareFileMention("@ORDER.txt tolong masukkan ke excel", files)).toBeNull();
       expect(isBareFileMention("rekap data ini ke @REKAP 9-2026.xlsx", files)).toBeNull();
+      expect(isBareFileMention("@o tolong masukkan ke excel", files)).toBeNull();
     });
 
     test("returns null when no matching file in workspace", () => {
@@ -185,6 +195,27 @@ describe("Telegram BYOB Gateway", () => {
         expect(result.enrichedPrompt).toContain("ORDER.txt");
         expect(result.enrichedPrompt).toContain("[Instruksi dan Peran Dokumen dari Pengguna]:");
         expect(result.enrichedPrompt).toContain("tolong masukkan data pembeli ini ke rekap excel");
+      } finally {
+        await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    });
+
+    test("enriches prompt when user uses single-letter prefix @o or shorthand #1", async () => {
+      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "arunaki-test-"));
+      try {
+        await fs.writeFile(path.join(tempDir, "ORDER.txt"), "Order ID: 123", "utf-8");
+        await fs.writeFile(path.join(tempDir, "REKAP.xlsx"), "data", "utf-8");
+
+        // Test single letter prefix @o
+        const promptPrefix = "@o tolong masukkan data ini ke excel";
+        const resultPrefix = await enrichPromptWithFileMentions(promptPrefix, tempDir);
+        expect(resultPrefix.detectedFiles).toContain("ORDER.txt");
+        expect(resultPrefix.enrichedPrompt).toContain("ORDER.txt");
+
+        // Test numeric shorthand #1
+        const promptNumeric = "#1 rekap ke excel";
+        const resultNumeric = await enrichPromptWithFileMentions(promptNumeric, tempDir);
+        expect(resultNumeric.detectedFiles).toContain("ORDER.txt");
       } finally {
         await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
       }
