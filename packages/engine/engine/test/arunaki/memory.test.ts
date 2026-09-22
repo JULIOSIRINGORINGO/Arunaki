@@ -139,5 +139,42 @@ describe("memory: synthesize rule preservation", () => {
     expect(withCorrection).toContain("PANDUAN RINGKAS")
     expect(withCorrection).toContain("## 1. ORDER.TXT")
   })
+
+  test("preserves multiline examples and indented sub-bullets in learned preferences", () => {
+    const docWithComplexRules = [
+      "# LOCAL WORKSPACE OPERATING RULES",
+      "",
+      "## User Preferences & Learned Corrections",
+      "### Learned by the Sentinel",
+      "- Orderan dicatat di ORDER.txt",
+      "- **FORMAT TOTAL (FIX):**",
+      "  - Baris item: [UK] [qty] (+[tambahan]RB)",
+      "  - Baris total: TOTAL = [pcs] PCS X [harga dasar]RB",
+      "- **CONTOH 1 - HARGA SAMA:**",
+      "  NSA PREMIUM NAVY",
+      "  S   4",
+      "  M   7",
+      "  L   19",
+      "  TOTAL = 40 PCS × 40RB = 1.600RB",
+      "",
+      "---",
+    ].join("\n")
+
+    const updated = applyCorrections(docWithComplexRules, ["Aturan baru"])
+    expect(updated).toContain("- Aturan baru")
+    expect(updated).toContain("- Orderan dicatat di ORDER.txt")
+    expect(updated).toContain("- **FORMAT TOTAL (FIX):**")
+    expect(updated).toContain("  - Baris item: [UK] [qty] (+[tambahan]RB)")
+    expect(updated).toContain("  - Baris total: TOTAL = [pcs] PCS X [harga dasar]RB")
+    expect(updated).toContain("  NSA PREMIUM NAVY")
+    expect(updated).toContain("  S   4")
+    expect(updated).toContain("  TOTAL = 40 PCS × 40RB = 1.600RB")
+
+    const resynth = synthesize("/test", ["file.txt"], docWithComplexRules)
+    expect(resynth).toContain("- **FORMAT TOTAL (FIX):**")
+    expect(resynth).toContain("  - Baris item: [UK] [qty] (+[tambahan]RB)")
+    expect(resynth).toContain("  NSA PREMIUM NAVY")
+    expect(resynth).toContain("  TOTAL = 40 PCS × 40RB = 1.600RB")
+  })
 })
 

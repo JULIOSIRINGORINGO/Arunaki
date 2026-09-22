@@ -62,14 +62,32 @@ function isSkipped(pathSegments: string[]): boolean {
 
 function extractExistingCorrections(doc?: string): string[] {
   if (!doc) return []
-  const sectionMatch = doc.match(/## User Preferences & Learned Corrections[\s\S]*?(?=\n## |\n---|\n===|$)/)
+  const sectionMatch = doc.match(/## User Preferences & Learned Corrections[\s\S]*?(?=\r?\n## |\r?\n---|\r?\n===|$)/)
   if (!sectionMatch) return []
   const section = sectionMatch[0]
-  const lines = section.split("\n")
-  const rules = lines
-    .filter((line) => /^\s*[-*]\s+/.test(line))
-    .map((line) => line.trim().replace(/^[-*]\s+/, ""))
-    .filter((line) => Boolean(line) && !line.toLowerCase().includes("no learned preferences yet"))
+  const lines = section.split(/\r?\n/)
+  const items: string[] = []
+  let currentItem: string[] = []
+
+  for (const line of lines) {
+    if (/^[-*]\s+/.test(line)) {
+      if (currentItem.length > 0) {
+        items.push(currentItem.join("\n"))
+        currentItem = []
+      }
+      currentItem.push(line.replace(/^[-*]\s+/, ""))
+    } else if (currentItem.length > 0 && (/^\s{2,}/.test(line) || line.trim() === "")) {
+      currentItem.push(line)
+    }
+  }
+  if (currentItem.length > 0) {
+    items.push(currentItem.join("\n"))
+  }
+
+  const rules = items
+    .map((item) => item.trimEnd())
+    .filter((item) => Boolean(item) && !item.toLowerCase().includes("no learned preferences yet"))
+
   return Array.from(new Set(rules))
 }
 
@@ -228,11 +246,9 @@ export function applyCorrections(doc: string, corrections: string[]): string {
     ...merged.map((r) => `- ${r}`),
   ].join("\n")
 
-  if (/## User Preferences & Learned Corrections/.test(doc)) {
-    return doc.replace(
-      /## User Preferences & Learned Corrections\s*(?:### Learned by the Sentinel)?(?:\s*[-*][^\r\n]*)*(?:[\r\n]+_No learned preferences yet\._)?/,
-      newSection,
-    )
+  const sectionRegex = /## User Preferences & Learned Corrections[\s\S]*?(?=\r?\n## |\r?\n---|\r?\n===|$)/
+  if (sectionRegex.test(doc)) {
+    return doc.replace(sectionRegex, newSection)
   }
 
   return `${doc.trimEnd()}\n\n${newSection}\n`
@@ -258,9 +274,26 @@ const layer = Layer.effect(
     const lastRefreshes = new Map<string, number>()
 
     const readRulebook = (directory: string): Effect.Effect<string> =>
-      fs
-        .readFileStringSafe(path.join(directory, ARUNAKI_REL))
-        .pipe(Effect.map((raw) => raw ?? ""), Effect.orDie)
+      Effect.gen(function* () {
+        const primary = yield* fs.readFileStringSafe(path.join(directory, ARUNAKI_REL)).pipe(Effect.orDie)
+        if (primary && primary.trim().length > 0) return primary
+
+        // Fallback 1: workspace root ARUNAKI.md
+        const rootArunaki = yield* fs.readFileStringSafe(path.join(directory, "ARUNAKI.md")).pipe(Effect.orDie)
+        if (rootArunaki && rootArunaki.trim().length > 0) return rootArunaki
+
+        // Fallback 2: LIVING-MEMORY.txt
+        const livingMemory = yield* fs.readFileStringSafe(path.join(directory, "LIVING-MEMORY.txt")).pipe(Effect.orDie)
+        if (livingMemory && livingMemory.trim().length > 0) return livingMemory
+
+        // Fallback 3: .arunaki-backup/LIVING-MEMORY.txt
+        const backupLivingMemory = yield* fs
+          .readFileStringSafe(path.join(directory, ".arunaki-backup", "LIVING-MEMORY.txt"))
+          .pipe(Effect.orDie)
+        if (backupLivingMemory && backupLivingMemory.trim().length > 0) return backupLivingMemory
+
+        return ""
+      })
 
     const appendCorrectionLog = (directory: string, sessionID: string, userText: string) =>
       Effect.gen(function* () {
@@ -455,6 +488,9 @@ const layer = Layer.effect(
       const next = applyCorrections(current || synthesize(directory, []), [rule])
       const target = path.join(directory, ARUNAKI_REL)
       yield* fs.writeFileString(target, next).pipe(Effect.orDie)
+      const backupTarget = path.join(directory, ".arunaki-backup", "LIVING-MEMORY.txt")
+      yield* fs.ensureDir(path.dirname(backupTarget)).pipe(Effect.catch(() => Effect.void))
+      yield* fs.writeFileString(backupTarget, next).pipe(Effect.catch(() => Effect.void))
     })
 
     const onTurnCompleted = Effect.fn("SessionMemory.onTurnCompleted")(function* (
