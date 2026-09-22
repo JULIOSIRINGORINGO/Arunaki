@@ -869,7 +869,7 @@ export class TelegramService {
 
           row.push({
             text: `${icon} ${file.name}`,
-            switch_inline_query_current_chat: `@${file.name} `,
+            switch_inline_query_current_chat: `${file.name} `,
           });
 
           if (row.length === 2) {
