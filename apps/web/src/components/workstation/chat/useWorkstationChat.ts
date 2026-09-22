@@ -524,6 +524,14 @@ export function useWorkstationChat({
       const now = Date.now();
       const msgTime = lastMsg.createdAt ? new Date(lastMsg.createdAt).getTime() : 0;
       if (msgTime && now - msgTime < 120000) {
+        // If message was posted recently (< 30s) and there is no assistant reply yet, activate thinking indicator immediately
+        if (now - msgTime < 30000 && !isStreamingRef.current) {
+          setStreamingState(true);
+          setLiveStatus({
+            type: "thinking",
+            preview: "Thinking...",
+          });
+        }
         isSessionActive(activeChatId).then((active) => {
           if (active && !isStreamingRef.current && !isLocalSendingRef.current) {
             setStreamingState(true);
@@ -531,6 +539,9 @@ export function useWorkstationChat({
               type: "thinking",
               preview: "Arunaki is processing...",
             });
+          } else if (!active && now - msgTime >= 30000 && isStreamingRef.current && !isLocalSendingRef.current) {
+            setStreamingState(false);
+            setLiveStatus(null);
           }
         }).catch(() => {});
       }

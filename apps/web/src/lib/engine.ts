@@ -322,6 +322,10 @@ export function mapEngineEvent(
   const normalizedType = event.type ? event.type.replace(/\.\d+$/, "") : "";
 
   switch (normalizedType || event.type) {
+    case "session.next.prompt.admitted":
+    case "session.next.prompted":
+    case "session.prompted":
+      return { type: "thinking", data: "Analyzing request & documents..." };
     case "session.next.text.delta":
       return { type: "text_delta", data: payload.delta || event.delta };
     case "session.next.text.ended":
