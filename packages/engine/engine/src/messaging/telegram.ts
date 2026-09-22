@@ -628,12 +628,13 @@ export class TelegramService {
     }
 
     // 3. Poll for Assistant Reply
-    // Arunaki v2 executes the agent loop asynchronously. Wait for completion up to 90 seconds.
+    // Arunaki executes document agent loops asynchronously. Wait up to 240 seconds for completion.
     let reply = "";
     const pollIntervalMs = 1200;
-    const maxPollAttempts = 75; // ~90 seconds
+    let maxPollAttempts = 200; // ~240 seconds default
     let typingTick = 0;
     let hasSeenSessionActive = false;
+    let idleTicks = 0;
 
     for (let attempt = 0; attempt < maxPollAttempts; attempt++) {
       await new Promise((r) => setTimeout(r, pollIntervalMs));
@@ -653,7 +654,16 @@ export class TelegramService {
             const activeJson = await activeRes.json();
             const activeMap = activeJson?.data || activeJson || {};
             isSessionBusy = Boolean(activeMap[sessionID]);
-            if (isSessionBusy) hasSeenSessionActive = true;
+            if (isSessionBusy) {
+              hasSeenSessionActive = true;
+              idleTicks = 0;
+              // If still actively running tools as timeout nears, extend timeout dynamically up to 350 cycles
+              if (attempt >= maxPollAttempts - 10 && maxPollAttempts < 350) {
+                maxPollAttempts += 15;
+              }
+            } else {
+              idleTicks++;
+            }
           }
         } catch {}
 
@@ -706,11 +716,11 @@ export class TelegramService {
 
         // ONLY finalize when we actually have the LLM text answer AND execution has finished!
         if (combinedText.length > 0) {
-          if (!isSessionBusy || isStopFinished) {
+          if (isStopFinished || (!isSessionBusy && idleTicks >= 3 && newest?.finish !== "tool-calls")) {
             reply = combinedText;
             break;
           }
-        } else if (hasSeenSessionActive && !isSessionBusy && attempt > 3) {
+        } else if (hasSeenSessionActive && !isSessionBusy && idleTicks >= 4 && attempt > 5) {
           // Session was active and finished, check one more time if text appeared
           if (combinedText.length > 0) {
             reply = combinedText;
@@ -736,8 +746,32 @@ export class TelegramService {
       }).catch(() => {});
     } catch {}
 
+    // Final safety check: if reply is still empty, inspect the newest messages from session
     if (!reply) {
-      reply = "Permintaan selesai diproses.";
+      try {
+        const lastCheckRes = await fetch(
+          `${serverUrl}/api/session/${sessionID}/message?limit=5&directory=${encodeURIComponent(targetDir)}`,
+          { headers: { "x-arunaki-directory": targetDir, ...authHeaders } }
+        );
+        if (lastCheckRes.ok) {
+          const lastJson = await lastCheckRes.json();
+          const lastMsgs: any[] = lastJson?.data || lastJson;
+          for (const m of lastMsgs) {
+            const role = m.role || m.type;
+            if (role === "assistant") {
+              const t = extractAssistantReply(m);
+              if (t) {
+                reply = t;
+                break;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (!reply) {
+      reply = "Permintaan telah selesai diproses oleh Arunaki.";
     }
 
     return reply;

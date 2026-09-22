@@ -415,11 +415,20 @@ export function useWorkstationChat({
             const st = extSteps.find((s) => s.id === stepId);
             if (st) {
               st.status = "completed";
-              st.label = formatToolStepLabel(
-                st.toolName || event.data?.toolName || "action",
-                event.data?.args || event.data?.input,
-                true
-              );
+              const rawInput = event.data?.args || event.data?.input;
+              if (rawInput) {
+                st.label = formatToolStepLabel(
+                  st.toolName || event.data?.toolName || "action",
+                  rawInput,
+                  true
+                );
+              } else if (st.label) {
+                st.label = st.label
+                  .replace(/^Reading\b/i, "Explored")
+                  .replace(/^Editing\b/i, "Edited")
+                  .replace(/^Writing\b/i, "Created")
+                  .replace(/^Running\b/i, "Executed");
+              }
             }
           }
           const toolName = event.data?.toolName || "action";
@@ -1532,13 +1541,15 @@ export function useWorkstationChat({
           }
           const callId = event.data?.callID;
           const isFinished = event.data?.status === "completed" || event.data?.status === "failed";
-          const args = event.data?.args || event.data?.input || event.data?.preview;
-          const label = formatToolStepLabel(toolName, args, isFinished);
+          const rawArgs = event.data?.args || event.data?.input;
+          const label = rawArgs
+            ? formatToolStepLabel(toolName, rawArgs, isFinished)
+            : undefined;
           setLiveStatus({
             type: event.type === "tool_live_status" ? "tool_live_status" : "tool_start",
             ...event.data,
             toolName,
-            preview: label,
+            preview: label || event.data?.preview || `${isFinished ? "Completed" : "Running"} ${toolName}`,
           });
 
           const finalStatus: "completed" | "running" = isFinished ? "completed" : "running";
@@ -1546,13 +1557,21 @@ export function useWorkstationChat({
             (s) => s.iconType === "tool" && (callId ? s.id === callId : s.status === "running" || s.toolName === toolName)
           );
           if (existingStep) {
-            existingStep.label = label;
+            if (label) {
+              existingStep.label = label;
+            } else if (isFinished && existingStep.label) {
+              existingStep.label = existingStep.label
+                .replace(/^Reading\b/i, "Explored")
+                .replace(/^Editing\b/i, "Edited")
+                .replace(/^Writing\b/i, "Created")
+                .replace(/^Running\b/i, "Executed");
+            }
             existingStep.status = finalStatus;
             existingStep.toolName = toolName;
           } else {
             accumulatedSteps.push({
               id: callId || `${Date.now()}-${Math.random()}`,
-              label,
+              label: label || formatToolStepLabel(toolName, undefined, isFinished),
               status: finalStatus,
               iconType: "tool",
               toolName,
@@ -1563,7 +1582,15 @@ export function useWorkstationChat({
             (p) => p.type === "tool" && (callId ? p.step.id === callId : p.step.status === "running" || p.step.toolName === toolName)
           );
           if (existingToolPart && existingToolPart.type === "tool") {
-            existingToolPart.step.label = label;
+            if (label) {
+              existingToolPart.step.label = label;
+            } else if (isFinished && existingToolPart.step.label) {
+              existingToolPart.step.label = existingToolPart.step.label
+                .replace(/^Reading\b/i, "Explored")
+                .replace(/^Editing\b/i, "Edited")
+                .replace(/^Writing\b/i, "Created")
+                .replace(/^Running\b/i, "Executed");
+            }
             existingToolPart.step.status = finalStatus;
             existingToolPart.step.toolName = toolName;
           } else {
@@ -1571,7 +1598,7 @@ export function useWorkstationChat({
               type: "tool",
               step: {
                 id: callId || `${Date.now()}-${Math.random()}`,
-                label,
+                label: label || formatToolStepLabel(toolName, undefined, isFinished),
                 status: finalStatus,
                 iconType: "tool",
                 toolName,

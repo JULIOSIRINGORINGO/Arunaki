@@ -120,20 +120,20 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   const partGroups = useMemo<PartGroup[]>(() => {
     if (!msg?.parts || msg.parts.length === 0) return [];
 
-    const thoughtItems: Array<{ text: string; durSec?: number; durMs?: number }> = [];
-    const toolSteps: StepItem[] = [];
-    const questionParts: QuestionData[] = [];
-    const textChunks: string[] = [];
+    const groups: PartGroup[] = [];
 
     for (let i = 0; i < msg.parts.length; i++) {
       const part = msg.parts[i];
       if (part.type === "thought") {
         const text = (part.text || "").trim();
         if (text || isStreaming) {
-          thoughtItems.push({
+          groups.push({
+            type: "thought",
+            id: `thought-${i}`,
             text,
-            durSec: part.durationSec,
-            durMs: part.durationMs,
+            durationSec: part.durationSec,
+            durationMs: part.durationMs,
+            isLast: false,
           });
         }
       } else if (part.type === "tool") {
@@ -143,74 +143,101 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         ) {
           continue;
         }
-        if (!toolSteps.some((s) => s.id === part.step.id)) {
-          toolSteps.push(part.step);
+        const lastGroup = groups[groups.length - 1];
+        if (lastGroup && lastGroup.type === "tools") {
+          if (!lastGroup.steps.some((s) => s.id === part.step.id)) {
+            lastGroup.steps.push(part.step);
+            if (part.step.status === "running") lastGroup.isRunning = true;
+          }
+        } else {
+          groups.push({
+            type: "tools",
+            id: `tools-${i}`,
+            steps: [part.step],
+            isRunning: part.step.status === "running",
+            isLast: false,
+          });
         }
       } else if (part.type === "question") {
-        questionParts.push(part.data);
+        groups.push({
+          type: "question",
+          id: `question-${i}`,
+          data: part.data,
+          isLast: false,
+        });
       } else if (part.type === "text" && part.text && part.text.trim().length > 0) {
-        textChunks.push(part.text);
+        const cleanT = part.text.replace(/<\/?think\??>/gi, "").trim();
+        if (cleanT) {
+          const lastGroup = groups[groups.length - 1];
+          if (lastGroup && lastGroup.type === "text") {
+            lastGroup.text += "\n\n" + cleanT;
+          } else {
+            groups.push({
+              type: "text",
+              id: `text-${i}`,
+              text: cleanT,
+              isLast: false,
+            });
+          }
+        }
       }
     }
 
-    const groups: PartGroup[] = [];
-
-    // 1. Consolidated Thought Stream
-    const combinedThoughtText =
-      thoughtItems.map((t) => t.text).filter(Boolean).join("\n\n") || (msg.reasoning || "").trim();
-    if (combinedThoughtText || (isStreaming && showThinking)) {
-      let totalDurSec = thoughtSec || msg.thoughtSec;
-      let totalDurMs = thoughtMs || msg.thoughtMs;
-      if (!totalDurSec && thoughtItems.length > 0) {
-        const sumSec = thoughtItems.reduce((acc, t) => acc + (t.durSec || 0), 0);
-        if (sumSec > 0) totalDurSec = sumSec;
+    // Merge streaming steps if not yet present in msg.parts
+    if (steps && steps.length > 0) {
+      const activeSteps = steps.filter(
+        (s) => s.toolName?.toLowerCase() !== "question" && !s.label.toLowerCase().includes("question")
+      );
+      if (activeSteps.length > 0) {
+        const lastGroup = groups[groups.length - 1];
+        if (lastGroup && lastGroup.type === "tools") {
+          for (const s of activeSteps) {
+            if (!lastGroup.steps.some((existing) => existing.id === s.id)) {
+              lastGroup.steps.push(s);
+              if (s.status === "running") lastGroup.isRunning = true;
+            }
+          }
+        } else if (!groups.some((g) => g.type === "tools")) {
+          groups.push({
+            type: "tools",
+            id: "tools-streaming",
+            steps: activeSteps,
+            isRunning: activeSteps.some((s) => s.status === "running"),
+            isLast: false,
+          });
+        }
       }
-      if (!totalDurMs && thoughtItems.length > 0) {
-        const sumMs = thoughtItems.reduce((acc, t) => acc + (t.durMs || 0), 0);
-        if (sumMs > 0) totalDurMs = sumMs;
-      }
-
-      groups.push({
-        type: "thought",
-        id: "thought-unified",
-        text: combinedThoughtText,
-        durationSec: totalDurSec,
-        durationMs: totalDurMs,
-        isLast: toolSteps.length === 0 && questionParts.length === 0 && textChunks.length === 0,
-      });
     }
 
-    // 2. Consolidated Tool Tasks Card
-    const allSteps = toolSteps.length > 0 ? toolSteps : (steps || []);
-    if (allSteps.length > 0) {
-      groups.push({
-        type: "tools",
-        id: "tools-unified",
-        steps: allSteps,
-        isRunning: allSteps.some((s) => s.status === "running"),
-        isLast: questionParts.length === 0 && textChunks.length === 0,
-      });
+    // Ensure fallback reasoning is included if no thoughts were extracted from parts
+    if (!groups.some((g) => g.type === "thought") && (msg?.reasoning || (isStreaming && showThinking))) {
+      const thoughtTxt = (msg?.reasoning || "").trim();
+      if (thoughtTxt || isStreaming) {
+        groups.unshift({
+          type: "thought",
+          id: "thought-initial",
+          text: thoughtTxt,
+          durationSec: thoughtSec || msg?.thoughtSec,
+          durationMs: thoughtMs || msg?.thoughtMs,
+          isLast: false,
+        });
+      }
     }
 
-    // 3. Question Cards
-    questionParts.forEach((q, idx) => {
-      groups.push({
-        type: "question",
-        id: `question-${idx}`,
-        data: q,
-        isLast: idx === questionParts.length - 1 && textChunks.length === 0,
-      });
-    });
-
-    // 4. Text Content
-    const fullText = (textChunks.join("") || displayContent).replace(/<\/?think\??>/gi, "").trim();
-    if (fullText) {
+    // Ensure text bubble is present if displayContent exists but no text part was parsed
+    const hasTextPart = groups.some((g) => g.type === "text");
+    const fullText = (displayContent || "").replace(/<\/?think\??>/gi, "").trim();
+    if (!hasTextPart && fullText) {
       groups.push({
         type: "text",
         id: "text-unified",
         text: fullText,
-        isLast: true,
+        isLast: false,
       });
+    }
+
+    if (groups.length > 0) {
+      groups[groups.length - 1].isLast = true;
     }
 
     return groups;

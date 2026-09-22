@@ -44,7 +44,10 @@ export function formatToolStepLabel(
 
   let target = "";
   if (typeof argsOrTarget === "string") {
-    target = argsOrTarget;
+    const trimmed = argsOrTarget.trim();
+    if (!/^(completed|failed|executing|running|preparing)\b/i.test(trimmed)) {
+      target = trimmed;
+    }
   } else if (argsOrTarget && typeof argsOrTarget === "object") {
     target =
       argsOrTarget.TargetFile ||
