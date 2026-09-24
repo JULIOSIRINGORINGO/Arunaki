@@ -996,11 +996,13 @@ export function useWorkstationChat({
           localStorage.setItem("arunaki_active_folder", activeFolder);
           localStorage.setItem(`arunaki_active_chat_id_${activeFolder}`, chatIdToUse);
         }
-      } catch {
+      } catch (err) {
+        console.error("[useWorkstationChat] Failed to create session:", err);
         isLocalSendingRef.current = false;
         setStreamingState(false);
         setLiveStatus(null);
-        toast.error("Failed to create a new conversation");
+        setOptimisticMessages([]);
+        toast.error("Failed to create a new conversation. Please try again.");
         return;
       }
     } else {

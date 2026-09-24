@@ -54,20 +54,43 @@ export async function createSession(opts?: {
     params.set("location[directory]", opts.directory);
   }
   const queryString = params.toString() ? `?${params.toString()}` : "";
-  const res = await engineFetch(`/api/session${queryString}`, {
-    method: "POST",
-    headers: {
-      ...(opts?.directory && { "x-arunaki-directory": opts.directory }),
-    },
-    body: JSON.stringify({
-      ...(opts?.agent && { agent: opts.agent }),
-      ...(modelPayload && { model: modelPayload }),
-      ...(opts?.directory && { location: { directory: opts.directory } }),
-    }),
+  const requestHeaders = {
+    ...(opts?.directory && { "x-arunaki-directory": opts.directory }),
+  };
+  const requestBody = JSON.stringify({
+    ...(opts?.agent && { agent: opts.agent }),
+    ...(modelPayload && { model: modelPayload }),
+    ...(opts?.directory && { location: { directory: opts.directory } }),
   });
-  if (!res.ok) throw new Error(`createSession failed: ${res.status}`);
-  const json = await res.json();
-  return json.data;
+
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await engineFetch(`/api/session${queryString}`, {
+        method: "POST",
+        headers: requestHeaders,
+        body: requestBody,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data;
+      }
+      // Retry transient server reload/restart errors (500, 502, 503, 504)
+      if (res.status >= 500 && attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        continue;
+      }
+      throw new Error(`createSession failed: ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error("createSession failed");
 }
 
 export async function listSessions(opts?: { project?: string; limit?: number; directory?: string }) {
