@@ -2,6 +2,7 @@ import { memo } from "react";
 import {
   PanelLeft,
   PanelRight,
+  WrapText,
   Sun,
   Moon,
   Laptop,
@@ -13,6 +14,7 @@ import {
 import { cn } from "../../../lib/utils";
 import { useTheme } from "../../../lib/theme";
 import { useI18n } from "../../../lib/i18n";
+import { useWordWrap } from "../../../lib/wordWrap";
 import { BaseMenuProps } from "./types";
 import { getEffectiveShortcut } from "./shortcutsConfig";
 
@@ -24,6 +26,7 @@ export const ViewMenu = memo(function ViewMenu({
 }: BaseMenuProps) {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage, t } = useI18n();
+  const { wordWrap, toggleWordWrap } = useWordWrap();
 
   const handleToggleExplorer = () => {
     window.dispatchEvent(new CustomEvent("arunaki-toggle-explorer"));
@@ -32,6 +35,11 @@ export const ViewMenu = memo(function ViewMenu({
 
   const handleToggleChat = () => {
     window.dispatchEvent(new CustomEvent("arunaki-toggle-chat"));
+    onClose();
+  };
+
+  const handleToggleWordWrap = () => {
+    toggleWordWrap();
     onClose();
   };
 
@@ -93,6 +101,23 @@ export const ViewMenu = memo(function ViewMenu({
             <span className="text-[11px] text-[var(--text-muted)] font-mono">
               {getEffectiveShortcut("toggle-chat") || "Ctrl+J"}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggleWordWrap}
+            className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+          >
+            <div className="flex items-center gap-2.5">
+              <WrapText className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
+              <span>{t("wrapText", "Wrap Text")}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-[var(--text-muted)] font-mono">
+                {getEffectiveShortcut("toggle-word-wrap") || "Alt+Z"}
+              </span>
+              {wordWrap && <Check className="w-4 h-4 text-[var(--text-primary)]" strokeWidth={2.25} />}
+            </div>
           </button>
 
           <div className="h-px my-1.5 bg-[var(--border-color)]" />

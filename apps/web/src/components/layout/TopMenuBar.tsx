@@ -10,6 +10,7 @@ import {
   getEffectiveShortcut,
   matchesShortcut,
 } from "./menu";
+import { getStoredWordWrap, setStoredWordWrap } from "../../lib/wordWrap";
 
 interface TopMenuBarProps {
   activeFolder: string;
@@ -89,6 +90,9 @@ export const TopMenuBar = memo(function TopMenuBar({
       } else if (matchesShortcut(e, getEffectiveShortcut("toggle-chat"))) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("arunaki-toggle-chat"));
+      } else if (matchesShortcut(e, getEffectiveShortcut("toggle-word-wrap"))) {
+        e.preventDefault();
+        setStoredWordWrap(!getStoredWordWrap());
       }
     }
 

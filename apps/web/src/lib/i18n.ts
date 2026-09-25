@@ -34,6 +34,8 @@ export const translations = {
     // View Menu
     explorerPanel: "Explorer Panel",
     chatPanel: "Chat Panel",
+    wrapText: "Wrap Text",
+    wordWrap: "Word Wrap",
     theme: "Theme",
     light: "Light",
     dark: "Dark",
@@ -334,6 +336,8 @@ export const translations = {
     // View Menu
     explorerPanel: "Panel Berkas",
     chatPanel: "Panel Percakapan",
+    wrapText: "Bungkus Teks (Wrap Text)",
+    wordWrap: "Word Wrap",
     theme: "Tema Tampilan",
     light: "Terang",
     dark: "Gelap",

@@ -3291,6 +3291,31 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 10 pass, 0 fail.
   - `npm run build -w apps/web`: ✅ 0 errors (built cleanly in 20.04s).
 
+---
+
+## Phase 109: Word Wrap / Wrap Text Toggle in View Menu & Workstation Editor ✅ DONE
+
+**Goal:** Menambahkan opsi pengaturan Wrap Text (Word Wrap) pada dropdown View Menu workstation, lengkap dengan pintasan keyboard (`Alt + Z`), sinkronisasi status reaktif lintas komponen, dan implementasi visual pada editor dokumen center panel serta spreadsheet viewer.
+
+- [x] **Word Wrap Store & Reactive Hook (`apps/web/src/lib/wordWrap.ts`)**:
+  - Menyimpan preferensi word wrap ke `localStorage` (`arunaki_word_wrap`) dan memicu event custom `arunaki-word-wrap-change`.
+  - Menyediakan hook `useWordWrap()` yang otomatis sinkron dengan perubahan preferensi dari menu, status bar, maupun pintasan keyboard.
+- [x] **View Menu Setting UI (`apps/web/src/components/layout/menu/ViewMenu.tsx`)**:
+  - Menambahkan item `"Wrap Text"` di bawah `"Chat Panel"` lengkap dengan ikon `WrapText`, label shortcut `Alt + Z`, dan checkmark `✓` aktif.
+- [x] **Global Shortcut & Customization Registry (`apps/web/src/components/layout/menu/shortcutsConfig.ts`, `TopMenuBar.tsx`)**:
+  - Mendaftarkan pintasan `toggle-word-wrap` (`Alt + Z`) ke registry pintasan bawaan, sehingga dapat dikustomisasi di modal Keyboard Shortcuts.
+  - Menambahkan listener global `Alt + Z` di `TopMenuBar.tsx` untuk toggle cepat kapan saja.
+- [x] **Editor Document Wrapping & Gutter Alignment (`apps/web/src/components/workstation/tabs/CenterEditorView.tsx`)**:
+  - Menerapkan `whitespace-pre-wrap break-words` pada textarea saat aktif.
+  - Menyelaraskan tinggi baris gutter line number dengan baris teks aktual menggunakan off-screen line height measuring.
+- [x] **Status Bar Indicator & Quick Toggle (`apps/web/src/components/workstation/tabs/CenterStatusBar.tsx`)**:
+  - Menampilkan status `Wrap` / `No Wrap` interaktif di footer status bar editor dokumen.
+- [x] **Spreadsheet Viewer Compatibility (`apps/web/src/components/workstation/canvas/SpreadsheetViewer.tsx`)**:
+  - Mendukung cell wrap saat word wrap aktif agar teks panjang dalam sel sheet tidak terpotong.
+- [x] **Verifikasi & Pengujian**:
+  - `npm run build -w apps/web`: ✅ 0 errors, built in 22.90s.
+  - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 11 pass, 0 fail.
+
 
 
 

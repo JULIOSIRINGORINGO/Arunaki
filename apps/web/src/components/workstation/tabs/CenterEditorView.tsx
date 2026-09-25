@@ -1,11 +1,13 @@
-import { memo, useMemo, type RefObject, type KeyboardEvent } from "react";
+import { memo, useMemo, useState, useRef, useEffect, useLayoutEffect, type RefObject, type KeyboardEvent } from "react";
 import { cn } from "../../../lib/utils";
+import { useWordWrap } from "../../../lib/wordWrap";
 
 interface CenterEditorGutterProps {
   lineCount: number;
   cursorLine: number;
   addedLineNums: Set<number>;
   gutterRef: RefObject<HTMLDivElement | null>;
+  lineHeights?: number[] | null;
 }
 
 const CenterEditorGutter = memo(function CenterEditorGutter({
@@ -13,6 +15,7 @@ const CenterEditorGutter = memo(function CenterEditorGutter({
   cursorLine,
   addedLineNums,
   gutterRef,
+  lineHeights,
 }: CenterEditorGutterProps) {
   const items = useMemo(() => {
     const arr = new Array(lineCount);
@@ -30,11 +33,14 @@ const CenterEditorGutter = memo(function CenterEditorGutter({
       {items.map((lineNum) => {
         const isAdded = addedLineNums.has(lineNum);
         const isCurrentLine = cursorLine === lineNum;
+        const lineH = lineHeights && lineHeights[lineNum - 1] ? lineHeights[lineNum - 1] : 20;
+
         return (
           <div
             key={lineNum}
+            style={{ height: `${lineH}px`, lineHeight: "20px" }}
             className={cn(
-              "h-[20px] leading-[20px] relative",
+              "relative",
               isCurrentLine && "text-[var(--text-primary)] font-medium"
             )}
           >
@@ -77,6 +83,59 @@ export const CenterEditorView = memo(function CenterEditorView({
   onScroll,
   onKeyDown,
 }: CenterEditorViewProps) {
+  const { wordWrap } = useWordWrap();
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const [lineHeights, setLineHeights] = useState<number[] | null>(null);
+  const [textareaWidth, setTextareaWidth] = useState<number>(0);
+
+  const lines = useMemo(() => {
+    if (!wordWrap) return [];
+    return currentContent.split("\n");
+  }, [wordWrap, currentContent]);
+
+  // Track textarea clientWidth
+  useEffect(() => {
+    if (!wordWrap) {
+      setLineHeights(null);
+      return;
+    }
+
+    const el = textareaRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setTextareaWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    setTextareaWidth(el.clientWidth - 24); // 24px = px-3 padding
+
+    return () => ro.disconnect();
+  }, [wordWrap, textareaRef]);
+
+  // Synchronize line heights when content or width changes
+  useLayoutEffect(() => {
+    if (!wordWrap || !mirrorRef.current || lines.length === 0) {
+      setLineHeights(null);
+      return;
+    }
+
+    // Only compute heights if lines count is within reasonable threshold (< 600)
+    if (lines.length > 600) {
+      setLineHeights(null);
+      return;
+    }
+
+    const children = mirrorRef.current.children;
+    const heights = new Array(children.length);
+    for (let i = 0; i < children.length; i++) {
+      const h = (children[i] as HTMLElement).getBoundingClientRect().height;
+      heights[i] = h > 0 ? h : 20;
+    }
+    setLineHeights(heights);
+  }, [wordWrap, lines, textareaWidth]);
+
   return (
     <div className="h-full w-full flex flex-col bg-[var(--bg-card)] overflow-hidden transition-colors">
       <div className="flex-1 flex overflow-hidden bg-[var(--bg-card)] relative font-mono text-[13px]">
@@ -86,7 +145,25 @@ export const CenterEditorView = memo(function CenterEditorView({
           cursorLine={cursorPos.line}
           addedLineNums={addedLineNums}
           gutterRef={gutterRef}
+          lineHeights={lineHeights}
         />
+
+        {/* Hidden mirror element to measure line heights for gutter alignment */}
+        {wordWrap && lines.length <= 600 && (
+          <div
+            ref={mirrorRef}
+            aria-hidden="true"
+            className="invisible pointer-events-none absolute left-[-9999px] top-0 font-mono text-[13px] leading-[20px] py-2 px-3 whitespace-pre-wrap break-words"
+            style={{
+              fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
+              width: textareaWidth > 0 ? `${textareaWidth}px` : "100%",
+            }}
+          >
+            {lines.map((line, idx) => (
+              <div key={idx}>{line || "\u00A0"}</div>
+            ))}
+          </div>
+        )}
 
         {/* Editable live document area */}
         <textarea
@@ -106,7 +183,12 @@ export const CenterEditorView = memo(function CenterEditorView({
           autoCorrect="off"
           autoCapitalize="off"
           placeholder="Empty document..."
-          className="flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[var(--text-primary)] leading-[20px] resize-none focus:outline-none select-text cursor-text whitespace-pre border-none tab-4 overflow-auto selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)] caret-[var(--text-primary)] placeholder-[var(--text-dim)]"
+          className={cn(
+            "flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[var(--text-primary)] leading-[20px] resize-none focus:outline-none select-text cursor-text border-none tab-4 selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)] caret-[var(--text-primary)] placeholder-[var(--text-dim)]",
+            wordWrap
+              ? "whitespace-pre-wrap break-words overflow-x-hidden overflow-y-auto"
+              : "whitespace-pre overflow-auto"
+          )}
           style={{
             fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
           }}

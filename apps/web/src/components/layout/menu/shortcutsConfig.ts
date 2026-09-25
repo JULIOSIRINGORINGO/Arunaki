@@ -29,6 +29,7 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
   // Panels & Views
   { id: "toggle-explorer", category: "Panels & Views", desc: "Toggle Explorer Panel", defaultKey: "Ctrl + B" },
   { id: "toggle-chat", category: "Panels & Views", desc: "Toggle Chat Panel", defaultKey: "Ctrl + J" },
+  { id: "toggle-word-wrap", category: "Panels & Views", desc: "Toggle Word Wrap", defaultKey: "Alt + Z" },
 ];
 
 const STORAGE_KEY = "arunaki_custom_shortcuts";

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useTheme } from "../../../lib/theme";
+import { useWordWrap } from "../../../lib/wordWrap";
 
 interface SpreadsheetViewerProps {
   content: string;
@@ -35,6 +36,7 @@ interface ParsedSheetData {
 
 export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewerProps) {
   const { isLight } = useTheme();
+  const { wordWrap } = useWordWrap();
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
   const [selectedCell, setSelectedCell] = useState<{
     address: string;
@@ -409,7 +411,8 @@ export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewe
                   {/* Sticky Row Number (1, 2, 3...) */}
                   <th
                     className={cn(
-                      "sticky left-0 z-0 w-12 min-w-12 h-6 px-1.5 border-r border-b font-normal text-right select-none text-[11px]",
+                      "sticky left-0 z-0 w-12 min-w-12 px-1.5 border-r border-b font-normal text-right select-none text-[11px]",
+                      wordWrap ? "py-1 min-h-6" : "h-6",
                       isLight ? "border-slate-200 bg-[#f8fafc] text-slate-500" : "border-[#27272b] bg-[#1a1a1d] text-[#71717a]"
                     )}
                   >
@@ -433,7 +436,10 @@ export function SpreadsheetViewer({ content, filePath, title }: SpreadsheetViewe
                           })
                         }
                         className={cn(
-                          "h-6 px-2 border-r border-b whitespace-nowrap overflow-hidden text-ellipsis max-w-xs transition-colors cursor-cell",
+                          "px-2 border-r border-b transition-colors cursor-cell text-[12px]",
+                          wordWrap
+                            ? "whitespace-pre-wrap break-words py-1 min-h-[24px] max-w-sm"
+                            : "h-6 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs",
                           isLight ? "border-slate-100" : "border-[#222225]",
                           isSelected
                             ? isLight
