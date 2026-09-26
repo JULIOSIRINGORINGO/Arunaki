@@ -6,7 +6,9 @@ import JSZip from "jszip"
 import { WordMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String,
+  filePath: Schema.String.annotations({
+    description: "The file path or filename of the Word document (.docx) to read (e.g. document.docx or path/to/document.docx)",
+  }),
 })
 
 type Metadata = Record<string, unknown>
@@ -71,22 +73,47 @@ export async function buildWordMap(filePath: string): Promise<typeof WordMap.Typ
 export const WordReadTool = Tool.define(
   "word_read",
   Effect.succeed({
-    description: `Parse a Word document (.docx) and return a deterministic Document Map (JSON): paragraphs ({index, text}) and tables ({index, rows}). Use this INSTEAD of COM for reading. The returned paragraph/table indices let word_com edits target exact positions.`,
+    description: `Read, extract, and inspect text, paragraphs, and tables from a Word document (.docx). Returns a complete Document Map (JSON) with paragraphs ({index, text}) and structured tables ({index, rows}). ALWAYS use this tool to inspect or read Word documents natively with zero external dependencies, instead of python scripts or COM.`,
     parameters: Parameters,
-    execute: (params: Schema.Schema.Type<typeof Parameters>) =>
+    execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
       Effect.gen(function* () {
-        const filePath = path.resolve(params.filePath)
+        const baseDir = typeof ctx?.extra?.directory === "string" ? ctx.extra.directory : process.cwd()
+        let filePath = params.filePath
+        if (!path.isAbsolute(filePath)) {
+          filePath = path.resolve(baseDir, filePath)
+        }
+
+        if (!fs.existsSync(filePath)) {
+          const baseName = path.basename(params.filePath)
+          const fallback = path.join(baseDir, baseName)
+          if (fs.existsSync(fallback)) {
+            filePath = fallback
+          } else {
+            try {
+              const files = fs.readdirSync(baseDir)
+              const match = files.find(
+                (f) =>
+                  f.toLowerCase() === baseName.toLowerCase() ||
+                  (f.endsWith(".docx") && f.toLowerCase().includes(baseName.toLowerCase().replace(".docx", ""))),
+              )
+              if (match) {
+                filePath = path.join(baseDir, match)
+              }
+            } catch {}
+          }
+        }
+
         if (!fs.existsSync(filePath)) {
           return {
             title: "Word read: file not found",
-            output: `ERROR: ${filePath} not found`,
+            output: `ERROR: ${params.filePath} not found in workspace (${baseDir})`,
             metadata: { paragraphs: 0, tables: 0 },
           }
         }
 
         const map = yield* Effect.tryPromise({ try: () => buildWordMap(filePath), catch: (e) => new Error(String(e)) })
         return {
-          title: `Word map: ${filePath}`,
+          title: `Word read: ${path.basename(filePath)}`,
           output: JSON.stringify(map),
           metadata: { paragraphs: map.paragraphs.length, tables: map.tables.length },
         }

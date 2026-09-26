@@ -6,7 +6,9 @@ import * as path from "path"
 import { ExcelMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String,
+  filePath: Schema.String.annotations({
+    description: "The file path or filename of the Excel workbook (.xlsx, .xls, .csv) to read (relative to workspace or absolute)",
+  }),
 })
 
 type Metadata = Record<string, unknown>
@@ -65,19 +67,50 @@ export function buildExcelMap(filePath: string): typeof ExcelMap.Type {
 export const ExcelReadTool = Tool.define(
   "excel_read",
   Effect.succeed({
-    description: `Parse an Excel workbook (.xlsx/.xls) with the xlsx parser and return a deterministic Document Map (JSON): every sheet with its range, dimension, populated cells ({ref, value, text, type, formula}) and merged ranges. Use this INSTEAD of COM for reading — never guess cell addresses. Pipe the returned map to the LLM so subsequent excel_com edits can target exact refs.`,
+    description: `Read, extract, and inspect sheets, cells, formulas, and tabular data from an Excel workbook (.xlsx, .xls, .csv). Returns a complete Document Map (JSON) with all sheets, dimensions, and cell values. ALWAYS use this tool to inspect spreadsheets natively with zero external dependencies, instead of python scripts or COM.`,
     parameters: Parameters,
-    execute: (params: Schema.Schema.Type<typeof Parameters>) =>
+    execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
       Effect.gen(function* () {
-        const filePath = path.resolve(params.filePath)
+        const baseDir = typeof ctx?.extra?.directory === "string" ? ctx.extra.directory : process.cwd()
+        let filePath = params.filePath
+        if (!path.isAbsolute(filePath)) {
+          filePath = path.resolve(baseDir, filePath)
+        }
+
         if (!fs.existsSync(filePath)) {
-          return { title: "Excel read: file not found", output: `ERROR: ${filePath} not found`, metadata: { cells: 0 } }
+          const baseName = path.basename(params.filePath)
+          const fallback = path.join(baseDir, baseName)
+          if (fs.existsSync(fallback)) {
+            filePath = fallback
+          } else {
+            try {
+              const files = fs.readdirSync(baseDir)
+              const match = files.find(
+                (f) =>
+                  f.toLowerCase() === baseName.toLowerCase() ||
+                  (f.endsWith(".xlsx") && f.toLowerCase().includes(baseName.toLowerCase().replace(".xlsx", ""))) ||
+                  (f.endsWith(".xls") && f.toLowerCase().includes(baseName.toLowerCase().replace(".xls", ""))) ||
+                  (f.endsWith(".csv") && f.toLowerCase().includes(baseName.toLowerCase().replace(".csv", ""))),
+              )
+              if (match) {
+                filePath = path.join(baseDir, match)
+              }
+            } catch {}
+          }
+        }
+
+        if (!fs.existsSync(filePath)) {
+          return {
+            title: "Excel read: file not found",
+            output: `ERROR: ${params.filePath} not found in workspace (${baseDir})`,
+            metadata: { cells: 0 },
+          }
         }
 
         try {
           const map = buildExcelMap(filePath)
           return {
-            title: `Excel map: ${filePath}`,
+            title: `Excel read: ${path.basename(filePath)}`,
             output: JSON.stringify(map),
             metadata: { cells: map.sheets.reduce((n, s) => n + s.cells.length, 0) },
           }

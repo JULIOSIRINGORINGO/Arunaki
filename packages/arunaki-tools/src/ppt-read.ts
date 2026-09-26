@@ -6,7 +6,9 @@ import JSZip from "jszip"
 import { PptMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String,
+  filePath: Schema.String.annotations({
+    description: "The file path or filename of the PowerPoint presentation (.pptx) to read (relative to workspace or absolute)",
+  }),
 })
 
 type Metadata = Record<string, unknown>
@@ -49,17 +51,46 @@ export async function buildPptMap(filePath: string): Promise<typeof PptMap.Type>
 export const PptReadTool = Tool.define(
   "ppt_read",
   Effect.succeed({
-    description: `Parse a PowerPoint presentation (.pptx) and return a deterministic Document Map (JSON): each slide {number, shapes:[{id, name, text}]}. Use this INSTEAD of COM for reading. Shape id/name in the map lets ppt_com edits target exact shapes.`,
+    description: `Read, extract, and inspect slides, text, and shapes from a PowerPoint presentation (.pptx). Returns a complete Document Map (JSON) with slide numbers, shapes, and extracted text. ALWAYS use this tool to inspect presentations natively with zero external dependencies, instead of python scripts or COM.`,
     parameters: Parameters,
-    execute: (params: Schema.Schema.Type<typeof Parameters>) =>
+    execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
       Effect.gen(function* () {
-        const filePath = path.resolve(params.filePath)
+        const baseDir = typeof ctx?.extra?.directory === "string" ? ctx.extra.directory : process.cwd()
+        let filePath = params.filePath
+        if (!path.isAbsolute(filePath)) {
+          filePath = path.resolve(baseDir, filePath)
+        }
+
         if (!fs.existsSync(filePath)) {
-          return { title: "PPT read: file not found", output: `ERROR: ${filePath} not found`, metadata: { slides: 0 } }
+          const baseName = path.basename(params.filePath)
+          const fallback = path.join(baseDir, baseName)
+          if (fs.existsSync(fallback)) {
+            filePath = fallback
+          } else {
+            try {
+              const files = fs.readdirSync(baseDir)
+              const match = files.find(
+                (f) =>
+                  f.toLowerCase() === baseName.toLowerCase() ||
+                  (f.endsWith(".pptx") && f.toLowerCase().includes(baseName.toLowerCase().replace(".pptx", ""))),
+              )
+              if (match) {
+                filePath = path.join(baseDir, match)
+              }
+            } catch {}
+          }
+        }
+
+        if (!fs.existsSync(filePath)) {
+          return {
+            title: "PPT read: file not found",
+            output: `ERROR: ${params.filePath} not found in workspace (${baseDir})`,
+            metadata: { slides: 0 },
+          }
         }
         const map = yield* Effect.tryPromise({ try: () => buildPptMap(filePath), catch: (e) => new Error(String(e)) })
         return {
-          title: `PPT map: ${filePath}`,
+          title: `PPT read: ${path.basename(filePath)}`,
           output: JSON.stringify(map),
           metadata: { slides: map.slides.length },
         }
