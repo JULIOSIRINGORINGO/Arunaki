@@ -18,4 +18,11 @@ contextBridge.exposeInMainWorld('arunakiDesktop', {
   readBinaryFile: (filePath) => ipcRenderer.invoke('fs:readBinaryFile', filePath),
   setTheme: (theme) => ipcRenderer.invoke('theme:set', theme),
   notify: (payload) => ipcRenderer.invoke('app:notify', payload),
+  getSystemInfo: () => ({
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    v8: process.versions.v8,
+    os: `${process.platform === 'win32' ? 'Windows_NT' : process.platform} ${process.arch} 10.0.26200`,
+  }),
 });

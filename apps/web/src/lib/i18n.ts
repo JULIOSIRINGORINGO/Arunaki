@@ -51,6 +51,8 @@ export const translations = {
     documentation: "Documentation",
     githubRepo: "GitHub Repository",
     reportIssue: "Report an Issue",
+    aboutArunaki: "About Arunaki",
+    about: "About",
 
     // Settings Navigation
     settingsTitle: "Workstation System Settings",
@@ -353,6 +355,8 @@ export const translations = {
     documentation: "Dokumentasi",
     githubRepo: "Repositori GitHub",
     reportIssue: "Laporkan Masalah",
+    aboutArunaki: "Tentang Arunaki",
+    about: "Tentang",
 
     // Settings Navigation
     settingsTitle: "Pengaturan Sistem Workstation",

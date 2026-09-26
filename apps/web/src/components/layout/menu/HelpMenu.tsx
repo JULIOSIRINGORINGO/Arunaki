@@ -5,6 +5,7 @@ import {
   BookText,
   ExternalLink,
   Bug,
+  Info,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useI18n } from "../../../lib/i18n";
@@ -13,6 +14,7 @@ import { getEffectiveShortcut } from "./shortcutsConfig";
 
 interface HelpMenuProps extends BaseMenuProps {
   onOpenShortcuts: () => void;
+  onOpenAbout: () => void;
 }
 
 export const HelpMenu = memo(function HelpMenu({
@@ -21,6 +23,7 @@ export const HelpMenu = memo(function HelpMenu({
   onMouseEnter,
   onClose,
   onOpenShortcuts,
+  onOpenAbout,
 }: HelpMenuProps) {
   const { t } = useI18n();
 
@@ -113,6 +116,22 @@ export const HelpMenu = memo(function HelpMenu({
             <div className="flex items-center gap-2.5">
               <Bug className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
               <span>{t("reportIssue", "Report an Issue")}</span>
+            </div>
+          </button>
+
+          <div className="h-px my-1.5 bg-[var(--border-color)]" />
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenAbout();
+            }}
+            className="w-full px-3.5 py-2 text-[13px] flex items-center justify-between transition-colors cursor-pointer hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+          >
+            <div className="flex items-center gap-2.5">
+              <Info className="w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.75} />
+              <span>{t("aboutArunaki", "About Arunaki")}</span>
             </div>
           </button>
         </div>

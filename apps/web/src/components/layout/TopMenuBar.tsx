@@ -6,6 +6,7 @@ import {
   ViewMenu,
   HelpMenu,
   KeyboardShortcutsModal,
+  AboutArunakiModal,
   getEffectiveShortcut,
   matchesShortcut,
 } from "./menu";
@@ -24,6 +25,7 @@ export const TopMenuBar = memo(function TopMenuBar({
 }: TopMenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const menuBarRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -48,6 +50,7 @@ export const TopMenuBar = memo(function TopMenuBar({
       if (e.key === "Escape") {
         setActiveMenu(null);
         setShowShortcutsModal(false);
+        setShowAboutModal(false);
         return;
       }
 
@@ -147,6 +150,7 @@ export const TopMenuBar = memo(function TopMenuBar({
           onMouseEnter={() => handleMouseEnter("help")}
           onClose={handleClose}
           onOpenShortcuts={() => setShowShortcutsModal(true)}
+          onOpenAbout={() => setShowAboutModal(true)}
         />
       </nav>
 
@@ -154,6 +158,12 @@ export const TopMenuBar = memo(function TopMenuBar({
       <KeyboardShortcutsModal
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
+      />
+
+      {/* About Modal */}
+      <AboutArunakiModal
+        isOpen={showAboutModal}
+        onClose={() => setShowAboutModal(false)}
       />
     </>
   );
