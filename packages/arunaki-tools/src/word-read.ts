@@ -73,7 +73,7 @@ export async function buildWordMap(filePath: string): Promise<typeof WordMap.Typ
 export const WordReadTool = Tool.define(
   "word_read",
   Effect.succeed({
-    description: `Read, extract, and inspect text, paragraphs, and tables from a Word document (.docx). Returns a complete Document Map (JSON) with paragraphs ({index, text}) and structured tables ({index, rows}). ALWAYS use this tool to inspect or read Word documents natively with zero external dependencies, instead of python scripts or COM.`,
+    description: `Read, extract, and inspect text, paragraphs, and tables from a Word document (.docx). Returns a complete Document Map (JSON) with paragraphs ({index, text}) and structured tables ({index, rows}). ALWAYS invoke this tool first whenever a user asks to inspect, read, check, or summarize Word documents natively with zero external dependencies, instead of python scripts or COM.`,
     parameters: Parameters,
     execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
       Effect.gen(function* () {

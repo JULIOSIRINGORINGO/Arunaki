@@ -101,6 +101,12 @@ Usage notes:
     - File search: Use Glob (NOT find or ls)
     - Content search: Use Grep (NOT grep or rg)
     - Read files: Use Read (NOT cat/head/tail)
+    - Read / inspect spreadsheets (.xlsx, .xls, .csv): Use excel_read (STRICTLY FORBIDDEN to use Python scripts, openpyxl, pandas, or shell commands to inspect or summarize spreadsheets)
+    - Read / inspect Word documents (.docx): Use word_read (STRICTLY FORBIDDEN to use Python scripts or docx)
+    - Read / inspect PowerPoint (.pptx): Use ppt_read (STRICTLY FORBIDDEN to use Python scripts)
+    - Edit Excel workbooks: Use excel_com
+    - Edit Word documents: Use word_com
+    - Edit PowerPoint presentations: Use ppt_com
     - Edit files: Use Edit (NOT sed/awk)
     - Write files: Use Write (NOT echo >/cat <<EOF)
     - Communication: Output text directly (NOT echo/printf)
@@ -152,6 +158,12 @@ Usage notes:
     - File search: Use Glob (NOT Get-ChildItem)
     - Content search: Use Grep (NOT Select-String)
     - Read files: Use Read (NOT Get-Content)
+    - Read / inspect spreadsheets (.xlsx, .xls, .csv): Use excel_read (STRICTLY FORBIDDEN to use Python scripts, openpyxl, pandas, or shell commands to inspect or summarize spreadsheets)
+    - Read / inspect Word documents (.docx): Use word_read (STRICTLY FORBIDDEN to use Python scripts or docx)
+    - Read / inspect PowerPoint (.pptx): Use ppt_read (STRICTLY FORBIDDEN to use Python scripts)
+    - Edit Excel workbooks: Use excel_com
+    - Edit Word documents: Use word_com
+    - Edit PowerPoint presentations: Use ppt_com
     - Edit files: Use Edit (NOT Set-Content)
     - Write files: Use Write (NOT Set-Content/Out-File or here-strings)
     - Communication: Output text directly (NOT Write-Output/Write-Host)
@@ -201,6 +213,12 @@ Usage notes:
     - File search: Use Glob (NOT dir /s)
     - Content search: Use Grep (NOT findstr)
     - Read files: Use Read (NOT type)
+    - Read / inspect spreadsheets (.xlsx, .xls, .csv): Use excel_read (STRICTLY FORBIDDEN to use Python scripts, openpyxl, pandas, or shell commands to inspect or summarize spreadsheets)
+    - Read / inspect Word documents (.docx): Use word_read (STRICTLY FORBIDDEN to use Python scripts or docx)
+    - Read / inspect PowerPoint (.pptx): Use ppt_read (STRICTLY FORBIDDEN to use Python scripts)
+    - Edit Excel workbooks: Use excel_com
+    - Edit Word documents: Use word_com
+    - Edit PowerPoint presentations: Use ppt_com
     - Edit files: Use Edit (NOT copy)
     - Write files: Use Write (NOT echo > file)
     - Communication: Output text directly (NOT echo)

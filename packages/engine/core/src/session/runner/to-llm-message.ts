@@ -27,9 +27,28 @@ const media = (file: FileAttachment): ContentPart => {
   }
 
   const name = file.name || "document";
+  const ext = (name.split(".").pop() || "").toLowerCase();
+  let hint = "";
+  if (
+    ext === "xlsx" ||
+    ext === "xls" ||
+    ext === "csv" ||
+    file.mime?.includes("spreadsheet") ||
+    file.mime?.includes("excel") ||
+    file.mime?.includes("csv")
+  ) {
+    hint = ` — Call the 'excel_read' tool with filePath="${name}" to extract sheets, cells, and rows instantly.`;
+  } else if (ext === "docx" || ext === "doc" || file.mime?.includes("word")) {
+    hint = ` — Call the 'word_read' tool with filePath="${name}" to extract paragraphs and tables instantly.`;
+  } else if (ext === "pptx" || ext === "ppt" || file.mime?.includes("presentation")) {
+    hint = ` — Call the 'ppt_read' tool with filePath="${name}" to inspect slides instantly.`;
+  } else {
+    hint = ` — Use the 'read' tool with filePath="${name}" to inspect this file.`;
+  }
+
   return {
     type: "text",
-    text: `[Attached File: ${name} (${file.mime})]`,
+    text: `[Attached File: ${name} (${file.mime || "application/octet-stream"})${hint}]`,
   };
 };
 

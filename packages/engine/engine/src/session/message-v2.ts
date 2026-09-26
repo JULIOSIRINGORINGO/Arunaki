@@ -215,12 +215,36 @@ export const toModelMessagesEffect = Effect.fnUntraced(function* (
               type: "text",
               text: `[Attached ${part.mime}: ${part.filename ?? "file"}]`,
             })
-          } else {
+          } else if (isMedia(part.mime)) {
             userMessage.parts.push({
               type: "file",
               url: part.url,
               mediaType: part.mime,
               filename: part.filename,
+            })
+          } else {
+            const filename = part.filename ?? "document"
+            const ext = (filename.split(".").pop() || "").toLowerCase()
+            let toolHint = ""
+            if (
+              ext === "xlsx" ||
+              ext === "xls" ||
+              ext === "csv" ||
+              part.mime?.includes("spreadsheet") ||
+              part.mime?.includes("excel") ||
+              part.mime?.includes("csv")
+            ) {
+              toolHint = ` — Call the 'excel_read' tool with filePath="${filename}" to extract sheets, cells, and rows instantly.`
+            } else if (ext === "docx" || ext === "doc" || part.mime?.includes("word")) {
+              toolHint = ` — Call the 'word_read' tool with filePath="${filename}" to extract paragraphs and tables instantly.`
+            } else if (ext === "pptx" || ext === "ppt" || part.mime?.includes("presentation")) {
+              toolHint = ` — Call the 'ppt_read' tool with filePath="${filename}" to inspect slides instantly.`
+            } else {
+              toolHint = ` — Use the 'read' tool with filePath="${filename}" to inspect this file.`
+            }
+            userMessage.parts.push({
+              type: "text",
+              text: `[Attached File: ${filename} (${part.mime || "application/octet-stream"})${toolHint}]`,
             })
           }
         }

@@ -30,8 +30,8 @@ NEVER execute tools (do NOT read files, do NOT list directories, do NOT run bash
 
 # Document & Tool Policy
 - STRICT NATIVE TOOL USAGE (ALWAYS READ FIRST WITH NATIVE TOOLS):
-  * Excel spreadsheets (.xlsx, .xls, .csv): When a user attaches or asks to inspect/recap a spreadsheet, you MUST ALWAYS invoke `excel_read` first to inspect sheets, rows, and cells. DO NOT run Python scripts (e.g. `import openpyxl`, `pandas`) to read or recap spreadsheets. Once `excel_read` returns the document data, perform counts, recaps, and aggregations directly in your reasoning!
-  * Word documents (.docx): You MUST ALWAYS invoke `word_read` first to extract paragraphs and tables. DO NOT run Python scripts to read Word files.
+  * Excel spreadsheets (.xlsx, .xls, .csv): When a user attaches or asks to inspect, check sizes/dimensions, or recap a spreadsheet (e.g. "coba cek file ini apa aja ukurannya?", "rekap data pegawai", "baca excel"), you MUST ALWAYS invoke `excel_read` with `filePath="..."` first. DO NOT run Python scripts (e.g. `import openpyxl`, `pandas`) or shell commands to read, check sizes, or recap spreadsheets. Once `excel_read` returns the document data, perform counts, recaps, and aggregations directly in your reasoning!
+  * Word documents (.docx): When a user attaches or asks to inspect/read Word documents, you MUST ALWAYS invoke `word_read` first to extract paragraphs and tables. DO NOT run Python scripts to read Word files.
   * PowerPoint presentations (.pptx): You MUST ALWAYS invoke `ppt_read` first.
   * Plain text, JSON, Markdown, source code: Use `read`.
   * Document editing: Use native editing tools (`excel_com`, `word_com`, `ppt_com`, `edit`, `write`).

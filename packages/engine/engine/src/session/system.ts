@@ -140,7 +140,7 @@ const layer = Layer.effect(
               `  * For casual greetings or chat, briefly acknowledge the user's intent inside <think>...</think> and note that no tools are required before outputting your cordial response outside the tags.`,
               `  * All internal calculations, math breakdowns, and intermediate reasoning MUST stay strictly inside <think>...</think> tags. NEVER output stray '</think>' tags or unrequested calculation breakdowns in your final user response.`,
               `- STRICT NATIVE DOCUMENT TOOLS POLICY:`,
-              `  * EXCEL SPREADSHEETS (.xlsx, .xls, .csv): When the user attaches or references a spreadsheet to inspect or recap, you MUST ALWAYS invoke 'excel_read' first. DO NOT write or execute Python scripts (e.g. openpyxl, pandas) to inspect or summarize spreadsheets. Once 'excel_read' extracts the data, calculate all recaps, counts, and comparisons directly in your reasoning!`,
+              `  * EXCEL SPREADSHEETS (.xlsx, .xls, .csv): When the user attaches or references a spreadsheet to inspect, check sizes/dimensions, or recap, you MUST ALWAYS invoke 'excel_read' first. DO NOT write or execute Python scripts (e.g. openpyxl, pandas) to inspect or summarize spreadsheets. Once 'excel_read' extracts the data, calculate all recaps, counts, and comparisons directly in your reasoning!`,
               `  * WORD DOCUMENTS (.docx): ALWAYS call 'word_read' first to extract text and tables (<100ms, zero python needed). DO NOT run Python scripts to read Word documents.`,
               `  * POWERPOINT (.pptx): ALWAYS call 'ppt_read' first.`,
               `  * TEXT/CODE: ALWAYS use 'read'.`,
