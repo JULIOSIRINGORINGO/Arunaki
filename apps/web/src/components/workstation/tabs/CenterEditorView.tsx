@@ -103,13 +103,11 @@ export const CenterEditorView = memo(function CenterEditorView({
     const el = textareaRef.current;
     if (!el) return;
 
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setTextareaWidth(entry.contentRect.width);
-      }
+    const ro = new ResizeObserver(() => {
+      setTextareaWidth(el.clientWidth);
     });
     ro.observe(el);
-    setTextareaWidth(el.clientWidth - 24); // 24px = px-3 padding
+    setTextareaWidth(el.clientWidth);
 
     return () => ro.disconnect();
   }, [wordWrap, textareaRef]);
@@ -121,8 +119,8 @@ export const CenterEditorView = memo(function CenterEditorView({
       return;
     }
 
-    // Only compute heights if lines count is within reasonable threshold (< 600)
-    if (lines.length > 600) {
+    // Only compute heights if lines count is within reasonable threshold (< 1000)
+    if (lines.length > 1000) {
       setLineHeights(null);
       return;
     }
@@ -130,7 +128,7 @@ export const CenterEditorView = memo(function CenterEditorView({
     const children = mirrorRef.current.children;
     const heights = new Array(children.length);
     for (let i = 0; i < children.length; i++) {
-      const h = (children[i] as HTMLElement).getBoundingClientRect().height;
+      const h = (children[i] as HTMLElement).offsetHeight;
       heights[i] = h > 0 ? h : 20;
     }
     setLineHeights(heights);
@@ -138,7 +136,7 @@ export const CenterEditorView = memo(function CenterEditorView({
 
   return (
     <div className="h-full w-full flex flex-col bg-[var(--bg-card)] overflow-hidden transition-colors">
-      <div className="flex-1 flex overflow-hidden bg-[var(--bg-card)] relative font-mono text-[13px]">
+      <div className="flex-1 min-w-0 flex overflow-hidden bg-[var(--bg-card)] relative font-mono text-[13px]">
         {/* Memoized gutter that only re-renders when lineCount or active line changes */}
         <CenterEditorGutter
           lineCount={lineCount}
@@ -149,14 +147,18 @@ export const CenterEditorView = memo(function CenterEditorView({
         />
 
         {/* Hidden mirror element to measure line heights for gutter alignment */}
-        {wordWrap && lines.length <= 600 && (
+        {wordWrap && lines.length <= 1000 && (
           <div
             ref={mirrorRef}
             aria-hidden="true"
-            className="invisible pointer-events-none absolute left-[-9999px] top-0 font-mono text-[13px] leading-[20px] py-2 px-3 whitespace-pre-wrap break-words"
+            className="invisible pointer-events-none absolute left-[-9999px] top-0 font-mono text-[13px] leading-[20px] py-2 px-3 whitespace-pre-wrap [overflow-wrap:anywhere] break-words"
             style={{
               fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
               width: textareaWidth > 0 ? `${textareaWidth}px` : "100%",
+              boxSizing: "border-box",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflowWrap: "anywhere",
             }}
           >
             {lines.map((line, idx) => (
@@ -169,6 +171,7 @@ export const CenterEditorView = memo(function CenterEditorView({
         <textarea
           ref={textareaRef}
           value={currentContent}
+          wrap={wordWrap ? "soft" : "off"}
           onChange={(e) => {
             onTextChange(e.target.value);
             updateCursorPos();
@@ -184,13 +187,18 @@ export const CenterEditorView = memo(function CenterEditorView({
           autoCapitalize="off"
           placeholder="Empty document..."
           className={cn(
-            "flex-1 h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[var(--text-primary)] leading-[20px] resize-none focus:outline-none select-text cursor-text border-none tab-4 selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)] caret-[var(--text-primary)] placeholder-[var(--text-dim)]",
+            "flex-1 min-w-0 w-full h-full py-2 px-3 bg-transparent font-mono text-[13px] text-[var(--text-primary)] leading-[20px] resize-none focus:outline-none select-text cursor-text border-none tab-4 selection:bg-[var(--bg-hover)] selection:text-[var(--text-primary)] caret-[var(--text-primary)] placeholder-[var(--text-dim)]",
             wordWrap
-              ? "whitespace-pre-wrap break-words overflow-x-hidden overflow-y-auto"
+              ? "whitespace-pre-wrap [overflow-wrap:anywhere] break-words overflow-x-hidden overflow-y-auto"
               : "whitespace-pre overflow-auto"
           )}
           style={{
             fontFamily: "Consolas, 'Cascadia Code', 'Courier New', monospace",
+            whiteSpace: wordWrap ? "pre-wrap" : "pre",
+            wordBreak: wordWrap ? "break-word" : "normal",
+            overflowWrap: wordWrap ? "anywhere" : "normal",
+            minWidth: 0,
+            width: "100%",
           }}
         />
       </div>

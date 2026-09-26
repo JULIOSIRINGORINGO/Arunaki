@@ -277,7 +277,7 @@ function WorkstationCenterPanelComponent({
       {activeTab && <CenterBreadcrumbs folderName={folderName} tabTitle={activeTab.title} />}
 
       {/* 3. DYNAMIC CONTENT BODY (SPREADSHEET / FILE EDITOR) */}
-      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden bg-[var(--bg-card)]">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden bg-[var(--bg-card)]">
         {activeTab ? (
           isSpreadsheet ? (
             <SpreadsheetViewer

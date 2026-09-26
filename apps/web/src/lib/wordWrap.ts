@@ -4,15 +4,16 @@ const WORD_WRAP_STORAGE_KEY = "arunaki_word_wrap";
 const WORD_WRAP_EVENT = "arunaki-word-wrap-change";
 
 export function getStoredWordWrap(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
   try {
     const stored = localStorage.getItem(WORD_WRAP_STORAGE_KEY);
-    if (stored !== null) {
-      return stored === "true";
+    if (stored === null) {
+      // Default to true so documents wrap out of the box
+      return true;
     }
-    return false;
+    return stored === "true";
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -25,10 +26,19 @@ export function setStoredWordWrap(enabled: boolean): void {
   }
 }
 
+export function toggleStoredWordWrap(): boolean {
+  const next = !getStoredWordWrap();
+  setStoredWordWrap(next);
+  return next;
+}
+
 export function useWordWrap() {
   const [wordWrap, setWordWrapState] = useState<boolean>(() => getStoredWordWrap());
 
   useEffect(() => {
+    // Initial sync
+    setWordWrapState(getStoredWordWrap());
+
     const handleEvent = (e: Event) => {
       const customEvent = e as CustomEvent<boolean>;
       if (typeof customEvent.detail === "boolean") {
@@ -40,7 +50,7 @@ export function useWordWrap() {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === WORD_WRAP_STORAGE_KEY) {
-        setWordWrapState(e.newValue === "true");
+        setWordWrapState(e.newValue !== "false");
       }
     };
 
@@ -53,16 +63,13 @@ export function useWordWrap() {
   }, []);
 
   const setWordWrap = useCallback((val: boolean) => {
-    setWordWrapState(val);
     setStoredWordWrap(val);
+    setWordWrapState(val);
   }, []);
 
   const toggleWordWrap = useCallback(() => {
-    setWordWrapState((prev) => {
-      const next = !prev;
-      setStoredWordWrap(next);
-      return next;
-    });
+    const next = toggleStoredWordWrap();
+    setWordWrapState(next);
   }, []);
 
   return { wordWrap, setWordWrap, toggleWordWrap };
