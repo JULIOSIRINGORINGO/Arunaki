@@ -336,6 +336,18 @@ export const ChatInputBox = memo(function ChatInputBox({
             isImage: isImg,
           },
         ]);
+
+        // Auto-save attached file to active project folder if running in desktop app
+        const desktop = typeof window !== "undefined" && (window as any).arunakiDesktop;
+        if (desktop?.writeFile) {
+          desktop.writeFile(file.name, dataUrl).then((res: any) => {
+            if (res && !res.error) {
+              window.dispatchEvent(new CustomEvent("arunaki-file-tree-refresh"));
+            }
+          }).catch((e: any) => {
+            console.warn("[ChatInputBox] Could not auto-save file to workspace:", e);
+          });
+        }
       } catch (err) {
         console.warn("[ChatInputBox] Failed to read file:", err);
         toast.error(`Failed to read file ${file.name}`);

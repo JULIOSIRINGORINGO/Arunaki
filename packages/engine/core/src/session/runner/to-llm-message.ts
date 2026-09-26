@@ -10,13 +10,28 @@ import {
 import { SessionMessage } from "../message"
 import type { FileAttachment } from "../prompt"
 
-const media = (file: FileAttachment): ContentPart => ({
-  type: "media",
-  mediaType: file.mime,
-  data: file.uri,
-  filename: file.name,
-  metadata: file.description === undefined ? undefined : { description: file.description },
-})
+const isImageMime = (mime: string) => {
+  const m = (mime || "").toLowerCase();
+  return m === "image/png" || m === "image/jpeg" || m === "image/jpg" || m === "image/webp" || m === "image/gif";
+};
+
+const media = (file: FileAttachment): ContentPart => {
+  if (isImageMime(file.mime)) {
+    return {
+      type: "media",
+      mediaType: file.mime,
+      data: file.uri,
+      filename: file.name,
+      metadata: file.description === undefined ? undefined : { description: file.description },
+    };
+  }
+
+  const name = file.name || "document";
+  return {
+    type: "text",
+    text: `[Attached File: ${name} (${file.mime})]`,
+  };
+};
 
 const toolInput = (tool: SessionMessage.AssistantTool) => {
   if (tool.state.status !== "pending") return tool.state.input
