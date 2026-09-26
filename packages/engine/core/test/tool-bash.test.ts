@@ -416,6 +416,32 @@ describe("BashTool", () => {
       (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
     ),
   )
+
+  it.live("blocks python/shell scripts targeting office documents (.docx, .xlsx, .pptx)", () =>
+    Effect.acquireUseRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => {
+        reset()
+        return withTool(tmp.path, (registry) =>
+          settleTool(
+            registry,
+            call({ command: 'python -c "from docx import Document; doc = Document(\'test.docx\')"' }),
+          ),
+        ).pipe(
+          Effect.andThen((settled) =>
+            Effect.sync(() => {
+              expect(settled.result).toMatchObject({
+                type: "error",
+                value: expect.stringContaining("Execution blocked: Shell/Python commands for reading or inspecting office documents are disabled"),
+              })
+              expect(runs).toHaveLength(0)
+            }),
+          ),
+        )
+      },
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ),
+  )
 })
 
 test("keeps locked deferred parity TODOs visible", async () => {

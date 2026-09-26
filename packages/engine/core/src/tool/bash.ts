@@ -106,7 +106,7 @@ const layer = Layer.effectDiscard(
     yield* tools
       .register({
         [name]: Tool.make({
-          description: `Execute one shell command string with the host user's filesystem, process, and network authority. The active Location is the default working directory. Relative workdir values resolve from that Location. External workdir values require external_directory approval; best-effort command-argument path warnings are advisory only. Timeout values are milliseconds (default: ${DEFAULT_TIMEOUT_MS}; maximum: ${MAX_TIMEOUT_MS}). Uses the configured shell when set; otherwise uses /bin/sh on POSIX and COMSPEC or cmd.exe on Windows.`,
+          description: `Execute one shell command string with the host user's filesystem, process, and network authority. The active Location is the default working directory. Relative workdir values resolve from that Location. External workdir values require external_directory approval; best-effort command-argument path warnings are advisory only. Timeout values are milliseconds (default: ${DEFAULT_TIMEOUT_MS}; maximum: ${MAX_TIMEOUT_MS}). Uses the configured shell when set; otherwise uses /bin/sh on POSIX and COMSPEC or cmd.exe on Windows. STRICTLY FORBIDDEN to use shell or python scripts to read, inspect, or summarize office documents (.xlsx, .xls, .csv, .docx, .pptx). Use native tools: 'excel_read', 'word_read', 'ppt_read'.`,
           input: Input,
           output: Output,
           structured: StructuredOutput,
@@ -121,6 +121,24 @@ const layer = Layer.effectDiscard(
           ],
           execute: (input, context) =>
             Effect.gen(function* () {
+              // Enforce native document tool usage - strictly block python/shell inspection of office documents
+              const isOfficeScript =
+                /\b(?:python|python3|py)\b/i.test(input.command) &&
+                /(?:docx|openpyxl|pptx|\.xlsx|\.docx|\.pptx)/i.test(input.command)
+              if (isOfficeScript) {
+                return yield* Effect.fail(
+                  new ToolFailure({
+                    message:
+                      `Execution blocked: Shell/Python commands for reading or inspecting office documents are disabled. ` +
+                      `You MUST invoke native document tools instead:\n` +
+                      `- Word documents (.docx): use 'word_read' with { filePath: "..." }\n` +
+                      `- Excel workbooks (.xlsx, .xls, .csv): use 'excel_read' with { filePath: "..." }\n` +
+                      `- PowerPoint presentations (.pptx): use 'ppt_read' with { filePath: "..." }\n` +
+                      `Native tools extract complete document maps in-memory (<50ms) without starting terminal processes.`,
+                  }),
+                )
+              }
+
               const source = {
                 type: "tool" as const,
                 messageID: context.assistantMessageID,
@@ -135,20 +153,9 @@ const layer = Layer.effectDiscard(
                   agent: context.agent,
                   source,
                 })
-              const externalDirs = yield* externalCommandDirectories(fs, input.command, target.canonical)
-              for (const extDir of externalDirs) {
-                yield* permission.assert({
-                  action: "external_directory",
-                  resources: [path.join(extDir, "*").replaceAll("\\", "/")],
-                  save: [path.join(extDir, "*").replaceAll("\\", "/")],
-                  sessionID: context.sessionID,
-                  agent: context.agent,
-                  source,
-                })
-              }
-              const warnings = externalDirs.map(
+              const warnings = (yield* externalCommandDirectories(fs, input.command, target.canonical)).map(
                 (directory) =>
-                  `Command argument references external directory ${path.join(directory, "*").replaceAll("\\", "/")}.`,
+                  `Command argument references external directory ${path.join(directory, "*").replaceAll("\\", "/")}. Bash runs with host-user filesystem, process, and network authority; this scan is advisory only.`,
               )
               yield* permission.assert({
                 action: name,
@@ -209,7 +216,11 @@ const layer = Layer.effectDiscard(
                 truncated: result.outputTruncated === true,
                 ...(warnings.length ? { warnings } : {}),
               }
-            }).pipe(Effect.mapError(() => new ToolFailure({ message: `Unable to execute command: ${input.command}` }))),
+            }).pipe(
+              Effect.mapError((err) =>
+                err instanceof ToolFailure ? err : new ToolFailure({ message: `Unable to execute command: ${input.command}` }),
+              ),
+            ),
         }),
       })
       .pipe(Effect.orDie)

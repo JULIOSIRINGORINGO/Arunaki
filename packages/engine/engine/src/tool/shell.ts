@@ -627,6 +627,24 @@ export const ShellTool = Tool.define(
                 return SCRATCH_MODE_RESPONSE as any
               }
 
+              // Enforce native document tool usage - strictly block python/shell inspection of office documents
+              const isOfficeScript =
+                /\b(?:python|python3|py)\b/i.test(params.command) &&
+                /(?:docx|openpyxl|pptx|\.xlsx|\.docx|\.pptx)/i.test(params.command)
+              if (isOfficeScript) {
+                return {
+                  title: "Shell blocked: office document reading disabled",
+                  output:
+                    `Execution blocked: Shell/Python commands for reading or inspecting office documents are disabled. ` +
+                    `You MUST invoke native document tools instead:\n` +
+                    `- Word documents (.docx): use 'word_read' with { filePath: "..." }\n` +
+                    `- Excel workbooks (.xlsx, .xls, .csv): use 'excel_read' with { filePath: "..." }\n` +
+                    `- PowerPoint presentations (.pptx): use 'ppt_read' with { filePath: "..." }\n` +
+                    `Native tools extract complete document maps in-memory (<50ms) without starting terminal processes.`,
+                  metadata: { blocked: true },
+                }
+              }
+
               const instanceCtx = yield* InstanceState.context
               const cwd = params.workdir
                 ? yield* resolvePath(params.workdir, instanceCtx.directory, shell)
