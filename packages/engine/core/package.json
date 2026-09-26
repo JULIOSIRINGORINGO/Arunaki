@@ -93,6 +93,7 @@
     "@arunaki/llm": "workspace:*",
     "@arunaki/schema": "workspace:*",
     "@arunaki/plugin": "workspace:*",
+    "@arunaki/tools": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/context-async-hooks": "2.6.1",
     "@opentelemetry/exporter-trace-otlp-http": "0.214.0",

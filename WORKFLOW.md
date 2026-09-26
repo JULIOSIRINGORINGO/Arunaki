@@ -3316,6 +3316,24 @@ Engine sudah mendukung per-prompt `variant` (`PromptInput.variant`, `session/pro
   - `npm run build -w apps/web`: ✅ 0 errors, built in 22.90s.
   - `bun test packages/engine/engine/test/arunaki/memory.test.ts`: ✅ 11 pass, 0 fail.
 
+---
+
+## Phase: Native Document Read Tools Integration (V2 Engine Parity) ✅ DONE
+
+- [x] **Decouple Pure Parsers (`packages/arunaki-tools`)**:
+  - Ekstrak parser murni `excel-map.ts`, `word-map.ts`, `ppt-map.ts` tanpa ketergantungan pada `@arunaki/engine/tool` untuk mencegah circular dependency `ReferenceError: Cannot access 'node' before initialization`.
+  - Daftarkan sub-export `./excel-map`, `./word-map`, `./ppt-map` pada `packages/arunaki-tools/package.json`.
+- [x] **Native Document Tools di Core V2 (`packages/engine/core/src/tool`)**:
+  - Buat `word-read.ts` (`word_read`): parsing paragraf dan tabel `.docx` secara instan menggunakan `jszip` in-memory (<50ms).
+  - Buat `excel-read.ts` (`excel_read`): ekstraksi sheet, cell, rowCount, colCount `.xlsx`/`.xls`/`.csv` in-memory menggunakan `xlsx`.
+  - Buat `ppt-read.ts` (`ppt_read`): ekstraksi slide dan shape `.pptx` in-memory.
+- [x] **Built-in Registration (`packages/engine/core/src/tool/builtins.ts`)**:
+  - Daftarkan `WordReadTool.node`, `ExcelReadTool.node`, dan `PptReadTool.node` ke dalam `BuiltInTools` node engine V2.
+- [x] **Automated Tests & Parity Verification**:
+  - Buat `packages/engine/core/test/doc-read.test.ts`: Verifikasi registrasi tool ke registry V2 serta eksekusi riil membaca sample file `.docx` dan `.xlsx` (3 pass, 0 fail).
+  - Verifikasi build `npm run build -w apps/web` sukses (0 error TypeScript).
+
+
 
 
 

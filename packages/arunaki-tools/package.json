@@ -5,6 +5,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./docmap": "./src/docmap.ts",
+    "./excel-map": "./src/excel-map.ts",
+    "./word-map": "./src/word-map.ts",
+    "./ppt-map": "./src/ppt-map.ts",
     "./excel-com": "./src/excel-com.ts",
     "./word-com": "./src/word-com.ts",
     "./ppt-com": "./src/ppt-com.ts",

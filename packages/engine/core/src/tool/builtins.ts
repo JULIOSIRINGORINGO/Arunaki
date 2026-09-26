@@ -15,6 +15,10 @@ import { WebFetchTool } from "./webfetch"
 import { WebSearchTool } from "./websearch"
 import { WriteTool } from "./write"
 
+import { ExcelReadTool } from "./excel-read"
+import { WordReadTool } from "./word-read"
+import { PptReadTool } from "./ppt-read"
+
 /**
  * Composes only the shipped Location-scoped built-in tool transforms.
  * Each tool retains its implementation and focused tests independently. Dynamic
@@ -40,6 +44,9 @@ export const node = makeLocationNode({
     // Interactive clarification chips in chat area with fail-safe timeout
     QuestionTool.node,
     ReadTool.node,
+    ExcelReadTool.node,
+    WordReadTool.node,
+    PptReadTool.node,
     SkillTool.node,
     TodoWriteTool.node,
     WebFetchTool.node,
