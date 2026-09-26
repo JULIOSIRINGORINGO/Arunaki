@@ -67,7 +67,7 @@ export function buildExcelMap(filePath: string): typeof ExcelMap.Type {
 export const ExcelReadTool = Tool.define(
   "excel_read",
   Effect.succeed({
-    description: `Read, extract, and inspect sheets, cells, formulas, and tabular data from an Excel workbook (.xlsx, .xls, .csv). Returns a complete Document Map (JSON) with all sheets, dimensions, and cell values. ALWAYS use this tool to inspect spreadsheets natively with zero external dependencies, instead of python scripts or COM.`,
+    description: `Read, extract, and inspect sheets, cells, rows, and tabular data from an Excel workbook (.xlsx, .xls, .csv). ALWAYS invoke this tool to read, inspect, or summarize data from Excel spreadsheets. Returns all sheet data and cells instantly in-memory with zero Python or external dependencies.`,
     parameters: Parameters,
     execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
       Effect.gen(function* () {
