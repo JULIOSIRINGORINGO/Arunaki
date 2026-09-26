@@ -8,6 +8,8 @@ import {
   type SetStateAction,
   type KeyboardEvent,
   type ClipboardEvent,
+  type DragEvent,
+  type ChangeEvent,
 } from "react";
 import {
   Send,
@@ -20,13 +22,14 @@ import {
   Plus,
   Flame,
   Square,
+  Paperclip,
+  FileText,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { ArunakiLogo } from "../../common/ArunakiLogo";
 import { getFileIcon } from "../../workspace/tree-utils";
 import { toast } from "sonner";
 import { useI18n } from "../../../lib/i18n";
-import { AttachedImage } from "./types";
 
 const EFFORT_OPTIONS = [
   { key: "effortDefault", label: "Default", value: "" },
@@ -34,6 +37,23 @@ const EFFORT_OPTIONS = [
   { key: "effortMedium", label: "Medium", value: "medium" },
   { key: "effortHigh", label: "High", value: "high" },
 ] as const;
+
+export interface AttachedFileItem {
+  id: string;
+  name: string;
+  url: string;
+  dataUrl: string;
+  mime: string;
+  size?: number;
+  isImage: boolean;
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 interface ChatInputBoxProps {
   files?: { name: string }[];
@@ -67,8 +87,9 @@ export const ChatInputBox = memo(function ChatInputBox({
 }: ChatInputBoxProps) {
   const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [localPrompt, setLocalPrompt] = useState("");
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFileItem[]>([]);
 
   // Mentions (@) popup
   const [showMentions, setShowMentions] = useState(false);
@@ -170,23 +191,27 @@ export const ChatInputBox = memo(function ChatInputBox({
       setCollapseThinking?.(!next);
       toast.info(next ? "Thinking expanded" : "Thinking collapsed");
       setLocalPrompt("");
-      setAttachedImages([]);
+      setAttachedFiles([]);
       return;
     }
 
-    if (!promptTrimmed && attachedImages.length === 0) return;
+    if (!promptTrimmed && attachedFiles.length === 0) return;
 
-    const filesToSend = attachedImages.map((img) => ({
-      name: img.name,
-      uri: img.dataUrl,
-      mime: img.mime,
+    const filesToSend = attachedFiles.map((file) => ({
+      name: file.name,
+      uri: file.dataUrl,
+      mime: file.mime,
     }));
 
-    const finalPrompt = promptTrimmed || "Please review and analyze this attached image.";
+    const finalPrompt =
+      promptTrimmed ||
+      (attachedFiles.some((f) => f.isImage)
+        ? "Please review and analyze this attached image."
+        : "Please review and analyze the attached file.");
 
     onSendMessage(finalPrompt, filesToSend.length > 0 ? filesToSend : undefined);
     setLocalPrompt("");
-    setAttachedImages([]);
+    setAttachedFiles([]);
   };
 
   const insertMention = (filename: string) => {
@@ -288,42 +313,78 @@ export const ChatInputBox = memo(function ChatInputBox({
     });
   };
 
-  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const imageItems = Array.from(items).filter((item) => item.type.indexOf("image/") === 0);
-
-    if (imageItems.length === 0) return;
-
-    for (const item of imageItems) {
-      const file = item.getAsFile();
-      if (!file) continue;
-
+  const handleAddFiles = async (filesToAdd: File[]) => {
+    for (const file of filesToAdd) {
       try {
         const dataUrl = await readFileAsDataUrl(file);
-        const localPreviewUrl = URL.createObjectURL(file);
+        const isImg =
+          file.type.startsWith("image/") ||
+          /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(file.name);
+        const localPreviewUrl = isImg ? URL.createObjectURL(file) : "";
         const timestamp = Date.now();
-        const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : "webp";
-        const fileName = `pasted_image_${timestamp}.${ext}`;
+        const fileId = `${file.name}-${timestamp}-${Math.random()}`;
 
-        setAttachedImages((prev) => [
+        setAttachedFiles((prev) => [
           ...prev,
           {
-            id: fileName,
-            name: fileName,
+            id: fileId,
+            name: file.name,
             url: localPreviewUrl,
             dataUrl,
-            mime: file.type || "image/png",
+            mime: file.type || "application/octet-stream",
+            size: file.size,
+            isImage: isImg,
           },
         ]);
       } catch (err) {
-        console.warn("[ChatInputBox] Failed to read pasted image:", err);
+        console.warn("[ChatInputBox] Failed to read file:", err);
+        toast.error(`Failed to read file ${file.name}`);
       }
     }
   };
 
+  const handleFileInputChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+    await handleAddFiles(Array.from(selectedFiles));
+    e.target.value = "";
+  };
+
+  const handlePaste = async (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const fileList: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file") {
+        const file = item.getAsFile();
+        if (file) fileList.push(file);
+      }
+    }
+    if (fileList.length > 0) {
+      await handleAddFiles(fileList);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await handleAddFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
   return (
-    <div className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-[border-color] duration-150">
+    <div
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className="relative bg-[var(--bg-card)] border border-[var(--border-color)] focus-within:border-[var(--border-strong)] rounded-2xl p-2.5 transition-[border-color] duration-150"
+    >
       {/* File Mentions Popup */}
       {showMentions && mentionResults.length > 0 && (
         <div className="absolute bottom-full left-0 right-0 mb-2 z-50 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl overflow-hidden shadow-2xl transform-gpu will-change-transform">
@@ -384,32 +445,42 @@ export const ChatInputBox = memo(function ChatInputBox({
         </div>
       )}
 
-      {/* Attached Images Preview Chips */}
-      {attachedImages.length > 0 && (
+      {/* Attached Files & Images Preview Chips */}
+      {attachedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2 animate-in fade-in zoom-in-95 duration-150">
-          {attachedImages.map((img, idx) => (
+          {attachedFiles.map((file, idx) => (
             <div
-              key={img.id || idx}
+              key={file.id || idx}
               className="group relative flex items-center gap-2 bg-[var(--bg-hover)] border border-[var(--border-strong)] rounded-xl p-1.5 pr-2.5 shadow-xs"
             >
-              <img
-                src={img.url}
-                alt={img.name}
-                className="w-10 h-10 rounded-lg object-cover border border-[var(--border-color)] bg-black/20 shrink-0 cursor-pointer"
-                onClick={() => onPreviewImage(img.url)}
-                title="Click to zoom preview"
-              />
-              <div className="flex flex-col min-w-0 max-w-[130px]">
+              {file.isImage ? (
+                <img
+                  src={file.url}
+                  alt={file.name}
+                  className="w-10 h-10 rounded-lg object-cover border border-[var(--border-color)] bg-black/20 shrink-0 cursor-pointer"
+                  onClick={() => onPreviewImage(file.url)}
+                  title="Click to zoom preview"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-color)] flex items-center justify-center shrink-0 text-[var(--text-muted)]">
+                  {getFileIcon(file.name) || <FileText className="w-5 h-5" />}
+                </div>
+              )}
+              <div className="flex flex-col min-w-0 max-w-[140px]">
                 <span className="text-[11px] font-medium text-[var(--text-primary)] truncate">
-                  {img.name}
+                  {file.name}
                 </span>
-                <span className="text-[9px] text-[var(--text-dim)] font-mono">{t("imageAttached", "Image attached")}</span>
+                <span className="text-[9px] text-[var(--text-dim)] font-mono">
+                  {file.isImage
+                    ? t("imageAttached", "Image attached")
+                    : formatFileSize(file.size) || "File attached"}
+                </span>
               </div>
               <button
                 type="button"
-                onClick={() => setAttachedImages((prev) => prev.filter((_, i) => i !== idx))}
+                onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
                 className="ml-1 w-4 h-4 rounded-full bg-[var(--bg-panel)] hover:bg-red-500/20 hover:text-red-500 text-[var(--text-muted)] flex items-center justify-center transition-colors cursor-pointer"
-                title="Remove image"
+                title="Remove file"
               >
                 <X className="w-2.5 h-2.5" />
               </button>
@@ -499,12 +570,31 @@ export const ChatInputBox = memo(function ChatInputBox({
               )}
             </div>
           )}
+
+          {/* Upload / Attach File Button next to Reasoning Level */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-[10px] bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-full font-medium border border-[var(--border-color)] hover:border-[var(--border-strong)] flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+            title={t("attachFile", "Attach file or image")}
+          >
+            <Paperclip className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+            <span>{t("attach", "Attach")}</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+            accept="*/*"
+          />
         </div>
 
         <div className="flex items-center gap-1.5">
           {isStreaming ? (
             <>
-              {(localPrompt.trim() || attachedImages.length > 0) && (
+              {(localPrompt.trim() || attachedFiles.length > 0) && (
                 <button
                   type="button"
                   onClick={submitPrompt}
@@ -530,7 +620,7 @@ export const ChatInputBox = memo(function ChatInputBox({
             <button
               type="button"
               onClick={submitPrompt}
-              disabled={!localPrompt.trim() && attachedImages.length === 0}
+              disabled={!localPrompt.trim() && attachedFiles.length === 0}
               className="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer bg-[var(--text-primary)] hover:opacity-90 disabled:opacity-30 text-[var(--bg-app)]"
               title="Send message"
             >

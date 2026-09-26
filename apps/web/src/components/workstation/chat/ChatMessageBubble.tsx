@@ -1,8 +1,9 @@
 import { memo, useState, useEffect, useMemo, type MouseEvent } from "react";
-import { Check, Copy, RotateCcw } from "lucide-react";
+import { Check, Copy, RotateCcw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../../lib/utils";
 import { API_BASE } from "../../../lib/api";
+import { getFileIcon } from "../../workspace/tree-utils";
 import { MessageThoughtBadge, StepItem, LiveActionIndicator, getActiveActionText } from "../LiveExecutionBadge";
 import { ChatMessageContent } from "./ChatMessageContent";
 import { QuestionPromptCard } from "./QuestionPromptCard";
@@ -77,6 +78,19 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
     }
     return fromFiles;
   }, [msg?.files, imageMentions]);
+
+  const attachedOtherFiles = useMemo(() => {
+    if (!msg?.files || !Array.isArray(msg.files)) return [];
+    return msg.files.filter((f) => {
+      if (!f || !f.uri) return false;
+      const isImg =
+        f.uri.startsWith("data:image/") ||
+        f.mime?.startsWith("image/") ||
+        /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(f.name || "") ||
+        /\.(png|jpg|jpeg|webp|gif|svg)$/i.test(f.uri);
+      return !isImg;
+    });
+  }, [msg?.files]);
 
   const displayContent = useMemo(() => {
     const raw = (msg?.content || "").replace(/<\/?think\??>/gi, "");
@@ -255,7 +269,12 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   ]);
 
   const hasPartsContent = !isUser && Boolean(partGroups.length > 0);
-  const hasVisibleContent = hasPartsContent || displayContent.length > 0 || attachedImages.length > 0 || Boolean(msg?.question);
+  const hasVisibleContent =
+    hasPartsContent ||
+    displayContent.length > 0 ||
+    attachedImages.length > 0 ||
+    attachedOtherFiles.length > 0 ||
+    Boolean(msg?.question);
   const isThinkingActive = !isUser && Boolean(isStreaming && !hasVisibleContent);
 
   const activeActionText = useMemo(() => {
@@ -428,6 +447,24 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                           {img.name}
                         </span>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {attachedOtherFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2.5">
+                  {attachedOtherFiles.map((file, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-panel)] shadow-xs"
+                    >
+                      <div className="text-[var(--text-muted)] shrink-0">
+                        {getFileIcon(file.name || "file.txt") || <FileText className="w-4 h-4" />}
+                      </div>
+                      <span className="text-[11px] font-medium text-[var(--text-primary)] truncate max-w-[200px]">
+                        {file.name || "Attached file"}
+                      </span>
                     </div>
                   ))}
                 </div>
