@@ -12,17 +12,18 @@ Membuat kembali modal **About Arunaki** di menu dropdown **Help** dengan desain,
    - Tanggal Build: `2026-09-26T10:23:28.000Z`
    - Runtime Elektronik: `Electron 43.2.0`, `Chromium`, `Node.js 24.15.0`, `V8 13.6.233.17-electron.0`, `Windows_NT x64 10.0.26200`.
    - Sandbox: `Active Folder Sandbox`.
-2. **Desain Visual & Layout 1:1**:
-   - Ikon lingkaran info `(i)` berwarna cyan di sebelah kiri atas.
+2. **Desain Visual & Layout 1:1 (Pure Monochrome)**:
+   - Mengikuti tema monokrom khas Arunaki: background `bg-[var(--bg-card)]`, border `border-[var(--border-strong)]`, dan teks kontras tinggi `text-[var(--text-primary)]`.
+   - Ikon lingkaran info `(i)` monokrom di sebelah kiri atas.
    - Kolom kanan memuat judul, daftar spesifikasi teknis monospace/sans yang rapi dan dapat diseleksi (`select-text`).
-   - Tombol `Copy` berlatar teal (`#103d46`) dengan border `#1b5f6a` dan teks `#4edcd8` yang menyalin seluruh teks spesifikasi ke clipboard beserta visual feedback (`Copied`).
-   - Tombol `OK` berlatar slate (`#242f36`) untuk menutup modal.
+   - Tombol `Copy` berlatar monokrom (`bg-[var(--bg-hover)]`, border `[var(--border-strong)]`, teks `[var(--text-primary)]`) yang menyalin seluruh teks spesifikasi ke clipboard beserta visual feedback (`Copied`).
+   - Tombol `OK` berlatar monokrom (`bg-[var(--bg-panel)]`) untuk menutup modal.
    - Tombol `✕` di pojok kanan atas serta penutupan dengan tombol Escape dan klik backdrop.
 3. **Integrasi Runtime Desktop**:
    - Menambahkan API `getSystemInfo()` pada `apps/desktop/preload.cjs` agar runtime Electron dapat dideteksi secara dinamis saat dijalankan di aplikasi desktop.
 
 ## Files Changed
-- `apps/web/src/components/layout/menu/AboutArunakiModal.tsx` — Komponen dialog About Arunaki dengan desain dan spesifikasi teknis.
+- `apps/web/src/components/layout/menu/AboutArunakiModal.tsx` — Komponen dialog About Arunaki dengan tema monokrom dan spesifikasi teknis.
 - `apps/web/src/components/layout/menu/HelpMenu.tsx` — Menambahkan opsi "About Arunaki" di menu dropdown Help.
 - `apps/web/src/components/layout/TopMenuBar.tsx` — State, Escape key handler, dan rendering modal.
 - `apps/web/src/components/layout/menu/index.ts` — Export `AboutArunakiModal`.
@@ -30,4 +31,4 @@ Membuat kembali modal **About Arunaki** di menu dropdown **Help** dengan desain,
 - `apps/web/src/lib/i18n.ts` — Penambahan string lokalisasi `aboutArunaki` dan `about`.
 
 ## Tests
-- `npm run build -w apps/web`: ✅ 0 errors (built in 12.23s).
+- `npm run build -w apps/web`: ✅ 0 errors (built in 13.54s).
