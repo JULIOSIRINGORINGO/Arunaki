@@ -6,7 +6,7 @@ import JSZip from "jszip"
 import { WordMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String.annotations({
+  filePath: Schema.String.annotate({
     description: "The file path or filename of the Word document (.docx) to read (e.g. document.docx or path/to/document.docx)",
   }),
 })

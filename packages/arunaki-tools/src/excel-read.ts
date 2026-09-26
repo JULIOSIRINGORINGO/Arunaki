@@ -6,7 +6,7 @@ import * as path from "path"
 import { ExcelMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String.annotations({
+  filePath: Schema.String.annotate({
     description: "The file path or filename of the Excel workbook (.xlsx, .xls, .csv) to read (relative to workspace or absolute)",
   }),
 })

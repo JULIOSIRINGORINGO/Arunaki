@@ -6,7 +6,7 @@ import JSZip from "jszip"
 import { PptMap } from "./docmap"
 
 export const Parameters = Schema.Struct({
-  filePath: Schema.String.annotations({
+  filePath: Schema.String.annotate({
     description: "The file path or filename of the PowerPoint presentation (.pptx) to read (relative to workspace or absolute)",
   }),
 })
