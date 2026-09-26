@@ -627,16 +627,6 @@ export const ShellTool = Tool.define(
                 return SCRATCH_MODE_RESPONSE as any
               }
 
-              // Guard: block package installation commands (pip install) and guide to native tools
-              const trimmedCmd = params.command.trim()
-              if (/^(pip|pip3|python\s+-m\s+pip)\s+install\b/i.test(trimmedCmd)) {
-                return {
-                  title: "Package installation blocked",
-                  output: `ERROR: Package installation ("pip install") is disabled. Arunaki already provides built-in native document tools (word_read, excel_read, ppt_read) to inspect and parse documents natively with zero python dependencies. Please call the appropriate native tool (e.g. word_read, excel_read, ppt_read) instead of installing external libraries.`,
-                  metadata: { truncated: false },
-                }
-              }
-
               const instanceCtx = yield* InstanceState.context
               const cwd = params.workdir
                 ? yield* resolvePath(params.workdir, instanceCtx.directory, shell)
