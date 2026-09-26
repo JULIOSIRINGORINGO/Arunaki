@@ -519,6 +519,25 @@ export const ChatInputBox = memo(function ChatInputBox({
 
       <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-1">
         <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Upload / Attach File Button (First, icon-only) */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-5 h-5 rounded-md bg-[var(--bg-hover)] hover:bg-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center cursor-pointer transition-colors border border-[var(--border-color)] hover:border-[var(--border-strong)] shadow-xs"
+            title={t("attachFile", "Attach file or image")}
+            aria-label="Attach file"
+          >
+            <Paperclip className="w-3 h-3" strokeWidth={1.75} />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFileInputChange}
+            accept="*/*"
+          />
+
           {setReasoningEffort && (
             <div className="relative" ref={effortDropdownRef}>
               <button
@@ -570,25 +589,6 @@ export const ChatInputBox = memo(function ChatInputBox({
               )}
             </div>
           )}
-
-          {/* Upload / Attach File Button next to Reasoning Level */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="text-[10px] bg-[var(--bg-hover)] hover:bg-[var(--bg-panel)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-2 py-0.5 rounded-full font-medium border border-[var(--border-color)] hover:border-[var(--border-strong)] flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-            title={t("attachFile", "Attach file or image")}
-          >
-            <Paperclip className="w-2.5 h-2.5 text-[var(--text-muted)]" />
-            <span>{t("attach", "Attach")}</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={handleFileInputChange}
-            accept="*/*"
-          />
         </div>
 
         <div className="flex items-center gap-1.5">
