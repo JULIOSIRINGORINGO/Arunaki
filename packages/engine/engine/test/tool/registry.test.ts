@@ -118,6 +118,22 @@ describe("tool.registry", () => {
     }),
   )
 
+  it.instance("exposes excel_read, word_read, and ppt_read in tools", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      const agents = yield* Agent.Service
+      const tools = yield* registry.tools({
+        providerID: ProviderV2.ID.Arunaki,
+        modelID: ModelV2.ID.make("test"),
+        agent: yield* agents.defaultInfo(),
+      })
+      const ids = tools.map((t) => t.id)
+      expect(ids).toContain("excel_read")
+      expect(ids).toContain("word_read")
+      expect(ids).toContain("ppt_read")
+    }),
+  )
+
   withCodeMode.instance("exposes execute when code mode is enabled", () =>
     Effect.gen(function* () {
       const registry = yield* ToolRegistry.Service
