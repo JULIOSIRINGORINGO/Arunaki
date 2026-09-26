@@ -48,9 +48,9 @@ export const translations = {
 
     // Help Menu
     knowledgeRules: "Knowledge & Rules",
+    documentation: "Documentation",
     githubRepo: "GitHub Repository",
     reportIssue: "Report an Issue",
-    aboutArunaki: "About Arunaki",
 
     // Settings Navigation
     settingsTitle: "Workstation System Settings",
@@ -350,9 +350,9 @@ export const translations = {
 
     // Help Menu
     knowledgeRules: "Pengetahuan & Aturan",
+    documentation: "Dokumentasi",
     githubRepo: "Repositori GitHub",
     reportIssue: "Laporkan Masalah",
-    aboutArunaki: "Tentang Arunaki",
 
     // Settings Navigation
     settingsTitle: "Pengaturan Sistem Workstation",
